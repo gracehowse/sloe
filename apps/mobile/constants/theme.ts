@@ -63,7 +63,50 @@ export const Accent = {
   purpleLight: '#AC93E2',
   /** Lime slot — reserved for fresh / produce / match-your-day pill. */
   lime: '#81BE38',
+  /**
+   * Win / achievement — BRAND SPECTRUM — Design Direction 2026 (`docs/decisions/
+   * 2026-06-01-design-direction-2026.md`; chosen 2026-06-01, superseding the
+   * interim amber `#F2A93B` and the gold that briefly shipped). A landmark-only
+   * role, intentionally OUTSIDE the 8-slot action palette above. Gated behind
+   * `design_system_colours` / `redesign_winmoment` — never in the flag-off path.
+   *
+   * Why the brand spectrum: the celebration lights up in Suppr's own colours —
+   * the most ownable choice (no competitor celebrates in its own brand
+   * spectrum), it ties straight to the brandmark + the empty-ring gradient, and
+   * it's collision-free with the macro/warning hues. `Accent.win` below is a
+   * single calm brand-purple for PERSISTENT achievement bits (streak chip,
+   * milestone badge); `AccentWinGradient` is the celebration MOMENT fill.
+   *
+   * Three-role colour split (do not blur these — each owns one job):
+   *   - PRIMARY (`Accent.primary`, Blue) = the commit CTA / one primary
+   *     action per screen. The "do it" colour.
+   *   - SUCCESS (`Accent.success`, Green) = calorie-ring under-target +
+   *     macro identity (state + data colour). The "you're on track" colour.
+   *   - WIN (`Accent.win` / `AccentWinGradient`) = landmark celebration ONLY —
+   *     hitting a goal, a streak milestone, a win-moment landmark. NOT a CTA,
+   *     NOT a state, NOT a macro. Reaching for it anywhere routine dilutes it.
+   *
+   * Mirrors web `--accent-win` / `--accent-win-gradient` in
+   * `src/styles/theme.css` (light + dark) — kept in lockstep.
+   */
+  win: '#9679D9',
+  /** Win at ~12% alpha — soft fill behind a win-moment landmark / badge. */
+  winSoft: 'rgba(150, 121, 217, 0.12)',
 };
+
+/**
+ * Win / achievement BRAND-SPECTRUM gradient stops — Design Direction 2026. The
+ * celebration FILL (ring sweep / glow / pulse). Use with `react-native-svg`
+ * `<LinearGradient>` (3 stops at 0% / 50% / 100%) or any consumer that takes an
+ * ordered stop list. Mirrors web `--accent-win-gradient`
+ * (`linear-gradient(120deg, #588CE4 0%, #9679D9 50%, #DF5EBC 100%)`).
+ */
+export const AccentWinGradient = {
+  /** Brand spectrum — blue → purple → magenta, in paint order. */
+  stops: ['#588CE4', '#9679D9', '#DF5EBC'] as const,
+  /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
+  offsets: [0, 0.5, 1] as const,
+} as const;
 
 /**
  * Stimulant tracker colours (Batch 2.5 hydration & stimulants).
@@ -200,9 +243,9 @@ export const Colors = {
     textSecondary: '#5b554b',
     textTertiary: '#8a8377',
     background: '#fbfaf6',          // warm white (was #faf7f1 — too chromatic)
-    backgroundSecondary: '#f5f3ec', // barely-warmer-than-card (was #f2ede2)
+    backgroundSecondary: '#f7f6f3', // neutral warm grey (was #f5f3ec — too beige)
     card: '#ffffff',                // pure white — primary content surface
-    cardElevated: '#fbf8f0',        // premium tier — slight warm lift
+    cardElevated: '#fafaf8',        // subtle lift — nearly white, no beige (was #fbf8f0)
     cardBorder: '#ebe7dc',          // hairline (was #e6dfd0 — less yellow)
     border: '#ebe7dc',
     borderStrong: '#ddd6c5',
@@ -210,7 +253,7 @@ export const Colors = {
     icon: '#5b554b',
     tabIconDefault: '#a39a8f',
     tabIconSelected: Accent.primary,
-    inputBg: '#f0ece4',             // input fields ONLY (was #efe9dc — less yellow)
+    inputBg: '#f5f4f1',             // input fields (was #f0ece4 — too beige)
     overlay: '#00000088',
     /** Source / provenance dots — 8-slot palette. Mirrors web --source-*. */
     sourceUsda: '#56A775',          // Green
@@ -375,6 +418,21 @@ export const Elevation = {
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
+  },
+  // ENG-795 (Redesign — Design Direction 2026): the soft-elevation variant
+  // that SUPERSEDES the 2026-05-22 flat lock above, per the 2026-05-31
+  // design-director review + approved prototypes. Applied only when the
+  // `design_system_elevation` flag is on (LIGHT mode) — see SupprCard, which
+  // renders it on an outer wrapper because RN `overflow: hidden` clips iOS
+  // shadows. Dark mode uses tonal lift (`cardElevated`), not this shadow.
+  // ↔ web `--elev-card` (src/styles/theme.css). The flat `card` above stays
+  // as the flag-OFF fallback.
+  cardSoft: {
+    shadowColor: '#1c1916',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   sheet: {
     shadowColor: '#000',

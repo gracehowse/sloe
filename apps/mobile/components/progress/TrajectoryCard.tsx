@@ -1,7 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   computeTrajectory,
@@ -50,6 +51,7 @@ export interface TrajectoryCardProps {
 export function TrajectoryCard(props: TrajectoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const state: TrajectoryState | null = computeTrajectory(input);
 
   if (!state) return null;
@@ -61,8 +63,12 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
       accessibilityLabel={accessibilityLabelFor(state)}
       style={[
         styles.card,
-        Elevation.card,
-        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+        cardElevation.shadowStyle,
+        {
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderColor: colors.cardBorder,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+        },
         style,
       ]}
     >

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plan tab "No plan yet" — before / after (mobile + web)</title>
+<style>
+  :root{
+    /* canonical light tokens (theme.ts / theme.css) */
+    --ink:#1a1714; --sub:#6b665c; --dim:#9a958a; --faint:#b4afa4;
+    --card:#ffffff; --border:#ebe7dc; --hairline:#ebe7dc;
+    --page:#fbfaf6;
+    --primary:#588CE4; --primary-soft:rgba(88,140,228,.10); --primary-line:rgba(88,140,228,.45);
+    --green:#56A775; --amber:#F78A32;
+    /* grey "selected" used today (textSecondary @ ~9%) */
+    --grey-sel:rgba(107,102,92,.094); --grey-line:#6b665c;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#e9e7e0;color:var(--ink);padding:36px 28px 80px;-webkit-font-smoothing:antialiased}
+  h1{font-size:21px;margin-bottom:6px;letter-spacing:-.2px}
+  .lede{color:#56514a;font-size:13px;margin-bottom:6px;max-width:920px;line-height:1.6}
+  .lede b{color:#2c2823}
+  .quote{color:#8a3b3b;font-style:italic}
+  .meta{color:#8a8579;font-size:11.5px;margin-bottom:30px}
+  code{background:#dedbd2;border-radius:4px;padding:1px 5px;font-size:11.5px;font-family:"SF Mono",ui-monospace,Menlo,monospace}
+
+  section{margin-bottom:46px}
+  .h2{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#7c776c;font-weight:700;margin-bottom:4px}
+  .h2sub{font-size:12.5px;color:#6f6a60;margin-bottom:20px;max-width:880px;line-height:1.55}
+
+  .row{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;align-items:center;gap:13px}
+  .col-title{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#8a8579;font-weight:700;text-align:center}
+  .col-note{font-size:11px;color:#9a958a;text-align:center;max-width:300px;line-height:1.5}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+  .pill.now{background:#f3dada;color:#9a3b3b}
+  .pill.rec{background:#d8ecdf;color:#2f7c54}
+
+  /* iPhone frame */
+  .phone{width:334px;border-radius:46px;background:#0d0d10;padding:11px;box-shadow:0 20px 50px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.18)}
+  .phone .screen{position:relative;border-radius:36px;overflow:hidden;background:var(--page);min-height:600px}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:118px;height:26px;background:#0d0d10;border-bottom-left-radius:16px;border-bottom-right-radius:16px;z-index:5}
+  .phone .status{display:flex;justify-content:space-between;align-items:center;padding:11px 26px 0;font-size:12px;font-weight:600;color:var(--ink)}
+  .phone .body{padding:20px 16px}
+  .scr-title{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+  .scr-sub{font-size:13px;color:var(--sub);margin-bottom:16px}
+
+  /* web frame */
+  .webframe{width:440px;border-radius:14px;border:1px solid #d7d3ca;overflow:hidden;background:var(--page);box-shadow:0 12px 34px rgba(0,0,0,.10)}
+  .webbar{display:flex;align-items:center;gap:7px;padding:9px 14px;background:#f2efe8;border-bottom:1px solid #e4e0d6}
+  .webbar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .webbar .u{margin-left:10px;font-size:11px;color:#9a958a}
+  .webbody{padding:22px 18px}
+
+  /* the planner card */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card-title{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:7px}
+  .card-desc{font-size:13.5px;color:var(--sub);line-height:1.5;margin-bottom:4px}
+  .link-weak{display:inline-block;font-size:14px;font-weight:600;color:var(--sub);margin:9px 0 4px}
+
+  .seclabel{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);font-weight:700;margin:14px 0 7px}
+  .pills-row{display:flex;gap:8px}
+  .seg{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:11px 6px;border-radius:11px;border:1px solid var(--border);font-size:13.5px;font-weight:600;color:var(--dim)}
+  /* grey selected (today) */
+  .seg.sel-grey{border-color:var(--grey-line);background:var(--grey-sel);color:var(--ink);font-weight:700}
+  /* primary selected (proposed) */
+  .seg.sel-pri{border-color:var(--primary);background:var(--primary-soft);color:var(--primary);font-weight:700}
+  .seg .dot{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--dim)}
+  .seg.sel-pri .dot{border-color:var(--primary);background:var(--primary);box-shadow:inset 0 0 0 2px #fff}
+  .seg.sel-grey .dot{border-color:var(--grey-line);background:var(--grey-line);box-shadow:inset 0 0 0 2px #fff}
+  .seg .lk{font-size:10px;font-weight:700}
+
+  .gen{margin-top:15px;width:100%;padding:15px;border-radius:12px;background:var(--primary);color:#fff;font-size:16px;font-weight:700;text-align:center}
+  .gen.dead{opacity:.4}
+
+  /* proposed empty state (0 recipes) */
+  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px 6px}
+  .empty .icon{width:60px;height:60px;border-radius:16px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+  .empty .h{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:7px}
+  .empty .p{font-size:13px;color:var(--sub);line-height:1.5;max-width:280px;margin-bottom:18px}
+  .empty .cta{width:100%;padding:14px;border-radius:12px;background:var(--primary);color:#fff;font-size:15px;font-weight:700;text-align:center;margin-bottom:9px}
+  .empty .cta2{font-size:13px;font-weight:600;color:var(--sub)}
+
+  .badwrap{position:relative}
+  .badtag{position:absolute;top:-9px;right:-9px;z-index:3;background:#9a3b3b;color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .goodtag{position:absolute;top:-9px;right:-9px;z-index:3;background:#2f7c54;color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+
+  .rec{margin-top:10px;background:#fff;border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:15px 17px;max-width:940px}
+  .rec h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#2f7c54;margin-bottom:8px}
+  .rec p{font-size:12.5px;color:#4a4640;line-height:1.6;margin-bottom:7px}
+  .rec p:last-child{margin-bottom:0}
+  .rec b{color:#2c2823}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:11.5px;color:#6f6a60;max-width:940px}
+  .legend b{color:#2c2823}
+  .divider{height:1px;background:#d7d3ca;margin:34px 0;max-width:980px}
+</style>
+</head>
+<body>
+  <h1>Plan tab — "No plan yet" card: before / after</h1>
+  <p class="lede">Grace, on the Plan tab with an empty library (verbatim): <span class="quote">"I dont know what happened here but it looks terrible."</span></p>
+  <p class="lede">Two faults stacked up. <b>(1)</b> At <b>0 recipes</b> the card still renders the full generate-config form, then ends in a <b>40%-opacity dead "Generate my plan" button</b> you can't press — so it reads as broken. <b>(2)</b> Every selected toggle (days / start / meals) uses a <b>flat grey tint</b> (<code>textSecondary @ ~9%</code>), not the primary accent — so even when populated it looks unfinished next to web, which already uses <code>border-primary bg-primary/10 text-primary</code>.</p>
+  <p class="meta">2026-05-30 · ENG-788 · iPhone + web frames, canonical light tokens · flag <code>plan_empty_state_v2</code> · mobile <code>app/(tabs)/planner.tsx</code> · web <code>MealPlanner.tsx</code> (web already close to "after")</p>
+
+  <!-- ── SECTION 1: 0 recipes ── -->
+  <section>
+    <div class="h2">1 · Empty library (0 recipes) — the "looks terrible" state</div>
+    <div class="h2sub">The state Grace hit. Today (left) shows a config form leading to a dead button + a buried text link. Proposed (right): drop the dead form entirely and show one calm empty state whose only job is to send you to the library — the actual next step.</div>
+    <div class="row">
+
+      <!-- BEFORE -->
+      <div class="stack">
+        <span class="pill now">Today</span>
+        <div class="phone badwrap">
+          <span class="badtag">DEAD BUTTON</span>
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">No plan yet</div>
+                <div class="card-desc">Generate one in 30 seconds. 0 recipes in your library. Save some from Discover first.</div>
+                <span class="link-weak">Open recipe library</span>
+                <div class="seclabel">Days</div>
+                <div class="pills-row">
+                  <div class="seg sel-grey">1 day</div>
+                  <div class="seg">3 days <span class="lk" style="color:var(--amber)">🔒</span></div>
+                  <div class="seg">7 days <span class="lk" style="color:var(--amber)">🔒</span></div>
+                </div>
+                <div class="seclabel">Start from</div>
+                <div class="pills-row">
+                  <div class="seg sel-grey">Today</div>
+                  <div class="seg">Tomorrow</div>
+                  <div class="seg">Next week</div>
+                </div>
+                <div class="seclabel">Include meals</div>
+                <div class="pills-row">
+                  <div class="seg sel-grey"><span class="dot"></span>Lunch</div>
+                  <div class="seg sel-grey"><span class="dot"></span>Dinner</div>
+                </div>
+                <div class="gen dead">Generate my plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Dead 40%-opacity CTA + grey selected pills + a weak text link doing the only real job.</div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="stack">
+        <span class="pill rec">Proposed</span>
+        <div class="phone badwrap">
+          <span class="goodtag">ONE CLEAR ACTION</span>
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="empty">
+                  <div class="icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#588CE4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4H11v15H4.5A2.5 2.5 0 0 0 2 21.5z"/><path d="M22 6.5A2.5 2.5 0 0 0 19.5 4H13v15h6.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>
+                  </div>
+                  <div class="h">Add a few recipes first</div>
+                  <div class="p">Save recipes you like and Suppr builds a balanced plan from them in seconds.</div>
+                  <div class="cta">Browse recipe library</div>
+                  <div class="cta2">Or import a plan you already have</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">No dead controls. Solid primary CTA that's actually enabled, pointed at the real next step. Config form returns the moment ≥1 recipe exists.</div>
+      </div>
+
+      <!-- WEB reference -->
+      <div class="stack">
+        <span class="pill rec">Web today (the bar)</span>
+        <div class="webframe">
+          <div class="webbar"><i style="background:#f0625a"></i><i style="background:#f6b938"></i><i style="background:#54c02c"></i><span class="u">suppr.app/plan</span></div>
+          <div class="webbody">
+            <div class="card" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px;min-height:300px;justify-content:center">
+              <div class="empty" style="padding:0">
+                <div class="icon" style="width:64px;height:64px">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#588CE4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>
+                </div>
+                <div class="h" style="font-size:18px">Ready to plan your week?</div>
+                <div class="p">Hit generate and we'll build a meal plan from your saved recipes, balanced to your targets.</div>
+                <div class="cta" style="width:auto;padding:10px 28px;border-radius:999px">Generate meal plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Web already does this: icon tile, calm copy, one solid enabled CTA. Mobile "after" pulls up to match.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 2: populated ── -->
+  <section>
+    <div class="h2">2 · Populated library (≥1 recipe) — selected-state accent</div>
+    <div class="h2sub">When you do have recipes the config form is right — but the selected pills read grey/flat. Proposed: selected = primary accent (border + 10% fill + primary text), matching web. Generate button is solid + enabled (it already is once recipes exist).</div>
+    <div class="row">
+
+      <!-- BEFORE populated -->
+      <div class="stack">
+        <span class="pill now">Today</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">No plan yet</div>
+                <div class="card-desc">Generate one in 30 seconds. 12 recipes in your library.</div>
+                <span class="link-weak">Open recipe library</span>
+                <div class="seclabel">Days</div>
+                <div class="pills-row">
+                  <div class="seg sel-grey">1 day</div>
+                  <div class="seg">3 days</div>
+                  <div class="seg">7 days</div>
+                </div>
+                <div class="seclabel">Include meals</div>
+                <div class="pills-row">
+                  <div class="seg sel-grey"><span class="dot"></span>Lunch</div>
+                  <div class="seg sel-grey"><span class="dot"></span>Dinner</div>
+                </div>
+                <div class="gen">Generate my plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Grey selected pills — reads unfinished, no brand colour anywhere in the form.</div>
+      </div>
+
+      <!-- AFTER populated -->
+      <div class="stack">
+        <span class="pill rec">Proposed</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">Plan your week</div>
+                <div class="card-desc">12 recipes in your library — Suppr balances them to your targets.</div>
+                <div class="seclabel">Days</div>
+                <div class="pills-row">
+                  <div class="seg sel-pri">1 day</div>
+                  <div class="seg">3 days</div>
+                  <div class="seg">7 days</div>
+                </div>
+                <div class="seclabel">Include meals</div>
+                <div class="pills-row">
+                  <div class="seg sel-pri"><span class="dot"></span>Lunch</div>
+                  <div class="seg sel-pri"><span class="dot"></span>Dinner</div>
+                </div>
+                <div class="gen">Generate my plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Primary-accent selected pills (parity with web). Title shifts to the action since there's nothing missing. Solid enabled CTA.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="rec">
+    <h3>Recommendation</h3>
+    <p><b>Split the card by recipe count, behind flag <code>plan_empty_state_v2</code>.</b> At <b>0 recipes</b>: replace the dead config form with the calm empty state (icon tile + "Add a few recipes first" + solid <b>enabled</b> "Browse recipe library" CTA + a quiet "import a plan" line). At <b>≥1 recipe</b>: keep the config form but move selected pills from grey to <b>primary accent</b>, matching web's <code>border-primary bg-primary/10 text-primary</code>.</p>
+    <p><b>Why a flag:</b> this is a layout + colour-mapping change (CLAUDE.md → flag-gated, old path alive in the <code>else</code>). Web's empty state already matches the target, so this is mobile coming up to web, not a two-sided redesign — the flag is mobile-effective-only.</p>
+    <p><b>Open question for you:</b> happy with killing the config form entirely at 0 recipes (vs just enabling the library link and leaving the form greyed)? I think removing it is right — there's nothing to configure with no recipes — but it's your red-line.</p>
+  </div>
+
+  <div class="legend">
+    <span><b>Grey selected</b> — <code>textSecondary @ ~9%</code> = today's <code>dayBtnActive</code></span>
+    <span><b>Primary selected</b> — <code>#588CE4</code> border + 10% fill + primary text = web parity</span>
+    <span><b>Dead button</b> — <code>opacity 0.4</code> + <code>disabled</code> at <code>savedRecipes.length === 0</code></span>
+  </div>
+</body>
+</html>

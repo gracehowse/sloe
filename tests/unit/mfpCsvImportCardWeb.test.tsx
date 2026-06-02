@@ -30,6 +30,10 @@ void React;
 const trackMock = vi.fn();
 vi.mock("@/lib/analytics/track", () => ({
   track: (...args: unknown[]) => trackMock(...args),
+  // MfpCsvImportCard renders inside a <SupprCard>, which reads this flag at
+  // render time. Flag OFF keeps the legacy paint; these tests assert
+  // functional behaviour (idle/upload/error), not elevation.
+  isFeatureEnabled: () => false,
 }));
 
 vi.mock("sonner", () => ({

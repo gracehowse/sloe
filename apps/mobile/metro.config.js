@@ -27,20 +27,35 @@ config.watchFolders = [
 // and inconsistent with the `@/` alias used everywhere else in
 // mobile. Both resolvers (tsserver + Metro + vitest) must agree on
 // the mapping or builds and editor jump-to-definition diverge.
+const mobileNodeModules = path.resolve(projectRoot, "node_modules");
+
 // npm sometimes hoists @react-native/* packages to the top-level
 // node_modules but leaves a nested react-native/node_modules/@react-native/
 // directory containing only a subset (codegen, js-polyfills). Metro stops
 // traversal at that nested scope directory and never reaches the top-level
 // copy, causing an intermittent ENOENT on virtualized-lists. Pin it
 // explicitly here so the resolver always wins regardless of hoist state.
+//
+// Shared `src/lib/*` files are watched from `../../src`. Metro resolves their
+// `node_modules` by walking up to the monorepo root, which ships React 18 for
+// Next.js. Expo 54 enables `reactCompiler`, which injects
+// `react/compiler-runtime` — that subpath only exists on React 19 in
+// `apps/mobile/node_modules`. Prefer the mobile tree for core React packages
+// so shared hooks (e.g. `src/lib/motion.ts`) compile and bundle cleanly.
 config.resolver = {
   ...(config.resolver ?? {}),
+  nodeModulesPaths: [
+    mobileNodeModules,
+    ...(config.resolver?.nodeModulesPaths ?? []),
+  ],
   extraNodeModules: {
     ...((config.resolver && config.resolver.extraNodeModules) || {}),
     "@suppr/shared": path.resolve(projectRoot, "../../src/lib"),
+    react: path.resolve(mobileNodeModules, "react"),
+    "react-dom": path.resolve(mobileNodeModules, "react-dom"),
     "@react-native/virtualized-lists": path.resolve(
-      projectRoot,
-      "node_modules/@react-native/virtualized-lists",
+      mobileNodeModules,
+      "@react-native/virtualized-lists",
     ),
   },
 };

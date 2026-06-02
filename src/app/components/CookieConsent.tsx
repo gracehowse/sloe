@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SupprPlateMark } from "./ui/suppr-mark.tsx";
 
 const CONSENT_KEY = "suppr_cookie_consent";
 
@@ -65,14 +66,21 @@ export function CookieConsent() {
   // their respective contrasts). `line-clamp-1` keeps the body to one
   // line and lets it ellipsis on the tightest screens rather than
   // wrap.
+  // P5 parity #31 (2026-05-31): retoken the chrome off raw slate onto the
+  // redesign design tokens — bg-card / border-border / muted text + the
+  // --elev-sheet depth token, plus the quiet SupprPlateMark. No flag gate:
+  // the banner must paint on first paint pre-consent. SupprPlateMark is
+  // imported directly (not SupprMark, which evaluates the
+  // design_system_brandmark flag).
   return (
     <div
-      className={`fixed inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg pb-[env(safe-area-inset-bottom)] ${
+      className={`fixed inset-x-0 z-50 bg-card/95 backdrop-blur border-t border-border shadow-[var(--elev-sheet)] pb-[env(safe-area-inset-bottom)] ${
         liftAboveFab ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0"
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">
-        <p className="text-xs text-slate-700 dark:text-slate-300 flex-1 line-clamp-1 min-w-0">
+        <SupprPlateMark size={16} aria-hidden className="shrink-0" />
+        <p className="text-xs text-muted-foreground flex-1 line-clamp-1 min-w-0">
           Essential cookies on; analytics stay off until you accept.{" "}
           <Link href="/privacy" className="text-primary dark:text-primary underline">
             Privacy
@@ -81,7 +89,7 @@ export function CookieConsent() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={decline}
-            className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            className="px-2.5 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-md hover:bg-muted/80 transition-colors"
           >
             Essential only
           </button>

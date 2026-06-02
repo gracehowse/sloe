@@ -11,9 +11,16 @@
     {
       "name": "storybook",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "storybook"],
+      "runtimeArgs": ["run", "storybook", "--", "--no-open", "--quiet"],
       "port": 6006,
       "autoPort": false
+    },
+    {
+      "name": "prototypes",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "docs/prototypes", "-l", "4599"],
+      "port": 4599,
+      "autoPort": true
     }
   ]
 }

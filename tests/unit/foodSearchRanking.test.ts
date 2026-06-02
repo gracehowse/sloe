@@ -4,6 +4,12 @@ import {
   foodSearchRankScore,
   foodSearchTrustWeight,
   searchRelevance,
+  searchMatchScore,
+  searchRowConfidenceTier,
+  splitBestMatches,
+  RECENTLY_LOGGED_BOOST,
+  VERIFIED_TIER_MIN_SCORE,
+  BEST_MATCH_MIN_SCORE,
 } from "@/lib/nutrition/foodSearchRanking";
 
 describe("searchRelevance", () => {
@@ -70,6 +76,163 @@ describe("foodSearchRankScore", () => {
       source: "OFF",
     });
     expect(usda).toBeGreaterThan(off);
+  });
+
+  it("adds the recently-logged boost as a tie-break only", () => {
+    const base = foodSearchRankScore({
+      query: "greek yogurt",
+      name: "Greek Yogurt, Plain, Nonfat",
+      source: "USDA",
+      verified: true,
+    });
+    const boosted = foodSearchRankScore({
+      query: "greek yogurt",
+      name: "Greek Yogurt, Plain, Nonfat",
+      source: "USDA",
+      verified: true,
+      recentlyLogged: true,
+    });
+    expect(boosted - base).toBeCloseTo(RECENTLY_LOGGED_BOOST, 5);
+    // The boost is small enough that it never floats an irrelevant row over a
+    // real match: a recently-logged off-topic row must still lose to a fresh
+    // on-target verified hit.
+    const offTopicRecent = foodSearchRankScore({
+      query: "salmon",
+      name: "Brand · Chocolate Bar",
+      source: "OFF",
+      recentlyLogged: true,
+    });
+    const onTargetFresh = foodSearchRankScore({
+      query: "salmon",
+      name: "Salmon, Atlantic, raw",
+      source: "USDA",
+      verified: true,
+    });
+    expect(onTargetFresh).toBeGreaterThan(offTopicRecent);
+  });
+});
+
+describe("searchMatchScore — stronger relevance (ENG-807)", () => {
+  it("stems plural ↔ singular (eggs ↔ egg)", () => {
+    expect(searchMatchScore("eggs", "Egg, whole, raw")).toBeGreaterThan(0.5);
+    expect(searchMatchScore("tomatoes", "Tomato, red, ripe, raw")).toBeGreaterThan(0.5);
+  });
+
+  it("penalises long containing-candidates vs the canonical food", () => {
+    const canonical = searchMatchScore("zucchini", "Zucchini, raw");
+    const containing = searchMatchScore("zucchini", "Bread, zucchini");
+    expect(canonical).toBeGreaterThan(containing);
+  });
+
+  it("boosts a prefix / first-word match", () => {
+    const firstWord = searchMatchScore("chicken breast", "Chicken, breast, meat only, raw");
+    const subIngredient = searchMatchScore("chicken breast", "Soup, chicken breast, canned");
+    expect(firstWord).toBeGreaterThan(subIngredient);
+  });
+
+  it("strips an OFF brand prefix before matching the food", () => {
+    // "Lidl · Free Range Eggs" should match "eggs" on the food part, not be
+    // diluted by the brand token.
+    expect(searchMatchScore("eggs", "Lidl · Free Range Eggs")).toBeGreaterThan(0.4);
+  });
+
+  it("returns 0 on empty input and 1 on exact normalized match", () => {
+    expect(searchMatchScore("", "eggs")).toBe(0);
+    expect(searchMatchScore("eggs", "")).toBe(0);
+    expect(searchMatchScore("Greek Yogurt", "greek yogurt")).toBe(1);
+  });
+});
+
+describe("searchRowConfidenceTier — honest confidence (ENG-807)", () => {
+  it("marks a strong-match verified USDA row as verified", () => {
+    expect(
+      searchRowConfidenceTier({
+        source: "USDA",
+        verified: true,
+        matchScore: searchMatchScore("eggs", "Eggs, Grade A, Large, egg whole"),
+      }),
+    ).toBe("verified");
+  });
+
+  it("never marks a branded product verified from source alone", () => {
+    // USDA Branded "EGGS" carries verified:false even with high token overlap.
+    expect(
+      searchRowConfidenceTier({ source: "USDA", verified: false, matchScore: 1 }),
+    ).toBe("estimated");
+    // OFF / Edamam / FatSecret are commercial — never auto-verified.
+    expect(
+      searchRowConfidenceTier({ source: "OFF", verified: false, matchScore: 1 }),
+    ).toBe("estimated");
+    expect(
+      searchRowConfidenceTier({ source: "FatSecret", verified: false, matchScore: 1 }),
+    ).toBe("estimated");
+  });
+
+  it("demotes an authoritative-but-weak-match row to estimated", () => {
+    // Verifiable provenance, but the name match is below the verified bar →
+    // we don't claim the row IS what the user typed.
+    expect(
+      searchRowConfidenceTier({
+        source: "USDA",
+        verified: true,
+        matchScore: VERIFIED_TIER_MIN_SCORE - 0.01,
+      }),
+    ).toBe("estimated");
+    expect(
+      searchRowConfidenceTier({
+        source: "USDA",
+        verified: true,
+        matchScore: VERIFIED_TIER_MIN_SCORE,
+      }),
+    ).toBe("verified");
+  });
+
+  it("treats curated generic foods as verifiable provenance", () => {
+    expect(
+      searchRowConfidenceTier({ source: "GenericFood", verified: true, matchScore: 0.9 }),
+    ).toBe("verified");
+    expect(
+      searchRowConfidenceTier({ source: "GenericBeverage", verified: true, matchScore: 0.9 }),
+    ).toBe("verified");
+  });
+});
+
+describe("splitBestMatches — Best matches / More results (ENG-807)", () => {
+  const rows = [
+    { name: "a", score: 0.9 },
+    { name: "b", score: 0.7 },
+    { name: "c", score: 0.5 },
+    { name: "d", score: 0.2 },
+  ];
+
+  it("splits by the shared score threshold, preserving order", () => {
+    const { best, more } = splitBestMatches(rows, (r) => r.score);
+    expect(best.map((r) => r.name)).toEqual(["a", "b"]);
+    expect(more.map((r) => r.name)).toEqual(["c", "d"]);
+  });
+
+  it("uses BEST_MATCH_MIN_SCORE as the boundary", () => {
+    const boundary = [
+      { name: "on", score: BEST_MATCH_MIN_SCORE },
+      { name: "under", score: BEST_MATCH_MIN_SCORE - 0.0001 },
+    ];
+    const { best, more } = splitBestMatches(boundary, (r) => r.score);
+    expect(best.map((r) => r.name)).toEqual(["on"]);
+    expect(more.map((r) => r.name)).toEqual(["under"]);
+  });
+
+  it("never leaves Best empty while More has rows (promotes the top row)", () => {
+    const allLow = [
+      { name: "x", score: 0.4 },
+      { name: "y", score: 0.3 },
+    ];
+    const { best, more } = splitBestMatches(allLow, (r) => r.score);
+    expect(best.map((r) => r.name)).toEqual(["x"]);
+    expect(more.map((r) => r.name)).toEqual(["y"]);
+  });
+
+  it("returns empty sections for an empty list", () => {
+    expect(splitBestMatches([], () => 1)).toEqual({ best: [], more: [] });
   });
 });
 

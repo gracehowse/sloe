@@ -126,3 +126,52 @@ export const Flat: Story = {
     children: <p className="text-sm text-foreground">No shadow</p>,
   },
 };
+
+/**
+ * `card` tier with `design_system_elevation` forced ON → the soft-elevation
+ * branch: the hairline border is dropped, the resting shadow becomes
+ * `--elev-card-soft`, and `data-soft-elevation="true"` is emitted. Covers the
+ * `softElevation === true` branch in `suppr-card.tsx` (the elevation migration,
+ * lines 159-161 + 175) so the 100% Storybook branch gate holds. Uses the same
+ * per-story `window.__SUPPR_FORCE_FLAGS__` hook as `suppr-mark` / Playwright's
+ * forceFlagsOn (track.ts); `beforeEach` cleanup resets it so the flag never
+ * leaks to the sibling stories, which must keep rendering the flat treatment.
+ */
+export const CardSoftElevation: Story = {
+  args: {
+    elevation: "card",
+    tone: "neutral",
+    children: <p className="text-sm text-foreground">Soft resting elevation (flag on)</p>,
+  },
+  beforeEach() {
+    const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
+    w.__SUPPR_FORCE_FLAGS__ = { design_system_elevation: true };
+    return () => {
+      delete w.__SUPPR_FORCE_FLAGS__;
+    };
+  },
+};
+
+/**
+ * The four accent tones (plus the primary-gradient variant) rendered WITH their
+ * hairline border. Uses a non-`card` elevation so `softElevation` is false and
+ * the border is kept (soft elevation drops it). Covers the
+ * `border ? token : "transparent"` TRUE branch for primary / success / warning /
+ * magenta (`suppr-card.tsx` 111/116/121/126) AND the primary-gradient border
+ * branch (line 103) — all uncovered since Redesign 2026 defaults card elevation
+ * to soft (borderless). One story, no flag-forcing needed.
+ */
+export const TonesBordered: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {(["primary", "success", "warning", "magenta"] as const).map((tone) => (
+        <SupprCard key={tone} tone={tone} elevation="sheet">
+          <span className="text-sm text-foreground">{tone} tone, bordered</span>
+        </SupprCard>
+      ))}
+      <SupprCard tone="primary" gradient elevation="sheet">
+        <span className="text-sm text-foreground">primary gradient, bordered</span>
+      </SupprCard>
+    </div>
+  ),
+};

@@ -21,6 +21,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -98,7 +99,7 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { getYesterdayMeals } from "@suppr/shared/nutrition/copyYesterdayMeals";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
@@ -128,7 +129,7 @@ import {
 import { isHealthImportFallbackTitle } from "@suppr/shared/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { isMealSlot } from "@suppr/shared/nutrition/mealSlots";
-import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { journalSlotFromMealTypes, slotForHour } from "@suppr/shared/nutrition/recipeJournalSlot";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -155,6 +156,7 @@ import {
 import { aiLoggingSourceLabel } from "@suppr/shared/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleLoggedMealFiberAndMicros } from "@suppr/shared/nutrition/scaleLoggedMealPortion";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
@@ -181,6 +183,8 @@ import {
 } from "@suppr/shared/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
+import { useWinMoment } from "@/hooks/use-win-moment";
+import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
 import { TodayHero } from "@/components/today/TodayHero";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
@@ -225,6 +229,7 @@ import {
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet-2026-04-27.md for migration notes).
 import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
+import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet";
 // TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
@@ -373,15 +378,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // the afternoon was logging picks as Snacks. Two reasons: (1) the
 // pick-handlers used `currentSlotFromTime` instead of `activeMealSlot`,
 // and (2) generic FAB-open paths (deep-link, empty-state) didn't reset
-// `activeMealSlot` to a fresh time-of-day default. Shared helper so
-// the useMemo + the two reset call-sites all use the same buckets.
-function slotForHour(h: number): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
-  if (h < 10) return "Breakfast";
-  if (h < 14) return "Lunch";
-  if (h < 17) return "Snacks";
-  return "Dinner";
-}
-
+// `activeMealSlot` to a fresh time-of-day default.
+//
+// ENG-773 (2026-05-30): the time-of-day bucketing now comes from
+// `slotForHour` in the shared `recipeJournalSlot` lib (imported above),
+// not a local copy. The useMemo + the two reset call-sites all call
+// that one helper, so web and mobile seed the same slot for the same
+// clock time (was 10/14/17 locally vs 11/15/17 shared — now 11/15/17
+// everywhere).
 export default function TrackerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -401,6 +405,7 @@ export default function TrackerScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -410,6 +415,15 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ENG-798 (Design Direction 2026) — the quiet daily-commit confirm haptic.
+  // Provided by `useWinMoment` (defined far below in this component, after the
+  // snapshot it needs is computed), so we reach it through a ref: every
+  // log-meal entry point funnels through `persistMealsImmediate`, and firing
+  // the haptic there gives ONE confirm beat per durable commit (no per-call-
+  // site duplication, no double-buzz). The haptic itself is gated behind
+  // `redesign_motion` inside the hook — flag-off keeps today's silent log.
+  const confirmLogHapticRef = useRef<() => void>(() => {});
 
   /**
    * 2026-05-08 data-loss hotfix — fire-and-forget immediate persist of
@@ -481,6 +495,11 @@ export default function TrackerScreen() {
         );
         return false;
       }
+      // ENG-798 — the meal is durably saved: fire ONE quiet confirm haptic for
+      // the commit (gated behind `redesign_motion` in the hook). The loud
+      // SUCCESS notification stays reserved for the win-moment landmark, which
+      // `useWinMoment` fires on its own beat when the calorie/macro goal is hit.
+      confirmLogHapticRef.current();
       return true;
     },
     [userId],
@@ -669,6 +688,10 @@ export default function TrackerScreen() {
   const [editSlot, setEditSlot] = useState("Snacks");
   /** Portion multiplier (×); macros = canonical × portion. Synced from fields before changing portion via chips. */
   const [editPortion, setEditPortion] = useState("1");
+  // ENG-783 — saved-meal portion-confirm sheet (opened from QuickAdd ⋮
+  // "Log with portion…"). Null meal = closed.
+  const [portionMeal, setPortionMeal] = useState<SavedMeal | null>(null);
+  const [portionSlot, setPortionSlot] = useState("Snacks");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
   // 2026-05-15 (ENG-543): dedup parallel `loadJournal` calls — see fn.
@@ -712,6 +735,12 @@ export default function TrackerScreen() {
   const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
   const [weeklyCheckinContent, setWeeklyCheckinContent] =
     useState<WeeklyCheckinContent | null>(null);
+  // ENG-805 (Redesign — Design Direction 2026): when `redesign_winmoment` is
+  // ON the weekly check-in is NOT auto-opened as a cold-open blocking modal —
+  // the in-feed `WeeklyCheckinBanner` (→ /weekly-recap) is the non-blocking
+  // entry point. Flag-OFF preserves the auto-opening modal (both the gate at
+  // the eligibility effect and the modal render below are guarded by this).
+  const checkinAsCard = isFeatureEnabled("redesign_winmoment");
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
@@ -1370,13 +1399,16 @@ export default function TrackerScreen() {
    *  per tap. Invoked by `QuickAddPanel` via `onLogSavedMeal`; the panel
    *  owns its own optimistic reorder of the "Usual meals" list. */
   const logSavedMealFromPanel = useCallback(
-    (meal: SavedMeal, slot: string) => {
+    (meal: SavedMeal, slot: string, mealPortionMultiplier = 1) => {
       if (!userId) return;
       const timeLabel = new Date().toLocaleTimeString(undefined, {
         hour: "numeric",
         minute: "2-digit",
       });
-      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId());
+      // ENG-783 — `mealPortionMultiplier` scales the whole combo (default
+      // 1 keeps the instant one-tap log byte-identical). Macros are baked
+      // into each entry so downstream never double-counts.
+      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId(), mealPortionMultiplier);
       if (entries.length === 0) return;
       const newMeals: JournalMeal[] = entries.map((e) => {
         const jm: JournalMeal = {
@@ -1424,6 +1456,47 @@ export default function TrackerScreen() {
       setShowPrevious(false);
     },
     [userId, selectedDate, persistMealsImmediate],
+  );
+
+  /** ENG-783 — open the saved-meal portion-confirm sheet. Seeds the slot
+   *  from the caller's explicit choice first (the tapped slot-header pill,
+   *  or the LogSheet's active FAB slot), then the meal's saved default,
+   *  then the time-of-day active slot. The explicit slot must win so a
+   *  user tapping "Log usual" on the Lunch header opens the editor on
+   *  Lunch even when the meal was saved as a Breakfast default. */
+  const openPortionConfirm = useCallback(
+    (meal: SavedMeal, slot: string) => {
+      setPortionSlot(slot || meal.defaultMealSlot || activeMealSlot);
+      setPortionMeal(meal);
+    },
+    [activeMealSlot],
+  );
+
+  /** ENG-783 — commit the portion-confirm sheet. Reuses the same
+   *  build/persist/analytics path as the instant tap, passing the chosen
+   *  multiplier, then bumps the refresh token so the panel re-sorts. */
+  const confirmPortionLog = useCallback(
+    (mult: number) => {
+      if (!portionMeal) return;
+      logSavedMealFromPanel(portionMeal, portionSlot, mult);
+      // ENG-783 — fire `saved_meal_logged` on the portion-editor commit so
+      // this entry path stays countable in the F1/F3 funnels. The instant
+      // slot-header path fires this itself; `logSavedMealFromPanel` only
+      // emits per-item `food_logged`, so without this the portion-editor
+      // logs would be invisible to saved-meal funnels. One event per
+      // confirmed portion log; `portionMultiplier` surfaces adjust-rate.
+      try {
+        track(AnalyticsEvents.saved_meal_logged, {
+          itemCount: portionMeal.items.length,
+          slot: portionSlot,
+          savedMealId: portionMeal.id,
+          portionMultiplier: mult,
+        });
+      } catch { /* analytics fire-and-forget */ }
+      setPortionMeal(null);
+      setSavedMealsRefreshToken((n) => n + 1);
+    },
+    [portionMeal, portionSlot, logSavedMealFromPanel],
   );
 
   /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
@@ -2465,7 +2538,8 @@ export default function TrackerScreen() {
       weightDeltaKg: null,
     });
     setWeeklyCheckinContent(content);
-    setWeeklyCheckinOpen(true);
+    // ENG-805: flag-ON skips the cold-open modal (banner is the entry instead).
+    if (!isFeatureEnabled("redesign_winmoment")) setWeeklyCheckinOpen(true);
 
     // Optimistically stamp the shown-at on the row so we don't re-fire
     // on a hot reload, even if the analytics emit fails. Server is
@@ -2895,6 +2969,53 @@ export default function TrackerScreen() {
     [protectedStreakInfo],
   );
   const protectedStreakLength = protectedStreakInfo.streakLength;
+
+  // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment.
+  // The shared landmark math + the once-per-day / flag gate live in
+  // `useWinMoment`; Today just feeds it a live snapshot and renders the
+  // returned `<WinMomentPlayer>` overlay (see below in the JSX). All
+  // detection is inert when `redesign_winmoment` is off, so the
+  // pre-redesign static behaviour is preserved. `confirmLog` is the quiet
+  // <100ms confirm haptic for ordinary logs (gated behind
+  // `redesign_motion`) — wired into the ordinary-log path.
+  const winSnapshot = useMemo(
+    () => ({
+      consumed: totals.calories,
+      goal: effectiveCalorieGoal,
+      streak: protectedStreakLength,
+      macros: {
+        protein: { current: totals.protein, target: effectiveMacroTargets.protein },
+        carbs: { current: totals.carbs, target: effectiveMacroTargets.carbs },
+        fat: { current: totals.fat, target: effectiveMacroTargets.fat },
+      },
+    }),
+    [
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      effectiveCalorieGoal,
+      effectiveMacroTargets.protein,
+      effectiveMacroTargets.carbs,
+      effectiveMacroTargets.fat,
+      protectedStreakLength,
+    ],
+  );
+  const {
+    activeCelebration: winCelebration,
+    onCelebrationComplete: onWinComplete,
+    confirmLog: confirmLogHaptic,
+  } = useWinMoment({
+    snapshot: winSnapshot,
+    dayKey,
+    isToday,
+    ready: hydrated,
+  });
+  // Keep the persist-path ref pointed at the latest `confirmLog` so the
+  // commit haptic always reflects the current flag state (the hook returns a
+  // stable callback, but the assignment is cheap + future-proofs a re-bind).
+  confirmLogHapticRef.current = confirmLogHaptic;
+
   // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
   // protected streak transitions from >=1 to 0. Ref starts at `null`
   // so a user with a zero streak on first render never fires.
@@ -3472,12 +3593,13 @@ export default function TrackerScreen() {
         dateNavLabel: { color: colors.text, ...Type.headline },
 
         card: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         cardTitle: { color: colors.text, ...Type.headline },
 
@@ -3574,7 +3696,7 @@ export default function TrackerScreen() {
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
 
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   const loadJournal = useCallback(async () => {
@@ -4233,6 +4355,12 @@ export default function TrackerScreen() {
   const saveEditMeal = useCallback(() => {
     if (!editingMeal) return;
     const portionMul = Math.max(0.125, Math.min(24, parseFloat(editPortion.replace(",", ".")) || 1));
+    // The edit sheet only exposes kcal/P/C/F fields, so fibre + every micro
+    // (sugar, sodium, vitamins…) must scale with the portion delta — the ratio
+    // of the new portion to the portion the entry was opened at. Without this
+    // they rode through the `...editingMeal` spread unchanged, so a 0.5× portion
+    // edit halved the four macros but left fibre/sugar/sodium at the old amount.
+    const p0 = editingMeal.portionMultiplier && editingMeal.portionMultiplier > 0 ? editingMeal.portionMultiplier : 1;
     const updated: JournalMeal = {
       ...editingMeal,
       recipeTitle: editTitle.trim() || editingMeal.recipeTitle,
@@ -4242,6 +4370,11 @@ export default function TrackerScreen() {
       carbs: Math.round((Number(editCarbs) || 0) * 10) / 10,
       fat: Math.round((Number(editFat) || 0) * 10) / 10,
       portionMultiplier: portionMul,
+      ...scaleLoggedMealFiberAndMicros({
+        fiberG: editingMeal.fiberG,
+        micros: editingMeal.micros,
+        ratio: portionMul / p0,
+      }),
     };
     setByDay((prev) => ({
       ...prev,
@@ -4385,6 +4518,46 @@ export default function TrackerScreen() {
     }
     return groups;
   }, [mealsToday]);
+
+  /** ENG-786 — "Log again": re-insert a slot's current entries as fresh
+   *  entries on the viewed day. Clones each `JournalMeal` with a new id +
+   *  the current time, preserving the baked macros (kcal/P/C/F + fibre +
+   *  micros + portionMultiplier), then appends + persists immediately.
+   *  Source = `mealGroups[slot]`, so it re-logs exactly what the user sees
+   *  in that slot. `createdAt` is dropped so the clone reads as a fresh
+   *  log, not a copy of the original's timestamp. The new rows are
+   *  individually swipe-removable (the v1 undo; ENG-786 P2 = a dedicated
+   *  undo toast). Gated at the call site by `today_log_again`. */
+  const logAgainSlot = useCallback(
+    (slot: string) => {
+      if (!userId) return;
+      const source = mealGroups[slot] ?? [];
+      if (source.length === 0) return;
+      const timeLabel = new Date().toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const clones: JournalMeal[] = source.map((m) => ({
+        ...m,
+        id: newMealId(),
+        time: timeLabel,
+        createdAt: undefined,
+      }));
+      setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), ...clones] }));
+      void persistMealsImmediate(dayKey, clones);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        for (const m of clones) {
+          track(AnalyticsEvents.food_logged, {
+            source: "log_again",
+            calories: m.calories,
+            slot,
+          });
+        }
+      } catch { /* analytics fire-and-forget */ }
+    },
+    [userId, mealGroups, dayKey, persistMealsImmediate],
+  );
 
   const toggleSlotCollapse = useCallback((slot: string) => {
     setCollapsedSlots((prev) => {
@@ -4880,6 +5053,12 @@ export default function TrackerScreen() {
             cardBorderColor={colors.cardBorder}
             savedMeals={hostSavedMeals}
             onLogSavedMeal={logSavedMealFromSlotHeader}
+            onRequestPortion={
+              isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+            }
+            onLogAgain={
+              isFeatureEnabled("today_log_again") ? logAgainSlot : undefined
+            }
             hintVisibleForSlot={hintVisibleForSlot}
             onDismissUsualMealHint={dismissUsualMealHint}
             onAcceptUsualMealHint={acceptUsualMealHint}
@@ -4896,6 +5075,9 @@ export default function TrackerScreen() {
                   userId={userId ?? ""}
                   onLog={(item) => void logHistoryItemToSlot(item, activeMealSlot)}
                   onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+                  onRequestPortion={
+                    isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+                  }
                   onOpenSaveCombo={(slot) => {
                     if (slot) openSaveMealSheetForSlot(slot);
                   }}
@@ -5211,22 +5393,54 @@ export default function TrackerScreen() {
 
       </ScrollView>
 
+      {/* ENG-798 — reserved landmark win-moment overlay. Mounts only
+          while `useWinMoment` reports an active celebration (calorie
+          ring closed at/under target, macro hit, or streak milestone),
+          plays the code-driven gold celebration once full-bleed (gold
+          ring sweep + colour-pulse + odometer + confetti, ~700ms — no
+          Lottie asset; that's ENG-798's content pass), then fires
+          `onWinComplete` to unmount. `pointerEvents: none` (set inside
+          WinMomentPlayer) keeps it from blocking taps. Gating +
+          once-per-day logic + the success haptic live in the hook —
+          this is a pure render of its output. */}
+      {winCelebration ? (
+        <WinMomentPlayer
+          celebration={winCelebration}
+          onComplete={onWinComplete}
+          fullBleed
+          testID="today-win-moment"
+        />
+      ) : null}
+
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). MacroFactor-style soft prompt
           that surfaces the adaptive-vs-formula TDEE delta + a suggested
           new daily target. Soft prompt — every dismiss path persists
-          the decision. */}
-      <WeeklyCheckinModal
-        visible={weeklyCheckinOpen}
-        content={weeklyCheckinContent}
-        currentTargetKcal={targets.calories}
-        onAccept={handleWeeklyCheckinAccept}
-        onDismiss={handleWeeklyCheckinDismiss}
-        cardColor={colors.card}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        borderColor={colors.border}
-      />
+          the decision.
+
+          ENG-805 (Redesign — Design Direction 2026): when
+          `redesign_winmoment` is ON the check-in is demoted from this
+          cold-open blocking MODAL to a dismissible inline CARD rendered
+          in the Today feed (below the hero, above meals — see
+          `<WeeklyCheckinCard>` in the scroll content). The modal stays
+          alive here as the flag-OFF path so the old behaviour is fully
+          preserved. The card and the modal share the exact same
+          `weeklyCheckinOpen` state + accept/dismiss handlers, so the
+          weekly cadence and persistence are unchanged — only the
+          presentation differs. */}
+      {!checkinAsCard ? (
+        <WeeklyCheckinModal
+          visible={weeklyCheckinOpen}
+          content={weeklyCheckinContent}
+          currentTargetKcal={targets.calories}
+          onAccept={handleWeeklyCheckinAccept}
+          onDismiss={handleWeeklyCheckinDismiss}
+          cardColor={colors.card}
+          textColor={colors.text}
+          textSecondaryColor={colors.textSecondary}
+          borderColor={colors.border}
+        />
+      ) : null}
 
       {/* Complete Day Modal */}
       <TodayCompleteDayModal
@@ -5274,6 +5488,22 @@ export default function TrackerScreen() {
       <LogSheet
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
+        // ENG-773 — log-time meal-slot selector (web parity with
+        // `src/app/components/NutritionTracker.tsx`). Flag-gated visual
+        // element (CLAUDE.md): the picker row is new structure so it
+        // ships behind `log-sheet-slot-selector`. `activeMealSlot` is
+        // still threaded through every commit path regardless of the
+        // flag — flag-off is identical to pre-ENG-773 (slot stays a
+        // hidden clock guess, seeded from time-of-day via slotForHour).
+        slot={
+          isFeatureEnabled("log-sheet-slot-selector")
+            ? {
+                current: activeMealSlot,
+                options: MEAL_SLOTS,
+                onChange: setActiveMealSlot,
+              }
+            : undefined
+        }
         search={{
           // INLINE-SEARCH MODE (2026-04-30): the search row is a real
           // `<TextInput>` with autoFocus, and results render INSIDE the
@@ -5384,6 +5614,19 @@ export default function TrackerScreen() {
             // time; the user has now explicitly picked a slot to log into.
             logSavedMealFromPanel(meal, activeMealSlot);
           },
+          // ENG-783 — when the edit-entry-v2 flag is on, tapping a saved
+          // meal opens the portion editor (seeded to the active FAB slot)
+          // instead of logging 1× instantly. Flag off → onPick (instant
+          // one-tap log preserved). LogSheetSavedMeal is a light row shape,
+          // so resolve back to the full SavedMeal before opening the sheet.
+          onRequestPortion: isFeatureEnabled("today-edit-entry-v2")
+            ? (picked) => {
+                setFabSheetOpen(false);
+                const meal = hostSavedMeals.find((m) => m.id === picked.id);
+                if (!meal) return;
+                openPortionConfirm(meal, activeMealSlot);
+              }
+            : undefined,
         }}
         library={{
           // 2026-05-01 (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8`
@@ -5567,6 +5810,7 @@ export default function TrackerScreen() {
 
       {/* Edit meal modal */}
       <TodayEditMealModal
+        enabled={isFeatureEnabled("today-edit-entry-v2")}
         editingMeal={editingMeal}
         slots={MEAL_SLOTS}
         editSlot={editSlot}
@@ -5600,6 +5844,18 @@ export default function TrackerScreen() {
         textSecondaryColor={colors.textSecondary}
         textTertiaryColor={colors.textTertiary}
       />
+
+      {/* ENG-783 — saved-meal portion-confirm sheet (flag-gated). */}
+      {isFeatureEnabled("today-edit-entry-v2") ? (
+        <SavedMealPortionSheet
+          meal={portionMeal}
+          slot={portionSlot}
+          slots={MEAL_SLOTS}
+          onChangeSlot={setPortionSlot}
+          onConfirm={confirmPortionLog}
+          onClose={() => setPortionMeal(null)}
+        />
+      ) : null}
 
       {/* Food search modal for logging */}
       <FoodSearchModal
@@ -5796,6 +6052,9 @@ export default function TrackerScreen() {
               setShowPrevious(false);
             }}
             onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+            onRequestPortion={
+              isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+            }
             onOpenSaveCombo={(slot) => {
               if (slot) openSaveMealSheetForSlot(slot);
             }}

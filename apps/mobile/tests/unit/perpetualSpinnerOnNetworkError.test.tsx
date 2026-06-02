@@ -28,6 +28,21 @@ vi.mock("@/lib/supabase", () => ({
   supabase: { from: supabaseFromMock },
 }));
 
+// Mock the offline cache so we can drive the warm-start path
+// deterministically (a populated library that must survive a failed
+// network fetch). vi.hoisted keeps the mock fns referenceable from the
+// hoisted vi.mock factory.
+const { getCachedSavedRecipesMock, cacheSavedRecipesMock } = vi.hoisted(() => ({
+  getCachedSavedRecipesMock: vi.fn(),
+  cacheSavedRecipesMock: vi.fn(),
+}));
+vi.mock("@/lib/offlineCache", () => ({
+  getCachedSavedRecipes: getCachedSavedRecipesMock,
+  cacheSavedRecipes: cacheSavedRecipesMock,
+  getCachedDiscoverRecipes: vi.fn().mockResolvedValue(null),
+  cacheDiscoverRecipes: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Stub the modules `useSavedLibraryRecipes` pulls in so the hook can
 // import without surprises in node.
 vi.mock("@/lib/recipes/normalizeRecipeTitle", () => ({
@@ -51,6 +66,10 @@ const swallowNetworkRejection = (reason: unknown) => {
 
 beforeEach(() => {
   supabaseFromMock.mockReset();
+  // Default: no warm cache (cold load) so the existing spinner-regression
+  // assertions keep exercising the no-data path.
+  getCachedSavedRecipesMock.mockReset().mockResolvedValue(null);
+  cacheSavedRecipesMock.mockReset().mockResolvedValue(undefined);
   process.on("unhandledRejection", swallowNetworkRejection);
 });
 
@@ -92,6 +111,37 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
     // Recipes stay empty (we couldn't load anything) — but the user
     // can now SEE the empty state instead of staring at a spinner.
     expect(result.current.recipes).toEqual([]);
+  });
+
+  it("keeps the cache-hydrated library when the live fetch fails (offline resilience)", async () => {
+    // A returning user whose library was cached on a prior session.
+    const cached = [
+      { id: "cached-1", title: "Cached Meal" },
+      { id: "cached-2", title: "Another Saved Recipe" },
+    ];
+    getCachedSavedRecipesMock.mockResolvedValue(cached);
+
+    // The live saves+recipes fetch fails (flaky network / hung PostgREST).
+    const rejectingChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockRejectedValue(new TypeError("Network request failed")),
+    };
+    supabaseFromMock.mockReturnValue(rejectingChain);
+
+    const { useSavedLibraryRecipes } = await import("@/lib/recipes");
+    const { result } = renderHook(() =>
+      useSavedLibraryRecipes("returning-user-with-cache"),
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false), {
+      timeout: 1000,
+    });
+
+    // The failed fetch must NOT wipe the warm-started library to empty —
+    // the user sees their last-known recipes, not a blank "no recipes" page.
+    // This is the regression guard for the bare-spinner-then-empty bug.
+    expect(result.current.recipes).toEqual(cached);
   });
 
   it("flips loading=false when there is no userId (early-return path)", async () => {

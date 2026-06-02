@@ -1,18 +1,28 @@
 "use client";
 
 /**
- * SupprCard — single card primitive.
+ * SupprCard — single CANONICAL card primitive.
  *
  * Production design spec — 2026-04-27 §Part 3 "New components".
  * One card primitive across the app. Replaces the various ad-hoc
  * `<div className="rounded-xl border ...">` wrappers + the legacy
- * shadcn `<Card>` for in-product surfaces.
- *
- * Phase 1 ships the primitive only — callers are NOT swept here.
- * That's Phase 2 work per the production design spec.
+ * shadcn `<Card>` for in-product surfaces. Surface agents should route
+ * flat `bg-card border` resting cards through this — do NOT hand-roll
+ * shadows. (Design Direction 2026, 2026-06-01.)
  *
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
- * same variants).
+ * same variants, same flag-gated elevation behaviour).
+ *
+ * ── Elevation model (Design Direction 2026) ──
+ * The card's resting tier (`elevation="card"`, the default) is the one
+ * blessed elevation. When `design_system_elevation` is ON it adopts the
+ * soft ambient shadow (`--elev-card-soft`, light = `0 4px 12px
+ * rgba(28,25,22,.07)`) and DROPS its hairline border — one edge, no double
+ * line — matching the mobile `useCardElevation` treatment and the
+ * Settings/RecipeDetail/dialogs sweep already in flight. When the flag is
+ * OFF the resting card keeps its exact prior flat `--elev-card` + hairline
+ * border treatment, byte-for-byte. `sheet` / `float` / `none` tiers are
+ * unaffected by the flag (overlays keep their heavier shadow).
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
@@ -27,6 +37,7 @@
 
 import * as React from "react";
 import { cn } from "./utils";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 export type SupprCardTone =
   | "neutral"
@@ -135,8 +146,19 @@ export function SupprCard({
   children,
   ...props
 }: SupprCardProps) {
-  const tStyle = toneStyle(tone, gradient, border);
-  const elev = elevationVar[elevation];
+  // Design Direction 2026 (ENG-795): soft ambient elevation on the resting
+  // `card` tier when `design_system_elevation` is ON. Mirrors the mobile
+  // SupprCard (`elevation === "card" && isFeatureEnabled(...)`). Flag OFF, or
+  // any non-`card` tier, keeps the exact prior flat treatment byte-for-byte.
+  const softElevation =
+    elevation === "card" && isFeatureEnabled("design_system_elevation");
+
+  // Under soft elevation the hairline border is dropped (one edge, no double
+  // line) — so the tone style is recomputed with `border = false` to clear its
+  // `borderColor`, and the `border` utility class is omitted below.
+  const effectiveBorder = softElevation ? false : border;
+  const tStyle = toneStyle(tone, gradient, effectiveBorder);
+  const elev = softElevation ? "var(--elev-card-soft)" : elevationVar[elevation];
 
   const composedStyle: React.CSSProperties = {
     ...tStyle,
@@ -150,11 +172,12 @@ export function SupprCard({
       data-tone={tone}
       data-elevation={elevation}
       data-gradient={gradient ? "true" : undefined}
+      data-soft-elevation={softElevation ? "true" : undefined}
       className={cn(
         "block",
         radiusClasses[radius],
         paddingClasses[padding],
-        border ? "border" : "",
+        effectiveBorder ? "border" : "",
         className,
       )}
       style={composedStyle}

@@ -22,6 +22,20 @@ import { render } from "@testing-library/react-native";
 
 import { NorthStarBlock } from "../../components/today/NorthStarBlock";
 
+// Render unit tests must neutralise analytics: NorthStarBlock's flag-aware
+// subtree otherwise calls the real `isFeatureEnabled`, which fires a floating
+// PostHog/AsyncStorage read that rejects *after* the test completes — Vitest
+// reports it as an "unhandled rejection" and exits non-zero even though every
+// assertion passes. Canonical mobile-test pattern (matches mealActionSheetBranded,
+// todayLogAgainRow, digestBlended, …). Root-cause robustness of isFeatureEnabled
+// (floating promise) tracked in ENG-841.
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+}));
+
 vi.mock("expo-haptics", () => ({
   impactAsync: vi.fn(async () => undefined),
   ImpactFeedbackStyle: { Medium: "medium", Light: "light" },

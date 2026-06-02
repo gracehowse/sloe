@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { extractUrlFromShareText } from "@/lib/resolveImportUrl";
@@ -46,6 +47,7 @@ export interface CreateRecipeActionSheetProps {
 export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeActionSheetProps) {
   const router = useRouter();
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const insets = useSafeAreaInsets();
 
   // ENG-742 (2026-05-26) — Cookbook PDF Import is cut from the 2026-07-01
@@ -184,10 +186,11 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
                 paddingVertical: 12,
                 borderRadius: Radius.md,
                 backgroundColor: `${Accent.primary}14`,
-                borderWidth: 1,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: `${Accent.primary}40`,
                 marginBottom: Spacing.md,
                 opacity: pressed ? 0.7 : 1,
+                ...(cardElevation.shadowStyle ?? {}),
               })}
             >
               <ClipboardIcon size={16} color={Accent.primary} strokeWidth={2} />

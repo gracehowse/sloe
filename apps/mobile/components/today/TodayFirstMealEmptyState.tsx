@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 
 /**
  * TodayFirstMealEmptyState — friendly empty card surfaced under the
@@ -43,21 +44,22 @@ export function TodayFirstMealEmptyState({
   cardColor,
   cardBorderColor,
 }: TodayFirstMealEmptyStateProps) {
+  const cardElevation = useCardElevation();
   const showTip = isBrandNew && !tipDismissed;
   return (
     <View
       accessibilityRole="summary"
       accessibilityLabel="Ready to log your first meal?"
-      style={{
-        backgroundColor: cardColor,
+      style={[{
+        backgroundColor: cardElevation.liftBg ?? cardColor,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElevation.useBorder ? 1 : 0,
         borderColor: cardBorderColor,
         padding: Spacing.lg,
         marginBottom: Spacing.md,
         alignItems: "center",
         gap: 10,
-      }}
+      }, cardElevation.shadowStyle]}
     >
       <Text style={{ ...Type.body, fontWeight: "700", color: textColor, textAlign: "center" }}>
         Ready to log your first meal?

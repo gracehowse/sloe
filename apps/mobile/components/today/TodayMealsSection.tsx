@@ -1,11 +1,22 @@
 import React, { useState, type ReactNode } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
+  CalendarPlus,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -13,8 +24,10 @@ import {
   Coffee,
   Cookie,
   Copy,
+  PencilLine,
   Plus,
   RefreshCw,
+  Share2,
   Sun,
   Trash2,
   UtensilsCrossed,
@@ -22,7 +35,10 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { Accent, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { SupprMark } from "@/components/SupprMark";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
@@ -80,6 +96,21 @@ export interface TodayMealsSectionProps {
   savedMeals: readonly SavedMeal[];
   /** Ship M1 — log a saved meal into a specific slot. */
   onLogSavedMeal: (meal: SavedMeal, slot: string) => void;
+  /**
+   * ENG-783 — when set (flag `today-edit-entry-v2` on), tapping a saved
+   * meal (slot-header pill or usual-picker row) opens the portion editor
+   * first instead of logging 1× instantly. Falls back to `onLogSavedMeal`
+   * when undefined (flag off → instant one-tap log preserved).
+   */
+  onRequestPortion?: (meal: SavedMeal, slot: string) => void;
+  /**
+   * ENG-786 — when set (flag `today_log_again` on), a "Log this/these
+   * again" row renders under each populated slot. Tapping it re-inserts
+   * that slot's current entries as fresh entries on the viewed day, with
+   * the same baked macros. Undefined (flag off) → no row, layout
+   * byte-identical to pre-ENG-786.
+   */
+  onLogAgain?: (slot: string) => void;
   /** Ship M1 — whether the first-run hint is allowed to render in `slot`. */
   hintVisibleForSlot: (slot: string) => boolean;
   /** Ship M1 — user tapped "Not now" on the hint for `slot`. */
@@ -167,6 +198,256 @@ function SlotIcon({
   return <Glyph size={size} color={color} />;
 }
 
+/**
+ * MealActionSheet — branded cream bottom sheet for the meal long-press
+ * gesture (ENG-799, Redesign — Design Direction 2026, 2026-05-31).
+ *
+ * Replaces the raw `ActionSheetIOS` / `Alert.alert` that the long-press
+ * used to fire — the single biggest stock-component tell in an otherwise
+ * fully-custom cream world. Speaks the same sheet grammar as
+ * `SavedMealPortionSheet` (cream `colors.background` surface, grabber,
+ * blue commit accent, `Accent.destructive` for Delete) and shows what
+ * the native sheet physically cannot: the meal thumbnail, name, and a
+ * kcal · P/C/F macro preview. Matches the approved prototype at
+ * `docs/prototypes/2026-05-31-design-direction/surface-meal-actionsheet.html`.
+ *
+ * Reachability is gated at the call site by the `redesign_branded_sheets`
+ * flag — flag OFF keeps the native `Alert.alert` path alive, flag ON
+ * opens this sheet. Pure presentation: the host owns each action handler.
+ */
+interface MealActionSheetProps {
+  meal: JournalMeal | null;
+  /** Macro preview line built by the host (`kcal · P/C/F`). */
+  macroDetail: string;
+  onEdit: (meal: JournalMeal) => void;
+  onCopy: (mealId: string) => void;
+  onShare: (meal: JournalMeal) => void;
+  onDelete: (mealId: string) => void;
+  onClose: () => void;
+}
+
+function MealActionRow({
+  Glyph,
+  label,
+  sublabel,
+  onPress,
+  danger,
+  testID,
+  colors,
+}: {
+  Glyph: LucideIcon;
+  label: string;
+  sublabel: string;
+  onPress: () => void;
+  danger?: boolean;
+  testID: string;
+  colors: ReturnType<typeof useThemeColors>;
+}) {
+  const accent = danger ? Accent.destructive : Accent.primary;
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        mas.row,
+        Elevation.card,
+        {
+          backgroundColor: danger ? Accent.destructive + "0F" : colors.card,
+          borderColor: danger ? Accent.destructive + "26" : colors.border,
+          transform: [{ scale: pressed ? 0.985 : 1 }],
+        },
+      ]}
+    >
+      <View style={[mas.rowIcon, { backgroundColor: accent + "1A" }]}>
+        <Glyph size={17} color={accent} strokeWidth={2.1} />
+      </View>
+      <View style={mas.rowText}>
+        <Text style={[Type.body, { fontWeight: "700", color: danger ? Accent.destructive : colors.text }]}>
+          {label}
+        </Text>
+        <Text style={[Type.caption, { color: colors.textSecondary }]} numberOfLines={1}>
+          {sublabel}
+        </Text>
+      </View>
+      {!danger ? <ChevronRight size={16} color={colors.textTertiary} /> : null}
+    </Pressable>
+  );
+}
+
+function MealActionSheet({
+  meal,
+  macroDetail,
+  onEdit,
+  onCopy,
+  onShare,
+  onDelete,
+  onClose,
+}: MealActionSheetProps) {
+  const colors = useThemeColors();
+  const thumbUrl = meal ? mealRowImageUrl(meal) : undefined;
+  const kcal = meal ? Math.round(meal.calories) : 0;
+
+  return (
+    <Modal visible={!!meal} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={mas.modalRoot}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss meal actions"
+          style={[StyleSheet.absoluteFill, mas.backdrop]}
+          onPress={onClose}
+        />
+        <View
+          accessibilityViewIsModal
+          accessibilityLabel="Meal actions"
+          testID="meal-action-sheet"
+          style={[mas.sheet, Elevation.sheet, { backgroundColor: colors.background }]}
+        >
+          <View style={[mas.handle, { backgroundColor: colors.border }]} accessible={false} />
+
+          {/* One quiet brand mark — ENG-797 (the most-used management
+              surface no longer reads as borrowed OS chrome). */}
+          <View style={mas.brandMark} pointerEvents="none">
+            <SupprMark size={16} background="transparent" foreground={colors.textTertiary} />
+          </View>
+
+          {/* Header the native sheet cannot render: thumbnail + name + macro preview. */}
+          <View style={[mas.header, { borderBottomColor: colors.border }]}>
+            {thumbUrl ? (
+              <Image
+                source={{ uri: thumbUrl }}
+                style={mas.thumb}
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: Accent.primary + "14" }]}>
+                <UtensilsCrossed size={22} color={Accent.primary} />
+              </View>
+            )}
+            <View style={mas.headerMeta}>
+              <Text style={[Type.headline, { color: colors.text }]} numberOfLines={2}>
+                {meal?.recipeTitle ?? "Meal"}
+              </Text>
+              <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4 }]} numberOfLines={1}>
+                {macroDetail}
+              </Text>
+            </View>
+          </View>
+
+          <View style={mas.list}>
+            <MealActionRow
+              Glyph={PencilLine}
+              label="Edit entry"
+              sublabel="Portion, meal slot & macros"
+              onPress={() => meal && onEdit(meal)}
+              testID="meal-action-edit"
+              colors={colors}
+            />
+            <MealActionRow
+              Glyph={CalendarPlus}
+              label="Copy to another day"
+              sublabel="Re-log this on any date"
+              onPress={() => meal && onCopy(meal.id)}
+              testID="meal-action-copy"
+              colors={colors}
+            />
+            <MealActionRow
+              Glyph={Share2}
+              label="Share meal"
+              sublabel="Send as a Suppr recipe card"
+              onPress={() => meal && onShare(meal)}
+              testID="meal-action-share"
+              colors={colors}
+            />
+            <MealActionRow
+              Glyph={Trash2}
+              label="Delete entry"
+              sublabel={`Removes ${kcal} kcal from today`}
+              onPress={() => meal && onDelete(meal.id)}
+              danger
+              testID="meal-action-delete"
+              colors={colors}
+            />
+          </View>
+
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+            testID="meal-action-cancel"
+            style={mas.cancel}
+          >
+            <Text style={[Type.body, { fontWeight: "700", color: colors.textSecondary }]}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// Prototype-matched sheet metrics (ENG-799). The `borderRadius` /
+// `gap` values below intentionally sit between the tightened `Radius`
+// ladder steps (the prototype's 24px sheet corner, 14px row, 11px icon
+// chip) — they are sourced from the approved surface prototype, not
+// arbitrary. Spacing maps to `Spacing.*` tokens where a clean step exists.
+const mas = StyleSheet.create({
+  modalRoot: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { backgroundColor: "rgba(20,18,24,0.4)" },
+  sheet: {
+    // Prototype sheet corner (24px) — above the tightened Radius.xl (12).
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xl,
+  },
+  handle: {
+    width: 38,
+    height: 5,
+    borderRadius: Radius.sm,
+    alignSelf: "center",
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  brandMark: { position: "absolute", top: Spacing.md, right: Spacing.lg },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingBottom: Spacing.md,
+    paddingTop: Spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: Spacing.sm,
+  },
+  // eslint-disable-next-line no-restricted-syntax -- prototype thumbnail radius (14px)
+  thumb: { width: 52, height: 52, borderRadius: 14, flexShrink: 0 },
+  thumbFallback: { alignItems: "center", justifyContent: "center" },
+  headerMeta: { flex: 1, minWidth: 0 },
+  list: { paddingTop: Spacing.xs },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    // eslint-disable-next-line no-restricted-syntax -- prototype action-row radius (14px)
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    // eslint-disable-next-line no-restricted-syntax -- prototype icon-chip radius (11px)
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  rowText: { flex: 1, minWidth: 0, gap: Spacing.xs },
+  cancel: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.md, marginTop: Spacing.xs },
+});
+
 /** Pull the saved meals whose `defaultMealSlot === slot`, newest-logged first. */
 function savedMealsForSlot(meals: readonly SavedMeal[], slot: string): SavedMeal[] {
   const out: SavedMeal[] = [];
@@ -207,6 +488,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     cardBorderColor,
     savedMeals,
     onLogSavedMeal,
+    onRequestPortion,
+    onLogAgain,
     hintVisibleForSlot,
     onDismissUsualMealHint,
     onAcceptUsualMealHint,
@@ -254,6 +537,40 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // Off-branch preserves the prior in-header chip verbatim.
   const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
 
+  // ENG-799 (Redesign — Design Direction 2026, 2026-05-31) — the meal
+  // long-press gesture. Flag ON → open the branded `MealActionSheet`
+  // (cream surface, grabber, thumbnail + macro header, blue accent rows,
+  // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
+  // verbatim. State holds the meal whose row was long-pressed.
+  const cardElevation = useCardElevation();
+  const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
+  const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
+
+  // Shared "Share meal" handler used by BOTH the native Alert path and
+  // the branded sheet so the share-text + analytics stay identical.
+  const shareMeal = async (m: JournalMeal) => {
+    const message = buildMealShareText({
+      recipeTitle: m.recipeTitle,
+      calories: m.calories,
+      protein: m.protein,
+      carbs: m.carbs,
+      fat: m.fat,
+      portionMultiplier: m.portionMultiplier,
+    });
+    try {
+      const result = await Share.share({ message, title: m.recipeTitle });
+      track("meal_share_invoked", {
+        surface: "today_meal_row_longpress",
+        outcome: result.action === Share.dismissedAction ? "dismissed" : "shared",
+      });
+    } catch {
+      track("meal_share_invoked", {
+        surface: "today_meal_row_longpress",
+        outcome: "error",
+      });
+    }
+  };
+
   return (
     <View>
       {/* "Duplicate day" pill moved inside the meals card as a
@@ -261,14 +578,17 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           it acts on, with a thin bottom border so it reads as a
           section header, not a floating button. */}
       <View
-        style={{
-          backgroundColor: cardColor,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: cardBorderColor,
-          overflow: "hidden",
-          marginBottom: Spacing.sm,
-        }}
+        style={[
+          {
+            backgroundColor: cardElevation.liftBg ?? cardColor,
+            borderRadius: Radius.lg,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
+            borderColor: cardBorderColor,
+            overflow: "hidden",
+            marginBottom: Spacing.sm,
+          },
+          cardElevation.shadowStyle,
+        ]}
       >
         {showQuickAdd && (
           <View
@@ -525,7 +845,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             if (slotSaved.length >= 2) {
                               setUsualPicker({ slot, options: slotSaved });
                             } else {
-                              onLogSavedMeal(primarySaved, slot);
+                              // ENG-783 — flag on: tap opens portion editor.
+                              (onRequestPortion ?? onLogSavedMeal)(primarySaved, slot);
                             }
                           }}
                           hitSlop={6}
@@ -611,7 +932,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         if (slotSaved.length >= 2) {
                           setUsualPicker({ slot, options: slotSaved });
                         } else {
-                          onLogSavedMeal(primarySaved, slot);
+                          // ENG-783 — flag on: tap opens portion editor.
+                          (onRequestPortion ?? onLogSavedMeal)(primarySaved, slot);
                         }
                       }}
                       hitSlop={6}
@@ -691,33 +1013,21 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     <Pressable
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
+                        if (brandedSheets) {
+                          // ENG-799 — flag ON: branded cream action sheet.
+                          void Haptics.selectionAsync();
+                          setActionSheetMeal(m);
+                          return;
+                        }
+                        // Flag OFF — prior raw iOS Alert path, kept alive verbatim.
                         Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
                           { text: "Cancel", style: "cancel" },
                           { text: "Edit", onPress: () => onLongPressEdit(m) },
                           { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
                           {
                             text: "Share meal",
-                            onPress: async () => {
-                              const message = buildMealShareText({
-                                recipeTitle: m.recipeTitle,
-                                calories: m.calories,
-                                protein: m.protein,
-                                carbs: m.carbs,
-                                fat: m.fat,
-                                portionMultiplier: m.portionMultiplier,
-                              });
-                              try {
-                                const result = await Share.share({ message, title: m.recipeTitle });
-                                track("meal_share_invoked", {
-                                  surface: "today_meal_row_longpress",
-                                  outcome: result.action === Share.dismissedAction ? "dismissed" : "shared",
-                                });
-                              } catch {
-                                track("meal_share_invoked", {
-                                  surface: "today_meal_row_longpress",
-                                  outcome: "error",
-                                });
-                              }
+                            onPress: () => {
+                              void shareMeal(m);
                             },
                           },
                           { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
@@ -884,6 +1194,38 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </View>
               )}
 
+              {/* ENG-786 — full-width "Log this/these again" row. Re-logs
+                  the slot's current entries as fresh entries on the viewed
+                  day (baked macros preserved). Sits above the Save-as-usual
+                  row: repeat-now is the action Grace asked for; saving a
+                  durable template is the quieter secondary. Flag
+                  `today_log_again` gates the prop at the host. */}
+              {hasMeals && isOpen && onLogAgain && (
+                <Pressable
+                  testID={`today-log-again-${slot}`}
+                  onPress={() => onLogAgain(slot)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log ${slot} again — re-add ${
+                    meals.length > 1 ? "these items" : "this item"
+                  } to the day`}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderTopWidth: 1,
+                    borderTopColor: cardBorderColor + "30",
+                  }}
+                >
+                  <RefreshCw size={14} color={col} />
+                  <Text style={{ ...Type.body, color: textColor }}>
+                    {meals.length > 1 ? "Log these again" : "Log this again"}
+                  </Text>
+                </Pressable>
+              )}
+
               {/* Ship M1 — full-width "Save {Slot} as a meal" row. */}
               {hasMeals && isOpen && showSaveRow && (
                 <Pressable
@@ -970,11 +1312,16 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       <Pressable
                         key={m.id}
                         onPress={() => {
-                          if (usualPicker) {
-                            onLogSavedMeal(m, usualPicker.slot);
-                          }
+                          // ENG-783 — capture the slot, close the picker,
+                          // THEN open the portion editor (flag on) or log
+                          // instantly (flag off). Closing first avoids
+                          // modal-over-modal stacking on iOS.
+                          const pickedSlot = usualPicker?.slot;
                           setUsualPicker(null);
                           setUsualPickerShowAll(false);
+                          if (pickedSlot) {
+                            (onRequestPortion ?? onLogSavedMeal)(m, pickedSlot);
+                          }
                         }}
                         accessibilityRole="button"
                         accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
@@ -1040,6 +1387,39 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ENG-799 — branded meal action sheet (flag `redesign_branded_sheets`
+          ON). Renders only when a meal row was long-pressed in the branded
+          path; `actionSheetMeal` stays null in the flag-off Alert path so
+          this is an inert no-op there. Each action closes the sheet first,
+          then defers to the host handler (avoids modal-over-modal stacking
+          on iOS when Edit opens the edit-entry sheet). */}
+      <MealActionSheet
+        meal={actionSheetMeal}
+        macroDetail={actionSheetMeal ? formatMacroTrailer({
+          calories: actionSheetMeal.calories,
+          protein: actionSheetMeal.protein,
+          carbs: actionSheetMeal.carbs,
+          fat: actionSheetMeal.fat,
+        }) : ""}
+        onEdit={(m) => {
+          setActionSheetMeal(null);
+          onLongPressEdit(m);
+        }}
+        onCopy={(id) => {
+          setActionSheetMeal(null);
+          onRequestCopyMeal(id);
+        }}
+        onShare={(m) => {
+          setActionSheetMeal(null);
+          void shareMeal(m);
+        }}
+        onDelete={(id) => {
+          setActionSheetMeal(null);
+          onDeleteMeal(id);
+        }}
+        onClose={() => setActionSheetMeal(null)}
+      />
     </View>
   );
 }

@@ -4,51 +4,23 @@
  * three displayed percentages always sum to 100. Plain `Math.round`
  * per macro produced 99 / 101 sums on near-equal splits.
  *
- * The function is currently a private helper inside `meal-nutrition.tsx`.
- * Until it's extracted to a shared lib, this test pins the algorithm
- * shape via re-implementation + asserts the canonical edge cases.
+ * P5 parity gap #15 (2026-05-31) — the function was extracted from a
+ * private helper inside `apps/mobile/app/meal-nutrition.tsx` into the
+ * shared `@suppr/shared/nutrition/macroCalorieSplit` module so web and
+ * mobile share one implementation (no rounding drift). This test now
+ * imports the shared impl directly rather than re-implementing it, and
+ * pins the canonical edge cases against the single source of truth.
  */
 import { describe, expect, it } from "vitest";
 
-/**
- * Mirror of the largest-remainder method in
- * `apps/mobile/app/meal-nutrition.tsx` — kept in sync via this test.
- * If the production implementation drifts, the canonical edge-case
- * assertions below will fail.
- */
-function macroCalorieSplit(m: { protein: number; carbs: number; fat: number }): {
-  proteinPct: number;
-  carbsPct: number;
-  fatPct: number;
-} {
-  const proteinKcal = m.protein * 4;
-  const carbsKcal = m.carbs * 4;
-  const fatKcal = m.fat * 9;
-  const sum = proteinKcal + carbsKcal + fatKcal;
-  if (sum <= 0) return { proteinPct: 0, carbsPct: 0, fatPct: 0 };
-  const exact = [
-    { value: (proteinKcal / sum) * 100 },
-    { value: (carbsKcal / sum) * 100 },
-    { value: (fatKcal / sum) * 100 },
-  ];
-  const floored = exact.map((e) => ({ floor: Math.floor(e.value), remainder: e.value - Math.floor(e.value) }));
-  let residual = 100 - floored.reduce((a, e) => a + e.floor, 0);
-  const indicesByRemainder = floored
-    .map((e, i) => ({ i, remainder: e.remainder }))
-    .sort((a, b) => b.remainder - a.remainder)
-    .map((x) => x.i);
-  const allocated = floored.map((e) => e.floor);
-  for (let n = 0; n < indicesByRemainder.length && residual > 0; n++) {
-    allocated[indicesByRemainder[n]!] += 1;
-    residual -= 1;
-  }
-  return { proteinPct: allocated[0]!, carbsPct: allocated[1]!, fatPct: allocated[2]! };
-}
+import { macroCalorieSplit } from "@suppr/shared/nutrition/macroCalorieSplit";
 
-describe("macroCalorieSplit — largest-remainder rounding (audit M01)", () => {
+describe("macroCalorieSplit — largest-remainder rounding (audit M01, shared)", () => {
   it("returns 0/0/0 for an empty meal (no macros logged)", () => {
     const r = macroCalorieSplit({ protein: 0, carbs: 0, fat: 0 });
-    expect(r).toEqual({ proteinPct: 0, carbsPct: 0, fatPct: 0 });
+    expect(r.proteinPct).toBe(0);
+    expect(r.carbsPct).toBe(0);
+    expect(r.fatPct).toBe(0);
   });
 
   it("sums to exactly 100 on a near-uniform split that plain rounding produces 99 (33.4 / 33.4 / 33.3)", () => {
@@ -99,5 +71,15 @@ describe("macroCalorieSplit — largest-remainder rounding (audit M01)", () => {
     expect(r.proteinPct).toBeGreaterThanOrEqual(0);
     expect(r.carbsPct).toBeGreaterThanOrEqual(0);
     expect(r.fatPct).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns the per-macro kcal contributions alongside percentages", () => {
+    // The web dialog renders "Ng · K kcal · P% of kcal" per macro, so the
+    // shared helper must expose the kcal split too (mobile MacroStat shows
+    // grams + %; web shows grams + kcal + %).
+    const r = macroCalorieSplit({ protein: 10, carbs: 20, fat: 5 });
+    expect(r.proteinKcal).toBe(40);
+    expect(r.carbsKcal).toBe(80);
+    expect(r.fatKcal).toBe(45);
   });
 });

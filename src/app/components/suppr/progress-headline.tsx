@@ -28,6 +28,7 @@ import {
   splitBodyIntoSegments,
   type ProgressCommentaryResult,
 } from "../../../lib/nutrition/progressCommentary";
+import { SupprCard } from "../ui/suppr-card";
 
 export interface ProgressHeadlineProps {
   commentary: ProgressCommentaryResult;
@@ -41,18 +42,12 @@ export function ProgressHeadline({
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
   return (
-    <section
+    <SupprCard
       data-slot="progress-headline"
       data-regime={commentary.regime}
-      className={[
-        "rounded-2xl border border-border bg-card p-5",
-        // Card elevation — uses Phase 1's --elev-card token. Falls back to
-        // the existing shadow if the token isn't present yet.
-        "shadow-[var(--elev-card,0_1px_2px_rgba(0,0,0,0.04))]",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      padding="xl"
+      radius="xl"
+      className={className}
       aria-label="This week"
     >
       <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
@@ -83,7 +78,7 @@ export function ProgressHeadline({
           className="ml-1 align-middle"
         />
       </p>
-    </section>
+    </SupprCard>
   );
 }
 

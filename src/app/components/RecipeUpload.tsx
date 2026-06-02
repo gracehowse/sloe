@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
+import { SupprMark } from "./ui/suppr-mark";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -1341,6 +1342,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
 
           {/* URL input */}
           <div className="bg-card border border-border rounded-2xl p-5">
+            {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
+            <SupprMark size={44} className="mx-auto mb-3" />
             <div className="flex items-center gap-2 mb-3">
               <Icons.web className="w-5 h-5 text-primary" />
               <h3 className="text-foreground text-sm font-semibold">Paste a recipe link</h3>

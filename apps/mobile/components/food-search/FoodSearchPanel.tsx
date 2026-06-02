@@ -73,16 +73,20 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import {
   searchFoods,
   getFoodMacros,
   getEdamamFoodMicros,
   getFatSecretFood,
   scaleMacrosByGrams,
+  splitFoodSearchResults,
   type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
+import type { SearchRowConfidenceTier } from "@suppr/shared/nutrition/foodSearchRanking";
 import {
   primaryServingToPortionChip,
   type PrimaryServing,
@@ -113,6 +117,7 @@ import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "../CreateCustomFoodSheet";
 import Badge from "../Badge";
+import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAutocompleteClient";
@@ -174,6 +179,18 @@ type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
   _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _custom?: CustomFood;
 };
+
+/**
+ * Redesign (ENG-814) — discriminated FlatList feed row for the sectioned,
+ * grouped-card results body. `header` rows render a section label
+ * ("Best matches" / "More results"); `row` rows render a result inside its
+ * section's soft-elevated card, carrying within-card position so the card
+ * corners + inset seams render correctly. Only used on the
+ * `redesign_search_results`-flagged path.
+ */
+type RenderRow =
+  | { kind: "header"; key: string; label: string }
+  | { kind: "row"; key: string; row: SearchRow; isFirst: boolean; isLast: boolean };
 
 export type FoodSearchPanelProps = {
   /** Current query string. Caller owns the input + state. */
@@ -275,6 +292,30 @@ export default function FoodSearchPanel({
   recentFoods,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
+  // 2026-05-31 design-direction (LANE: commit-colour CTAs): the single
+  // commit-action colour is blue (`Accent.primary`). The "Use this" log
+  // commit CTA below historically painted `Accent.success` (green) — but
+  // green is now reserved strictly for the calorie-ring state + macro
+  // identity, never a commit-button fill. Gate behind `design_system_colours`:
+  //   flag ON  → blue commit CTA
+  //   flag OFF → existing green (old path stays alive in the `else`).
+  const commitCtaColor = isFeatureEnabled("design_system_colours")
+    ? Accent.primary
+    : Accent.success;
+  // 2026-05-31 design-direction (LANE: search-results UI — ENG-814).
+  // Gate the redesigned results body behind `redesign_search_results`:
+  //   flag ON  → unified segmented control + softly-elevated grouped
+  //              result cards + "Best matches"/"More results" section
+  //              headers + a legible confidence chip (soft-blue Verified
+  //              / amber Estimated) driven by each row's `confidenceTier`.
+  //   flag OFF → the existing pill row + flat hairline list + CheckCircle2
+  //              tick (the old path stays alive, untouched, in the `else`).
+  // Matches docs/prototypes/2026-05-31-design-direction/surface-search-results.html.
+  const redesignSearch = isFeatureEnabled("redesign_search_results");
+  // Soft-elevation treatment for the grouped result cards (light = soft
+  // shadow + no border; dark = tonal lift + hairline; flag-off = flat).
+  // Only consumed on the redesigned path.
+  const cardElevation = useCardElevation();
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -1166,6 +1207,228 @@ export default function FoodSearchPanel({
     recentFoods.length > 0 &&
     (activeCategory === "All" || activeCategory === "Recents");
 
+  // ── Redesign (ENG-814) — unified segmented control + sectioned cards ──
+  // The redesigned filter uses the prototype's friendlier wording while
+  // every segment stays backed by the SAME real `FoodCategory` filter — no
+  // dead affordance (cf. the favourites tab removed in ENG-748 #8). There
+  // is deliberately no "Saved meals" segment here: saved-meals data lives
+  // in the LogSheet browse grammar (a sibling surface/ticket), NOT in this
+  // panel, so adding one would render a no-op. The unified label is purely
+  // presentational over the existing internal value.
+  const UNIFIED_LABEL: Record<FoodCategory, string> = {
+    All: "All",
+    Recents: "Recent",
+    Custom: "My foods",
+    Branded: "Branded",
+    Generic: "Generic",
+  };
+
+  // Split the (already-ranked, already-filtered) result list into the
+  // prototype's "Best matches" / "More results" sections using the SHARED
+  // scorer (`splitFoodSearchResults` → `splitBestMatches`). Web sections
+  // identically off the same function, so the two surfaces never drift.
+  // Only computed on the redesigned path; falls back to a single Best
+  // section otherwise (the flat list ignores it).
+  const sectionedResults = useMemo(
+    () =>
+      redesignSearch
+        ? splitFoodSearchResults(query.trim(), filteredResults as UnifiedSearchResult[])
+        : { best: [] as UnifiedSearchResult[], more: [] as UnifiedSearchResult[] },
+    [redesignSearch, query, filteredResults],
+  );
+
+  // Flatten the best/more sections into an ordered FlatList feed of
+  // discriminated render-rows so pagination (`onEndReached`), the empty
+  // state and the footer all stay on the SAME FlatList as the flat path.
+  // Each data row carries its section + within-card position so the card
+  // renderer can draw the soft-elevated wrapper + section header + inset
+  // seam without grouping support in FlatList.
+  const redesignFeed = useMemo<RenderRow[]>(() => {
+    if (!redesignSearch) return [];
+    const feed: RenderRow[] = [];
+    const pushSection = (label: string, rows: SearchRow[]) => {
+      if (rows.length === 0) return;
+      feed.push({ kind: "header", key: `header-${label}`, label });
+      rows.forEach((row, i) => {
+        feed.push({
+          kind: "row",
+          key: row.key,
+          row,
+          isFirst: i === 0,
+          isLast: i === rows.length - 1,
+        });
+      });
+    };
+    pushSection("Best matches", sectionedResults.best as SearchRow[]);
+    pushSection("More results", sectionedResults.more as SearchRow[]);
+    return feed;
+  }, [redesignSearch, sectionedResults]);
+
+  // The legible confidence chip is the canonical shared
+  // `<SearchResultConfidenceChip>` (also used by the barcode + voice-log
+  // result surfaces) so the chip language can't drift between logging entry
+  // points. The tier is computed upstream (ENG-807) from BOTH provenance AND
+  // the name match — never source alone — so "Verified" is always backed by a
+  // real signal (CLAUDE.md trust posture). A defensively-absent tier falls
+  // back to the CONSERVATIVE "Estimated" label — never "Verified" — so a
+  // missing signal can never over-claim trust. Matches the web sibling
+  // (ENG-815).
+  const renderConfidenceChip = useCallback(
+    (tier: SearchRowConfidenceTier | undefined) => (
+      <SearchResultConfidenceChip tier={tier === "verified" ? "verified" : "estimated"} />
+    ),
+    [],
+  );
+
+  // Grouped-card result row (redesign path). Same tap target + a11y as the
+  // flat row, but framed inside a soft-elevated card with the confidence
+  // chip on the topline and a faint inset seam between rows (not a hairline
+  // divider). `isFirst` suppresses the seam on the first row of a card.
+  const renderCardRow = useCallback(
+    (item: SearchRow, isFirst: boolean) => {
+      const isLoading = loadingKey === item.key;
+      const isCustom = item._source === "CUSTOM";
+      const customFood = isCustom ? item._custom : null;
+      const headline = resolveFoodSearchHeadline(item);
+      const primary = item.primaryServing ?? null;
+      return (
+        <Pressable
+          key={item.key}
+          onPress={() => onPickResult(item)}
+          onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCustom
+              ? `Custom food: ${item.name}. Long-press for edit or delete.`
+              : primary
+                ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
+                : item.name
+          }
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.md,
+            paddingHorizontal: 15,
+            paddingVertical: 14,
+            borderTopWidth: isFirst ? 0 : StyleSheet.hairlineWidth,
+            borderTopColor: colors.cardBorder,
+            backgroundColor: pressed ? colors.background : "transparent",
+          })}
+        >
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {isCustom && <Badge variant="custom">Custom</Badge>}
+              {renderConfidenceChip(item.confidenceTier)}
+              <Text style={styles.resultName} numberOfLines={2}>
+                {item.name}
+              </Text>
+            </View>
+            {headline.mode === "per-serving" ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                </View>
+                <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
+                <Text style={styles.per100g}>
+                  {headline.servingLabel}
+                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
+                </Text>
+              </>
+            ) : headline.mode === "per-100g" && headline.macros ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                </View>
+                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
+              </>
+            ) : headline.mode === "per-100g" ? (
+              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
+            ) : (
+              <Text style={styles.per100g}>Tap for nutrition info</Text>
+            )}
+          </View>
+          {headline.mode !== "placeholder" && !isLoading ? (
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                {headline.headlineKcal}
+              </Text>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.4 }}>KCAL</Text>
+            </View>
+          ) : null}
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Accent.primary} />
+          ) : (
+            <ChevronRight size={16} color={colors.textTertiary} />
+          )}
+        </Pressable>
+      );
+    },
+    [loadingKey, onPickResult, openCustomFoodActions, renderConfidenceChip, colors, styles],
+  );
+
+  // FlatList renderItem for the redesigned, sectioned feed. Headers render
+  // the uppercase section label; rows render `renderCardRow` wrapped in a
+  // per-section soft-elevated card (rounded top on the first row, rounded
+  // bottom on the last, so contiguous rows read as one pressable card).
+  const renderRedesignItem = useCallback(
+    ({ item }: { item: RenderRow }) => {
+      if (item.kind === "header") {
+        return (
+          <Text
+            testID={`food-search-section-${item.label === "Best matches" ? "best" : "more"}`}
+            style={{
+              fontSize: 11,
+              fontWeight: "800",
+              letterSpacing: 0.6,
+              color: colors.textTertiary,
+              textTransform: "uppercase",
+              marginTop: Spacing.md,
+              marginBottom: Spacing.sm,
+              marginHorizontal: 2,
+            }}
+          >
+            {item.label}
+          </Text>
+        );
+      }
+      // Soft-elevated grouped card. The shadow lives on the same View as the
+      // row content (no `overflow: hidden`, so iOS shadows are not clipped);
+      // corner radius is applied per card-position so the section reads as a
+      // single card. Dark mode uses the tonal lift + hairline (per
+      // `useCardElevation`); light mode uses the soft shadow.
+      return (
+        <View
+          style={[
+            {
+              backgroundColor: cardElevation.liftBg ?? colors.card,
+              borderTopLeftRadius: item.isFirst ? Radius.lg : 0,
+              borderTopRightRadius: item.isFirst ? Radius.lg : 0,
+              borderBottomLeftRadius: item.isLast ? Radius.lg : 0,
+              borderBottomRightRadius: item.isLast ? Radius.lg : 0,
+              borderLeftWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+              borderRightWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+              borderTopWidth: cardElevation.useBorder && item.isFirst ? StyleSheet.hairlineWidth : 0,
+              borderBottomWidth: cardElevation.useBorder && item.isLast ? StyleSheet.hairlineWidth : 0,
+              borderColor: colors.cardBorder,
+            },
+            // Apply the soft shadow only on the first row of a card; a single
+            // shadow on the top row reads as the card's lift without stacking
+            // four overlapping shadows down the group.
+            item.isFirst ? cardElevation.shadowStyle : undefined,
+          ]}
+        >
+          {renderCardRow(item.row, item.isFirst)}
+        </View>
+      );
+    },
+    [renderCardRow, cardElevation, colors],
+  );
+
   // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
   // Hoisted ABOVE the preview-mode early return so React's hook-order
   // invariant survives the user toggling into and out of preview mode.
@@ -1397,7 +1660,7 @@ export default function FoodSearchPanel({
 
           <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
             <Pressable
-              style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+              style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
               onPress={onConfirmPreview}
             >
               <Check size={18} color="#fff" />
@@ -1414,6 +1677,204 @@ export default function FoodSearchPanel({
       </ScrollView>
     );
   }
+
+  // Shared no-result empty state + persistent footer, lifted out of the
+  // FlatList props so BOTH the flat (flag-off) and sectioned (flag-on)
+  // FlatLists render the identical empty state, the same two CTAs, the same
+  // dictionary-add event, the inline confirmation and the barcode-fallback
+  // hint — no behaviour divergence between paths.
+  const renderEmptyState =
+    !loading && query.trim() ? (
+      <View
+        testID="food-search-no-result-empty-state"
+        style={{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md }}
+      >
+        <Text style={styles.emptyText}>
+          No results for &quot;{query}&quot;.
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            color: colors.textTertiary,
+            textAlign: "center",
+            marginTop: -Spacing.sm,
+          }}
+        >
+          {customEnabled
+            ? "Add it yourself, or let us know we should."
+            : "Try a simpler or more specific term."}
+        </Text>
+        {/* No-result loop (audit move-blocker #2, 2026-05-02 —
+            replaces stale PR #36): two-CTA empty state. The
+            "Add as custom food" CTA routes to the existing
+            CreateCustomFoodSheet flow (the same path the
+            persistent footer button uses) with the query
+            pre-filled. The "Tell us we&apos;re missing this"
+            CTA fires a dedicated PostHog event so the
+            dictionary-backfill workstream knows which queries
+            to prioritise. It is NOT a bug report — the user
+            can keep going by adding the food themselves. */}
+        {customEnabled ? (
+          <Pressable
+            onPress={() => {
+              setEditingFood(undefined);
+              setCreateOpen(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Add "${query}" as a custom food`}
+            testID="food-search-no-result-add-custom"
+            style={{
+              paddingVertical: Spacing.md,
+              alignItems: "center",
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: Spacing.sm,
+              borderWidth: 1,
+              borderColor: Accent.primary,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.primary + "10",
+            }}
+          >
+            <Plus size={16} color={Accent.primary} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+              Add as custom food
+            </Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => {
+            const q = query.trim();
+            if (!q) return;
+            const dedupKey = q.toLowerCase();
+            if (dictionaryAddRequestedRef.current === dedupKey) return;
+            dictionaryAddRequestedRef.current = dedupKey;
+            setDictionaryAddRequested(q);
+            track(AnalyticsEvents.food_search_request_dictionary_add, {
+              query: q,
+              len: q.length,
+              source: "mobile",
+            });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Tell us we're missing this food"
+          testID="food-search-no-result-request-add"
+          style={{
+            paddingVertical: Spacing.md,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: Spacing.sm,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderStyle: "dashed",
+            borderRadius: Radius.md,
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+            Tell us we&apos;re missing this
+          </Text>
+        </Pressable>
+        {/* Inline confirmation row — softer than a native
+            Alert (Grace, 2026-05-02). Dismisses implicitly
+            when the query changes (the ref + state both
+            reset on a fresh empty state for a new query). */}
+        {dictionaryAddRequested && dictionaryAddRequested === query.trim() ? (
+          <View
+            accessibilityRole="text"
+            accessible
+            testID="food-search-no-result-request-confirmation"
+            style={{
+              paddingVertical: Spacing.sm,
+              paddingHorizontal: Spacing.md,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.success + "15",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
+            <Text style={{ flex: 1, fontSize: 12, color: Accent.success, fontWeight: "600" }}>
+              Thanks — we&apos;ll prioritise adding this to our food database.
+            </Text>
+            <Pressable
+              onPress={() => setDictionaryAddRequested(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss confirmation"
+              hitSlop={8}
+              testID="food-search-no-result-request-confirmation-dismiss"
+            >
+              <Text style={{ fontSize: 12, color: Accent.success, fontWeight: "700" }}>
+                Dismiss
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {showBarcodeFallbackHint ? (
+          <Pressable
+            testID="food-search-barcode-fallback-hint"
+            accessibilityRole="button"
+            accessibilityLabel="Scan a barcode — works for UK and EU products"
+            onPress={onScanBarcodePressed}
+            style={{
+              marginTop: Spacing.sm,
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: Radius.md,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.sm,
+              backgroundColor: colors.card,
+            }}
+          >
+            <Barcode size={20} color={Accent.primary} />
+            <Text style={{ flex: 1, fontSize: 14, color: colors.text }}>
+              Brand not found? Try a barcode scan — works for UK &amp; EU products
+            </Text>
+            <ChevronRight size={16} color={colors.textTertiary} />
+          </Pressable>
+        ) : null}
+      </View>
+    ) : null;
+
+  const renderListFooter = (
+    <View>
+      {loadingMore ? (
+        <View style={{ paddingVertical: Spacing.md, alignItems: "center" }}>
+          <ActivityIndicator size="small" color={Accent.primary} />
+        </View>
+      ) : null}
+      {customEnabled ? (
+        <Pressable
+          onPress={() => {
+            setEditingFood(undefined);
+            setCreateOpen(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Create a new custom food"
+          style={{
+            marginTop: Spacing.md,
+            paddingVertical: Spacing.md,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: Spacing.sm,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderStyle: "dashed",
+            borderRadius: Radius.md,
+          }}
+        >
+          <Plus size={16} color={Accent.primary} />
+          <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+            Create custom food
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -1447,6 +1908,47 @@ export default function FoodSearchPanel({
       >
         {CATEGORY_LIST.map((cat) => {
           const isActive = cat === activeCategory;
+          // Redesign (ENG-814): one unified segmented control — softly
+          // elevated rounded-rect segments with the prototype's friendlier
+          // labels. Flag OFF keeps the existing full-pill chips. Same
+          // underlying `activeCategory` filter in both paths.
+          if (redesignSearch) {
+            const liftStyle =
+              cardElevation.shadowStyle && !isActive ? cardElevation.shadowStyle : undefined;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setActiveCategory(cat)}
+                accessibilityRole="button"
+                accessibilityLabel={`${UNIFIED_LABEL[cat]} foods`}
+                accessibilityState={{ selected: isActive }}
+                testID={`food-search-category-${cat}`}
+                hitSlop={6}
+                style={[
+                  {
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor: isActive ? Accent.primary : colors.cardBorder,
+                    backgroundColor: isActive ? Accent.primary : colors.card,
+                  },
+                  liftStyle,
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: isActive ? Accent.primaryForeground : colors.textSecondary,
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  {UNIFIED_LABEL[cat]}
+                </Text>
+              </Pressable>
+            );
+          }
           return (
             <Pressable
               key={cat}
@@ -1613,6 +2115,20 @@ export default function FoodSearchPanel({
           <ActivityIndicator size="large" color={Accent.primary} />
           <Text style={styles.hint}>Searching...</Text>
         </View>
+      ) : redesignSearch ? (
+        <FlatList<RenderRow>
+          data={redesignFeed}
+          keyExtractor={(item) => item.key}
+          renderItem={renderRedesignItem}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          onEndReached={() => {
+            void loadMore();
+          }}
+          onEndReachedThreshold={0.4}
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={renderListFooter}
+        />
       ) : (
         <FlatList<SearchRow>
           data={filteredResults}
@@ -1624,198 +2140,8 @@ export default function FoodSearchPanel({
             void loadMore();
           }}
           onEndReachedThreshold={0.4}
-          ListEmptyComponent={
-            !loading && query.trim() ? (
-              <View
-                testID="food-search-no-result-empty-state"
-                style={{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md }}
-              >
-                <Text style={styles.emptyText}>
-                  No results for &quot;{query}&quot;.
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: colors.textTertiary,
-                    textAlign: "center",
-                    marginTop: -Spacing.sm,
-                  }}
-                >
-                  {customEnabled
-                    ? "Add it yourself, or let us know we should."
-                    : "Try a simpler or more specific term."}
-                </Text>
-                {/* No-result loop (audit move-blocker #2, 2026-05-02 —
-                    replaces stale PR #36): two-CTA empty state. The
-                    "Add as custom food" CTA routes to the existing
-                    CreateCustomFoodSheet flow (the same path the
-                    persistent footer button uses) with the query
-                    pre-filled. The "Tell us we&apos;re missing this"
-                    CTA fires a dedicated PostHog event so the
-                    dictionary-backfill workstream knows which queries
-                    to prioritise. It is NOT a bug report — the user
-                    can keep going by adding the food themselves. */}
-                {customEnabled ? (
-                  <Pressable
-                    onPress={() => {
-                      setEditingFood(undefined);
-                      setCreateOpen(true);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Add "${query}" as a custom food`}
-                    testID="food-search-no-result-add-custom"
-                    style={{
-                      paddingVertical: Spacing.md,
-                      alignItems: "center",
-                      flexDirection: "row",
-                      justifyContent: "center",
-                      gap: Spacing.sm,
-                      borderWidth: 1,
-                      borderColor: Accent.primary,
-                      borderRadius: Radius.md,
-                      backgroundColor: Accent.primary + "10",
-                    }}
-                  >
-                    <Plus size={16} color={Accent.primary} />
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
-                      Add as custom food
-                    </Text>
-                  </Pressable>
-                ) : null}
-                <Pressable
-                  onPress={() => {
-                    const q = query.trim();
-                    if (!q) return;
-                    const dedupKey = q.toLowerCase();
-                    if (dictionaryAddRequestedRef.current === dedupKey) return;
-                    dictionaryAddRequestedRef.current = dedupKey;
-                    setDictionaryAddRequested(q);
-                    track(AnalyticsEvents.food_search_request_dictionary_add, {
-                      query: q,
-                      len: q.length,
-                      source: "mobile",
-                    });
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Tell us we're missing this food"
-                  testID="food-search-no-result-request-add"
-                  style={{
-                    paddingVertical: Spacing.md,
-                    alignItems: "center",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderStyle: "dashed",
-                    borderRadius: Radius.md,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
-                    Tell us we&apos;re missing this
-                  </Text>
-                </Pressable>
-                {/* Inline confirmation row — softer than a native
-                    Alert (Grace, 2026-05-02). Dismisses implicitly
-                    when the query changes (the ref + state both
-                    reset on a fresh empty state for a new query). */}
-                {dictionaryAddRequested && dictionaryAddRequested === query.trim() ? (
-                  <View
-                    accessibilityRole="text"
-                    accessible
-                    testID="food-search-no-result-request-confirmation"
-                    style={{
-                      paddingVertical: Spacing.sm,
-                      paddingHorizontal: Spacing.md,
-                      borderRadius: Radius.md,
-                      backgroundColor: Accent.success + "15",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: Spacing.sm,
-                    }}
-                  >
-                    <Text style={{ flex: 1, fontSize: 12, color: Accent.success, fontWeight: "600" }}>
-                      Thanks — we&apos;ll prioritise adding this to our food database.
-                    </Text>
-                    <Pressable
-                      onPress={() => setDictionaryAddRequested(null)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Dismiss confirmation"
-                      hitSlop={8}
-                      testID="food-search-no-result-request-confirmation-dismiss"
-                    >
-                      <Text style={{ fontSize: 12, color: Accent.success, fontWeight: "700" }}>
-                        Dismiss
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-                {showBarcodeFallbackHint ? (
-                  <Pressable
-                    testID="food-search-barcode-fallback-hint"
-                    accessibilityRole="button"
-                    accessibilityLabel="Scan a barcode — works for UK and EU products"
-                    onPress={onScanBarcodePressed}
-                    style={{
-                      marginTop: Spacing.sm,
-                      paddingVertical: 12,
-                      paddingHorizontal: 12,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      borderRadius: Radius.md,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: Spacing.sm,
-                      backgroundColor: colors.card,
-                    }}
-                  >
-                    <Barcode size={20} color={Accent.primary} />
-                    <Text style={{ flex: 1, fontSize: 14, color: colors.text }}>
-                      Brand not found? Try a barcode scan — works for UK &amp; EU products
-                    </Text>
-                    <ChevronRight size={16} color={colors.textTertiary} />
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null
-          }
-          ListFooterComponent={
-            <View>
-              {loadingMore ? (
-                <View style={{ paddingVertical: Spacing.md, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color={Accent.primary} />
-                </View>
-              ) : null}
-              {customEnabled ? (
-                <Pressable
-                  onPress={() => {
-                    setEditingFood(undefined);
-                    setCreateOpen(true);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Create a new custom food"
-                  style={{
-                    marginTop: Spacing.md,
-                    paddingVertical: Spacing.md,
-                    alignItems: "center",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderStyle: "dashed",
-                    borderRadius: Radius.md,
-                  }}
-                >
-                  <Plus size={16} color={Accent.primary} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
-                    Create custom food
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          }
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={renderListFooter}
         />
       )}
 

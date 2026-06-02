@@ -174,6 +174,23 @@ export function reset(): void {
   getPostHogClient()?.reset();
 }
 
+/** Redesign 2026 flag set — the new design is the DEFAULT in every build
+ *  (Grace 2026-06-01: "turn everything on; never flag-gate again"). These
+ *  resolve ON regardless of PostHog rollout state or the dead env-force
+ *  (ENG-840); the PostHog rows survive only as emergency kill switches via
+ *  `isFeatureDisabled`. Keep in sync with the same set in
+ *  `src/lib/analytics/track.ts` (web). */
+const REDESIGN_DEFAULT_ON = new Set<string>([
+  "design_system_elevation",
+  "design_system_colours",
+  "design_system_brandmark",
+  "design_system_icons",
+  "redesign_winmoment",
+  "redesign_motion",
+  "redesign_branded_sheets",
+  "redesign_search_results",
+]);
+
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
  *  `src/lib/analytics/track.ts#isFeatureEnabled` (web).
@@ -187,8 +204,11 @@ export function reset(): void {
  *  override completely (the `__DEV__` guard inlines to `false` and
  *  the whole branch is dropped by Hermes' DCE).
  *
- *  Mapping: `today_log_usual_row_v2` →
- *  `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`.
+ *  Mapping: uppercase the flag and replace hyphens with underscores
+ *  (env-var names can't contain hyphens). So `today_log_usual_row_v2`
+ *  → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`, and the
+ *  hyphenated `log-sheet-slot-selector` →
+ *  `EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
  */
 export function isFeatureEnabled(flag: string): boolean {
   // `__DEV__` is a React Native runtime global, not defined in the
@@ -196,11 +216,21 @@ export function isFeatureEnabled(flag: string): boolean {
   // that render this module under jsdom don't blow up with
   // ReferenceError.
   if (typeof __DEV__ !== "undefined" && __DEV__) {
-    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    // Dev/E2E force override (checked FIRST so a test can still force a
+    // redesign flag OFF to capture the pre-redesign look). NOTE (ENG-840):
+    // the computed `process.env[envKey]` read is inert in a bundled RN app —
+    // Metro inlines only static `process.env.X`, never a computed key — so it
+    // works under vitest/SSR but not on device/sim. That's fine now: the
+    // redesign no longer depends on it (default-ON below), and E2E seeds the
+    // static env at Metro start.
+    // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
     const override = process.env[envKey];
     if (override === "true") return true;
     if (override === "false") return false;
   }
+  // Redesign 2026 — default ON in every build, un-gated (see REDESIGN_DEFAULT_ON).
+  if (REDESIGN_DEFAULT_ON.has(flag)) return true;
   const c = getPostHogClient();
   if (!c) return false;
   try {
@@ -227,7 +257,8 @@ export function isFeatureEnabled(flag: string): boolean {
  *  disabled `true`; "true" forces ON → disabled `false`. */
 export function isFeatureDisabled(flag: string): boolean {
   if (typeof __DEV__ !== "undefined" && __DEV__) {
-    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
     const override = process.env[envKey];
     if (override === "false") return true;
     if (override === "true") return false;

@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { Button } from "@/app/components/ui/button";
+import { SupprMark } from "@/app/components/ui/suppr-mark";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 
 export default function Error({
   error,
@@ -22,6 +24,49 @@ export default function Error({
       /* Sentry not loaded */
     }
   }, [error]);
+
+  // ENG-799 (Redesign — Design Direction 2026): brand-language crash screen
+  // mirroring mobile RootErrorBoundary.renderBranded() — brand mark + brand
+  // background tone. Gated behind redesign_branded_sheets; the legacy slate
+  // card stays alive in the else branch. Wrapped so a cold flag client can
+  // never break the recovery UI.
+  let branded = false;
+  try {
+    branded = isFeatureEnabled("redesign_branded_sheets");
+  } catch {
+    branded = false;
+  }
+
+  if (branded) {
+    return (
+      <div className="min-h-screen grid place-items-center px-6 py-12 bg-background">
+        <div
+          data-testid="route-error-branded"
+          className="w-full max-w-md flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center shadow-[var(--elev-card-soft)]"
+        >
+          <SupprMark size={44} className="mb-1" />
+          <h1 className="text-foreground">Something went wrong</h1>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            The team has been notified. Try again, or go home and start fresh.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 mt-1">
+            <Button type="button" onClick={() => reset()}>
+              Try again
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                window.location.href = "/";
+              }}
+            >
+              Go home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen grid place-items-center px-6 py-12 bg-slate-50 dark:bg-slate-950">

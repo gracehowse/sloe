@@ -22,6 +22,7 @@ import { Icons } from "../ui/icons";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../../lib/supabase/browserClient";
+import { SupprCard } from "../ui/suppr-card";
 import {
   getUserRecipeNotes,
   upsertUserRecipeNotes,
@@ -168,16 +169,22 @@ export function RecipeNotesCard({ recipeId, userId }: RecipeNotesCardProps) {
   // Unauthenticated — friendly prompt, no interactive controls.
   if (!userId) {
     return (
-      <div className="rounded-card border border-border bg-card p-5 text-sm text-muted-foreground card-elevated">
+      // Design Direction 2026 — unauthenticated prompt card routed through SupprCard.
+      <SupprCard padding="xl" radius="lg" className="text-sm text-muted-foreground">
         Sign in to save personal notes and a private rating for this recipe.
-      </div>
+      </SupprCard>
     );
   }
 
   return (
-    <section
+    // Design Direction 2026 — recipe notes card routed through SupprCard.
+    // role="region" + aria-labelledby preserves the <section> semantics on the div.
+    <SupprCard
+      role="region"
       aria-labelledby="recipe-notes-heading"
-      className="rounded-card border border-border bg-card p-5 space-y-4 card-elevated"
+      padding="xl"
+      radius="lg"
+      className="space-y-4"
     >
       <div className="flex items-center justify-between">
         <h3
@@ -258,7 +265,7 @@ export function RecipeNotesCard({ recipeId, userId }: RecipeNotesCardProps) {
           {lastCookedLabel}
         </p>
       )}
-    </section>
+    </SupprCard>
   );
 }
 

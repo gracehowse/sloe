@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suppr — Log-a-meal search results — BEFORE / AFTER</title>
+<style>
+/* ===== INLINED SHARED KIT (_kit.css) ===== */
+:root{
+  --cream:#FBFAF6; --card:#FFFFFF; --ink:#1A181F; --muted:#6E6A64; --hair:#ECEAE4;
+  --blue:#588CE4; --blue-press:#3F73CC;
+  --green:#56A775;            /* RESERVED: calorie-ring under-target + success ONLY */
+  --red:#E5604D;             /* over-target / destructive */
+  --win:#F2A93B;             /* dedicated win-colour, distinct from success green */
+  --protein:#6C8CFF; --carbs:#E8913A; --fat:#E36FA8; --fiber:#56A775;
+  --elev:0 4px 18px rgba(20,18,24,.07), 0 1px 3px rgba(20,18,24,.04);
+  --radius:18px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);color:var(--ink);background:#E9E7E2;
+  background-image:radial-gradient(circle at 20% 0%,#f1efe9,#e3e1db);min-height:100vh;padding:28px 20px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.sub{color:#6b6760;font-size:13px;margin-top:4px;max-width:760px;line-height:1.5}
+.controls{display:flex;gap:10px;align-items:center;margin:18px 0 26px;flex-wrap:wrap}
+.seg{display:inline-flex;background:#fff;border-radius:12px;padding:4px;box-shadow:var(--elev)}
+.seg button{border:0;background:transparent;font:inherit;font-weight:700;font-size:13px;color:#8a857e;padding:9px 18px;border-radius:9px;cursor:pointer;transition:.18s}
+.seg button.on{background:var(--ink);color:#fff}
+.seg.after button.on{background:var(--blue)}
+.btn{border:0;font:inherit;font-weight:700;font-size:13px;padding:11px 18px;border-radius:11px;cursor:pointer;background:var(--blue);color:#fff;box-shadow:var(--elev);transition:transform .12s,background .2s}
+.btn:active{transform:scale(.96)} .btn.ghost{background:#fff;color:var(--ink)}
+.tag{font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#8a857e}
+.stage{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap}
+.phone-col{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px}
+
+/* iPhone frame */
+.phone{width:392px;height:812px;background:#000;border-radius:54px;padding:11px;box-shadow:0 30px 70px -20px rgba(20,18,24,.45),0 0 0 2px #0a0a0a;position:relative}
+.screen{width:100%;height:100%;background:var(--cream);border-radius:44px;overflow:hidden;position:relative}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#000;border-radius:20px;z-index:40}
+.statusbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:14px;font-weight:700}
+.scr{height:calc(100% - 54px);overflow-y:auto;padding:4px 16px 96px;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+
+/* cards — depth is the toggle */
+.card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.before .card{border:1px solid var(--hair);box-shadow:none}
+.after  .card{border:1px solid transparent;box-shadow:var(--elev)}
+
+/* commit CTA — colour is the toggle (before=green drift, after=blue) */
+.cta{display:block;width:100%;border:0;font:inherit;font-weight:800;font-size:16px;color:#fff;padding:15px;border-radius:14px;cursor:pointer;text-align:center}
+.cta.commit{background:var(--blue)} .before .cta.commit{background:var(--green)}
+.cta.secondary{background:#fff;color:var(--ink);border:1px solid var(--hair)}
+
+/* chips */
+.chip{display:inline-block;height:22px;border-radius:7px;padding:0 10px;line-height:22px;color:#fff;font-size:11px;font-weight:800}
+.chip.win{background:var(--win)} .chip.blue{background:var(--blue)} .chip.green{background:var(--green)}
+.chip.soft{background:#eef3fb;color:var(--blue)}
+
+/* bottom sheet (branded) */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--cream);border-radius:24px 24px 0 0;padding:10px 18px 26px;z-index:55;box-shadow:0 -10px 40px rgba(20,18,24,.18)}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:#d9d5cd;margin:6px auto 14px}
+.scrim{position:absolute;inset:0;background:rgba(20,18,24,.35);z-index:50}
+
+/* tab bar + FAB */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(251,250,246,.92);backdrop-filter:blur(12px);border-top:1px solid var(--hair);display:flex;justify-content:space-around;align-items:flex-start;padding:11px 22px 0;z-index:30}
+.tab{font-size:10px;font-weight:600;color:#b7b2a8;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tab.on{color:var(--blue)} .tab .gl{font-size:19px}
+
+/* spec column (right side) */
+.spec{flex:1;min-width:300px;max-width:430px}
+.rule{background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:12px;box-shadow:var(--elev)}
+.rule h3{font-size:14px;font-weight:800;display:flex;gap:8px;align-items:center}
+.rule .badge{font-size:10px;font-weight:800;color:#fff;background:var(--blue);border-radius:6px;padding:2px 6px}
+.rule p{font-size:12.5px;color:#6b6760;line-height:1.55;margin-top:7px}
+.note{font-size:11px;color:#9a958d;margin-top:8px;line-height:1.5}
+.kbd{font-family:ui-monospace,monospace;background:#fff;border:1px solid var(--hair);border-radius:5px;padding:1px 6px;font-size:11px}
+
+/* ===== SURFACE-SCOPED CSS (search results / log-a-meal sheet) ===== */
+
+/* sheet header — shared between before/after so it reads as the same sheet */
+.logsheet-head{padding:14px 16px 4px}
+.logsheet-titlerow{display:flex;align-items:center;justify-content:space-between}
+.logsheet-title{font-size:21px;font-weight:800;letter-spacing:-.3px}
+.logsheet-x{width:30px;height:30px;border-radius:50%;background:#efece6;display:flex;align-items:center;justify-content:center;color:#6E6A64;font-size:16px;border:0;cursor:pointer}
+
+/* 4-slot meal selector (Breakfast/Lunch/Dinner/Snacks) */
+.slotrow{display:flex;gap:8px;margin:14px 0 12px}
+.slot{flex:1;text-align:center;font-size:13px;font-weight:700;color:#8a857e;padding:9px 0;border-radius:11px;border:1px solid var(--hair);background:#fff}
+.slot.on{color:var(--ink);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);background:#fff}
+.before .slot.on{border-color:#b9c9ec;box-shadow:inset 0 0 0 1px #b9c9ec}
+
+/* search input */
+.searchbar{display:flex;align-items:center;gap:10px;background:#efece6;border-radius:13px;padding:0 12px;height:46px}
+.searchbar .mag{color:#9a958d;font-size:15px}
+.searchbar input{flex:1;border:0;background:transparent;font:inherit;font-size:15px;color:var(--ink);outline:0}
+.searchbar input::placeholder{color:#b1aca3}
+.searchbar .caret{width:1.5px;height:18px;background:var(--blue);animation:blink 1.05s steps(1) infinite;border-radius:1px}
+@keyframes blink{50%{opacity:0}}
+.searchbar .ic{width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#7c776f}
+.searchbar .ic svg{width:19px;height:19px}
+
+/* ---------- BEFORE: two competing segmented languages ---------- */
+.before-only{display:none}
+.after-only{display:none}
+.before .before-only{display:block}
+.after .after-only{display:block}
+
+/* the "Recent | Library | Saved meals" tab row (ix-30 language) */
+.tabseg{display:flex;background:#efece6;border-radius:11px;padding:3px;margin:12px 0 4px}
+.tabseg span{flex:1;text-align:center;font-size:13px;font-weight:700;color:#8a857e;padding:8px 0;border-radius:9px;position:relative}
+.tabseg span.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tabseg span.on::after{content:"•";color:var(--blue);position:absolute;right:9px;top:7px;font-size:11px}
+
+/* the "All / Recents / Custom / Branded / Generic" pill row (ix-33 language) */
+.pillrow{display:flex;gap:8px;overflow-x:auto;padding:12px 0 8px;scrollbar-width:none}
+.pillrow::-webkit-scrollbar{display:none}
+.pill{flex:0 0 auto;font-size:13px;font-weight:700;color:#8a857e;padding:7px 16px;border-radius:20px;border:1px solid var(--hair);background:#fff;white-space:nowrap}
+.pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.beforenote{font-size:11px;color:#c08a3a;background:#fbf3e6;border:1px solid #f0dfc2;border-radius:9px;padding:7px 10px;margin:2px 0 6px;line-height:1.4}
+
+/* BEFORE result rows — flat hairline list */
+.flatlist{margin-top:4px}
+.flatrow{display:flex;align-items:center;gap:9px;padding:13px 2px;border-bottom:1px solid var(--hair)}
+.flatrow .tick{color:var(--green);font-size:14px;flex:0 0 auto;width:16px;text-align:center}
+.flatrow .body{flex:1;min-width:0}
+.flatrow .name{font-size:15px;font-weight:600;color:var(--ink);line-height:1.2}
+.flatrow .macros{font-size:11px;font-weight:700;margin-top:3px;letter-spacing:.1px}
+.flatrow .macros .P{color:var(--green)} /* the green P that fights the green tick */
+.flatrow .macros .C{color:var(--carbs)}
+.flatrow .macros .F{color:var(--fat)}
+.flatrow .per{font-size:10.5px;color:#a8a39a;margin-top:2px}
+.flatrow .kcal{font-size:17px;font-weight:800;color:var(--ink);margin-left:6px}
+.flatrow .chev{color:#cfcabf;font-size:15px;margin-left:6px}
+
+/* ---------- AFTER: one unified control + elevated grouped rows ---------- */
+
+/* ONE unified segmented control replacing both languages */
+.uniseg{display:flex;gap:8px;overflow-x:auto;padding:12px 0 10px;scrollbar-width:none}
+.uniseg::-webkit-scrollbar{display:none}
+.uniseg .u{flex:0 0 auto;font-size:13px;font-weight:700;color:#8a857e;padding:8px 16px;border-radius:11px;background:#fff;border:1px solid var(--hair);white-space:nowrap;box-shadow:var(--elev)}
+.uniseg .u.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.sectlabel{font-size:11px;font-weight:800;letter-spacing:.6px;color:#a39d93;text-transform:uppercase;margin:10px 2px 8px}
+
+/* elevated grouped result card — no hairline-as-divider */
+.resultcard{background:#fff;border-radius:16px;box-shadow:var(--elev);overflow:hidden;margin-bottom:14px}
+.resrow{display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer;transition:background .15s}
+.resrow + .resrow{box-shadow:inset 0 1px 0 #f3f1ec} /* faint inset seam, not a divider rule */
+.resrow:active{background:#f7f5f0}
+.resrow .body{flex:1;min-width:0}
+.resrow .topline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.resrow .name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2}
+.resrow .macros{font-size:12px;font-weight:700;margin-top:5px;color:#7c776f;letter-spacing:.1px}
+.resrow .macros b.P{color:var(--protein)}
+.resrow .macros b.C{color:var(--carbs)}
+.resrow .macros b.F{color:var(--fat)}
+.resrow .per{font-size:11px;color:#a8a39a;margin-top:2px}
+.resrow .right{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.resrow .kcal{font-size:18px;font-weight:800;color:var(--ink)}
+.resrow .kcalu{font-size:10px;font-weight:700;color:#b1aca3;letter-spacing:.4px}
+.resrow .chev{color:#cdc8bd;font-size:16px;margin-left:4px}
+
+/* legible confidence chip (replaces the 14px green tick) */
+.conf{display:inline-flex;align-items:center;gap:4px;height:20px;border-radius:7px;padding:0 8px;font-size:10.5px;font-weight:800;letter-spacing:.2px}
+.conf.verified{background:#eef3fb;color:var(--blue)}
+.conf.estimated{background:#fbf2e2;color:#bf8324}
+.conf svg{width:11px;height:11px}
+
+/* ===== AFTER portion sheet (commit CTA is BLUE) ===== */
+.portion-hidden{display:none}
+.show-portion .scrim{display:block}
+.show-portion .portion-sheet{display:block}
+.portion-sheet{display:none}
+.portion-sheet .ph-title{font-size:18px;font-weight:800;margin:2px 0 2px}
+.portion-sheet .ph-sub{font-size:12px;color:#8a857e;margin-bottom:12px}
+.servrow{display:flex;gap:8px;margin-bottom:14px}
+.serv{flex:1;text-align:center;border:1px solid var(--hair);border-radius:11px;padding:8px 0;background:#fff}
+.serv.on{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.serv .sv{font-size:13px;font-weight:800;color:var(--ink)}
+.serv .su{font-size:10px;color:#a8a39a;margin-top:1px}
+.serv.on .sv{color:var(--blue)}
+.steplabel{font-size:11px;font-weight:800;letter-spacing:.5px;color:#a39d93;text-transform:uppercase;margin:2px 0 8px}
+.stepper{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.stepper .b{width:40px;height:40px;border-radius:11px;border:1px solid var(--hair);background:#fff;font-size:20px;font-weight:700;color:var(--ink);display:flex;align-items:center;justify-content:center}
+.stepper .v{width:74px;height:40px;border:1px solid var(--hair);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.stepper .eq{font-size:13px;color:#8a857e;font-weight:600}
+.nuttable{margin:4px 0 12px}
+.nutrow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1efe9;font-size:14px}
+.nutrow .l{color:#6E6A64;font-weight:600}
+.nutrow .r{font-weight:800}
+.iflog{background:#f3f1ea;border-radius:12px;padding:11px 13px;margin-bottom:14px}
+.iflog .h{font-size:10px;font-weight:800;letter-spacing:.5px;color:#a39d93;text-transform:uppercase;margin-bottom:6px}
+.iflog .row{font-size:12.5px;color:#6E6A64;font-weight:700}
+.iflog .row b{color:var(--ink)}
+.commitrow{display:flex;gap:10px}
+.commitrow .cta.commit{flex:2}
+.commitrow .cta.secondary{flex:1}
+
+/* tiny brand mark in the sheet header (ENG-797) */
+.brandmark{display:inline-flex;align-items:center;gap:6px}
+.brandmark .dot{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,var(--blue),#7AA7EF);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900}
+.brandmark .nm{font-size:12px;font-weight:800;color:#9a958d;letter-spacing:.2px}
+.before .brandmark{display:none}
+</style>
+</head>
+<body class="after">
+<div class="wrap">
+  <h1>Log-a-meal — search results</h1>
+  <p class="sub">The screen users hit on every manual log. BEFORE = two clashing segmented languages + a flat hairline list + a near-invisible 14px confidence tick fighting the green macro letters. AFTER applies the 5-rule direction: one soft elevation, one blue commit colour, a legible confidence chip, one unified filter, a branded portion sheet. Toggle with the control or press <span class="kbd">B</span> / <span class="kbd">A</span>.</p>
+
+  <div class="controls">
+    <div class="seg after" id="seg">
+      <button data-mode="before">Before</button>
+      <button data-mode="after" class="on">After</button>
+    </div>
+    <span class="tag">Surface: log-a-meal · search results</span>
+  </div>
+
+  <div class="stage">
+    <!-- ===================== PHONE ===================== -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="screen" id="screen">
+          <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+          <div class="scr">
+
+            <!-- ---- shared log-a-meal header (reads as the same sheet in both modes) ---- -->
+            <div class="logsheet-head">
+              <div class="logsheet-titlerow">
+                <div class="brandmark after-only">
+                  <span class="dot">S</span><span class="logsheet-title" style="font-size:21px">Log a meal</span>
+                </div>
+                <div class="logsheet-title before-only">Log a meal</div>
+                <button class="logsheet-x" aria-label="Close">✕</button>
+              </div>
+
+              <!-- 4-slot meal selector -->
+              <div class="slotrow">
+                <div class="slot on">Breakfast</div>
+                <div class="slot">Lunch</div>
+                <div class="slot">Dinner</div>
+                <div class="slot">Snacks</div>
+              </div>
+
+              <!-- search input with barcode / mic / camera -->
+              <div class="searchbar">
+                <span class="mag">🔍</span>
+                <input value="chicken" readonly>
+                <span class="caret"></span>
+                <span class="ic" title="Scan barcode">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"/></svg>
+                </span>
+                <span class="ic" title="Voice">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+                </span>
+                <span class="ic" title="Camera">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2 2 0 0 1 5 6.5h2l1.2-2h7.6L19 6.5h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- ================= BEFORE ================= -->
+            <div class="before-only">
+              <!-- TWO clashing segmented languages on adjacent screens, both shown to expose the conflict -->
+              <div class="tabseg">
+                <span class="on">Recent</span>
+                <span>Library</span>
+                <span>Saved meals</span>
+              </div>
+              <div class="pillrow">
+                <span class="pill on">All</span>
+                <span class="pill">Recents</span>
+                <span class="pill">Custom</span>
+                <span class="pill">Branded</span>
+                <span class="pill">Generic</span>
+              </div>
+              <div class="beforenote">⚠︎ Two filter languages on adjacent screens — tab row (Library screen) vs pill row (results screen). Users learn two grammars for one job.</div>
+
+              <div class="flatlist">
+                <div class="flatrow">
+                  <span class="tick">✓</span>
+                  <div class="body">
+                    <div class="name">Chicken, chicken roll, roasted</div>
+                    <div class="macros"><span class="P">P 26.7g</span> &nbsp;<span class="C">C 0g</span> &nbsp;<span class="F">F 6.3g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">164</span><span class="chev">›</span>
+                </div>
+                <div class="flatrow">
+                  <span class="tick">✓</span>
+                  <div class="body">
+                    <div class="name">Orange chicken</div>
+                    <div class="macros"><span class="P">P 14.5g</span> &nbsp;<span class="C">C 22.5g</span> &nbsp;<span class="F">F 12.7g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">262</span><span class="chev">›</span>
+                </div>
+                <div class="flatrow">
+                  <span class="tick">✓</span>
+                  <div class="body">
+                    <div class="name">Biryani with chicken</div>
+                    <div class="macros"><span class="P">P 7.2g</span> &nbsp;<span class="C">C 13.6g</span> &nbsp;<span class="F">F 2.4g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">104</span><span class="chev">›</span>
+                </div>
+                <div class="flatrow">
+                  <span class="tick">✓</span>
+                  <div class="body">
+                    <div class="name">Soup, chicken</div>
+                    <div class="macros"><span class="P">P 3.4g</span> &nbsp;<span class="C">C 4g</span> &nbsp;<span class="F">F 1.1g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">40</span><span class="chev">›</span>
+                </div>
+                <div class="flatrow">
+                  <span class="tick"></span>
+                  <div class="body">
+                    <div class="name">Boiled Chicken</div>
+                    <div class="macros"><span class="P">P 25g</span> &nbsp;<span class="C">C 0g</span> &nbsp;<span class="F">F 6.6g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">167</span><span class="chev">›</span>
+                </div>
+                <div class="flatrow">
+                  <span class="tick"></span>
+                  <div class="body">
+                    <div class="name">Crispy Chicken</div>
+                    <div class="macros"><span class="P">P 33.4g</span> &nbsp;<span class="C">C 0.5g</span> &nbsp;<span class="F">F 4.7g</span></div>
+                    <div class="per">per 100g</div>
+                  </div>
+                  <span class="kcal">187</span><span class="chev">›</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= AFTER ================= -->
+            <div class="after-only">
+              <!-- ONE unified segmented control (replaces tab row + pill row) -->
+              <div class="uniseg">
+                <span class="u on">All</span>
+                <span class="u">Recent</span>
+                <span class="u">My foods</span>
+                <span class="u">Branded</span>
+                <span class="u">Saved meals</span>
+              </div>
+
+              <div class="sectlabel">Best matches</div>
+              <div class="resultcard">
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Chicken, chicken roll, roasted</span>
+                      <span class="conf verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Verified</span>
+                    </div>
+                    <div class="macros"><b class="P">P 26.7g</b> · <b class="C">C 0g</b> · <b class="F">F 6.3g</b></div>
+                    <div class="per">per 100g · USDA</div>
+                  </div>
+                  <div class="right"><span class="kcal">164</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Orange chicken</span>
+                      <span class="conf verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Verified</span>
+                    </div>
+                    <div class="macros"><b class="P">P 14.5g</b> · <b class="C">C 22.5g</b> · <b class="F">F 12.7g</b></div>
+                    <div class="per">per 100g · FatSecret</div>
+                  </div>
+                  <div class="right"><span class="kcal">262</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Biryani with chicken</span>
+                      <span class="conf estimated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Estimated</span>
+                    </div>
+                    <div class="macros"><b class="P">P 7.2g</b> · <b class="C">C 13.6g</b> · <b class="F">F 2.4g</b></div>
+                    <div class="per">per 100g · Open Food Facts</div>
+                  </div>
+                  <div class="right"><span class="kcal">104</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+              </div>
+
+              <div class="sectlabel">More results</div>
+              <div class="resultcard">
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Soup, chicken</span>
+                      <span class="conf verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Verified</span>
+                    </div>
+                    <div class="macros"><b class="P">P 3.4g</b> · <b class="C">C 4g</b> · <b class="F">F 1.1g</b></div>
+                    <div class="per">per 100g · USDA</div>
+                  </div>
+                  <div class="right"><span class="kcal">40</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Boiled Chicken</span>
+                      <span class="conf estimated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Estimated</span>
+                    </div>
+                    <div class="macros"><b class="P">P 25g</b> · <b class="C">C 0g</b> · <b class="F">F 6.6g</b></div>
+                    <div class="per">per 100g · Community</div>
+                  </div>
+                  <div class="right"><span class="kcal">167</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+                <div class="resrow" onclick="openPortion()">
+                  <div class="body">
+                    <div class="topline">
+                      <span class="name">Crispy Chicken</span>
+                      <span class="conf estimated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Estimated</span>
+                    </div>
+                    <div class="macros"><b class="P">P 33.4g</b> · <b class="C">C 0.5g</b> · <b class="F">F 4.7g</b></div>
+                    <div class="per">per 100g · Community</div>
+                  </div>
+                  <div class="right"><span class="kcal">187</span><span class="kcalu">KCAL</span></div>
+                  <span class="chev">›</span>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /.scr -->
+
+          <!-- ===== AFTER portion sheet (branded, BLUE commit CTA) ===== -->
+          <div class="scrim portion-hidden" onclick="closePortion()"></div>
+          <div class="sheet portion-sheet" role="dialog" aria-label="Portion">
+            <div class="grab"></div>
+            <div class="brandmark" style="margin-bottom:8px"><span class="dot">S</span><span class="nm">SUPPR · LOG</span></div>
+            <div class="ph-title">Chicken, chicken roll, roasted</div>
+            <div class="ph-sub"><span class="conf verified" style="height:18px;font-size:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Verified · USDA</span></div>
+
+            <div class="steplabel">Serving size</div>
+            <div class="servrow">
+              <div class="serv on"><div class="sv">1 slice</div><div class="su">28 g</div></div>
+              <div class="serv"><div class="sv">g</div><div class="su">grams</div></div>
+              <div class="serv"><div class="sv">oz</div><div class="su">28.35 g</div></div>
+              <div class="serv"><div class="sv">lb</div><div class="su">453 g</div></div>
+            </div>
+
+            <div class="steplabel">Number of servings</div>
+            <div class="stepper">
+              <div class="b">−</div>
+              <div class="v">1</div>
+              <div class="b">+</div>
+              <span class="eq">= 28 g</span>
+            </div>
+
+            <div class="steplabel">Nutrition</div>
+            <div class="nuttable">
+              <div class="nutrow"><span class="l">Calories</span><span class="r">46 kcal</span></div>
+              <div class="nutrow"><span class="l">Protein</span><span class="r">7.5 g</span></div>
+              <div class="nutrow"><span class="l">Carbohydrates</span><span class="r">0 g</span></div>
+              <div class="nutrow"><span class="l">Fat</span><span class="r">1.8 g</span></div>
+              <div class="nutrow"><span class="l">Sodium</span><span class="r">140 mg</span></div>
+            </div>
+
+            <div class="iflog">
+              <div class="h">If you log this</div>
+              <div class="row"><b>968 kcal</b> left · <b>120g</b> P · <b>69g</b> C · <b>24g</b> F left</div>
+            </div>
+
+            <div class="commitrow">
+              <button class="cta commit">Use this</button>
+              <button class="cta secondary" onclick="closePortion()">Back</button>
+            </div>
+          </div>
+
+        </div><!-- /.screen -->
+      </div>
+      <div style="font-size:12px;color:#8a857e;font-weight:700">Tap a result row → portion sheet (AFTER)</div>
+    </div>
+
+    <!-- ===================== SPEC PANEL ===================== -->
+    <div class="spec">
+      <div class="rule">
+        <h3><span class="badge">ENG-795</span> One soft elevation</h3>
+        <p>BEFORE: results are a flat list separated by 1px hairlines — the same dividers used everywhere, no surface hierarchy. AFTER: grouped result cards carry one soft elevation; rows are seamed with a faint inset, not a hairline-as-divider. The tap target now reads as a card you press.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-796</span> One blue commit colour</h3>
+        <p>BEFORE: the portion sheet's commit CTA is green — colliding with the reserved win/success green. AFTER: the commit CTA is brand blue. Green is reserved for the calorie ring under-target + success only.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-797</span> One brand mark</h3>
+        <p>BEFORE: a generic-tracker "Log a meal" header. AFTER: a small Suppr mark on the sheet header and portion sheet, so every logging surface reads as the same branded product, not a stock list.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-798</span> Reserved win-colour / legible confidence</h3>
+        <p>BEFORE: a ~14px green tick is the only confidence signal — nearly invisible and it fights the green macro "P" letters, so "verified" and "protein" share one colour. AFTER: a tinted chip — soft-blue <b>Verified</b> / amber <b>Estimated</b> — that is legible and never collides with the macro palette or the win-colour.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-799</span> Branded action-sheet</h3>
+        <p>BEFORE: two competing filter languages (Recent│Library│Saved-meals tabs vs All／Recents／Custom／Branded／Generic pills) on adjacent screens. AFTER: one unified segmented control, and the portion sheet is a branded action-sheet with cream surface, grab handle and brand mark.</p>
+        <div class="note">Unification removes the second filter grammar entirely — one control, one mental model.</div>
+      </div>
+      <div class="rule">
+        <h3>Header parity</h3>
+        <p>Title, X, 4-slot Breakfast／Lunch／Dinner／Snacks selector and the search field (barcode · mic · camera) are held constant across BEFORE and AFTER so this reads as the same Log-a-meal sheet — only the results body and confidence signal change.</p>
+        <div class="note">Toggle: segmented control or <span class="kbd">B</span> / <span class="kbd">A</span>. Tap any AFTER result row to open the portion sheet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var body = document.body, seg = document.getElementById('seg');
+  function setMode(m){
+    body.classList.remove('before','after','show-portion');
+    body.classList.add(m);
+    seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===m); });
+  }
+  seg.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){ setMode(b.dataset.mode); });
+  });
+  document.addEventListener('keydown', function(e){
+    var k = e.key.toLowerCase();
+    if(k==='b') setMode('before');
+    if(k==='a') setMode('after');
+  });
+  window.openPortion = function(){
+    if(body.classList.contains('after')) body.classList.add('show-portion');
+  };
+  window.closePortion = function(){ body.classList.remove('show-portion'); };
+</script>
+</body>
+</html>

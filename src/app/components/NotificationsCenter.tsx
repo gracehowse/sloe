@@ -14,7 +14,11 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between gap-4 mb-6">
+      {/* ENG-803: below sm (<640px, incl. 390px mobile-web) the title and
+          the action cluster stack vertically so the H1 never collides
+          with "Mark all read" / "Clear". At sm+ the original side-by-side
+          row is preserved, so desktop layout is unchanged. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
         <div className="min-w-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/20">
@@ -27,7 +31,7 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             className="px-3 py-2 rounded-xl border border-border/70 bg-card/70 hover:bg-muted/60 text-foreground text-sm font-semibold inline-flex items-center gap-2"

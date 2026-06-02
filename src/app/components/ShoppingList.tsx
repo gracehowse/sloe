@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { Check, Users, X } from "lucide-react";
 import { Icons } from "./ui/icons";
+import { SupprCard } from "./ui/suppr-card";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
@@ -252,8 +253,10 @@ export const ShoppingList = memo(function ShoppingList({
       ) : null}
 
       {totalItemCount === 0 ? (
-        <div
-          className="bg-card border border-border rounded-2xl px-6 py-12 text-center card-elevated"
+        <SupprCard
+          padding="none"
+          radius="xl"
+          className="px-6 py-12 text-center"
           style={{ maxWidth: 900 }}
         >
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
@@ -274,7 +277,7 @@ export const ShoppingList = memo(function ShoppingList({
               Start planning
             </button>
           ) : null}
-        </div>
+        </SupprCard>
       ) : (
         <div
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
@@ -286,9 +289,10 @@ export const ShoppingList = memo(function ShoppingList({
               isShoppingGroupFullyChecked(g),
             ).length;
             return (
-            <div
+            <SupprCard
               key={section.name}
-              className="bg-card border border-border rounded-2xl card-elevated"
+              padding="none"
+              radius="xl"
               style={{ padding: 14 }}
             >
               <div
@@ -396,7 +400,7 @@ export const ShoppingList = memo(function ShoppingList({
                   );
                 })}
               </ul>
-            </div>
+            </SupprCard>
             );
           })}
         </div>

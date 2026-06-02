@@ -15,6 +15,7 @@ import * as React from "react";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { supabase } from "../../../lib/supabase/browserClient.ts";
 import {
   RECIPE_MEAL_TYPES,
@@ -169,12 +170,24 @@ export function RecipeEditDialog({
   const sectionCls =
     "text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2";
 
+  // ENG-821 (Redesign — Design Direction 2026): the design-director review read
+  // the edit dialog as "imported from a different design system" — it sat on a
+  // pure-white `bg-card` (#fff) surface with a hairline border standing in for
+  // depth, against the product's warm-cream canvas. Under
+  // `design_system_elevation` we move it onto the warm `bg-background` surface
+  // and let the real soft `--elev-card-soft` shadow carry separation (no
+  // border). The flag-OFF path keeps today's white/hairline dialog alive.
+  // Form-field borders + the commit CTA already use semantic tokens
+  // (`border-input` on Input/Textarea; `bg-primary-solid` on the default
+  // Button), so no colour repaint is needed here.
+  const elevated = isFeatureEnabled("design_system_elevation");
+  const surfaceCls = elevated
+    ? "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-lg max-h-[88vh] overflow-y-auto"
+    : "bg-card border-border max-w-lg max-h-[88vh] overflow-y-auto";
+
   return (
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
-      <DialogContent
-        className="bg-card border-border max-w-lg max-h-[88vh] overflow-y-auto"
-        data-testid="recipe-edit-dialog"
-      >
+      <DialogContent className={surfaceCls} data-testid="recipe-edit-dialog">
         <DialogHeader>
           <DialogTitle className="text-foreground">Edit recipe</DialogTitle>
           <DialogDescription className="text-muted-foreground">

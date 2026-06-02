@@ -24,8 +24,11 @@ import { AlertCircle, Camera, Check, PlusCircle, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
-import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
@@ -42,8 +45,15 @@ export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // Search-results redesign (2026-05-31): when on, the barcode result
+  // adopts the same logging language as the food-search redesign — a
+  // legible Verified/Estimated confidence chip + a blue commit CTA.
+  // Old path (binary green tick + green CTA) stays alive in the else.
+  const searchRedesign = isFeatureEnabled("redesign_search_results");
 
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
@@ -463,8 +473,9 @@ export default function BarcodeScreen() {
           paddingHorizontal: 10,
           paddingVertical: 5,
           borderRadius: Radius.sm,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
+          ...(cardElevation.shadowStyle ?? {}),
         },
         presetChipSelected: { backgroundColor: Accent.primary + "22", borderColor: Accent.primary },
         presetChipText: { fontSize: 11, fontWeight: "600" as const, color: Accent.primary },
@@ -485,29 +496,32 @@ export default function BarcodeScreen() {
           alignItems: "center",
           justifyContent: "center",
           borderRadius: Radius.md,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: "rgba(255,255,255,0.2)",
           paddingVertical: 14,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         secondaryBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
         errorIcon: { marginBottom: Spacing.xs },
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.sm,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         retryBtnText: { color: Accent.primary, fontWeight: "600" },
         manualEntryBtn: {
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.xs,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         manualEntryBtnText: { color: Accent.primary, fontWeight: "600" },
         manualOverlay: {
@@ -547,7 +561,7 @@ export default function BarcodeScreen() {
         corrTitle: { color: "#fff", fontWeight: "700" as const, fontSize: 18 },
         corrSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, cardElevation],
   );
 
   if (!permission) {
@@ -704,7 +718,23 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            {product.verified ? (
+            {searchRedesign ? (
+              // Redesign: legible Verified/Estimated chip (search-results
+              // language) + the source line beneath it for provenance.
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <SearchResultConfidenceChip
+                  tier={barcodeConfidenceTier(product)}
+                  testID="barcode-confidence-chip"
+                />
+                <Text style={styles.source}>
+                  {product.verified
+                    ? "Verified entry"
+                    : product.source === "user"
+                      ? "Community submitted"
+                      : "via Open Food Facts"}
+                </Text>
+              </View>
+            ) : product.verified ? (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
                 <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
                 <Text style={styles.source}>Verified</Text>
@@ -716,7 +746,7 @@ export default function BarcodeScreen() {
             )}
             <View style={styles.btnRow}>
               <Pressable
-                style={styles.logBtn}
+                style={[styles.logBtn, searchRedesign && { backgroundColor: Accent.primary }]}
                 onPress={handleLog}
                 disabled={logging}
                 accessibilityLabel={`Log ${product.name} to tracker`}
@@ -816,7 +846,11 @@ export default function BarcodeScreen() {
               />
             </View>
             <Pressable
-              style={[styles.logBtn, { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 }]}
+              style={[
+                styles.logBtn,
+                searchRedesign && { backgroundColor: Accent.primary },
+                { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 },
+              ]}
               onPress={handleManualLog}
               disabled={!manualName.trim() || !(Number(manualCalories) > 0) || logging}
             >

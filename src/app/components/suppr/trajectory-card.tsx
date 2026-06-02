@@ -34,6 +34,7 @@ import {
   type TrajectoryState,
   type WeightGoalTimeline,
 } from "../../../lib/weightProjection";
+import { SupprCard } from "../ui/suppr-card";
 
 export interface TrajectoryCardProps {
   byDay: Record<string, Array<{ calories?: number | null }>>;
@@ -52,15 +53,12 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
   if (!state) return null;
 
   return (
-    <section
+    <SupprCard
       data-slot="trajectory-card"
       data-testid="trajectory-card"
-      className={[
-        "rounded-2xl border border-border bg-card p-4 mb-6 card-elevated",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      padding="lg"
+      radius="xl"
+      className={["mb-6", className ?? ""].filter(Boolean).join(" ")}
       aria-label={accessibilityLabelFor(state)}
     >
       <div className="flex items-center gap-1.5 mb-2">
@@ -144,7 +142,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
           </div>
         </>
       )}
-    </section>
+    </SupprCard>
   );
 }
 

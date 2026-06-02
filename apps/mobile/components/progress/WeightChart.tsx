@@ -277,8 +277,6 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
   const latestIdx = points.length - 1;
   const latestX = latestIdx >= 0 ? xs[latestIdx]! : 0;
   const latestY = latestIdx >= 0 ? ys[latestIdx]! : 0;
-  const latestKg = latestIdx >= 0 ? points[latestIdx]!.kg : null;
-  const latestDateISO = latestIdx >= 0 ? points[latestIdx]!.dateISO : null;
 
   const goalY = goalKg != null ? toY(goalKg, yMin, yMax, plotH) : null;
   // F-133 (`AFlB4oMfwQGIFx-w0DxOofE`, 2026-05-08): when computeYDomain
@@ -336,36 +334,6 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
       }),
     [count, plotW],
   );
-
-  /**
-   * 2026-05-06: bucket-aware label for floating tag. Daily renders
-   * "76.2 · Today" (or "Yesterday" / weekday for ≤6 days back) based
-   * on the actual latest entry's date — was hardcoded to "Today"
-   * regardless of when the entry was logged. Bucketed renders show
-   * "76.2 · w/c 5 May" or "76.2 · May" so the user knows the bar is
-   * an aggregate, not a single weigh-in.
-   */
-  const latestCaption = useMemo(() => {
-    if (latestKg == null || latestDateISO == null) return null;
-    const date = new Date(latestDateISO + "T12:00:00");
-    const valueStr = formatWeight(latestKg, isImperial);
-    if (bucket === "monthly") {
-      return `${valueStr} · ${date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}`;
-    }
-    if (bucket === "weekly") {
-      return `${valueStr} · w/c ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-    }
-    // Daily — relative if recent, otherwise short date.
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const diffDays = Math.round((today.getTime() - date.getTime()) / 86400000);
-    if (diffDays === 0) return `${valueStr} · Today`;
-    if (diffDays === 1) return `${valueStr} · Yesterday`;
-    if (diffDays > 0 && diffDays < 7) {
-      return `${valueStr} · ${date.toLocaleDateString("en-GB", { weekday: "short" })}`;
-    }
-    return `${valueStr} · ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-  }, [latestKg, latestDateISO, bucket, isImperial]);
 
   /**
    * 2026-05-06: avoid goal-line label colliding with grid labels.
@@ -680,45 +648,28 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
         />
       </Svg>
 
-      {/* 2026-05-11 (Grace TF feedback — chart "messy / illogical"):
-          The floating tooltip and scrubber tooltip had two collision
-          problems:
-            1. `left: latestX - 36` is a guessed half-width that
-               doesn't center the actual text — text wider than 72px
-               sits right-of-center.
-            2. `top: latestY - 28` clamped at 0 — when the latest dot
-               is near the top of the plot, the tooltip pins to y=0
-               and overlaps the Y-axis labels.
-          Both labels now:
-            - center horizontally using a fixed approximate width
-              with `clampX` to stay inside the plot bounds
-            - position vertically using a "flip" — above the dot when
-              there's room, below the dot when there isn't
-            - never extend into the right gutter where the Y-axis
-              ticks live */}
+      {/* Floating value pill — shows ONLY while the user scrubs (tap +
+          drag along the line). 2026-06-01 (Grace visual walk): dropped the
+          always-on "latest" pill. On this narrow card a persistent 130px box
+          floated over the data, disconnected from its anchor dot, and read
+          as a stuck tooltip. The latest point is already marked by the haloed
+          dot + the "you are here" vertical line, and its value is one scrub
+          away. Scrub positioning: centre on the touched point, flip
+          above/below for headroom, keep the right edge clear of the Y gutter. */}
       {(() => {
         const showScrub = scrubIdx != null && scrubPoint != null;
-        const showLatest = !showScrub && latestCaption != null;
-        if (!showScrub && !showLatest) return null;
+        if (!showScrub) return null;
         const TOOLTIP_W = 130;
         const TOOLTIP_H = 22;
-        const anchorX = showScrub ? xs[scrubIdx!]! : latestX;
-        const anchorY = showScrub ? ys[scrubIdx!]! : latestY;
-        // 2026-05-12 (Grace TF chart polish): bump the clearance gap
-        // from 6/12px to 14px so the tooltip never crowds the line
-        // it's anchored to. Withings's spec is a ~12pt clear floating
-        // pill; tightening this was the audit gap.
+        const anchorX = xs[scrubIdx!]!;
+        const anchorY = ys[scrubIdx!]!;
         const GAP = 14;
         const flipBelow = anchorY - TOOLTIP_H - GAP < PAD_TOP;
         const tipTop = flipBelow ? anchorY + GAP : anchorY - TOOLTIP_H - GAP;
-        // Right gutter (where the Y-axis tick labels live) starts at
-        // `chartWidth - PAD_RIGHT`. Keep the tooltip's right edge at
-        // least 4px left of that line so the text never overlaps.
+        // Keep the tooltip's right edge ≥4px left of the Y-axis gutter.
         const maxLeft = chartWidth - PAD_RIGHT - TOOLTIP_W - 4;
         const tipLeft = clampX(anchorX - TOOLTIP_W / 2, Math.max(0, maxLeft));
-        const text = showScrub
-          ? `${formatWeight(scrubPoint!.kg, isImperial)} · ${formatScrubDate(scrubPoint!.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${(isImperial ? kgToLb(scrubMa) : Math.round(scrubMa * 10) / 10).toFixed(1)}` : ""}`
-          : latestCaption!;
+        const text = `${formatWeight(scrubPoint!.kg, isImperial)} · ${formatScrubDate(scrubPoint!.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${(isImperial ? kgToLb(scrubMa) : Math.round(scrubMa * 10) / 10).toFixed(1)}` : ""}`;
         return (
           <View
             style={[

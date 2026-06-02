@@ -24,10 +24,27 @@
  *        state.
  */
 
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
 import { DailyRing } from "../../src/app/components/suppr/daily-ring";
+
+// Redesign 2026 ships `redesign_motion` default-ON (`REDESIGN_DEFAULT_ON`),
+// which routes the centre value through `useOdometer` — it animates from 0 and
+// jsdom never advances requestAnimationFrame, so the static read is the `0`
+// start (not a real bug; a browser settles to the true value). These tests pin
+// the centre VALUE (B6/N3/N5), so force the motion flags OFF → the legacy
+// static render. The odometer's settle behaviour is covered separately
+// (motion/odometer tests). Explicit `false` wins over the default-on.
+beforeEach(() => {
+  (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+    redesign_motion: false,
+    redesign_winmoment: false,
+  };
+});
+afterEach(() => {
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+});
 
 function renderRing(props: {
   consumed: number;

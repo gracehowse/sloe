@@ -7,7 +7,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const KEYS = {
   discoverRecipes: "pm:cache:discover",
-  savedRecipes: "pm:cache:saved",
+  // Per-user prefix (trailing colon): saved/library recipes are private to
+  // the signed-in account, so the cache key embeds the userId. Sign-out's
+  // `clearUserScopedAsyncStorage()` deliberately does NOT wipe userId-scoped
+  // keys (per its documented policy they pick up the correct per-user value
+  // on next sign-in), so this scoping is exactly what prevents one account's
+  // library flashing for another on a shared device — no sign-out wiring
+  // needed.
+  savedRecipes: "pm:cache:saved:",
   mealPlan: "pm:cache:plan",
   nutritionJournal: "pm:cache:journal",
   lastRecipe: "pm:cache:lastRecipe:",
@@ -59,12 +66,24 @@ export async function getCachedDiscoverRecipes(): Promise<unknown[] | null> {
   return value as unknown[] | null;
 }
 
-export async function cacheSavedRecipes(recipes: unknown[]): Promise<void> {
-  await setWithExpiry(KEYS.savedRecipes, recipes);
+export async function cacheSavedRecipes(
+  userId: string,
+  recipes: unknown[],
+): Promise<void> {
+  // Never persist an empty array (same rationale as cacheDiscoverRecipes):
+  // a transient empty — e.g. a timed-out fetch — must not poison the cache
+  // and make a populated library cold-paint as "empty" next session.
+  if (!userId || !Array.isArray(recipes) || recipes.length === 0) return;
+  await setWithExpiry(KEYS.savedRecipes + userId, recipes);
 }
 
-export async function getCachedSavedRecipes(): Promise<unknown[] | null> {
-  return getWithExpiry(KEYS.savedRecipes);
+export async function getCachedSavedRecipes(
+  userId: string,
+): Promise<unknown[] | null> {
+  if (!userId) return null;
+  const value = await getWithExpiry(KEYS.savedRecipes + userId);
+  if (Array.isArray(value) && value.length === 0) return null;
+  return value as unknown[] | null;
 }
 
 export async function cacheMealPlan(plan: unknown): Promise<void> {

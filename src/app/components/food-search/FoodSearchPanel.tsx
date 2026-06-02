@@ -66,6 +66,7 @@ import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
+  isLowConfidenceDemotedRow,
 } from "@/lib/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@/lib/openFoodFacts/parseOffMicros";
 import { reconcileOffPer100g } from "@/lib/openFoodFacts/reconcilePer100g";
@@ -86,6 +87,7 @@ import {
   customFoodToMacrosPer100g,
   type CustomFood,
 } from "../../../lib/nutrition/customFoods";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import {
   pickEdamamPrimaryServing,
   pickUsdaBrandedPrimaryServing,
@@ -107,7 +109,13 @@ import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
 import {
   foodSearchTrustWeight,
+  foodSearchRankScore,
   searchRelevance,
+  searchMatchScore,
+  searchRowConfidenceTier,
+  splitBestMatches,
+  type SearchRowConfidenceTier,
+  type SectionedSearchRows,
 } from "@/lib/nutrition/foodSearchRanking";
 import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
 
@@ -147,6 +155,14 @@ type SearchResult = {
   /** F-79 (2026-04-25) — full per-100g micronutrient set. */
   microsPer100g?: Record<string, number>;
   verified?: boolean;
+  /**
+   * ENG-807 — honest confidence tier derived from BOTH provenance AND the
+   * computed match score (never source alone). Mirrors the mobile
+   * `UnifiedSearchResult.confidenceTier`. The UI renders the legible
+   * Verified / Estimated chip from this (next stage's lane). Stamped in
+   * `mergeAndDedup`.
+   */
+  confidenceTier?: SearchRowConfidenceTier;
   imageUrl?: string | null;
   primaryServing?: PrimaryServing | null;
   _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
@@ -606,6 +622,58 @@ async function fetchFatSecretDetail(
 // the alias below preserves the call-site for readability.
 const customFoodToSearchResult = customFoodToHit;
 
+/**
+ * ENG-807 — split a ranked, merged search-result list into the prototype's
+ * "Best matches" / "More results" sections by the shared score threshold.
+ *
+ * Pure + shared with mobile (both call `splitBestMatches` from
+ * `foodSearchRanking.ts`) so the two surfaces section identically. Rows carry
+ * `_rel` (the combined trust-weighted rank score) at runtime when they came
+ * through `mergeAndDedup`; rows without it (defensive) recompute from the
+ * shared scorer so the split stays honest rather than defaulting into Best.
+ * The UI consumes this — the JSX is the next stage's lane.
+ */
+export function splitFoodSearchResults(
+  query: string,
+  rows: SearchResult[],
+): SectionedSearchRows<SearchResult> {
+  return splitBestMatches(rows, (r) => {
+    const rel = (r as SearchResult & { _rel?: number })._rel;
+    if (typeof rel === "number") return rel;
+    return foodSearchRankScore({
+      query,
+      name: r.name,
+      source: r._source,
+      verified: Boolean(r.verified),
+    });
+  });
+}
+
+/**
+ * ENG-815 (redesign_search_results) — human-readable provenance label shown on
+ * the redesigned result row's "per 100g · <source>" byline. Mirrors the
+ * mobile sibling lane's label map so both surfaces name the same source the
+ * same way. Custom rows carry their own "Custom" badge, so they fall through
+ * to "Custom".
+ */
+function foodSearchSourceLabel(source: SearchResult["_source"]): string {
+  switch (source) {
+    case "USDA":
+      return "USDA";
+    case "OFF":
+      return "Open Food Facts";
+    case "Edamam":
+      return "Edamam";
+    case "FatSecret":
+      return "FatSecret";
+    case "CUSTOM":
+      return "Custom";
+    case "GenericBeverage":
+    case "GenericFood":
+      return "Suppr";
+  }
+}
+
 function buildGenericMatchRow(query: string): SearchResult | null {
   const q = query.trim();
   if (!q) return null;
@@ -702,7 +770,46 @@ export function FoodSearchPanel({
   inBarcodeMode = false,
   localeOverride,
 }: FoodSearchPanelProps) {
+  // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
+  // single commit-action colour. The "Use this" log commit CTA below used
+  // `bg-success` (green) as a button fill — green is now reserved strictly
+  // for the calorie-ring state + macro identity, never a commit button.
+  // Gate behind `design_system_colours`:
+  //   flag ON  → blue commit CTA (`bg-primary`)
+  //   flag OFF → existing green (old path stays alive in the ternary else).
+  const commitCtaClass = isFeatureEnabled("design_system_colours")
+    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+    : "bg-success text-white hover:bg-success/90";
+  // ENG-815 (LANE: search-results UI). Gate the redesigned results body —
+  // one segmented control, elevated grouped result cards, a legible
+  // Verified / Estimated confidence chip, Best/More split — behind
+  // `redesign_search_results`. flag OFF keeps the legacy flat hairline list
+  // alive in the `else` (the old `divide-y` block below). Pixel + behaviour
+  // parity with the mobile sibling lane (same flag, same prototype).
+  const searchResultsRedesign = isFeatureEnabled("redesign_search_results");
+  // ENG P5 parity (gap #5/#9). Two-flag relationship on this surface:
+  //   `redesign_search_results` = STRUCTURE (segmented control + grouped cards)
+  //   `design_system_elevation` = DEPTH (the soft `--elev-card-soft` shadow)
+  // Mobile routes the identical surface through `useCardElevation()`, which
+  // reads `design_system_elevation` and falls back to a flat hairline border
+  // when off. Web previously painted the soft shadow UNCONDITIONALLY inside the
+  // structural block — so if elevation is held off while the structural flag
+  // ramps, web showed soft shadows mobile suppresses. Gate the depth here too,
+  // mirroring the other web consumers (Settings.tsx:652, RecipeDetail.tsx:322):
+  //   flag ON  → `--elev-card-soft` shadow, border dropped (no double edge).
+  //   flag OFF → flat hairline (`border border-border`), no shadow.
+  const elevated = isFeatureEnabled("design_system_elevation");
   const [results, setResults] = useState<SearchResult[]>([]);
+  // ENG-815 — one unified segmented control (replaces the prototype's two
+  // clashing filter languages). Every category here has REAL backing logic —
+  // a presentational `_source` filter over the existing merged `results` — so
+  // no chip is a dead affordance. Mirrors the mobile sibling's category set
+  // ("Custom" = user-authored, "Branded" = FatSecret Premier, "Generic" =
+  // USDA/OFF/Edamam/Generic*). Only consumed on the redesigned path.
+  const [activeCategory, setActiveCategory] = useState<
+    "All" | "Custom" | "Branded" | "Generic"
+  >("All");
+  const SEARCH_CATEGORIES = ["All", "Custom", "Branded", "Generic"] as const;
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   /**
@@ -829,6 +936,17 @@ export function FoodSearchPanel({
           const isVerified = Boolean(r.verified);
           if (isBareGenericNounRow(r.name, isVerified)) return false;
           if (isLowRelevanceNonVerifiedRow(r._rel as number, isVerified)) return false;
+          // ENG-807 — honest low-confidence demotion keyed off the REAL tier
+          // (provenance + name match), not the raw `verified` flag. Drops e.g.
+          // a USDA Branded "EGGS" row that carries `verified: false` but high
+          // token overlap. `matchScore` is name-only (trust weight is already
+          // in `_rel` and the tier provenance check — not double-counted).
+          const tier = searchRowConfidenceTier({
+            source: r._source,
+            verified: isVerified,
+            matchScore: searchMatchScore(q, r.name),
+          });
+          if (isLowConfidenceDemotedRow({ tier, score: r._rel as number })) return false;
           return true;
         });
       // 2026-05-06: Per-source dedup (not cross-source). Same-named
@@ -848,7 +966,19 @@ export function FoodSearchPanel({
             : `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
         if (seen.has(norm)) continue;
         seen.add(norm);
-        deduped.push(r);
+        // ENG-807 — stamp the honest confidence tier on every surviving row so
+        // the UI (next stage's lane) can render the Verified / Estimated chip
+        // without recomputing the match. Derived from BOTH provenance and the
+        // name match (never source alone). Custom rows are user-authored →
+        // "estimated"; the row already carries its own "Custom" badge.
+        deduped.push({
+          ...r,
+          confidenceTier: searchRowConfidenceTier({
+            source: r._source,
+            verified: Boolean(r.verified),
+            matchScore: searchMatchScore(q, r.name),
+          }),
+        });
         if (deduped.length >= limit) break;
       }
       return deduped;
@@ -1440,6 +1570,191 @@ export function FoodSearchPanel({
     return shouldShowBarcodeFallbackHint(locale ?? null);
   }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
 
+  // ENG-815 — apply the active category filter, then split into Best/More via
+  // the shared `splitFoodSearchResults` (same threshold + scorer as mobile).
+  // Only used on the redesigned path; computed unconditionally so React's
+  // hook order is stable when the flag toggles. `All` is identity. Each branch
+  // filters by `_source` exactly like the mobile sibling lane.
+  const filteredResults = useMemo<SearchResult[]>(() => {
+    switch (activeCategory) {
+      case "Custom":
+        return results.filter((r) => r._source === "CUSTOM");
+      case "Branded":
+        return results.filter((r) => r._source === "FatSecret");
+      case "Generic":
+        return results.filter(
+          (r) =>
+            r._source === "USDA" ||
+            r._source === "OFF" ||
+            r._source === "Edamam" ||
+            r._source === "GenericBeverage" ||
+            r._source === "GenericFood",
+        );
+      case "All":
+      default:
+        return results;
+    }
+  }, [results, activeCategory]);
+  const sectionedResults = useMemo(
+    () => splitFoodSearchResults(query.trim(), filteredResults),
+    [query, filteredResults],
+  );
+
+  // ENG-815 — render one redesigned (elevated, chip-bearing) result row.
+  // Shares all behaviour with the legacy row (same `onPickResult`, same
+  // custom-food edit/delete menu, same headline data) — only the chrome
+  // changes: card seam instead of hairline, legible confidence chip instead
+  // of the 14px green tick, "per 100g · source" byline. Defined as a closure
+  // so it reuses the component's handlers + state without prop drilling.
+  const renderRedesignedRow = (item: SearchResult) => {
+    const isCustom = item._source === "CUSTOM";
+    const customFood = isCustom ? item._custom : null;
+    const headline = resolveFoodSearchHeadline(item);
+    // Custom rows keep their own "Custom" badge (not a confidence chip). For
+    // every other row, render the honest tier the data layer stamped. We never
+    // invent a chip the model didn't back — fall back to "estimated" only when
+    // the tier is genuinely absent (defensive; `mergeAndDedup` always stamps).
+    const tier: SearchRowConfidenceTier = item.confidenceTier ?? "estimated";
+    const sourceLabel = foodSearchSourceLabel(item._source);
+    return (
+      <div
+        key={item.key}
+        className="flex items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/50 [&+&]:shadow-[inset_0_1px_0_var(--border)] relative"
+      >
+        <button
+          type="button"
+          onClick={() => onPickResult(item)}
+          disabled={loadingKey === item.key}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[15px] font-semibold text-foreground truncate">{item.name}</span>
+              {isCustom ? (
+                <Badge variant="custom">Custom</Badge>
+              ) : (
+                <span
+                  data-testid={`food-search-confidence-${tier}`}
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
+                    tier === "verified" ? "bg-primary/10 text-primary" : ""
+                  }`}
+                  // ENG P5 parity (gap #11): the Estimated chip must NOT reuse
+                  // the over-budget `--warning` orange — that exact token paints
+                  // the over-budget fat macro in this same row, so one colour
+                  // would mean both "estimated data" and "over-budget". Use the
+                  // dedicated warm-amber `--chip-estimated` (#BF8324) token,
+                  // mirroring the mobile chip
+                  // (apps/mobile/components/ui/SearchResultConfidenceChip.tsx:60)
+                  // exactly. Verified branch unchanged.
+                  style={
+                    tier === "verified"
+                      ? undefined
+                      : {
+                          color: "var(--chip-estimated)",
+                          backgroundColor: "var(--chip-estimated-soft)",
+                        }
+                  }
+                >
+                  {tier === "verified" ? (
+                    <Icons.check className="h-2.5 w-2.5" aria-hidden />
+                  ) : (
+                    <Icons.info className="h-2.5 w-2.5" aria-hidden />
+                  )}
+                  {tier === "verified" ? "Verified" : "Estimated"}
+                </span>
+              )}
+            </div>
+            {headline.mode === "per-serving" ? (
+              <>
+                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
+                  <span className="text-destructive">P {headline.macros.protein}g</span>
+                  <span className="text-primary">C {headline.macros.carbs}g</span>
+                  <span className="text-warning">F {headline.macros.fat}g</span>
+                </div>
+                <span className="block mt-0.5 text-[11px] text-muted-foreground/80">
+                  {headline.servingLabel}
+                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""} · {sourceLabel}
+                </span>
+              </>
+            ) : headline.mode === "per-100g" && headline.macros ? (
+              <>
+                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
+                  <span className="text-destructive">P {headline.macros.protein}g</span>
+                  <span className="text-primary">C {headline.macros.carbs}g</span>
+                  <span className="text-warning">F {headline.macros.fat}g</span>
+                </div>
+                <span className="block mt-0.5 text-[11px] text-muted-foreground/80">
+                  {FOOD_SEARCH_PER_100G_BADGE} · {sourceLabel}
+                </span>
+              </>
+            ) : headline.mode === "per-100g" ? (
+              <span className="block mt-1 text-[11px] text-muted-foreground/80">
+                {FOOD_SEARCH_PER_100G_BADGE} · {sourceLabel}
+              </span>
+            ) : (
+              <span className="block mt-1 text-xs text-muted-foreground">Tap for nutrition info</span>
+            )}
+          </div>
+          {headline.mode !== "placeholder" && loadingKey !== item.key ? (
+            <div className="flex flex-col items-end shrink-0">
+              <span className="text-[18px] font-extrabold text-foreground tabular-nums leading-none">{headline.headlineKcal}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mt-0.5">kcal</span>
+            </div>
+          ) : null}
+          {loadingKey === item.key ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+          ) : (
+            <Icons.forward className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
+        {isCustom && customFood && (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpenFor((cur) => (cur === customFood.id ? null : customFood.id));
+              }}
+              aria-label={`More options for ${customFood.name}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpenFor === customFood.id}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <span aria-hidden="true" className="text-lg leading-none">⋯</span>
+            </button>
+            {menuOpenFor === customFood.id && (
+              <div
+                role="menu"
+                className="absolute right-0 top-9 z-10 min-w-[9rem] rounded-md border border-border bg-card shadow-lg py-1"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpenFor(null);
+                    setEditingFood(customFood);
+                    setCreateOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted/60"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleDeleteCustomFood(customFood)}
+                  className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-muted/60"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Preview takes over the panel when set.
   if (preview && scaled) {
     return (
@@ -1598,7 +1913,7 @@ export function FoodSearchPanel({
         <div className="border-t border-border bg-card -mx-3 px-3 py-3 shrink-0">
           <button
             onClick={onConfirm}
-            className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
+            className={`w-full py-3 rounded-xl ${commitCtaClass} font-semibold transition-colors flex items-center justify-center gap-2`}
           >
             <Icons.check className="h-4 w-4" />
             Use this
@@ -1652,13 +1967,96 @@ export function FoodSearchPanel({
           </div>
         )}
 
+        {/* ENG-815 — one unified segmented control (redesigned path only).
+            Replaces the prototype's two clashing filter languages with a
+            single horizontal control. Every chip filters real `_source` rows
+            (see `filteredResults`) — no dead affordance.
+            ENG P5 parity (gap #30): mobile renders this strip whenever the
+            panel is active with a query (`apps/mobile/.../FoodSearchPanel.tsx`
+            renders the category ScrollView unconditionally in the return),
+            NOT result-count gated. Web previously hid it on zero-result
+            queries — a parity break. Relaxed to render whenever the user has
+            searched (`query.trim()`), so a no-result query keeps the filter
+            control visible above the "No results" empty state, matching mobile.
+            The inactive pill's soft shadow is depth (`design_system_elevation`,
+            gap #5); the strip's STRUCTURE stays under `redesign_search_results`. */}
+        {searchResultsRedesign && query.trim() && (
+          <div
+            role="tablist"
+            aria-label="Filter food results"
+            data-testid="food-search-category-tabs"
+            className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {SEARCH_CATEGORIES.map((cat) => {
+              const isActive = cat === activeCategory;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  data-testid={`food-search-category-${cat}`}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition-colors ${
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-border/80"
+                  }`}
+                  style={
+                    !isActive && elevated
+                      ? { boxShadow: "var(--elev-card-soft)" }
+                      : undefined
+                  }
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loading && results.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         )}
 
-        {results.length > 0 && (
+        {/* ENG-815 — redesigned results body: elevated grouped result cards,
+            Best/More split, legible Verified/Estimated confidence chip. Old
+            flat hairline list stays alive in the `else` below. */}
+        {searchResultsRedesign && results.length > 0 ? (
+          <div data-testid="food-search-results-redesign">
+            {filteredResults.length === 0 ? (
+              <p
+                className="py-6 text-center text-sm text-muted-foreground"
+                data-testid="food-search-category-empty"
+              >
+                No {activeCategory.toLowerCase()} foods in these results.
+              </p>
+            ) : (
+              [
+                { label: "Best matches", rows: sectionedResults.best },
+                { label: "More results", rows: sectionedResults.more },
+              ]
+                .filter((section) => section.rows.length > 0)
+                .map((section) => (
+                  <div key={section.label}>
+                    <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                      {section.label}
+                    </p>
+                    <div
+                      className={`mb-3.5 overflow-hidden rounded-2xl bg-card ${
+                        elevated ? "border-0" : "border border-border"
+                      }`}
+                      style={elevated ? { boxShadow: "var(--elev-card-soft)" } : undefined}
+                    >
+                      {section.rows.map((item) => renderRedesignedRow(item))}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        ) : results.length > 0 ? (
           <div className="divide-y divide-border">
             {results.map((item) => {
               const isCustom = item._source === "CUSTOM";
@@ -1774,7 +2172,7 @@ export function FoodSearchPanel({
               );
             })}
           </div>
-        )}
+        ) : null}
 
         {/* Infinite-scroll sentinel — F-10. */}
         {results.length > 0 && (

@@ -22,6 +22,7 @@ import {
   buildDigestStory,
   type DigestStoryInput,
 } from "../../../lib/nutrition/digestStory";
+import { SupprCard } from "../ui/suppr-card";
 
 export interface DigestStoryCardProps extends DigestStoryInput {
   className?: string;
@@ -33,16 +34,12 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
   const isEmpty = input.daysLogged <= 0;
 
   return (
-    <section
+    <SupprCard
       data-slot="digest-story-card"
       data-testid="digest-story-card"
-      className={[
-        "rounded-2xl border border-border bg-card p-5",
-        "shadow-[var(--elev-card,0_1px_2px_rgba(0,0,0,0.04))]",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      padding="xl"
+      radius="xl"
+      className={className}
       aria-label={
         isEmpty
           ? "Week digest. Quiet week — log a meal to start your story."
@@ -106,7 +103,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           ) : null}
         </div>
       )}
-    </section>
+    </SupprCard>
   );
 }
 

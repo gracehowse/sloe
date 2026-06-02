@@ -1,7 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   buildProgressStoryPlaceholder,
@@ -34,6 +35,7 @@ export function ProgressStoryGate({
   testID,
 }: ProgressStoryGateProps) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const placeholder = buildProgressStoryPlaceholder(daysLogged);
 
   // Ring geometry — small (24pt), single-stroke arc that fills as
@@ -53,10 +55,11 @@ export function ProgressStoryGate({
       accessibilityLabel={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
       style={[
         styles.card,
-        Elevation.card,
+        cardElevation.shadowStyle,
         {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderColor: colors.cardBorder,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
         },
         style,
       ]}

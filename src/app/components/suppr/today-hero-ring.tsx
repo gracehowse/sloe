@@ -3,6 +3,7 @@
 import * as React from "react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 import { MACRO_RING_TOGGLE } from "../../../lib/copy/today";
+import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
  * TodayHeroRing — Today-screen calorie ring wrapper.
@@ -46,6 +47,11 @@ export interface TodayHeroRingProps {
    *  explainer is now reached from the Targets sub-tab inside More
    *  (mirrors mobile). */
   onPressWhy?: () => void;
+
+  /** ENG-798 win-moment ring pulse — forwarded to `DailyRing`. True for
+   *  ~200ms after a Today landmark fires (the web analog of mobile's
+   *  success haptic). */
+  pulse?: boolean;
 }
 
 export function TodayHeroRing({
@@ -59,6 +65,7 @@ export function TodayHeroRing({
   displayMode,
   onDisplayModeChange: _onDisplayModeChange,
   onPressWhy: _onPressWhy,
+  pulse = false,
 }: TodayHeroRingProps) {
   // 2026-05-12 round 4 (Grace TF, web parity with mobile): the
   // "Why this number?" pill was dropped. Audit: pill signalled low
@@ -68,7 +75,16 @@ export function TodayHeroRing({
   // is reachable from the Targets sub-tab (inside More) on web too,
   // not from Today's hero. Today stays clean.
   return (
-    <div className="flex flex-col items-center mb-3 rounded-card border border-border bg-card px-4 py-3 gap-2">
+    // Design Direction 2026 (ENG-795): routed through the canonical SupprCard
+    // so the resting hero card adopts the soft ambient elevation when
+    // `design_system_elevation` is ON (and drops its hairline border). Flag
+    // OFF keeps the prior flat `bg-card` + hairline treatment. `padding="none"`
+    // preserves the exact asymmetric `px-4 py-3` geometry.
+    <SupprCard
+      radius="lg"
+      padding="none"
+      className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
+    >
       <DailyRing
         consumed={consumed}
         target={target}
@@ -79,6 +95,7 @@ export function TodayHeroRing({
         fatPct={fatPct}
         expanded={expanded}
         displayMode={displayMode}
+        pulse={pulse}
       />
       <button
         type="button"
@@ -88,6 +105,6 @@ export function TodayHeroRing({
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>
-    </div>
+    </SupprCard>
   );
 }

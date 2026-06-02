@@ -2,6 +2,7 @@ import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
@@ -140,6 +141,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     onDismissActivityBudgetDiscover,
     showActivityBudgetDiscoverBanner = false,
   } = props;
+  const cardElevation = useCardElevation();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
@@ -220,14 +222,14 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     <View style={styles.card}>
       {showDiscover ? (
         <View
-          style={{
+          style={[{
             marginBottom: Spacing.sm,
             padding: Spacing.sm,
             borderRadius: Radius.md,
-            borderWidth: 1,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: cardBorderColor,
-            backgroundColor: cardColor,
-          }}
+            backgroundColor: cardElevation.liftBg ?? cardColor,
+          }, cardElevation.shadowStyle]}
         >
           <Text style={{ fontSize: 12, fontWeight: "700", color: textColor }}>{ACTIVITY_BUDGET_DISCOVER_TITLE}</Text>
           <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4, lineHeight: 15 }}>
@@ -354,17 +356,17 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       {((activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0) && (
         <Pressable
           onPress={onOpenBurnDetail}
-          style={{
+          style={[{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             padding: Spacing.md,
             marginBottom: Spacing.md,
             borderRadius: Radius.md,
-            backgroundColor: cardColor,
-            borderWidth: 1,
+            backgroundColor: cardElevation.liftBg ?? cardColor,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: cardBorderColor,
-          }}
+          }, cardElevation.shadowStyle]}
         >
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -525,14 +527,14 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           >
             <View
               testID="today-activity-bonus-info-content"
-              style={{
+              style={[{
                 maxWidth: 360,
-                backgroundColor: cardColor,
+                backgroundColor: cardElevation.liftBg ?? cardColor,
                 borderRadius: Radius.md,
                 padding: Spacing.md,
-                borderWidth: 1,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: cardBorderColor,
-              }}
+              }, cardElevation.shadowStyle]}
             >
               <Text style={{ fontSize: 13, fontWeight: "700", color: textColor, marginBottom: Spacing.sm }}>
                 Maintenance TDEE

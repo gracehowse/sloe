@@ -39,6 +39,8 @@ const authedTestMatch = [
   /visual-regression-subpages\.spec\.ts/,
   /visual-regression-deep\.spec\.ts/,
   /screenshots\/web-authed-tour\.spec\.ts/,
+  /screenshots\/redesign-flags-capture\.spec\.ts/,
+  /screenshots\/redesign-populated\.spec\.ts/,
   /screenshots\/today-premium/,
   /ai\//,
 ];

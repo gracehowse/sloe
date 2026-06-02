@@ -1,5 +1,5 @@
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
   SupprMark,
@@ -9,6 +9,23 @@ import {
 } from "../../src/app/components/ui/suppr-mark";
 
 void React;
+
+// Redesign 2026 ships default-ON (`REDESIGN_DEFAULT_ON` in `track.ts`); the
+// `design_system_brandmark` on-state swaps the plate mark. This file pins the
+// pre-redesign monochrome plate mark, so force the design-system flags OFF via
+// the `window.__SUPPR_FORCE_FLAGS__` hook `track.ts` honours (explicit `false`
+// wins over default-on). On-state is covered by `MarkBrandmarkOn` in the story.
+beforeEach(() => {
+  (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+    design_system_elevation: false,
+    design_system_colours: false,
+    design_system_brandmark: false,
+    design_system_icons: false,
+  };
+});
+afterEach(() => {
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+});
 
 /**
  * Tests for the `SupprMark` brand-mark primitive (Phase 1 of the
@@ -74,10 +91,23 @@ describe("SupprWordmark", () => {
     expect(screen.getByRole("img", { name: "Suppr" })).toBeInTheDocument();
   });
 
-  it("scales the wordmark text proportionally to the size prop", () => {
+  it("scales the wordmark text at the 0.72 ratio to match mobile (ENG-797 parity)", () => {
     render(<SupprWordmark size={40} />);
     const word = screen.getByText("Suppr");
-    // 0.64 * 40 = 25.6 → rounded to 26
-    expect(word).toHaveStyle({ fontSize: "26px" });
+    // Web↔mobile parity: mobile SupprMark.tsx uses Math.round(size * 0.72).
+    // 0.72 * 40 = 28.8 → rounded to 29.
+    expect(word).toHaveStyle({ fontSize: "29px" });
+  });
+
+  it("matches the canonical plate wordmark ratio at the default size", () => {
+    // Both wordmark variants must share the 0.72 multiplier so the
+    // legacy and canonical brand paths stay pixel-identical to mobile.
+    const { container: legacy } = render(<SupprWordmark size={28} />);
+    const { container: plate } = render(<SupprPlateWordmark size={28} />);
+    // 0.72 * 28 = 20.16 → rounded to 20.
+    const legacyWord = legacy.querySelector('[data-slot="suppr-wordmark"] span');
+    const plateWord = plate.querySelector('[data-slot="suppr-plate-wordmark"] span');
+    expect(legacyWord).toHaveStyle({ fontSize: "20px" });
+    expect(plateWord).toHaveStyle({ fontSize: "20px" });
   });
 });

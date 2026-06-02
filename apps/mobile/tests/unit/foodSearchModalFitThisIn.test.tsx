@@ -62,6 +62,9 @@ vi.mock("@/lib/verifyRecipe", () => {
     sodiumMg: 60,
   };
   return {
+    // ENG-839: verifyRecipe now exports splitFoodSearchResults (best/more
+    // sectioning); mock it as a passthrough so the import resolves.
+    splitFoodSearchResults: (_q: string, rows: any[]) => ({ best: rows ?? [], more: [] }),
     searchFoods: vi.fn(async (query: string, onPartial?: (r: unknown[]) => void) => {
       // Return exactly one OFF row that already has macrosPer100g
       // inline — this is the OFF-path branch in `onPickResult`, which

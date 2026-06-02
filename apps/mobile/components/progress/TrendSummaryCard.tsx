@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Elevation, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
+import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 
@@ -45,6 +46,7 @@ export function TrendSummaryCard({
   testID,
 }: TrendSummaryCardProps) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
 
   if (!isFeatureEnabled("progress-trend-summary-mobile")) return null;
 
@@ -76,8 +78,12 @@ export function TrendSummaryCard({
       accessibilityRole="summary"
       style={[
         styles.card,
-        Elevation.card,
-        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+        cardElevation.shadowStyle,
+        {
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderColor: colors.cardBorder,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+        },
       ]}
     >
       <Text

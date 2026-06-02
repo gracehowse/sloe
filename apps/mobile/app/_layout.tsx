@@ -147,6 +147,12 @@ function ForwardSocialSharesToImport() {
       const action = decideDeepLinkAction(href);
       if (action.kind === "forward-to-import") {
         router.replace({ pathname: "/import-shared", params: { url: action.url } });
+      } else if (action.kind === "navigate") {
+        // ENG-800: well-known path aliases (e.g. suppr:///plan → the
+        // Plan tab, route file planner.tsx). Without this, the alias
+        // path has no registered route and Expo Router falls through
+        // to +not-found.tsx (the "recipe may have been deleted" 404).
+        router.replace(action.pathname as Parameters<typeof router.replace>[0]);
       }
       // "ignore" / "siri" → no-op (Siri owned by HandleSiriDeepLinks).
     },
@@ -440,6 +446,13 @@ const STACK_HEADER_HIDDEN = new Set([
   // titles. The in-screen header is the canonical one (matches
   // burn-detail's pattern).
   "macro-detail",
+  // ENG-825 (2026-05-31 design-direction macro/meal lane): Meal
+  // Nutrition now renders its own `PushScreenHeader` for BOTH the
+  // single-meal and slot-aggregate modes (it previously drove the
+  // native stack header via `navigation.setOptions` in single-meal
+  // mode only). Suppress the auto-stack header so the two don't double
+  // up — same fix shape as macro-detail / burn-detail above.
+  "meal-nutrition",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */

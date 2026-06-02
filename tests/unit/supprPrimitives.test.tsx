@@ -14,7 +14,7 @@
  * Phase 2 work (sweeping callers) does not change this surface.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { SupprCard } from "../../src/app/components/ui/suppr-card";
@@ -28,6 +28,27 @@ import {
 } from "../../src/app/components/ui/skeleton-row";
 
 void React;
+
+// Redesign 2026 ships default-ON (`REDESIGN_DEFAULT_ON` in `track.ts`). This
+// file pins the pre-redesign FLAT primitive treatment, so force the design-
+// system flags OFF via the same `window.__SUPPR_FORCE_FLAGS__` hook `track.ts`
+// honours — an explicit `false` wins over the default-on. The redesign on-state
+// is covered by Storybook + Chromatic. (Reconciliation 2026-06-01: keep the
+// flat path under test.)
+const FLAT_FLAGS = {
+  design_system_elevation: false,
+  design_system_colours: false,
+  design_system_brandmark: false,
+  design_system_icons: false,
+} as const;
+beforeEach(() => {
+  (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+    ...FLAT_FLAGS,
+  };
+});
+afterEach(() => {
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+});
 
 describe("SupprCard", () => {
   it("renders children with default neutral tone + card elevation", () => {

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Progress beige polish — before / after (web + mobile)</title>
+<style>
+  :root{
+    /* canonical light tokens (theme.ts / theme.css) */
+    --ink:#1a1714; --sub:#6b665c; --dim:#9a958a; --faint:#b4afa4;
+    --card:#ffffff; --border:#ebe7dc; --hairline:#ebe7dc;
+    --page:#fbfaf6;                 /* warm-white page */
+    --bg2:#f5f3ec;                  /* backgroundSecondary — THE beige */
+    --blue:#588CE4; --green:#3E9D74; --greenbg:#E9F5EF; --amber:#E08A3C;
+    --radius:20px;
+
+    /* hero-fill candidates (all derived from #f5f3ec over #fff) */
+    --fill-before:#f5f3ec;          /* 100% — shipped mobile (opaque) */
+    --fill-b:#f7f5ef;               /* ~80% — calm tint */
+    --fill-a:#fbfaf7;               /* ~40% — web parity (bg-muted/40) */
+    /* option C uses no fill */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#e9e7e0;color:var(--ink);padding:36px 28px 80px;-webkit-font-smoothing:antialiased}
+  h1{font-size:21px;margin-bottom:6px;letter-spacing:-.2px}
+  .lede{color:#56514a;font-size:13px;margin-bottom:6px;max-width:900px;line-height:1.6}
+  .lede b{color:#2c2823}
+  .meta{color:#8a8579;font-size:11.5px;margin-bottom:30px}
+  .tnum{font-variant-numeric:tabular-nums}
+  code{background:#dedbd2;border-radius:4px;padding:1px 5px;font-size:11.5px;font-family:"SF Mono",ui-monospace,Menlo,monospace}
+
+  section{margin-bottom:46px}
+  .h2{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#7c776c;font-weight:700;margin-bottom:4px}
+  .h2sub{font-size:12.5px;color:#6f6a60;margin-bottom:20px;max-width:860px;line-height:1.55}
+
+  .row{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .col-title{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#8a8579;font-weight:700;text-align:center}
+  .col-note{font-size:11px;color:#9a958a;text-align:center;max-width:300px;line-height:1.5}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+  .pill.now{background:#f3dada;color:#9a3b3b}
+  .pill.rec{background:#d8ecdf;color:#2f7c54}
+  .pill.alt{background:#dfe6f6;color:#3a55b8}
+  .swatch{font-size:10.5px;color:#9a958a;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+  /* ── iPhone frame ── */
+  .phone{width:330px;border-radius:46px;background:#0d0d10;padding:11px;box-shadow:0 20px 50px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.18)}
+  .phone .screen{position:relative;border-radius:36px;overflow:hidden;background:var(--page);min-height:560px}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:118px;height:26px;background:#0d0d10;border-bottom-left-radius:16px;border-bottom-right-radius:16px;z-index:5}
+  .phone .status{display:flex;justify-content:space-between;align-items:center;padding:11px 26px 0;font-size:12px;font-weight:600;color:var(--ink)}
+  .phone .body{padding:26px 16px 20px}
+  .scr-title{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:16px}
+
+  /* web frame */
+  .webframe{width:430px;border-radius:14px;border:1px solid #d7d3ca;overflow:hidden;background:var(--page);box-shadow:0 12px 34px rgba(0,0,0,.10)}
+  .webbar{display:flex;align-items:center;gap:7px;padding:9px 14px;background:#f2efe8;border-bottom:1px solid #e4e0d6}
+  .webbar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .webbar .u{margin-left:10px;font-size:11px;color:#9a958a}
+  .webbody{padding:22px 18px}
+
+  /* ── the digest card ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.035),0 10px 28px rgba(0,0,0,.045)}
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .eyebrow .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);font-weight:700}
+  .eyebrow .x{color:var(--faint);font-size:15px;line-height:1;cursor:default}
+
+  .hero{border-radius:14px;padding:16px 16px 14px;margin-bottom:16px}
+  .hero.before{background:var(--fill-before)}
+  .hero.optA{background:var(--fill-a)}
+  .hero.optB{background:var(--fill-b)}
+  .hero.optC{background:transparent;border:1px solid var(--hairline);padding:15px 16px 13px}
+  .hero .cap{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--sub);font-weight:700;margin-bottom:3px}
+  .hero .day{font-size:24px;font-weight:800;letter-spacing:-.4px;margin-bottom:13px}
+  .track{position:relative;height:3px;border-radius:2px;background:var(--border);margin:0 2px 7px}
+  .track .dot{position:absolute;top:50%;left:62%;width:11px;height:11px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 0 1px rgba(62,157,116,.35);transform:translate(-50%,-50%)}
+  .nums{display:flex;justify-content:space-between;align-items:baseline}
+  .you{font-size:27px;font-weight:800;color:var(--green);line-height:1}
+  .you small{font-size:13px;font-weight:600;margin-left:2px}
+  .tgt{font-size:14px;color:var(--dim);font-weight:600}
+  .lblrow{display:flex;justify-content:space-between;margin-top:3px}
+  .lblrow span{font-size:10px;color:var(--faint)}
+  .prot{font-size:12px;color:var(--sub);margin-top:10px}
+
+  .hr{height:1px;background:var(--hairline);margin:0 -2px}
+  .metrics{display:flex;padding:15px 0}
+  .metrics .m{flex:1}
+  .metrics .m + .m{padding-left:12px}
+  .m .v{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .m .v small{font-size:11px;font-weight:500;color:var(--dim)}
+  .m .v.green{color:var(--green)}
+  .m .k{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--sub);font-weight:700;margin-top:4px}
+  .m .s{font-size:10px;color:var(--faint);margin-top:1px}
+  .m .s.green{color:var(--green)}
+
+  .pattern{padding:15px 0}
+  .pattern .cap{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--sub);font-weight:700;margin-bottom:6px}
+  .pattern .sum{font-size:13px;font-weight:600;margin-bottom:10px}
+  .pbar{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+  .pbar .pl{font-size:11px;color:var(--sub);width:28px}
+  .pbar .tr{flex:1;height:8px;border-radius:4px;background:var(--border);overflow:hidden}
+  .pbar .tr i{display:block;height:100%;border-radius:4px;background:rgba(88,140,228,.24)}
+  .pbar .pv{font-size:11px;color:var(--faint);width:46px;text-align:right}
+  .pattern .delta{font-size:11px;color:var(--sub);text-align:right;margin-top:2px}
+
+  .foot{display:flex;align-items:center;gap:16px;margin-top:14px}
+  .share{display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:12px;background:rgba(62,157,116,.12);color:var(--green);font-size:14px;font-weight:700}
+  .gotit{font-size:14px;font-weight:600;color:var(--sub)}
+  .adj{font-size:11.5px;font-weight:600;color:var(--blue)}
+  .maint{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 4px}
+  .maint p{flex:1;font-size:11.5px;color:var(--sub);line-height:1.45}
+
+  /* swatch comparison strip */
+  .swrow{display:flex;gap:16px;flex-wrap:wrap}
+  .sw{width:172px}
+  .sw .chip{height:74px;border-radius:12px;border:1px solid var(--border);display:flex;align-items:flex-end;padding:9px 11px}
+  .sw .chip .cap{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);font-weight:700}
+  .sw .lab{font-size:11.5px;font-weight:700;margin-top:8px}
+  .sw .hex{font-size:10.5px;color:#9a958a;font-variant-numeric:tabular-nums;margin-top:1px}
+  .sw .desc{font-size:10.5px;color:#8f8a80;margin-top:5px;line-height:1.45}
+
+  .rec{margin-top:8px;background:#fff;border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:14px 16px;max-width:900px}
+  .rec h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#2f7c54;margin-bottom:7px}
+  .rec p{font-size:12.5px;color:#4a4640;line-height:1.6;margin-bottom:6px}
+  .rec p:last-child{margin-bottom:0}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#6f6a60}
+  .legend b{color:#2c2823}
+</style>
+</head>
+<body>
+
+  <h1>Progress “Week Digest” — beige polish</h1>
+  <p class="lede">
+    Your note: <b>“some of the beige on this page is too much, too prominent, too dark — leaves it feeling less premium.”</b>
+    Root cause found: the digest <b>hero fill</b> (the panel behind <code>CLOSEST TO TARGET</code>) renders differently per platform.
+    Web paints it at <b>40% alpha</b> (<code>bg-muted/40</code> ≈ a near-white tint). Mobile paints the same colour <b>fully opaque</b>
+    (<code>backgroundSecondary&nbsp;#f5f3ec</code>) — and even a touch darker than the ENG-740 prototype that was signed off. So on your phone
+    it reads as a real beige slab; on web it’s a whisper. This is the prominence you’re reacting to.
+  </p>
+  <p class="meta">Static prototype · web + mobile (iPhone frame) · no production code, no commits · red-line whichever “after” you want, or tell me to mix.</p>
+
+  <!-- ───────────────── 1. GUT CHECK — full mobile card ───────────────── -->
+  <section>
+    <div class="h2">1 · Gut check — the whole card, on mobile</div>
+    <div class="h2sub">Left is exactly what ships today. Right is my recommendation (Option&nbsp;A — match web’s faintness). Everything else on the card is identical; only the hero fill moves.</div>
+    <div class="row">
+
+      <div class="stack">
+        <span class="pill now">Now · shipping</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●●  ●</span></div>
+            <div class="body">
+              <div class="scr-title">Progress</div>
+              <!-- BEFORE card -->
+              <div class="card" id="beforeCard"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Hero fill <code>#f5f3ec</code> opaque — the “too prominent / too dark” slab.</div>
+      </div>
+
+      <div class="stack">
+        <span class="pill rec">Recommended · Option A</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●●  ●</span></div>
+            <div class="body">
+              <div class="scr-title">Progress</div>
+              <div class="card" id="afterCard"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Hero fill <code>#fbfaf7</code> (≈ web’s 40%). Hero still reads as one calm region; the beige stops shouting.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ───────────────── 2. THE FOUR HERO TREATMENTS ───────────────── -->
+  <section>
+    <div class="h2">2 · The four hero treatments, side by side</div>
+    <div class="h2sub">Same hero region, four fills — from today’s heaviest to no-fill. Pick one (or say “B but 10% lighter”). Whatever you choose, it’s applied to <b>both</b> platforms so web + mobile stop diverging.</div>
+    <div class="row" id="heroRow"></div>
+
+    <div class="swrow" style="margin-top:26px">
+      <div class="sw">
+        <div class="chip" style="background:var(--fill-before)"><span class="cap">Before</span></div>
+        <div class="lab">Before — shipped mobile</div>
+        <div class="hex">#f5f3ec · opaque (100%)</div>
+        <div class="desc">Heaviest. The current complaint.</div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--fill-b)"><span class="cap">Option B</span></div>
+        <div class="lab">B — calm tint</div>
+        <div class="hex">#f7f5ef · ≈80%</div>
+        <div class="desc">Keeps a soft warmth; drops the “dark.” Good if A feels too washed out.</div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--fill-a)"><span class="cap">Option A</span></div>
+        <div class="lab">A — web parity ★</div>
+        <div class="hex">#fbfaf7 · ≈40%</div>
+        <div class="desc">Matches what web already ships. Faint anchor, premium, fixes the divergence. My pick.</div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:#fff;position:relative">
+          <span class="cap">Option C</span>
+          <span style="position:absolute;inset:9px;border:1px solid var(--hairline);border-radius:8px"></span>
+        </div>
+        <div class="lab">C — hairline, no fill</div>
+        <div class="hex">#ffffff + 1px #ebe7dc</div>
+        <div class="desc">Most minimal. Warmth lives only in ink + hairline — on-brand with the 2026-05-22 token lock. Boldest.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────── 3. WEB SIDE ───────────────── -->
+  <section>
+    <div class="h2">3 · Web — barely changes</div>
+    <div class="h2sub">Web already paints the hero at 40%, so under Option A web stays put and mobile comes to meet it. (Under C, both go to the hairline treatment.) Shown so you can confirm parity holds.</div>
+    <div class="row">
+      <div class="stack">
+        <span class="pill" style="background:#e7e3da;color:#6f6a60">Web · now (Option A look)</span>
+        <div class="webframe">
+          <div class="webbar"><i style="background:#ec6a5e"></i><i style="background:#f4bf4f"></i><i style="background:#61c454"></i><span class="u">suppr.app/progress</span></div>
+          <div class="webbody"><div class="card" id="webCard"></div></div>
+        </div>
+        <div class="col-note">Web hero already ≈ <code>#fbfaf7</code>. No web change needed for Option A — only mobile moves.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────── recommendation ───────────────── -->
+  <section>
+    <div class="rec">
+      <h3>My recommendation</h3>
+      <p><b>Ship Option A (#fbfaf7, web parity) as the default.</b> The real defect here isn’t the colour — it’s that mobile drifted to <i>opaque</i> while web stayed at 40%. Option A fixes that divergence in one line, keeps the hero’s “one soft-filled region” intent from ENG-740, and immediately reads more premium on your phone.</p>
+      <p>If after seeing it in the sim you want to push further, <b>Option C (hairline, no fill)</b> is the more daring, most-premium move and is the most faithful to our own “warmth lives in ink + hairlines, not fills” lock — but it slightly weakens the hero as a distinct zone, so I’d only go there if A still feels too fill-y.</p>
+      <p style="color:#8a3b3b"><b>Not</b> shipping this blind: when you pick, it lands behind a new <code>progress_digest_beige_v2</code> flag (old fill alive in the <code>else</code>), web + mobile in the same change, with before/after sim + browser captures attached before any commit.</p>
+      <div class="legend">
+        <span><b>Before</b> #f5f3ec opaque</span>
+        <span><b>B</b> #f7f5ef ~80%</span>
+        <span><b>A ★</b> #fbfaf7 ~40%</span>
+        <span><b>C</b> no fill + #ebe7dc hairline</span>
+      </div>
+    </div>
+  </section>
+
+<script>
+  // ── shared card markup (real-ish data) ──
+  function cardHTML(heroClass){
+    return `
+      <div class="eyebrow"><span class="lbl">WEEK DIGEST · MAY 18–24</span><span class="x">✕</span></div>
+      <div class="hero ${heroClass}">
+        <div class="cap">Closest to target</div>
+        <div class="day">Wednesday</div>
+        <div class="track"><div class="dot"></div></div>
+        <div class="nums">
+          <div class="you tnum">1,847<small> kcal</small></div>
+          <div class="tgt tnum">1,900 target</div>
+        </div>
+        <div class="lblrow"><span>your day</span><span>target</span></div>
+        <div class="prot">142g protein · your most on-target day this week</div>
+      </div>
+      <div class="hr"></div>
+      <div class="metrics">
+        <div class="m"><div class="v tnum">5<small> d</small></div><div class="k">Streak</div></div>
+        <div class="m"><div class="v tnum">1,912</div><div class="k">Avg cal</div><div class="s">per day</div></div>
+        <div class="m"><div class="v tnum">138g</div><div class="k">Protein</div><div class="s green">92% of target</div></div>
+        <div class="m"><div class="v tnum">↓ 0.4<small> kg</small></div><div class="k">Weight</div><div class="s">79.1 → 78.7</div></div>
+      </div>
+      <div class="hr"></div>
+      <div class="pattern">
+        <div class="cap">Pattern</div>
+        <div class="sum">Saturdays ran higher than Tuesdays this week</div>
+        <div class="pbar"><span class="pl">Sat</span><span class="tr"><i style="width:100%"></i></span><span class="pv tnum">~2,180</span></div>
+        <div class="pbar"><span class="pl">Tue</span><span class="tr"><i style="width:78%"></i></span><span class="pv tnum">~1,700</span></div>
+        <div class="delta tnum">+480 kcal</div>
+      </div>
+      <div class="hr"></div>
+      <div class="maint">
+        <p>You’re averaging a small deficit — on pace for your goal.</p>
+        <span class="adj">Adjust pace →</span>
+      </div>
+      <div class="foot">
+        <span class="share">↗ Share week</span>
+        <span class="gotit">Got it</span>
+      </div>`;
+  }
+  document.getElementById('beforeCard').innerHTML = cardHTML('before');
+  document.getElementById('afterCard').innerHTML  = cardHTML('optA');
+  document.getElementById('webCard').innerHTML    = cardHTML('optA');
+
+  // hero-only comparison row
+  const heroes = [
+    ['before','Before — opaque','#f5f3ec','pill now'],
+    ['optB','Option B — calm tint','#f7f5ef','pill alt'],
+    ['optA','Option A — web parity ★','#fbfaf7','pill rec'],
+    ['optC','Option C — hairline','no fill','pill alt'],
+  ];
+  document.getElementById('heroRow').innerHTML = heroes.map(([cls,title,hex,pill])=>`
+    <div class="stack">
+      <span class="${pill}">${title}</span>
+      <div style="width:300px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 8px 22px rgba(0,0,0,.05)">
+        <div class="eyebrow"><span class="lbl">WEEK DIGEST · MAY 18–24</span><span class="x">✕</span></div>
+        <div class="hero ${cls}">
+          <div class="cap">Closest to target</div>
+          <div class="day">Wednesday</div>
+          <div class="track"><div class="dot"></div></div>
+          <div class="nums"><div class="you tnum">1,847<small> kcal</small></div><div class="tgt tnum">1,900 target</div></div>
+          <div class="lblrow"><span>your day</span><span>target</span></div>
+          <div class="prot">142g protein · most on-target day</div>
+        </div>
+      </div>
+      <div class="swatch">${hex}</div>
+    </div>`).join('');
+</script>
+</body>
+</html>

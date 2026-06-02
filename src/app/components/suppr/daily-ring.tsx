@@ -5,6 +5,8 @@ import { cn } from "../ui/utils";
 import { RING_LABELS } from "../../../lib/copy/today";
 import { isPremiumMotionV1Enabled } from "../../../lib/preferences/premiumMotionWeb";
 import { PREMIUM_MOTION_COUNT_MS } from "../../../lib/preferences/premiumMotion";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { useOdometer } from "../../../lib/useOdometer.ts";
 
 /**
  * DailyRing — circular progress ring for daily calorie target.
@@ -103,6 +105,24 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   onToggle?: () => void;
   /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
   displayMode?: CalorieRingDisplayMode;
+  /**
+   * ENG-798 (Redesign — Design Direction 2026) win-moment ring pulse.
+   * `true` for ~200ms (`WEB_WIN_PULSE_MS`) right after a Today landmark
+   * fires — the web colour/motion analog of mobile's success haptic (web
+   * has no haptics).
+   *
+   * Treatment (Design Direction 2026 §"goal-hit is the shared delight
+   * peak"): while true the progress arc fills with the **gold celebration
+   * gradient** (`--accent-win-gradient`) instead of plain success-green,
+   * thickens slightly, and gains a soft **gold glow** (`--accent-win`) — so
+   * the ring visibly "celebrates" the target-hit. Paired with the odometer
+   * settling onto the final number, this is the web peak. The
+   * `useWebWinMoment` hook already suppresses the pulse under
+   * `prefers-reduced-motion`, so no extra reduced-motion guard is needed
+   * here. Inert (no-op) when the `redesign_winmoment` flag is off because
+   * the hook only ever emits `pulse=true` behind that gate.
+   */
+  pulse?: boolean;
 }
 
 function DailyRing({
@@ -117,6 +137,7 @@ function DailyRing({
   expanded = false,
   onToggle,
   displayMode = "remaining",
+  pulse = false,
   ...props
 }: DailyRingProps) {
   const cx = size / 2;
@@ -173,15 +194,40 @@ function DailyRing({
   // set.
 
   const premiumMotion = isPremiumMotionV1Enabled();
+  // Design Direction 2026 (ENG-812): the calorie total is the "counting
+  // hero" — under `redesign_motion` it renders at display size and odometers
+  // up on change via the CANONICAL `useOdometer` (shared 900ms cubic-out
+  // curve, the same one mobile reads). Flag OFF keeps the bespoke
+  // `useAnimatedNumber` path byte-for-byte (incl. the existing premium-motion
+  // 500ms variant). Both hooks are called unconditionally to satisfy the
+  // rules of hooks; only the flagged one's output is rendered.
+  const motionEnabled = isFeatureEnabled("redesign_motion");
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
   // together. Snaps on display-mode toggle.
-  const animatedCenterValue = useAnimatedNumber(centerValue, {
+  const animatedLegacy = useAnimatedNumber(centerValue, {
     snapOn: displayMode,
     duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 800,
     animateFromZeroOnMount: premiumMotion,
   });
+  // Canonical odometer (ODOMETER_MS / cubic-out). Snaps across a display-mode
+  // switch (remaining ↔ consumed) and counts up from zero on mount; honours
+  // `prefers-reduced-motion` itself.
+  const animatedOdometer = useOdometer(centerValue, {
+    snapOn: displayMode,
+    animateFromZeroOnMount: true,
+  });
+  const animatedCenterValue = motionEnabled ? animatedOdometer : animatedLegacy;
+
+  // ENG-798 — gold celebration treatment is gated explicitly behind
+  // `redesign_winmoment` (the same flag the `pulse` source lives behind, read
+  // here too so the ring never lights gold while the win-moment is off). A
+  // target-hit is by definition the at/under-budget green state, so the
+  // celebration only ever lights an otherwise-green arc — never over-budget
+  // red or the empty track.
+  const winEnabled = isFeatureEnabled("redesign_winmoment");
+  const celebrating = pulse && winEnabled && !isEmpty && !isOverBudget;
 
   // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
   // macro arc stroke 5 → 7. The web ring is bigger than mobile
@@ -246,40 +292,71 @@ function DailyRing({
               strokeWidth={3}
             />
           </pattern>
+          {/* ENG-798 win-moment celebration gradient — mirrors the
+              `--accent-win-gradient` token (brand spectrum #588CE4 → #9679D9
+              → #DF5EBC, 120°). SVG `stroke` can't take a CSS
+              `linear-gradient()`, so the celebration arc references this def.
+              Only painted while `celebrating`. */}
+          <linearGradient id="winSpectrum" x1="0%" y1="0%" x2="86%" y2="50%">
+            <stop offset="0%" stopColor="#588CE4" />
+            <stop offset="50%" stopColor="#9679D9" />
+            <stop offset="100%" stopColor="#DF5EBC" />
+          </linearGradient>
+          {/* ENG-826 — calm "calibrating" idle gradient for the EMPTY ring
+              (zero logged / no target yet): a soft brand-blue tonal arc instead
+              of a flat grey track, matching the prototype's brand-gradient idle.
+              Deliberately NOT the win spectrum (reserved for celebration). */}
+          <linearGradient id="ringIdle" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#588CE4" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#7BA3EA" stopOpacity="0.22" />
+          </linearGradient>
         </defs>
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke="var(--ring-bg)"
+          stroke={isEmpty ? "url(#ringIdle)" : "var(--ring-bg)"}
           strokeWidth={strokeWidth}
-          opacity={isEmpty ? 0.35 : 1}
+          opacity={1}
         />
         <circle
+          data-testid="daily-ring-progress"
+          data-pulse={pulse ? "true" : undefined}
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
           stroke={
-            isEmpty
-              ? "var(--ring-bg)"
-              : isOverBudget
-                ? "var(--destructive)"
-                : "var(--success)"
+            celebrating
+              ? "url(#winSpectrum)"
+              : isEmpty
+                ? "url(#ringIdle)"
+                : isOverBudget
+                  ? "var(--destructive)"
+                  : "var(--success)"
           }
-          strokeWidth={strokeWidth}
+          // ENG-798 win-moment: a target-hit is by definition the
+          // at/under-budget state, so the celebration only ever lights an
+          // otherwise-green arc (never over-budget red / empty). For ~200ms
+          // the arc fills with the gold gradient, thickens slightly, and
+          // gains a soft gold glow — the web colour/motion analog of
+          // mobile's success haptic.
+          strokeWidth={celebrating ? strokeWidth + 3 : strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className={cn(
-            "transition-[stroke-dashoffset]",
+            "transition-[stroke-dashoffset,stroke-width,filter]",
             premiumMotion ? "duration-500" : "duration-700",
           )}
           style={{
             transitionTimingFunction: premiumMotion
               ? "cubic-bezier(0.32, 0.72, 0, 1)"
               : "var(--pm-ease)",
+            filter: celebrating
+              ? "drop-shadow(0 0 8px var(--accent-win))"
+              : undefined,
           }}
         />
         {/* Hashed overage segment — only when over budget. Starts at
@@ -377,7 +454,16 @@ function DailyRing({
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
             <span
-              className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] leading-none ph-mask"
+              className={cn(
+                "tabular-nums text-foreground -tracking-[0.02em] leading-none ph-mask",
+                // Design Direction 2026 — under `redesign_motion` the calorie
+                // total is the "counting hero": render it at display size,
+                // heavy. Flag OFF keeps the prior 22px / font-bold treatment
+                // byte-for-byte.
+                motionEnabled
+                  ? "text-[36px] font-extrabold"
+                  : "text-[22px] font-bold",
+              )}
               style={{ color: centerValueColor ?? undefined }}
             >
               {animatedCenterValue.toLocaleString()}

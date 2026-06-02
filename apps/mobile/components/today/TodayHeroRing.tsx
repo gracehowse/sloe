@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
 import { Layout } from "@/constants/layout";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -126,18 +127,22 @@ export function TodayHeroRing({
   textTertiaryColor: _textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
+  const cardElevation = useCardElevation();
   return (
     <View
-      style={{
-        backgroundColor: cardBackgroundColor,
-        borderWidth: 1,
-        borderColor: borderColor,
-        borderRadius: Radius.lg,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        alignItems: "center",
-        gap: Layout.todayScrollGap,
-      }}
+      style={[
+        {
+          backgroundColor: cardElevation.liftBg ?? cardBackgroundColor,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderColor: borderColor,
+          borderRadius: Radius.lg,
+          paddingVertical: Spacing.sm,
+          paddingHorizontal: Spacing.md,
+          alignItems: "center",
+          gap: Layout.todayScrollGap,
+        },
+        cardElevation.shadowStyle,
+      ]}
     >
       <CalorieRing
         consumed={consumed}

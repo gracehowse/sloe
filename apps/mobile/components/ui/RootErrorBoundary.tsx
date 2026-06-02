@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Accent, Spacing } from "@/constants/theme";
+import Svg, { Circle, Rect } from "react-native-svg";
+import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { captureException } from "@/lib/errorTracking";
 
 /**
@@ -16,6 +18,18 @@ import { captureException } from "@/lib/errorTracking";
  *
  * Class component because React's error-boundary contract requires
  * `componentDidCatch` / `getDerivedStateFromError`.
+ *
+ * ENG-799 (Redesign — Design Direction 2026, 2026-05-31): the recovery
+ * UI is rebuilt in the brand language (token colours via `Colors.dark.*`
+ * + `Accent.*`, brand mark, blue CTA) so the most off-brand moment in
+ * the app — a crash — no longer reads as a borrowed/raw OS error screen.
+ * Gated behind `redesign_branded_sheets`; flag-off renders the prior
+ * hardcoded-hex layout verbatim.
+ *
+ * This component sits ABOVE the theme provider (it must survive a crash
+ * in the provider tree), so it cannot use the `useThemeColors()` hook or
+ * the hook-dependent `SupprMark`. It references `Colors.dark.*` tokens
+ * directly and renders a self-contained inline brand mark.
  */
 
 interface State {
@@ -25,6 +39,25 @@ interface State {
 
 interface Props {
   children: React.ReactNode;
+}
+
+/** Self-contained ring brand mark — no theme-context / flag dependency
+ *  so it is safe to render inside the crashed tree. Mirrors the canonical
+ *  `SupprPlateMark` ring motif (ENG-797). */
+function InlineBrandMark({ size = 40, ring }: { size?: number; ring: string }) {
+  return (
+    <View
+      style={{ width: size, height: size }}
+      accessibilityRole="image"
+      accessibilityLabel="Suppr"
+    >
+      <Svg width={size} height={size} viewBox="0 0 32 32">
+        <Rect width="32" height="32" rx="8" fill="transparent" />
+        <Circle cx="16" cy="16" r="9.5" stroke={ring} strokeWidth="2" fill="none" opacity={0.95} />
+        <Circle cx="16" cy="16" r="5.5" stroke={ring} strokeWidth="1" fill="none" opacity={0.35} />
+      </Svg>
+    </View>
+  );
 }
 
 export class RootErrorBoundary extends React.Component<Props, State> {
@@ -46,74 +79,154 @@ export class RootErrorBoundary extends React.Component<Props, State> {
     this.setState((prev) => ({ error: null, resets: prev.resets + 1 }));
   };
 
-  render() {
-    if (this.state.error) {
-      return (
-        <View
-          accessibilityRole="alert"
+  renderBranded() {
+    const c = Colors.dark;
+    return (
+      <View
+        accessibilityRole="alert"
+        testID="root-error-boundary-branded"
+        style={{
+          flex: 1,
+          backgroundColor: c.background,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: Spacing.xl,
+          paddingVertical: Spacing.xxl,
+          gap: Spacing.lg,
+        }}
+      >
+        <InlineBrandMark size={44} ring={c.text} />
+        <Text
           style={{
-            flex: 1,
-            backgroundColor: "#0a0a0f",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: Spacing.xl,
-            paddingVertical: Spacing.xxl,
-            gap: Spacing.lg,
+            ...Type.title,
+            color: c.text,
+            textAlign: "center",
           }}
         >
+          Something went wrong
+        </Text>
+        <Text
+          style={{
+            ...Type.body,
+            color: c.textSecondary,
+            textAlign: "center",
+            maxWidth: 320,
+          }}
+        >
+          Suppr hit an unexpected error. The team has been notified. Tap Try
+          again to recover, or restart the app if it keeps happening.
+        </Text>
+        <Pressable
+          onPress={this.handleRetry}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          style={({ pressed }) => ({
+            backgroundColor: Accent.primary,
+            paddingHorizontal: Spacing.xl,
+            paddingVertical: Spacing.md,
+            borderRadius: Radius.xl,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>Try again</Text>
+        </Pressable>
+        {this.state.resets >= 2 ? (
           <Text
             style={{
-              fontSize: 22,
-              fontWeight: "700",
-              color: "#e4e4e8",
+              ...Type.caption,
+              color: c.textTertiary,
               textAlign: "center",
+              marginTop: Spacing.sm,
             }}
           >
-            Something went wrong
+            Still not working? Force-quit Suppr from the app switcher and
+            reopen.
           </Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  renderLegacy() {
+    return (
+      <View
+        accessibilityRole="alert"
+        style={{
+          flex: 1,
+          backgroundColor: "#0a0a0f",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: Spacing.xl,
+          paddingVertical: Spacing.xxl,
+          gap: Spacing.lg,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            color: "#e4e4e8",
+            textAlign: "center",
+          }}
+        >
+          Something went wrong
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            lineHeight: 20,
+            color: "#94a3b8",
+            textAlign: "center",
+            maxWidth: 320,
+          }}
+        >
+          Suppr hit an unexpected error. The team has been notified. Tap
+          Try again to recover, or restart the app if it keeps happening.
+        </Text>
+        <Pressable
+          onPress={this.handleRetry}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          style={({ pressed }) => ({
+            backgroundColor: Accent.primary,
+            paddingHorizontal: Spacing.xl,
+            paddingVertical: Spacing.md,
+            borderRadius: 12,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
+            Try again
+          </Text>
+        </Pressable>
+        {this.state.resets >= 2 ? (
           <Text
             style={{
-              fontSize: 14,
-              lineHeight: 20,
-              color: "#94a3b8",
+              fontSize: 12,
+              color: "#64748b",
               textAlign: "center",
-              maxWidth: 320,
+              marginTop: Spacing.sm,
             }}
           >
-            Suppr hit an unexpected error. The team has been notified. Tap
-            Try again to recover, or restart the app if it keeps happening.
+            Still not working? Force-quit Suppr from the app switcher and
+            reopen.
           </Text>
-          <Pressable
-            onPress={this.handleRetry}
-            accessibilityRole="button"
-            accessibilityLabel="Try again"
-            style={({ pressed }) => ({
-              backgroundColor: Accent.primary,
-              paddingHorizontal: Spacing.xl,
-              paddingVertical: Spacing.md,
-              borderRadius: 12,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
-              Try again
-            </Text>
-          </Pressable>
-          {this.state.resets >= 2 ? (
-            <Text
-              style={{
-                fontSize: 12,
-                color: "#64748b",
-                textAlign: "center",
-                marginTop: Spacing.sm,
-              }}
-            >
-              Still not working? Force-quit Suppr from the app switcher and
-              reopen.
-            </Text>
-          ) : null}
-        </View>
-      );
+        ) : null}
+      </View>
+    );
+  }
+
+  render() {
+    if (this.state.error) {
+      // `isFeatureEnabled` is wrapped so a cold/throwing flag client can
+      // never make the recovery UI itself crash — fall back to legacy.
+      let branded = false;
+      try {
+        branded = isFeatureEnabled("redesign_branded_sheets");
+      } catch {
+        branded = false;
+      }
+      return branded ? this.renderBranded() : this.renderLegacy();
     }
     return this.props.children;
   }

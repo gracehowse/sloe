@@ -59,7 +59,14 @@ import {
 } from "lucide-react-native";
 import { Accent, Elevation, MacroColors, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
-import ReAnimated from "react-native-reanimated";
+import ReAnimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from "react-native-reanimated";
+import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -84,6 +91,10 @@ import {
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
 import { normalizeShoppingIngredientRow } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
+import {
+  planWeekHeadlineTone,
+  type PlanWeekHeadlineTone,
+} from "@suppr/shared/planning/planWeekSummary";
 import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import {
@@ -126,6 +137,14 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
+import { PlanEmptyState } from "@/components/PlanEmptyState";
+import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
+import {
+  type PlanSourceMode,
+  DEFAULT_PLAN_SOURCE_MODE,
+  selectPlanPool,
+  canGenerateFromSource,
+} from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -376,6 +395,14 @@ export default function PlannerScreen() {
     [savedRecipes, discoverRecipes],
   );
 
+  // ENG-790 — count of discover recipes the user hasn't already saved
+  // (the "Discovery" pool size). De-duped against the library so the
+  // count badge + generate gate match `selectPlanPool`'s combined math.
+  const discoverCount = useMemo(() => {
+    const savedIds = new Set(savedRecipes.map((r) => r.id));
+    return discoverRecipes.filter((r) => !savedIds.has(r.id)).length;
+  }, [discoverRecipes, savedRecipes]);
+
   /**
    * Recipe-wave (2026-05-10): "Defaults to recipes that don't exist".
    *
@@ -421,6 +448,36 @@ export default function PlannerScreen() {
   // via PostHog targeting (TestFlight) or `EXPO_PUBLIC_FLAG_FORCE_PLAN_IMPORT_ENABLED=true`
   // in the sim. The screen + API routes stay alive behind the flag.
   const planImportEnabled = isFeatureEnabled("plan_import_enabled");
+
+  // ENG-788 (2026-05-30) — Grace: "I dont know what happened here but it
+  // looks terrible." At 0 saved recipes the old empty state rendered the
+  // full day/start/meal config form ending in a permanently-disabled
+  // 40%-opacity Generate button — a dead end. Behind `plan_empty_state_v2`:
+  // at 0 recipes show the calm `<PlanEmptyState>` with a solid ENABLED
+  // "Browse recipe library" CTA (the config form is meaningless with
+  // nothing to plan); at ≥1 recipe keep the form but lift the pills to the
+  // primary accent (web parity — `MealPlanner.tsx` uses `border-primary
+  // bg-primary/10 text-primary`). Flag OFF → legacy path unchanged below.
+  // Override in sim via `EXPO_PUBLIC_FLAG_FORCE_PLAN_EMPTY_STATE_V2=true`.
+  const planEmptyStateV2 = isFeatureEnabled("plan_empty_state_v2");
+
+  // ENG-790 (2026-05-31) — Grace: "give them the option to generate from the
+  // discovery pool … we should probably always give these options — plan from
+  // library only, library & discovery, only discovery." A three-way source
+  // selector at the top of the plan form lets the user choose where generated
+  // recipes are drawn from. This SUPERSEDES `plan_empty_state_v2`: the calm
+  // empty state is no longer the whole 0-saved screen — instead "Discovery
+  // only" / "Library & discovery" stay generatable at 0 saves, and the
+  // ENG-788 empty card becomes the "My library is empty" sub-case (shown only
+  // when the user explicitly picks "My library" with nothing saved). Pool
+  // building + the generate gate run off the shared
+  // `@suppr/shared/planning/planSource` helper so web (`MealPlanner.tsx`) and
+  // mobile can't silently diverge. Flag OFF → legacy planEmptyStateV2 path.
+  // Override in sim via `EXPO_PUBLIC_FLAG_FORCE_PLAN_SOURCE_SELECTOR=true`.
+  const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  // When EITHER the source selector or the v2 empty state is on, the
+  // day/start/meal pills render in the primary accent (web parity).
+  const primaryPills = planSourceSelector || planEmptyStateV2;
 
   const openPlanImport = useCallback(() => {
     router.push("/plan-import");
@@ -486,6 +543,11 @@ export default function PlannerScreen() {
   // 1-day default as "Today with extra steps".
   const [days, setDays] = useState<1 | 3 | 7>(7);
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
+  // ENG-790 — where generated recipes are drawn from. Default to the
+  // broadest pool (library + Suppr's picks) so generation always works,
+  // even at 0 saves. Mirrors `DEFAULT_PLAN_SOURCE_MODE` (web parity).
+  const [planSource, setPlanSource] =
+    useState<PlanSourceMode>(DEFAULT_PLAN_SOURCE_MODE);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
   // F-91 (2026-04-25, sync-enforcer P0-7) — hydrate from cached tier
@@ -1054,6 +1116,19 @@ export default function PlannerScreen() {
     );
   }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool]);
 
+  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026): one flag gates
+  // the whole Plan win layer — the state-aware headline tone + pulse, the 7/7
+  // success haptic, and the generate/move settle haptics. Flag OFF preserves
+  // today's flat headline + silent commits. Declared here (before the move
+  // handler) so callers below can read it without a TDZ hazard.
+  const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
+
+  // ENG-795 / Phase-2 card sweep — soft resting-card elevation. Behind
+  // `design_system_elevation` the summary card picks up the soft ambient
+  // shadow + drops its hairline border; flag-off keeps today's flat
+  // hairline-bordered card. Spread onto the card View below.
+  const cardElevation = useCardElevation();
+
   // Batch 3.10 mobile parity — move a meal between slots / days.
   // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
   // is occupied; source becomes an empty placeholder when destination was
@@ -1075,12 +1150,17 @@ export default function PlannerScreen() {
           toSlot,
           crossDay: from.day !== to.day,
         });
+        // ENG-820 — settle haptic so a moved meal landing in its new slot is
+        // felt. Behind `redesign_winmoment`; flag-off keeps the silent move.
+        if (winMomentsEnabled) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
         // Fire-and-forget persist; UI already reflects the move.
         void persistPlan(next);
         return next;
       });
     },
-    [persistPlan],
+    [persistPlan, winMomentsEnabled],
   );
 
   const toggleSlot = useCallback((slot: string) => {
@@ -1137,6 +1217,45 @@ export default function PlannerScreen() {
     });
     return { hits, total: plan.length, worstShort };
   }, [plan, planTargets]);
+
+  // ENG-820 — make the "Hits your targets N of 7" headline state-aware. Behind
+  // `redesign_winmoment` (resolved above as `winMomentsEnabled`) the headline is
+  // coloured by its tone (win = the reserved win token, progress = amber, calm =
+  // muted) and the win landmark fires a quiet success haptic + a one-shot scale
+  // pulse. Flag OFF keeps today's flat `colors.text` headline.
+  const summaryTone = useMemo(
+    () => planWeekHeadlineTone(summaryScore),
+    [summaryScore],
+  );
+  const summaryTitleColor = useMemo(() => {
+    if (!winMomentsEnabled) return colors.text;
+    if (summaryTone === "win") return Accent.win;
+    if (summaryTone === "progress") return Accent.warning;
+    return colors.textSecondary; // calm — informative, not alarming
+  }, [winMomentsEnabled, summaryTone, colors.text, colors.textSecondary]);
+
+  // One-shot pulse + success haptic when the week first crosses to 7/7 (win).
+  // Keyed on the tone identity so it fires on the rising edge into `win`, never
+  // on every re-render. Inert when the win flag is off.
+  const summaryPulse = useSharedValue(1);
+  const prevSummaryToneRef = useRef<PlanWeekHeadlineTone | null>(null);
+  useEffect(() => {
+    const prev = prevSummaryToneRef.current;
+    prevSummaryToneRef.current = summaryTone;
+    if (!winMomentsEnabled) return;
+    // Only celebrate the rising edge INTO win (prev was a real non-win tone),
+    // so re-mounting an already-7/7 plan doesn't replay the pulse/haptic.
+    if (summaryTone === "win" && prev !== null && prev !== "win") {
+      summaryPulse.value = withSequence(
+        withSpring(1.06, SPRING_SNAPPY),
+        withSpring(1, SPRING_DEFAULT),
+      );
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [winMomentsEnabled, summaryTone, summaryPulse]);
+  const summaryTitleAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: summaryPulse.value }],
+  }));
 
   const portionMultiplierList = useMemo(() => plannerPortionMultiplierSteps(), []);
 
@@ -1218,7 +1337,9 @@ export default function PlannerScreen() {
         },
         summaryTitle: {
           ...Type.headline,
-          color: colors.text,
+          // colour is applied at the call-site via `summaryTitleColor`
+          // (ENG-820 state-aware tone behind `redesign_winmoment`; flag-off
+          // resolves back to `colors.text`).
           marginBottom: 4,
         },
         summarySubtitle: {
@@ -1345,6 +1466,25 @@ export default function PlannerScreen() {
         cardTitle: { ...Type.headline, fontSize: 18, color: colors.text },
         cardDesc: { ...Type.body, color: colors.textSecondary, lineHeight: 20 },
 
+        // ENG-790 — "My library is empty" sub-case + disabled-source hint.
+        libraryEmptyHint: {
+          marginTop: Spacing.md,
+          padding: Spacing.md,
+          borderRadius: Radius.md,
+          backgroundColor: colors.border + "40",
+        },
+        libraryEmptyHintText: {
+          ...Type.body,
+          color: colors.textSecondary,
+          lineHeight: 20,
+        },
+        generateHint: {
+          ...Type.caption,
+          color: colors.textSecondary,
+          textAlign: "center",
+          marginTop: Spacing.sm,
+        },
+
         daysRow: { flexDirection: "row", gap: Spacing.sm },
         dayBtn: {
           flex: 1,
@@ -1365,6 +1505,20 @@ export default function PlannerScreen() {
         },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
         dayBtnTextActive: { color: colors.text, fontWeight: "700" },
+        // ENG-788 (2026-05-30) — primary-accent selected pill for the
+        // `plan_empty_state_v2` / `plan_source_selector` config form. Web
+        // parity: `MealPlanner.tsx` selected segments use
+        // `border-primary bg-primary/10 text-foreground`.
+        // `colors.tint` is the theme-correct primary (Accent.primary light /
+        // primaryLight dark); `+ "1A"` ≈ 10% alpha = web `bg-primary/10`.
+        // Label is `colors.text` (foreground), NOT `colors.tint`: tint text on
+        // a 10% tint fill measures 2.89:1, below WCAG AA — matches the
+        // canonical LogSheet slot pill (`text-foreground` on `bg-primary/10`).
+        dayBtnActivePrimary: {
+          borderColor: colors.tint,
+          backgroundColor: colors.tint + "1A",
+        },
+        dayBtnTextActivePrimary: { color: colors.text, fontWeight: "700" },
 
         generateBtn: {
           backgroundColor: Accent.primary,
@@ -1929,7 +2083,16 @@ export default function PlannerScreen() {
           };
         });
       const fullPool = [...savedPool, ...discoverPool];
-      const recipePool = savedPool.length >= 6 ? savedPool : fullPool;
+      // ENG-790: when the source selector is on, draw the pool from the
+      // user's chosen source (library / library+discovery / discovery) via
+      // the shared helper. Legacy path (flag off) keeps the saved-first,
+      // fill-from-discover heuristic. `discoverPool` is already de-duped
+      // against `savedPool`, so `selectPlanPool`'s own de-dupe is a no-op.
+      const recipePool = planSourceSelector
+        ? selectPlanPool(planSource, { library: savedPool, discover: discoverPool })
+        : savedPool.length >= 6
+          ? savedPool
+          : fullPool;
 
       // T14 (full-sweep 2026-04-24): `generateSmartPlan` is a sync
       // sampler over ~20k combinations — 6-11s on-device at pool ≥30.
@@ -1992,6 +2155,15 @@ export default function PlannerScreen() {
 
       setPlan(enrichPlanDaysFiber(newPlan, recipeFiberPool));
       setPlanTargets(resolved);
+
+      // ENG-820 — plan-generate is one of the most consequential Plan commits;
+      // give it a settle haptic so the week landing is felt, not silent. The
+      // reserved loud success haptic stays with the 7/7 headline win-moment, so
+      // this is a Medium *impact* settle. Behind `redesign_winmoment`; flag-off
+      // keeps the silent generate.
+      if (winMomentsEnabled) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
 
       // Group E Card 4 (premium-bar audit 2026-05-14): count how
       // many meal slots changed (different recipe vs. the snapshot
@@ -2071,7 +2243,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled]);
 
   const openGenerateMenu = useCallback(() => {
     if (generating) return;
@@ -2105,6 +2277,21 @@ export default function PlannerScreen() {
       { text: "Cancel", style: "cancel" },
     ]);
   }, [generating, generatePlan, openPlanImport, planImportEnabled]);
+
+  // ENG-790 — generate gate. With the source selector on, generation is
+  // gated by the chosen source's pool (Discovery/Library&discovery stay
+  // generatable at 0 saves); flag off keeps the legacy 0-saved gate.
+  const generateDisabled = planSourceSelector
+    ? !canGenerateFromSource(planSource, {
+        libraryCount: savedRecipes.length,
+        discoverCount,
+      })
+    : savedRecipes.length === 0;
+  // The "My library is empty" sub-case: the ENG-788 calm empty state,
+  // now folded UNDER the selector (not the whole screen) so the user
+  // keeps the discovery escape hatch above it.
+  const libraryEmptySubcase =
+    planSourceSelector && planSource === "library" && savedRecipes.length === 0;
 
   return (
     <View
@@ -2364,7 +2551,15 @@ export default function PlannerScreen() {
             - Regenerate reuses the existing `generatePlan` used by the
               empty-state Generate Plan button. */}
         {plan && plan.length > 0 && planTargets && summaryScore && (
-          <View style={styles.summaryCard} testID="plan-summary-card">
+          <View
+            style={[
+              styles.summaryCard,
+              cardElevation.shadowStyle,
+              { borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0 },
+              cardElevation.liftBg ? { backgroundColor: cardElevation.liftBg } : null,
+            ]}
+            testID="plan-summary-card"
+          >
             {/* 2026-05-12 (premium-bar audit Plan Card 1): eyebrow
                 upgraded from generic "This week" → "{start} – {end} ·
                 Meal plan" so users see the actual span of the plan
@@ -2388,9 +2583,16 @@ export default function PlannerScreen() {
                 }
               })()}
             </Text>
-            <Text style={styles.summaryTitle}>
+            {/* ENG-820 — state-aware headline. `summaryTitleColor` resolves to
+                the win/progress/calm tone behind `redesign_winmoment`, else
+                today's flat `colors.text`. The pulse fires once on the rising
+                edge into 7/7. testID lets the parity test pin the colour. */}
+            <ReAnimated.Text
+              testID="plan-summary-headline"
+              style={[styles.summaryTitle, { color: summaryTitleColor }, summaryTitleAnimStyle]}
+            >
               {`Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`}
-            </Text>
+            </ReAnimated.Text>
             <Text style={styles.summarySubtitle}>
               {summaryScore.hits === summaryScore.total
                 ? `All ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} land on target.`
@@ -2555,7 +2757,20 @@ export default function PlannerScreen() {
         })() : null}
 
         {/* Generate controls */}
-        {!plan && (
+        {!plan && (!planSourceSelector && planEmptyStateV2 && savedRecipes.length === 0 ? (
+          /* ENG-788 (legacy path, flag off) — calm empty state. With
+             nothing saved there is nothing to plan, so the day/start/meal
+             config form was just noise ending in a dead disabled button.
+             Send the user to the one action that unblocks them: build a
+             library. Under `plan_source_selector` this is superseded: the
+             form always renders with the source selector on top, and this
+             empty treatment is folded in as the `libraryEmptySubcase`. */
+          <PlanEmptyState
+            onBrowseLibrary={() => router.push("/(tabs)/library" as Href)}
+            planImportEnabled={planImportEnabled}
+            onImport={openPlanImport}
+          />
+        ) : (
           <View style={styles.card}>
             {/* DC12 (2026-05-14, premium-bar audit) — low-emotion
                 empty state. Linear/direct copy: tells the user what
@@ -2564,29 +2779,80 @@ export default function PlannerScreen() {
                 a returning MFP/Lose It refugee will instantly read
                 as "this won't be a 10-minute chore". Web parity:
                 `src/app/components/PlannerScreen.tsx`. */}
-            <Text style={styles.cardTitle}>No plan yet</Text>
-            <Text style={styles.cardDesc}>
-              Generate one in 30 seconds. {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
-              {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
+            <Text style={styles.cardTitle}>
+              {primaryPills ? "Plan your week" : "No plan yet"}
             </Text>
-            <Pressable
-              onPress={() => router.push("/(tabs)/library" as Href)}
-              accessibilityRole="button"
-              accessibilityLabel="Open recipe library"
-              style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
-                Open recipe library
-              </Text>
-            </Pressable>
+            <Text style={styles.cardDesc}>
+              {planSourceSelector ? (
+                <>Pick where your recipes come from, then generate a balanced week.</>
+              ) : planEmptyStateV2 ? (
+                <>
+                  {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library — Suppr balances them to your targets.
+                </>
+              ) : (
+                <>
+                  Generate one in 30 seconds. {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
+                  {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
+                </>
+              )}
+            </Text>
+            {!primaryPills && (
+              <Pressable
+                onPress={() => router.push("/(tabs)/library" as Href)}
+                accessibilityRole="button"
+                accessibilityLabel="Open recipe library"
+                style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+                  Open recipe library
+                </Text>
+              </Pressable>
+            )}
 
+            {/* ENG-790 — source selector. Drives where generated recipes
+                come from; default "Library & discovery" so generation
+                always works even at 0 saves (the discovery escape hatch
+                that retires the ENG-788 dead-end). */}
+            {planSourceSelector && (
+              <PlanSourceSelector
+                mode={planSource}
+                onChange={setPlanSource}
+                libraryCount={savedRecipes.length}
+                discoverCount={discoverCount}
+              />
+            )}
+
+            {libraryEmptySubcase ? (
+              /* "My library is empty" sub-case — folded UNDER the selector
+                 (ENG-788 treatment, no longer the whole screen). The pills
+                 + generate are hidden because there is nothing in the
+                 library to plan; the selector above is the escape hatch
+                 (switch to Library & discovery / Discovery only). */
+              <View style={styles.libraryEmptyHint}>
+                <Text style={styles.libraryEmptyHintText}>
+                  Your library is empty. Save a recipe to plan from it — or pick
+                  {" "}<Text style={{ fontWeight: "700", color: colors.tint }}>Library &amp; discovery</Text> above to generate from Suppr&apos;s picks now.
+                </Text>
+                <Pressable
+                  onPress={() => router.push("/(tabs)/library" as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Browse recipe library"
+                  style={{ alignSelf: "flex-start", marginTop: Spacing.sm }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.tint }}>
+                    Browse recipe library →
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+            <>
             <View style={styles.daysRow}>
               {([1, 3, 7] as const).map((d) => {
                 const locked = isFree && d > 1;
                 return (
                   <Pressable
                     key={d}
-                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    style={[styles.dayBtn, days === d && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive), locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
                         Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
@@ -2600,7 +2866,7 @@ export default function PlannerScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                      <Text style={[styles.dayBtnText, days === d && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                         {d} day{d > 1 ? "s" : ""}
                       </Text>
                       {locked ? (
@@ -2627,10 +2893,10 @@ export default function PlannerScreen() {
               ]).map((o) => (
                 <Pressable
                   key={o.val}
-                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  style={[styles.dayBtn, startOffset === o.val && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                   onPress={() => setStartOffset(o.val)}
                 >
-                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>
+                  <Text style={[styles.dayBtnText, startOffset === o.val && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                     {o.label}
                   </Text>
                 </Pressable>
@@ -2645,13 +2911,13 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={slot}
-                    style={[styles.dayBtn, active && styles.dayBtnActive]}
+                    style={[styles.dayBtn, active && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
                       <CheckCircle2
                         size={14}
-                        color="#fff"
+                        color={primaryPills ? colors.tint : "#fff"}
                         strokeWidth={1.75}
                         style={{ marginRight: 4 }}
                       />
@@ -2663,18 +2929,21 @@ export default function PlannerScreen() {
                         style={{ marginRight: 4 }}
                       />
                     )}
-                    <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>
+                    <Text style={[styles.dayBtnText, active && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                       {slot}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+            </>
+            )}
 
+            {!libraryEmptySubcase && (
             <Pressable
-              style={[styles.generateBtn, savedRecipes.length === 0 && { opacity: 0.4 }]}
+              style={[styles.generateBtn, generateDisabled && { opacity: 0.4 }]}
               onPress={generatePlan}
-              disabled={generating || savedRecipes.length === 0}
+              disabled={generating || generateDisabled}
             >
               {generating ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -2714,6 +2983,12 @@ export default function PlannerScreen() {
                 <Text style={styles.generateBtnText}>Generate my plan</Text>
               )}
             </Pressable>
+            )}
+            {planSourceSelector && generateDisabled && !libraryEmptySubcase && (
+              <Text style={styles.generateHint}>
+                No recipes available to plan from right now.
+              </Text>
+            )}
             {planImportEnabled && (
               <Pressable
                 onPress={openPlanImport}
@@ -2727,7 +3002,7 @@ export default function PlannerScreen() {
               </Pressable>
             )}
           </View>
-        )}
+        ))}
 
         {/* 2026-05-23 — removed "YOUR 7-DAY PLAN" uppercase overline +
             "Browse library" outline pill. The "This week" sub-tab
@@ -3598,20 +3873,34 @@ export default function PlannerScreen() {
           >
             <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-              Plan length & start
+              {planSourceSelector ? "Plan setup" : "Plan length & start"}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
-              How many days, and when does the plan start?
+              {planSourceSelector
+                ? "Where recipes come from, how many days, and when it starts."
+                : "How many days, and when does the plan start?"}
             </Text>
 
-            <Text style={styles.sectionLabel}>Plan length</Text>
+            {/* ENG-790 — source selector also reachable when regenerating an
+                existing plan (the empty/generate form is hidden once a plan
+                exists). Same `planSource` state, so it stays in sync. */}
+            {planSourceSelector && (
+              <PlanSourceSelector
+                mode={planSource}
+                onChange={setPlanSource}
+                libraryCount={savedRecipes.length}
+                discoverCount={discoverCount}
+              />
+            )}
+
+            <Text style={[styles.sectionLabel, planSourceSelector && { marginTop: Spacing.md }]}>Plan length</Text>
             <View style={styles.daysRow}>
               {([1, 3, 7] as const).map((d) => {
                 const locked = isFree && d > 1;
                 return (
                   <Pressable
                     key={d}
-                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    style={[styles.dayBtn, days === d && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive), locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
                         Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
@@ -3625,7 +3914,7 @@ export default function PlannerScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                      <Text style={[styles.dayBtnText, days === d && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                         {d} day{d > 1 ? "s" : ""}
                       </Text>
                       {locked ? (
@@ -3646,10 +3935,10 @@ export default function PlannerScreen() {
               ]).map((o) => (
                 <Pressable
                   key={o.val}
-                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  style={[styles.dayBtn, startOffset === o.val && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                   onPress={() => setStartOffset(o.val)}
                 >
-                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>{o.label}</Text>
+                  <Text style={[styles.dayBtnText, startOffset === o.val && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>{o.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -3707,15 +3996,15 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={slot}
-                    style={[styles.dayBtn, active && styles.dayBtnActive]}
+                    style={[styles.dayBtn, active && (primaryPills ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
-                      <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
+                      <CheckCircle2 size={14} color={primaryPills ? colors.tint : Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
                     ) : (
                       <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                     )}
-                    <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{slot}</Text>
+                    <Text style={[styles.dayBtnText, active && (primaryPills ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>{slot}</Text>
                   </Pressable>
                 );
               })}

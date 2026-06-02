@@ -75,6 +75,11 @@ import { filterOrphanSaves } from "../lib/recipes/filterOrphanSaves.ts";
 import { composeLibraryEntries } from "../lib/recipes/composeLibraryEntries.ts";
 import { savedRecipesForPlanning } from "../lib/planning/savedRecipesForPlanning.ts";
 import {
+  type PlanSourceMode,
+  selectPlanPool,
+  canGenerateFromSource,
+} from "../lib/planning/planSource.ts";
+import {
   generateShoppingListFromRecipeEntries,
   type RecipeIngredientRow,
 } from "../lib/planning/generateShoppingList.ts";
@@ -1072,6 +1077,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       targetsOverride?: Partial<PlannerTargets>;
       days?: number;
       slots?: string[];
+      /**
+       * ENG-790 — where recipes are drawn from. Provided only by the
+       * `plan_source_selector`-gated UI; when omitted (flag off / legacy
+       * callers) the function keeps the saved-only behaviour with the hard
+       * 0-saved gate. When provided, the pool + gate run off the shared
+       * `selectPlanPool` / `canGenerateFromSource` helper (mobile parity).
+       */
+      source?: PlanSourceMode;
     }) => {
       const { generatePlanFromLibrary } = await import("../lib/planning/generateMealPlan.ts");
       setIsGeneratingPlan(true);
@@ -1092,15 +1105,49 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           myLibraryRecipes,
           uploadedRecipes,
         });
-        if (savedRecipes.length === 0) {
-          toast.error("Save at least one recipe from Discover (or your Library) to generate a macro-aware plan.");
-          return;
-        }
         if (savedRecipes.length < savedRecipeIds.length) {
           console.warn(
             "[generateMealPlan] Some saved recipes could not be resolved for planning:",
             savedRecipeIds.length - savedRecipes.length,
           );
+        }
+        // ENG-790 — pool selection. `source` provided → draw from the
+        // chosen source (library / library+discovery / discovery) via the
+        // shared helper, de-duping discover against saved. `source`
+        // omitted → legacy saved-only path with the hard 0-saved gate.
+        // The discover pool mirrors the `discoverRecipes` memo below:
+        // curated seeds + community uploads.
+        let pool: RecipeCard[];
+        if (options?.source) {
+          const discoverPool = [
+            ...(seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[]),
+            ...uploadedRecipes,
+          ];
+          const savedIds = new Set(savedRecipes.map((r) => r.id));
+          const discoverCount = discoverPool.filter((r) => !savedIds.has(r.id)).length;
+          if (
+            !canGenerateFromSource(options.source, {
+              libraryCount: savedRecipes.length,
+              discoverCount,
+            })
+          ) {
+            toast.error(
+              options.source === "library"
+                ? "Save at least one recipe to plan from your library."
+                : "No recipes available to plan from right now.",
+            );
+            return;
+          }
+          pool = selectPlanPool(options.source, {
+            library: savedRecipes,
+            discover: discoverPool,
+          });
+        } else {
+          if (savedRecipes.length === 0) {
+            toast.error("Save at least one recipe from Discover (or your Library) to generate a macro-aware plan.");
+            return;
+          }
+          pool = savedRecipes;
         }
         // T14 (full-sweep 2026-04-24): instrument generation duration +
         // pool size so we can set the sampler cap from real data and
@@ -1108,7 +1155,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // already sync on web — the durationMs captures the sampler cost.
         const generateStartMs = Date.now();
         const rawPlan = generatePlanFromLibrary({
-          savedRecipes,
+          savedRecipes: pool,
           targets,
           days,
           ...(options?.slots && options.slots.length > 0
@@ -1126,7 +1173,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // and increased the chance of duplicate-ingredient shopping.
         const { distributeLeftovers } = await import("../lib/nutrition/leftoversPlanner.ts");
         const recipesByRef: Record<string, { servings: number } | undefined> = {};
-        for (const r of savedRecipes) {
+        for (const r of pool) {
           if (typeof r.servings === "number" && r.servings > 0) {
             recipesByRef[r.id] = { servings: r.servings };
           }
@@ -1149,7 +1196,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         track(AnalyticsEvents.meal_plan_generated, {
           days,
           durationMs: generateDurationMs,
-          poolSize: savedRecipes.length,
+          poolSize: pool.length,
           platform: "web",
         });
       } finally {

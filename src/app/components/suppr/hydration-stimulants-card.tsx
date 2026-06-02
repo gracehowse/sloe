@@ -21,7 +21,16 @@
 
 import * as React from "react";
 import { useCallback, useMemo } from "react";
-import { MoreHorizontal } from "lucide-react";
+// ENG-816 / icon-strategy 2026-05-31 — functional emoji are banned at the
+// premium bar (they render differently per OS/font). The three row glyphs
+// (💧/☕/🍷) swap to lucide-react Droplet / Coffee / Wine behind the
+// `design_system_icons` flag, with the emoji kept alive in the `else`
+// branch until the flag holds 100% (CLAUDE.md feature-flag rule). Mirrors
+// the mobile gating pattern in `apps/mobile/components/BarcodeScannerModal.tsx`
+// (`useLucideIcons = isFeatureEnabled("design_system_icons")`); the paired
+// mobile swap of `HydrationStimulantsCard` tracks under ENG-816.
+import { Coffee, Droplet, MoreHorizontal, Wine } from "lucide-react";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import {
   ALCOHOL_QUICK_ADDS,
   CAFFEINE_QUICK_ADDS,
@@ -195,6 +204,28 @@ export function HydrationStimulantsCard({
 }: HydrationStimulantsCardProps) {
   const imperial = measurementSystem === "imperial";
 
+  // ENG-816 — Lucide glyphs replace the functional emoji when the
+  // `design_system_icons` flag is on; the emoji path stays alive in the
+  // `else` until the flag holds 100%. Glyphs are tinted with the existing
+  // per-row colour token (the wrapping span colour is overridden to the
+  // tone var so the glyph reads as Water/Caffeine/Alcohol).
+  const useLucideIcons = isFeatureEnabled("design_system_icons");
+  const waterIcon = useLucideIcons ? (
+    <Droplet className="w-4 h-4" aria-hidden style={{ color: "var(--macro-water)" }} />
+  ) : (
+    <span aria-hidden>💧</span>
+  );
+  const caffeineIcon = useLucideIcons ? (
+    <Coffee className="w-4 h-4" aria-hidden style={{ color: "var(--stimulant-caffeine)" }} />
+  ) : (
+    <span aria-hidden>☕</span>
+  );
+  const alcoholIcon = useLucideIcons ? (
+    <Wine className="w-4 h-4" aria-hidden style={{ color: "var(--stimulant-alcohol)" }} />
+  ) : (
+    <span aria-hidden>🍷</span>
+  );
+
   const showCaffeine = targets.caffeineMg > 0;
   const showAlcohol = targets.alcoholGWeekly > 0;
   const weeklyAlcohol = useMemo(
@@ -243,7 +274,7 @@ export function HydrationStimulantsCard({
       <Row
         tone="water"
         label="Water"
-        icon={<span aria-hidden>💧</span>}
+        icon={waterIcon}
         valueLine={`${formatWater(waterTotalMl, imperial)} / ${formatWater(targets.waterMl, imperial)}`}
         secondaryLine={
           waterFromMealsMl > 0
@@ -280,7 +311,7 @@ export function HydrationStimulantsCard({
         <Row
           tone="caffeine"
           label="Caffeine"
-          icon={<span aria-hidden>☕</span>}
+          icon={caffeineIcon}
           valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
           pct={caffeinePct}
           overTarget={caffeineOver}
@@ -313,7 +344,7 @@ export function HydrationStimulantsCard({
         <Row
           tone="alcohol"
           label="Alcohol"
-          icon={<span aria-hidden>🍷</span>}
+          icon={alcoholIcon}
           valueLine={`${weeklyAlcohol} / ${targets.alcoholGWeekly} g this week`}
           pct={alcoholPct}
           overTarget={alcoholOver}

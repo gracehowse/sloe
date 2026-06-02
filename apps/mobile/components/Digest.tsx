@@ -24,7 +24,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
@@ -140,6 +141,7 @@ function DigestLegacy(props: DigestProps) {
     weightSurfaceMode = "show",
   } = props;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
 
   // `weekly_digest_shown` — fire once per visible weekKey. Legacy name
   // `weekly_recap_shown` carries over (§ open-question #11).
@@ -292,13 +294,13 @@ function DigestLegacy(props: DigestProps) {
     <View
       testID="digest"
       style={{
-        backgroundColor: colors.card,
+        backgroundColor: cardElevation.liftBg ?? colors.card,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElevation.useBorder ? 1 : 0,
         borderColor: colors.cardBorder,
         padding: Spacing.lg,
         marginBottom: 14,
-        ...Elevation.card,
+        ...(cardElevation.shadowStyle ?? {}),
       }}
     >
       {/* Dismiss */}

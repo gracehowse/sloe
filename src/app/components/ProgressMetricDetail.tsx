@@ -6,6 +6,7 @@ import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import { buildWeekStats, getStreakContributingDays } from "../../lib/nutrition/progressWeekReport.ts";
@@ -32,6 +33,18 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   const { authedUserId } = useAuthSession();
   const targets = normalizeMacroTargets(nutritionTargets);
   const todayDk = todayKey();
+
+  // ENG-822 (2026-05-31 design-director review) — soft resting-card elevation
+  // behind `design_system_elevation`, mirroring the mobile metric-detail sweep
+  // and the web recipe/dialog surfaces: flag ON drops the hairline border and
+  // rides the soft `--elev-card-soft` shadow; flag OFF keeps today's
+  // `border border-border` flat treatment. Mirror of the mobile
+  // `useCardElevation` branch so both platforms move off flat hairlines
+  // together.
+  const elevated = isFeatureEnabled("design_system_elevation");
+  const cardCls = elevated
+    ? "border border-transparent shadow-[var(--elev-card-soft)]"
+    : "border border-border";
 
   // F-2 (2026-04-19) — snapshot targets for this week so past-day
   // "% of goal" values don't shift when the user later edits their
@@ -152,13 +165,17 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
         >
           <Icons.back className="w-4 h-4" />
         </button>
-        <h1 className="text-lg font-extrabold text-primary tracking-wide uppercase truncate">{title}</h1>
+        {/* ENG-822 (2026-05-31 design-director review): calmed the header —
+            was a shouty saturated-blue, ALL-CAPS, letter-spaced primary banner;
+            now a normal-case, foreground-coloured title. Mirrors the mobile
+            calm-header change. The subtitle below already carries the context. */}
+        <h1 className="text-xl font-bold text-foreground truncate">{title}</h1>
       </div>
       <p className="text-sm text-muted-foreground leading-relaxed mb-6">{subtitle}</p>
 
       {metric === "calories" && (
         <>
-          <div className="rounded-xl bg-card border border-border p-4 mb-4 card-elevated">
+          <div className={`rounded-xl bg-card p-4 mb-4 ${cardCls}`}>
             <p className="text-sm font-semibold text-foreground mb-3">Daily intake</p>
             <div className="flex items-end gap-2 h-32">
               {weekStats.days.map((d) => {
@@ -199,7 +216,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
               key={`row-${d.key}`}
               type="button"
               onClick={() => openDay(d.key)}
-              className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 mb-2 text-left hover:bg-muted/40 transition-colors"
+              className={`w-full flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3.5 mb-2 text-left hover:bg-muted/40 transition-colors ${cardCls}`}
             >
               <div>
                 <p className="text-sm font-bold text-foreground">{formatLongDate(d.key)}</p>
@@ -229,11 +246,11 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
       {metric === "protein" && (
         <>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl border border-border bg-card p-3">
+            <div className={`rounded-xl bg-card p-3 ${cardCls}`}>
               <p className="text-[11px] text-muted-foreground font-semibold">Avg / day</p>
               <p className="text-2xl font-extrabold text-[var(--macro-protein)] tabular-nums mt-1">{weekStats.avgProtein}g</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-3">
+            <div className={`rounded-xl bg-card p-3 ${cardCls}`}>
               <p className="text-[11px] text-muted-foreground font-semibold">On target</p>
               <p className="text-2xl font-extrabold text-primary tabular-nums mt-1">{weekStats.proteinOnTarget}/7</p>
             </div>
@@ -252,7 +269,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                 key={d.key}
                 type="button"
                 onClick={() => openDay(d.key)}
-                className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 mb-2 text-left hover:bg-muted/40 transition-colors"
+                className={`w-full flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3.5 mb-2 text-left hover:bg-muted/40 transition-colors ${cardCls}`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">{formatLongDate(d.key)}</p>
@@ -278,7 +295,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
           {/* 2026-05-08 ui-critic F11 web parity: hide the giant `0` headline when
               there's no streak yet — empty-state copy below carries the message. */}
           {streakDays > 0 ? (
-            <div className="rounded-xl border border-border bg-card p-5 mb-4">
+            <div className={`rounded-xl bg-card p-5 mb-4 ${cardCls}`}>
               <p className="text-4xl font-black text-primary tabular-nums">{streakDays}</p>
               <p className="text-sm font-semibold text-foreground mt-1">
                 consecutive logging day{streakDays !== 1 ? "s" : ""}
@@ -296,7 +313,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                   key={row.key}
                   type="button"
                   onClick={() => openDay(row.key)}
-                  className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 mb-2 text-left hover:bg-muted/40 transition-colors"
+                  className={`w-full flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 mb-2 text-left hover:bg-muted/40 transition-colors ${cardCls}`}
                 >
                   <div>
                     <p className="text-sm font-bold text-foreground">{formatLongDate(row.key)}</p>

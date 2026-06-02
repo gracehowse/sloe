@@ -91,3 +91,38 @@ export function buildPlanWeekSummarySubtitle(
   }
   return "Some days run over target. Tap a meal to swap or adjust the portion.";
 }
+
+/**
+ * Tone of the "Hits your targets N of M days" headline (ENG-820 — Plan
+ * win-moment, Redesign — Design Direction 2026).
+ *
+ * The headline is the single payoff line of the Plan tab: did the generated
+ * week land on the user's calorie targets? Today it renders as inert flat
+ * text. The design-director review asks it to become *state-aware* so the
+ * landmark "every day lands on target" reads as a quiet win, while a week
+ * that hasn't landed yet reads as calm progress (never alarming).
+ *
+ * Three tones, shared so web (`--accent-win` / muted) and mobile
+ * (`Accent.win` / muted) colour the headline identically:
+ *   - `'win'`      — every day lands on target (`hits === total`). The
+ *                    landmark. Coloured with the reserved win token + a
+ *                    success haptic + a brief pulse on the platform side.
+ *   - `'calm'`     — no day lands on target yet (`hits === 0`). Muted /
+ *                    secondary text — informative, not alarming.
+ *   - `'progress'` — some-but-not-all days land (`0 < hits < total`).
+ *                    The amber "getting there" state.
+ *
+ * Pure + total: the only input is the already-computed score, so web and
+ * mobile can never drift on the threshold. Mirrors the calorie-ring rule
+ * that "over-budget signals stay amber" — `progress` is amber, never red.
+ */
+export type PlanWeekHeadlineTone = "win" | "progress" | "calm";
+
+export function planWeekHeadlineTone(
+  score: PlanWeekSummaryScore | null | undefined,
+): PlanWeekHeadlineTone {
+  if (!score || score.total <= 0) return "calm";
+  if (score.hits >= score.total) return "win";
+  if (score.hits <= 0) return "calm";
+  return "progress";
+}

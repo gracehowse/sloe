@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -62,6 +63,7 @@ export function AppleHealthCard({
   onRetry,
 }: AppleHealthCardProps) {
   const colors = useThemeColors();
+  const cardElev = useCardElevation();
   const t = {
     text: colors.text,
     sub: colors.textSecondary,
@@ -75,14 +77,14 @@ export function AppleHealthCard({
     <View
       testID="apple-health-card"
       accessibilityLabel="Apple Health"
-      style={{
-        backgroundColor: t.card,
+      style={[{
+        backgroundColor: cardElev.liftBg ?? t.card,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElev.useBorder ? 1 : 0,
         borderColor: t.border,
         padding: 16,
         marginBottom: 14,
-      }}
+      }, cardElev.shadowStyle]}
     >
       <Text
         style={{

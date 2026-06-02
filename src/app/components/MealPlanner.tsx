@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarRange,
   Coffee,
@@ -23,7 +23,10 @@ import {
 import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
+  planWeekHeadlineTone,
+  type PlanWeekHeadlineTone,
 } from "../../lib/planning/planWeekSummary.ts";
+import { SupprCard } from "./ui/suppr-card";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { TextPromptDialog } from "./suppr/text-prompt-dialog";
@@ -36,6 +39,13 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import {
+  type PlanSourceMode,
+  DEFAULT_PLAN_SOURCE_MODE,
+  canGenerateFromSource,
+} from "../../lib/planning/planSource.ts";
+import { PlanSourceSelector } from "./PlanSourceSelector.tsx";
 import {
   DEFAULT_PLANNER_BANDS,
   refitDayMealsToTargets,
@@ -172,6 +182,16 @@ export const MealPlanner = memo(function MealPlanner({
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  // ENG-790 (2026-05-31) — "Plan from" source selector. When the flag is
+  // on, the user chooses whether a generated plan draws from their saved
+  // library, library + Suppr's discover pool (default), or discovery only;
+  // the choice threads into `generateMealPlan({ source })`. Off → the legacy
+  // saved-only path with the hard 0-saved gate. Mobile twin:
+  // `apps/mobile/app/(tabs)/planner.tsx`.
+  const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  const [planSource, setPlanSource] = useState<PlanSourceMode>(
+    DEFAULT_PLAN_SOURCE_MODE,
+  );
   const [swapFor, setSwapFor] = useState<SwapTarget | null>(null);
   // Audit 2026-04-30 — themed-dialog migration. Replaces the prior
   // `window.prompt` (rename + new plan) and `window.confirm` (delete
@@ -213,6 +233,18 @@ export const MealPlanner = memo(function MealPlanner({
 
   const targetCalories = nutritionTargets.calories;
 
+  // ENG-790 — discover-pool size for the "Plan from" count badge, de-duped
+  // against the saved library so the combined total can't double-count a
+  // recipe that's both saved and discoverable (mirrors `selectPlanPool`).
+  const discoverCount = useMemo(() => {
+    const savedIds = new Set(savedRecipesForLibrary.map((r) => r.id));
+    return discoverRecipes.filter((r) => !savedIds.has(r.id)).length;
+  }, [discoverRecipes, savedRecipesForLibrary]);
+  const libraryCount = savedRecipesForLibrary.length;
+  const sourceCanGenerate = planSourceSelector
+    ? canGenerateFromSource(planSource, { libraryCount, discoverCount })
+    : true;
+
   const summary = useMemo(
     () => computePlanWeekSummaryScore(mealPlan ?? [], targetCalories),
     [mealPlan, targetCalories],
@@ -252,6 +284,58 @@ export const MealPlanner = memo(function MealPlanner({
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
 
+  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026) — make the
+  // "Hits your targets N of 7" headline state-aware, mirroring mobile
+  // `apps/mobile/app/(tabs)/planner.tsx`. Behind `redesign_winmoment` the
+  // headline colours by tone, kept distinct so the landmark reads as a win:
+  //   - win (every day lands)    → `--accent-win` (the reserved win gold)
+  //   - progress (some days land) → `--warning` (amber, never red)
+  //   - calm (no day lands yet)   → `--muted-foreground` (informative)
+  // Flag OFF keeps today's `text-foreground`. There is no haptic analog on web
+  // (no Haptics API); the colour shift + the subtitle carry the payoff.
+  const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
+  const summaryTone = planWeekHeadlineTone(summary);
+  const summaryHeadlineColor = !winMomentsEnabled
+    ? undefined
+    : summaryTone === "win"
+      ? "var(--accent-win)"
+      : summaryTone === "progress"
+        ? "var(--warning)"
+        : "var(--muted-foreground)";
+
+  // ENG-822 (design_system_elevation, Redesign — Design Direction 2026) —
+  // Summary card, empty-state, and per-day kanban cards are now routed
+  // through the canonical SupprCard primitive, which owns the elevation
+  // flag-gate internally (flag ON → soft shadow, border dropped;
+  // flag OFF → prior flat `--elev-card` + hairline, byte-for-byte).
+  // Today-column distinction: tone="primary" on SupprCard gives the tinted bg
+  // + primary border accent in flag-off; flag-on drops the border, tint carries.
+
+  // ENG-820 (Plan win-moment) — rising-edge scale pulse when the week first
+  // crosses into a 7/7 win, mirroring the mobile one-shot spring at
+  // `apps/mobile/app/(tabs)/planner.tsx` (`summaryPulse` + `prevSummaryToneRef`).
+  // Web has no haptic, so the payoff is the brief scale pulse on the headline
+  // (plus the steady-state colour shift already wired above). Gated behind
+  // `redesign_winmoment`; the static-colour path is the flag-off else.
+  const prevSummaryToneRef = useRef<PlanWeekHeadlineTone | null>(null);
+  const [winPulse, setWinPulse] = useState(false);
+  useEffect(() => {
+    const prev = prevSummaryToneRef.current;
+    prevSummaryToneRef.current = summaryTone;
+    if (!winMomentsEnabled) return;
+    // Only celebrate the rising edge INTO win (prev was a real non-win tone),
+    // so re-mounting an already-7/7 plan never replays the pulse — matching the
+    // mobile rising-edge guard exactly.
+    if (summaryTone === "win" && prev !== null && prev !== "win") {
+      setWinPulse(true);
+      // One-shot — clear after the keyframe duration so a later regenerate that
+      // re-enters win can replay it. `@media (prefers-reduced-motion)` disables
+      // the transform in CSS, so this stays inert for reduced-motion users.
+      const t = setTimeout(() => setWinPulse(false), 320);
+      return () => clearTimeout(t);
+    }
+  }, [winMomentsEnabled, summaryTone]);
+
   const handleRegenerate = async () => {
     setIsGenerating(true);
     try {
@@ -274,6 +358,7 @@ export const MealPlanner = memo(function MealPlanner({
       await generateMealPlan({
         days,
         ...(useSlotOverride ? { slots: slotsList } : {}),
+        ...(planSourceSelector ? { source: planSource } : {}),
       });
       await generateShoppingListFromPlan();
       toast.success("Plan regenerated");
@@ -590,16 +675,51 @@ export const MealPlanner = memo(function MealPlanner({
           diagnosis + Shopping list / Regenerate CTAs. Hidden when no
           plan exists; the bottom CTA row takes over. */}
       {showSummaryCard && summary ? (
-        <div
+        <SupprCard
           data-testid="planner-week-summary-card"
-          className="rounded-2xl border border-border bg-card mb-4 card-elevated"
-          style={{ padding: 16 }}
+          padding="lg"
+          radius="xl"
+          className="mb-4"
         >
+          {/* ENG-820 — one-shot scale-pulse keyframe for the win rising edge.
+              Scoped inline (mirrors `AppLoadingSkeleton`) so no theme.css edit
+              is needed; the `prefers-reduced-motion` guard disables the
+              transform for motion-sensitive users, matching the hook's intent. */}
+          <style>{`
+            @keyframes planner-win-pulse {
+              0% { transform: scale(1); }
+              40% { transform: scale(1.06); }
+              100% { transform: scale(1); }
+            }
+            .planner-win-pulse {
+              animation: planner-win-pulse 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+              transform-origin: left center;
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .planner-win-pulse { animation: none; }
+            }
+          `}</style>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
+              {/* ENG-820 — state-aware headline. Inline `color` (when the win
+                  flag is on) wins over `text-foreground`; flag-off leaves the
+                  class colour. `data-tone` + testid let the parity test pin the
+                  tone without reading a computed colour. The colour-only change
+                  animates via `transition-colors` so a regenerate that flips
+                  the tone eases rather than snaps. The `planner-win-pulse` class
+                  is applied only on the rising edge into a 7/7 win (the web
+                  analog of the mobile scale spring + success haptic). */}
               <p
-                className="text-foreground font-bold -tracking-[0.01em]"
-                style={{ fontSize: 15 }}
+                data-testid="planner-week-summary-headline"
+                data-tone={winMomentsEnabled ? summaryTone : "off"}
+                data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}
+                className={`text-foreground font-bold -tracking-[0.01em] transition-colors${
+                  winMomentsEnabled && winPulse ? " planner-win-pulse" : ""
+                }`}
+                style={{
+                  fontSize: 15,
+                  ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
+                }}
               >
                 Hits your targets {summary.hits} of {`${summary.total} day${summary.total === 1 ? "" : "s"}`}
               </p>
@@ -638,7 +758,7 @@ export const MealPlanner = memo(function MealPlanner({
               Regenerate
             </button>
           </div>
-        </div>
+        </SupprCard>
       ) : null}
 
       {/* F2-G (2026-04-28): named-slot switcher. Mobile parity at
@@ -671,7 +791,7 @@ export const MealPlanner = memo(function MealPlanner({
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
                   active
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border text-foreground hover:bg-muted/60",
                 ].join(" ")}
               >
@@ -712,6 +832,22 @@ export const MealPlanner = memo(function MealPlanner({
         </div>
       ) : null}
 
+      {/* ENG-790 (2026-05-31): "Plan from" source selector sits above
+          Days / Slots / Start so the user picks where the plan draws
+          recipes from before tuning length. Flag-gated; off → the
+          legacy controls only. Mobile parity: the same control at the
+          top of the generate form in `app/(tabs)/planner.tsx`. */}
+      {planSourceSelector ? (
+        <div className="mb-3">
+          <PlanSourceSelector
+            mode={planSource}
+            onChange={setPlanSource}
+            libraryCount={libraryCount}
+            discoverCount={discoverCount}
+          />
+        </div>
+      ) : null}
+
       {/* F2-B (2026-04-28): day-count picker. Mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1734-1757`. F2-C: Free
           tier sees a lock glyph on 3-day and 7-day chips and tapping
@@ -739,7 +875,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-foreground hover:bg-muted/60",
                 locked ? "opacity-60" : "",
               ].join(" ")}
@@ -781,7 +917,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-muted-foreground hover:bg-muted/60",
                 isLast ? "cursor-not-allowed opacity-80" : "",
               ].join(" ")}
@@ -822,7 +958,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-foreground hover:bg-muted/60",
               ].join(" ")}
             >
@@ -833,9 +969,11 @@ export const MealPlanner = memo(function MealPlanner({
       </div>
 
       {isPlanEmpty ? (
-        <div
+        <SupprCard
           data-testid="planner-empty-state"
-          className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card card-elevated"
+          padding="none"
+          radius="xl"
+          className="flex flex-col items-center justify-center"
           style={{ padding: "48px 24px", minHeight: 320 }}
         >
           <div
@@ -851,18 +989,34 @@ export const MealPlanner = memo(function MealPlanner({
             className="text-muted-foreground text-center"
             style={{ fontSize: 13, lineHeight: "1.5", maxWidth: 340, marginBottom: 24 }}
           >
-            Hit generate and we&apos;ll build a {planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.
+            {planSourceSelector
+              ? `Pick where your recipes come from above, then hit generate — Suppr balances a ${planDays}-day plan to your calorie and macro targets.`
+              : `Hit generate and we'll build a ${planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.`}
           </p>
           <button
             data-testid="planner-empty-generate-btn"
-            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
             onClick={handleRegenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !sourceCanGenerate}
           >
             {isGenerating ? "Generating…" : "Generate meal plan"}
           </button>
-        </div>
+          {/* ENG-790: the only way generate is blocked under the flag is
+              "My library" picked at 0 saves — point the user back at the
+              selector (Discovery always has recipes) so 0 saved isn't a
+              dead end. Mobile parity: the `libraryEmptySubcase` hint. */}
+          {planSourceSelector && !sourceCanGenerate ? (
+            <p
+              data-testid="planner-empty-source-hint"
+              className="text-muted-foreground text-center"
+              style={{ fontSize: 12, lineHeight: "1.4", maxWidth: 320, marginTop: 12 }}
+            >
+              Save a recipe to plan from your library — or pick{" "}
+              <span className="font-semibold text-foreground">Library &amp; discovery</span> above to use Suppr&apos;s recipes.
+            </p>
+          ) : null}
+        </SupprCard>
       ) : (
       <div
         data-testid="planner-desktop-kanban"
@@ -904,18 +1058,20 @@ export const MealPlanner = memo(function MealPlanner({
             }
           });
           return (
-            <div
+            // ENG-822 — routed through the canonical SupprCard so the
+            // elevation flag is owned by the primitive (flag ON → soft
+            // shadow + border dropped; flag OFF → `--elev-card` + hairline,
+            // byte-for-byte). Today-column: tone="primary" gives the
+            // `bg-primary/[0.08]` tint; flag-OFF also surfaces a primary
+            // border accent via SupprCard's primary-tone borderColor
+            // (`--north-star-border`), replacing the prior `border-primary/30`.
+            // Normal columns stay tone="neutral" (default bg-card + border-border).
+            <SupprCard
               key={`day-${dp.day}`}
-              // Audit 2026-04-30 visual-qa P1 #13 — moved spacing
-              // tokens from inline style (`padding: 14`, `gap: 10`)
-              // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
-              // is consistent with the rest of the system and easier
-              // to track via the design tokens.
-              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 card-elevated ${
-                isTodayCol
-                  ? "bg-primary/10 border-primary/30"
-                  : "bg-card border-border"
-              }`}
+              padding="none"
+              radius="xl"
+              tone={isTodayCol ? "primary" : "neutral"}
+              className="flex flex-col p-3.5 gap-2.5"
             >
               <div className="flex items-center justify-between">
                 <p className="text-foreground" style={{ fontSize: 13, fontWeight: 700 }}>
@@ -1282,7 +1438,7 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })()}
-            </div>
+            </SupprCard>
           );
         })}
       </div>
@@ -1315,7 +1471,7 @@ export const MealPlanner = memo(function MealPlanner({
         <button
           type="button"
           onClick={handleRegenerate}
-          disabled={isGenerating}
+          disabled={isGenerating || !sourceCanGenerate}
           className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ padding: "8px 16px", fontSize: 13 }}
         >

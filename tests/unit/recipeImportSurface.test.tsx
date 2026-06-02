@@ -44,8 +44,15 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
+// `SupprMark` (rendered on the "Paste a recipe link" card) reads the
+// `design_system_brandmark` flag from this same module. Default it OFF so
+// the legacy S-glyph (still a brand mark) renders; one test flips it on.
+const { isFeatureEnabledSpy } = vi.hoisted(() => ({
+  isFeatureEnabledSpy: vi.fn(() => false),
+}));
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
+  isFeatureEnabled: isFeatureEnabledSpy,
 }));
 
 // `next/navigation` — RecipeUpload reads `?editRecipe=` from searchParams.
@@ -145,6 +152,34 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://example.com/recipe")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
+  });
+
+  it("leads the 'Paste a recipe link' card with the SupprMark (mobile parity, ENG-797)", () => {
+    // Mobile leads this panel with <SupprMark size={56} /> (import-shared.tsx).
+    // Web must render the brand mark above the heading. Flag OFF here → the
+    // legacy S-glyph variant, which is still a brand mark.
+    isFeatureEnabledSpy.mockReturnValue(false);
+    const { container } = render(<RecipeUpload userTier="free" mode="import" />);
+    const heading = screen.getByText("Paste a recipe link");
+    const card = heading.closest("div.rounded-2xl");
+    expect(card).not.toBeNull();
+    // A SupprMark SVG sits inside the same card as the heading.
+    const mark = card?.querySelector('svg[data-slot="suppr-mark"], svg[data-slot="suppr-plate-mark"]');
+    expect(mark).not.toBeNull();
+    expect(mark).toHaveAttribute("width", "44");
+    expect(mark).toHaveAttribute("aria-label", "Suppr");
+    void container;
+  });
+
+  it("renders the canonical ring SupprMark on the import card when design_system_brandmark is ON", () => {
+    isFeatureEnabledSpy.mockReturnValue(true);
+    render(<RecipeUpload userTier="free" mode="import" />);
+    const card = screen.getByText("Paste a recipe link").closest("div.rounded-2xl");
+    const mark = card?.querySelector('svg[data-slot="suppr-plate-mark"]');
+    expect(mark).not.toBeNull();
+    // Canonical ring motif, no S-glyph text.
+    expect(mark?.querySelector("circle")).not.toBeNull();
+    isFeatureEnabledSpy.mockReturnValue(false);
   });
 
   it("renders the photo import affordance (extract from image)", () => {

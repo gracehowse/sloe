@@ -56,8 +56,10 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { getSupprApiBase } from "@/lib/supprWeb";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "@suppr/shared/recipe-import/socialUrlHelpers";
@@ -266,6 +268,21 @@ export default function RecipeDetailScreen() {
   const { savedIds, toggleSave } = useSavedRecipes(userId);
 
   const colors = useThemeColors();
+  // ENG-818/819 (Redesign — Design Direction 2026). Soft-elevation token for
+  // the resting detail cards, replacing the hand-rolled hairline border, behind
+  // `design_system_elevation` (flag-off keeps today's flat/hairline card).
+  const cardElevation = useCardElevation();
+  // ENG-819 — blue commit CTAs behind `design_system_colours`; flag-off keeps
+  // whatever the legacy fill was (the in-body Log / sticky Log-all are already
+  // blue, so this is an explicit-parity gate, not a colour change for them).
+  const commitColours = isFeatureEnabled("design_system_colours");
+  // ENG-818 — the "Fits your day" payoff chip rides the same colour-system flag
+  // (it introduces `Accent.win` as a real chip fill). Flag-off keeps the flat
+  // coloured-text line.
+  const winFitsChip = commitColours;
+  // ENG-819 — quiet confirm haptic + web-equivalent press payoff on the
+  // recipe-detail commit CTAs, behind `redesign_winmoment`.
+  const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
@@ -1612,13 +1629,20 @@ export default function RecipeDetailScreen() {
     // composite block (`recipe-calorie-hero` testID).
     calorieNumber: { fontSize: 26, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
 
+    // ENG-818/819 — resting detail card. Soft ambient shadow + no border when
+    // `design_system_elevation` is on (light), tonal lift + hairline on dark,
+    // and today's flat/hairline card when the flag is off. These cards don't
+    // clip their children (`overflow` unset), so the iOS shadow can ride on the
+    // card itself — no outer wrapper needed (unlike the image-clipping library
+    // cards). Branching all lives in `useCardElevation()`.
     card: {
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
 
@@ -1757,7 +1781,7 @@ export default function RecipeDetailScreen() {
     progressBar: { height: 4, borderRadius: 2, overflow: "hidden", backgroundColor: colors.border },
     progressBarFill: { height: "100%", backgroundColor: Accent.primary },
     microValue: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, width: 50, textAlign: "right" },
-  }), [colors, insets.top]);
+  }), [colors, insets.top, cardElevation]);
 
   if (loading) {
     return (
@@ -2458,6 +2482,60 @@ export default function RecipeDetailScreen() {
               targetCals: userTargets.calories,
             });
             if (!verdict) return null;
+
+            // ENG-818 (Redesign — Design Direction 2026). The fit verdict is
+            // the single moment a user learns whether a recipe works for their
+            // day — the design-director review flagged it rendering as flat
+            // grey footnote metadata. Behind `design_system_colours` we promote
+            // it to a real tinted payoff CHIP:
+            //   - fits well (≤50% of day) → the dedicated landmark WIN amber
+            //     (`Accent.win` / `winSoft`). This is exactly the reserved
+            //     "genuine win" use the win-colour exists for — not a generic
+            //     success-green state.
+            //   - over-half (51–99%) → warning amber tint.
+            //   - over a full day (≥100%) → destructive red tint.
+            // Flag OFF keeps the old flat coloured-glyph + text line alive.
+            if (winFitsChip) {
+              const chipPalette = {
+                success: { fg: Accent.win, bg: Accent.winSoft },
+                warning: { fg: Accent.warning, bg: "rgba(247, 138, 50, 0.12)" },
+                destructive: {
+                  fg: Accent.destructive,
+                  bg: "rgba(241, 98, 100, 0.12)",
+                },
+              } as const;
+              const { fg, bg } = chipPalette[verdict.tone];
+              return (
+                <View
+                  testID="recipe-fits-your-day"
+                  accessibilityRole="text"
+                  accessibilityLabel={verdict.a11y}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    alignSelf: "flex-start",
+                    gap: 5,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: Radius.full,
+                    backgroundColor: bg,
+                    marginBottom: Spacing.lg,
+                  }}
+                >
+                  {verdict.fits ? (
+                    <Check size={13} color={fg} strokeWidth={3} />
+                  ) : null}
+                  <Text
+                    style={{ fontSize: 12.5, fontWeight: "700", color: fg }}
+                    numberOfLines={1}
+                  >
+                    {verdict.label}
+                  </Text>
+                </View>
+              );
+            }
+
+            // Flag-off legacy path — flat coloured glyph + text line.
             const tonePalette = {
               success: Accent.success,
               warning: Accent.warning,
@@ -2982,7 +3060,13 @@ export default function RecipeDetailScreen() {
                   );
                 })}
               </View>
-              <Pressable
+              {/* ENG-819 — commit CTA. `PressableScale haptic='confirm'` adds
+                  the quiet <100ms tactile confirm (flag-off = no haptic, old
+                  silent commit). This CTA is already the blue `Accent.primary`
+                  commit colour — `design_system_colours` introduces no change
+                  here, so it is intentionally NOT gated on it. */}
+              <PressableScale
+                haptic={winMomentFeedback ? "confirm" : "none"}
                 disabled={loggingJournal}
                 onPress={() => void addRecipeToTodayJournal()}
                 style={{
@@ -3004,19 +3088,22 @@ export default function RecipeDetailScreen() {
                     <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Log</Text>
                   </>
                 )}
-              </Pressable>
+              </PressableScale>
             </View>
           )}
 
           {/* Action button */}
+          {/* ENG-819 — Start Cooking commit CTA. Quiet confirm haptic on press
+              (flag-off = silent, old behaviour). Already blue `Accent.primary`. */}
           <View style={styles.actionsRow}>
-            <Pressable
+            <PressableScale
+              haptic={winMomentFeedback ? "confirm" : "none"}
               style={[styles.actionBtn, { backgroundColor: Accent.primary, flex: 1 }]}
               onPress={() => { setCookStep(0); setCookMode(true); }}
             >
               <UtensilsCrossed size={18} color={colors.primaryForeground} style={{ marginRight: 6 }} />
               <Text style={styles.actionBtnText}>Start Cooking</Text>
-            </Pressable>
+            </PressableScale>
           </View>
 
           {/* Batch 3.8 — Personal notes + rating */}
@@ -3309,7 +3396,12 @@ export default function RecipeDetailScreen() {
           pointerEvents="box-none"
           testID="recipe-detail-sticky-footer"
         >
-          <Pressable
+          {/* ENG-819 — whole-recipe commit. This is the landmark commit on this
+              screen, so it earns the heavier `success` notification haptic (vs
+              the lighter `confirm` on the in-body Log / Start Cooking). Flag-off
+              = silent, the old behaviour. Already blue `Accent.primary`. */}
+          <PressableScale
+            haptic={winMomentFeedback ? "success" : "none"}
             onPress={() => void addRecipeToTodayJournal()}
             disabled={loggingJournal}
             style={[styles.stickyFooterBtn, { opacity: loggingJournal ? 0.6 : 1 }]}
@@ -3327,7 +3419,7 @@ export default function RecipeDetailScreen() {
                 </Text>
               </>
             )}
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
     </View>

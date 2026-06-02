@@ -98,6 +98,42 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
   });
 });
 
+describe("LogSheet slot selector — web ↔ mobile parity (ENG-773)", () => {
+  const web = read(WEB_LOG_SHEET);
+  const mobile = read(MOBILE_LOG_SHEET);
+
+  it("both surfaces declare an optional `slot` prop of the same shape", () => {
+    // slot?: { current: string; options: readonly string[]; onChange }
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/slot\?:\s*\{/);
+      expect(src).toMatch(/options:\s*readonly string\[\]/);
+      expect(src).toMatch(/onChange:\s*\(slot:\s*string\)\s*=>\s*void/);
+    }
+  });
+
+  it("both surfaces emit per-slot testIDs via the `log-sheet-slot-` prefix", () => {
+    // Rendered dynamically as `log-sheet-slot-${s.toLowerCase()}` so the
+    // 4 resolved IDs (breakfast/lunch/dinner/snacks) exist at runtime;
+    // the source carries the template form on both platforms.
+    expect(web).toMatch(/log-sheet-slot-\$\{/);
+    expect(mobile).toMatch(/log-sheet-slot-\$\{/);
+  });
+
+  it("both surfaces wrap the selector in a labelled radiogroup of radios", () => {
+    // Web uses ARIA; mobile uses RN accessibilityRole — both declare the
+    // radiogroup container + radio options so AT announces the choice.
+    expect(web).toMatch(/role="radiogroup"/);
+    expect(web).toMatch(/role="radio"/);
+    expect(mobile).toMatch(/accessibilityRole="radiogroup"/);
+    expect(mobile).toMatch(/accessibilityRole="radio"/);
+  });
+
+  it("both surfaces tag the selector row with the `log-sheet-slot-row` handle", () => {
+    expect(web).toContain("log-sheet-slot-row");
+    expect(mobile).toContain("log-sheet-slot-row");
+  });
+});
+
 describe("today-meals-section — empty-state collage REMOVED on web (mobile parity)", () => {
   const web = read(WEB_TODAY_MEALS_SECTION);
   const mobile = read(MOBILE_TODAY_MEALS_SECTION);

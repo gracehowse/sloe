@@ -66,6 +66,7 @@ import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import {
   useMacroDisplayStyle,
   type MacroDisplayStyle,
@@ -169,6 +170,68 @@ function SectionHeading({ title }: { title: string }) {
       {title}
     </Text>
   );
+}
+
+/**
+ * SettingsCard — ENG-823 (Redesign — Design Direction 2026, soft elevation in
+ * Settings).
+ *
+ * Every section card in the bundle was a hand-rolled `<View>` repeating the
+ * same `bg-card + radius-14 + hairline border` recipe (~13 copies). The 5-spine
+ * direction (one elevation model) wants every resting card on the SAME
+ * soft-ambient-shadow / tonal-lift treatment via `useCardElevation`, gated
+ * behind `design_system_elevation`. Consolidating into one wrapper:
+ *   - applies the flag-aware shadow / border / tonal-lift in one place
+ *     (flag OFF → today's flat hairline-bordered card, unchanged), and
+ *   - kills the 13x duplication so the next elevation change is a one-liner.
+ *
+ * `overflow: "hidden"` is the default because the bundle cards clip their row
+ * dividers (`borderTopWidth` between rows). NOTE: iOS clips drop-shadows under
+ * `overflow: "hidden"`, so on the light soft-elevation path the shadow is moved
+ * to an OUTER wrapper (`shadowStyle` on the outer, clip on the inner) — same
+ * technique `SupprCard` uses.
+ */
+function SettingsCard({
+  children,
+  style,
+  testID,
+  flashStyle,
+}: {
+  children: React.ReactNode;
+  /** Extra style for the inner (clipping) card — padding, flexDirection, etc. */
+  style?: import("react-native").ViewStyle;
+  testID?: string;
+  /** ENG-824 win-colour wash spread (overrides bg + border colour). */
+  flashStyle?: import("react-native").ViewStyle;
+}) {
+  const colors = useThemeColors();
+  const { shadowStyle, useBorder, liftBg } = useCardElevation();
+
+  const inner = (
+    <View
+      testID={testID}
+      style={[
+        {
+          backgroundColor: liftBg ?? colors.card,
+          borderRadius: 14,
+          borderWidth: useBorder ? 1 : 0,
+          borderColor: colors.cardBorder,
+          overflow: "hidden",
+        },
+        style,
+        flashStyle,
+      ]}
+    >
+      {children}
+    </View>
+  );
+
+  // Light soft-elevation: shadow must live on a non-clipping outer wrapper so
+  // iOS doesn't clip it. Dark / flag-off: no shadow → render the card directly.
+  if (shadowStyle) {
+    return <View style={[shadowStyle, { borderRadius: 14 }]}>{inner}</View>;
+  }
+  return inner;
 }
 
 /** A segmented-control row inside the Display & extras card. Used
@@ -1237,15 +1300,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   return (
     <>
       {/* Profile card */}
-      <View
+      <SettingsCard
         style={{
           flexDirection: "row",
           alignItems: "center",
           gap: 14,
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
           padding: 14,
           marginBottom: 4,
         }}
@@ -1285,7 +1344,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             {tierLabel}
           </Text>
         </View>
-      </View>
+      </SettingsCard>
 
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-22 subtractive: hide tiles whose value is zero
@@ -1337,15 +1396,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           `/(tabs)/settings.tsx`: upgrade (free/base) → Manage
           subscription (base/pro) → promo-code input (always). */}
       <SectionHeading title="Membership" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-membership">
         {profileData.userTier !== "pro" ? (
           <Pressable
             testID="settings-bundle-upgrade-row"
@@ -1530,7 +1581,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           </View>
         </View>
         ) : null}
-      </View>
+      </SettingsCard>
 
       {/* Household — hides when the user isn't in a household */}
       {householdSummary ? (
@@ -1541,15 +1592,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               that lives here today. Web mirror in
               `src/app/components/Profile.tsx`. */}
           <SectionHeading title="People" />
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              overflow: "hidden",
-            }}
-          >
+          <SettingsCard testID="settings-card-people">
             <SettingsRow
               testID={HOUSEHOLD_ROW_TEST_ID}
               isFirst
@@ -1559,21 +1602,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               sub={householdSummary.subtitle}
               onPress={() => router.push("/household-settings" as any)}
             />
-          </View>
+          </SettingsCard>
         </>
       ) : null}
 
       {/* Goals & targets */}
       <SectionHeading title="Goals & targets" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-goals">
         <SettingsRow
           testID="settings-bundle-daily-targets-row"
           isFirst
@@ -1682,7 +1717,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           })()}
           onPress={() => router.push("/fasting" as any)}
         />
-      </View>
+      </SettingsCard>
 
       {/* Display & extras — caffeine + alcohol Today widgets opt-in.
           Migrated from the legacy `/(tabs)/settings.tsx` Tracking
@@ -1692,15 +1727,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           on focus. Hydration stays on regardless; turning these off
           hides the row on Today but preserves any historical logs. */}
       <SectionHeading title="Display & extras" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-display">
         <View
           style={{
             flexDirection: "row",
@@ -1899,19 +1926,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           onChange={(next) => setThemePreference(next as ThemePreference)}
           colors={colors}
         />
-      </View>
+      </SettingsCard>
 
       {/* Connections */}
       <SectionHeading title="Connections" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-connections">
         <SettingsRow
           testID="settings-bundle-apple-health-row"
           isFirst
@@ -1957,19 +1976,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           onPress={() => setWeeklyRecapPushPickerOpen(true)}
         />
-      </View>
+      </SettingsCard>
 
       {/* Recipes */}
       <SectionHeading title="Recipes" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-recipes">
         <SettingsRow
           testID="settings-bundle-create-recipe-row"
           isFirst
@@ -1979,19 +1990,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           sub="Build and share a recipe"
           onPress={() => router.push("/create-recipe" as any)}
         />
-      </View>
+      </SettingsCard>
 
       {/* App */}
       <SectionHeading title="App" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-app">
         {context === "more" ? (
           <SettingsRow
             isFirst
@@ -2069,7 +2072,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
           }}
         />
-      </View>
+      </SettingsCard>
 
       {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
           MFP-refugee history-bridge gap (P1 customer-lens). Mirrors the
@@ -2084,15 +2087,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
       {/* Legal */}
       <SectionHeading title="Legal" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-legal">
         <SettingsRow
           testID="settings-bundle-privacy-row"
           isFirst
@@ -2110,24 +2105,24 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           sub="Service agreement"
           onPress={() => openLegalPath("/terms")}
         />
-      </View>
+      </SettingsCard>
 
-      {/* Build — dev-gated so prod testers don't see the build marker */}
+      {/* Build — ENG-801. Dev-gated (`__DEV__` is false in release/TestFlight
+          builds) so the build row never ships to a user-facing surface. A stale
+          internal capture token (a one-off "F50" test-build marker) used to be
+          appended here — it carried no meaning to a tester and read as garbage
+          on the legitimate version string, so it was removed. The row now shows
+          ONLY the real `v{version} · build {n}` a tester needs to report
+          against. (Pinned by `settingsElevationAndMarker.test.ts`.) */}
       {__DEV__ ? (
         <>
           <SectionHeading title="Build" />
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              overflow: "hidden",
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-            }}
+          <SettingsCard
+            testID="settings-card-build"
+            style={{ paddingHorizontal: 16, paddingVertical: 14 }}
           >
             <Text
+              testID="settings-build-marker"
               style={{
                 fontSize: 13,
                 color: colors.textSecondary,
@@ -2141,23 +2136,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   .nativeBuildVersion ??
                 Constants.expoConfig?.ios?.buildNumber ??
                 "?"
-              } · MARKER F50-2026-04-22`}
+              }`}
             </Text>
-          </View>
+          </SettingsCard>
         </>
       ) : null}
 
       {/* Danger zone */}
       <SectionHeading title="Danger zone" />
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          overflow: "hidden",
-        }}
-      >
+      <SettingsCard testID="settings-card-danger">
         <SettingsRow
           testID="settings-bundle-reset-row"
           isFirst
@@ -2258,7 +2245,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             );
           }}
         />
-      </View>
+      </SettingsCard>
 
       {/* Sign Out lives in the parent /(tabs)/settings.tsx as a single
           neutral row beneath this bundle. Sign Out is reversible

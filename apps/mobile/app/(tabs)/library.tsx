@@ -32,8 +32,9 @@ import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, Elevation, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_FILTER_PILLS,
@@ -95,6 +96,7 @@ export default function LibraryScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   // Library is a tab root — `useSafeBack` falls back to Today when the
   // stack is cold (e.g. hitting Library first from a deep link). The
   // back chevron in the prototype is presentational parity with the
@@ -305,9 +307,10 @@ export default function LibraryScreen() {
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.xs,
       borderRadius: Radius.sm,
-      backgroundColor: colors.card,
-      borderWidth: 1,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
     // 2026-04-30 audit (customer-lens): Library was the obvious spot
@@ -387,11 +390,12 @@ export default function LibraryScreen() {
       paddingVertical: 8,
       minHeight: 36,
       borderRadius: 20,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       justifyContent: "center",
       alignItems: "center",
+      ...(cardElevation.shadowStyle ?? {}),
     },
     filterPillActive: {
       backgroundColor: colors.backgroundSecondary,
@@ -417,12 +421,13 @@ export default function LibraryScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: 12,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       paddingHorizontal: 14,
       paddingVertical: 14,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     searchInput: {
       flex: 1,
@@ -435,13 +440,19 @@ export default function LibraryScreen() {
       paddingBottom: 100,
       gap: Spacing.md,
     },
-    card: {
-      backgroundColor: colors.card,
+    // Soft elevation rides on `cardShadowWrap` (outer) because the card
+    // clips its top image (`overflow: 'hidden'`), which would clip an iOS
+    // shadow. Border/lift react to the flag via `useCardElevation()`.
+    cardShadowWrap: {
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      ...(cardElevation.shadowStyle ?? {}),
+    },
+    card: {
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       overflow: "hidden",
-      ...Elevation.card,
     },
     // Prototype: "big recipe cards (120-ish tall image gradient)".
     cardImageWrap: {
@@ -475,11 +486,12 @@ export default function LibraryScreen() {
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: colors.card,
-      borderWidth: 1,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.cardBorder,
       alignItems: "center",
       justifyContent: "center",
+      ...(cardElevation.shadowStyle ?? {}),
     },
     // Audit 2026-04-30: reinstate a discoverable delete affordance.
     // P2-32 hid trash behind long-press, but customer-lens flagged this
@@ -496,11 +508,12 @@ export default function LibraryScreen() {
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: colors.card,
-      borderWidth: 1,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.cardBorder,
       alignItems: "center",
       justifyContent: "center",
+      ...(cardElevation.shadowStyle ?? {}),
     },
     cardBody: {
       paddingHorizontal: Spacing.lg,
@@ -581,7 +594,7 @@ export default function LibraryScreen() {
       alignItems: "center",
     },
     ctaBtnSecondaryText: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
-  }), [colors]);
+  }), [colors, cardElevation]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
@@ -590,6 +603,7 @@ export default function LibraryScreen() {
       const showDraft = kind !== "saved" && item.isPublished === false;
       const showGoPublic = kind === "created" && item.isPublished === false;
       return (
+        <View style={styles.cardShadowWrap}>
         <Pressable
           style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
@@ -692,6 +706,7 @@ export default function LibraryScreen() {
                 requires real per-recipe match-source data, P1/P2 work. */}
           </View>
         </Pressable>
+        </View>
       );
     },
     [router, confirmRemove, handleGoPublic, userId, styles],

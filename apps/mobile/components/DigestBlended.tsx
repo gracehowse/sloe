@@ -31,8 +31,9 @@ import { Share2, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
-import { track } from "@/lib/analytics";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   classifyDigestHeroTone,
@@ -65,6 +66,7 @@ export function DigestBlended(props: DigestProps) {
     blendedExtras,
   } = props;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
 
   const shownRef = useRef<string | null>(null);
   useEffect(() => {
@@ -167,6 +169,12 @@ export function DigestBlended(props: DigestProps) {
         ? Accent.destructive
         : colors.text;
 
+  // progress_digest_beige_v2 (Option A): pull mobile's hero off the opaque slab to
+  // web's muted/40 tint (over the white card → #fbfaf7). Alpha keeps it dark-mode-safe.
+  const heroFill = isFeatureEnabled("progress_digest_beige_v2")
+    ? colors.backgroundSecondary + "66"
+    : colors.backgroundSecondary;
+
   // ── Metric strip.
   const hasWeight = stats.weightDeltaKg != null;
   const weightDecision = decideWeightSurface(weightSurfaceMode, stats.weightDeltaKg);
@@ -195,13 +203,13 @@ export function DigestBlended(props: DigestProps) {
     <View
       testID="digest"
       style={{
-        backgroundColor: colors.card,
+        backgroundColor: cardElevation.liftBg ?? colors.card,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElevation.useBorder ? 1 : 0,
         borderColor: colors.cardBorder,
         padding: Spacing.lg,
         marginBottom: 14,
-        ...Elevation.card,
+        ...(cardElevation.shadowStyle ?? {}),
       }}
     >
       {/* Eyebrow + dismiss */}
@@ -223,7 +231,7 @@ export function DigestBlended(props: DigestProps) {
       <View
         testID="digest-hero"
         style={{
-          backgroundColor: colors.backgroundSecondary,
+          backgroundColor: heroFill,
           borderRadius: 14,
           paddingHorizontal: 16,
           paddingTop: 16,

@@ -569,6 +569,30 @@ export const AnalyticsEvents = {
    * transition, never on repeated zero-reads. Added 2026-04-18 (L6 G8)
    * so D3's "freeze save rate" metric has a denominator. */
   streak_reset: "streak_reset",
+  /** A reserved landmark win-moment was shown to the user on Today —
+   * the calorie ring closed at/under target, a tracked macro was hit,
+   * or a logging-streak milestone was crossed (ENG-798, Redesign —
+   * Design Direction 2026). Fires AT MOST ONCE per calendar day (the
+   * win-moment hooks persist the last-fired date). Payload:
+   * `{ kind: "goal" | "streak" | "macro", milestone?: number,
+   * platform: "ios" | "web" }`. Distinct from `streak_freeze_earned_seen`
+   * — this is the reserved celebration, not the freeze ledger. Same
+   * event name web ↔ mobile so the celebration-shown rate is one
+   * cross-platform funnel. */
+  day_target_hit_win_moment_shown: "day_target_hit_win_moment_shown",
+  /** A reserved weight win-moment was shown to the user on Progress — the
+   * just-saved weigh-in was a new all-time low (strictly below the prior
+   * minimum), the single weight landmark worth a loud celebration (ENG-824,
+   * Redesign — Design Direction 2026). Fires on the rising edge only (a
+   * re-save that doesn't beat the low, and the first-ever weigh-in, do NOT
+   * fire) and is gated behind `redesign_winmoment`. Payload:
+   * `{ platform: "ios" | "web" }`. Same event name web ↔ mobile so the
+   * weight-celebration rate is one cross-platform funnel. Distinct from
+   * `day_target_hit_win_moment_shown` (that is the calorie/macro/streak
+   * landmark on Today; this is the new-low landmark on Progress). Body-weight
+   * is HIGH-class PHI — the payload carries NO weight value, only the
+   * platform. */
+  weight_new_low_win_moment_shown: "weight_new_low_win_moment_shown",
   /** Onboarding v2 pace step — the soft-warn safety-floor banner
    *  surfaced to the user (`acted: "shown"`) or the user advanced
    *  despite it (`acted: "advanced"`).
@@ -869,6 +893,7 @@ export type FoodLoggedSource =
   | "manual"         // FoodSearch text/inline search confirm
   | "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
   | "saved_meal"     // Re-log from My meals tab
+  | "log_again"      // ENG-786 — one-tap "Log this/these again" on a Today slot
   | "custom_food"    // Logged from custom food entry
   | "copy_meal"      // Per-meal copy flow
   | "duplicate_day"  // Day-level duplicate flow

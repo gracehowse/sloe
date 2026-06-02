@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Plus, Salad } from "lucide-react-native";
 
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
+import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
@@ -160,36 +162,26 @@ export default function MacroDetailScreen() {
           // E13 (2026-05-11 visual sweep): empty state was just
           // "No meals logged for this day" — no anchor, no CTA. The
           // user landed here from Today expecting to learn about
-          // their macro, and got a dead end. Add a "Log a meal" CTA
-          // that bounces back to Today (where the FAB lives) so the
-          // empty state is actionable.
-          <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
-            <Text style={{ fontSize: 14, color: colors.textTertiary }}>
-              No meals logged for this day
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Log a meal on Today"
-              onPress={() => router.push("/(tabs)")}
-              style={({ pressed }) => ({
-                paddingHorizontal: Spacing.xl,
-                paddingVertical: 10,
-                borderRadius: Radius.md,
-                backgroundColor: config.color,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "700",
-                  color: "#fff",
-                }}
-              >
-                Log a meal
-              </Text>
-            </Pressable>
-          </View>
+          // their macro, and got a dead end.
+          //
+          // ENG-825 (2026-05-31 design-direction macro/meal lane): the
+          // fixed empty state was a line of text + a full-saturated-macro
+          // CTA floating in a sea of whitespace. Now a shared elevated,
+          // iconified card with a blue commit CTA + scale-press — same
+          // structure the meal-nutrition sibling now uses. Visual changes
+          // gated; the OLD flat / saturated-macro path lives in the
+          // shared component's flag-OFF branches.
+          <NutritionDetailEmptyState
+            testID="macro-detail-empty"
+            icon={Salad}
+            title="No meals logged yet"
+            subtitle={`Log a meal to see your ${config.label.toLowerCase()} broken down here.`}
+            ctaLabel="Log a meal"
+            ctaIcon={Plus}
+            ctaA11yLabel="Log a meal on Today"
+            ctaColorLegacy={config.color}
+            onPress={() => router.push("/(tabs)")}
+          />
         ) : breakdownMode === "ingredient" && supportsIngredientBreakdown ? (
           // Per-ingredient breakdown (ENG-748 #10): each logged recipe's
           // `recipe_ingredients` rows are scaled by the entry's

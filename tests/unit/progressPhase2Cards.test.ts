@@ -51,9 +51,13 @@ describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
     expect(MOBILE).toMatch(/<CaloriesRangeCard\b/);
     expect(MOBILE).toMatch(/testID="progress-calories-range-card"/);
     expect(MOBILE).toMatch(/testID="progress-calories-range-header"/);
-    // CaloriesRangeCard still strictly precedes the !hasData branch.
+    // CaloriesRangeCard (flag-OFF path) still strictly precedes ITS empty-state
+    // branch. The v2 redesign (design_system_elevation ON) added an earlier
+    // `{!hasData}` gate for the insight/hero section higher up the file, so we
+    // scope the search to the first empty-state branch at/after the card rather
+    // than the first one in the whole file.
     const calIdx = MOBILE.indexOf("<CaloriesRangeCard");
-    const hasDataIdx = MOBILE.indexOf("{!hasData ? (");
+    const hasDataIdx = MOBILE.indexOf("{!hasData ? (", calIdx);
     expect(calIdx).toBeGreaterThan(-1);
     expect(hasDataIdx).toBeGreaterThan(calIdx);
   });

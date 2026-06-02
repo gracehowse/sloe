@@ -47,22 +47,16 @@ describe("build-47 — web LogSheet pick-handlers honour mealSlot", () => {
 });
 
 describe("build-47 — web generic LogSheet-open paths reset mealSlot to time-of-day", () => {
-  it("module-level slotForHour helper exists and covers the 4 buckets", () => {
-    expect(SRC).toMatch(/function\s+slotForHour\(/);
-    const fnMatch = SRC.match(
-      /function\s+slotForHour\([\s\S]+?return\s+["']Dinner["'];?\s*\}/,
+  it("ENG-773 — imports the shared slotForHour ladder (no local 10/14/17 copy)", () => {
+    // Web now uses the single-source helper from `recipeJournalSlot` so
+    // it can never drift from mobile again. The old module-level copy
+    // (its own 10/14/17 cutoffs) is gone; the shared ladder is 11/15/17,
+    // verified bucket-by-bucket in `recipeJournalSlot.test.ts` +
+    // `apps/mobile/tests/unit/logSheetSlotHonoured.test.ts`.
+    expect(SRC).toMatch(
+      /import\s*\{[\s\S]*?\bslotForHour\b[\s\S]*?\}\s*from\s*["']\.\.\/\.\.\/lib\/nutrition\/recipeJournalSlot["']/,
     );
-    expect(fnMatch, "slotForHour body must be findable").not.toBeNull();
-    if (fnMatch) {
-      const body = fnMatch[0];
-      expect(body).toContain("Breakfast");
-      expect(body).toContain("Lunch");
-      expect(body).toContain("Snacks");
-      expect(body).toContain("Dinner");
-      expect(body).toMatch(/h\s*<\s*10/);
-      expect(body).toMatch(/h\s*<\s*14/);
-      expect(body).toMatch(/h\s*<\s*17/);
-    }
+    expect(SRC).not.toMatch(/function\s+slotForHour\(/);
   });
 
   it("openLogParam deep-link resets mealSlot before opening", () => {
@@ -103,5 +97,20 @@ describe("build-47 — web generic LogSheet-open paths reset mealSlot to time-of
     expect(SRC).toMatch(
       /onOpenAddForSlot=\{\s*\(slot\)\s*=>\s*\{[\s\S]{0,80}setMealSlot\(slot\);[\s\S]{0,80}setAddOpen\(true\);[\s\S]{0,40}\}\s*\}/,
     );
+  });
+});
+
+describe("ENG-773 — web LogSheet slot selector is flag-gated", () => {
+  it("wraps the LogSheet `slot` prop in isFeatureEnabled('log-sheet-slot-selector')", () => {
+    // The visible picker is new structure, so per CLAUDE.md it ships
+    // behind a flag. `mealSlot` is still threaded through every commit
+    // path regardless — only the picker UI is gated.
+    expect(SRC).toMatch(
+      /slot=\{[\s\S]{0,120}isFeatureEnabled\(\s*["']log-sheet-slot-selector["']\s*\)[\s\S]{0,160}current:\s*mealSlot/,
+    );
+  });
+
+  it("passes the canonical MEAL_SLOTS as the selector options (no local list)", () => {
+    expect(SRC).toMatch(/options:\s*MEAL_SLOTS/);
   });
 });

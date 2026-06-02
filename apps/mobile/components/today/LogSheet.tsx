@@ -241,6 +241,10 @@ export interface LogSheetProps {
   saved?: {
     meals: LogSheetSavedMeal[];
     onPick: (meal: LogSheetSavedMeal) => void;
+    /** ENG-783 — when set (flag `today-edit-entry-v2` on), tapping a saved
+     *  meal opens the portion editor first instead of logging 1× instantly.
+     *  Falls back to `onPick` when undefined (flag off → instant one-tap). */
+    onRequestPortion?: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
   /** Library tab -- user's saved recipes, surfaced inline so one-tap
@@ -291,6 +295,18 @@ export interface LogSheetProps {
    *  is responsible for the confirmation alert and the actual copy.
    *  When undefined (or count === 0) the row is hidden. */
   copyYesterday?: { count: number; onTap: () => void } | null;
+  /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
+   *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
+   *  the user can see AND choose which meal the item lands in, instead
+   *  of it being a hidden clock-inferred guess only fixable via a
+   *  long-press edit. `current` is the active slot (host seeds it from
+   *  time-of-day); `onChange` updates the host's active slot, which
+   *  every commit path already reads. */
+  slot?: {
+    current: string;
+    options: readonly string[];
+    onChange: (slot: string) => void;
+  };
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -307,6 +323,7 @@ export function LogSheet({
   photo,
   onAddManually,
   copyYesterday,
+  slot,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -377,6 +394,59 @@ export function LogSheet({
                 <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
             </View>
+
+            {/* ENG-773 — log-time meal-slot selector. The slot the item
+                will land in is now visible and tappable here, instead of
+                a hidden clock guess only fixable via long-press edit. */}
+            {slot ? (
+              <View
+                style={styles.slotRow}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Meal to log to"
+                testID="log-sheet-slot-row"
+              >
+                {slot.options.map((s) => {
+                  const active = slot.current === s;
+                  return (
+                    <Pressable
+                      key={s}
+                      onPress={() => slot.onChange(s)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Log to ${s}`}
+                      testID={`log-sheet-slot-${s.toLowerCase()}`}
+                      style={[
+                        styles.slotPill,
+                        {
+                          // Canonical selection language (2026-05-22, see
+                          // onboarding/segmented.tsx): soft primary tint +
+                          // primary border, NOT solid indigo. The label
+                          // stays foreground (colors.text) when active —
+                          // primary text on the tint is only ~3.34:1 and
+                          // would fail WCAG AA 4.5:1 for this 12px label,
+                          // whereas foreground clears it comfortably.
+                          borderColor: active ? Accent.primary : colors.border,
+                          backgroundColor: active
+                            ? Accent.primarySoft
+                            : "transparent",
+                        },
+                      ]}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "700",
+                          color: active ? colors.text : colors.textSecondary,
+                        }}
+                      >
+                        {s}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
 
             {inManualEntryMode ? (
               <BarcodeManualEntry
@@ -913,7 +983,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
 function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
   const colors = useThemeColors();
-  const { meals, onPick, state } = saved;
+  const { meals, onPick, onRequestPortion, state } = saved;
 
   if (state?.loading) {
     return <SkeletonList colors={colors} />;
@@ -941,7 +1011,12 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           title={m.title}
           kcal={m.kcal}
           source={m.source}
-          onPick={() => onPick(m)}
+          // ENG-783 — flag on: tap opens the portion editor; flag off:
+          // instant one-tap log (onPick).
+          onPick={() => (onRequestPortion ?? onPick)(m)}
+          accessibilityLabel={
+            onRequestPortion ? `Edit portion for ${m.title}` : undefined
+          }
         />
       ))}
     </ScrollView>
@@ -1075,17 +1150,21 @@ function BrowseRow({
   kcal,
   source,
   onPick,
+  accessibilityLabel,
 }: {
   title: string;
   kcal: number;
   source: SourceDotSource;
   onPick: () => void;
+  /** ENG-783 — optional override (e.g. "Edit portion for X" when the
+   *  tap opens the portion editor rather than logging instantly). */
+  accessibilityLabel?: string;
 }) {
   const colors = useThemeColors();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Log ${title}`}
+      accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
       onPress={() => {
         if (process.env.EXPO_OS === "ios") {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1335,6 +1414,21 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // ENG-773 — log-time slot selector pills under the header.
+  slotRow: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+  },
+  slotPill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
