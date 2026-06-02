@@ -50,6 +50,8 @@ vi.mock("expo-haptics", () => ({
  * exercise the search backend — so a narrow stub is enough.
  */
 vi.mock("@/lib/verifyRecipe", () => ({
+  // ENG-839: verifyRecipe now exports splitFoodSearchResults; passthrough mock.
+  splitFoodSearchResults: (_q: string, rows: any[]) => ({ best: rows ?? [], more: [] }),
   searchFoods: vi.fn(async () => []),
   getFoodMacros: vi.fn(async () => null),
   scaleMacrosByGrams: vi.fn(() => ({

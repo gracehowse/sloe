@@ -83,6 +83,8 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 vi.mock("@/lib/verifyRecipe", () => ({
+  // ENG-839: verifyRecipe now exports splitFoodSearchResults; passthrough mock.
+  splitFoodSearchResults: (_q: string, rows: any[]) => ({ best: rows ?? [], more: [] }),
   lookupBarcode: (...args: any[]) => lookupBarcode(...args),
   scaleMacrosByGrams: vi.fn(() => ({
     calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0,

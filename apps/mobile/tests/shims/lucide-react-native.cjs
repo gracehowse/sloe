@@ -56,6 +56,8 @@ const ICON_NAMES = [
   "ChevronUp",
   "Circle",
   "CircleAlert",
+  "CircleCheck",
+  "CirclePlus",
   "CircleX",
   "Clipboard",
   "Clock",
