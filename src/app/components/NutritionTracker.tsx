@@ -151,6 +151,7 @@ import {
 } from "../../lib/nutrition/eatAgainDismiss";
 import { SaveMealDialog } from "./suppr/save-meal-dialog";
 import { parseDateKey, shiftDateKey, todayKey, clampDateKey } from "../../lib/nutrition/trackerDate.ts";
+import { countWeighInDaysInWindow } from "../../lib/nutrition/weighInDays.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
 import {
   QUICK_ADD_COLLAPSED_STORAGE_KEY,
@@ -638,7 +639,7 @@ export const NutritionTracker = memo(function NutritionTracker({
    *  loosely as `string | null` to mirror the column's nullable nature. */
   const [_profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  const [_profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
+  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
@@ -2435,17 +2436,10 @@ export const NutritionTracker = memo(function NutritionTracker({
           effectiveCalorieTarget > 0 &&
           Math.abs(totals.calories - effectiveCalorieTarget) / effectiveCalorieTarget <= 0.1
         }
-        // ENG-753: proxy for weigh-in count; replace with real count when
-        // weight_logs query added to AppDataContext.
-        tdeeLearnDays={
-          profileAdaptiveTdeeConfidenceRaw === "high"
-            ? 6
-            : profileAdaptiveTdeeConfidenceRaw === "medium"
-              ? 4
-              : profileAdaptiveTdeeConfidenceRaw === "low"
-                ? 2
-                : 0
-        }
+        // ENG-758: real weigh-in count from the profile's weight_kg_by_day
+        // map (already loaded above) — distinct weigh-in days in the last 7,
+        // replacing the old adaptiveTdeeConfidence-tier proxy.
+        tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
       />
 
       {/* Single context block — priority order: fasting > eat-again >
