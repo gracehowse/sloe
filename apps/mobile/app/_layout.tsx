@@ -87,6 +87,7 @@ import 'react-native-reanimated';
 import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
+import { DrOutageBanner } from '@/components/ops/DrOutageBanner';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
@@ -510,6 +511,7 @@ function RootLayoutInner() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
+        <DrOutageBanner />
         <HandleSiriDeepLinks />
         <HandleWeeklyRecapPushOpen />
         <ForwardSocialSharesToImport />

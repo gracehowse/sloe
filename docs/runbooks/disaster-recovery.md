@@ -2,7 +2,7 @@
 
 **Owner:** Grace
 **Status:** Blocker 2 of [2026-05-14 production-readiness audit](../decisions/2026-05-14-production-readiness-audit-verdict.md) — Phase 1 deadline **2026-06-01**
-**Last updated:** 2026-05-14
+**Last updated:** 2026-06-01 — backup posture verified via Supabase MCP: **production org is on the `free` plan → no PITR, RPO 24h** (see § Backup posture). Remaining blocker is the plan decision, captured in [`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md).
 **Supersedes:** the implicit posture of "Supabase has backups, we'll figure it out" — that was acceptable at N=1 TestFlight, not at Phase 1 public traffic.
 
 The 2026-05-14 production-readiness audit found:
@@ -38,8 +38,8 @@ What this runbook does **not** cover:
 
 | Asset | Provider | Backup type | Frequency | Retention | RPO | RTO | Verified? |
 |---|---|---|---|---|---|---|---|
-| Postgres data (free tier) | Supabase | Daily logical backup | Once daily, vendor-scheduled | 7 days rolling | 24h | 4–8h (best effort, never rehearsed) | **VERIFICATION REQUIRED — Grace check production plan in Supabase dashboard** |
-| Postgres data (Pro/Team tier) | Supabase | PITR (continuous WAL) | Continuous | Plan-dependent (7 / 14 / 28 days) | ≤5min | 1–4h (best effort, never rehearsed) | **VERIFICATION REQUIRED — Grace confirm if PITR add-on enabled** |
+| Postgres data (free tier) | Supabase | Daily logical backup | Once daily, vendor-scheduled | 7 days rolling | 24h | 4–8h (best effort, never rehearsed) | ✅ **VERIFIED 2026-06-01 — this is the live posture.** Org `pyeqbxhowqljzkzfmhsm` plan = `free` (Supabase MCP `get_organization`). Daily logical backup, 7-day retention, RPO 24h. |
+| Postgres data (Pro/Team tier) | Supabase | PITR (continuous WAL) | Continuous | Plan-dependent (7 / 14 / 28 days) | ≤5min | 1–4h (best effort, never rehearsed) | ❌ **NOT ENABLED 2026-06-01.** PITR is a paid Pro+ add-on; project is on Free → PITR unavailable. The "with PITR" recovery paths below are aspirational until a plan upgrade. See [`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md). |
 | Storage buckets | Supabase | None native (free or Pro) — relies on Postgres metadata + object durability | n/a | n/a | Unbounded if object deleted | Per-object best-effort | **VERIFICATION REQUIRED — see S3 below** |
 | Edge functions code (canonical) | GitHub (repo) | Git history | Per commit | Forever | 0 | 0 (redeploy from `main`) | Yes — repo is authoritative |
 | Edge functions code (deployed) | Supabase | Vendor-held copy | Per deploy | Latest only | n/a | 5–10min via `supabase functions deploy` | Yes |
@@ -354,15 +354,15 @@ Append-only. Newest at the top. Initial row left blank with a forward date — G
 
 These items must be closed by **2026-06-01** (per Blocker 2 deadline in the [audit verdict](../decisions/2026-05-14-production-readiness-audit-verdict.md)). Each item is a Grace-only action that cannot be completed in-repo.
 
-- [ ] **Confirm Supabase plan + PITR availability.** Open Supabase dashboard → Project → Settings → Subscription. Note the plan (Free / Pro / Team) and whether PITR is enabled. Edit the "Postgres data" rows in § Backup posture above to match reality.
-- [ ] **Document actual backup retention from the dashboard.** Supabase dashboard → Database → Backups → record the actual retention window the project is on (free = 7 days; PITR varies). Edit the table.
-- [ ] **Rehearse one PITR restore to a scratch branch.** Use the protocol in § Quarterly rehearsal above. Time each step. Record in the rehearsal log.
+- [x] **Confirm Supabase plan + PITR availability.** ✅ 2026-06-01 via Supabase MCP — org `pyeqbxhowqljzkzfmhsm` plan = `free`, PITR **not** available (paid Pro+ add-on). § Backup posture table updated.
+- [x] **Document actual backup retention from the dashboard.** ✅ Free plan = daily logical backup, 7-day rolling retention, RPO 24h. Table updated.
+- [ ] **Rehearse one PITR restore to a scratch branch.** ⛔ **BLOCKED on Free plan** — both PITR restore and `supabase branches create` (the rehearsal protocol) require Pro+. Cannot rehearse as written until the plan decision lands ([`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md)). On Free, the only rehearsable path is "restore most-recent daily backup → new project," which still has never been timed — do that as the interim rehearsal.
 - [ ] **Record rehearsal in the log table above.** First row replaces the placeholder.
 - [ ] **Decide PITR upgrade vs accept 24h RPO; document in `docs/decisions/`.** Open `docs/decisions/YYYY-MM-DD-pitr-posture.md` capturing the decision + the cost trade-off. Reference back here.
 - [ ] **Set up storage bucket mirror (or document accepting the gap).** Spike a Backblaze B2 or Cloudflare R2 mirror cron for `recipe-photos` and `meal-photos`. Cost: ~£2/month at current volume. If skipping, capture the decision in `docs/decisions/YYYY-MM-DD-storage-mirror.md`.
-- [ ] **Build a `dr_full_outage_banner` component.** The flag is referenceable today via `isFeatureEnabled("dr-full-outage-banner")`, but there is no banner component that renders against it. Build it on web (`src/components/ops/DrOutageBanner.tsx`) and mobile (`apps/mobile/components/ops/DrOutageBanner.tsx`). Renders a top-of-app red banner with text fetched from a PostHog flag payload so copy can change without a deploy.
+- [x] **Build a `dr_full_outage_banner` component.** ✅ 2026-06-02. Built on web (`src/app/components/ops/DrOutageBanner.tsx`, mounted in `app/layout.tsx`) and mobile (`apps/mobile/components/ops/DrOutageBanner.tsx`, mounted in `apps/mobile/app/_layout.tsx`). Default-OFF kill switch on flag `dr-full-outage-banner`; renders a top-of-app destructive-token banner whose copy comes from the flag's PostHog payload (`{ title?, body? }` or a plain string), with a safe default fallback — so incident copy changes without a deploy. New `getFeatureFlagPayload` helper added to both analytics modules. Tested: `tests/unit/drOutageBanner.test.tsx` (web) + `apps/mobile/tests/unit/drOutageBanner.test.tsx` (mobile). To activate during an incident: turn the flag ON in PostHog (optionally set the payload copy).
 - [ ] **Keep a green TestFlight build always promoted.** Configure the EAS Update workflow so that whenever a new build is uploaded, the previous build stays at "Available" status for at least 14 days. Currently the previous build is sometimes manually expired — formalise the policy.
-- [ ] **Quarterly calendar reminder.** Put a recurring quarterly event in Grace's calendar: "Suppr DR rehearsal". Owner: Grace.
+- [x] **Quarterly calendar reminder.** ✅ 2026-06-02. Recurring event "Suppr DR rehearsal (quarterly)" created on Grace's primary calendar — first run 2026-07-06 10:00 (America/Panama), `RRULE:FREQ=MONTHLY;INTERVAL=3`, with 1-day + 30-min reminders. Description links this runbook + the PITR-posture decision (first run gated on the plan decision, since rehearsal branches need a paid plan).
 
 When every box is checked, the Blocker 2 row of the audit can be flipped to **Closed** in [`docs/decisions/2026-05-14-production-readiness-audit-verdict.md`](../decisions/2026-05-14-production-readiness-audit-verdict.md).
 
