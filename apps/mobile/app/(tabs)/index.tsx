@@ -71,6 +71,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { countWeighInDaysInWindow } from "@suppr/shared/nutrition/weighInDays";
 import { scaleMacroTargetsForCalorieBudget } from "@suppr/shared/nutrition/scaleMacroTargetsForCalorieBudget";
 import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
 import {
@@ -4846,17 +4847,13 @@ export default function TrackerScreen() {
                   effectiveCalorieGoal > 0 &&
                   Math.abs(totals.calories - effectiveCalorieGoal) / effectiveCalorieGoal <= 0.1
                 }
-                // ENG-753: proxy for weigh-in count; replace with real count
-                // when weight_logs query added to AppDataContext.
-                tdeeLearnDays={
-                  adaptiveTdeeConfidence === "high"
-                    ? 6
-                    : adaptiveTdeeConfidence === "medium"
-                      ? 4
-                      : adaptiveTdeeConfidence === "low"
-                        ? 2
-                        : 0
-                }
+                // ENG-758: real weigh-in count from the profile's
+                // weight_kg_by_day map (already loaded) — distinct weigh-in
+                // days in the last 7, replacing the adaptiveTdeeConfidence proxy.
+                tdeeLearnDays={countWeighInDaysInWindow(
+                  profileWeightKgByDay,
+                  dateKeyFromDate(new Date()),
+                )}
               />
             </ReAnimated.View>
 
