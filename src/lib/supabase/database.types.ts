@@ -1619,6 +1619,72 @@ export type Database = {
           },
         ]
       }
+      referral_credits: {
+        Row: {
+          code: string
+          id: string
+          redeemed_at: string
+          referee_days: number
+          referee_id: string
+          referrer_days: number
+          referrer_id: string
+          reward_granted_at: string | null
+        }
+        Insert: {
+          code: string
+          id?: string
+          redeemed_at?: string
+          referee_days?: number
+          referee_id: string
+          referrer_days?: number
+          referrer_id: string
+          reward_granted_at?: string | null
+        }
+        Update: {
+          code?: string
+          id?: string
+          redeemed_at?: string
+          referee_days?: number
+          referee_id?: string
+          referrer_days?: number
+          referrer_id?: string
+          reward_granted_at?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          flagged_at: string | null
+          flagged_reason: string | null
+          id: string
+          referrer_id: string
+          total_redeemed: number
+          total_reward_days_granted: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          flagged_at?: string | null
+          flagged_reason?: string | null
+          id?: string
+          referrer_id: string
+          total_redeemed?: number
+          total_reward_days_granted?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          flagged_at?: string | null
+          flagged_reason?: string | null
+          id?: string
+          referrer_id?: string
+          total_redeemed?: number
+          total_reward_days_granted?: number
+        }
+        Relationships: []
+      }
       revenuecat_events: {
         Row: {
           app_user_id: string
