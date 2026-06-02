@@ -275,7 +275,10 @@ export default function CalorieRing({
     : isOver
       ? RING_LABELS.over
       : RING_LABELS.remaining;
-  const budgetLine = `of ${Math.round(goal)} kcal`;
+  // Thousands separator to match the ring's centre number + the GOAL/FOOD/
+  // BONUS stats ("1,563") — without it the subtitle read "of 1563 kcal"
+  // (Grace visual walk, 2026-06-01).
+  const budgetLine = `of ${Math.round(goal).toLocaleString()} kcal`;
   const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
   const mainCirc = CIRC(R);
 
