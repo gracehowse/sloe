@@ -89,3 +89,12 @@ scripts/out/
 docs/audits/2026-05-31-redesign-web-capture/
 # Maestro ad-hoc capture output (screenshots from manual capture runs).
 apps/mobile/.maestro/capture/
+
+# Working design-exploration notes — scratch, date-stamped, not canonical
+# (canonical decisions live in docs/decisions/). Whole dir ignored so new
+# dated explorations don't keep showing up as untracked.
+docs/design-explorations/
+# Stitch design→code workflow doc — local tooling (the Stitch MCP server moved
+# to local scope; project .mcp.json is empty). File-scoped so docs/workflows/
+# stays open for any genuinely-tracked workflow docs later.
+docs/workflows/stitch-claude-code.md
