@@ -124,6 +124,99 @@ describe("NorthStarBlock (mobile) — non-default kinds", () => {
   });
 });
 
+describe("NorthStarBlock (mobile) — whyLine + macro row do not overlap", () => {
+  // Regression guard for the 2026-06-04 "Fits your remaining N kcal"
+  // overlap report. A scroll capture of Today appeared to show the
+  // whyLine subtitle ("Fits your remaining 740 kcal") sitting ON TOP
+  // of the macro caption row. Investigation found the card lays both
+  // out as plain flex-column siblings (no absolute positioning, no
+  // height clamp) — i.e. the capture was a mid-scroll motion-blur
+  // artifact, not a real layout bug. These tests pin the structural
+  // guarantee that PREVENTS an overlap so a future refactor (e.g.
+  // absolutely-positioning the whyLine, or clamping the body height)
+  // can't silently reintroduce one. The prior `baseSuggestion` never
+  // carried a `whyLine`, so this rendering path was untested.
+  const suggestionWithWhyLine: NorthStarBlockSuggestion = {
+    ...baseSuggestion,
+    whyLine: "Fits your remaining 740 kcal",
+  };
+
+  type StyleObj = Record<string, unknown>;
+  const flat = (s: unknown): StyleObj => {
+    if (Array.isArray(s)) {
+      return s.reduce<StyleObj>((acc, x) => ({ ...acc, ...flat(x) }), {});
+    }
+    return (s ?? {}) as StyleObj;
+  };
+
+  // Walk from a node up to (and including) the card root, collecting
+  // every ancestor's flattened style. `parent` is the RNTL test
+  // instance chain.
+  function ancestorStyles(node: { parent: unknown } | null): StyleObj[] {
+    const out: StyleObj[] = [];
+    let cur: { parent: unknown; props?: { style?: unknown } } | null =
+      node as never;
+    while (cur) {
+      if (cur.props?.style != null) out.push(flat(cur.props.style));
+      cur = (cur.parent ?? null) as never;
+    }
+    return out;
+  }
+
+  it("renders the whyLine and the macro caption as TWO distinct text nodes", () => {
+    const { getByText } = render(
+      <NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />,
+    );
+    // Two separate matches → the lines are NOT merged into one node and
+    // are not the same element painted twice.
+    const whyLine = getByText("Fits your remaining 740 kcal");
+    const macro = getByText(/520 kcal · 38g P · 42g C · 18g F/);
+    expect(whyLine).toBeTruthy();
+    expect(macro).toBeTruthy();
+    expect(whyLine).not.toBe(macro);
+  });
+
+  it("keeps the whyLine and macro row IN FLOW (no absolutely-positioned ancestor)", () => {
+    const { getByText } = render(
+      <NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />,
+    );
+    const whyLine = getByText("Fits your remaining 740 kcal");
+    const macro = getByText(/520 kcal · 38g P · 42g C · 18g F/);
+
+    // If either row sat under an absolutely-positioned container it
+    // could be lifted out of column flow and stack on top of a sibling
+    // — that is exactly the failure the report described. Neither may
+    // have `position: "absolute"` anywhere up its ancestor chain. (The
+    // only absolute element in the card is the reduce-motion skip
+    // button, which these rows are not inside.)
+    for (const styles of [ancestorStyles(whyLine), ancestorStyles(macro)]) {
+      expect(styles.some((s) => s.position === "absolute")).toBe(false);
+    }
+  });
+
+  it("does not clamp the body column to a fixed height that could force overlap", () => {
+    const { getByText } = render(
+      <NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />,
+    );
+    // A fixed `height` on the flex-column body (rather than letting it
+    // grow to fit all rows) is the other way sibling rows could be
+    // forced to overlap. Assert no ancestor of the macro row pins a
+    // numeric `height`.
+    const macro = getByText(/520 kcal · 38g P · 42g C · 18g F/);
+    const heights = ancestorStyles(macro)
+      .map((s) => s.height)
+      .filter((h) => typeof h === "number");
+    expect(heights).toHaveLength(0);
+  });
+
+  it("only renders the whyLine once (no duplicate stacked subtitle)", () => {
+    const { queryAllByText } = render(
+      <NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />,
+    );
+    expect(queryAllByText("Fits your remaining 740 kcal")).toHaveLength(1);
+  });
+});
+
 describe("NorthStarBlock (mobile) — reduce-motion swipe-to-skip fallback", () => {
   it("renders an X button when reduce-motion is on AND onSkip is supplied", async () => {
     vi.resetModules();
