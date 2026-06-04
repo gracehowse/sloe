@@ -159,11 +159,16 @@ export function SupprTabBar({
               {typeof label === "string" ? (
                 <Text
                   style={{
-                    // Canonical 2026-05-22 C10: 10pt → 11pt. Apple HIG
-                    // minimum for tab labels. Slightly more confident
-                    // chrome + a11y win.
-                    fontSize: 11,
-                    fontWeight: "600",
+                    // SLOE (2026-06-04) — match the Figma tab bar
+                    // (`_gen.mjs` tabBar): 10px, uppercase, tracked,
+                    // medium weight. Calmer than the prior 11pt/600
+                    // non-uppercase chrome; the active TODAY label reads
+                    // clay, the rest ink-faint, so the tab bar recedes
+                    // and the centre plum FAB owns the hierarchy.
+                    fontSize: 10,
+                    fontWeight: "500",
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
                     color: tintColor,
                   }}
                   numberOfLines={1}

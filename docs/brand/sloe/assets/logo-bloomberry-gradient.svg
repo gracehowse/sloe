@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Sloe — Bloom Berry on brand gradient field">
+  <defs>
+    <!-- Field: DEEP. Sloe -> Sloe Deep, darkest at the lower-right. Kept clearly darker than the
+         berry so the lifted-Damson berry separates as a lighter jewel (the §5 luminance gap). -->
+    <radialGradient id="bgGrad" cx="32%" cy="26%" r="96%">
+      <stop offset="0%" stop-color="#3B2A4D"/>
+      <stop offset="55%" stop-color="#2A1C3D"/>
+      <stop offset="100%" stop-color="#1C1129"/>
+    </radialGradient>
+    <!-- Berry: a LIFTED Damson sphere — lighter than the field, so the silhouette survives at 60px. -->
+    <radialGradient id="berryGrad" cx="38%" cy="33%" r="82%">
+      <stop offset="0%" stop-color="#9474A8"/>
+      <stop offset="42%" stop-color="#6A4B7A"/>
+      <stop offset="82%" stop-color="#4E3866"/>
+      <stop offset="100%" stop-color="#3E2C53"/>
+    </radialGradient>
+    <!-- Frosted bloom: a DEFINED soft disc (near-opaque core), upper-left — the signature + extra pop. -->
+    <radialGradient id="bloomGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#EDEAF1" stop-opacity="0.95"/>
+      <stop offset="42%" stop-color="#C9C2D6" stop-opacity="0.60"/>
+      <stop offset="78%" stop-color="#C9C2D6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#C9C2D6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Full-bleed square field — never pre-round; iOS masks corners -->
+  <rect width="1024" height="1024" fill="url(#bgGrad)"/>
+
+  <!-- Berry: optically centred (cy 524, a touch high of 512). r=348 -> ~68% width, inside the safe box. -->
+  <circle cx="512" cy="524" r="348" fill="url(#berryGrad)"/>
+
+  <!-- Hair-thin Frost edge on the upper-left arc — defines the silhouette where berry meets the
+       similar-hue field, so the disc never reads as a smudge when small. -->
+  <path d="M512 176 A348 348 0 0 0 200 386" fill="none" stroke="#C9C2D6" stroke-width="4" stroke-linecap="round" opacity="0.30"/>
+
+  <!-- Frosted bloom, off-centre upper-left, defined shape with intent. -->
+  <ellipse cx="408" cy="420" rx="174" ry="148" fill="url(#bloomGrad)"/>
+</svg>

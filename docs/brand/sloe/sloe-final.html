@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sloe — Final Brand Board · getsloe.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- Sloe palette (from the berry) ---- */
+    --sloe:#3B2A4D;        /* primary indigo-plum */
+    --sloe-deep:#241733;   /* darkest plum / dark surfaces */
+    --damson:#6A4B7A;      /* lifted plum */
+    --frost:#C9C2D6;       /* frosted bloom — signature light */
+    --frost-mist:#EDEAF1;  /* cool wash surface */
+    --clay:#C8794E;        /* warm coaching accent */
+    --clay-soft:#F4E2D2;   /* peach tint */
+    --honey:#D6A24A;       /* best-day gold */
+    --oat:#FBF8F3;         /* warm cream ground */
+    --oat-deep:#F3EEE6;
+    --linen:#F7F3EC;       /* card */
+    --ink:#221B26;         /* warm near-black, plum undertone */
+    --ink-soft:#6A6072;
+    --ink-faint:#9B93A3;
+    --line:#E8E2EC;
+    --sage:#5E7C5A;        /* under-budget / success */
+    --sage-soft:#E3EADD;
+    --destructive:#C0533F; /* over-budget (ring only) */
+    --amber:#C9892C;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 60% at 85% -5%, rgba(106,75,122,.10), transparent 55%),
+      radial-gradient(90% 50% at 5% 0%, rgba(201,194,214,.30), transparent 45%),
+      var(--oat);
+    color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1200px;margin:0 auto;padding:60px 48px 110px;}
+  .serif{font-family:var(--serif);}
+  .muted{color:var(--ink-soft);}
+
+  /* ============================================================
+     THE BERRY MARK — matte, frosted bloom (NOT glossy pearl)
+     A real sloe is matte indigo-plum with a soft dusty bloom
+     dusted over the upper surface. No specular pinpoint.
+     ============================================================ */
+  .berry{
+    display:inline-block;border-radius:50%;position:relative;
+    /* matte plum body: gentle, low-contrast radial — no bright white core */
+    background:
+      radial-gradient(105% 105% at 38% 32%, #4a3760 0%, var(--sloe) 42%, #2f2040 78%, var(--sloe-deep) 100%);
+    box-shadow:
+      inset 0 -4px 9px rgba(20,10,32,.55),       /* soft underside shade */
+      inset 0 3px 7px rgba(201,194,214,.10);     /* faint top lift, not a glint */
+  }
+  /* the frosted bloom: a soft, diffuse dusty haze — low opacity, heavily blurred,
+     spread across the upper-left third. Matte, powdery, not a highlight dot. */
+  .berry::before{
+    content:"";position:absolute;top:9%;left:11%;width:62%;height:55%;border-radius:50%;
+    background:radial-gradient(closest-side, rgba(201,194,214,.62), rgba(201,194,214,.20) 55%, transparent 78%);
+    filter:blur(3px);mix-blend-mode:screen;pointer-events:none;
+  }
+  /* a faint cool rim of bloom around the very edge (the dusted skin) */
+  .berry::after{
+    content:"";position:absolute;inset:0;border-radius:50%;
+    box-shadow:inset 0 0 6px 1px rgba(201,194,214,.16);pointer-events:none;
+  }
+
+  .eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--clay);font-weight:600;}
+
+  /* ---- MASTHEAD ---- */
+  .hero{
+    border-radius:32px;border:1px solid var(--line);
+    background:
+      radial-gradient(140% 90% at 80% 10%, rgba(201,194,214,.42), transparent 60%),
+      linear-gradient(180deg, #fff 0%, var(--oat) 100%);
+    padding:74px 60px 60px;margin-bottom:14px;position:relative;overflow:hidden;
+    box-shadow:0 30px 74px -42px rgba(59,42,77,.5);
+  }
+  .hero .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:50px;}
+  .badge{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;}
+  .badge b{color:var(--sloe);}
+  .domain{font-size:13px;color:var(--clay);font-weight:600;letter-spacing:.02em;}
+  .domain .at{color:var(--sloe);}
+  .wordmark{display:flex;align-items:center;justify-content:center;gap:2px;margin:6px 0 28px;}
+  .wordmark .word{font-family:var(--serif);font-weight:360;font-size:142px;letter-spacing:-.02em;color:var(--sloe);line-height:.9;}
+  .wm-berry{width:104px;height:104px;margin:0 -6px;vertical-align:middle;transform:translateY(8px);}
+  .hero .tagline{text-align:center;font-family:var(--serif);font-style:italic;font-weight:340;font-size:28px;color:var(--ink);letter-spacing:-.01em;}
+  .hero .pron{text-align:center;margin-top:18px;font-size:13.5px;color:var(--ink-faint);letter-spacing:.03em;}
+  .hero .pron b{color:var(--ink-soft);font-weight:600;}
+
+  /* ---- section scaffold ---- */
+  section{margin:64px 0;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:24px;}
+  .sec-head .n{font-family:var(--serif);font-size:17px;color:var(--frost);min-width:30px;font-weight:500;}
+  .sec-head h2{font-family:var(--serif);font-weight:400;font-size:29px;letter-spacing:-.01em;color:var(--ink);}
+  .sec-head .tag{margin-left:auto;font-size:12px;color:var(--ink-faint);text-align:right;}
+
+  /* ---- 1. PALETTE + TYPE (condensed strip) ---- */
+  .pal-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .pal{flex:1 1 96px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#fff;min-width:96px;}
+  .pal .c{height:54px;}
+  .pal .m{padding:7px 9px 9px;}
+  .pal .r{font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.1;}
+  .pal .h{font-size:10px;color:var(--ink-soft);letter-spacing:.02em;font-weight:600;margin-top:3px;}
+  .pal .u{font-size:9px;color:var(--ink-faint);margin-top:2px;line-height:1.25;}
+  .pal-grp{width:100%;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:10px 0 -2px;}
+
+  .type-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;}
+  .type-card{border:1px solid var(--line);border-radius:18px;padding:24px 26px;background:#fff;}
+  .type-card .lab{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--clay);font-weight:600;}
+  .type-card .big-serif{font-family:var(--serif);font-weight:380;font-size:46px;color:var(--sloe);letter-spacing:-.015em;margin:6px 0 2px;}
+  .type-card .big-sans{font-family:var(--sans);font-weight:600;font-size:40px;color:var(--ink);letter-spacing:-.02em;margin:8px 0 2px;}
+  .type-card .spec{font-size:12.5px;color:var(--ink-soft);}
+  .type-card .alpha{font-size:14px;color:var(--ink-faint);margin-top:8px;letter-spacing:.04em;}
+  .type-card .num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);}
+
+  /* ============================================================
+     2. MARKETING WEBSITE — getsloe.com inside browser chrome
+     ============================================================ */
+  .browser{border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:0 40px 90px -50px rgba(59,42,77,.65);background:#fff;}
+  .chrome{display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--oat-deep);border-bottom:1px solid var(--line);}
+  .dots{display:flex;gap:7px;}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block;}
+  .urlbar{flex:1;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;}
+  .urlbar .lock{color:var(--sage);font-size:11px;}
+  .urlbar b{color:var(--ink);font-weight:600;}
+
+  .site{background:
+      radial-gradient(120% 70% at 88% -10%, rgba(201,194,214,.40), transparent 55%),
+      linear-gradient(180deg,#fff,var(--oat) 70%);}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:20px 40px;}
+  .nav .brand{display:flex;align-items:center;gap:9px;}
+  .nav .brand .w{font-family:var(--serif);font-weight:400;font-size:28px;color:var(--sloe);letter-spacing:-.01em;}
+  .nav .links{display:flex;align-items:center;gap:28px;font-size:14px;color:var(--ink-soft);font-weight:500;}
+  .nav .links a{color:var(--ink-soft);text-decoration:none;}
+  .nav .navcta{background:var(--sloe);color:#fff;font-weight:600;font-size:13.5px;padding:9px 20px;border-radius:999px;}
+
+  .site-hero{display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;padding:46px 40px 30px;}
+  .sh-eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--clay-soft);color:var(--clay);font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;letter-spacing:.01em;}
+  .sh-h1{font-family:var(--serif);font-weight:400;font-size:54px;line-height:1.04;letter-spacing:-.02em;color:var(--sloe);margin:18px 0 16px;}
+  .sh-h1 em{font-style:italic;color:var(--clay);}
+  .sh-sub{font-size:17px;color:var(--ink-soft);line-height:1.55;max-width:42ch;}
+  .sh-actions{display:flex;align-items:center;gap:16px;margin-top:26px;}
+  .appstore{display:inline-flex;align-items:center;gap:11px;background:var(--ink);color:#fff;padding:11px 20px;border-radius:14px;}
+  .appstore .apple{font-size:26px;line-height:1;}
+  .appstore .t small{display:block;font-size:10px;opacity:.8;letter-spacing:.02em;}
+  .appstore .t b{display:block;font-size:18px;font-weight:600;letter-spacing:-.01em;font-family:var(--serif);}
+  .sh-note{font-size:13px;color:var(--ink-faint);}
+  .sh-note b{color:var(--sage);font-weight:600;}
+
+  /* phone peeking into hero */
+  .sh-phone-area{position:relative;display:flex;justify-content:center;}
+  .mini-phone{width:236px;height:486px;border-radius:42px;background:#0d0a12;padding:10px;box-shadow:0 50px 90px -44px rgba(36,23,51,.85), inset 0 0 0 2px rgba(201,194,214,.16);position:relative;}
+  .mini-phone .mnotch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:24px;background:#0d0a12;border-radius:0 0 14px 14px;z-index:5;}
+  .mini-screen{width:100%;height:100%;border-radius:33px;overflow:hidden;background:radial-gradient(120% 50% at 80% 0%, rgba(201,194,214,.4), transparent 55%),var(--oat);position:relative;padding:42px 16px 16px;}
+  .ms-greet{font-family:var(--serif);font-size:19px;color:var(--ink);font-weight:420;}
+  .ms-date{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-top:2px;}
+  .ms-ringcard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-top:12px;display:flex;flex-direction:column;align-items:center;box-shadow:0 14px 32px -28px rgba(59,42,77,.7);}
+  .ms-ring{width:106px;height:106px;border-radius:50%;background:conic-gradient(var(--sage) 0 70%, var(--sage-soft) 70% 100%);display:flex;align-items:center;justify-content:center;}
+  .ms-ring .in{width:84px;height:84px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ms-ring .k{font-family:var(--serif);font-size:24px;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;}
+  .ms-ring .o{font-size:8.5px;color:var(--ink-faint);margin-top:3px;font-variant-numeric:tabular-nums;}
+  .ms-ring .lab{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:700;margin-top:4px;}
+  .ms-coach{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--ink);text-align:center;margin-top:10px;line-height:1.35;}
+  .ms-coach b{font-style:normal;color:var(--clay);font-weight:600;}
+
+  /* value row */
+  .value-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:18px 40px 50px;}
+  .vcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px 24px;box-shadow:0 18px 44px -38px rgba(59,42,77,.55);}
+  .vicon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+  .vcard h3{font-family:var(--serif);font-weight:440;font-size:21px;color:var(--ink);letter-spacing:-.01em;margin-bottom:7px;}
+  .vcard p{font-size:14px;color:var(--ink-soft);line-height:1.5;}
+
+  .site-foot{display:flex;align-items:center;justify-content:space-between;padding:24px 40px;border-top:1px solid var(--line);background:var(--oat);}
+  .site-foot .fb{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-size:20px;color:var(--sloe);}
+  .site-foot .fl{display:flex;gap:22px;font-size:13px;color:var(--ink-soft);}
+  .site-foot .fl b{color:var(--clay);font-weight:600;}
+
+  /* ============================================================
+     3. iOS — four iPhone screens
+     ============================================================ */
+  .phones4{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;}
+  .phone{width:100%;aspect-ratio:300/620;border-radius:46px;background:#0d0a12;padding:10px;box-shadow:0 46px 84px -46px rgba(36,23,51,.9), inset 0 0 0 2px rgba(201,194,214,.16);position:relative;}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:24px;background:#0d0a12;border-radius:0 0 14px 14px;z-index:5;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;background:radial-gradient(120% 50% at 80% -2%, rgba(201,194,214,.4), transparent 55%),var(--oat);position:relative;}
+  .scr-pad{padding:40px 15px 15px;height:100%;}
+  .sb{display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:700;color:var(--ink);position:absolute;top:15px;left:18px;right:18px;z-index:6;}
+  .sb .r{display:flex;gap:3px;}
+  .pcap{text-align:center;font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:12px;letter-spacing:.02em;}
+  .pcap b{color:var(--sloe);}
+
+  /* screen primitives (shared, small) */
+  .s-greet{font-family:var(--serif);font-weight:420;font-size:18px;color:var(--ink);letter-spacing:-.01em;line-height:1.1;}
+  .s-sub{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-top:2px;}
+  .s-card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 28px -26px rgba(59,42,77,.7);}
+
+  /* ONBOARDING */
+  .ob-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+  .ob-top .w{font-family:var(--serif);font-size:15px;color:var(--sloe);font-weight:420;}
+  .ob-prog{height:3px;border-radius:99px;background:var(--frost-mist);margin:10px 0 16px;overflow:hidden;}
+  .ob-prog i{display:block;height:100%;width:28%;border-radius:99px;background:var(--clay);}
+  .ob-q{font-family:var(--serif);font-weight:420;font-size:19px;color:var(--ink);line-height:1.2;letter-spacing:-.01em;margin-bottom:4px;}
+  .ob-hint{font-size:10px;color:var(--ink-soft);margin-bottom:14px;line-height:1.4;}
+  .ob-opt{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:13px;border:1px solid var(--line);background:#fff;margin-bottom:9px;}
+  .ob-opt.sel{border-color:var(--clay);background:var(--clay-soft);}
+  .ob-opt .e{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ob-opt .tt{font-size:11px;font-weight:600;color:var(--ink);line-height:1.15;}
+  .ob-opt .ds{font-size:8.5px;color:var(--ink-faint);margin-top:1px;line-height:1.2;}
+  .ob-btn{margin-top:auto;background:var(--sloe);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:11px;border-radius:13px;}
+
+  /* TODAY */
+  .t-head{display:flex;justify-content:space-between;align-items:flex-start;}
+  .t-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(140deg,var(--damson),var(--sloe));}
+  .t-ringcard{margin-top:13px;padding:16px 14px;display:flex;flex-direction:column;align-items:center;}
+  .t-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--sage) 0 70%, var(--sage-soft) 70% 100%);display:flex;align-items:center;justify-content:center;position:relative;}
+  .t-ring .in{width:94px;height:94px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .t-ring .k{font-family:var(--serif);font-weight:440;font-size:27px;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;}
+  .t-ring .o{font-size:9px;color:var(--ink-faint);margin-top:3px;font-variant-numeric:tabular-nums;}
+  .t-ring .lab{font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:700;margin-top:4px;}
+  .t-coach{font-family:var(--serif);font-style:italic;font-size:11.5px;color:var(--ink);text-align:center;margin-top:11px;line-height:1.35;}
+  .t-coach b{font-style:normal;color:var(--clay);font-weight:600;}
+  .t-macros{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:11px;}
+  .t-mt{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 9px;}
+  .t-mt .v{font-family:var(--serif);font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .t-mt .v small{font-size:8px;color:var(--ink-faint);}
+  .t-mt .k{font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-top:1px;}
+  .t-mt .bar{height:3px;border-radius:99px;background:var(--frost-mist);margin-top:6px;overflow:hidden;}
+  .t-mt .bar i{display:block;height:100%;border-radius:99px;}
+  .t-next{margin-top:10px;padding:10px 11px;border-radius:13px;background:linear-gradient(135deg,var(--frost-mist),#fff);border:1px solid var(--line);display:flex;align-items:center;gap:9px;}
+  .t-next .ic{width:30px;height:30px;border-radius:9px;background:var(--sloe);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .t-next .lb{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--clay);font-weight:700;}
+  .t-next .nm{font-size:10.5px;font-weight:600;color:var(--ink);margin-top:1px;line-height:1.15;}
+  .t-next .ft{font-size:8.5px;color:var(--ink-soft);margin-top:1px;}
+
+  /* RECIPE DETAIL */
+  .r-photo{height:128px;border-radius:0;background:
+      radial-gradient(80% 90% at 30% 20%, #d98c5a, transparent 60%),
+      radial-gradient(70% 80% at 80% 70%, #b35f3e, transparent 55%),
+      linear-gradient(150deg,#c8794e,#8a4a30);position:relative;}
+  .r-photo .plate{position:absolute;inset:18px;border-radius:50%;background:radial-gradient(circle at 40% 35%, #f0e4d4, #e6d4bf 60%, #d9c3a8);box-shadow:inset 0 -8px 18px rgba(120,80,50,.35);}
+  .r-photo .food{position:absolute;inset:42px;border-radius:50%;background:radial-gradient(circle at 45% 40%, #e08a52, #b6603a 60%, #8f4528);}
+  .r-back{position:absolute;top:10px;left:10px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--sloe);z-index:3;}
+  .r-body{padding:13px 14px 14px;}
+  .r-title{font-family:var(--serif);font-weight:440;font-size:18px;color:var(--ink);line-height:1.15;letter-spacing:-.01em;}
+  .r-meta{font-size:9px;color:var(--ink-faint);margin-top:3px;letter-spacing:.02em;}
+  .fit-chip{display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px 11px;border-radius:13px;background:var(--sage-soft);border:1px solid rgba(94,124,90,.3);}
+  .fit-chip .pct{font-family:var(--serif);font-size:21px;color:var(--sage);font-weight:500;font-variant-numeric:tabular-nums;line-height:1;}
+  .fit-chip .lb{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sage);font-weight:700;}
+  .fit-chip .dx{font-size:10px;color:var(--ink);font-weight:600;margin-top:1px;line-height:1.2;}
+  .r-macros{display:flex;gap:6px;margin-top:11px;}
+  .r-macros .rm{flex:1;border:1px solid var(--line);border-radius:11px;padding:8px 6px;text-align:center;background:#fff;}
+  .r-macros .rm .v{font-family:var(--serif);font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .r-macros .rm .k{font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-top:1px;}
+  .r-cta{margin-top:11px;background:var(--clay);color:#fff;text-align:center;font-size:11.5px;font-weight:600;padding:11px;border-radius:13px;}
+  .r-est{font-size:8px;color:var(--ink-faint);text-align:center;margin-top:7px;}
+
+  /* LOG SHEET */
+  .log-screen{background:rgba(36,23,51,.34);}
+  .log-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--oat);border-radius:24px 24px 36px 36px;padding:14px 15px 16px;box-shadow:0 -20px 50px -20px rgba(36,23,51,.4);}
+  .log-grab{width:34px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 12px;}
+  .log-title{font-family:var(--serif);font-weight:440;font-size:17px;color:var(--ink);letter-spacing:-.01em;}
+  .log-search{margin-top:11px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:10px;color:var(--ink-faint);}
+  .log-tabs{display:flex;gap:7px;margin-top:11px;}
+  .log-tab{font-size:9px;font-weight:600;padding:6px 11px;border-radius:99px;color:var(--ink-soft);background:#fff;border:1px solid var(--line);}
+  .log-tab.on{background:var(--sloe);color:#fff;border-color:var(--sloe);}
+  .log-item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);}
+  .log-item .th{width:34px;height:34px;border-radius:10px;flex-shrink:0;}
+  .log-item .nm{font-size:11px;font-weight:600;color:var(--ink);line-height:1.15;}
+  .log-item .ds{font-size:8.5px;color:var(--ink-faint);margin-top:1px;}
+  .log-item .add{margin-left:auto;width:24px;height:24px;border-radius:50%;background:var(--clay-soft);color:var(--clay);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;}
+  .log-foot{margin-top:13px;background:var(--sloe);color:#fff;text-align:center;font-size:11.5px;font-weight:600;padding:12px;border-radius:13px;}
+
+  /* ============================================================
+     4. SOCIAL — @getsloe
+     ============================================================ */
+  .social-grid{display:grid;grid-template-columns:1.15fr 0.78fr 1.07fr;gap:22px;align-items:start;}
+
+  /* IG profile */
+  .ig{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 26px 60px -44px rgba(59,42,77,.55);}
+  .ig-top{display:flex;align-items:center;gap:6px;padding:13px 16px;border-bottom:1px solid var(--line);}
+  .ig-top .h{font-weight:700;font-size:14px;color:var(--ink);flex:1;}
+  .ig-top .dots3{color:var(--ink-soft);font-weight:700;letter-spacing:1px;}
+  .ig-head{display:flex;gap:18px;align-items:center;padding:18px 16px 8px;}
+  .ig-av{width:74px;height:74px;border-radius:50%;flex-shrink:0;padding:3px;background:linear-gradient(135deg,var(--clay),var(--damson),var(--sloe));}
+  .ig-av .berry{width:100%;height:100%;border:2px solid #fff;}
+  .ig-stats{display:flex;gap:22px;flex:1;justify-content:space-around;text-align:center;}
+  .ig-stats b{display:block;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .ig-stats span{font-size:11px;color:var(--ink-soft);}
+  .ig-bio{padding:2px 16px 14px;}
+  .ig-bio .nm{font-weight:700;font-size:13px;color:var(--ink);}
+  .ig-bio .tag{font-size:12.5px;color:var(--sloe);font-style:italic;font-family:var(--serif);}
+  .ig-bio .ln{font-size:12.5px;color:var(--ink-soft);margin-top:2px;line-height:1.45;}
+  .ig-bio .url{font-size:12.5px;color:var(--clay);font-weight:600;margin-top:2px;}
+  .ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;}
+  .ig-cell{aspect-ratio:1;position:relative;overflow:hidden;}
+  .ig-cell .lab{position:absolute;left:7px;bottom:6px;font-size:8.5px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+
+  /* TikTok vertical */
+  .tt{border-radius:24px;overflow:hidden;background:#0d0a12;box-shadow:0 36px 74px -42px rgba(36,23,51,.85);position:relative;aspect-ratio:9/17;}
+  .tt-bg{position:absolute;inset:0;background:
+      radial-gradient(70% 50% at 50% 22%, rgba(201,194,214,.30), transparent 60%),
+      linear-gradient(165deg,#3B2A4D,#241733 70%);}
+  .tt-top{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center;gap:18px;font-size:11px;font-weight:600;color:rgba(255,255,255,.55);z-index:3;}
+  .tt-top b{color:#fff;border-bottom:2px solid #fff;padding-bottom:4px;}
+  .tt-reel{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:74%;border-radius:16px;overflow:hidden;border:2px solid rgba(255,255,255,.25);box-shadow:0 16px 40px -16px rgba(0,0,0,.6);}
+  .tt-reel .ph{height:96px;background:
+      radial-gradient(60% 70% at 35% 30%, #e08a52, transparent 60%),
+      linear-gradient(150deg,#c8794e,#7d3f28);position:relative;}
+  .tt-reel .ph .plate{position:absolute;inset:16px;border-radius:50%;background:radial-gradient(circle at 42% 38%,#efe2d2,#dcc4a6);}
+  .tt-reel .cap{background:#fff;padding:8px 10px;}
+  .tt-reel .cap .src{font-size:8px;color:var(--ink-faint);font-weight:600;}
+  .tt-reel .cap .nm{font-size:11px;font-weight:600;color:var(--ink);line-height:1.15;margin-top:1px;}
+  .tt-arrow{position:absolute;top:172px;left:50%;transform:translateX(-50%);z-index:4;color:#fff;font-size:18px;opacity:.9;}
+  .tt-fit{position:absolute;top:200px;left:50%;transform:translateX(-50%);width:74%;background:rgba(255,255,255,.96);border-radius:14px;padding:11px 12px;z-index:4;box-shadow:0 18px 40px -18px rgba(0,0,0,.5);}
+  .tt-fit .row{display:flex;align-items:center;gap:9px;}
+  .tt-fit .pct{font-family:var(--serif);font-size:26px;color:var(--sage);font-weight:500;line-height:1;font-variant-numeric:tabular-nums;}
+  .tt-fit .lb{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sage);font-weight:700;}
+  .tt-fit .dx{font-size:10px;font-weight:600;color:var(--ink);line-height:1.2;margin-top:1px;}
+  .tt-cap{position:absolute;left:14px;right:54px;bottom:58px;z-index:3;}
+  .tt-cap .hd{font-family:var(--serif);font-style:italic;font-size:15px;color:#fff;line-height:1.25;}
+  .tt-cap .hd b{font-style:normal;font-weight:600;}
+  .tt-cap .tags{font-size:11px;color:var(--frost);margin-top:6px;font-weight:600;}
+  .tt-handle{position:absolute;left:14px;bottom:30px;font-size:12px;font-weight:700;color:#fff;z-index:3;}
+  .tt-rail{position:absolute;right:12px;bottom:60px;display:flex;flex-direction:column;gap:16px;align-items:center;z-index:3;}
+  .tt-rail .ic{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;}
+  .tt-rail .ic.av{background:linear-gradient(135deg,var(--clay),var(--sloe));border:2px solid #fff;padding:2px;}
+  .tt-rail small{font-size:8px;color:#fff;font-weight:600;}
+
+  /* X post */
+  .xp{border:1px solid var(--line);border-radius:20px;padding:18px 18px 16px;background:#fff;box-shadow:0 26px 60px -44px rgba(59,42,77,.55);}
+  .xp-head{display:flex;align-items:center;gap:11px;}
+  .xp-av{width:46px;height:46px;border-radius:50%;flex-shrink:0;}
+  .xp-av .berry{width:100%;height:100%;}
+  .xp-name{font-weight:700;font-size:14.5px;color:var(--ink);display:flex;align-items:center;gap:5px;}
+  .xp-name .vf{color:var(--sloe);font-size:13px;}
+  .xp-handle{font-size:13px;color:var(--ink-faint);}
+  .xp-follow{margin-left:auto;background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:999px;}
+  .xp-body{font-size:16px;color:var(--ink);line-height:1.5;margin-top:14px;}
+  .xp-body .h1{font-family:var(--serif);font-size:21px;color:var(--sloe);letter-spacing:-.01em;display:flex;align-items:center;gap:7px;}
+  .xp-body .star{color:var(--clay);}
+  .xp-body b{font-weight:600;}
+  .xp-link{color:var(--clay);font-weight:600;}
+  .xp-card{margin-top:14px;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .xp-card .img{height:120px;background:
+      radial-gradient(120% 70% at 80% 0%, rgba(201,194,214,.45), transparent 55%),
+      linear-gradient(135deg,#6A4B7A,#3B2A4D 60%,#241733);display:flex;align-items:center;justify-content:center;gap:7px;}
+  .xp-card .img .w{font-family:var(--serif);font-size:34px;color:#fff;font-weight:400;}
+  .xp-card .ft{padding:10px 13px;background:var(--oat);}
+  .xp-card .ft .d{font-size:11px;color:var(--ink-faint);}
+  .xp-card .ft .t{font-size:13px;color:var(--ink);font-weight:600;margin-top:1px;}
+  .xp-stats{display:flex;gap:26px;margin-top:14px;font-size:12.5px;color:var(--ink-faint);}
+  .xp-stats b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+
+  /* footer */
+  .footer{margin-top:70px;border-top:1px solid var(--line);padding-top:26px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-faint);}
+  .footer .fmark{display:flex;align-items:center;gap:9px;}
+  .footer .fmark .w{font-family:var(--serif);font-size:20px;color:var(--sloe);}
+  .footer .fmark .at{color:var(--clay);font-weight:600;font-size:13px;}
+
+  @media(max-width:980px){
+    .wrap{padding:40px 22px 80px;}
+    .wordmark .word{font-size:84px;}.wm-berry{width:62px;height:62px;}
+    .type-row{grid-template-columns:1fr;}
+    .site-hero{grid-template-columns:1fr;}.value-row{grid-template-columns:1fr;}
+    .phones4{grid-template-columns:repeat(2,1fr);}
+    .social-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ MASTHEAD ============ -->
+  <div class="hero">
+    <div class="topline">
+      <div class="badge">Brand board · <b>Sloe</b> · final identity</div>
+      <div class="domain">getsloe.com&nbsp;&nbsp;·&nbsp;&nbsp;<span class="at">@getsloe</span></div>
+    </div>
+    <div class="wordmark">
+      <span class="word">sl</span>
+      <span class="berry wm-berry" aria-label="o rendered as a matte sloe berry with frosted bloom"></span>
+      <span class="word">e</span>
+    </div>
+    <div class="tagline">Cook what you love. Hit your goals anyway.</div>
+    <div class="pron"><b>/sləʊ/</b> &nbsp;— say it "slow." &nbsp; The blackthorn berry · the frosted bloom · the unhurried pace. &nbsp; <b>The calm way to eat well.</b></div>
+  </div>
+
+  <!-- ============ 1. PALETTE + TYPE ============ -->
+  <section>
+    <div class="sec-head"><span class="n">01</span><h2>Palette &amp; type</h2><span class="tag">indigo-plum flesh · frosted bloom · warm clay · oat ground</span></div>
+    <div class="pal-strip">
+      <div class="pal-grp">Core brand</div>
+      <div class="pal"><div class="c" style="background:#3B2A4D"></div><div class="m"><div class="r">Sloe</div><div class="h">#3B2A4D</div><div class="u">Primary plum · ink</div></div></div>
+      <div class="pal"><div class="c" style="background:#241733"></div><div class="m"><div class="r">Sloe Deep</div><div class="h">#241733</div><div class="u">Dark surfaces</div></div></div>
+      <div class="pal"><div class="c" style="background:#6A4B7A"></div><div class="m"><div class="r">Damson</div><div class="h">#6A4B7A</div><div class="u">Gradient · active</div></div></div>
+      <div class="pal"><div class="c" style="background:#C9C2D6"></div><div class="m"><div class="r">Frost ★</div><div class="h">#C9C2D6</div><div class="u">The bloom · ownable</div></div></div>
+      <div class="pal"><div class="c" style="background:#EDEAF1"></div><div class="m"><div class="r">Frost Mist</div><div class="h">#EDEAF1</div><div class="u">Cool wash</div></div></div>
+      <div class="pal"><div class="c" style="background:linear-gradient(135deg,#6A4B7A,#3B2A4D 58%,#C9C2D6)"></div><div class="m"><div class="r">Gradient</div><div class="h">Damson→Frost</div><div class="u">Marketing · paywall</div></div></div>
+    </div>
+    <div class="pal-strip">
+      <div class="pal-grp">Warm coaching — permission, not restriction</div>
+      <div class="pal"><div class="c" style="background:#C8794E"></div><div class="m"><div class="r">Clay</div><div class="h">#C8794E</div><div class="u">Warm CTA · Pro</div></div></div>
+      <div class="pal"><div class="c" style="background:#F4E2D2"></div><div class="m"><div class="r">Clay Soft</div><div class="h">#F4E2D2</div><div class="u">Peach tint</div></div></div>
+      <div class="pal"><div class="c" style="background:#D6A24A"></div><div class="m"><div class="r">Honey</div><div class="h">#D6A24A</div><div class="u">Best-day star</div></div></div>
+      <div class="pal"><div class="c" style="background:#FBF8F3;box-shadow:inset 0 0 0 1px #E8E2EC"></div><div class="m"><div class="r">Oat</div><div class="h">#FBF8F3</div><div class="u">The canvas</div></div></div>
+      <div class="pal"><div class="c" style="background:#F7F3EC;box-shadow:inset 0 0 0 1px #E8E2EC"></div><div class="m"><div class="r">Linen</div><div class="h">#F7F3EC</div><div class="u">Card surface</div></div></div>
+      <div class="pal"><div class="c" style="background:#221B26"></div><div class="m"><div class="r">Ink</div><div class="h">#221B26</div><div class="u">Body text</div></div></div>
+    </div>
+    <div class="pal-strip">
+      <div class="pal-grp">Semantic — calorie-ring rule preserved</div>
+      <div class="pal"><div class="c" style="background:#5E7C5A"></div><div class="m"><div class="r">Sage</div><div class="h">#5E7C5A</div><div class="u">Under budget</div></div></div>
+      <div class="pal"><div class="c" style="background:#C0533F"></div><div class="m"><div class="r">Destructive</div><div class="h">#C0533F</div><div class="u">Ring over ONLY</div></div></div>
+      <div class="pal"><div class="c" style="background:#C9892C"></div><div class="m"><div class="r">Amber</div><div class="h">#C9892C</div><div class="u">Macros / sodium</div></div></div>
+      <div class="pal"><div class="c" style="background:#6A6072"></div><div class="m"><div class="r">Ink Soft</div><div class="h">#6A6072</div><div class="u">Secondary text</div></div></div>
+      <div class="pal"><div class="c" style="background:#9B93A3"></div><div class="m"><div class="r">Ink Faint</div><div class="h">#9B93A3</div><div class="u">Captions</div></div></div>
+      <div class="pal"><div class="c" style="background:#E8E2EC"></div><div class="m"><div class="r">Line</div><div class="h">#E8E2EC</div><div class="u">Hairline</div></div></div>
+    </div>
+
+    <div class="type-row">
+      <div class="type-card">
+        <div class="lab">Display · wordmark · recipe titles · coaching</div>
+        <div class="big-serif">Fraunces</div>
+        <div class="spec">Old-style optical serif, variable opsz 9–144 · low weight (~340–400) for the unhurried, editorial, <i>slow</i> feel.</div>
+        <div class="alpha serif">Cook what you love &nbsp;·&nbsp; <span class="num">1,420</span></div>
+      </div>
+      <div class="type-card">
+        <div class="lab">Body · UI · data</div>
+        <div class="big-sans">Inter</div>
+        <div class="spec">Clean humanist sans · <span class="num">tabular-nums</span> on every changing number, so the data still reads engineered under the warm skin.</div>
+        <div class="alpha">Protein <span class="num">96g</span> &nbsp; Carbs <span class="num">142g</span> &nbsp; Fat <span class="num">44g</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. MARKETING WEBSITE ============ -->
+  <section>
+    <div class="sec-head"><span class="n">02</span><h2>The marketing site — getsloe.com</h2><span class="tag">front door · eatsloe.com redirects here</span></div>
+    <div class="browser">
+      <div class="chrome">
+        <div class="dots"><i style="background:#E8A0A0"></i><i style="background:#E8CFA0"></i><i style="background:#A8D0A0"></i></div>
+        <div class="urlbar"><span class="lock">●</span> <span><b>getsloe.com</b></span></div>
+      </div>
+      <div class="site">
+        <!-- nav -->
+        <div class="nav">
+          <div class="brand"><span class="berry" style="width:30px;height:30px"></span><span class="w">sloe</span></div>
+          <div class="links">
+            <a>Features</a><a>Recipes</a><a>Pricing</a>
+            <span class="navcta">Get the app</span>
+          </div>
+        </div>
+        <!-- hero -->
+        <div class="site-hero">
+          <div>
+            <span class="sh-eyebrow"><span class="berry" style="width:14px;height:14px"></span> For people who love food <b>and</b> have goals</span>
+            <h1 class="sh-h1">Cook what you love.<br><em>Hit your goals</em> anyway.</h1>
+            <p class="sh-sub">Sloe is the calm way to eat well. Fit your favourite recipes into your targets, see what to cook next, and track without the diet-app noise — unhurried, honest about estimates, never restrictive.</p>
+            <div class="sh-actions">
+              <span class="appstore"><span class="apple"></span><span class="t"><small>Download on the</small><b>App Store</b></span></span>
+              <span class="sh-note"><b>Free</b> to start · iOS</span>
+            </div>
+          </div>
+          <div class="sh-phone-area">
+            <div class="mini-phone">
+              <div class="mnotch"></div>
+              <div class="mini-screen">
+                <div class="ms-greet">Morning, Grace</div>
+                <div class="ms-date">Tuesday · 2 June</div>
+                <div class="ms-ringcard">
+                  <div class="ms-ring"><div class="in"><div class="k">1,420</div><div class="o">of 2,040</div><div class="lab">Under budget</div></div></div>
+                  <div class="ms-coach">Room for dinner — <b>620 kcal</b> to play with.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- value row -->
+        <div class="value-row">
+          <div class="vcard">
+            <div class="vicon" style="background:var(--clay-soft)"><span class="berry" style="width:22px;height:22px"></span></div>
+            <h3>Food you love, kept in balance</h3>
+            <p>No banned lists, no "cheat days". Log the thing you actually want to eat — Sloe shows you how it fits, not why it's wrong.</p>
+          </div>
+          <div class="vcard">
+            <div class="vicon" style="background:var(--sage-soft)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E7C5A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+            <h3>Recipes that fit your day</h3>
+            <p>Every recipe shows a <b>fit score</b> against your targets. Import any recipe — even from a Reel — and see if it works before you cook.</p>
+          </div>
+          <div class="vcard">
+            <div class="vicon" style="background:var(--frost-mist)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B2A4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>Calm, not a countdown</h3>
+            <p>No streak anxiety, no red-alert calories. A quiet daily picture, honest estimates, and the time to eat well at your own pace.</p>
+          </div>
+        </div>
+        <!-- footer -->
+        <div class="site-foot">
+          <div class="fb"><span class="berry" style="width:22px;height:22px"></span> sloe</div>
+          <div class="fl"><span>Features</span><span>Pricing</span><span>Recipes</span><span>About</span><span><b>@getsloe</b></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. iOS APP ============ -->
+  <section>
+    <div class="sec-head"><span class="n">03</span><h2>The iOS app</h2><span class="tag">primary surface · four screens · Fraunces + the plum/oat system</span></div>
+    <div class="phones4">
+
+      <!-- a. ONBOARDING -->
+      <div>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="sb"><span>9:41</span><span class="r"><span></span><span>100%</span></span></div>
+          <div class="scr-pad" style="display:flex;flex-direction:column;">
+            <div class="ob-top"><span class="berry" style="width:18px;height:18px"></span><span class="w">sloe</span></div>
+            <div class="ob-prog"><i></i></div>
+            <div class="ob-q">What brings you to Sloe?</div>
+            <div class="ob-hint">No wrong answer. We'll set the pace that suits you.</div>
+            <div class="ob-opt sel"><span class="e" style="background:var(--clay-soft)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8794E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.35-9.5-8.5C.5 9 2 5.5 5.5 5.5 8 5.5 9 7 12 9c3-2 4-3.5 6.5-3.5C22 5.5 23.5 9 21.5 12.5 19 16.65 12 21 12 21z"/></svg>
+            </span><div><div class="tt">I love cooking, but I have goals</div><div class="ds">Fit the food you love into your targets</div></div></div>
+            <div class="ob-opt"><span class="e" style="background:var(--sage-soft)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5E7C5A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+            </span><div><div class="tt">Track more gently than my last app</div><div class="ds">Calm tracking, no streak pressure</div></div></div>
+            <div class="ob-opt"><span class="e" style="background:var(--frost-mist)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3B2A4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+            </span><div><div class="tt">Find new recipes that fit</div><div class="ds">Discover meals that hit your day</div></div></div>
+            <div class="ob-btn">Continue</div>
+          </div>
+        </div></div>
+        <div class="pcap"><b>a.</b> Onboarding — intent-first</div>
+      </div>
+
+      <!-- b. TODAY -->
+      <div>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="sb"><span>9:41</span><span class="r"><span></span><span>100%</span></span></div>
+          <div class="scr-pad">
+            <div class="t-head">
+              <div><div class="s-greet">Morning, Grace</div><div class="s-sub">Tuesday · 2 June</div></div>
+              <div class="t-av"></div>
+            </div>
+            <div class="s-card t-ringcard">
+              <div class="t-ring"><div class="in"><div class="k">1,420</div><div class="o">of 2,040 kcal</div><div class="lab">Under budget</div></div></div>
+              <div class="t-coach">Room for dinner — <b>620 kcal</b> to play with. No rush.</div>
+              <div class="t-macros">
+                <div class="t-mt"><div class="v">96<small>g</small></div><div class="k">Protein</div><div class="bar"><i style="width:70%;background:var(--sloe)"></i></div></div>
+                <div class="t-mt"><div class="v">142<small>g</small></div><div class="k">Carbs</div><div class="bar"><i style="width:58%;background:var(--damson)"></i></div></div>
+                <div class="t-mt"><div class="v">44<small>g</small></div><div class="k">Fat</div><div class="bar"><i style="width:62%;background:var(--clay)"></i></div></div>
+                <div class="t-mt"><div class="v">1.4<small>L</small></div><div class="k">Water</div><div class="bar"><i style="width:64%;background:var(--frost)"></i></div></div>
+              </div>
+            </div>
+            <div class="t-next">
+              <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-6 6c0 2 1 3 1 5h10c0-2 1-3 1-5a6 6 0 0 0-6-6Z"/><path d="M9 18h6M10 21h4"/></svg></div>
+              <div><div class="lb">What to eat next</div><div class="nm">Miso salmon &amp; greens</div><div class="ft">Fits your dinner — 96% of target</div></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="pcap"><b>b.</b> Today — ring, macros, coaching</div>
+      </div>
+
+      <!-- c. RECIPE DETAIL -->
+      <div>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="sb" style="color:#fff"><span>9:41</span><span class="r"><span></span><span>100%</span></span></div>
+          <div class="r-photo">
+            <div class="r-back">‹</div>
+            <div class="plate"></div><div class="food"></div>
+          </div>
+          <div class="r-body">
+            <div class="r-title">Harissa chickpea &amp; squash bowl</div>
+            <div class="r-meta">35 min · Serves 2 · Imported from Instagram</div>
+            <div class="fit-chip">
+              <div><div class="pct">94%</div><div class="lb">Fits your day</div></div>
+              <div class="dx" style="margin-left:auto;text-align:right;">Lands in your dinner<br>budget — room for pud.</div>
+            </div>
+            <div class="r-macros">
+              <div class="rm"><div class="v">540</div><div class="k">kcal</div></div>
+              <div class="rm"><div class="v">28<small style="font-size:8px;color:var(--ink-faint)">g</small></div><div class="k">Protein</div></div>
+              <div class="rm"><div class="v">62<small style="font-size:8px;color:var(--ink-faint)">g</small></div><div class="k">Carbs</div></div>
+              <div class="rm"><div class="v">19<small style="font-size:8px;color:var(--ink-faint)">g</small></div><div class="k">Fat</div></div>
+            </div>
+            <div class="r-cta">Add to today</div>
+            <div class="r-est">Estimated nutrition — we keep it honest</div>
+          </div>
+        </div></div>
+        <div class="pcap"><b>c.</b> Recipe — the <b>fit</b> chip</div>
+      </div>
+
+      <!-- d. LOG SHEET -->
+      <div>
+        <div class="phone"><div class="notch"></div><div class="screen log-screen">
+          <div class="sb"><span>9:41</span><span class="r"><span></span><span>100%</span></span></div>
+          <!-- faint today behind -->
+          <div class="scr-pad" style="opacity:.4;filter:blur(1px);">
+            <div class="s-greet">Morning, Grace</div>
+            <div class="s-sub">Tuesday · 2 June</div>
+          </div>
+          <div class="log-sheet">
+            <div class="log-grab"></div>
+            <div class="log-title">Log a meal</div>
+            <div class="log-search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9B93A3" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              Search foods &amp; recipes
+            </div>
+            <div class="log-tabs">
+              <span class="log-tab on">Recent</span><span class="log-tab">Recipes</span><span class="log-tab">Scan</span>
+            </div>
+            <div class="log-item">
+              <span class="th" style="background:radial-gradient(circle at 40% 35%,#e6d4bf,#cbb594)"></span>
+              <div><div class="nm">Greek yoghurt &amp; berries</div><div class="ds">Estimated 210 kcal · 18g protein</div></div>
+              <span class="add">+</span>
+            </div>
+            <div class="log-item">
+              <span class="th" style="background:radial-gradient(circle at 40% 35%,#d98c5a,#9a4d2e)"></span>
+              <div><div class="nm">Sourdough &amp; eggs</div><div class="ds">Estimated 430 kcal · 22g protein</div></div>
+              <span class="add">+</span>
+            </div>
+            <div class="log-item" style="border-bottom:none">
+              <span class="th" style="background:radial-gradient(circle at 40% 35%,#8fae87,#5e7c5a)"></span>
+              <div><div class="nm">Big green salad</div><div class="ds">Estimated 160 kcal · 6g protein</div></div>
+              <span class="add">+</span>
+            </div>
+            <div class="log-foot">Add to today</div>
+          </div>
+        </div></div>
+        <div class="pcap"><b>d.</b> Log sheet — calm, not clinical</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 4. SOCIAL — @getsloe ============ -->
+  <section>
+    <div class="sec-head"><span class="n">04</span><h2>Social — @getsloe</h2><span class="tag">same handle everywhere · IG · TikTok · X · YouTube</span></div>
+    <div class="social-grid">
+
+      <!-- IG PROFILE -->
+      <div class="ig">
+        <div class="ig-top"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#221B26" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg><div class="h">getsloe</div><div class="dots3">⋯</div></div>
+        <div class="ig-head">
+          <div class="ig-av"><span class="berry"></span></div>
+          <div class="ig-stats">
+            <div><b>48</b><span>posts</span></div>
+            <div><b>27.4k</b><span>followers</span></div>
+            <div><b>112</b><span>following</span></div>
+          </div>
+        </div>
+        <div class="ig-bio">
+          <div class="nm">Sloe</div>
+          <div class="tag">Cook what you love. Hit your goals anyway.</div>
+          <div class="ln">The calm way to eat well 🫐 Recipes that fit your day · honest estimates · no diet noise</div>
+          <div class="url">getsloe.com</div>
+        </div>
+        <div class="ig-grid">
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 35% 30%,#e08a52,#8a4a30)"><span class="lab">Reel-import →</span></div>
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 60% 40%,#8fae87,#4f6a4c)"><span class="lab">Fits your day</span></div>
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 40% 35%,#6A4B7A,#241733)"><span class="lab">The slow tip</span></div>
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 55% 30%,#d9b27a,#a06a2e)"><span class="lab">Sunday cook</span></div>
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 40% 45%,#cbb594,#8a7150)"><span class="lab">Macro swap</span></div>
+          <div class="ig-cell" style="background:radial-gradient(70% 80% at 60% 35%,#c8794e,#7d3f28)"><span class="lab">Room for this</span></div>
+        </div>
+      </div>
+
+      <!-- TIKTOK VERTICAL -->
+      <div class="tt">
+        <div class="tt-bg"></div>
+        <div class="tt-top"><span>Following</span><b>For You</b></div>
+
+        <div class="tt-reel">
+          <div class="ph"><div class="plate"></div></div>
+          <div class="cap"><div class="src">@somecreator · Instagram Reel</div><div class="nm">Crispy gochujang noodles</div></div>
+        </div>
+        <div class="tt-arrow">↓</div>
+        <div class="tt-fit">
+          <div class="row">
+            <div><div class="pct">88%</div><div class="lb">Fits your day</div></div>
+            <div class="dx" style="margin-left:auto;text-align:right;">Est. 610 kcal · lands<br>in tonight's budget</div>
+          </div>
+        </div>
+
+        <div class="tt-cap">
+          <div class="hd">Import <b>any</b> recipe from a Reel —<br>see if it fits before you cook.</div>
+          <div class="tags">#getsloe #whatieat #macrofriendly</div>
+        </div>
+        <div class="tt-handle">@getsloe</div>
+
+        <div class="tt-rail">
+          <div class="ic av"><span class="berry" style="width:100%;height:100%"></span></div>
+          <div style="text-align:center"><div class="ic">♥</div><small>14.2k</small></div>
+          <div style="text-align:center"><div class="ic">💬</div><small>308</small></div>
+          <div style="text-align:center"><div class="ic">↗</div><small>2.1k</small></div>
+        </div>
+      </div>
+
+      <!-- X POST -->
+      <div class="xp">
+        <div class="xp-head">
+          <div class="xp-av"><span class="berry"></span></div>
+          <div>
+            <div class="xp-name">Sloe <span class="vf">✓</span></div>
+            <div class="xp-handle">@getsloe</div>
+          </div>
+          <div class="xp-follow">Follow</div>
+        </div>
+        <div class="xp-body">
+          <div class="h1">Meet Sloe <span class="star">✦</span></div>
+          <p style="margin-top:8px;">Cook what you love, hit your goals anyway.</p>
+          <p style="margin-top:8px;">The calm recipe &amp; nutrition app for people who love food <b>and</b> have goals. Fit your favourite recipes into your targets — no diet noise, no streak anxiety, honest estimates.</p>
+          <p style="margin-top:8px;"><span class="xp-link">getsloe.com</span> · now on iOS 🫐</p>
+        </div>
+        <div class="xp-card">
+          <div class="img"><span class="berry" style="width:34px;height:34px"></span><span class="w">sloe</span></div>
+          <div class="ft"><div class="d">getsloe.com</div><div class="t">Cook what you love. Hit your goals anyway.</div></div>
+        </div>
+        <div class="xp-stats"><span><b>2,847</b> Reposts</span><span><b>11.3k</b> Likes</span><span><b>612</b> Bookmarks</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- footer -->
+  <div class="footer">
+    <div class="fmark"><span class="berry" style="width:22px;height:22px"></span><span class="w">sloe</span><span class="at">@getsloe</span></div>
+    <span>Final brand board · 2026-06-02 · getsloe.com · pending legal clearance &amp; domain/handle grab · docs/brand/sloe/</span>
+  </div>
+
+</div>
+</body>
+</html>

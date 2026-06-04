@@ -1,0 +1,150 @@
+// @vitest-environment jsdom
+/**
+ * <SupprCard> — THE single card primitive (Grace 2026-06-04 consolidation:
+ * "the cards are being handled separately ... they should all be the same
+ * component updated at once").
+ *
+ * This renders the shell and pins the consolidation CONTRACT every card surface
+ * now relies on, so a future change can't quietly re-diverge the cards:
+ *   - the OUTER node carries the soft lift + fill + radius and the testID;
+ *   - the INNER node clips (overflow:hidden) — the iOS clip fix lives here once;
+ *   - `size` drives the radius (card=20, tile/inset=16) — every card shares the
+ *     exact corner;
+ *   - `size="inset"` carries NO drop shadow (card-on-card must not double up);
+ *   - the light resting `card` drops the border (the soft lift is the
+ *     separation), while `inset` always draws the hairline.
+ *
+ * Harness mirrors `cardElevationSoftLiftDefault.test.tsx` (the theme is mocked
+ * so `useCardElevation` resolves a deterministic light/dark treatment).
+ */
+import * as React from "react";
+import { describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/react-native";
+
+import { Elevation } from "../../constants/theme";
+
+void React;
+
+const themeState: { resolved: "light" | "dark"; colors: Record<string, string> } = {
+  resolved: "light",
+  colors: {
+    card: "#F6F5F2",
+    cardElevated: "#2A2730",
+    border: "#E8E2EC",
+    northStarBgFrom: "rgba(59,42,77,0.08)",
+    northStarBorder: "rgba(59,42,77,0.18)",
+    overBudgetSoft: "rgba(192,83,63,0.08)",
+    overBudgetFg: "#C0533F",
+    sourceUsda: "#5E7C5A",
+    sourceAi: "#6A4B7A",
+  },
+};
+vi.mock("@/context/theme", () => ({
+  useTheme: () => themeState,
+}));
+
+// eslint-disable-next-line import/first
+import { SupprCard, CARD_RADIUS, TILE_RADIUS } from "../../components/ui/SupprCard";
+
+/** Flatten an RN style prop (array | object) into one object. */
+function flatten(style: unknown): Record<string, unknown> {
+  if (Array.isArray(style)) {
+    return style.reduce(
+      (acc: Record<string, unknown>, s) => ({ ...acc, ...flatten(s) }),
+      {},
+    );
+  }
+  return (style ?? {}) as Record<string, unknown>;
+}
+
+describe("<SupprCard> — the consolidated card shell", () => {
+  it("puts the testID, fill, radius and soft lift on the OUTER node", () => {
+    themeState.resolved = "light";
+    const { getByTestId } = render(
+      <SupprCard testID="card-x">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("card-x");
+    const style = flatten(outer.props.style);
+    // Warm-grey #F6F5F2 fill — the same card colour everywhere.
+    expect(style.backgroundColor).toBe("#F6F5F2");
+    // The canonical card radius (20).
+    expect(style.borderRadius).toBe(CARD_RADIUS);
+    // The soft lift rides the outer node.
+    expect(style.shadowOpacity).toBe(Elevation.cardSoft.shadowOpacity);
+    expect(style.shadowColor).toBe(Elevation.cardSoft.shadowColor);
+  });
+
+  it("clips on a SEPARATE inner node (the iOS clip fix), which has NO shadow", () => {
+    themeState.resolved = "light";
+    const { getByTestId } = render(
+      <SupprCard testID="card-clip">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("card-clip");
+    const inner = outer.props.children;
+    const innerStyle = flatten(inner.props.style);
+    expect(innerStyle.overflow).toBe("hidden");
+    // The inner (clipping) node must not carry the shadow — iOS would swallow it.
+    expect(innerStyle.shadowOpacity).toBeUndefined();
+    // And the light resting card drops the inner border (lift is the separation).
+    expect(innerStyle.borderWidth).toBe(0);
+  });
+
+  it("size='tile' rounds to 16 (the macro-tile corner)", () => {
+    const { getByTestId } = render(
+      <SupprCard testID="tile" size="tile">
+        <></>
+      </SupprCard>,
+    );
+    expect(flatten(getByTestId("tile").props.style).borderRadius).toBe(TILE_RADIUS);
+  });
+
+  it("size='inset' rounds to 16, draws a hairline, and carries NO drop shadow", () => {
+    themeState.resolved = "light";
+    const { getByTestId } = render(
+      <SupprCard testID="inset" size="inset">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("inset");
+    const outerStyle = flatten(outer.props.style);
+    expect(outerStyle.borderRadius).toBe(TILE_RADIUS);
+    // No drop shadow on a card-on-card.
+    expect(outerStyle.shadowOpacity).toBeUndefined();
+    // The inset's hairline is its separation (it sits ON a card with no lift).
+    const innerStyle = flatten(outer.props.children.props.style);
+    expect(innerStyle.borderWidth).toBeGreaterThan(0);
+    expect(innerStyle.borderColor).toBe("#E8E2EC");
+  });
+
+  it("dark mode uses a tonal lift + hairline, never a (poorly-rendered) shadow", () => {
+    themeState.resolved = "dark";
+    const { getByTestId } = render(
+      <SupprCard testID="dark-card">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("dark-card");
+    const outerStyle = flatten(outer.props.style);
+    // Tonal lift, not a shadow.
+    expect(outerStyle.backgroundColor).toBe("#2A2730");
+    expect(outerStyle.shadowOpacity).toBeUndefined();
+    // Dark keeps the hairline.
+    expect(flatten(outer.props.children.props.style).borderWidth).toBeGreaterThan(0);
+    themeState.resolved = "light"; // restore for ordering
+  });
+
+  it("tone='warning' tints the fill + border (shared tone map)", () => {
+    themeState.resolved = "light";
+    const { getByTestId } = render(
+      <SupprCard testID="warn" tone="warning">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("warn");
+    expect(flatten(outer.props.style).backgroundColor).toBe("rgba(192,83,63,0.08)");
+  });
+});

@@ -3,14 +3,16 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
+  StyleSheet,
   Text,
   View,
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprCard } from "@/components/ui/SupprCard";
 import {
   ALCOHOL_QUICK_ADDS,
   CAFFEINE_QUICK_ADDS,
@@ -23,7 +25,20 @@ import {
 } from "@suppr/shared/nutrition/hydrationStimulants";
 
 /**
- * HydrationStimulantsCard (mobile).
+ * HydrationStimulantsCard (mobile) — Sloe `TD2 · Hydration & stimulants`
+ * re-skin (Today re-skin unit 3, 2026-06-03). Figma 463:2 /
+ * `docs/prototypes/stitch-sloe/today-hydration.html`.
+ *
+ * The TD2 frame splits the single legacy card into TWO Sloe cards:
+ *   - "Hydration" — a full-width Water row (Newsreader value over a track)
+ *     + a grid of quick-add chips.
+ *   - "Stimulants" — Caffeine + Caffeine rows in the same grammar, each
+ *     self-hiding when its target is 0 (the Settings opt-in path). When
+ *     neither stimulant is opted in, the whole Stimulants card is omitted.
+ *
+ * Re-skin only — NO data-flow or logic change. Every handler, the
+ * caffeine/alcohol Settings opt-in self-hide, the reset menu, and the
+ * storage-stays-metric invariant are preserved byte-for-byte.
  *
  * Parity: mirrors the web card at
  * `src/app/components/suppr/hydration-stimulants-card.tsx`.
@@ -68,31 +83,95 @@ function formatWaterLine(
 }
 
 const COLORS: Record<"water" | "caffeine" | "alcohol", string> = {
-  water: MacroColors.water, // cyan (shared --macro-water token)
-  caffeine: StimulantColors.caffeine, // violet — mirrors web --stimulant-caffeine
+  water: MacroColors.water, // teal (shared --macro-water token)
+  caffeine: StimulantColors.caffeine, // damson — mirrors web --stimulant-caffeine
   alcohol: Accent.warning, // amber; over-target label also uses amber
 };
 
+/**
+ * SloeCard — the Hydration / Stimulants section card. Card CHROME (warm-grey
+ * fill, radius 20, soft lift on an outer wrapper, corner-clip, hairline) is the
+ * shared <SupprCard> shell — this just adds the section's title row + content
+ * padding. No more hand-rolled per-card chrome (Grace 2026-06-04 consolidation).
+ */
+function SloeCard({
+  title,
+  rightLabel,
+  children,
+  testID,
+  accessibilityLabel,
+  style,
+}: {
+  title: string;
+  rightLabel?: string;
+  children: React.ReactNode;
+  testID?: string;
+  accessibilityLabel?: string;
+  style?: ViewStyle;
+}) {
+  const colors = useThemeColors();
+  return (
+    <SupprCard
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
+      padding="none"
+      style={style}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: Spacing.lg,
+          paddingTop: Spacing.lg,
+          paddingBottom: Spacing.sm,
+        }}
+      >
+        <Text style={{ ...Type.headline, color: MacroColors.calories }}>{title}</Text>
+        {rightLabel ? (
+          <Text style={{ ...Type.caption, color: colors.textTertiary }}>{rightLabel}</Text>
+        ) : null}
+      </View>
+      <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>{children}</View>
+    </SupprCard>
+  );
+}
+
+/**
+ * Row — one tracked quantity (Water / Caffeine / Alcohol). SLOE `TD2`
+ * grammar: a left icon + label, a right-aligned Newsreader value with its
+ * unit, a full-width progress track underneath, then the quick-add chip
+ * grid. The "more" (reset) affordance is an ellipsis on the value row, and
+ * over-target copy + the "from logged food" sub-line are preserved.
+ */
 function Row({
   label,
   icon,
   tone,
-  valueLine,
+  value,
+  unitSuffix,
   secondaryLine,
   pct,
   overTarget,
   overCopy,
+  emphasizeValue,
+  topBorder,
   children,
   onReset,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   tone: "water" | "caffeine" | "alcohol";
-  valueLine: string;
+  value: string;
+  unitSuffix: string;
   secondaryLine?: string;
   pct: number;
   overTarget: boolean;
   overCopy: string;
+  /** Water uses a larger (2xl) numeral in the frame; stimulants use base. */
+  emphasizeValue?: boolean;
+  /** Hairline separator above the row (stimulants stack two rows). */
+  topBorder?: boolean;
   children: React.ReactNode;
   onReset: () => void;
 }) {
@@ -101,75 +180,96 @@ function Row({
   const [menuOpen, setMenuOpen] = useState(false);
   const barColor = overTarget ? Accent.warning : COLORS[tone];
   return (
-    <View style={{ paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0, maxWidth: 140 }}>
-          <Ionicons name={icon} size={16} color={COLORS[tone]} />
-          <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{label}</Text>
+    <View
+      style={{
+        paddingTop: topBorder ? Spacing.md : 0,
+        // Sloe: hairline `border-t border-line` between stacked stimulant rows.
+        borderTopWidth: topBorder ? StyleSheet.hairlineWidth : 0,
+        borderTopColor: colors.border,
+        marginTop: topBorder ? Spacing.md : 0,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          marginBottom: Spacing.sm,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
+          <Ionicons name={icon} size={18} color={COLORS[tone]} />
+          <Text numberOfLines={1} style={{ fontSize: 15, color: colors.text }}>
+            {label}
+          </Text>
         </View>
-        <View style={{ flex: 1, alignItems: "flex-end", gap: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "800",
-                color: colors.text,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {valueLine}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${label} row more options`}
-              onPress={() => setMenuOpen(true)}
-              hitSlop={8}
-              style={{ padding: 2 }}
-            >
-              <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-          <View
-            accessibilityRole="progressbar"
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text
             style={{
-              width: "100%",
-              maxWidth: 220,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: colors.border,
-              overflow: "hidden",
+              ...(emphasizeValue ? Type.title : Type.headline),
+              color: colors.text,
+              fontVariant: ["tabular-nums"],
             }}
           >
-            <View
-              style={{
-                width: `${Math.max(0, Math.min(100, pct))}%`,
-                height: "100%",
-                borderRadius: 3,
-                backgroundColor: barColor,
-              }}
-            />
-          </View>
-          {secondaryLine ? (
-            <Text style={{ fontSize: 10, color: colors.textTertiary }}>{secondaryLine}</Text>
-          ) : null}
-          {overTarget ? (
-            <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.warning }}>
-              {overCopy}
-            </Text>
-          ) : null}
+            {value}
+            {unitSuffix ? (
+              <Text style={{ ...Type.caption, color: colors.textTertiary }}> {unitSuffix}</Text>
+            ) : null}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${label} row more options`}
+            onPress={() => setMenuOpen(true)}
+            hitSlop={8}
+            style={{ padding: 2 }}
+          >
+            <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
+          </Pressable>
         </View>
       </View>
+
+      <View
+        accessibilityRole="progressbar"
+        style={{
+          width: "100%",
+          height: tone === "water" ? 8 : 6,
+          borderRadius: 4,
+          backgroundColor: colors.border,
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            width: `${Math.max(0, Math.min(100, pct))}%`,
+            height: "100%",
+            borderRadius: 4,
+            backgroundColor: barColor,
+          }}
+        />
+      </View>
+
+      {secondaryLine ? (
+        <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: Spacing.xs }}>
+          {secondaryLine}
+        </Text>
+      ) : null}
+      {overTarget ? (
+        <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.warning, marginTop: Spacing.xs }}>
+          {overCopy}
+        </Text>
+      ) : null}
+
       <View
         style={{
           flexDirection: "row",
           flexWrap: "wrap",
-          gap: 6,
-          justifyContent: "flex-end",
-          marginTop: Spacing.xs,
+          gap: 8,
+          marginTop: Spacing.md,
         }}
       >
         {children}
       </View>
+
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <Pressable
           accessibilityRole="button"
@@ -216,6 +316,11 @@ function Row({
   );
 }
 
+/**
+ * Chip — a quick-add pill. SLOE `TD2` frame uses a calm frost-mist fill
+ * with a hairline; the tone colour stays on the label so the chip's
+ * meaning (water/caffeine/alcohol) is still legible at a glance.
+ */
 function Chip({
   tone,
   label,
@@ -227,6 +332,7 @@ function Chip({
   accessibilityLabel: string;
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
   const color = COLORS[tone];
   return (
     <Pressable
@@ -234,15 +340,20 @@ function Chip({
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       style={{
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: Radius.sm,
-        backgroundColor: color + "22",
+        flexGrow: 1,
+        flexBasis: "22%",
+        alignItems: "center",
+        paddingVertical: 9,
+        paddingHorizontal: 6,
+        borderRadius: Radius.full,
+        backgroundColor: colors.backgroundSecondary,
         borderWidth: 1,
-        borderColor: color + "55",
+        borderColor: colors.border,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label}</Text>
+      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -262,8 +373,6 @@ export function HydrationStimulantsCard({
   onReset,
   style,
 }: HydrationStimulantsCardProps) {
-  const colors = useThemeColors();
-  const cardElevation = useCardElevation();
   const showCaffeine = targets.caffeineMg > 0;
   const showAlcohol = targets.alcoholGWeekly > 0;
   const waterChips = useMemo(
@@ -298,111 +407,102 @@ export function HydrationStimulantsCard({
     [onAddAlcohol],
   );
 
+  // Split the water value + unit so the value reads in Newsreader and the
+  // unit stays in the calm caption — matching the `TD2` frame
+  // (`0 ml / 1.8 L`). `formatWaterLine` already returns "{value} {unit}".
+  const waterValueLine = `${formatWaterLine(waterTotalMl, measurementSystem)} / ${formatWaterLine(targets.waterMl, measurementSystem)}`;
+
   return (
     <View
       accessibilityLabel="Hydration and stimulants"
-      style={[
-        {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: colors.border,
-          borderRadius: Radius.lg,
-          paddingHorizontal: Spacing.xl,
-          paddingVertical: Spacing.md,
-          ...(cardElevation.shadowStyle ?? {}),
-        },
-        style,
-      ]}
+      style={[{ gap: Spacing.sm }, style]}
     >
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          color: colors.textTertiary,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          marginBottom: Spacing.xs,
-        }}
-      >
-        Hydration & stimulants
-      </Text>
-
-      <Row
-        tone="water"
-        label="Water"
-        icon="water-outline"
-        valueLine={`${formatWaterLine(waterTotalMl, measurementSystem)} / ${formatWaterLine(targets.waterMl, measurementSystem)}`}
-        secondaryLine={
-          waterFromMealsMl > 0
-            ? `Includes ${formatWaterLine(waterFromMealsMl, measurementSystem)} from logged food`
-            : undefined
-        }
-        pct={waterPct}
-        overTarget={false}
-        overCopy=""
-        onReset={() => onReset("water")}
-      >
-        {waterChips.map((chip) => (
-          <Chip
-            key={chip.ml}
-            tone="water"
-            label={`+${chip.label}`}
-            accessibilityLabel={
-              measurementSystem === "imperial"
-                ? `Add ${chip.label} water`
-                : `Add ${chip.ml} millilitres water`
-            }
-            onPress={() => onAddWater(chip.ml)}
-          />
-        ))}
-      </Row>
-
-      {showCaffeine ? (
+      <SloeCard title="Hydration" testID="today-hydration-card">
         <Row
-          tone="caffeine"
-          label="Caffeine"
-          icon="cafe-outline"
-          valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
-          pct={caffeinePct}
-          overTarget={caffeineOver}
-          overCopy={`Over ${targets.caffeineMg} mg`}
-          onReset={() => onReset("caffeine")}
+          tone="water"
+          label="Water"
+          icon="water-outline"
+          value={waterValueLine}
+          unitSuffix=""
+          emphasizeValue
+          secondaryLine={
+            waterFromMealsMl > 0
+              ? `Includes ${formatWaterLine(waterFromMealsMl, measurementSystem)} from logged food`
+              : undefined
+          }
+          pct={waterPct}
+          overTarget={false}
+          overCopy=""
+          onReset={() => onReset("water")}
         >
-          {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
+          {waterChips.map((chip) => (
             <Chip
-              key={preset.label}
+              key={chip.ml}
+              tone="water"
+              label={`+${chip.label}`}
+              accessibilityLabel={
+                measurementSystem === "imperial"
+                  ? `Add ${chip.label} water`
+                  : `Add ${chip.ml} millilitres water`
+              }
+              onPress={() => onAddWater(chip.ml)}
+            />
+          ))}
+        </Row>
+      </SloeCard>
+
+      {showCaffeine || showAlcohol ? (
+        <SloeCard title="Stimulants" rightLabel="This week" testID="today-stimulants-card">
+          {showCaffeine ? (
+            <Row
               tone="caffeine"
-              label={`+${preset.label} (${preset.mg}mg)`}
-              accessibilityLabel={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
-              onPress={() => handleCaffeine(preset.mg, preset.label)}
-            />
-          ))}
-        </Row>
-      ) : null}
+              label="Caffeine"
+              icon="cafe-outline"
+              value={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg}`}
+              unitSuffix="mg"
+              pct={caffeinePct}
+              overTarget={caffeineOver}
+              overCopy={`Over ${targets.caffeineMg} mg`}
+              onReset={() => onReset("caffeine")}
+            >
+              {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
+                <Chip
+                  key={preset.label}
+                  tone="caffeine"
+                  label={`+${preset.label} (${preset.mg}mg)`}
+                  accessibilityLabel={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
+                  onPress={() => handleCaffeine(preset.mg, preset.label)}
+                />
+              ))}
+            </Row>
+          ) : null}
 
-      {showAlcohol ? (
-        <Row
-          tone="alcohol"
-          label="Alcohol"
-          icon="wine-outline"
-          valueLine={`${weeklyAlcohol} / ${targets.alcoholGWeekly} g this week`}
-          pct={alcoholPct}
-          overTarget={alcoholOver}
-          overCopy="Over limit"
-          onReset={() => onReset("alcohol")}
-        >
-          {ALCOHOL_QUICK_ADDS.map((preset) => (
-            <Chip
-              key={preset.label}
+          {showAlcohol ? (
+            <Row
               tone="alcohol"
-              label={`+${preset.label} (${preset.grams}g)`}
-              accessibilityLabel={`Add ${preset.label}: ${preset.grams} grams alcohol`}
-              onPress={() => handleAlcohol(preset.grams, preset.label)}
-            />
-          ))}
-        </Row>
+              label="Alcohol"
+              icon="wine-outline"
+              value={`${weeklyAlcohol} / ${targets.alcoholGWeekly}`}
+              unitSuffix="g this week"
+              pct={alcoholPct}
+              overTarget={alcoholOver}
+              overCopy="Over limit"
+              topBorder={showCaffeine}
+              onReset={() => onReset("alcohol")}
+            >
+              {ALCOHOL_QUICK_ADDS.map((preset) => (
+                <Chip
+                  key={preset.label}
+                  tone="alcohol"
+                  label={`+${preset.label} (${preset.grams}g)`}
+                  accessibilityLabel={`Add ${preset.label}: ${preset.grams} grams alcohol`}
+                  onPress={() => handleAlcohol(preset.grams, preset.label)}
+                />
+              ))}
+            </Row>
+          ) : null}
+        </SloeCard>
       ) : null}
     </View>
   );
 }
-

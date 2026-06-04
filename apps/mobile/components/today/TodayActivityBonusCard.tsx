@@ -1,8 +1,11 @@
 import React from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
+import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
@@ -184,6 +187,43 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
 
+  // Sloe TD1 energy-balance gradient marker (sage deficit → frost
+  // maintenance → amber surplus). Position is a PRESENTATION of existing
+  // data — no new nutrition value. When maintenance is known we place the
+  // marker by where intake sits relative to maintenance: eaten == 0 → far
+  // left, eaten == maintenance → centre, eaten == 2× maintenance → far
+  // right. Without a maintenance value we fall back to the net sign
+  // (deficit left of centre, surplus right). Clamped to a small inset so
+  // the dot never clips the bar ends.
+  const balanceFraction = (() => {
+    if (hasMaintenanceTile && maintenanceTdeeKcal! > 0) {
+      const frac = consumedCalories / (2 * maintenanceTdeeKcal!);
+      return Math.min(0.96, Math.max(0.04, frac));
+    }
+    if (consumedCalories === 0) return 0.04;
+    return isDeficit ? 0.25 : 0.75;
+  })();
+  // The headline net colour: sage for a deficit, amber for a surplus, but
+  // neutral grey when nothing's been eaten yet (the "net" is just the burn
+  // — not a real balance), mirroring the summary-tile rule below.
+  const netHeadlineColor =
+    consumedCalories === 0
+      ? textSecondaryColor
+      : isDeficit
+        ? Accent.success
+        : Accent.warning;
+  // Plain-language sub-line under the headline (frame: "You've burned 553
+  // more than you've eaten today."). Past days read in past tense per the
+  // project voice rule.
+  const netSubLine =
+    consumedCalories === 0
+      ? isToday
+        ? "Log a meal to see today's balance."
+        : "No food logged for this day."
+      : isDeficit
+        ? `You've burned ${Math.abs(net).toLocaleString()} more than you've eaten${isToday ? " today" : ""}.`
+        : `You've eaten ${Math.abs(net).toLocaleString()} more than you've burned${isToday ? " today" : ""}.`;
+
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
   // actually logged, not a hardcoded /7 — a mid-week calendar window was
   // diluted by empty future days (e.g. 5,002 over 7 read as ~715/day
@@ -219,14 +259,19 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const isWeekDeficit = weekDeficit >= 0;
 
   return (
-    <View style={styles.card}>
+    // Card chrome is the shared <SupprCard> shell (fill #F6F5F2, radius 20, soft
+    // lift, hairline) — no longer the host-passed `styles.card`. The inner gap
+    // matches the prior card's `gap: Spacing.md`. Inner sub-cards (burn-breakdown,
+    // 7-day-rolling) are their OWN <SupprCard>s below.
+    <SupprCard padding="lg" innerStyle={{ gap: Spacing.md }}>
       {showDiscover ? (
         <View
           style={[{
             marginBottom: Spacing.sm,
             padding: Spacing.sm,
             borderRadius: Radius.md,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
+            // Sloe: hairline edge (≈1 physical px), not a 1pt (3px) border.
+            borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
             borderColor: cardBorderColor,
             backgroundColor: cardElevation.liftBg ?? cardColor,
           }, cardElevation.shadowStyle]}
@@ -259,9 +304,11 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </View>
         </View>
       ) : null}
+      {/* Sloe TD1 "Energy balance" header — Newsreader title + info icon
+          (preserved testID + gate). The maintenance-TDEE explainer popover
+          is unchanged below. */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
-        <Ionicons name="flame" size={20} color={Accent.activity} />
-        <Text style={[styles.cardTitle, { flex: 1 }]}>Activity Bonus</Text>
+        <Text style={[styles.cardTitle, { flex: 1, color: MacroColors.calories }]}>Energy balance</Text>
         {popoverCopy ? (
           <Pressable
             accessibilityRole="button"
@@ -284,95 +331,200 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         </Text>
       ) : null}
 
-      <View
-        testID="today-activity-bonus-summary-row"
-        style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm }}
-      >
-        <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-            {totalBurnKcal.toLocaleString()}
+      {/* Sloe TD1 energy-balance HERO — the net headline + plain-language
+          sub-line + deficit→maintenance→surplus gradient bar. Net moved
+          OUT of the summary tile row up into this headline (frame 459:2).
+          P2-31 rule preserved: when nothing's been eaten the net is just
+          the burn, so the headline reads neutral grey, not affirming
+          green. */}
+      <View style={{ marginBottom: Spacing.sm }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+          <Text
+            testID="today-activity-bonus-net-headline"
+            // `Type.ringValue` is now 48px (the Today ring centre, 2026-06-04).
+            // This energy-balance card headline is a SECONDARY number inline
+            // with a small caption — it keeps the pre-bump 36/36 so the ring
+            // bump doesn't silently oversize it. Same serif family/spacing.
+            style={{ ...Type.ringValue, fontSize: 36, lineHeight: 36, color: netHeadlineColor, fontVariant: ["tabular-nums"] }}
+          >
+            {Math.abs(net).toLocaleString()}
           </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>
-            {isToday ? "Burn so far" : "Total burn"}
+          <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+            {consumedCalories === 0
+              ? "kcal burned so far"
+              : isDeficit
+                ? "kcal net deficit"
+                : "kcal net surplus"}
           </Text>
         </View>
-        <View style={{ width: 1, backgroundColor: borderColor }} />
+        <Text style={{ fontSize: 12, color: textTertiaryColor, marginTop: 2, marginBottom: Spacing.md }}>
+          {netSubLine}
+        </Text>
+
+        {(hasBurnData || consumedCalories > 0) ? (
+          <>
+            {/* Sloe TD1 calm slider — a true deficit↔maintenance↔surplus
+                gradient track (sage 0% → frost 50% → amber 100%) with a knob
+                at the current position. Matches the Figma TD1 / prototype
+                `linear-gradient(90deg,#5E7C5A,#EDEAF1,#C9892C)`. The gradient
+                is drawn via `react-native-svg` (already a dependency — no new
+                package); the knob stays a plain absolutely-positioned View so
+                its left % can be data-driven by `balanceFraction` (a
+                PRESENTATION of existing burn/intake — no new nutrition value).
+                The track frost stop uses the card's hairline `borderColor` so
+                the centre reads as the neutral line, not a hard segment. */}
+            <View
+              accessibilityRole="progressbar"
+              style={{ position: "relative", height: 14, justifyContent: "center", marginBottom: Spacing.sm }}
+            >
+              <Svg width="100%" height={8}>
+                <Defs>
+                  <LinearGradient id="energyBalanceTrack" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={Accent.success} />
+                    <Stop offset="0.5" stopColor={borderColor} />
+                    <Stop offset="1" stopColor={Accent.warning} />
+                  </LinearGradient>
+                </Defs>
+                {/* rx/ry round the painted track ends (the gradient pill). */}
+                <Rect x="0" y="0" width="100%" height={8} rx={4} ry={4} fill="url(#energyBalanceTrack)" />
+              </Svg>
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: `${balanceFraction * 100}%`,
+                  marginLeft: -7,
+                  width: 14,
+                  height: 14,
+                  borderRadius: 7,
+                  backgroundColor: cardColor,
+                  borderWidth: 2,
+                  borderColor: isDeficit ? Accent.success : Accent.warning,
+                }}
+              />
+            </View>
+            {/* Sloe TD1 axis labels — UPPERCASE small-caps (Figma reads
+                "DEFICIT · MAINTENANCE · SURPLUS"). Restored from the Title-case
+                pass via Type.label (uppercase + letter-spacing). */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.md }}>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Deficit</Text>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Maintenance</Text>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Surplus</Text>
+            </View>
+          </>
+        ) : null}
+      </View>
+
+      {/* Burned / Eaten / Maintenance — the supporting stat row (frame's
+          3-col `divide-x` set). Net no longer lives here; it's the headline.
+          The Maintenance tile keeps its testID + gate (today-vs-past
+          parity test). */}
+      <View
+        testID="today-activity-bonus-summary-row"
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          paddingTop: Spacing.md,
+          marginBottom: Spacing.sm,
+          // Sloe: hairline `border-t border-line` above the stat row.
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: borderColor,
+        }}
+      >
+        {/* Sloe TD1 stat tiles — each is an icon + UPPERCASE label on the top
+            row, with the value below (Figma 459:2 reads a centred
+            "[flame] BURNED" / "[fork] EATEN" / "[target] MAINTENANCE", number
+            beneath). Type.label carries the uppercase transform + tracking; the
+            glyphs are calm lucide strokes at IconSize.sm (the Figma's
+            text-[15px]). Burned takes the honey activity hue (it's the burn
+            number); Eaten + Maintenance take muted ink so they don't compete. */}
         <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+            <Flame size={IconSize.sm} color={Accent.activity} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              Burned
+            </Text>
+          </View>
+          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+            {totalBurnKcal.toLocaleString()}
+          </Text>
+        </View>
+        {/* Sloe: hairline `divide-x divide-line` between stat tiles. */}
+        <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
+        <View style={{ alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+            <Utensils size={IconSize.sm} color={textSecondaryColor} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              Eaten
+            </Text>
+          </View>
+          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
             {consumedCalories.toLocaleString()}
           </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Food logged</Text>
         </View>
         {hasMaintenanceTile ? (
           <>
-            <View style={{ width: 1, backgroundColor: borderColor }} />
+            {/* Sloe: hairline `divide-x divide-line` before the maintenance tile. */}
+            <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
             <View
               testID="today-activity-bonus-maintenance-tile"
               style={{ alignItems: "center", flex: 1 }}
             >
-              <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                <Target size={IconSize.sm} color={textSecondaryColor} strokeWidth={2} />
+                <Text style={{ ...Type.label, color: textTertiaryColor }}>
+                  Maintenance
+                </Text>
+              </View>
+              <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
                 {maintenanceTdeeKcal!.toLocaleString()}
               </Text>
-              <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Maintenance</Text>
             </View>
           </>
         ) : null}
-        <View style={{ width: 1, backgroundColor: borderColor }} />
-        <View style={{ alignItems: "center", flex: 1 }}>
-          {/* P2-31 (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
-              2026-04-25 visual-qa): when no food was logged the
-              "Net deficit" was rendered green (success), affirming
-              data that's really just "we haven't subtracted anything
-              yet". When `consumedCalories === 0` the deficit is just
-              the burn — render in neutral grey so the user can tell
-              this isn't a real net. */}
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color:
-                consumedCalories === 0
-                  ? textSecondaryColor
-                  : isDeficit
-                    ? Accent.success
-                    : Accent.warning,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {Math.abs(net).toLocaleString()}
-          </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>
-            {isDeficit ? "Net deficit" : "Net surplus"}
-          </Text>
-        </View>
       </View>
 
       {effectiveCalorieGoal > 0 && (
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginBottom: Spacing.sm, textAlign: "center" }}>
-          Calorie goal for this day: {effectiveCalorieGoal.toLocaleString()} kcal
+          Calorie goal {isToday ? "today" : "for this day"} ·{" "}
+          <Text style={{ color: textColor, fontWeight: "600" }}>{effectiveCalorieGoal.toLocaleString()} kcal</Text>
         </Text>
       )}
 
       {((activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0) && (
+        // Sloe burn-breakdown card — a single calm lucide flame, the kcal number
+        // in Newsreader with an Inter caption beside it, the Active/Resting/+bonus
+        // breakdown kept verbatim. It's a sub-panel ON the energy-balance card, so
+        // it uses the shared <SupprCard size="inset"> shell (hairline, NO drop
+        // shadow — a card-on-card must not double-shadow). The Pressable is the
+        // thin tap layer (opens /burn-detail); the SupprCard owns the chrome.
         <Pressable
           onPress={onOpenBurnDetail}
-          style={[{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: Spacing.md,
+          style={({ pressed }) => ({
             marginBottom: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: cardElevation.liftBg ?? cardColor,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
-            borderColor: cardBorderColor,
-          }, cardElevation.shadowStyle]}
+            opacity: pressed ? 0.85 : 1,
+          })}
         >
-          <View style={{ flex: 1, gap: 4 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="flame-outline" size={14} color={Accent.activity} />
-              <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
-                {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal {isToday ? "burned so far" : "burned"}
+          <SupprCard
+            size="inset"
+            innerStyle={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+              <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
+              <Text
+                testID="today-burn-card-headline"
+                style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
+              >
+                {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()}
+              </Text>
+              <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                kcal {isToday ? "burned so far" : "burned"}
               </Text>
               {/* F-131 — small Info icon. Stops the row press from
                   bubbling so the user gets explain-in-place rather
@@ -390,31 +542,44 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 >
                   <Ionicons
                     name="information-circle-outline"
-                    size={14}
+                    size={IconSize.md}
                     color={textTertiaryColor}
                   />
                 </Pressable>
               ) : null}
             </View>
-            <View style={{ flexDirection: "row", gap: Spacing.md }}>
+            {/* Active / Resting / +bonus breakdown — preserved (Inter caption
+                via Type.caption; the +bonus keeps the honey hue). */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
               {(activityBurnKcal ?? 0) > 0 && (
-                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
+                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
                   Active {(activityBurnKcal ?? 0).toLocaleString()}
                 </Text>
               )}
               {basalBurnKcal > 0 && (
-                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
+                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
                   Resting {basalBurnKcal.toLocaleString()}
                 </Text>
               )}
               {todayActivityBudgetAddon > 0 && (
-                <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.activity }}>
+                // Stays sentence-case + honey (Accent.activity) — the one earned
+                // reward that should still draw the eye, but lighter than the old
+                // 700 weight (Inter semibold via Type.caption family override).
+                <Text
+                  style={{
+                    ...Type.caption,
+                    fontFamily: FontFamily.sansSemibold,
+                    fontWeight: FontWeight.semibold,
+                    color: Accent.activity,
+                  }}
+                >
                   +{todayActivityBudgetAddon.toLocaleString()} bonus earned
                 </Text>
               )}
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={textTertiaryColor} />
+          <Ionicons name="chevron-forward" size={IconSize.base} color={textTertiaryColor} />
+          </SupprCard>
         </Pressable>
       )}
 
@@ -437,10 +602,22 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       )}
 
       {showWeekly && (
-        <View style={{ marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: borderColor }}>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 6 }}>
-            {weekSummaryHeading(weekSummaryMode)}
-          </Text>
+        // Sloe TD1: the 7-day rolling block is its own sub-panel ON the
+        // energy-balance card → shared <SupprCard size="inset"> shell (hairline,
+        // no drop shadow). Distinct from the energy-balance card around it.
+        <SupprCard size="inset" style={{ marginTop: Spacing.md }}>
+          {/* Sloe TD1 "7-DAY ROLLING" overline — UPPERCASE small-caps via
+              Type.label (uppercase transform + letter-spacing) + a small trend
+              glyph (frame 459:2). The heading STRING is still `weekSummaryHeading`
+              ("7-day rolling summary" / "This week") so the window semantics +
+              calendar-mode copy survive; Type.label renders it uppercased to
+              match the Figma. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
+            <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              {weekSummaryHeading(weekSummaryMode)}
+            </Text>
+          </View>
           {/* Audit T13 (2026-05-05) — neutral grey when weekConsumed === 0
               so a user with burn data but zero food logged across the
               window doesn't see "Avg daily deficit: 2,400 kcal" green
@@ -455,14 +632,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 : Accent.warning;
             return (
               <>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Avg daily {isWeekDeficit ? "deficit" : "surplus"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -470,14 +646,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Weekly {isWeekDeficit ? "deficit" : "surplus"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -485,14 +660,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {Math.abs(weekDeficit).toLocaleString()} kcal
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Projected weekly {isWeekDeficit ? "loss" : "gain"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -503,7 +677,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               </>
             );
           })()}
-        </View>
+        </SupprCard>
       )}
 
       {popoverCopy ? (
@@ -554,7 +728,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </Pressable>
         </Modal>
       ) : null}
-    </View>
+    </SupprCard>
   );
 }
 

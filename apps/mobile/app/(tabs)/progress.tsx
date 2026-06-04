@@ -29,6 +29,7 @@ import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleH
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/constants/layout";
@@ -1237,16 +1238,16 @@ export default function ProgressScreen() {
             <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginLeft: 2 }}>
               Calories vs target
             </Text>
-            <View
+            {/* Card chrome (fill, radius 20, soft lift on an outer wrapper,
+                corner-clip, hairline) is the shared <SupprCard> shell — the iOS
+                clip fix + the consolidation both live in the shell now (Grace
+                2026-06-04). testID stays on the shell's outer node so the
+                Progress capture/Maestro targets are stable. The 3 divider cells
+                are the inner contents. */}
+            <SupprCard
               testID="progress-3-stat-row"
-              style={[{
-                flexDirection: "row",
-                backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderRadius: Radius.lg,
-                borderWidth: cardElevation.useBorder ? 1 : 0,
-                borderColor: t.border,
-                overflow: "hidden",
-              }, cardElevation.shadowStyle]}
+              padding="none"
+              innerStyle={{ flexDirection: "row" }}
             >
               {/* Cell: Avg Intake */}
               <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
@@ -1282,7 +1283,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 9, color: t.amber, fontWeight: "500", marginTop: 2 }}>surplus</Text>
                 )}
               </View>
-            </View>
+            </SupprCard>
             </>
           );
         })()}

@@ -19,7 +19,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     textSecondary: "#666",
     textTertiary: "#999",
     background: "#fff",
-    backgroundSecondary: "#f5f3ec",
+    backgroundSecondary: "#F2EFEA",
     card: "#fff",
     cardElevated: "#fff",
     cardBorder: "#eee",
@@ -196,17 +196,18 @@ describe("DigestBlended — hero fill gate (progress_digest_beige_v2, mobile)", 
     const { getByTestId } = render(
       <Digest blended blendedExtras={extras} {...baseProps} />,
     );
-    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#f5f3ec");
+    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#F2EFEA");
   });
 
   it("pulls the hero to web's muted/40 tint when the flag is ON", () => {
-    // #f5f3ec + 40% alpha composites to #fbfaf7 over the white card — web parity.
+    // Sloe oat-secondary #F2EFEA + 40% alpha (`66`) composites over the white
+    // card — web parity (the hero passes the secondary surface through + alpha).
     vi.mocked(isFeatureEnabled).mockImplementation(
       (flag: string) => flag === "progress_digest_beige_v2",
     );
     const { getByTestId } = render(
       <Digest blended blendedExtras={extras} {...baseProps} />,
     );
-    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#f5f3ec66");
+    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#F2EFEA66");
   });
 });

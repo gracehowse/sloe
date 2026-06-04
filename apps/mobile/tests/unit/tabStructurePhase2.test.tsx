@@ -206,8 +206,25 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
       path.resolve(__dirname, "../../components/today/TodayDateHeader.tsx"),
       "utf-8",
     );
+    // TodayDateHeader keeps the settings route in its non-stripOnly
+    // branches (other consumers / calm-date-nav still render the avatar).
     expect(headerSrc).toMatch(/router\.push\("\/\(tabs\)\/settings"\)/);
     expect(headerSrc).not.toMatch(/router\.push\("\/profile"\)/);
+  });
+
+  it("SLOE redesign (2026-06-03): the Today wordmark-header avatar also routes to Settings", () => {
+    // The visible Today avatar now lives in the Sloe wordmark header in
+    // (tabs)/index.tsx (the date header below it is stripOnly). Pin that
+    // the new avatar's Pressable routes to /(tabs)/settings so a future
+    // change can't strand the Settings entry point.
+    const indexSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../app/(tabs)/index.tsx"),
+      "utf-8",
+    );
+    expect(indexSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
+    expect(indexSrc).toMatch(
+      /router\.push\("\/\(tabs\)\/settings"\)[\s\S]{0,400}gradientIdSuffix="today-wordmark-header"/,
+    );
   });
 
   it("uses the custom <SupprTabBar> renderer (2026-04-30 — centered raised Log button)", () => {

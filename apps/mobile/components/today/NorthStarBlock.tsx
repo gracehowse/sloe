@@ -134,7 +134,7 @@ export function NorthStarBlock({
         testID={testID ?? "north-star-new-user"}
         tone="primary"
         padding="md"
-        style={styles.row}
+        innerStyle={styles.row}
       >
         <Sparkles size={IconSize.lg} color={colors.text} />
         <View style={{ flex: 1 }}>
@@ -183,7 +183,7 @@ export function NorthStarBlock({
         testID={testID ?? "north-star-no-fit"}
         tone="neutral"
         padding="md"
-        style={styles.row}
+        innerStyle={styles.row}
       >
         <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
           Library has nothing under your remaining macros today.
@@ -311,7 +311,7 @@ function NorthStarDefault({
       testID={testID ?? "north-star-default"}
       style={fadeStyle}
     >
-      <SupprCard tone="primary" padding="md" style={styles.defaultCard}>
+      <SupprCard tone="primary" padding="md" innerStyle={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"

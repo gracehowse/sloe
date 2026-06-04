@@ -292,15 +292,15 @@ function DailyRing({
               strokeWidth={3}
             />
           </pattern>
-          {/* ENG-798 win-moment celebration gradient — mirrors the
-              `--accent-win-gradient` token (brand spectrum #588CE4 → #9679D9
-              → #DF5EBC, 120°). SVG `stroke` can't take a CSS
-              `linear-gradient()`, so the celebration arc references this def.
-              Only painted while `celebrating`. */}
+          {/* Win-moment celebration gradient — mirrors the
+              `--accent-win-gradient` token (Sloe brand gradient #3B2A4D →
+              #C8794E → #C9892C, 120°; Phase 0 dossier D-3). SVG `stroke` can't
+              take a CSS `linear-gradient()`, so the celebration arc references
+              this def. Only painted while `celebrating`. */}
           <linearGradient id="winSpectrum" x1="0%" y1="0%" x2="86%" y2="50%">
-            <stop offset="0%" stopColor="#588CE4" />
-            <stop offset="50%" stopColor="#9679D9" />
-            <stop offset="100%" stopColor="#DF5EBC" />
+            <stop offset="0%" stopColor="#3B2A4D" />
+            <stop offset="50%" stopColor="#C8794E" />
+            <stop offset="100%" stopColor="#C9892C" />
           </linearGradient>
           {/* ENG-826 — calm "calibrating" idle gradient for the EMPTY ring
               (zero logged / no target yet): a soft brand-blue tonal arc instead
@@ -334,7 +334,7 @@ function DailyRing({
                 ? "url(#ringIdle)"
                 : isOverBudget
                   ? "var(--destructive)"
-                  : "var(--success)"
+                  : "var(--macro-calories)"
           }
           // ENG-798 win-moment: a target-hit is by definition the
           // at/under-budget state, so the celebration only ever lights an

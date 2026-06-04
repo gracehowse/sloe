@@ -15,10 +15,14 @@
  *   - When week view is active, the pip is suppressed regardless.
  */
 
+import React from "react";
+import { Text } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
 import { TodayDateHeader } from "../../components/today/TodayDateHeader";
+
+void React;
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -38,11 +42,11 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 vi.mock("@/components/charts/DayStrip", () => ({
-  default: () => null,
+  default: () => <Text testID="day-strip">strip</Text>,
 }));
 
 vi.mock("@/components/GradientAvatar", () => ({
-  GradientAvatar: () => null,
+  GradientAvatar: () => <Text testID="gradient-avatar">avatar</Text>,
 }));
 
 const baseProps = {
@@ -161,5 +165,50 @@ describe("TodayDateHeader — calm date nav (hideDayStrip, ENG-584)", () => {
     expect(todayBtn).toBeTruthy();
     todayBtn.props.onPress?.();
     expect(onTapTitle).toHaveBeenCalled();
+  });
+});
+
+describe("TodayDateHeader — stripOnly (SLOE wordmark-header redesign 2026-06-03)", () => {
+  // In stripOnly mode the Today screen supplies its own Sloe wordmark +
+  // avatar header above the greeting; this component collapses to the
+  // week strip alone. The chevrons, "Today" title, avatar, and
+  // day/week toggle all move out.
+  it("renders only the week strip (no nav chevrons, no title, no avatar, no toggle)", () => {
+    const { getByTestId, queryByTestId, queryByLabelText, queryByText } = render(
+      <TodayDateHeader {...baseProps} stripOnly />,
+    );
+    // The strip is present.
+    expect(getByTestId("day-strip")).toBeTruthy();
+    // Day-nav chevrons are gone (the strip owns day-selection now).
+    expect(queryByLabelText("Previous day")).toBeNull();
+    expect(queryByLabelText("Next day")).toBeNull();
+    expect(queryByLabelText("Previous week")).toBeNull();
+    expect(queryByLabelText("Next week")).toBeNull();
+    // The "Today" title and choose-date title are gone.
+    expect(queryByText("Today")).toBeNull();
+    expect(queryByLabelText("Choose date")).toBeNull();
+    // The avatar moved to the wordmark header — not rendered here.
+    expect(queryByTestId("gradient-avatar")).toBeNull();
+    expect(queryByLabelText("Open settings")).toBeNull();
+    // The day/week view-mode toggle is gone.
+    expect(queryByLabelText("Day view")).toBeNull();
+    expect(queryByLabelText("Week view")).toBeNull();
+  });
+
+  it("keeps the supportive streak-reset copy under the strip", () => {
+    const { getByText, getByTestId } = render(
+      <TodayDateHeader {...baseProps} stripOnly streakResetCopyVisible />,
+    );
+    expect(getByTestId("day-strip")).toBeTruthy();
+    expect(
+      getByText(/Every expert was once a beginner\. Start fresh today\./i),
+    ).toBeTruthy();
+  });
+
+  it("renders the strip even in week view (Today is day-centric; strip is the only date affordance)", () => {
+    const { getByTestId } = render(
+      <TodayDateHeader {...baseProps} stripOnly viewMode="week" />,
+    );
+    expect(getByTestId("day-strip")).toBeTruthy();
   });
 });

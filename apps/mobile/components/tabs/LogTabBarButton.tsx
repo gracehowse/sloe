@@ -22,10 +22,15 @@ import { useHaptics } from "@/hooks/useHaptics";
  *
  * Visual:
  *   - 56pt diameter circle (matches the legacy LogFab).
- *   - Theme `colors.tint` (warm ink) background.
+ *   - Sloe plum `colors.navPrimary` (#3B2A4D light / #815E91 dark)
+ *     background — the brand/nav primary (locked Grace 2026-06-04: plum =
+ *     nav/brand primary, clay = inline content CTAs). Matches the Figma TD
+ *     frames + `_gen.mjs` tabBar `bg-plum` FAB. Deliberately NOT `colors.tint`
+ *     (clay) so the FAB reads as nav chrome, not "just another content CTA".
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
  *   - Raised 16pt above the tab bar fill line via `top: -16`.
- *   - `Elevation.floatPrimary` (primary-blue glow drop-shadow).
+ *   - `Elevation.floatPrimary` glow, re-tinted to the plum nav primary so the
+ *     drop-shadow matches the fill (floatPrimary's base shadowColor is clay).
  *
  * Interaction:
  *   - Medium haptic on iOS (matches the legacy LogFab) — heavier than
@@ -85,12 +90,14 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: colors.tint,
+            backgroundColor: colors.navPrimary,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.94 : 1 }],
           },
           Elevation.floatPrimary,
+          // Re-tint the glow to the plum fill (floatPrimary's base is clay).
+          { shadowColor: colors.navPrimary },
         ]}
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />

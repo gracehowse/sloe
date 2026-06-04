@@ -144,7 +144,10 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Today',
-          tabBarIcon: ({ color }) => <Sun size={22} color={color} strokeWidth={2.25} />,
+          // SLOE (2026-06-04): soften 2.25 → 2 so the active Today icon
+          // matches the calmer line weight of the other tab glyphs (the
+          // Figma tab bar uses one uniform light stroke across all tabs).
+          tabBarIcon: ({ color }) => <Sun size={22} color={color} strokeWidth={2} />,
           tabBarButtonTestID: 'tab-today',
         }}
       />

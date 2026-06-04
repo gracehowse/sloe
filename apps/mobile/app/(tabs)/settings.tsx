@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
+import { DevFlagOverrides } from "@/components/settings/DevFlagOverrides";
 import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
 
 /**
@@ -230,6 +231,10 @@ export default function SettingsScreen() {
                 strokeWidth={1.75}
               />
             </Pressable>
+            {/* Dev-only flag-force panel (ENG-840). Renders null in
+                release builds — preview flag-gated UI on device/sim
+                without a PostHog ramp. */}
+            <DevFlagOverrides />
           </>
         ) : searchResults.length > 0 ? (
           /* Search results — only routable destinations are indexed

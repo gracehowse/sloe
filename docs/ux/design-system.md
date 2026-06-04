@@ -58,11 +58,17 @@ Reserved **44px min-height** row at the top of Today: `SupprPlateWordmark` (Tare
 |-------|-----|-------|
 | `sm` | 8 | Chips, badges, small buttons, inner elements |
 | `md` | 12 | Inputs, standard buttons, toggles |
-| `lg` | 16 | Cards (canonical card radius), modals |
-| `xl` | 20 | Large cards, bottom sheets |
+| `lg` | 16 | Modals, inner elements |
+| `xl` | 20 | Bottom sheets |
 | `full` | 9999 | Pills, circular elements, avatar frames |
 
-**Rule:** Cards always use `Radius.lg` (16). Never `borderRadius: 14`.
+**Card corners are owned by the `<SupprCard>` shell, not the `Radius` ladder.**
+Resting cards round to **20** (`CARD_RADIUS`, exported from `SupprCard`); the 2×2
+macro **tiles** and card-on-card **inset** sub-panels round to **16**
+(`TILE_RADIUS`). The `Radius` token ladder tops out at `xl: 12` (tuned for
+Linear/Stripe density), so the Sloe card corner lives in the shell instead — do
+**not** hand-roll `borderRadius: 20` / `borderRadius: Radius.lg` on a card; render
+`<SupprCard>` and let it own the corner. (Card consolidation, 2026-06-04.)
 
 ### Surface hierarchy
 
@@ -91,24 +97,118 @@ When tinting a surface with an accent colour (e.g., a subtle primary background 
 | Level | Light mode | Dark mode | Usage |
 |-------|-----------|-----------|-------|
 | None | `none` | `none` | Flat elements, items within cards |
-| Card | `0 1px 3px rgba(0,0,0,0.04)` | `none` (rely on border) | Standard cards |
+| Card (soft lift) | `0 4px 14px rgba(34,27,38,0.10)` (`Elevation.cardSoft` / `--elev-card-soft`) | `none` — tonal lift via `cardElevated` + hairline | Standard resting cards (the Sloe default) |
 | Elevated | `0 4px 12px rgba(0,0,0,0.08)` | `0 4px 12px rgba(0,0,0,0.25)` | Modals, FABs, popovers |
 
-Dark mode cards should rely on `cardBorder` for definition, not shadow.
+The card soft lift is **10% opacity** (Grace 2026-06-04 "push it to 10%" — the 7%
+lift read too faint on the sim; the lever moved 0.07 → 0.10 + radius 12 → 14 in
+lockstep on **both** platforms so web == mobile). Resting cards take the soft lift
+by default via the `<SupprCard>` shell / `useCardElevation()` (see "Resting-card
+elevation" below). Dark mode cards rely on the `cardElevated` tonal lift +
+`cardBorder` for definition, not a shadow.
 
 ## Component patterns
 
-### Card
+### Card — ONE component (`<SupprCard>`)
+
+**There is exactly one card component. Every resting card surface renders its
+chrome through `<SupprCard>` — never hand-roll a card `View`.** (Grace 2026-06-04:
+"the cards are being handled separately for some reason — each card looks slightly
+different, they should all be the same component updated at once." Card chrome had
+been copy-pasted across ~12 surfaces and drifted on radius (8 / 12 / 20), fill,
+border width, and the iOS clip fix. The shell ends the drift: a fix lands once and
+every card moves together.)
 
 ```
-<View style={{
-  backgroundColor: colors.card,
-  borderRadius: Radius.lg,        // always 16
-  borderWidth: 1,
-  borderColor: colors.cardBorder,
-  padding: Spacing.lg,            // always 16
-}}>
+// Mobile: apps/mobile/components/ui/SupprCard.tsx
+<SupprCard>                 {/* fill #F6F5F2 · radius 20 · soft lift · hairline */}
+  …card contents…
+</SupprCard>
+
+// Web mirror: src/app/components/ui/suppr-card.tsx (same props/variants)
 ```
+
+The shell encapsulates, in ONE place:
+- fill `colors.card` (#F6F5F2 light), corner radius (20 card / 16 tile+inset),
+- the **soft lift on an OUTER wrapper + the corner-clip on an INNER view** — so
+  the iOS `overflow: 'hidden'` shadow-clip bug (see below) can never recur
+  per-card,
+- the dark-mode tonal lift + hairline,
+- the hairline border drawn as `StyleSheet.hairlineWidth` (never a 1pt box).
+
+**`<SupprCard>` API (mobile):**
+
+| Prop | Values | Notes |
+|------|--------|-------|
+| `tone` | `neutral` (default) / `primary` / `success` / `warning` / `magenta` | tinted fill + border |
+| `size` | `card` (default, radius 20) / `tile` (radius 16 — the 2×2 macro tiles) / `inset` (radius 16, hairline, **no drop shadow** — a sub-panel ON a card) | |
+| `gradient` | bool | north-star tinted surface when `tone='primary'` |
+| `border` | bool (default true) | the light resting `card` drops it (lift = separation); `inset` always draws it |
+| `padding` | `none` / `sm` / `md` / `lg` (default) / `xl` | symmetric; use `innerStyle` for asymmetric |
+| `radius` | `sm`/`md`/`lg`/`xl` | overrides the size default |
+| `style` | `ViewStyle` | merged onto the OUTER node (margins, width, flex-basis) |
+| `innerStyle` | `ViewStyle` | merged onto the INNER clip node (flow layout: `flexDirection`, `gap`, asymmetric padding) |
+| `testID` | string | on the OUTER node (where Maestro/captures expect it) |
+
+For an interactive card (a tappable tile / row), wrap the `<SupprCard>` in a thin
+`Pressable` that owns the tap + press feedback; the `SupprCard` owns the chrome
+(see `TodayDashboardMacroTiles`, the burn-breakdown card).
+
+**Intentional exceptions** (NOT silent — documented):
+- `DiscoverHeroCard` — a full-bleed editorial IMAGE hero with its own dark fill +
+  scrim, so it can't use the neutral `#F6F5F2` shell. It DOES share `CARD_RADIUS`
+  (20) + the same `useCardElevation().shadowStyle` lift, imported from the shell.
+- The Recipes-tab (`library.tsx`) recipe-grid cells + import rows are **not yet**
+  migrated (tracked in `docs/decisions/2026-06-04-card-component-consolidation.md`
+  → "Recipes tab not migrated this pass"; a Linear follow-up is pending). Until
+  then they keep their hand-rolled chrome.
+
+**Hairline rule (still applies to dividers).** Structural dividers INSIDE a card
+(`borderTopWidth` / `borderBottomWidth` / `height: 1` / `width: 1` rules, and
+`divide-x` / `divide-y` rules between stat tiles + stacked rows) MUST use
+`StyleSheet.hairlineWidth`, never a literal `1` — on @3x a `1` is 3 physical px,
+far heavier than the prototype's 1-device-px line. Interactive controls (toggle
+pills, quick-add chips, picker buttons) and floating modal dialogs are NOT resting
+cards and keep their `borderWidth: 1` affordance.
+
+Pinned by `apps/mobile/tests/unit/sloeCardHairlineBorders.test.tsx` +
+`supprCardShell.test.tsx` (the shell's render contract) — *source-level* sweeps,
+because `StyleSheet.hairlineWidth` and the heavy `1` are numerically equal under
+the vitest RN mock, so a rendered-value assertion can't tell them apart.
+
+### Resting-card elevation (the soft lift)
+
+`useCardElevation()` is the single source of the resting-card treatment that the
+`<SupprCard>` shell consumes, and as of 2026-06-04 the **soft lift is the
+unconditional default** on mobile (no longer flag-gated — the Sloe redesign is the
+product, and flag-FORCE is dead in a bundled app per ENG-840, so the old
+`design_system_elevation` gate could never be exercised on the sim anyway). The
+hook returns:
+
+- **Light** → a soft drop shadow (`Elevation.cardSoft`) and **no border**. The
+  shadow carries the separation between the `#F6F5F2` card and the `#FFFFFF`
+  page, so the hairline is dropped (one edge, no double line). A heavier border
+  is explicitly *not* the answer — the lift is the shadow.
+- **Dark** → no shadow (RN renders shadows poorly on dark surfaces); a tonal
+  lift (`cardElevated` background via `liftBg`) plus a hairline instead.
+
+`Elevation.cardSoft` mirrors the web `--elev-card-soft` token EXACTLY
+(`0 4px 14px rgba(34,27,38,0.10)` — the aubergine Sloe ink `#221B26` at **0.10**,
+radius 14, y+4): a calm, plum-tinted ambient lift, not a harsh Material shadow.
+
+**Web vs mobile (intentional difference, not drift):** the web `<SupprCard>` still
+*gates* the soft lift behind `design_system_elevation` (which resolves ON by
+default via `REDESIGN_DEFAULT_ON`), because on web flag-FORCE **works** — keeping
+the gate preserves the pre-redesign visual-capture path that web tests exercise in
+both flag states. Mobile dropped the gate (it's dead on the sim). Both render the
+identical 10% lift in production.
+
+**iOS gotcha — shadow on an OUTER wrapper when the card clips its children.**
+RN clips a view's own shadow under `overflow: 'hidden'`. The `<SupprCard>` shell
+handles this once: the shadow rides the OUTER wrapper, the clip + border sit on an
+INNER `View`. This is why you must never hand-roll a card — the bug is solved in
+the shell. Pinned by `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx`
++ `supprCardShell.test.tsx`.
 
 ### Empty state
 
@@ -231,6 +331,7 @@ and only sync to React state on gesture end.
 5. **Every screen must support dark mode** via `useThemeColors()`. No static `StyleSheet.create` with light-only colours.
 6. **`tabular-nums`** on every changing number: `fontVariant: ["tabular-nums"]`.
 7. **Lucide on both platforms** (`lucide-react` web, `lucide-react-native` mobile). Decided 2026-04-28 (`docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #4). **Outline variants** for icons in cards and navigation; **filled** only for active tab bar state. Existing `@expo/vector-icons` Ionicons usages migrate opportunistically; new code uses Lucide.
+8. **Hairline resting-card borders + dividers (mobile).** Use `StyleSheet.hairlineWidth` (≈1 physical px), never a literal `1` (= 1pt = 3px on @3x), on resting cards, structural dividers, and `divide-x`/`divide-y` rules. See the **Card** pattern above. Web uses CSS `border` (1px) — already correct, no equivalent bug. Controls + modals keep `borderWidth: 1`. (2026-06-04)
 
 ## Lint enforcement (Next-10 #6, 2026-04-28)
 

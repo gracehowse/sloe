@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Plan ready</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<main class="px-5 pt-10 pb-10 max-w-2xl mx-auto text-center min-h-screen flex flex-col">
+  <span class="w-14 h-14 rounded-full bg-sage/15 flex items-center justify-center text-sage mx-auto mb-5"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+  <h1 class="font-headline text-3xl text-plum">Your plan is ready, Grace</h1>
+  <p class="font-body text-sm text-ink-soft mt-1">Built around your goal — with room for the food you love.</p>
+  <section class="bg-surface-card border border-line rounded-2xl p-6 mt-7">
+    <p class="font-label text-[11px] uppercase tracking-[0.08em] text-ink-faint">Daily target</p>
+    <p class="font-headline text-5xl text-ink mt-1">2,040 <span class="text-xl text-ink-soft font-body">kcal</span></p>
+    <div class="flex mt-5 pt-5 border-t border-line">
+      <div class="flex-1"><p class="font-headline text-2xl text-macro-protein">140g</p><p class="font-label text-[10px] uppercase tracking-wide text-ink-faint">Protein</p></div>
+      <div class="flex-1"><p class="font-headline text-2xl text-macro-carbs">200g</p><p class="font-label text-[10px] uppercase tracking-wide text-ink-faint">Carbs</p></div>
+      <div class="flex-1"><p class="font-headline text-2xl text-macro-fat">68g</p><p class="font-label text-[10px] uppercase tracking-wide text-ink-faint">Fat</p></div>
+    </div>
+  </section>
+  <p class="font-headline italic text-base text-ink mt-6 px-4">"No foods off-limits. We'll just help them fit."</p>
+  <div class="flex-1"></div>
+  <button class="w-full bg-clay text-white font-body font-semibold text-base rounded-full py-4 mt-6">Start using Sloe</button>
+</main>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

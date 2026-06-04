@@ -49,6 +49,7 @@ import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTarget
 import { backfillDailyTargetsFromProfile } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { recordGoalHistory } from "../../lib/nutrition/goalHistory.ts";
 import { nukeAllUserAppData } from "../../lib/account/nukeAccountData.ts";
+import { saveDisplayName } from "../../lib/account/displayName.ts";
 import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults.ts";
 import {
   DEFAULT_TRACKING_EXTRAS,
@@ -574,6 +575,66 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     else toast.success("Password reset email sent — check your inbox.");
   }, [authEmail]);
 
+  // "Your name" — personalises the Today greeting ("Good morning, Grace").
+  // Mirrors the mobile Settings field
+  // (`apps/mobile/components/settings/SettingsBundleContent.tsx`): the
+  // source of truth is the Supabase auth user's `user_metadata.full_name`
+  // (NOT `profiles.display_name` — that stays the Profile editor's domain,
+  // and writing entitlement-adjacent profile columns risks the
+  // tier-lockdown trigger). The Today greeting reads it back via
+  // `firstNameFromMetadata`. An empty value clears the name so the greeting
+  // falls back to the time-of-day word alone.
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  // The name as currently stored in auth metadata — drives the "no change"
+  // no-op guard and re-seeds the input after a save.
+  const [storedName, setStoredName] = useState("");
+  const nameDirtyRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+      const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      let current = "";
+      for (const key of ["full_name", "name", "first_name", "preferred_name"] as const) {
+        const v = meta[key];
+        if (typeof v === "string" && v.trim()) { current = v.trim(); break; }
+      }
+      setStoredName(current);
+      if (!nameDirtyRef.current) setNameInput(current);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveName = useCallback(async () => {
+    if (nameSaving) return;
+    setNameSaving(true);
+    try {
+      const result = await saveDisplayName(supabase, nameInput, storedName);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      nameDirtyRef.current = false;
+      setStoredName(result.value);
+      setNameInput(result.value);
+      if (result.changed) {
+        // Refresh the in-memory session so any Today greeting reading
+        // `user_metadata` re-renders without a reload. `getSession()`
+        // re-emits via the auth context's onAuthStateChange listener.
+        try {
+          await supabase.auth.getSession();
+        } catch {
+          // Non-fatal — updateUser already fired USER_UPDATED.
+        }
+        toast.success(result.value ? "Name saved." : "Name cleared.");
+      }
+    } finally {
+      setNameSaving(false);
+    }
+  }, [nameSaving, nameInput, storedName]);
+
   /**
    * CSV export runner — extracted 2026-05-02 (PR replaces #43) so
    * both the standalone "Export nutrition log (CSV)" button AND the
@@ -748,13 +809,73 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </SupprCard>
 
-      {/* Account Section */}
+      {/* Personal Section — the user's identity + personal preferences
+          group (name, email, display name, account actions). Renamed from
+          "Account" 2026-06-04 so the group name matches the mobile
+          "Personal" section in
+          `apps/mobile/components/settings/SettingsBundleContent.tsx`. The
+          "Your name" field is the first row here so the greeting-name
+          control sits naturally among the user's personal settings rather
+          than as a lone card. */}
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Account</h3>
+          <h3 className="text-foreground">Personal</h3>
         </div>
         <div className="space-y-4">
+          {/* Your name — personalises the Today greeting. Writes the auth
+              user's `user_metadata.full_name` via `supabase.auth.updateUser`;
+              Today reads it back through `firstNameFromMetadata`. Empty
+              clears the name → greeting falls back to "Good morning". Mobile
+              mirror in `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
+          <div>
+            <label
+              htmlFor="settings-name-input"
+              className="block mb-2 text-sm font-medium text-foreground"
+            >
+              Your name
+            </label>
+            <div className="flex gap-3">
+              {/* PostHog session replay masks ALL inputs at capture on web
+                  (`maskAllInputs: true` in AnalyticsProvider) — same posture
+                  as the email / display-name inputs below, no per-field prop
+                  needed. */}
+              <input
+                id="settings-name-input"
+                data-testid="settings-name-input"
+                type="text"
+                value={nameInput}
+                onChange={(e) => {
+                  nameDirtyRef.current = true;
+                  setNameInput(e.target.value);
+                }}
+                onBlur={() => void handleSaveName()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSaveName();
+                  }
+                }}
+                placeholder="Your name"
+                autoComplete="name"
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button
+                type="button"
+                data-testid="settings-name-save"
+                onClick={() => void handleSaveName()}
+                disabled={nameSaving || nameInput.trim() === storedName}
+                className="px-5 py-3 bg-primary text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {nameSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Used to greet you on Today (&ldquo;Good morning,{" "}
+              {nameInput.trim().split(/\s+/)[0] || "Grace"}&rdquo;). Leave blank
+              to keep it name-free.
+            </p>
+          </div>
           <div>
             <label className="block mb-2 text-sm font-medium text-foreground">Email</label>
             <input

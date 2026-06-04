@@ -93,12 +93,14 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.fiber).toBe(readRootVar("macro-fiber"));
   });
 
-  it("fiber and calories share the Green slot (8-slot palette)", () => {
-    // 2026-05-22 evening: 8-slot palette consolidates fiber + calories
-    // onto Green. Icon (Beef/Leaf) + unit (kcal/g) carry the
-    // differentiation on tiles and rings; colour parity is intentional.
-    expect(MACRO_COLORS_LIGHT.fiber).toBe(MACRO_COLORS_LIGHT.calories);
-    expect(readRootVar("macro-fiber")).toBe(readRootVar("macro-calories"));
+  it("fiber (teal) and calories (plum) are distinct Sloe hues", () => {
+    // Sloe Phase 0: the calorie ring owns plum (chrome hue); fiber is teal.
+    // They are NO LONGER the same hue (the old 8-slot palette folded both onto
+    // green). Icon (Flame/Leaf) + unit (kcal/g) still differentiate neighbours.
+    expect(MACRO_COLORS_LIGHT.fiber).not.toBe(MACRO_COLORS_LIGHT.calories);
+    expect(readRootVar("macro-fiber")).not.toBe(readRootVar("macro-calories"));
+    expect(MACRO_COLORS_LIGHT.calories).toBe("#3B2A4D");
+    expect(MACRO_COLORS_LIGHT.fiber).toBe("#4A7878");
   });
 
   it("sodium matches --macro-sodium", () => {

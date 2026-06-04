@@ -111,9 +111,22 @@ describe("F-82 — macro split gates on data confidence", () => {
   });
 });
 
-describe("F-83 — 7-day avg below 50 kcal noise floor hidden", () => {
-  it("TodayDeficitInsight uses Math.abs(avgDeficit) >= 50 floor", () => {
-    expect(SRC.deficit).toMatch(/Math\.abs\(avgDeficit\)\s*>=\s*50/);
+describe("F-83 — under-ring line is forward 'Room for {meal}', not backward deficit", () => {
+  // SLOE 2026-06-04 (Grace "room for dinner is missing"): the under-ring
+  // line flipped from the backward "deficit so far today" + rolling-avg
+  // sub-line to the forward `todayRoomForMeal` coach line. The backward
+  // energy-balance trend (today's net + the rolling avg with its ≥50 kcal
+  // noise floor) now lives ONLY in `TodayActivityBonusCard` below the ring
+  // — `todayDeficitAverageLoggedDays.test.tsx` pins that calc. This file
+  // now asserts the deficit insight is the forward line and no longer
+  // re-computes the backward trend (so the two surfaces can't duplicate).
+  it("TodayDeficitInsight renders the shared forward coach line", () => {
+    expect(SRC.deficit).toMatch(/todayRoomForMeal\(/);
+    expect(SRC.deficit).toMatch(/nextUnloggedMealSlot\(/);
+  });
+  it("TodayDeficitInsight no longer re-computes the backward deficit trend", () => {
+    expect(SRC.deficit).not.toMatch(/avgDeficit/);
+    expect(SRC.deficit).not.toMatch(/so far today/);
   });
 });
 

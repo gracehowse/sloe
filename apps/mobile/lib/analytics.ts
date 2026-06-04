@@ -62,6 +62,81 @@ export async function persistSessionReplaySampleRate(
   await writeSampleRateFromClient(c);
 }
 
+/** Dev/QA flag-force overrides (ENG-840). The env-based
+ *  `EXPO_PUBLIC_FLAG_FORCE_*` path is DEAD in a bundled app — Metro
+ *  inlines only a static `process.env.X`, never a computed
+ *  `process.env[key]`, so the env read is `undefined` on device/sim
+ *  (it works only under vitest/SSR). A real on-device override must
+ *  therefore live in JS state, not the bundle's env. We persist the
+ *  forced set in AsyncStorage and prime it into this in-memory map at
+ *  bootstrap, because {@link isFeatureEnabled} is synchronous and can't
+ *  await storage on every read. `__DEV__`-gated everywhere so Hermes'
+ *  dead-code elimination drops the whole mechanism from release builds.
+ *
+ *  Shape mirrors the web `window.__SUPPR_FORCE_FLAGS__` hook: a flat
+ *  `{ [flagKey]: boolean }` map. Flip flags via the dev-only Settings
+ *  panel (`DevFlagOverrides`) which calls {@link setForcedFlag}. */
+const FORCED_FLAGS_KEY = "__SUPPR_FORCE_FLAGS__";
+let forcedFlags: Record<string, boolean> = {};
+
+/** Prime the forced-flag map from AsyncStorage. Awaited by the mobile
+ *  `AnalyticsProvider` at bootstrap, BEFORE the first flag read, so a
+ *  flag forced in a previous session is honoured on first paint. No-op
+ *  (and dropped by DCE) in release builds. Silent on failure. */
+export async function primeForcedFlags(): Promise<void> {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  try {
+    const raw = await AsyncStorage.getItem(FORCED_FLAGS_KEY);
+    forcedFlags =
+      raw != null ? (JSON.parse(raw) as Record<string, boolean>) : {};
+  } catch {
+    forcedFlags = {};
+  }
+}
+
+/** Dev-only: snapshot of the current forced-flag map (for the toggle
+ *  UI). Returns a copy so callers can't mutate module state. */
+export function getForcedFlags(): Record<string, boolean> {
+  return { ...forcedFlags };
+}
+
+/** Dev-only: force `flag` ON (`true`) / OFF (`false`), or `null` to
+ *  clear the override and fall back to the live value. Updates the
+ *  in-memory map synchronously (so the next read sees it) and persists
+ *  to AsyncStorage for the next launch. No-op in release builds. */
+export async function setForcedFlag(
+  flag: string,
+  value: boolean | null,
+): Promise<void> {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  if (value === null) {
+    delete forcedFlags[flag];
+  } else {
+    forcedFlags[flag] = value;
+  }
+  try {
+    await AsyncStorage.setItem(FORCED_FLAGS_KEY, JSON.stringify(forcedFlags));
+  } catch {
+    /* persistence best-effort — in-memory map is already updated */
+  }
+}
+
+/** Dev-only: clear every forced flag. */
+export async function clearForcedFlags(): Promise<void> {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  forcedFlags = {};
+  try {
+    await AsyncStorage.removeItem(FORCED_FLAGS_KEY);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Test-only: reset the forced-flag map without a module reset. */
+export function __resetForcedFlagsForTests(): void {
+  forcedFlags = {};
+}
+
 /** Test-only: reset the cached sample rate back to the default. Lets
  *  unit tests exercise `primeSessionReplaySampleRate` from a clean
  *  baseline without forcing a module reset. */
@@ -207,20 +282,26 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *  the client isn't initialised or the flag is unloaded. Mirror of
  *  `src/lib/analytics/track.ts#isFeatureEnabled` (web).
  *
- *  Dev / E2E override (2026-05-15): when `__DEV__` and the env var
- *  `EXPO_PUBLIC_FLAG_FORCE_<FLAG_KEY>` is `"true"` / `"false"`, return
- *  that value directly. Exists because PostHog's local-evaluation
- *  cache races against first render in dev, so a Maestro flow that
- *  exercises a flag-gated screen can't reliably trigger the flag-on
- *  branch via PostHog targeting alone. Production builds ignore this
- *  override completely (the `__DEV__` guard inlines to `false` and
- *  the whole branch is dropped by Hermes' DCE).
+ *  Dev / QA force override (two layers, `__DEV__`-only, dropped from
+ *  release by Hermes DCE):
  *
- *  Mapping: uppercase the flag and replace hyphens with underscores
- *  (env-var names can't contain hyphens). So `today_log_usual_row_v2`
- *  → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`, and the
- *  hyphenated `log-sheet-slot-selector` →
- *  `EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
+ *  1. Runtime map ({@link forcedFlags}, ENG-840) — AsyncStorage-backed,
+ *     primed at bootstrap, flipped live via the dev Settings panel.
+ *     This is the layer that WORKS in a bundled app and is the way to
+ *     preview a flag-gated screen on device/sim without a PostHog ramp.
+ *  2. Env var `EXPO_PUBLIC_FLAG_FORCE_<FLAG_KEY>` = `"true"`/`"false"`
+ *     — test/SSR/Metro-start only. The computed `process.env[key]` read
+ *     is `undefined` in a bundled RN app (Metro never inlines a computed
+ *     key), so this layer is effectively vitest + E2E-at-Metro-start.
+ *
+ *  Both exist because PostHog's local-evaluation cache races first
+ *  render in dev, so a Maestro/manual flow can't reliably trigger a
+ *  flag-on branch via PostHog targeting alone.
+ *
+ *  Env-key mapping: uppercase the flag and replace hyphens with
+ *  underscores (env-var names can't contain hyphens). So
+ *  `today_log_usual_row_v2` → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`,
+ *  and `log-sheet-slot-selector` → `EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
  */
 export function isFeatureEnabled(flag: string): boolean {
   // `__DEV__` is a React Native runtime global, not defined in the
@@ -228,15 +309,24 @@ export function isFeatureEnabled(flag: string): boolean {
   // that render this module under jsdom don't blow up with
   // ReferenceError.
   if (typeof __DEV__ !== "undefined" && __DEV__) {
-    // Dev/E2E force override (checked FIRST so a test can still force a
-    // redesign flag OFF to capture the pre-redesign look). NOTE (ENG-840):
-    // the computed `process.env[envKey]` read is inert in a bundled RN app —
-    // Metro inlines only static `process.env.X`, never a computed key — so it
-    // works under vitest/SSR but not on device/sim. That's fine now: the
-    // redesign no longer depends on it (default-ON below), and E2E seeds the
-    // static env at Metro start.
+    // Runtime override (ENG-840) — checked FIRST. AsyncStorage-backed,
+    // primed into `forcedFlags` at bootstrap and flipped live via the
+    // dev Settings panel. This is the path that actually works in a
+    // bundled app (the env read below does not — see below).
+    if (Object.prototype.hasOwnProperty.call(forcedFlags, flag)) {
+      return forcedFlags[flag];
+    }
+    // Legacy env path — test/SSR/Metro-start ONLY. The computed
+    // `process.env[envKey]` read is inert in a bundled RN app: Metro
+    // inlines only a static `process.env.X`, never a computed key, so
+    // this is `undefined` on device/sim. Kept because vitest (real
+    // node `process.env`) and Metro-start E2E still rely on it.
     // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    // Intentional dynamic read: does nothing in a bundle (exactly the rule's
+    // concern) and is effective ONLY where process.env is real — vitest /
+    // Metro-start E2E. The runtime map above is the device/sim path. See ENG-840.
     const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
+    // eslint-disable-next-line expo/no-dynamic-env-var -- intentional; see note above (ENG-840)
     const override = process.env[envKey];
     if (override === "true") return true;
     if (override === "false") return false;
@@ -269,8 +359,18 @@ export function isFeatureEnabled(flag: string): boolean {
  *  disabled `true`; "true" forces ON → disabled `false`. */
 export function isFeatureDisabled(flag: string): boolean {
   if (typeof __DEV__ !== "undefined" && __DEV__) {
+    // Runtime override (ENG-840) — mirrors `isFeatureEnabled`. A flag
+    // forced OFF is "disabled" (`true`); forced ON is "not disabled".
+    if (Object.prototype.hasOwnProperty.call(forcedFlags, flag)) {
+      return forcedFlags[flag] === false;
+    }
+    // Legacy env path — test/SSR only (computed env read is dead in the
+    // bundle; see `isFeatureEnabled`).
     // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    // Dead in the bundle, effective only under vitest / Metro-start E2E; the
+    // runtime map above is the device/sim path. See note in `isFeatureEnabled`.
     const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
+    // eslint-disable-next-line expo/no-dynamic-env-var -- intentional; see note above (ENG-840)
     const override = process.env[envKey];
     if (override === "false") return true;
     if (override === "true") return false;

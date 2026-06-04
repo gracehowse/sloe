@@ -37,7 +37,7 @@ function readCssVar(blockSrc: string, name: string): string {
   const m = blockSrc.match(new RegExp(`--${name}:\\s*([^;]+);`));
   expect(m, `--${name} in block`).not.toBeNull();
   let value = m![1].trim().toLowerCase();
-  // Resolve one hop: `--primary: var(--accent-primary)` → `#588ce4`.
+  // Resolve one hop: `--primary: var(--accent-primary)` → `#c8794e`.
   const varRef = value.match(/^var\(--([^)]+)\)$/);
   if (varRef) {
     value = readCssVar(blockSrc, varRef[1]);
@@ -62,6 +62,20 @@ function readMobileAccent(key: string): string {
   return m![1].trim().toLowerCase();
 }
 
+/** Read a `key: '#hex'` (or `key: Accent.foo`) entry from the `MacroColors`
+ *  object literal, resolving the one `Accent.*` indirection used there. */
+function readMobileMacro(key: string): string {
+  const start = MOBILE_THEME.indexOf("export const MacroColors = {");
+  expect(start, "MacroColors literal").toBeGreaterThanOrEqual(0);
+  const slice = MOBILE_THEME.slice(start, start + 900);
+  const m = slice.match(new RegExp(`${key}:\\s*([^,]+),`));
+  expect(m, `MacroColors.${key}`).not.toBeNull();
+  let raw = m![1].trim();
+  const accentRef = raw.match(/^Accent\.(\w+)$/);
+  if (accentRef) return readMobileAccent(accentRef[1]);
+  return raw.replace(/['"]/g, "").toLowerCase();
+}
+
 const LIGHT = block(":root");
 const DARK = block(".dark");
 
@@ -84,11 +98,19 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       );
     });
 
-    it("macro hues", () => {
-      expect(readCssVar(LIGHT, "macro-protein")).toBe(readMobileAccent("primary"));
-      expect(readCssVar(LIGHT, "macro-carbs")).toBe(readMobileAccent("carbs"));
-      expect(readCssVar(LIGHT, "macro-fat")).toBe(readMobileAccent("magenta"));
-      expect(readCssVar(LIGHT, "macro-calories")).toBe(readMobileAccent("success"));
+    it("macro hues (Sloe Phase 0 — web ↔ mobile MacroColors parity)", () => {
+      // Sloe: protein olive-sage, carbs clay, fat amber, calories plum.
+      expect(readCssVar(LIGHT, "macro-protein")).toBe(readMobileMacro("protein"));
+      expect(readCssVar(LIGHT, "macro-carbs")).toBe(readMobileMacro("carbs"));
+      expect(readCssVar(LIGHT, "macro-fat")).toBe(readMobileMacro("fat"));
+      expect(readCssVar(LIGHT, "macro-calories")).toBe(readMobileMacro("calories"));
+    });
+
+    it("macro hues resolve to the documented Sloe values", () => {
+      expect(readCssVar(LIGHT, "macro-protein")).toBe("#7c8466"); // olive-sage
+      expect(readCssVar(LIGHT, "macro-carbs")).toBe("#c8794e");   // clay
+      expect(readCssVar(LIGHT, "macro-fat")).toBe("#c9892c");     // amber
+      expect(readCssVar(LIGHT, "macro-calories")).toBe("#3b2a4d"); // plum
     });
 
     it("calorie ring empty track", () => {
@@ -108,29 +130,49 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(DARK, "card")).toBe(readMobileColor("dark", "card"));
     });
 
-    it("over-budget amber", () => {
+    it("over-budget red (Sloe D-2) — web ↔ mobile parity", () => {
       expect(readCssVar(DARK, "over-budget-fg")).toBe(
         readMobileColor("dark", "overBudgetFg"),
       );
     });
   });
 
-  it("Today calorie rings use destructive red when over budget (TF49)", () => {
-    const ringSrc = [
-      readFileSync(resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"), "utf8"),
-      readFileSync(resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"), "utf8"),
-    ].join("\n");
-    expect(ringSrc).toMatch(/isOver.*Accent\.destructive/);
-    expect(ringSrc).toMatch(/isOverBudget[\s\S]{0,120}--destructive/);
+  it("Today calorie rings use destructive red overage when over budget (Sloe D-1)", () => {
+    // Sloe D-1: under-budget is the plum calorie-macro arc (asserted in
+    // calorieRingSolidGreenAtTarget.test.ts); the OVER state paints a
+    // destructive-red overage on top. MOBILE (SLOE redesign 2026-06-03) now
+    // draws it as a clean red ARC via the `overBudgetFg` token (NOT the
+    // whole-ring `Accent.destructive` recolour, NOT a hash). WEB still uses
+    // the `--destructive` overage (reconciled in the web-parity slot).
+    const mobileRing = readFileSync(
+      resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"),
+      "utf8",
+    );
+    const webRing = readFileSync(
+      resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"),
+      "utf8",
+    );
+    expect(mobileRing).toMatch(/overArcColor = palette\.overBudgetFg/);
+    expect(webRing).toMatch(/isOverBudget[\s\S]{0,120}--destructive/);
   });
 
-  it("TodayHeroStats NET over-target uses over-budget amber (not red)", () => {
-    // 2026-05-21: see above note. NET that's over goal renders amber.
+  it("TodayHeroStats NET over-target uses the over-budget token (red in Sloe, D-2)", () => {
+    // Sloe D-2: fat now owns amber, so the over-budget signal is RED. The
+    // token NAME (`--over-budget-fg`) is unchanged — only its value moved from
+    // amber to `#C0533F`. The structural wiring (NET-over → `over-budget-fg`)
+    // is what we pin; the value is verified in the light/dark sections above.
     const hero = readFileSync(
       resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
       "utf8",
     );
     expect(hero).toContain('valueTone === "over"');
     expect(hero).toMatch(/valueTone === "over"[\s\S]{0,120}over-budget-fg/);
+  });
+
+  it("over-budget token resolves to the Sloe destructive red (D-2), not amber", () => {
+    expect(readCssVar(LIGHT, "over-budget-fg")).toBe("#c0533f");
+    expect(readCssVar(DARK, "over-budget-fg")).toBe("#dc6b55");
+    // It must match the destructive hue family (over = red, post-Sloe).
+    expect(readCssVar(LIGHT, "over-budget-fg")).toBe(readCssVar(LIGHT, "accent-destructive"));
   });
 });

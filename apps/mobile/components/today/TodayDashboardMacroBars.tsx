@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, View, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -138,7 +138,8 @@ export function TodayDashboardMacroBars({
         {
           backgroundColor: cardElevation.liftBg ?? cardColor,
           borderColor: cardBorderColor,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
           borderRadius: Radius.lg,
           padding: Spacing.sm + 2,
           marginBottom: Spacing.sm,

@@ -117,7 +117,19 @@ describe("Today above-meals cap (mobile) — folded primitives", () => {
 });
 
 describe("Today branding row (mobile)", () => {
-  it("does not duplicate brand wordmark in Today scroll (tab title is enough)", () => {
+  // SLOE redesign (2026-06-03, `01 · Today` frame, Grace decision): the
+  // Today scroll now opens with a "Sloe" wordmark + avatar header in
+  // place of the old "< Today >" date-nav row. This supersedes the
+  // earlier "tab title is enough, no wordmark" posture — the wordmark IS
+  // the intended top-of-Today identity now. We still forbid the legacy
+  // standalone <TodayBrandBar> component (the wordmark is a lightweight
+  // inline row, not that retired block).
+  it("renders the Sloe wordmark header (intentional, SLOE redesign 2026-06-03)", () => {
+    expect(HOST_SRC).toMatch(/testID="today-wordmark"/);
+    expect(HOST_SRC).toMatch(/>\s*Sloe\s*</);
+  });
+
+  it("does not use the legacy standalone <TodayBrandBar> block", () => {
     expect(HOST_SRC).not.toMatch(/<TodayBrandBar[\s/]/);
   });
 });

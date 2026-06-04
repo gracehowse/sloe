@@ -70,7 +70,11 @@ export function FatSecretBadge({
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
-          "inline-flex items-center text-[10px] text-slate-500 dark:text-slate-400 underline-offset-2 hover:underline",
+          // Sloe Phase 0 (2026-06-03): route the attribution off the raw
+          // `text-slate-500` hardcode onto `text-muted-foreground` (ink-soft).
+          // The oat page bg tipped slate-500 to 4.49:1 (just under AA); the
+          // muted-foreground token clears 4.5:1 on oat AND dark-mode-swaps.
+          "inline-flex items-center text-[10px] text-muted-foreground underline-offset-2 hover:underline",
           className,
         )}
         aria-label="Powered by fatsecret Platform API"

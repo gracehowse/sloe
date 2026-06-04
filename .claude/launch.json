@@ -21,6 +21,13 @@
       "runtimeArgs": ["serve", "docs/prototypes", "-l", "4599"],
       "port": 4599,
       "autoPort": true
+    },
+    {
+      "name": "brand",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "docs/brand", "-l", "4601"],
+      "port": 4601,
+      "autoPort": true
     }
   ]
 }

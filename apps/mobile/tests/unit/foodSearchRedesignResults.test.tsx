@@ -102,7 +102,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     textTertiary: "#94a3b8",
     background: "#fafafa",
     card: "#ffffff",
-    cardElevated: "#fbf8f0",
+    cardElevated: "#F6F5F2",
     border: "#e4e4ec",
     cardBorder: "#e4e4ec",
     inputBg: "#f0f0f0",

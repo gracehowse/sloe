@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -53,7 +53,8 @@ export function TodayFirstMealEmptyState({
       style={[{
         backgroundColor: cardElevation.liftBg ?? cardColor,
         borderRadius: Radius.lg,
-        borderWidth: cardElevation.useBorder ? 1 : 0,
+        // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
+        borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         borderColor: cardBorderColor,
         padding: Spacing.lg,
         marginBottom: Spacing.md,

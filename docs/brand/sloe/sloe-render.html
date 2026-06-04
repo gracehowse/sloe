@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sloe — Brand Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- Sloe palette (from the berry) ---- */
+    --sloe:#3B2A4D;        /* primary indigo-plum */
+    --sloe-deep:#241733;   /* darkest plum / dark surfaces */
+    --damson:#6A4B7A;      /* lifted plum */
+    --frost:#C9C2D6;       /* frosted bloom — signature light */
+    --frost-mist:#EDEAF1;  /* cool wash surface */
+    --clay:#C8794E;        /* warm coaching accent */
+    --clay-soft:#F4E2D2;   /* peach tint */
+    --honey:#D6A24A;       /* best-day gold */
+    --oat:#FBF8F3;         /* warm cream ground */
+    --oat-deep:#F3EEE6;
+    --linen:#F7F3EC;       /* card */
+    --ink:#221B26;         /* warm near-black, plum undertone */
+    --ink-soft:#6A6072;
+    --ink-faint:#9B93A3;
+    --line:#E8E2EC;
+    --sage:#5E7C5A;        /* under-budget / success */
+    --sage-soft:#E3EADD;
+    --destructive:#C0533F; /* over-budget (ring only) */
+    --amber:#C9892C;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 60% at 85% -5%, rgba(106,75,122,.10), transparent 55%),
+      radial-gradient(90% 50% at 5% 0%, rgba(201,194,214,.30), transparent 45%),
+      var(--oat);
+    color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:60px 48px 110px;}
+  .serif{font-family:var(--serif);}
+  .eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--clay);font-weight:600;}
+  .muted{color:var(--ink-soft);}
+
+  /* ---- berry mark (the bloom dot) ---- */
+  .berry{display:inline-block;border-radius:50%;background:radial-gradient(circle at 32% 28%, var(--frost) 0%, var(--damson) 34%, var(--sloe) 70%, var(--sloe-deep) 100%);box-shadow:inset 0 -3px 8px rgba(36,23,51,.45);position:relative;}
+  .berry::after{content:"";position:absolute;top:14%;left:18%;width:34%;height:26%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(2px);}
+
+  /* ---- 1. HERO WORDMARK ---- */
+  .hero{
+    border-radius:30px;border:1px solid var(--line);
+    background:
+      radial-gradient(140% 90% at 78% 12%, rgba(201,194,214,.45), transparent 60%),
+      linear-gradient(180deg, #fff 0%, var(--oat) 100%);
+    padding:72px 60px 64px;margin-bottom:30px;position:relative;overflow:hidden;
+    box-shadow:0 28px 70px -40px rgba(59,42,77,.5);
+  }
+  .hero .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:54px;}
+  .badge{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;}
+  .badge b{color:var(--sloe);}
+  .domain{font-family:var(--sans);font-size:13px;color:var(--clay);font-weight:600;letter-spacing:.02em;}
+  .wordmark{display:flex;align-items:center;justify-content:center;gap:6px;margin:8px 0 26px;}
+  .wordmark .word{font-family:var(--serif);font-weight:360;font-size:140px;letter-spacing:-.02em;color:var(--sloe);line-height:.9;}
+  /* the 'o' as berry sits inline via ::the dot */
+  .wm-berry{width:104px;height:104px;margin:0 -4px 0 -2px;vertical-align:middle;}
+  .hero .tagline{text-align:center;font-family:var(--serif);font-style:italic;font-weight:340;font-size:27px;color:var(--ink);letter-spacing:-.01em;}
+  .hero .pron{text-align:center;margin-top:18px;font-size:13.5px;color:var(--ink-faint);letter-spacing:.03em;}
+  .hero .pron b{color:var(--ink-soft);font-weight:600;}
+
+  /* ---- section scaffold ---- */
+  section{margin:54px 0;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;}
+  .sec-head .n{font-family:var(--serif);font-size:17px;color:var(--frost);min-width:30px;font-weight:500;}
+  .sec-head h2{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:-.01em;color:var(--ink);}
+  .sec-head .tag{margin-left:auto;font-size:12px;color:var(--ink-faint);}
+
+  /* ---- 2. PALETTE ---- */
+  .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+  .sw{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:0 10px 30px -24px rgba(59,42,77,.6);}
+  .sw .chip{height:88px;position:relative;}
+  .sw .meta{padding:11px 13px 13px;}
+  .sw .role{font-size:13px;font-weight:600;color:var(--ink);}
+  .sw .use{font-size:10.5px;color:var(--ink-faint);margin-top:1px;line-height:1.35;}
+  .sw .hex{font-size:11px;color:var(--ink-soft);font-family:var(--sans);letter-spacing:.03em;margin-top:6px;font-weight:600;}
+  .grp{grid-column:1/-1;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:14px 0 -4px;}
+
+  /* ---- 3. LOCKUP ---- */
+  .lockup{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  .lk{border-radius:22px;border:1px solid var(--line);padding:38px 34px;display:flex;flex-direction:column;justify-content:center;min-height:240px;}
+  .lk.light{background:var(--oat);}
+  .lk.dark{background:radial-gradient(130% 100% at 75% 10%, var(--damson), var(--sloe) 55%, var(--sloe-deep) 100%);border-color:transparent;}
+  .lk .mk{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .lk .mkword{font-family:var(--serif);font-weight:400;font-size:54px;letter-spacing:-.015em;}
+  .lk.light .mkword{color:var(--sloe);}
+  .lk.dark .mkword{color:#fff;}
+  .lk .tl{font-family:var(--serif);font-size:21px;line-height:1.3;letter-spacing:-.01em;}
+  .lk.light .tl{color:var(--ink);}
+  .lk.dark .tl{color:var(--frost);}
+  .lk .tl b{font-weight:600;}
+  .lk.light .tl b{color:var(--clay);}
+  .lk.dark .tl b{color:#fff;}
+  .lk .cap{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-top:22px;font-weight:600;}
+  .lk.dark .cap{color:rgba(255,255,255,.5);}
+
+  /* ---- 4. APP STORE CARD ---- */
+  .store{background:#fff;border:1px solid var(--line);border-radius:24px;padding:30px 32px;box-shadow:0 30px 70px -45px rgba(59,42,77,.6);max-width:640px;}
+  .store .row1{display:flex;gap:20px;align-items:center;}
+  .appicon{width:104px;height:104px;border-radius:24px;flex-shrink:0;background:radial-gradient(130% 110% at 72% 18%, var(--damson), var(--sloe) 52%, var(--sloe-deep) 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 34px -16px rgba(59,42,77,.85);position:relative;}
+  .appicon .ib{width:56px;height:56px;}
+  .store .nm{font-family:var(--serif);font-weight:480;font-size:30px;color:var(--ink);letter-spacing:-.01em;}
+  .store .sub{font-size:14.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;max-width:34ch;}
+  .store .cta{margin-top:12px;display:inline-flex;align-items:center;gap:8px;}
+  .getbtn{background:var(--clay);color:#fff;font-weight:700;font-size:13px;letter-spacing:.04em;padding:7px 22px;border-radius:999px;}
+  .iap{font-size:11px;color:var(--ink-faint);}
+  .store .desc{font-size:14px;color:var(--ink);line-height:1.55;margin-top:22px;padding-top:20px;border-top:1px solid var(--line);}
+  .store .ratings{display:flex;gap:30px;margin-top:18px;align-items:center;}
+  .rt .big{font-family:var(--serif);font-size:26px;color:var(--ink);}
+  .rt .stars{color:var(--honey);font-size:13px;letter-spacing:2px;margin-top:2px;}
+  .rt .lbl{font-size:11px;color:var(--ink-faint);margin-top:3px;}
+  .rt .age{font-family:var(--serif);font-size:22px;color:var(--ink-soft);}
+
+  /* ---- 5. IPHONE ---- */
+  .phonewrap{display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:center;}
+  .phone{
+    width:300px;height:620px;border-radius:52px;background:#0d0a12;padding:13px;
+    box-shadow:0 50px 90px -45px rgba(36,23,51,.9), inset 0 0 0 2px rgba(201,194,214,.18);
+    position:relative;flex-shrink:0;
+  }
+  .notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:118px;height:30px;background:#0d0a12;border-radius:0 0 18px 18px;z-index:5;}
+  .screen{
+    width:100%;height:100%;border-radius:40px;overflow:hidden;
+    background:
+      radial-gradient(120% 50% at 80% -2%, rgba(201,194,214,.4), transparent 55%),
+      var(--oat);
+    position:relative;
+  }
+  .scr-pad{padding:54px 22px 22px;}
+  .sb{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:var(--ink);position:absolute;top:20px;left:24px;right:24px;}
+  .sb .r{display:flex;gap:5px;align-items:center;font-size:11px;}
+  .scr-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .scr-greet{font-family:var(--serif);font-weight:420;font-size:25px;color:var(--ink);letter-spacing:-.01em;line-height:1.1;}
+  .scr-date{font-size:11.5px;color:var(--ink-faint);margin-top:3px;letter-spacing:.02em;text-transform:uppercase;font-weight:600;}
+  .scr-mk{display:flex;align-items:center;gap:5px;}
+  .scr-mk .w{font-family:var(--serif);font-size:19px;color:var(--sloe);font-weight:420;}
+  .scr-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,var(--damson),var(--sloe));}
+
+  /* ring */
+  .ringcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:22px;margin-top:18px;display:flex;flex-direction:column;align-items:center;box-shadow:0 18px 40px -34px rgba(59,42,77,.7);}
+  .ring{width:150px;height:150px;border-radius:50%;
+    background:conic-gradient(var(--sage) 0 70%, var(--sage-soft) 70% 100%);
+    display:flex;align-items:center;justify-content:center;position:relative;}
+  .ring::before{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(94,124,90,.25);}
+  .ring .inner{width:120px;height:120px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring .kcal{font-family:var(--serif);font-weight:440;font-size:34px;color:var(--ink);line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+  .ring .of{font-size:12px;color:var(--ink-faint);margin-top:4px;font-variant-numeric:tabular-nums;}
+  .ring .unit{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sage);font-weight:700;margin-top:5px;}
+  .coach{font-family:var(--serif);font-style:italic;font-size:16.5px;color:var(--ink);line-height:1.4;text-align:center;margin-top:18px;max-width:30ch;}
+  .coach b{font-style:normal;font-weight:600;color:var(--clay);}
+
+  /* macro tiles */
+  .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px;}
+  .mt{background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px 10px;text-align:center;}
+  .mt .v{font-family:var(--serif);font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .mt .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-top:2px;}
+  .mt .bar{height:4px;border-radius:99px;background:var(--frost-mist);margin-top:8px;overflow:hidden;}
+  .mt .bar i{display:block;height:100%;border-radius:99px;}
+
+  .phone-notes h3{font-family:var(--serif);font-weight:440;font-size:24px;color:var(--ink);margin-bottom:14px;letter-spacing:-.01em;}
+  .phone-notes ul{list-style:none;}
+  .phone-notes li{font-size:14.5px;color:var(--ink-soft);line-height:1.5;padding:9px 0 9px 24px;position:relative;border-bottom:1px solid var(--line);}
+  .phone-notes li::before{content:"";position:absolute;left:0;top:15px;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 32% 28%, var(--frost), var(--sloe) 70%);}
+  .phone-notes li b{color:var(--ink);font-weight:600;}
+
+  .footer{margin-top:64px;border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;font-size:12px;color:var(--ink-faint);}
+  .footer .serif{font-size:15px;color:var(--sloe);}
+
+  @media(max-width:920px){
+    .swatches{grid-template-columns:repeat(3,1fr);}
+    .lockup{grid-template-columns:1fr;}
+    .phonewrap{grid-template-columns:1fr;justify-items:center;text-align:center;}
+    .wordmark .word{font-size:92px;}
+    .wm-berry{width:70px;height:70px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. HERO WORDMARK -->
+  <div class="hero">
+    <div class="topline">
+      <div class="badge">Brand board · <b>Sloe</b> · candidate rebrand</div>
+      <div class="domain">eatsloe.com&nbsp;&nbsp;·&nbsp;&nbsp;sloe.life</div>
+    </div>
+    <div class="wordmark">
+      <span class="word">sl</span>
+      <span class="berry wm-berry" aria-label="o as bloomed sloe berry"></span>
+      <span class="word">e</span>
+    </div>
+    <div class="tagline">Cook what you love. Hit your goals anyway.</div>
+    <div class="pron"><b>/sləʊ/</b> &nbsp;— say it "slow." &nbsp; The blackthorn berry · the frosted bloom · the unhurried pace.</div>
+  </div>
+
+  <!-- 2. PALETTE -->
+  <section>
+    <div class="sec-head"><span class="n">01</span><h2>Palette — from the berry</h2><span class="tag">indigo-plum flesh · frosted bloom · warm clay · oat ground</span></div>
+    <div class="swatches">
+      <div class="grp">Core brand</div>
+      <div class="sw"><div class="chip" style="background:#3B2A4D"></div><div class="meta"><div class="role">Sloe</div><div class="use">Primary plum · wordmark, ink, mark fill</div><div class="hex">#3B2A4D</div></div></div>
+      <div class="sw"><div class="chip" style="background:#241733"></div><div class="meta"><div class="role">Sloe Deep</div><div class="use">Dark surfaces · deep shadow</div><div class="hex">#241733</div></div></div>
+      <div class="sw"><div class="chip" style="background:#6A4B7A"></div><div class="meta"><div class="role">Damson</div><div class="use">Lifted plum · gradient, active</div><div class="hex">#6A4B7A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C9C2D6"></div><div class="meta"><div class="role">Frost <span style="color:var(--clay)">★</span></div><div class="use">The bloom · the ownable accent</div><div class="hex">#C9C2D6</div></div></div>
+      <div class="sw"><div class="chip" style="background:#EDEAF1"></div><div class="meta"><div class="role">Frost Mist</div><div class="use">Cool wash surface</div><div class="hex">#EDEAF1</div></div></div>
+      <div class="sw"><div class="chip" style="background:linear-gradient(135deg,#6A4B7A,#3B2A4D 60%,#C9C2D6)"></div><div class="meta"><div class="role">Brand gradient</div><div class="use">Marketing · paywall · empty ring</div><div class="hex">Damson→Sloe→Frost</div></div></div>
+
+      <div class="grp">Warm coaching accent — permission, not restriction</div>
+      <div class="sw"><div class="chip" style="background:#C8794E"></div><div class="meta"><div class="role">Clay</div><div class="use">Warm splash · CTA, Pro pill, encouragement</div><div class="hex">#C8794E</div></div></div>
+      <div class="sw"><div class="chip" style="background:#F4E2D2"></div><div class="meta"><div class="role">Clay Soft</div><div class="use">Peach tint surface</div><div class="hex">#F4E2D2</div></div></div>
+      <div class="sw"><div class="chip" style="background:#D6A24A"></div><div class="meta"><div class="role">Honey</div><div class="use">Best-day star · gentle highlight</div><div class="hex">#D6A24A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FBF8F3;box-shadow:inset 0 0 0 1px #E8E2EC"></div><div class="meta"><div class="role">Oat</div><div class="use">Warm cream ground · the canvas</div><div class="hex">#FBF8F3</div></div></div>
+      <div class="sw"><div class="chip" style="background:#F7F3EC;box-shadow:inset 0 0 0 1px #E8E2EC"></div><div class="meta"><div class="role">Linen</div><div class="use">Soft warm card</div><div class="hex">#F7F3EC</div></div></div>
+      <div class="sw"><div class="chip" style="background:#221B26"></div><div class="meta"><div class="role">Ink</div><div class="use">Warm near-black · body text</div><div class="hex">#221B26</div></div></div>
+
+      <div class="grp">Semantic state — calorie-ring rule preserved</div>
+      <div class="sw"><div class="chip" style="background:#5E7C5A"></div><div class="meta"><div class="role">Sage · success</div><div class="use">Under budget · on track</div><div class="hex">#5E7C5A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C0533F"></div><div class="meta"><div class="role">Destructive</div><div class="use">Ring over-budget ONLY</div><div class="hex">#C0533F</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C9892C"></div><div class="meta"><div class="role">Amber</div><div class="use">Macros/sodium over (not ring)</div><div class="hex">#C9892C</div></div></div>
+      <div class="sw"><div class="chip" style="background:#6A6072"></div><div class="meta"><div class="role">Ink Soft</div><div class="use">Secondary text</div><div class="hex">#6A6072</div></div></div>
+      <div class="sw"><div class="chip" style="background:#9B93A3"></div><div class="meta"><div class="role">Ink Faint</div><div class="use">Captions · numerals</div><div class="hex">#9B93A3</div></div></div>
+      <div class="sw"><div class="chip" style="background:#E8E2EC"></div><div class="meta"><div class="role">Line</div><div class="use">Hairline · borders</div><div class="hex">#E8E2EC</div></div></div>
+    </div>
+  </section>
+
+  <!-- 3. LOCKUP -->
+  <section>
+    <div class="sec-head"><span class="n">02</span><h2>Tagline lockup</h2><span class="tag">wordmark + the food-and-goals bridge</span></div>
+    <div class="lockup">
+      <div class="lk light">
+        <div class="mk"><span class="berry" style="width:42px;height:42px"></span><span class="mkword">sloe</span></div>
+        <div class="tl">Cook what you love.<br><b>Hit your goals anyway.</b></div>
+        <div class="cap">Primary · on Oat</div>
+      </div>
+      <div class="lk dark">
+        <div class="mk"><span class="berry" style="width:42px;height:42px;box-shadow:inset 0 -3px 8px rgba(0,0,0,.5),0 0 0 1px rgba(201,194,214,.3)"></span><span class="mkword">sloe</span></div>
+        <div class="tl">The <b>calm</b> way to eat well.</div>
+        <div class="cap">Brand-line · on plum gradient</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. APP STORE -->
+  <section>
+    <div class="sec-head"><span class="n">03</span><h2>App Store listing</h2><span class="tag">how it lands on the shelf</span></div>
+    <div class="store">
+      <div class="row1">
+        <div class="appicon"><span class="berry ib" style="box-shadow:inset 0 -4px 12px rgba(0,0,0,.45)"></span></div>
+        <div>
+          <div class="nm">Sloe</div>
+          <div class="sub">Cook what you love. Hit your goals anyway.</div>
+          <div class="cta"><span class="getbtn">GET</span><span class="iap">In-App Purchases</span></div>
+        </div>
+      </div>
+      <div class="desc">The calm recipe &amp; nutrition app for people who love food <i>and</i> have goals. Log what you eat, fit your favourite recipes into your targets, and find what to cook next — unhurried, estimated honestly, never a diet.</div>
+      <div class="ratings">
+        <div class="rt"><div class="big">4.9</div><div class="stars">★★★★★</div><div class="lbl">1.2K Ratings</div></div>
+        <div class="rt"><div class="age">4+</div><div class="lbl">Age</div></div>
+        <div class="rt"><div class="big serif" style="font-size:22px">#3</div><div class="lbl">Food &amp; Drink</div></div>
+        <div class="rt"><div class="age serif">Sloe Labs</div><div class="lbl">Developer</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. IPHONE -->
+  <section>
+    <div class="sec-head"><span class="n">04</span><h2>In product — Today</h2><span class="tag">the name, living in-app</span></div>
+    <div class="phonewrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="scr-pad">
+            <div class="sb"><span>9:41</span><span class="r">●●● &nbsp;⌃ &nbsp;100%</span></div>
+            <div class="scr-head">
+              <div>
+                <div class="scr-greet">Morning, Grace</div>
+                <div class="scr-date">Tuesday · 2 June</div>
+              </div>
+              <div class="scr-avatar"></div>
+            </div>
+
+            <div class="ringcard">
+              <div class="ring"><div class="inner">
+                <div class="kcal">1,420</div>
+                <div class="of">of 2,040 kcal</div>
+                <div class="unit">Under budget</div>
+              </div></div>
+              <div class="coach">Room for dinner — about <b>620 kcal</b> to play with. No rush.</div>
+              <div class="macros">
+                <div class="mt"><div class="v">96<span style="font-size:11px;color:var(--ink-faint)">g</span></div><div class="k">Protein</div><div class="bar"><i style="width:70%;background:var(--sloe)"></i></div></div>
+                <div class="mt"><div class="v">142<span style="font-size:11px;color:var(--ink-faint)">g</span></div><div class="k">Carbs</div><div class="bar"><i style="width:58%;background:var(--damson)"></i></div></div>
+                <div class="mt"><div class="v">44<span style="font-size:11px;color:var(--ink-faint)">g</span></div><div class="k">Fat</div><div class="bar"><i style="width:62%;background:var(--clay)"></i></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-notes">
+        <h3>What the render proves</h3>
+        <ul>
+          <li><b>The mark lives small.</b> The bloomed berry-<i>o</i> reads at app-icon size and inside the wordmark without explanation.</li>
+          <li><b>Plum + oat is calm, not clinical.</b> The jewel-dark ring on warm cream feels premium and unhurried — no neon, no shouting.</li>
+          <li><b>Permission voice in-product.</b> "Room for dinner… No rush." is the bridge and the <i>slow</i> pun, felt not stated.</li>
+          <li><b>The locked ring survives.</b> Under-budget stays Sage green; engineered <b>tabular</b> numerals; macros use plum/damson/clay, not the ring colours.</li>
+          <li><b>Ownable accent.</b> Frost — the berry's bloom — is a colour no competitor in the lane holds.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <span class="serif">sloe</span>
+    <span>Brand board · 2026-06-02 · candidate rebrand · pending legal clearance &amp; domain grab · docs/brand/sloe/</span>
+  </div>
+
+</div>
+</body>
+</html>

@@ -20,10 +20,17 @@ export const bootstrapAnalytics = vi.fn(() => undefined);
  *  unless a test explicitly mocks this to true. */
 export const isFeatureEnabled = vi.fn((_flag: string) => false);
 
+/** Mirrors `apps/mobile/lib/analytics.ts#isFeatureDisabled` — defaults
+ *  to false ("not disabled") in tests so default-ON behaviour (e.g. the
+ *  soft resting-card elevation in `useCardElevation`) takes its ON path
+ *  unless a test explicitly mocks this to true to exercise a kill switch. */
+export const isFeatureDisabled = vi.fn((_flag: string) => false);
+
 export default {
   track,
   identifyUser,
   resetAnalytics,
   bootstrapAnalytics,
   isFeatureEnabled,
+  isFeatureDisabled,
 };

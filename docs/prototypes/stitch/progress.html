@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Progress - Suppr</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {},
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    spacing: {},
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "display": ["Newsreader", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {}
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom styles to match the prompt's specific colors not in tailwind base */
+        .text-ink { color: #1B1814; }
+        .bg-ink { background-color: #1B1814; }
+        .text-terracotta { color: #C2683E; }
+        .bg-terracotta { background-color: #C2683E; }
+        .border-terracotta { border-color: #C2683E; }
+        .text-sage { color: #7C8466; }
+        .bg-sage { background-color: #7C8466; }
+        .bg-card-grey { background-color: #F6F5F2; }
+        .border-hairline { border-color: #ECEAE4; border-width: 1px; }
+        
+        /* Chart SVG styling */
+        .chart-line {
+            stroke: #C2683E;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: dash 2s linear forwards;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: 0; }
+        }
+        .chart-marker {
+            fill: #7C8466;
+            transition: r 0.2s ease;
+        }
+        .chart-marker:hover {
+            r: 6;
+        }
+        .chart-grid {
+            stroke: #ECEAE4;
+            stroke-width: 0.5;
+        }
+        .chart-label {
+            fill: #1B1814;
+            opacity: 0.5;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-white text-ink font-body min-h-screen flex flex-col antialiased pb-24 md:pb-0">
+<!-- Header -->
+<header class="w-full px-6 py-8 md:py-12 flex justify-between items-end border-b border-[#ECEAE4] md:border-none max-w-5xl mx-auto">
+<div>
+<div class="inline-flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-terracotta text-sm">local_fire_department</span>
+<span class="font-label text-xs tracking-widest uppercase text-ink/70">7 Day Streak</span>
+</div>
+<h1 class="font-headline text-4xl md:text-5xl font-medium tracking-tight">Progress</h1>
+</div>
+<div class="hidden md:flex gap-4">
+<button class="w-10 h-10 rounded-full border border-[#ECEAE4] flex items-center justify-center hover:bg-[#F6F5F2] transition-colors">
+<span class="material-symbols-outlined text-ink">calendar_month</span>
+</button>
+<button class="w-10 h-10 rounded-full border border-[#ECEAE4] flex items-center justify-center hover:bg-[#F6F5F2] transition-colors">
+<span class="material-symbols-outlined text-ink">ios_share</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-5xl mx-auto px-6 py-6 flex flex-col gap-10">
+<!-- Narrative Score Card -->
+<section class="bg-card-grey border-hairline rounded-2xl p-6 md:p-8 flex flex-col items-center text-center">
+<h2 class="font-headline text-2xl md:text-3xl text-ink font-medium max-w-md mx-auto leading-snug">
+                "Trending gently down — your steadiest week yet."
+            </h2>
+<p class="font-body text-sm text-ink/60 mt-3">Weight trajectory over the last 90 days.</p>
+</section>
+<!-- Weight-Trend Chart Section -->
+<section class="w-full">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label text-sm uppercase tracking-wider text-ink/80 font-medium">90 Day Trend</h3>
+<span class="font-body text-sm text-ink/60">-2.4 kg total</span>
+</div>
+<div class="w-full h-64 md:h-80 relative">
+<!-- SVG Chart -->
+<svg class="w-full h-full preserve-aspect-ratio-none" preserveaspectratio="none" viewbox="0 0 800 240">
+<!-- Grid Lines -->
+<line class="chart-grid" x1="0" x2="800" y1="40" y2="40"></line>
+<line class="chart-grid" x1="0" x2="800" y1="120" y2="120"></line>
+<line class="chart-grid" x1="0" x2="800" y1="200" y2="200"></line>
+<!-- Y-Axis Labels -->
+<text class="chart-label" x="0" y="35">75 kg</text>
+<text class="chart-label" x="0" y="115">74 kg</text>
+<text class="chart-label" x="0" y="195">73 kg</text>
+<!-- The Line -->
+<!-- Path starts high left, gently trends down to bottom right -->
+<path class="chart-line" d="M 40 60 Q 150 70, 250 110 T 450 140 T 650 170 T 780 190"></path>
+<!-- Markers (Best days) -->
+<circle class="chart-marker" cx="250" cy="110" r="3">
+<title>Best day: 74.2 kg</title>
+</circle>
+<circle class="chart-marker" cx="450" cy="140" r="3">
+<title>Best day: 73.8 kg</title>
+</circle>
+<circle class="chart-marker" cx="780" cy="190" r="4" style="fill: #C2683E;">
+<title>Current: 72.6 kg</title>
+</circle>
+<!-- Current weight label -->
+<text fill="#C2683E" font-family="Inter" font-size="12" font-weight="500" x="750" y="175">72.6</text>
+</svg>
+</div>
+</section>
+<!-- Macro-Adherence Tiles (Bento Style Row) -->
+<section class="w-full">
+<h3 class="font-label text-sm uppercase tracking-wider text-ink/80 font-medium mb-4">Macro Hit-Rate</h3>
+<div class="grid grid-cols-3 gap-4 md:gap-6">
+<!-- Protein Tile -->
+<div class="bg-card-grey border-hairline rounded-xl p-4 flex flex-col justify-between aspect-square">
+<span class="font-body text-xs text-ink/60 uppercase tracking-widest">Protein</span>
+<div class="mt-auto">
+<div class="flex items-end gap-1">
+<span class="font-headline text-3xl md:text-4xl text-ink">85</span>
+<span class="font-body text-sm text-ink/50 mb-1">%</span>
+</div>
+<div class="w-full bg-white h-1 mt-2 rounded-full overflow-hidden">
+<div class="bg-sage h-full w-[85%] rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Carbs Tile -->
+<div class="bg-card-grey border-hairline rounded-xl p-4 flex flex-col justify-between aspect-square">
+<span class="font-body text-xs text-ink/60 uppercase tracking-widest">Carbs</span>
+<div class="mt-auto">
+<div class="flex items-end gap-1">
+<span class="font-headline text-3xl md:text-4xl text-ink">92</span>
+<span class="font-body text-sm text-ink/50 mb-1">%</span>
+</div>
+<div class="w-full bg-white h-1 mt-2 rounded-full overflow-hidden">
+<div class="bg-sage h-full w-[92%] rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Fat Tile -->
+<div class="bg-card-grey border-hairline rounded-xl p-4 flex flex-col justify-between aspect-square">
+<span class="font-body text-xs text-ink/60 uppercase tracking-widest">Fat</span>
+<div class="mt-auto">
+<div class="flex items-end gap-1">
+<span class="font-headline text-3xl md:text-4xl text-ink">78</span>
+<span class="font-body text-sm text-ink/50 mb-1">%</span>
+</div>
+<div class="w-full bg-white h-1 mt-2 rounded-full overflow-hidden">
+<div class="bg-sage h-full w-[78%] rounded-full opacity-60"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-white border-t border-[#ECEAE4]">
+<!-- Today (Inactive) -->
+<a class="flex flex-col items-center justify-center text-[#1B1814]/60 hover:text-[#C2683E] transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">today</span>
+<span class="font-label text-[10px] uppercase tracking-wider">Today</span>
+</a>
+<!-- Recipes (Inactive) -->
+<a class="flex flex-col items-center justify-center text-[#1B1814]/60 hover:text-[#C2683E] transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">menu_book</span>
+<span class="font-label text-[10px] uppercase tracking-wider">Recipes</span>
+</a>
+<!-- Add (Inactive) -->
+<a class="flex flex-col items-center justify-center text-[#1B1814]/60 hover:text-[#C2683E] transition-colors group" href="#">
+<span class="material-symbols-outlined text-[32px] -mt-2 group-hover:-translate-y-0.5 transition-transform text-ink">add_circle</span>
+</a>
+<!-- Progress (Active) -->
+<a class="flex flex-col items-center justify-center text-[#C2683E] font-bold translate-y-[-2px] transition-transform" href="#">
+<span class="material-symbols-outlined filled text-[24px] mb-1">analytics</span>
+<span class="font-label text-[10px] uppercase tracking-wider">Progress</span>
+</a>
+<!-- Settings (Inactive) -->
+<a class="flex flex-col items-center justify-center text-[#1B1814]/60 hover:text-[#C2683E] transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">settings</span>
+<span class="font-label text-[10px] uppercase tracking-wider">Settings</span>
+</a>
+</nav>
+</body></html>

@@ -32,7 +32,9 @@ export const CssCheck: Story = {
   args: { children: "Submit" },
   play: async ({ canvas }) => {
     const button = canvas.getByRole("button", { name: /submit/i });
-    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(58, 110, 198)");
+    // Sloe Phase 0 (2026-06-03): the default Button bg is `--primary-solid`,
+    // now deep clay #A05A30 = rgb(160, 90, 48) (was blue #3a6ec6).
+    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(160, 90, 48)");
   },
 };
 

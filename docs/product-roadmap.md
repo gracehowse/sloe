@@ -36,6 +36,31 @@ Detailed journey: [`docs/journeys/tab-collapse-2026-04-27.md`](journeys/tab-coll
 
 ---
 
+## Recipe import, AI imagery & creators (2026-06-03)
+
+Authority: `docs/decisions/2026-06-03-image-generation-strategy.md` · `docs/research/2026-06-03-recipe-import-competitive-posture.md` · `docs/decisions/2026-06-03-creator-content-model-two-plane.md` · `docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md` · `docs/brand/sloe-image-prompt-template.md`. Linear initiative **Recipe import, AI imagery & creators** (ENG-857→870). **Positioning: Julienne × MFP** — recipes fused with goals/tracking (tracker-first, not cookbook-first); borrowing Julienne's design polish is safe because the moat is the goals/tracking layer.
+
+| Workstream | Status | Notes |
+|---|---|---|
+| Import — stop verbatim creator prose (web/blog) + disclaimer | **Open — P0 LIVE** | ENG-857 launch-blocker; shipping in prod now |
+| Import — surface link-back + creator credit | **Open** | ENG-858 launch-blocker; data exists, render change |
+| DMCA designated-agent registration | **Open** | ENG-859 launch-blocker; depends on incorporation; Grace owns |
+| Import — user-as-actor / private-by-default framing (keep honest UA) | **Open** | ENG-860 |
+| AI image-gen engine (fal.ai + FLUX 2 Pro + locked Sloe template) | **Open — post-Today** | ENG-861; render-validate 10 outputs first |
+| `image_source` provenance column | **Open — post-Today** | ENG-862; prerequisite |
+| Runtime "Generate an image" on import (cache · label · decouple · removable) | **Open — post-Today** | ENG-863 |
+| AI-image precedence ladder + no gen on public/Discover | **Open — post-Today** | ENG-864 |
+| Image-gen monetisation (free-base vs Pro-polish) | **Open** | ENG-865; reconcile w/ monetisation-architect |
+| Design-time fal/FLUX batch generator | **Open** | ENG-866; replaces Stitch friction |
+| Julienne UX adopts (import loading · cook chips · Est. Cost · graceful load) | **Open — post-Today** | ENG-867 |
+| Creator model — two-plane + `content_origin` | **Open — post-Today** | ENG-869 |
+| Resolve `author_id` vs `creator_id` ownership | **Open** | ENG-868; blocks claim/merge |
+| Claim & merge | **Deferred — post-launch** | ENG-870; trigger = first real creator |
+
+Competitive intel: interrogated **17 import apps** (Julienne, ReciMe, Paprika, Mela, Crouton, Pestle, Honeydew, Flavorish, Saffron, Samsung Food, AnyList, Plan to Eat, RecipeKeeper, MFP, MacroFactor, Cronometer, Cal AI). Key reads: recipes-as-facts is the category's legal foundation; the **photo is the litigation-likely vector** (we block it — ahead of the field); image-gen is Julienne's recent (~5mo) differentiator and their **reliability is the soft spot = our wedge**.
+
+---
+
 ## P0 launch-readiness status (Opus 4.7 review, 2026-04-25)
 
 | # | Item | Status |

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Ask</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<header class="w-full bg-surface border-b border-line flex items-center justify-between px-6 h-16">
+  <span class="w-8 h-8 rounded-full bg-surface-card border border-line flex items-center justify-center text-ink-soft font-label text-xs font-semibold">G</span>
+  <h1 class="font-headline text-2xl font-semibold text-plum">Sloe</h1>
+  <button class="text-ink-soft"><svg class="sloe-ico text-[20px]" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+</header>
+<main class="px-5 pt-8 pb-32 max-w-2xl mx-auto">
+  <h1 class="font-headline text-5xl text-ink">Ask</h1>
+  <p class="font-body text-lg text-ink-soft mt-3 max-w-[300px] leading-relaxed">Ask me anything — swap an ingredient, fit a meal to your macros, or decide what to cook tonight.</p>
+  <div class="space-y-4 mt-8">
+    <button class="w-full text-left bg-surface-card border border-line rounded-2xl p-5">
+    <div class="flex items-start justify-between"><span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-macro-protein"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span></div>
+    <h3 class="font-headline text-xl text-ink mt-4 leading-tight">Make this lower calorie</h3>
+    <p class="font-body text-xs text-ink-faint mt-1">Lighten up any recipe</p></button>
+    <button class="w-full text-left bg-surface-card border border-line rounded-2xl p-5">
+    <div class="flex items-start justify-between"><span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-clay"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></svg></span></div>
+    <h3 class="font-headline text-xl text-ink mt-4 leading-tight">What can I cook with chicken & rice?</h3>
+    <p class="font-body text-xs text-ink-faint mt-1">Pantry clearout</p></button>
+    <button class="w-full text-left bg-surface-card border border-line rounded-2xl p-5">
+    <div class="flex items-start justify-between"><span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-ink"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></svg></span><span class="inline-flex items-center gap-1 bg-frost-mist text-sage font-label text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full"><svg class="sloe-ico text-[12px]" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Macros</span></div>
+    <h3 class="font-headline text-xl text-ink mt-4 leading-tight">Fit a slice of cake into today</h3>
+    <p class="font-body text-xs text-ink-faint mt-1">Balance the rest of your day</p></button>
+  </div>
+</main>
+<div class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur px-5 pt-3 pb-7">
+  <div class="flex items-center gap-2 bg-surface-card border border-line rounded-full pl-4 pr-2 py-2">
+    <svg class="sloe-ico text-ink-faint text-[20px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg><span class="flex-1 font-body text-sm text-ink-faint">Type your question…</span>
+    <span class="w-9 h-9 rounded-full bg-clay flex items-center justify-center text-white"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></div>
+</div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Photo log</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<header class="w-full bg-surface border-b border-line flex items-center justify-between px-4 h-16">
+<button onclick="history.back()" class="p-1 -ml-1 text-plum"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<h1 class="font-headline text-xl text-plum">Photo log</h1>
+<div class="w-8 flex items-center justify-end text-ink-soft"></div>
+</header>
+<main class="pb-28 max-w-2xl mx-auto">
+  <div class="w-full aspect-[16/10] bg-surface-card overflow-hidden"><img src="img/a6610a1bee6c.png" class="w-full h-full object-cover"/></div>
+  <div class="px-5 pt-5">
+    <div class="flex items-center gap-2 mb-4"><span class="w-8 h-8 rounded-full bg-frost-mist flex items-center justify-center text-plum"><svg class="sloe-ico text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg></span><p class="font-headline text-lg text-ink">We spotted a grain bowl</p></div>
+    <p class="font-body text-[13px] text-ink-soft mb-2">Tap any item to adjust the portion.</p>
+    <div class="flex items-center gap-3 py-3 border-b border-line last:border-0"><span class="w-6 h-6 rounded-full bg-sage flex items-center justify-center text-white flex-none"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div class="flex-1"><p class="font-body text-[15px] text-ink leading-tight">Cooked quinoa</p><p class="font-body text-xs text-ink-faint">~150 g · 180 kcal</p></div><svg class="sloe-ico text-ink-faint text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-3 border-b border-line last:border-0"><span class="w-6 h-6 rounded-full bg-sage flex items-center justify-center text-white flex-none"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div class="flex-1"><p class="font-body text-[15px] text-ink leading-tight">Roast chickpeas</p><p class="font-body text-xs text-ink-faint">~80 g · 130 kcal</p></div><svg class="sloe-ico text-ink-faint text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-3 border-b border-line last:border-0"><span class="w-6 h-6 rounded-full bg-sage flex items-center justify-center text-white flex-none"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div class="flex-1"><p class="font-body text-[15px] text-ink leading-tight">Avocado</p><p class="font-body text-xs text-ink-faint">~½ · 120 kcal</p></div><svg class="sloe-ico text-ink-faint text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-3 border-b border-line last:border-0"><span class="w-6 h-6 rounded-full bg-amber/20 flex items-center justify-center text-amber flex-none"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></span><div class="flex-1"><p class="font-body text-[15px] text-ink leading-tight">Tahini dressing</p><p class="font-body text-xs text-amber">portion unclear — tap</p></div><svg class="sloe-ico text-ink-faint text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
+    <div class="mt-4 bg-surface-card border border-line rounded-2xl p-4 flex items-center justify-between"><span class="font-body text-sm text-ink-soft">Estimated total</span><span class="font-headline text-xl text-ink">~560 kcal</span></div>
+  </div>
+</main>
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t border-line px-5 pt-3 pb-7 flex gap-3"><button class="flex-1 bg-surface-card border border-line text-ink font-body font-semibold text-sm rounded-full py-3.5">Retake</button><button class="flex-[2] bg-clay text-white font-body font-semibold text-sm rounded-full py-3.5">Add 4 items</button></div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

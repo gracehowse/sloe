@@ -23,7 +23,7 @@ import { render } from "@testing-library/react-native";
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#000",
-    background: "#fbfaf6",
+    background: "#FBF8F3",
     brandMarkRing: "#1c1916",
   }),
 }));

@@ -16,20 +16,21 @@
  * `apps/mobile/constants/theme.ts`.
  */
 
-/** Light-mode macro hexes — pinned to `:root` block in theme.css.
- *  2026-05-25: carbs + sugar move to amber-orange (#E8721E), distinct
- *  from sodium's orange (#F78A32); the vacated Yellow slot now belongs
- *  to the activity/burn token (`--activity`). Water folds into Blue.
- *  Fiber folds into Green (icon + label do the differentiation). */
+/** Light-mode macro hexes — pinned to `:root` block in theme.css. SLOE Phase 0
+ *  (2026-06-03): calories → plum (the calorie ring / chrome hue), protein →
+ *  olive-sage, carbs → clay, fat → amber, fiber → teal. Sugar follows carbs;
+ *  sodium → amber; water → teal. Icon + label carry the differentiation where
+ *  hues sit close. Drift vs `theme.css` is caught by
+ *  `tests/unit/settingsMacroTokens.test.ts`. */
 export const MACRO_COLORS_LIGHT = {
-  calories: "#56A775",
-  protein:  "#588CE4",
-  carbs:    "#E8721E",
-  fat:      "#DF5EBC",
-  fiber:    "#56A775",
-  sugar:    "#E8721E",
-  sodium:   "#F78A32",
-  water:    "#588CE4",
+  calories: "#3B2A4D",
+  protein:  "#7C8466",
+  carbs:    "#C8794E",
+  fat:      "#C9892C",
+  fiber:    "#4A7878",
+  sugar:    "#C8794E",
+  sodium:   "#C9892C",
+  water:    "#4A7878",
 } as const;
 
 /** CSS-var references — preferred for inline `style` values (auto dark-mode). */

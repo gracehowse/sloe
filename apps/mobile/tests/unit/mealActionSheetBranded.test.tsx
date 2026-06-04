@@ -68,11 +68,11 @@ function renderSection(overrides: {
       formatMealMacroDetail={() => "312 kcal · 14g P · 46g C · 8g F"}
       formatMealTimeDisplay={() => ""}
       formatMealSourceLabelForRow={() => null}
-      textColor="#1a1714"
-      textSecondaryColor="#5b554b"
-      textTertiaryColor="#8a8377"
+      textColor="#221B26"
+      textSecondaryColor="#6A6072"
+      textTertiaryColor="#9B93A3"
       cardColor="#ffffff"
-      cardBorderColor="#ebe7dc"
+      cardBorderColor="#E8E2EC"
       savedMeals={[]}
       onLogSavedMeal={() => undefined}
       hintVisibleForSlot={() => false}

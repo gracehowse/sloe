@@ -69,8 +69,19 @@ vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => appDataState.current,
 }));
 
+// Today greeting now reads the name from the auth user's
+// `user_metadata` (the "Your name" Settings field writes `full_name`),
+// NOT `profileDisplayName`. `authMetadataState` lets individual tests
+// flip the metadata to assert the greeting personalises / falls back.
+const authMetadataState = {
+  current: { full_name: "Grace" } as Record<string, unknown>,
+};
 vi.mock("../../src/context/AuthSessionContext.tsx", () => ({
-  useAuthSession: () => ({ authedUserId: null, authUserCreatedAt: null }),
+  useAuthSession: () => ({
+    authedUserId: null,
+    authUserCreatedAt: null,
+    authUserMetadata: authMetadataState.current,
+  }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -147,6 +158,9 @@ describe("NutritionTracker render harness", () => {
       selectedDateKey: "2026-05-27",
       removeLoggedMeal: vi.fn(),
     };
+    // Reset the greeting name source between tests (the "Your name"
+    // field writes `user_metadata.full_name`).
+    authMetadataState.current = { full_name: "Grace" };
   });
 
   afterEach(() => {
@@ -161,9 +175,25 @@ describe("NutritionTracker render harness", () => {
     expect(screen.getByTestId("today-hero-desktop")).toBeInTheDocument();
   });
 
-  it("shows the today greeting with the user's first name", () => {
+  it("shows the today greeting with the first name from user_metadata.full_name", () => {
+    // The name comes from auth metadata (what the "Your name" Settings
+    // field writes), NOT profileDisplayName.
+    authMetadataState.current = { full_name: "Grace Turner" };
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-greeting")).toHaveTextContent("Good afternoon, Grace");
+    expect(screen.getByTestId("today-greeting")).toHaveTextContent(
+      "Good afternoon, Grace",
+    );
+  });
+
+  it("falls back to the name-free greeting when metadata has no name", () => {
+    // Clearing the name (empty `full_name`) → greeting drops the name.
+    // profileDisplayName is still "Grace" in the AppData mock, proving
+    // the greeting no longer sources the name from there.
+    authMetadataState.current = {};
+    render(<NutritionTracker userTier="free" />);
+    const greeting = screen.getByTestId("today-greeting");
+    expect(greeting).toHaveTextContent("Good afternoon");
+    expect(greeting).not.toHaveTextContent("Grace");
   });
 
   it("shows hero stat labels once the user has logged kcal", () => {

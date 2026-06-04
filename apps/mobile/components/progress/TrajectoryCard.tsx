@@ -1,8 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   computeTrajectory,
@@ -51,26 +51,19 @@ export interface TrajectoryCardProps {
 export function TrajectoryCard(props: TrajectoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
   const state: TrajectoryState | null = computeTrajectory(input);
 
   if (!state) return null;
 
   return (
-    <View
+    // Card chrome (fill #F6F5F2, radius 20, soft lift, hairline) is the shared
+    // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
+    <SupprCard
       testID={testID ?? "trajectory-card"}
-      accessibilityRole="text"
       accessibilityLabel={accessibilityLabelFor(state)}
-      style={[
-        styles.card,
-        cardElevation.shadowStyle,
-        {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-        },
-        style,
-      ]}
+      padding="none"
+      style={[styles.card, style]}
+      innerStyle={styles.cardInner}
     >
       {/* Eyebrow — dot tints blue (projection) / muted (placeholder). */}
       <View style={styles.eyebrowRow}>
@@ -167,7 +160,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
           </View>
         </>
       )}
-    </View>
+    </SupprCard>
   );
 }
 
@@ -189,12 +182,15 @@ function accessibilityLabelFor(state: TrajectoryState): string {
 }
 
 const styles = StyleSheet.create({
+  // Chrome (radius/border/fill/lift) is the <SupprCard> shell; this only
+  // carries the card's outer margin.
   card: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  // The card's asymmetric content padding (the shell uses symmetric `padding`).
+  cardInner: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
-    marginBottom: Spacing.md,
   },
   eyebrowRow: {
     flexDirection: "row",

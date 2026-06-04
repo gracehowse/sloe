@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { buildDigestStory, type DigestStoryInput } from "@/lib/digestStory";
 
@@ -35,7 +35,6 @@ export interface DigestStoryCardProps extends DigestStoryInput {
 export function DigestStoryCard(props: DigestStoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
   const story = buildDigestStory(input);
 
   // Empty state: zero days logged. Render the card but with a calm,
@@ -43,24 +42,17 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
   const isEmpty = input.daysLogged <= 0;
 
   return (
-    <View
+    // Card chrome is the shared <SupprCard> shell (Grace 2026-06-04).
+    <SupprCard
       testID={testID ?? "digest-story-card"}
-      accessibilityRole="text"
       accessibilityLabel={
         isEmpty
           ? "Week digest. Quiet week — log a meal to start your story."
           : `Week digest. ${story.paragraph}`
       }
-      style={[
-        styles.card,
-        cardElevation.shadowStyle,
-        {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-        },
-        style,
-      ]}
+      padding="none"
+      style={style}
+      innerStyle={styles.cardInner}
     >
       <View style={styles.headerRow}>
         <Text
@@ -239,14 +231,14 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           );
         })()
       )}
-    </View>
+    </SupprCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
+  // Chrome (radius/border/fill/lift) is the <SupprCard> shell; this only
+  // carries the card's asymmetric content padding.
+  cardInner: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
   },

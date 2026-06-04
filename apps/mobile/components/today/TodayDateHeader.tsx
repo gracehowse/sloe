@@ -40,6 +40,16 @@ export interface TodayDateHeaderProps {
   hideViewModeToggle?: boolean;
   hideDayStrip?: boolean;
   dayGreeting?: string;
+  /**
+   * SLOE redesign (2026-06-03, `01 · Today` frame, Grace decision):
+   * render ONLY the week strip (+ the streak-reset copy block) — no
+   * nav chevrons, no "Today" title, no avatar, no view-mode toggle.
+   * The Today screen now owns its own top header (Sloe wordmark +
+   * avatar) above the greeting; this component is reduced to the
+   * day-selection strip there. Backward-compatible: every other
+   * consumer leaves `stripOnly` unset and gets the full header.
+   */
+  stripOnly?: boolean;
 }
 
 export function TodayDateHeader({
@@ -71,6 +81,7 @@ export function TodayDateHeader({
   hideViewModeToggle = false,
   hideDayStrip = false,
   dayGreeting,
+  stripOnly = false,
 }: TodayDateHeaderProps) {
   const router = useRouter();
   const calmDateNav = hideDayStrip && viewMode === "day";
@@ -105,6 +116,35 @@ export function TodayDateHeader({
   const _streakAvailable = typeof streakDays === "number" && streakDays >= 2 && !streakResetCopyVisible;
   void _streakAvailable;
   const showStreakPip = false;
+
+  // SLOE redesign (2026-06-03, `01 · Today` frame): when the Today
+  // screen supplies its own Sloe-wordmark + avatar header, this
+  // component collapses to the week strip alone. Day-selection lives
+  // entirely in the strip (taps) + the calendar icon (far dates);
+  // there is no nav chevron / title / avatar / view-mode toggle in
+  // this mode. The strip renders regardless of `viewMode` — Today is
+  // day-centric and the strip is its only date affordance now.
+  if (stripOnly) {
+    return (
+      <View style={{ gap: Spacing.xs }}>
+        <DayStrip
+          selectedDate={selectedDate}
+          weekStartDay={weekStartDay}
+          loggedDays={loggedDays}
+          protectedDateKeys={protectedDateKeys}
+          onSelectDate={onSelectDate}
+          onOpenCalendar={onOpenCalendar}
+          textColor={textColor}
+          secondaryColor={textSecondaryColor}
+        />
+        {isToday && streakResetCopyVisible ? (
+          <Text style={{ ...Type.caption, color: textSecondaryColor }} numberOfLines={2}>
+            Every expert was once a beginner. Start fresh today.
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
 
   if (calmDateNav) {
     return (

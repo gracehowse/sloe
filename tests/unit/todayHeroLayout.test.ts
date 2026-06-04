@@ -14,10 +14,6 @@ const WEB_RING = readFileSync(
   resolve(ROOT, "src/app/components/suppr/today-hero-ring.tsx"),
   "utf8",
 );
-const TRACKER = readFileSync(
-  resolve(ROOT, "src/app/components/NutritionTracker.tsx"),
-  "utf8",
-);
 const MOBILE = readFileSync(
   resolve(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
   "utf8",
@@ -46,8 +42,16 @@ describe("Today hero layout parity", () => {
     expect(WEB_RING).not.toMatch(/onToggle=\{onToggleExpanded\}/);
   });
 
-  it("web + mobile default ringExpanded to collapsed", () => {
-    expect(TRACKER).toMatch(/useState\(false\)/);
-    expect(MOBILE).toMatch(/const \[ringExpanded, setRingExpanded\] = useState\(false\)/);
+  it("mobile defaults ringExpanded to EXPANDED (Sloe multi-ring); web stays collapsed pending its parity slot", () => {
+    // SLOE redesign (2026-06-03, iOS-first): the Sloe `01 · Today` hero IS a
+    // multi-ring (calories + protein/carbs/fat arcs), so mobile defaults the
+    // inner macro arcs ON. Web's Today hero is re-skinned in a later slot and
+    // still defaults collapsed — a deliberate, temporary platform divergence
+    // tracked by the rollout. Update web to `useState(true)` when its slot
+    // lands.
+    expect(MOBILE).toMatch(
+      /const \[ringExpanded, setRingExpanded\] = useState\(true\)/,
+    );
+    expect(WEB_RING).toMatch(/today-macro-rings-toggle/);
   });
 });

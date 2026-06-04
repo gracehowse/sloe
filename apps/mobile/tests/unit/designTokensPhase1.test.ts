@@ -56,24 +56,25 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       });
     }
 
-    it("source-usda maps to Green slot (8-slot palette)", () => {
-      // 2026-05-22 evening: 8-slot palette. Was #62b35a → now #56A775.
-      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#56a775");
-      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#7abe93");
+    it("source-usda maps to Sloe sage", () => {
+      // Sloe Phase 0 (dossier D-4): USDA → sage.
+      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#5e7c5a");
+      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#83a57e");
     });
 
-    it("source-ai maps to Magenta slot", () => {
-      // Was #e04888 → now #DF5EBC.
-      expect(Colors.light.sourceAi.toLowerCase()).toBe("#df5ebc");
-      expect(Colors.dark.sourceAi.toLowerCase()).toBe("#e689cb");
+    it("source-ai maps to Sloe damson", () => {
+      // Sloe Phase 0 (dossier D-4): AI → damson; dark lifts to #9A7BAA
+      // (the OLED-readable damson-accent, mirrors web dark --source-ai).
+      expect(Colors.light.sourceAi.toLowerCase()).toBe("#6a4b7a");
+      expect(Colors.dark.sourceAi.toLowerCase()).toBe("#9a7baa");
     });
 
-    it("over-budget-fg maps to Orange slot (calmer than ring's red)", () => {
-      // The ring uses Accent.destructive (Red) for the over arc; the
-      // overBudgetFg text token stays Orange (calmer for inline copy
-      // like "over by 50 kcal"). Was #e0a838 → now #F78A32.
-      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#f78a32");
-      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#faa45f");
+    it("over-budget-fg maps to Sloe destructive red (D-2)", () => {
+      // Sloe Phase 0 (dossier D-2): fat now owns amber, so over-budget moves
+      // to red — the ring overage AND the inline "over by N" copy share the
+      // destructive hue. Was orange (#F78A32) → now #C0533F.
+      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#c0533f");
+      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#dc6b55");
     });
   });
 
@@ -101,11 +102,17 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       });
     }
 
-    it("Type.title is 24/28/700 (-0.02em ≈ -0.5 letterSpacing)", () => {
+    it("Type.title is 24/28 serif-regular (SLOE Newsreader title)", () => {
+      // SLOE Phase 0 (2026-06-03): title moved to Newsreader (serif) at the
+      // regular 400 weight with -0.3 tracking — the approved Figma headline
+      // grammar. (This assertion was stale at 700/-0.5 from the pre-SLOE
+      // sans ladder; aligned 2026-06-04 alongside the Today measured-spec pass
+      // so the file's token pins match the shipped theme. Size/line-height are
+      // unchanged at 24/28.)
       expect(Type.title.fontSize).toBe(24);
       expect(Type.title.lineHeight).toBe(28);
-      expect(Type.title.fontWeight).toBe("700");
-      expect(Type.title.letterSpacing).toBe(-0.5);
+      expect(Type.title.fontWeight).toBe("400");
+      expect(Type.title.letterSpacing).toBe(-0.3);
     });
 
     it("Type.macroValue matches Today macro tiles (20/24/700/-0.35)", () => {
@@ -113,6 +120,30 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Type.macroValue.lineHeight).toBe(24);
       expect(Type.macroValue.fontWeight).toBe("700");
       expect(Type.macroValue.letterSpacing).toBe(-0.35);
+    });
+
+    it("Type.ringValue is the 48px Today ring centre numeral (2026-06-04 spec)", () => {
+      // Bumped 36→48 to match the Stitch `today.html` centre value
+      // (`text-5xl` ≈ 48px). The two collateral consumers
+      // (TodayActivityBonusCard net headline + WinMomentPlayer pct) pin 36
+      // at their call sites, so this token size lands only on the ring.
+      expect(Type.ringValue.fontSize).toBe(48);
+      expect(Type.ringValue.lineHeight).toBe(48);
+      // serif family + tight tracking preserved through the bump.
+      expect(Type.ringValue.letterSpacing).toBe(-0.5);
+    });
+
+    it("Type.ringValueLg is untouched at 56 (the larger hero numeral)", () => {
+      expect(Type.ringValueLg.fontSize).toBe(56);
+      expect(Type.ringValueLg.lineHeight).toBe(56);
+    });
+
+    it("Type.coach is the 17px plum editorial coach line (2026-06-04 spec)", () => {
+      // Bumped 14→17 to match the Stitch `today.html` coach line
+      // (`text-[17px] text-plum/90` italic). lineHeight ~23. Sole consumer:
+      // TodayDeficitInsight (which sets the plum colour).
+      expect(Type.coach.fontSize).toBe(17);
+      expect(Type.coach.lineHeight).toBe(23);
     });
 
     it("Type.label is uppercase + 0.08em letterSpacing (= 0.88)", () => {
@@ -146,10 +177,9 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.sheet.shadowOffset).toEqual({ width: 0, height: -8 });
     });
 
-    it("floatPrimary shadow is brand-blue (tracks Accent.primary)", () => {
-      // 8-slot palette: Accent.primary is now #588CE4 (was warm
-      // periwinkle #5b6ee8 → reverted to canonical Blue 2026-05-22).
-      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#588ce4");
+    it("floatPrimary shadow tracks Accent.primary (Sloe clay)", () => {
+      // Sloe Phase 0: Accent.primary is clay #C8794E; the FAB glow follows it.
+      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#c8794e");
     });
   });
 

@@ -135,11 +135,16 @@ export function TodayHero(props: TodayHeroProps) {
             </View>
           ) : null}
           {showTdeeLearning ? (
+            // SLOE redesign (2026-06-04, Grace "tone down the TDEE chip"):
+            // de-emphasised from a clay-filled pill to a quiet muted-grey
+            // line so the zone under the ring stays clean like the Figma 01
+            // frame. It's a transient (7-day) calibration note, not a
+            // status the user acts on.
             <View
-              style={[styles.pill, { backgroundColor: Accent.primarySoft }]}
+              style={[styles.pill, { backgroundColor: "transparent", paddingHorizontal: 0 }]}
               testID="today-pill-tdee-learning"
             >
-              <Text style={[styles.pillText, { color: Accent.primary }]}>
+              <Text style={[styles.pillText, { color: textSecondaryColor, fontWeight: "500" }]}>
                 Adaptive TDEE learning · {tdeeLearnDays} of 7 days
               </Text>
             </View>

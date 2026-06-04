@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Sloe — Bloom Berry, monochrome single-colour cut">
+  <!-- Monochrome cut (brief §2e): pure SOLID plum, no gradient, no bloom. The berry holds as the
+       most legible silhouette there is — a clean filled disc reads unmistakably as "a considered
+       dot / berry", never as a ring (a knocked-out bloom collapses into the forbidden plate-ring
+       cliché, §3). The bloom is a colour-only signature and is correctly dropped in one ink.
+       Maps onto the brand-mark-ring token: light = plum #3B2A4D; for dark, swap the fill to #FFFFFF.
+       Ground here is shown as oat for the light cut; the disc itself is the deliverable atom. -->
+  <rect width="1024" height="1024" fill="#FBF8F3"/>
+  <circle cx="512" cy="512" r="348" fill="#3B2A4D"/>
+</svg>

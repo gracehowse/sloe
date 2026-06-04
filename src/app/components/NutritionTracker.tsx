@@ -23,6 +23,7 @@ import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
+import { firstNameFromMetadata } from "../../lib/copy/today.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
@@ -766,7 +767,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt } = useAuthSession();
+  const { authedUserId, authUserCreatedAt, authUserMetadata } = useAuthSession();
 
   // Audit M4 (2026-04-18) — Today progressive disclosure on web.
   // Matches mobile. Persists the Quick Add collapsed pref via localStorage
@@ -2255,8 +2256,21 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
-  const firstName = profileDisplayName?.trim()?.split(/\s/)[0] ?? null;
-  const greetingName = firstName || null;
+  // Today greeting name — read from the auth user's `user_metadata`
+  // (`full_name`, set by the "Your name" Settings field) via the shared
+  // `firstNameFromMetadata`, matching mobile's name-extraction precedence.
+  // We deliberately read auth metadata, NOT `profileDisplayName` (the
+  // `profiles.display_name` editor's domain), so the single canonical
+  // source is the one the Settings "Your name" field writes — set it on
+  // either platform and the greeting personalises on both.
+  //
+  // NOTE: web keeps its existing "Good morning, {name}" wording here
+  // rather than switching to the shared `todayGreeting` ("Morning,
+  // {name}") — that's a meaning-changing copy shift that would need a
+  // feature-flag gate per CLAUDE.md. This change is data-source-only
+  // (no visible wording change), so it ships ungated. Converging web's
+  // greeting wording onto `todayGreeting` is a separate flagged change.
+  const greetingName = firstNameFromMetadata(authUserMetadata) ?? null;
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 

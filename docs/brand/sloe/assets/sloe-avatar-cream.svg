@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="78%">
+      <stop offset="0%" stop-color="#FDFBF7"/>
+      <stop offset="100%" stop-color="#F1EBE1"/>
+    </radialGradient>
+    <radialGradient id="berry" cx="40%" cy="35%" r="72%">
+      <stop offset="0%" stop-color="#5B4372"/>
+      <stop offset="52%" stop-color="#3B2A4D"/>
+      <stop offset="100%" stop-color="#241733"/>
+    </radialGradient>
+    <radialGradient id="bloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D9D3E3" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#D9D3E3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6F8C64"/>
+      <stop offset="100%" stop-color="#56744F"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+
+  <!-- soft ground shadow -->
+  <ellipse cx="540" cy="882" rx="214" ry="30" fill="#2A1C3A" opacity="0.08" filter="url(#soft)"/>
+
+  <!-- stem -->
+  <path d="M540 300 C 536 250, 548 222, 568 206" fill="none" stroke="#6E5A47" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- leaf -->
+  <path d="M566 214 C 612 176, 678 176, 706 196 C 672 232, 614 244, 572 232 Z" fill="url(#leaf)"/>
+  <path d="M582 222 C 624 212, 664 206, 700 198" fill="none" stroke="#3F5A39" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- berry -->
+  <circle cx="540" cy="578" r="292" fill="url(#berry)"/>
+  <!-- matte frosted bloom (offset, soft, no specular dot) -->
+  <ellipse cx="452" cy="486" rx="168" ry="138" fill="url(#bloom)"/>
+  <!-- faint cool rim bottom-right for depth -->
+  <circle cx="540" cy="578" r="290" fill="none" stroke="#1B0F2A" stroke-width="6" opacity="0.18"/>
+</svg>

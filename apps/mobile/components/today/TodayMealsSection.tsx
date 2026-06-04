@@ -37,10 +37,9 @@ import {
 import * as Haptics from "expo-haptics";
 import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { SupprMark } from "@/components/SupprMark";
 import { SourceDot } from "@/components/ui/SourceDot";
-import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
@@ -196,6 +195,67 @@ function SlotIcon({
   color: string;
 }) {
   return <Glyph size={size} color={color} />;
+}
+
+/**
+ * SlotMacroChips — per-meal coloured macro grams under the card's kcal,
+ * matching the Sloe `TD4 · Meal log` frame (481:2 / `today-meallog.html`).
+ *
+ * The frame shows the slot's summed protein / carbs / fat / fibre as bare
+ * coloured gram values (no icon, no "P/C/F" letter) in a tight row right
+ * after the total kcal — e.g. `217 kcal  12g 20g 9g 0.6g` with each gram
+ * value painted in its macro hue (`MacroColors.protein` #7C8466 olive-sage,
+ * `MacroColors.carbs` #C8794E clay, `MacroColors.fat` #C9892C amber,
+ * `MacroColors.fiber` #4A7878 teal).
+ *
+ * This replaces the icon-led `MacroIconRow` that the pre-TD4 slot header
+ * used. `MacroIconRow` stays the canonical Library/Discover row; TD4's meal
+ * cards use this calmer icon-free variant so the serif meal name stays the
+ * loudest thing in the header. Fibre only renders when meaningfully > 0
+ * (mirrors `MacroIconRow`). Values are summed by the host and rounded the
+ * same way the day total + macro-detail screen round them.
+ */
+function SlotMacroChips({
+  kcal,
+  protein,
+  carbs,
+  fat,
+  fiber,
+  kcalColor,
+}: {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  kcalColor: string;
+}) {
+  return (
+    <View
+      style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 3 }}
+    >
+      <Text
+        style={{ ...Type.caption, color: kcalColor, fontVariant: ["tabular-nums"] }}
+        accessibilityLabel={`${kcal} kcal`}
+      >
+        {kcal} kcal
+      </Text>
+      <Text style={{ ...Type.caption, color: MacroColors.protein, fontVariant: ["tabular-nums"] }}>
+        {Math.round(protein)}g
+      </Text>
+      <Text style={{ ...Type.caption, color: MacroColors.carbs, fontVariant: ["tabular-nums"] }}>
+        {Math.round(carbs)}g
+      </Text>
+      <Text style={{ ...Type.caption, color: MacroColors.fat, fontVariant: ["tabular-nums"] }}>
+        {Math.round(fat)}g
+      </Text>
+      {Number.isFinite(fiber) && fiber > 0 ? (
+        <Text style={{ ...Type.caption, color: MacroColors.fiber, fontVariant: ["tabular-nums"] }}>
+          {Math.round(fiber * 10) / 10}g
+        </Text>
+      ) : null}
+    </View>
+  );
 }
 
 /**
@@ -542,7 +602,6 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // (cream surface, grabber, thumbnail + macro header, blue accent rows,
   // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
   // verbatim. State holds the meal whose row was long-pressed.
-  const cardElevation = useCardElevation();
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
@@ -571,97 +630,110 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     }
   };
 
+  // NOTE — NO "Today's Meals" section title (deliberate, not an oversight).
+  // The Sloe `_buildtoday.mjs mealsSection` prototype shows a Title-case
+  // "Today's Meals" header, but that exact string is on the locked
+  // FORBIDDEN_TODAY_PHRASES list (`src/lib/copy/today.ts`) and is enforced
+  // across mobile + web by `tests/unit/todayCopyParity.test.ts`. The locked
+  // convention (rooted in landing-screenshot parity + the calm-tone audit)
+  // is **per-slot headers only** — Breakfast / Lunch / Dinner / Snacks (each
+  // already a Newsreader Sloe header on the slot cards below), never a single
+  // generic title. The prototype is a reference, not a mandate; where it
+  // collides with a locked product decision, the decision wins. Reconciling
+  // the two (retire the rule vs. drop the prototype title) is a Grace call —
+  // flagged in the handoff, not silently resolved here.
   return (
     <View>
-      {/* "Duplicate day" pill moved inside the meals card as a
-          top-right header row so it visually anchors to the surface
-          it acts on, with a thin bottom border so it reads as a
-          section header, not a floating button. */}
-      <View
-        style={[
-          {
-            backgroundColor: cardElevation.liftBg ?? cardColor,
-            borderRadius: Radius.lg,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
-            borderColor: cardBorderColor,
-            overflow: "hidden",
-            marginBottom: Spacing.sm,
-          },
-          cardElevation.shadowStyle,
-        ]}
-      >
-        {showQuickAdd && (
-          <View
-            style={{
-              borderBottomWidth: 1,
-              borderBottomColor: cardBorderColor + "60",
-            }}
-          >
-            <Pressable
-              onPress={onToggleQuickAddCollapsed}
-              accessibilityRole="button"
-              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
-              accessibilityState={{ expanded: !quickAddCollapsed }}
+      {/* Sloe TD4 · Meal log (Figma 481:2 / today-meallog.html) — the meals
+          list re-skin (Today re-skin unit 2, 2026-06-03). The pre-TD4 layout
+          was ONE outer card containing every slot, divided by hairlines. TD4
+          makes each slot its OWN card (warm-grey `card` surface, `line`
+          hairline border, rounded), so the slots read as four discrete
+          objects you can scan + act on independently — the MyFitnessPal /
+          Lifesum grammar the dossier benchmarks. The optional `Your usuals`
+          quick-add panel + `Duplicate day` row (both gated OFF on Today's
+          main scroll since 2026-05-23, props kept wired) keep their own
+          wrapper card above the slot cards so a future "logging section" can
+          still surface them. */}
+      {(showQuickAdd || (mealsTodayCount > 0 && showDuplicateDayInline)) && (
+        // Card chrome is the shared <SupprCard> shell (fill, radius, soft lift on
+        // an outer wrapper, corner-clip — the iOS clip fix lives in the shell, so
+        // this wrapper can never re-introduce it). Gated OFF on Today's main
+        // scroll today (props kept wired for a future "logging section").
+        <SupprCard padding="none" style={{ marginBottom: Spacing.sm }}>
+          {showQuickAdd && (
+            <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: Spacing.sm,
-                paddingHorizontal: 14,
+                // Sloe: hairline `divide-y divide-line`, not a 1pt (3px) rule.
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: cardBorderColor + "60",
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Zap size={16} color={textSecondaryColor} strokeWidth={1.75} />
-                {/* Canonical 2026-05-22 D3: header simplified from
-                    "Quick add" + "Your usuals" (two phrases doing one
-                    job) to just "Your usuals". The Zap glyph + the
-                    section's tab strip below already communicate
-                    "quick add"; the explicit feature naming was
-                    redundant chrome. */}
-                <Text style={{ ...Type.body, color: textSecondaryColor }}>
-                  Your usuals
-                </Text>
-              </View>
-              {quickAddCollapsed ? (
-                <ChevronDown size={16} color={textTertiaryColor} strokeWidth={2} />
-              ) : (
-                <ChevronUp size={16} color={textTertiaryColor} strokeWidth={2} />
-              )}
-            </Pressable>
-            {!quickAddCollapsed ? (
-              <View style={{ paddingHorizontal: 12, paddingBottom: Spacing.sm }}>{quickAddPanel}</View>
-            ) : null}
-          </View>
-        )}
-        {mealsTodayCount > 0 && showDuplicateDayInline && (
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "flex-end",
-              paddingHorizontal: 12,
-              paddingTop: showQuickAdd ? 6 : 10,
-              paddingBottom: 6,
-              borderBottomWidth: 1,
-              borderBottomColor: cardBorderColor + "60",
-            }}
-          >
-            <Pressable
-              onPress={onOpenDuplicateDay}
-              accessibilityRole="button"
-              accessibilityLabel="Duplicate this day to another day"
-              hitSlop={8}
+              <Pressable
+                onPress={onToggleQuickAddCollapsed}
+                accessibilityRole="button"
+                accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
+                accessibilityState={{ expanded: !quickAddCollapsed }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: Spacing.sm,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                  <Zap size={16} color={textSecondaryColor} strokeWidth={1.75} />
+                  {/* Canonical 2026-05-22 D3: header simplified from
+                      "Quick add" + "Your usuals" (two phrases doing one
+                      job) to just "Your usuals". The Zap glyph + the
+                      section's tab strip below already communicate
+                      "quick add"; the explicit feature naming was
+                      redundant chrome. */}
+                  <Text style={{ ...Type.body, color: textSecondaryColor }}>
+                    Your usuals
+                  </Text>
+                </View>
+                {quickAddCollapsed ? (
+                  <ChevronDown size={16} color={textTertiaryColor} strokeWidth={2} />
+                ) : (
+                  <ChevronUp size={16} color={textTertiaryColor} strokeWidth={2} />
+                )}
+              </Pressable>
+              {!quickAddCollapsed ? (
+                <View style={{ paddingHorizontal: 12, paddingBottom: Spacing.sm }}>{quickAddPanel}</View>
+              ) : null}
+            </View>
+          )}
+          {mealsTodayCount > 0 && showDuplicateDayInline && (
+            <View
               style={{
                 flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
+                justifyContent: "flex-end",
+                paddingHorizontal: 12,
+                paddingTop: showQuickAdd ? 6 : 10,
+                paddingBottom: 6,
               }}
             >
-              <Copy size={11} color={textSecondaryColor} />
-              <Text style={{ ...Type.caption, color: textSecondaryColor }}>Duplicate day</Text>
-            </Pressable>
-          </View>
-        )}
-        {slots.map((slot, slotIndex) => {
+              <Pressable
+                onPress={onOpenDuplicateDay}
+                accessibilityRole="button"
+                accessibilityLabel="Duplicate this day to another day"
+                hitSlop={8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Copy size={11} color={textSecondaryColor} />
+                <Text style={{ ...Type.caption, color: textSecondaryColor }}>Duplicate day</Text>
+              </Pressable>
+            </View>
+          )}
+        </SupprCard>
+      )}
+      {slots.map((slot, slotIndex) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
           // 2026-05-22 — slot-total macro icon row (Grace ask: "macro
@@ -688,15 +760,29 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const primarySaved = slotSaved[0];
           const extraSavedCount = slotSaved.length - 1;
           return (
-            <ReAnimated.View key={slot} entering={FadeInDown.delay(slotIndex * 50).duration(350)} testID={`today-slot-${slot}`}>
+            <ReAnimated.View
+              key={slot}
+              entering={FadeInDown.delay(slotIndex * 50).duration(350)}
+              testID={`today-slot-${slot}`}
+              style={{
+                // TD4 — each slot is its own card. The card CHROME (warm-grey
+                // fill, radius 20, soft lift on an outer wrapper, corner-clip,
+                // hairline) is the shared <SupprCard> shell below — no more
+                // hand-rolled per-slot chrome (Grace 2026-06-04). This animated
+                // wrapper only carries the entering animation, the bottom gap,
+                // and the empty-slot dim (logged slots read as the live ones).
+                marginBottom: Spacing.sm,
+                opacity: hasMeals ? 1 : 0.55,
+              }}
+            >
+              <SupprCard padding="none">
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  borderBottomWidth: 1,
+                  borderBottomWidth: hasMeals && isOpen ? 1 : 0,
                   borderBottomColor: cardBorderColor,
-                  opacity: hasMeals ? 1 : 0.45,
                   padding: 12,
                   paddingHorizontal: 14,
                   gap: 10,
@@ -719,7 +805,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     alignItems: "center",
                     flex: 1,
                     minWidth: 0,
-                    gap: 10,
+                    gap: 12,
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={
@@ -732,55 +818,45 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 >
                   <View
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 9,
+                      // TD4 icon chip — 36pt rounded square. The frame uses a
+                      // flat frost-mist chip for every slot; we keep the
+                      // per-slot tint (dossier D-4 — slots stay distinguishable
+                      // by hue + icon + position) so the four cards still read
+                      // apart at a glance. The slot-tint chip is the "keep from
+                      // live where stronger" call vs the frame's monochrome chip.
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
                       backgroundColor: col + "18",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <SlotIcon Glyph={ic} size={16} color={col} />
+                    <SlotIcon Glyph={ic} size={18} color={col} />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    {/* F-80 (2026-04-25) — `numberOfLines={1}` on both the slot
-                        title and the meta line. Without these, the "Log usual:
-                        <name>" pill in the trailing row crowds the title column
-                        down to ~80 px and the title letter-wraps ("Brea / kfast
-                        / 4 / items / · tap a / meal / for full / nutriti / on").
-                        The pill itself is also constrained below; `minWidth: 0`
-                        on this column lets RN actually shrink the text under
-                        pressure (RN flex defaults to `minWidth: auto` which is
-                        content-width and prevents shrink). */}
+                    {/* TD4 — meal name reads in Newsreader (`Type.headline`),
+                        the loudest thing in the card header. `numberOfLines={1}`
+                        + `minWidth: 0` on this column keep it from being crowded
+                        by the chevron / right cluster (F-80 history). */}
                     <Text
-                      style={{ ...Type.body, fontWeight: "600", color: textColor }}
+                      style={{ ...Type.headline, color: textColor }}
                       numberOfLines={1}
                     >
                       {slot}
                     </Text>
                     {hasMeals ? (
-                      // 2026-05-22 evening — macro icon strip replaces
-                      // the "X items · tap for combined macros" caption.
-                      // Same MacroIconRow component Discover + Library
-                      // use, so the four surfaces share one grammar.
-                      // Grace ask: "needs to match the discover tiles
-                      // with the little icons, next to the icon and
-                      // meal name".
-                      // 2026-05-22 evening (Grace): kcal moves inline into
-                      // the MacroIconRow so all four macros + kcal fit
-                      // on one line, matching Discover/Library cards.
-                      // Right-side big-kcal + "+" pill removed below.
-                      <MacroIconRow
+                      // TD4 — slot total kcal + per-meal coloured macro grams
+                      // (P/C/F/fibre) under the name, icon-free (the calm meal-
+                      // card variant). Replaces the icon-led MacroIconRow the
+                      // pre-TD4 header used. Same summed values, same rounding.
+                      <SlotMacroChips
                         kcal={slotCals}
                         protein={slotProtein}
                         carbs={slotCarbs}
                         fat={slotFat}
                         fiber={slotFiber}
-                        textColor={textSecondaryColor}
-                        textTertiaryColor={textTertiaryColor}
-                        iconSize={11}
-                        showMacroLetters={false}
-                        style={{ marginTop: 3, gap: 6, flexWrap: "nowrap" }}
+                        kcalColor={textSecondaryColor}
                       />
                     ) : null /* Canonical 2026-05-22 D2: "Tap to add" microcopy
                         removed on empty slots — the row IS the tap target,
@@ -810,13 +886,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 {hasMeals ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {/* 2026-05-22 evening (Grace): "+" pill removed
-                        from populated slot headers — adding items
-                        routes through the bottom FAB instead. Right-
-                        side "{slotCals} kcal" text also removed — kcal
-                        now lives inline in the MacroIconRow above so
-                        the slot reads as one tidy line of macros + cals
-                        like Discover/Library. The empty-state Plus
-                        below stays since empty slots have no FAB cue. */}
+                        from populated slot headers. TD4 (2026-06-03)
+                        restored an in-card "+ Add food" action in the
+                        card body below the rows; the kcal + macro grams
+                        live in the `SlotMacroChips` row under the meal
+                        name. The empty-state Plus (the `: (` branch
+                        below) stays since empty cards have no body. */}
                     {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
                         the picker modal; 1 match logs on tap.
                         2026-05-15 (crowder task) — when `usualRowV2` is
@@ -904,11 +979,14 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: 8,
-                    paddingLeft: 56,
+                    // TD4 — Log-usual pill sits at the card's content edge,
+                    // left-aligned with the food rows below (the Sloe frame
+                    // places it first in the card body, not indented under the
+                    // icon). Was `paddingLeft: 56` (pre-TD4 single-card indent).
+                    paddingTop: 12,
+                    paddingBottom: 4,
+                    paddingLeft: 14,
                     paddingRight: 14,
-                    borderBottomWidth: hasMeals && isOpen ? 1 : 0,
-                    borderBottomColor: cardBorderColor + "08",
                   }}
                 >
                   <View
@@ -1040,7 +1118,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        borderBottomWidth: 1,
+                        // Sloe: hairline `divide-y divide-line` between meal rows.
+                        borderBottomWidth: StyleSheet.hairlineWidth,
                         borderBottomColor: cardBorderColor + "08",
                         backgroundColor: cardColor,
                       }}
@@ -1081,9 +1160,13 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                               value (e.g. "PB2 · Original Powdered
                               Peanut Butter (2 tbsp)" overlapped "60"
                               kcal). RN row children default to
-                              `flexShrink: 0`. */}
+                              `flexShrink: 0`.
+                              TD4 (2026-06-03) — food name reads at `Type.body`
+                              (14pt) to match the Sloe frame's `text-[14px]`
+                              row; it's the primary content of the row now that
+                              each slot is its own card. */}
                           <Text
-                            style={{ ...Type.caption, color: textColor, flexShrink: 1, minWidth: 0 }}
+                            style={{ ...Type.body, fontWeight: "400", color: textColor, flexShrink: 1, minWidth: 0 }}
                             numberOfLines={1}
                           >
                             {m.recipeTitle}
@@ -1215,7 +1298,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     gap: 6,
                     paddingVertical: 12,
                     paddingHorizontal: 14,
-                    borderTopWidth: 1,
+                    // Sloe: hairline divider above the action row.
+                    borderTopWidth: StyleSheet.hairlineWidth,
                     borderTopColor: cardBorderColor + "30",
                   }}
                 >
@@ -1239,7 +1323,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     gap: 6,
                     paddingVertical: 12,
                     paddingHorizontal: 14,
-                    borderTopWidth: 1,
+                    // Sloe: hairline divider above the action row.
+                    borderTopWidth: StyleSheet.hairlineWidth,
                     borderTopColor: cardBorderColor + "30",
                   }}
                 >
@@ -1249,15 +1334,44 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   </Text>
                 </Pressable>
               )}
+
+              {/* TD4 — per-card "Add food" action. The Sloe frame puts an
+                  `+ Add food` clay link inside every open meal card so adding
+                  to a populated slot is a one-tap, in-context action (the
+                  pre-TD4 layout only offered the central FAB once a slot had
+                  items). Routes through the SAME `onOpenFabForSlot(slot)`
+                  handler the empty-slot header tap fires — pre-selects this
+                  slot then opens the canonical Log sheet. No new logic, no new
+                  data path. Clay = the warm "do it" accent (deep `primarySolid`
+                  for AA on the warm-grey card). Empty slots keep their
+                  header-as-tap-target (no body), so this only renders when the
+                  card is open with items. */}
+              {hasMeals && isOpen && (
+                <Pressable
+                  testID={`today-add-food-${slot}`}
+                  onPress={() => onOpenFabForSlot(slot)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add food to ${slot}`}
+                  hitSlop={6}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingTop: 10,
+                    paddingBottom: 12,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Plus size={15} color={Accent.primarySolid} strokeWidth={2.25} />
+                  <Text style={{ ...Type.body, color: Accent.primarySolid }}>
+                    Add food
+                  </Text>
+                </Pressable>
+              )}
+              </SupprCard>
             </ReAnimated.View>
           );
         })}
-        {/* Removed "+ Add Food" footer 2026-05-22: redundant with the
-            centre FAB which is the canonical single Log surface (per
-            2026-04-27 strategic direction: "single Log sheet"). The
-            footer added a fifth "tap to add" affordance below four
-            empty slot rows; subtractively this reads tighter. */}
-      </View>
 
       {/* Ship M1 — usual-meal picker for slots with 2+ matches.
           Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"

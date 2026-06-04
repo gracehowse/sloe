@@ -50,8 +50,30 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     tabIconDefault: "#999",
+    // Sloe nav/brand primary (plum). The centre Log FAB uses this, NOT the
+    // clay `tint`, per the 2026-06-04 plum-nav lock.
+    tint: "#C8794E",
+    navPrimary: "#3B2A4D",
+    primaryForeground: "#ffffff",
   }),
 }));
+
+/**
+ * Flatten a (possibly nested / function) RN style prop to a single object.
+ * Pressable's `style` is `({ pressed }) => [...]`; resolve it at rest.
+ */
+function flattenStyle(style: unknown): Record<string, unknown> {
+  if (typeof style === "function") {
+    return flattenStyle((style as (s: { pressed: boolean }) => unknown)({ pressed: false }));
+  }
+  if (Array.isArray(style)) {
+    return style.reduce<Record<string, unknown>>(
+      (acc, s) => ({ ...acc, ...flattenStyle(s) }),
+      {},
+    );
+  }
+  return (style as Record<string, unknown>) ?? {};
+}
 
 // Tiny icon stand-in so we don't need to render Lucide SVGs in jsdom.
 const StubIcon = (props: { color?: string }) =>
@@ -153,6 +175,19 @@ describe("LogTabBarButton", () => {
   it("exposes `accessibilityRole='button'` (not 'tab') — it is UI, not a route", () => {
     const { getByLabelText } = render(<LogTabBarButton onPress={() => {}} />);
     expect(getByLabelText("Log a meal").props.accessibilityRole).toBe("button");
+  });
+
+  it("fills the FAB with the plum nav primary (#3B2A4D), NOT the clay tint", () => {
+    // 2026-06-04 lock: plum = brand/nav primary (FAB, wordmark, page
+    // titles); clay = inline content CTAs. The FAB must read as nav
+    // chrome — if it regresses to `colors.tint` (clay) this breaks.
+    const { getByLabelText } = render(<LogTabBarButton onPress={() => {}} />);
+    const fab = getByLabelText("Log a meal");
+    const style = flattenStyle(fab.props.style);
+    expect(style.backgroundColor).toBe("#3B2A4D");
+    expect(style.backgroundColor).not.toBe("#C8794E"); // not the clay tint
+    // Glow re-tinted to match the plum fill (floatPrimary's base is clay).
+    expect(style.shadowColor).toBe("#3B2A4D");
   });
 });
 

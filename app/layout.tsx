@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
 import { DrOutageBanner } from "../src/app/components/ops/DrOutageBanner";
@@ -10,6 +10,16 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+// Sloe Phase 0 (2026-06-03) — editorial serif for headlines, display headings,
+// and the calorie-ring numerals. Weights 400/500/600 match the headings/display
+// roles wired in `src/styles/theme.css` (`--font-headline` / `--font-display`).
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+  variable: "--font-newsreader",
 });
 
 function resolveMetadataBase(): URL {
@@ -58,7 +68,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${newsreader.variable}`}
+      suppressHydrationWarning
+    >
       <body className={inter.className}>
         <DrOutageBanner />
         <Providers>{children}</Providers>

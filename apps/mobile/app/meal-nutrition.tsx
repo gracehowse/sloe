@@ -9,6 +9,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
+import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
@@ -405,7 +406,12 @@ export default function MealNutritionScreen() {
               const totalCal = Math.max(1, Math.round(meal.calories));
               const val = Math.round(line.calories);
               const pct = totalCal > 0 ? val / totalCal : 0;
-              const upper = (line.time?.trim() || "Logged").toUpperCase();
+              // Single "Logged" affordance — see `slotLineItemLabels`. A
+              // timeless row used to read "LOGGED / Logged item" (Grace).
+              const { overline: upper, title: lineTitle } = slotLineItemLabels(
+                line.time,
+                line.recipeTitle,
+              );
               return (
                 <Pressable
                   key={line.id}
@@ -448,7 +454,7 @@ export default function MealNutritionScreen() {
                       style={{ fontSize: 14, fontWeight: "500", color: colors.text, marginTop: 2 }}
                       numberOfLines={2}
                     >
-                      {line.recipeTitle?.trim() || "Logged item"}
+                      {lineTitle}
                     </Text>
                   </View>
                   <Text

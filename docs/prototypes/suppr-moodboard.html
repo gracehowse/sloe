@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Suppr — Design Direction Moodboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFFFFF;        /* WHITE base — Julienne, not cream */
+    --paper-2:#F2F1ED;      /* faint grey wash */
+    --card:#F6F5F2;         /* soft warm-grey card */
+    --ink:#1B1814;          /* warm near-black */
+    --ink-soft:#5F5A53;     /* muted body */
+    --ink-faint:#9B958A;    /* captions / numerals */
+    --clay:#C2683E;         /* primary accent — terracotta (a splash) */
+    --clay-soft:#F4E2D2;    /* peach tint surface */
+    --sage:#7C8466;         /* secondary accent — muted olive (a splash) */
+    --sage-soft:#E7EADC;
+    --amber:#C9892C;        /* over-budget (calorie-ring rule) */
+    --success:#5E7C5A;      /* on-track / under */
+    --line:#E9E7E1;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1140px;margin:0 auto;padding:64px 48px 96px;}
+  .serif{font-family:var(--serif);}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--clay);font-weight:600;}
+  .muted{color:var(--ink-soft);}
+  .faint{color:var(--ink-faint);}
+
+  /* ---- Hero ---- */
+  .hero{border-bottom:1px solid var(--line);padding-bottom:48px;margin-bottom:56px;}
+  .hero h1{font-family:var(--serif);font-weight:340;font-size:62px;line-height:1.04;letter-spacing:-.015em;margin:18px 0 20px;max-width:14ch;}
+  .hero h1 em{font-style:italic;color:var(--clay);}
+  .hero p{font-size:18px;max-width:62ch;color:var(--ink-soft);}
+  .hero .brandrow{display:flex;align-items:center;gap:14px;}
+  .logo{font-family:var(--serif);font-weight:500;font-size:26px;letter-spacing:-.01em;}
+  .pill{display:inline-block;background:var(--clay-soft);color:var(--clay);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;}
+
+  /* ---- Section scaffold ---- */
+  section{margin-bottom:64px;}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:26px;}
+  .sec-head h2{font-family:var(--serif);font-weight:400;font-size:30px;letter-spacing:-.01em;}
+  .sec-head .n{font-family:var(--serif);font-size:18px;color:var(--ink-faint);min-width:34px;}
+  .sec-sub{color:var(--ink-soft);font-size:15px;max-width:70ch;margin:-14px 0 24px 50px;}
+
+  /* ---- Palette ---- */
+  .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-left:50px;}
+  .sw{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card);}
+  .sw .chip{height:84px;}
+  .sw .meta{padding:10px 12px;}
+  .sw .role{font-size:12.5px;font-weight:600;}
+  .sw .hex{font-size:11px;color:var(--ink-faint);font-family:var(--sans);letter-spacing:.02em;}
+
+  /* ---- Type specimen ---- */
+  .grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;margin-left:50px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px 30px;}
+  .specimen-label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600;}
+  .disp{font-family:var(--serif);font-weight:360;font-size:40px;line-height:1.05;letter-spacing:-.015em;}
+  .disp.italic{font-style:italic;}
+  .numerals{font-family:var(--serif);font-size:46px;color:var(--ink-faint);letter-spacing:.04em;margin-top:8px;}
+  .bodyspec{font-size:15px;color:var(--ink-soft);margin-top:6px;}
+  .bodyspec .lbl{color:var(--ink);font-weight:600;}
+  .typenote{font-size:13px;color:var(--ink-soft);margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;}
+
+  /* ---- Illustration system ---- */
+  .ill-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-left:50px;}
+  .ill{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center;}
+  .ill .canvas{height:120px;border-radius:12px;background:radial-gradient(120% 90% at 50% 28%, #fff 0%, var(--paper) 60%, var(--paper-2) 100%);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+  .blob{filter:blur(.3px);}
+  .ill .cap{font-size:13px;font-weight:600;margin-top:12px;}
+  .ill .sub{font-size:11.5px;color:var(--ink-faint);}
+  .initials{width:64px;height:64px;border-radius:14px;background:var(--sage-soft);color:var(--sage);font-family:var(--serif);font-size:22px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}
+
+  /* ---- Voice ---- */
+  .voice{margin-left:50px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;}
+  .vcard .ctx{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:12px;}
+  .vline{display:flex;gap:10px;align-items:flex-start;margin:8px 0;font-size:14.5px;}
+  .vline .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-top:2px;white-space:nowrap;}
+  .tag.cold{background:#EDE6DA;color:var(--ink-faint);}
+  .tag.warm{background:var(--clay-soft);color:var(--clay);}
+  .vline.cold span{color:var(--ink-faint);}
+  .vline.warm span{color:var(--ink);}
+  .vbig{font-family:var(--serif);font-size:21px;line-height:1.3;}
+
+  /* ---- Components ---- */
+  .comp{margin-left:50px;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14.5px;padding:13px 22px;border-radius:999px;border:0;cursor:default;}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn-clay{background:var(--clay);color:#fff;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+  .chip-a{font-size:13px;font-weight:500;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:inline-flex;gap:6px;align-items:center;}
+  .chip-a.on{background:var(--clay-soft);border-color:#EAC9AC;color:var(--clay);}
+  /* recipe card mock */
+  .rcard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;}
+  .rthumb{height:150px;border-radius:14px;background:radial-gradient(130% 100% at 35% 30%, #fff, var(--paper) 65%, var(--paper-2));display:flex;align-items:center;justify-content:center;}
+  .rcard h4{font-family:var(--serif);font-weight:420;font-size:22px;line-height:1.15;margin:14px 2px 4px;}
+  .rcard .rmeta{font-size:13px;color:var(--ink-faint);margin:0 2px 2px;}
+  /* today card mock */
+  .tcard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;}
+  .ring{width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--success) 0 72%, var(--sage-soft) 72% 100%);display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+  .ring .inner{width:74px;height:74px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring .kcal{font-family:var(--serif);font-size:22px;line-height:1;}
+  .ring .lbl{font-size:9.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;}
+  .coachline{font-family:var(--serif);font-size:18px;line-height:1.35;margin-top:14px;}
+  .coachline em{font-style:italic;color:var(--clay);}
+
+  /* ---- Reference grid ---- */
+  .refs{margin-left:50px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .ref{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .ref .nm{font-family:var(--serif);font-size:18px;font-weight:480;}
+  .ref .cat{font-size:11px;color:var(--clay);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin:2px 0 8px;}
+  .ref .take{font-size:13px;color:var(--ink-soft);line-height:1.45;}
+
+  /* ---- Surface dial ---- */
+  .dial{margin-left:50px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 28px;}
+  .dialbar{height:10px;border-radius:999px;background:linear-gradient(90deg,var(--clay) 0%, var(--clay-soft) 45%, var(--sage-soft) 55%, var(--sage) 100%);margin:18px 0 10px;}
+  .dialends{display:flex;justify-content:space-between;font-size:13px;}
+  .dialends b{font-family:var(--serif);font-weight:500;}
+  .dialticks{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-faint);margin-top:12px;}
+
+  .foot{margin-top:60px;border-top:1px solid var(--line);padding-top:22px;font-size:12.5px;color:var(--ink-faint);display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="brandrow">
+      <span class="logo">Suppr</span>
+      <span class="pill">Design direction · v0 · exploring</span>
+    </div>
+    <h1 class="serif">An editorial cookbook that <em>coaches you warmly</em></h1>
+    <p>Julienne's bones — serif display, restraint, painterly illustration, a clean white-and-black canvas — wearing Lifesum's soul: an encouraging, human voice. Chic, modern, warm. Warmth comes from splashes of colour, not a cream wash. Not cartoonish, not loud, no colour-block hero.</p>
+  </header>
+
+  <!-- PALETTE -->
+  <section>
+    <div class="sec-head"><span class="n serif">01</span><h2 class="serif">Palette</h2></div>
+    <p class="sec-sub">Julienne's base — whites and blacks, chic and modern — with warmth coming from <em>splashes of colour</em>, never a cream wash. White page, soft warm-grey cards, a terracotta accent and a muted olive secondary. Amber stays reserved for over-budget (the calorie-ring rule); colour never becomes a hero.</p>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid #E9E7E1"></div><div class="meta"><div class="role">White · base</div><div class="hex">#FFFFFF</div></div></div>
+      <div class="sw"><div class="chip" style="background:#F6F5F2;border-bottom:1px solid #E9E7E1"></div><div class="meta"><div class="role">Card · grey</div><div class="hex">#F6F5F2</div></div></div>
+      <div class="sw"><div class="chip" style="background:#221C15"></div><div class="meta"><div class="role">Ink</div><div class="hex">#221C15</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C2683E"></div><div class="meta"><div class="role">Clay · accent</div><div class="hex">#C2683E</div></div></div>
+      <div class="sw"><div class="chip" style="background:#7C8466"></div><div class="meta"><div class="role">Sage · 2nd</div><div class="hex">#7C8466</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C9892C"></div><div class="meta"><div class="role">Amber · alert</div><div class="hex">#C9892C</div></div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section>
+    <div class="sec-head"><span class="n serif">02</span><h2 class="serif">Typography</h2></div>
+    <p class="sec-sub">Serif display + sans body. A warm editorial serif (Fraunces) for titles, recipe names and big numerals; a clean sans (Inter) for body, data and dense tracker UI where legibility wins.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="specimen-label">Display — Fraunces (serif)</div>
+        <div class="disp">Blueberry Baked Oats</div>
+        <div class="disp italic" style="font-size:28px;margin-top:6px;color:var(--ink-soft)">with maple &amp; toasted walnuts</div>
+        <div class="numerals">01&nbsp;&nbsp;02&nbsp;&nbsp;03</div>
+      </div>
+      <div class="panel">
+        <div class="specimen-label">Body — Inter (sans)</div>
+        <div class="bodyspec"><span class="lbl">Jumbo Oats</span> · 3¼ cups</div>
+        <div class="bodyspec"><span class="lbl">Greek Yoghurt</span> · 7 oz</div>
+        <div class="bodyspec" style="margin-top:12px;">Preheat the oven to 180°C. In an oven-safe dish, combine the oats, milk and maple. Mix well.</div>
+        <div class="typenote">Recipe / cookbook screens lean serif. Today / Progress data leans sans for numbers &amp; labels — same family pairing, different dial.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ILLUSTRATION -->
+  <section>
+    <div class="sec-head"><span class="n serif">03</span><h2 class="serif">Painterly illustration — one system</h2></div>
+    <p class="sec-sub">A single locked style — single subject, gouache-like painterly realism, soft daylight shadow, cream ground — reused for ingredients, choice tiles, empty &amp; loading states. Initials chip is the fallback. The art-direction lock comes before the art.</p>
+    <div class="ill-grid">
+      <div class="ill"><div class="canvas"><svg width="80" height="80" viewBox="0 0 80 80" class="blob"><ellipse cx="40" cy="46" rx="26" ry="24" fill="#C7544B"/><ellipse cx="33" cy="38" rx="9" ry="7" fill="#fff" opacity=".35"/><path d="M40 22c4-6 12-7 12-7s-3 8-9 10z" fill="#7C8466"/></svg></div><div class="cap">Ingredient</div><div class="sub">recipe detail grid</div></div>
+      <div class="ill"><div class="canvas"><svg width="84" height="80" viewBox="0 0 84 80" class="blob"><ellipse cx="42" cy="48" rx="24" ry="14" fill="#E8C27A"/><circle cx="42" cy="44" r="9" fill="#C9892C"/></svg></div><div class="cap">Choice tile</div><div class="sub">onboarding · allergies</div></div>
+      <div class="ill"><div class="canvas"><svg width="80" height="80" viewBox="0 0 80 80" class="blob"><path d="M26 34h28l-3 30H29z" fill="#EFE3CE" stroke="#C9B79A" stroke-width="2"/><path d="M30 34c0-8 4-12 10-12s10 4 10 12" fill="none" stroke="#C9B79A" stroke-width="2"/><circle cx="36" cy="30" r="4" fill="#C7544B"/><circle cx="46" cy="30" r="4" fill="#7C8466"/></svg></div><div class="cap">Empty state</div><div class="sub">shopping list</div></div>
+      <div class="ill"><div class="canvas"><div class="initials">GY</div></div><div class="cap">Fallback</div><div class="sub">initials before image</div></div>
+    </div>
+  </section>
+
+  <!-- VOICE -->
+  <section>
+    <div class="sec-head"><span class="n serif">04</span><h2 class="serif">Voice — the calm warm coach</h2></div>
+    <p class="sec-sub">Encouraging but grounded in real numbers. Never bubbly, never cold, never shaming. One personality across the app — resolves the old "calm vs coach" split.</p>
+    <div class="voice">
+      <div class="vcard">
+        <div class="ctx">Today · slightly over budget</div>
+        <div class="vline cold"><span class="tag cold">cold</span><span>+180 kcal over target.</span></div>
+        <div class="vline warm"><span class="tag warm">ours</span><span class="vbig">A little over today — an easy one to balance tomorrow.</span></div>
+      </div>
+      <div class="vcard">
+        <div class="ctx">Today · on track</div>
+        <div class="vline cold"><span class="tag cold">cold</span><span>Goal met. 0 remaining.</span></div>
+        <div class="vline warm"><span class="tag warm">ours</span><span class="vbig">Right on target. That's three in a row.</span></div>
+      </div>
+      <div class="vcard">
+        <div class="ctx">Recipe imported from a Reel</div>
+        <div class="vline cold"><span class="tag cold">cold</span><span>Import complete. 14 ingredients.</span></div>
+        <div class="vline warm"><span class="tag warm">ours</span><span class="vbig">Saved to your cookbook — ingredients &amp; steps, ready to cook.</span></div>
+      </div>
+      <div class="vcard">
+        <div class="ctx">Progress · weigh-in</div>
+        <div class="vline cold"><span class="tag cold">cold</span><span>−0.4 kg this week.</span></div>
+        <div class="vline warm"><span class="tag warm">ours</span><span class="vbig">Trending gently down — your steadiest week yet.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section>
+    <div class="sec-head"><span class="n serif">05</span><h2 class="serif">Components in the vibe</h2></div>
+    <div class="comp">
+      <div>
+        <button class="btn btn-ink">Start cooking</button>
+        &nbsp;<button class="btn btn-ghost">Save</button>
+        <div class="chips">
+          <span class="chip-a on">🔥 Cook</span>
+          <span class="chip-a">＋ Plan</span>
+          <span class="chip-a">⇄ Remix</span>
+          <span class="chip-a">✦ Ask</span>
+        </div>
+        <div class="rcard" style="margin-top:22px;max-width:330px;">
+          <div class="rthumb"><svg width="120" height="100" viewBox="0 0 120 100"><ellipse cx="60" cy="58" rx="40" ry="34" fill="#EADfca"/><ellipse cx="60" cy="54" rx="30" ry="25" fill="#D9A86b"/><circle cx="50" cy="48" r="5" fill="#33384a"/><circle cx="66" cy="52" r="5" fill="#33384a"/><circle cx="58" cy="60" r="5" fill="#33384a"/></svg></div>
+          <h4 class="serif">Arugula Steak Salad</h4>
+          <div class="rmeta">30m cook time · serves 4</div>
+        </div>
+      </div>
+      <div>
+        <div class="tcard">
+          <div class="ring"><div class="inner"><span class="kcal serif">540</span><span class="lbl">left</span></div></div>
+          <div class="coachline serif">You're <em>on track</em> for today — dinner could land right on target.</div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:8px;">
+          <button class="btn btn-clay">Log a meal</button>
+          <button class="btn btn-ghost">What to eat</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REFERENCES -->
+  <section>
+    <div class="sec-head"><span class="n serif">06</span><h2 class="serif">What we're learning from</h2></div>
+    <p class="sec-sub">Cross-category references and the one thing to take from each. Pulled from Mobbin (iOS).</p>
+    <div class="refs">
+      <div class="ref"><div class="nm serif">Julienne</div><div class="cat">Recipe · LEAD</div><div class="take">Editorial serif cookbook, per-ingredient painterly images, swipe-card discovery, scannable library.</div></div>
+      <div class="ref"><div class="nm serif">Lifesum</div><div class="cat">Nutrition</div><div class="take">Warm cream + coaching voice + emotional day-rating. The soul of the warmth.</div></div>
+      <div class="ref"><div class="nm serif">CREME</div><div class="cat">Recipe</div><div class="take">Cook / Plan / Remix / Ask action chips; full-bleed food photo hero; calm dark mode option.</div></div>
+      <div class="ref"><div class="nm serif">Gentler Streak</div><div class="cat">Wellness</div><div class="take">Best-in-class "calm warm coach" copy: "You Seem Rested", narrative guidance, never shaming.</div></div>
+      <div class="ref"><div class="nm serif">Tolan · Fabric · Pi</div><div class="cat">Editorial</div><div class="take">Pure serif-display craft — italics, mastheads, cream grounds, distinctive first-person voice.</div></div>
+      <div class="ref"><div class="nm serif">Monarch</div><div class="cat">Finance</div><div class="take">Proof a data-dense screen stays premium &amp; calm with restrained type + clean cards + one ring.</div></div>
+      <div class="ref"><div class="nm serif">Headspace</div><div class="cat">Meditation</div><div class="take">Sun-arc / curved-horizon framing; intent-first onboarding (motivation before numbers).</div></div>
+      <div class="ref"><div class="nm serif">Fitbit</div><div class="cat">Fitness</div><div class="take">Narrative score interpretation, best-day stars, editable tiles. Data-grounded encouragement.</div></div>
+      <div class="ref"><div class="nm serif">Alan Mind · Tangerine</div><div class="cat">Self-care</div><div class="take">Warm painterly editorial illustration + blush palettes + gentle mood-check tone.</div></div>
+    </div>
+  </section>
+
+  <!-- SURFACE DIAL -->
+  <section>
+    <div class="sec-head"><span class="n serif">07</span><h2 class="serif">One system, dialled by surface</h2></div>
+    <div class="dial">
+      <div class="dialends"><b class="serif">Recipes / Cookbook</b><b class="serif">Today / Progress</b></div>
+      <div class="dialbar"></div>
+      <div class="dialends faint"><span>lean Julienne — editorial, serif-forward, painterly</span><span style="text-align:right">lean Lifesum warmth — coaching, in Julienne's shell</span></div>
+      <div class="dialticks"><span>viral-hook beauty</span><span>·</span><span>retention warmth</span></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>Suppr — warm-coaching design direction · exploring, not ratified</span>
+    <span>docs/ux/mobbin-refs/warm-coaching-direction.md</span>
+  </div>
+
+</div>
+</body>
+</html>

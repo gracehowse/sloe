@@ -62,6 +62,8 @@ apps/mobile/screenshots/latest/
 apps/mobile/screenshots/diff/
 # Ad-hoc agent sim screenshots — local debugging artefacts, never committed.
 apps/mobile/screenshots/agent-check/
+apps/mobile/screenshots/agent/*
+!apps/mobile/screenshots/agent/.gitkeep
 # Local archived snapshot outputs from visual-check.mjs etc.
 apps/mobile/screenshots/archived-*/
 apps/mobile/screenshots/pre-fix-*/
@@ -98,3 +100,6 @@ docs/design-explorations/
 # to local scope; project .mcp.json is empty). File-scoped so docs/workflows/
 # stays open for any genuinely-tracked workflow docs later.
 docs/workflows/stitch-claude-code.md
+
+# Generated brand-asset exploration (AI images — kept local, too heavy for git)
+docs/brand/sloe/assets/gen/

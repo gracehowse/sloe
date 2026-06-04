@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPlannedMealKcalMacrosLine } from "../../src/lib/nutrition/plannedMealDisplay";
+import {
+  formatPlannedMealKcalMacrosLine,
+  formatPlannedMealMacroParts,
+} from "../../src/lib/nutrition/plannedMealDisplay";
 
 /**
  * T5 (full-sweep 2026-04-24): the previous test used `expect(line).not.toMatch(...)`
@@ -59,5 +62,27 @@ describe("formatPlannedMealKcalMacrosLine", () => {
     expect(formatPlannedMealKcalMacrosLine(NaN, -1, -0.3, Number.NEGATIVE_INFINITY)).toBe(
       "0 kcal · P 0g · C 0g · F 0g",
     );
+  });
+});
+
+describe("formatPlannedMealMacroParts (Sloe TD3 coloured Planned row)", () => {
+  it("returns the same rounded grams as the single-line formatter (large values)", () => {
+    const parts = formatPlannedMealMacroParts(500, 30, 40, 20);
+    expect(parts).toEqual({ kcal: 500, protein: "30", carbs: "40", fat: "20" });
+    // Parity with the line formatter — a coloured row + a plain string must
+    // never disagree on a value.
+    expect(
+      `${parts.kcal} kcal · P ${parts.protein}g · C ${parts.carbs}g · F ${parts.fat}g`,
+    ).toBe(formatPlannedMealKcalMacrosLine(500, 30, 40, 20));
+  });
+
+  it("returns '<1' for meaningful kcal but sub-0.5g macros (no faux 0g)", () => {
+    const parts = formatPlannedMealMacroParts(400, 0.3, 0.2, 0.15);
+    expect(parts).toEqual({ kcal: 400, protein: "<1", carbs: "<1", fat: "<1" });
+  });
+
+  it("coerces non-finite / negative inputs to 0", () => {
+    const parts = formatPlannedMealMacroParts(NaN, -1, -0.3, Number.NEGATIVE_INFINITY);
+    expect(parts).toEqual({ kcal: 0, protein: "0", carbs: "0", fat: "0" });
   });
 });

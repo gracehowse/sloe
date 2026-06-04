@@ -342,6 +342,11 @@ export function WinMomentPlayer({
             testID="win-moment-pct"
             style={{
               ...Type.ringValue,
+              // `Type.ringValue` is now 48px (the Today ring centre, 2026-06-04).
+              // The win-moment celebration pct keeps its pre-bump 36/36 so the
+              // ring bump doesn't silently resize this overlay. Same serif.
+              fontSize: 36,
+              lineHeight: 36,
               color: Accent.win,
               fontVariant: ["tabular-nums"],
             }}

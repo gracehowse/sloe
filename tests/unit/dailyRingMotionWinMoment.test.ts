@@ -77,11 +77,13 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     );
   });
 
-  it("ships the brand-spectrum gradient def mirroring --accent-win-gradient (#588CE4 → #9679D9 → #DF5EBC)", () => {
+  it("ships the Sloe brand gradient def mirroring --accent-win-gradient (#3B2A4D → #C8794E → #C9892C)", () => {
+    // Sloe Phase 0 (dossier D-3): the celebration fill is the warm Sloe brand
+    // gradient (plum → clay → amber), replacing the blue→purple→magenta spectrum.
     expect(SRC).toContain('<linearGradient id="winSpectrum"');
-    expect(SRC).toContain('stopColor="#588CE4"');
-    expect(SRC).toContain('stopColor="#9679D9"');
-    expect(SRC).toContain('stopColor="#DF5EBC"');
+    expect(SRC).toContain('stopColor="#3B2A4D"');
+    expect(SRC).toContain('stopColor="#C8794E"');
+    expect(SRC).toContain('stopColor="#C9892C"');
   });
 
   it("paints the progress arc with the win-spectrum gradient + glow + thicker stroke ONLY while celebrating", () => {
@@ -91,11 +93,12 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     expect(SRC).toContain('"drop-shadow(0 0 8px var(--accent-win))"');
   });
 
-  it("leaves the steady ring (idle gradient / under-green / over-red) intact below the celebration", () => {
-    // The under-budget steady stroke stays --success; the celebration is
-    // additive (a spectrum OVERRIDE while pulsing), not a swap of the resting hue.
-    // ENG-826: the empty ring now paints the calm idle gradient, not flat grey.
-    expect(SRC).toContain('"var(--success)"');
+  it("leaves the steady ring (idle gradient / under-plum / over-red) intact below the celebration", () => {
+    // Sloe D-1: the under-budget steady stroke is now --macro-calories (plum),
+    // over stays --destructive; the celebration is additive (a Sloe-gradient
+    // OVERRIDE while pulsing), not a swap of the resting hue. ENG-826: the empty
+    // ring paints the calm idle gradient, not flat grey.
+    expect(SRC).toContain('"var(--macro-calories)"');
     expect(SRC).toContain('"var(--destructive)"');
     expect(SRC).toContain('"url(#ringIdle)"');
   });

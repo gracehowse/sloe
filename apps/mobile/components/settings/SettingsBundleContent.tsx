@@ -52,6 +52,7 @@ import {
   Sun,
   Timer,
   Trash2,
+  User,
   Users,
   Wine,
   type LucideIcon,
@@ -83,6 +84,7 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { saveDisplayName } from "@suppr/shared/account/displayName";
 import { track } from "@/lib/analytics";
 import {
   nutritionLogToCsv,
@@ -673,6 +675,86 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       cancelled = true;
     };
   }, [userId]);
+
+  // "Your name" — personalises the Today greeting ("Morning, Grace").
+  // Source of truth is the Supabase auth user's
+  // `user_metadata.full_name`; the greeting (`apps/mobile/app/(tabs)/index.tsx`)
+  // reads it via `firstNameFromMetadata`. We pre-fill the input from the
+  // CURRENT metadata (full name, not just the first token, so the user can
+  // edit "Grace Turner" rather than losing the surname) and write back on
+  // commit via `supabase.auth.updateUser`. Allowing an empty value clears
+  // the name so the greeting falls back to "Good morning".
+  const metadataFullName = (() => {
+    const meta = (session?.user?.user_metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+    for (const key of [
+      "full_name",
+      "name",
+      "first_name",
+      "preferred_name",
+    ] as const) {
+      const v = meta[key];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return "";
+  })();
+  const [nameInput, setNameInput] = useState(metadataFullName);
+  const [nameSaving, setNameSaving] = useState(false);
+  // Re-seed the input when the session metadata changes underneath us
+  // (e.g. another device updated it, or the post-save session refresh
+  // lands) — but never clobber an in-flight edit the user is mid-typing.
+  const nameDirtyRef = useRef(false);
+  useEffect(() => {
+    if (nameDirtyRef.current) return;
+    setNameInput(metadataFullName);
+  }, [metadataFullName]);
+
+  /**
+   * Persist the display name to the auth user's `user_metadata.full_name`
+   * (NOT a `profiles` column — the tier-lockdown trigger rejects rows that
+   * touch entitlement columns, and the greeting reads metadata anyway).
+   * Trims input; an empty/whitespace value clears the name so the greeting
+   * falls back to "Good morning". After a successful write we force a
+   * session refresh so the Today greeting re-renders without an app
+   * restart (the auth context's `onAuthStateChange` re-emits the session).
+   * No-ops when the trimmed value already matches what's stored.
+   */
+  const handleSaveName = useCallback(async () => {
+    if (!userId) return;
+    if (nameSaving) return;
+    setNameSaving(true);
+    try {
+      const result = await saveDisplayName(
+        supabase,
+        nameInput,
+        metadataFullName,
+      );
+      if (!result.ok) {
+        Alert.alert("Couldn't save your name", result.message);
+        return;
+      }
+      nameDirtyRef.current = false;
+      // Normalise the visible value (strip trailing spaces) regardless of
+      // whether a write happened.
+      setNameInput(result.value);
+      if (result.changed) {
+        // Refresh the in-memory session so the greeting picks up the new
+        // metadata immediately. `getSession()` re-reads from local storage
+        // (which updateUser has already written), and the auth context's
+        // listener fans the fresh session out to Today.
+        try {
+          await supabase.auth.getSession();
+        } catch {
+          // Non-fatal: updateUser fired USER_UPDATED which the auth context
+          // also listens for, so the greeting still refreshes.
+        }
+      }
+    } finally {
+      setNameSaving(false);
+    }
+  }, [userId, nameSaving, nameInput, metadataFullName]);
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -1389,6 +1471,94 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           ))}
         </View>
       ) : null}
+
+      {/* Personal — the user's identity + personal preferences group.
+          Sits at the top of the list (identity comes first). The "Your
+          name" field below personalises the Today greeting: it writes the
+          auth user's `user_metadata.full_name` via
+          `supabase.auth.updateUser`, and the greeting on Today reads it
+          back through `firstNameFromMetadata`. Empty clears the name →
+          greeting falls back to "Good morning". Web mirror is the
+          "Personal" card in `src/app/components/Settings.tsx` (the name
+          field is the first row). Grace 2026-06-04: the name belongs
+          inside a general Personal settings group, not a lone "Your name"
+          card. */}
+      <SectionHeading title="Personal" />
+      <SettingsCard testID="settings-card-name" style={{ padding: 14, gap: 10 }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "700",
+            color: colors.text,
+            lineHeight: 17,
+          }}
+          accessibilityRole="header"
+        >
+          Your name
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+          Used to greet you on Today (&quot;Morning, {nameInput.trim().split(/\s+/)[0] || "Grace"}&quot;). Leave blank to keep it name-free.
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+          <IconBox color={t.accent}>
+            <User size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <TextInput
+            testID="settings-bundle-name-input"
+            value={nameInput}
+            onChangeText={(text) => {
+              nameDirtyRef.current = true;
+              setNameInput(text);
+            }}
+            onBlur={() => {
+              void handleSaveName();
+            }}
+            placeholder="Your name"
+            placeholderTextColor={colors.textTertiary}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              void handleSaveName();
+            }}
+            // PostHog session replay masks ALL text inputs at capture on
+            // mobile (`maskAllTextInputs: true`, accepted as-is in
+            // `apps/mobile/lib/analytics.ts`) — same posture as the promo
+            // input above, no per-field prop needed.
+            style={{
+              flex: 1,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+              color: colors.text,
+              fontSize: 14,
+            }}
+          />
+          <Pressable
+            testID="settings-bundle-name-save"
+            onPress={() => void handleSaveName()}
+            disabled={nameSaving || nameInput.trim() === metadataFullName}
+            accessibilityRole="button"
+            accessibilityLabel="Save your name"
+            style={{
+              paddingHorizontal: 18,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: Accent.primary,
+              opacity:
+                nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+              {nameSaving ? "..." : "Save"}
+            </Text>
+          </Pressable>
+        </View>
+      </SettingsCard>
 
       {/* Membership — restructured 2026-05-01
           (`claude/settings-mobile-structural-fix` P0-1). The card now

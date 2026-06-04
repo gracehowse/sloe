@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Onboarding goal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased" data-next="onboarding-about.html">
+
+<header class="px-5 pt-4 pb-2"><button class="text-plum p-1 -ml-1"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><div class="flex gap-1.5 mt-3"><div class="flex-1 h-1 rounded-full bg-plum"></div><div class="flex-1 h-1 rounded-full bg-line"></div><div class="flex-1 h-1 rounded-full bg-line"></div><div class="flex-1 h-1 rounded-full bg-line"></div><div class="flex-1 h-1 rounded-full bg-line"></div></div></header>
+<main class="px-5 pt-4 pb-10 max-w-2xl mx-auto">
+  <h1 class="font-headline text-3xl text-plum text-center">What brings you to Sloe?</h1>
+  <p class="font-body text-sm text-ink-soft text-center mt-1">We'll tailor everything to you.</p>
+  <div class="space-y-3 mt-7">
+    <label class="block"><div class="flex items-center gap-4 rounded-2xl border border-plum bg-surface-card p-3.5">
+    <div class="w-16 h-16 rounded-xl overflow-hidden bg-surface-card flex-none"><img src="img/1eded18039f9.png" class="w-full h-full object-cover"/></div>
+    <span class="flex-1 font-headline text-lg text-ink leading-tight">Lose weight while still eating what I love</span>
+    <span class="w-6 h-6 rounded-full bg-plum border-plum flex items-center justify-center"><svg class="sloe-ico text-white text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+  </div></label>
+    <label class="block"><div class="flex items-center gap-4 rounded-2xl border border-line p-3.5">
+    <div class="w-16 h-16 rounded-xl overflow-hidden bg-surface-card flex-none"><img src="img/e427c86a0d4f.png" class="w-full h-full object-cover"/></div>
+    <span class="flex-1 font-headline text-lg text-ink leading-tight">Build muscle</span>
+    <span class="w-6 h-6 rounded-full border border-line flex items-center justify-center"></span>
+  </div></label>
+    <label class="block"><div class="flex items-center gap-4 rounded-2xl border border-line p-3.5">
+    <div class="w-16 h-16 rounded-xl overflow-hidden bg-surface-card flex-none"><img src="img/a6610a1bee6c.png" class="w-full h-full object-cover"/></div>
+    <span class="flex-1 font-headline text-lg text-ink leading-tight">Eat healthier at home</span>
+    <span class="w-6 h-6 rounded-full border border-line flex items-center justify-center"></span>
+  </div></label>
+    <label class="block"><div class="flex items-center gap-4 rounded-2xl border border-line p-3.5">
+    <div class="w-16 h-16 rounded-xl overflow-hidden bg-surface-card flex-none"><img src="img/7a448cef1613.png" class="w-full h-full object-cover"/></div>
+    <span class="flex-1 font-headline text-lg text-ink leading-tight">Just track what I cook</span>
+    <span class="w-6 h-6 rounded-full border border-line flex items-center justify-center"></span>
+  </div></label>
+  </div>
+</main>
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t border-line px-5 pt-3 pb-7"><button class="w-full bg-clay text-white font-body font-semibold text-base rounded-full py-4">Continue</button></div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

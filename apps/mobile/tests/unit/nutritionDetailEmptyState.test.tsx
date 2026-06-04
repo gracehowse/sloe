@@ -50,7 +50,7 @@ function flatten(style: unknown): Record<string, unknown> {
   return (style as Record<string, unknown>) ?? {};
 }
 
-const MACRO_HUE = "#E8721E"; // a saturated macro colour (carbs)
+const MACRO_HUE = "#C8794E"; // a macro colour (Sloe carbs — clay)
 
 beforeEach(() => {
   flagFn.mockReset();

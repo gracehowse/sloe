@@ -6,9 +6,10 @@
  * The design-director review read the edit sheet + ingredient editor as
  * "imported from a different design system": a hardcoded `#00000066` backdrop,
  * a border-as-depth sheet panel, and an off-token dashed add-button outline
- * (`Accent.primary + "50"`). This sweep aligns them to the one design language,
- * behind `design_system_elevation` (old flat/hairline path kept in the `else`
- * via `useCardElevation`'s default branch):
+ * (`Accent.primary + "50"`). This sweep aligns them to the one design language.
+ * Resting cards take their soft-lift treatment from `useCardElevation` (now an
+ * unconditional default — the shadow carries the separation); the sheet PANEL
+ * keeps its own `design_system_elevation` read for the heavier sheet shadow:
  *   - the sheet panel takes the real `Elevation.sheet` shadow + drops the
  *     border-as-depth when the flag is on (tonal lift on dark);
  *   - the backdrop uses the `colors.overlay` scrim token, not a raw hex;
@@ -95,7 +96,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     text: "#0f172a",
     textSecondary: "#475569",
     textTertiary: "#94a3b8",
-    background: "#fbfaf6",
+    background: "#FBF8F3",
     border: "#e4e4ec",
     inputBg: "#f0ece4",
     overlay: "#00000088",
@@ -107,7 +108,7 @@ import { IngredientInfoSheet, type IngredientInfo } from "../../components/recip
 const INFO: IngredientInfo = {
   name: "Chicken breast",
   tierLabel: "Verified",
-  tierColor: "#56A775",
+  tierColor: "#5E7C5A",
   confidencePct: null,
   sourceLabel: "USDA",
   calories: 165,

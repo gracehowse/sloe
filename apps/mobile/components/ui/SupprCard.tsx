@@ -5,33 +5,57 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Elevation, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useTheme } from "@/context/theme";
-import { isFeatureEnabled } from "@/lib/analytics";
+import { useCardElevation } from "@/hooks/useCardElevation";
 
 /**
- * Mobile `<SupprCard>` — single card primitive.
+ * Mobile `<SupprCard>` — THE single card primitive.
  *
- * Production design spec — 2026-04-27 §Part 3 "New components".
- * Mirror of `src/app/components/ui/suppr-card.tsx` (same prop names,
- * same variants, same defaults). Phase 1 ships the primitive only;
- * callers are NOT swept here.
+ * One card chrome across the whole app. Every resting card surface (Today
+ * hero, macro tiles, meal-slot cards, planned meals, hydration/stimulants,
+ * energy-balance, the Progress stat row + dashboard cards, …) renders its
+ * CHROME through this component. Surfaces keep their own inner contents; only
+ * the shell — fill, radius, border, and the soft lift — is unified here, so a
+ * fix lands in ONE place and the cards can never drift apart again (the
+ * recurring "each card looks slightly different" bug, Grace 2026-06-04).
+ *
+ * Mirror: `src/app/components/ui/suppr-card.tsx` (same prop names + variants).
+ *
+ * ── The Sloe card shell (the look this encapsulates) ──
+ *   - fill `colors.card` (#F6F5F2 light) — the warm-grey card on the white page
+ *   - `borderRadius: 20` (the Sloe rounded-card radius; `size="tile"` = 16)
+ *   - a SOFT DROP SHADOW on an OUTER wrapper + the corner-clip on an INNER
+ *     view. iOS clips shadows under `overflow: 'hidden'`, so the shadow MUST
+ *     live on a wrapper separate from the clip — doing it here once means no
+ *     per-card surface can ever re-introduce that clip bug (it used to be
+ *     hand-rolled, and drifted, in ~6 places).
+ *   - dark mode: no shadow (RN renders dark shadows poorly) — a tonal lift
+ *     (`cardElevated`) + a hairline border carry the separation instead.
+ *
+ * The soft lift is UN-GATED (2026-06-04). It comes from `useCardElevation`,
+ * the un-gated source of truth; the old `design_system_elevation` read was
+ * removed — flag-FORCE is dead in a bundled app (ENG-840), so the gate could
+ * never be exercised on the sim and only hid the lift from the founder.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
- *  - `elevation`: `none` / `card` (default) / `sheet` / `float`
- *  - `gradient`: bool — when true + `tone='primary'`, the SupprCard
- *                 renders a subtle linear-gradient surface for the
- *                 north-star block.
- *  - `border`: bool (default true)
- *  - `padding`: `none` / `sm` (8) / `md` (12, default) / `lg` (16) / `xl` (20)
- *  - `radius`: `sm` / `md` / `lg` (default — Radius.lg = 16) / `xl`
+ *  - `size`:
+ *      - `card` (default — radius 20, soft lift, the top-level resting card)
+ *      - `tile` (radius 16, padding `md`, for the 2×2 macro tiles)
+ *      - `inset` (radius 16, hairline border, NO drop shadow — a sub-panel
+ *        nested ON a card, e.g. the burn-breakdown + 7-day-rolling panels
+ *        inside the energy-balance card; a card-on-card must not double-shadow)
+ *  - `gradient`: bool — north-star tinted surface when `tone='primary'`
+ *  - `border`: bool (default true) — only drawn when the elevation treatment
+ *              calls for it (dark, a flat caller, or an `inset`); the light
+ *              soft-lift `card` drops it (the shadow is the separation)
+ *  - `padding`: `none` / `sm` (8) / `md` (16) / `lg` (20, default) / `xl` (24)
+ *  - `radius`: explicit override of the size default (`sm`/`md`/`lg`/`xl`)
  *
- * Note on gradient: RN does not support CSS-style linear-gradient
- * backgrounds natively. Phase 1 ships a tinted-flat fallback for the
- * north-star variant; Phase 2 swaps in `expo-linear-gradient` when the
- * `<NorthStarBlock>` lands. Documented at `docs/ux/design-tokens.md`.
+ * Note on gradient: RN has no CSS linear-gradient; the north-star variant uses
+ * a tinted-flat fallback (`northStarBgFrom`). Documented at
+ * `docs/ux/design-system.md`.
  */
 
 export type SupprCardTone =
@@ -41,7 +65,7 @@ export type SupprCardTone =
   | "warning"
   | "magenta";
 
-export type SupprCardElevation = "none" | "card" | "sheet" | "float";
+export type SupprCardSize = "card" | "tile" | "inset";
 
 export type SupprCardPadding = "none" | "sm" | "md" | "lg" | "xl";
 
@@ -49,22 +73,30 @@ export type SupprCardRadius = "sm" | "md" | "lg" | "xl";
 
 export interface SupprCardProps {
   tone?: SupprCardTone;
-  elevation?: SupprCardElevation;
+  size?: SupprCardSize;
   gradient?: boolean;
   border?: boolean;
   padding?: SupprCardPadding;
+  /** Override the size's default radius. Omit to use the size default
+   *  (`card` → 20, `tile` → 16). */
   radius?: SupprCardRadius;
-  style?: StyleProp<ViewStyle>;
+  /** Applied to the OUTER node (where tests + Maestro expect the testID). */
   testID?: string;
+  accessibilityLabel?: string;
+  /** Merged onto the OUTER wrapper (margins, width, flex-basis live here). */
+  style?: StyleProp<ViewStyle>;
+  /** Merged onto the INNER (clipping) view — for inner-only layout like
+   *  `alignItems` / `gap` that should sit inside the clip. */
+  innerStyle?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }
 
 const paddingValues: Record<SupprCardPadding, number> = {
   none: 0,
-  sm: Spacing.sm,
-  md: Spacing.md,
-  lg: Spacing.lg,
-  xl: Spacing.xl,
+  sm: Spacing.sm, // 8
+  md: Spacing.md, // 16
+  lg: Spacing.lg, // 20
+  xl: Spacing.xl, // 24
 };
 
 const radiusValues: Record<SupprCardRadius, number> = {
@@ -74,88 +106,81 @@ const radiusValues: Record<SupprCardRadius, number> = {
   xl: Radius.xl,
 };
 
-const elevationStyle: Record<SupprCardElevation, ViewStyle | undefined> = {
-  none: undefined,
-  card: Elevation.card,
-  sheet: Elevation.sheet,
-  float: Elevation.float,
-};
+/** The Sloe card radius (rounded-xl in the prototype, scaled to mobile). Not a
+ *  `Radius` token — the token ladder tops out at `xl: 12` (pre-Sloe, tuned for
+ *  Linear/Stripe density). The Sloe Figma cards round to 20; tiles to 16.
+ *  Centralised here so every card shares the exact corner. */
+export const CARD_RADIUS = 20;
+export const TILE_RADIUS = 16;
 
 export function SupprCard({
   tone = "neutral",
-  elevation = "card",
+  size = "card",
   gradient = false,
   border = true,
-  padding = "md",
-  radius = "lg",
-  style,
+  padding,
+  radius,
   testID,
+  accessibilityLabel,
+  style,
+  innerStyle,
   children,
 }: SupprCardProps) {
   const colors = useThemeColors();
-  const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  const elevation = useCardElevation();
 
-  // ENG-795 (Redesign): flag-gated soft elevation on resting cards.
-  // Flag OFF → unchanged flat/hairline (2026-05-22 lock). Flag ON:
-  //  - light → soft shadow, drawn on an OUTER wrapper because RN
-  //    `overflow: hidden` (styles.base) clips iOS shadows; hairline dropped.
-  //  - dark  → tonal lift (`cardElevated`) + a subtle hairline, no shadow
-  //    (RN renders shadows poorly on dark surfaces).
-  const softElevation =
-    elevation === "card" && isFeatureEnabled("design_system_elevation");
-  const effectiveBorder = softElevation ? isDark : border;
-  const toneStyle = computeToneStyle(tone, gradient, effectiveBorder, colors);
+  const isInset = size === "inset";
+  const cornerRadius =
+    radius != null
+      ? radiusValues[radius]
+      : size === "card"
+        ? CARD_RADIUS
+        : TILE_RADIUS; // tile + inset both round to 16
+  // Tiles + insets default to a tighter padding; cards to the airy `lg`.
+  const pad = paddingValues[padding ?? (size === "card" ? "lg" : "md")];
 
-  if (softElevation && !isDark) {
-    return (
-      <View
-        testID={testID}
-        style={[
-          {
-            borderRadius: radiusValues[radius],
-            backgroundColor: toneStyle.backgroundColor,
-          },
-          Elevation.cardSoft,
-          style,
-        ]}
-      >
-        <View
-          style={[
-            styles.base,
-            { padding: paddingValues[padding], borderRadius: radiusValues[radius] },
-            toneStyle,
-          ]}
-        >
-          {children}
-        </View>
-      </View>
-    );
-  }
+  // The light soft-lift `card` drops the border (the shadow IS the separation —
+  // no double edge). Dark keeps the hairline (no shadow there). An `inset`
+  // sub-panel ALWAYS draws the hairline (it sits on a card, so it has no lift to
+  // separate it). A flat caller (border=false) opts out entirely.
+  const showBorder = border && (isInset || elevation.useBorder);
+  const tone_ = computeToneStyle(tone, gradient, colors);
+  const fill = tone_.backgroundColor;
 
-  // Flag-off (flat/hairline) OR dark soft-elevation (tonal lift, no shadow).
-  const neutralLift =
-    softElevation && isDark && tone === "neutral"
-      ? { backgroundColor: colors.cardElevated }
-      : undefined;
+  // `inset` carries NO drop shadow (a card-on-card must not double-shadow) and no
+  // dark tonal lift — its hairline + fill are the separation.
+  const outerShadow = isInset ? undefined : elevation.shadowStyle;
+  const outerFill = isInset ? fill : elevation.liftBg ?? fill;
 
   return (
     <View
       testID={testID}
+      accessibilityLabel={accessibilityLabel}
       style={[
-        styles.base,
+        // OUTER wrapper — owns the soft shadow + the fill. The shadow MUST be
+        // here (not on the inner clip) or iOS swallows it under overflow:hidden.
         {
-          padding: paddingValues[padding],
-          borderRadius: radiusValues[radius],
-          borderWidth: effectiveBorder ? StyleSheet.hairlineWidth : 0,
+          backgroundColor: outerFill,
+          borderRadius: cornerRadius,
         },
-        toneStyle,
-        neutralLift,
-        softElevation ? undefined : elevationStyle[elevation],
+        outerShadow,
         style,
       ]}
     >
-      {children}
+      <View
+        style={[
+          styles.inner,
+          {
+            borderRadius: cornerRadius,
+            padding: pad,
+            borderWidth: showBorder ? StyleSheet.hairlineWidth : 0,
+            borderColor: tone_.borderColor,
+          },
+          innerStyle,
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -163,47 +188,46 @@ export function SupprCard({
 function computeToneStyle(
   tone: SupprCardTone,
   gradient: boolean,
-  border: boolean,
   colors: ReturnType<typeof useThemeColors>,
-): ViewStyle {
+): { backgroundColor: string; borderColor: string } {
   if (tone === "primary" && gradient) {
     return {
       backgroundColor: colors.northStarBgFrom,
-      borderColor: border ? colors.northStarBorder : "transparent",
+      borderColor: colors.northStarBorder,
     };
   }
   switch (tone) {
     case "primary":
       return {
         backgroundColor: colors.northStarBgFrom,
-        borderColor: border ? colors.northStarBorder : "transparent",
+        borderColor: colors.northStarBorder,
       };
     case "success":
       return {
-        backgroundColor: "rgba(34, 168, 96, 0.08)",
-        borderColor: border ? colors.sourceUsda : "transparent",
+        backgroundColor: "rgba(94, 124, 90, 0.10)", // Accent.success @ 10%
+        borderColor: colors.sourceUsda,
       };
     case "warning":
       return {
         backgroundColor: colors.overBudgetSoft,
-        borderColor: border ? colors.overBudgetFg : "transparent",
+        borderColor: colors.overBudgetFg,
       };
     case "magenta":
       return {
-        backgroundColor: "rgba(223, 94, 188, 0.08)",
-        borderColor: border ? colors.sourceAi : "transparent",
+        backgroundColor: "rgba(106, 75, 122, 0.10)", // Sloe damson @ 10%
+        borderColor: colors.sourceAi,
       };
     case "neutral":
     default:
       return {
         backgroundColor: colors.card,
-        borderColor: border ? colors.cardBorder : "transparent",
+        borderColor: colors.border,
       };
   }
 }
 
 const styles = StyleSheet.create({
-  base: {
+  inner: {
     overflow: "hidden",
   },
 });

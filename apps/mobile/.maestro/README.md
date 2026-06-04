@@ -2,6 +2,8 @@
 
 These tests drive the real iOS Simulator or Android Emulator and verify user-visible behaviour.
 
+**Cursor agents (interactive UI checks):** use the **`ios-simulator` MCP** server + IDB instead of asking for dragged screenshots. Setup: `docs/testing/agent-eyes-and-hands.md`, navigation map: `sitemap.md`, verify: `npm run agent:verify-tools` from repo root.
+
 ## Mobile testing belt (belts and braces)
 
 Run these in order before a release or large mobile PR:
