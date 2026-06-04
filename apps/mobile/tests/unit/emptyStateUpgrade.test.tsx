@@ -92,7 +92,13 @@ describe("EmptyState (mobile) — 72pt illustration + headline ladder + CTA", ()
 
   it("title style routes through Type.headline (17pt)", () => {
     expect(Type.headline.fontSize).toBe(17);
-    expect(Type.headline.fontWeight).toBe("700");
+    // Sloe redesign (2026-06-04, Grace "go lighter"): headline weight
+    // lightened 700 → 500 across the type ladder (serif Fraunces/Newsreader
+    // reads heavier at the same numeric weight, so the lift to 500 keeps
+    // the calm coaching tone). EmptyState titles inherit this via
+    // `Type.headline`. Still a real assertion — it pins that the empty-state
+    // title hasn't drifted back to a bold weight.
+    expect(Type.headline.fontWeight).toBe("500");
   });
 
   it("description renders when provided and routes through Type.body (14pt)", () => {

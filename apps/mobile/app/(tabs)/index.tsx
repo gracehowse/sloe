@@ -97,6 +97,10 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { getYesterdayMeals } from "@suppr/shared/nutrition/copyYesterdayMeals";
+import {
+  MISSED_YESTERDAY_COPY,
+  shouldShowMissedYesterday,
+} from "@suppr/shared/nutrition/missedYesterday";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
@@ -2915,6 +2919,33 @@ export default function TrackerScreen() {
   const hasAnyJournalHistory = useMemo(() => loggedDays.size > 0, [loggedDays]);
 
   /**
+   * DC12 (2026-05-14, premium-bar audit) — Today "missed yesterday"
+   * supportive banner visibility. Pure rule + copy live in the shared
+   * `@suppr/shared/nutrition/missedYesterday` helper (single regression
+   * home, pinned by `tests/unit/missedYesterday.test.ts`; cross-platform
+   * wiring pinned by `tests/unit/todayMissedYesterdayWiring.test.ts`).
+   * Renders only when the user (a) is on today's view, (b) has prior
+   * history, (c) logged nothing yesterday, and (d) it's not the first
+   * day of a fresh week. Re-wired into the Sloe `01 · Today` layout
+   * after the 2026-06-04 re-skin dropped it alongside the old date-nav
+   * header — web (`NutritionTracker.tsx`) never dropped it, so this
+   * keeps the two platforms in parity.
+   */
+  const missedYesterdayVisible = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = dateKeyFromDate(yesterday);
+    const mealsYesterday = byDay[yKey] ?? [];
+    return shouldShowMissedYesterday({
+      isToday,
+      hasAnyJournalHistory,
+      mealsYesterdayCount: mealsYesterday.length,
+      todayDayOfWeek: new Date().getDay(),
+      weekStartDay,
+    });
+  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay]);
+
+  /**
    * Feature 5 / Feature 9 (2026-05-14, premium-bar audit) — subtle
    * mount-time motion on Today. When the tab first receives focus
    * after mount, the hero card fades from 0.85 → 1.0 and the
@@ -4786,6 +4817,31 @@ export default function TrackerScreen() {
               {" Tap to retry."}
             </Text>
           </Pressable>
+        )}
+
+        {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+            supportive missed-day line. Renders only when the user
+            (a) is on today's view, (b) has prior history, (c)
+            logged nothing yesterday, and (d) it's not the first
+            day of a fresh week (see `missedYesterdayVisible` memo
+            for the full rule). No CTA, no destructive tone — the
+            calm sub-line just reframes the gap and gets out of
+            the way. Re-wired into the Sloe `01 · Today` layout
+            (the 2026-06-04 re-skin dropped it with the old date-nav
+            header); web keeps it, so this restores parity. */}
+        {missedYesterdayVisible && (
+          <Text
+            testID="today-missed-yesterday-copy"
+            style={{
+              ...Type.caption,
+              color: colors.textSecondary,
+              textAlign: "center",
+              paddingHorizontal: Spacing.md,
+              marginTop: 2,
+            }}
+          >
+            {MISSED_YESTERDAY_COPY}
+          </Text>
         )}
 
         {/* Day-of-week strip in week mode */}
