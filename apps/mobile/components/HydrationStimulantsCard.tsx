@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -416,7 +417,7 @@ export function HydrationStimulantsCard({
   return (
     <View
       accessibilityLabel="Hydration and stimulants"
-      style={[{ gap: Spacing.sm }, style]}
+      style={[{ gap: Layout.todaySectionCardGap }, style]}
     >
       <SloeCard title="Hydration" testID="today-hydration-card">
         <Row

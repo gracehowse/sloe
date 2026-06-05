@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 
 /**
  * TodayActivityCard — Steps & active-energy card on the Today screen.
@@ -48,8 +49,9 @@ export function TodayActivityCard({
   textTertiaryColor,
   borderColor,
 }: TodayActivityCardProps) {
+  void styles;
   return (
-    <View style={styles.card}>
+    <SupprCard lift="flat" padding="lg" testID="today-activity-card" innerStyle={{ gap: Spacing.md }}>
       {/* Sloe TD1 header — Newsreader title + right-aligned day label. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -127,7 +129,7 @@ export function TodayActivityCard({
           </Text>
         )}
       </View>
-    </View>
+    </SupprCard>
   );
 }
 

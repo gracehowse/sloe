@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
+import { Layout } from "@/constants/layout";
 import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -258,12 +259,18 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const weeklyLbsRate = weeklyKgRate / 0.4536;
   const isWeekDeficit = weekDeficit >= 0;
 
+  const showBurnBreakdown = (activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0;
+
   return (
-    // Card chrome is the shared <SupprCard> shell (fill #F6F5F2, radius 20, soft
-    // lift, hairline) — no longer the host-passed `styles.card`. The inner gap
-    // matches the prior card's `gap: Spacing.md`. Inner sub-cards (burn-breakdown,
-    // 7-day-rolling) are their OWN <SupprCard>s below.
-    <SupprCard lift="flat" padding="lg" innerStyle={{ gap: Spacing.md }}>
+    <>
+    <View style={{ gap: Layout.todaySectionCardGap }}>
+    {/* Figma TD1 — Energy balance is its own flat slab; burn + 7-day are siblings. */}
+    <SupprCard
+      lift="flat"
+      padding="lg"
+      testID="today-energy-balance-card"
+      innerStyle={{ gap: Spacing.md }}
+    >
       {showDiscover ? (
         <View
           style={[{
@@ -491,98 +498,6 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         </Text>
       )}
 
-      {((activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0) && (
-        // Sloe burn-breakdown card — a single calm lucide flame, the kcal number
-        // in Newsreader with an Inter caption beside it, the Active/Resting/+bonus
-        // breakdown kept verbatim. It's a sub-panel ON the energy-balance card, so
-        // it uses the shared <SupprCard size="inset"> shell (hairline, NO drop
-        // shadow — a card-on-card must not double-shadow). The Pressable is the
-        // thin tap layer (opens /burn-detail); the SupprCard owns the chrome.
-        <Pressable
-          onPress={onOpenBurnDetail}
-          style={({ pressed }) => ({
-            marginBottom: Spacing.md,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <SupprCard
-            size="inset"
-            innerStyle={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: Spacing.sm,
-            }}
-          >
-          <View style={{ flex: 1, gap: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-              <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
-              <Text
-                testID="today-burn-card-headline"
-                style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
-              >
-                {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()}
-              </Text>
-              <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-                kcal {isToday ? "burned so far" : "burned"}
-              </Text>
-              {/* F-131 — small Info icon. Stops the row press from
-                  bubbling so the user gets explain-in-place rather
-                  than navigating to /burn-detail. */}
-              {onShowBurnProvenance ? (
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    onShowBurnProvenance();
-                  }}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel="Where this number comes from"
-                  testID="today-burn-provenance-info"
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={IconSize.md}
-                    color={textTertiaryColor}
-                  />
-                </Pressable>
-              ) : null}
-            </View>
-            {/* Active / Resting / +bonus breakdown — preserved (Inter caption
-                via Type.caption; the +bonus keeps the honey hue). */}
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
-              {(activityBurnKcal ?? 0) > 0 && (
-                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-                  Active {(activityBurnKcal ?? 0).toLocaleString()}
-                </Text>
-              )}
-              {basalBurnKcal > 0 && (
-                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-                  Resting {basalBurnKcal.toLocaleString()}
-                </Text>
-              )}
-              {todayActivityBudgetAddon > 0 && (
-                // Stays sentence-case + honey (Accent.activity) — the one earned
-                // reward that should still draw the eye, but lighter than the old
-                // 700 weight (Inter semibold via Type.caption family override).
-                <Text
-                  style={{
-                    ...Type.caption,
-                    fontFamily: FontFamily.sansSemibold,
-                    fontWeight: FontWeight.semibold,
-                    color: Accent.activity,
-                  }}
-                >
-                  +{todayActivityBudgetAddon.toLocaleString()} bonus earned
-                </Text>
-              )}
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={IconSize.base} color={textTertiaryColor} />
-          </SupprCard>
-        </Pressable>
-      )}
-
       {dayWorkouts.length > 0 && (
         <View style={{ gap: 6 }}>
           <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 2 }}>Workouts</Text>
@@ -600,29 +515,93 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           ))}
         </View>
       )}
+    </SupprCard>
 
-      {showWeekly && (
-        // Sloe TD1: the 7-day rolling block is its own sub-panel ON the
-        // energy-balance card → shared <SupprCard size="inset"> shell (hairline,
-        // no drop shadow). Distinct from the energy-balance card around it.
-        <SupprCard size="inset" style={{ marginTop: Spacing.md }}>
-          {/* Sloe TD1 "7-DAY ROLLING" overline — UPPERCASE small-caps via
-              Type.label (uppercase transform + letter-spacing) + a small trend
-              glyph (frame 459:2). The heading STRING is still `weekSummaryHeading`
-              ("7-day rolling summary" / "This week") so the window semantics +
-              calendar-mode copy survive; Type.label renders it uppercased to
-              match the Figma. */}
+      {showBurnBreakdown ? (
+        <Pressable
+          onPress={onOpenBurnDetail}
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+        >
+          <SupprCard
+            lift="flat"
+            padding="lg"
+            testID="today-burn-breakdown-card"
+            innerStyle={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
+            <View style={{ flex: 1, gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
+                <Text
+                  testID="today-burn-card-headline"
+                  style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
+                >
+                  {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()}
+                </Text>
+                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                  kcal {isToday ? "burned so far" : "burned"}
+                </Text>
+                {onShowBurnProvenance ? (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      onShowBurnProvenance();
+                    }}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Where this number comes from"
+                    testID="today-burn-provenance-info"
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={IconSize.md}
+                      color={textTertiaryColor}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
+                {(activityBurnKcal ?? 0) > 0 && (
+                  <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                    Active {(activityBurnKcal ?? 0).toLocaleString()}
+                  </Text>
+                )}
+                {basalBurnKcal > 0 && (
+                  <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                    Resting {basalBurnKcal.toLocaleString()}
+                  </Text>
+                )}
+                {todayActivityBudgetAddon > 0 && (
+                  <Text
+                    style={{
+                      ...Type.caption,
+                      fontFamily: FontFamily.sansSemibold,
+                      fontWeight: FontWeight.semibold,
+                      color: Accent.activity,
+                    }}
+                  >
+                    +{todayActivityBudgetAddon.toLocaleString()} bonus earned
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={IconSize.base} color={textTertiaryColor} />
+          </SupprCard>
+        </Pressable>
+      ) : null}
+
+      {showWeekly ? (
+        <SupprCard lift="flat" padding="lg" testID="today-weekly-rolling-card">
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
             <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
             <Text style={{ ...Type.label, color: textTertiaryColor }}>
               {weekSummaryHeading(weekSummaryMode)}
             </Text>
           </View>
-          {/* Audit T13 (2026-05-05) — neutral grey when weekConsumed === 0
-              so a user with burn data but zero food logged across the
-              window doesn't see "Avg daily deficit: 2,400 kcal" green
-              affirming a degenerate state (false success). Mirrors
-              the same rule the today-tile got 2026-04-25. */}
           {(() => {
             const isCalibrating = weekConsumed === 0;
             const valueColor = isCalibrating
@@ -678,7 +657,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             );
           })()}
         </SupprCard>
-      )}
+      ) : null}
+    </View>
 
       {popoverCopy ? (
         <Modal
@@ -728,7 +708,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </Pressable>
         </Modal>
       ) : null}
-    </SupprCard>
+    </>
   );
 }
 

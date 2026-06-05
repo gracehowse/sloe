@@ -74,6 +74,7 @@ const radiusClasses: Record<SupprCardRadius, string> = {
 const elevationVar: Record<SupprCardElevation, string | undefined> = {
   none: undefined,
   card: "var(--elev-card)",
+  "slab-flat": undefined,
   sheet: "var(--elev-sheet)",
   float: "var(--elev-float)",
 };

@@ -60,6 +60,8 @@ describe("resting cards CONSOLIDATED onto <SupprCard> (2026-06-04)", () => {
     "components/today/TodayDashboardMacroTiles.tsx",
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayMealsSection.tsx",
+    "components/today/TodayDashboardMacroBars.tsx",
+    "components/today/TodayFirstMealEmptyState.tsx",
     "components/HydrationStimulantsCard.tsx",
     "components/progress/TrajectoryCard.tsx",
     "components/progress/TrendSummaryCard.tsx",
@@ -102,8 +104,6 @@ describe("resting cards STILL hand-rolled — hairline edge, not a heavy 1pt", (
   // migrate, they must still draw a hairline, never a 1pt box.
   const HAND_ROLLED = [
     "app/(tabs)/index.tsx", // styles.card — legacy 3.4k-line screen shell
-    "components/today/TodayDashboardMacroBars.tsx",
-    "components/today/TodayFirstMealEmptyState.tsx",
     "components/today/ProgressHeadline.tsx",
     "components/today/ProgressStoryGate.tsx",
     "components/RemainingMacrosBar.tsx",
@@ -119,19 +119,18 @@ describe("resting cards STILL hand-rolled — hairline edge, not a heavy 1pt", (
   );
 });
 
-describe("TodayActivityBonusCard — migrated; inner panels are <SupprCard size='inset'>", () => {
+describe("TodayActivityBonusCard — Figma TD1 flat sibling slabs", () => {
   const src = read("components/today/TodayActivityBonusCard.tsx");
 
-  it("renders its outer card + inner panels through <SupprCard>", () => {
+  it("renders energy balance, burn breakdown, and 7-day rolling as separate <SupprCard lift='flat'> slabs", () => {
     expect(src).toMatch(/from ["']@\/components\/ui\/SupprCard["']/);
-    // Outer energy-balance card + the two inset sub-panels (burn-breakdown,
-    // 7-day-rolling) = at least three SupprCard open tags.
-    const opens = src.match(/<SupprCard/g);
-    expect(opens).not.toBeNull();
-    expect(opens!.length).toBeGreaterThanOrEqual(3);
-    // The inner panels use the `inset` variant (card-on-card: hairline, no
-    // double drop shadow).
-    expect(src).toMatch(/size="inset"/);
+    expect(src).toMatch(/testID="today-energy-balance-card"/);
+    expect(src).toMatch(/testID="today-burn-breakdown-card"/);
+    expect(src).toMatch(/testID="today-weekly-rolling-card"/);
+    expect(src).toMatch(/lift="flat"/);
+    expect(src).toMatch(/Layout\.todaySectionCardGap/);
+    // No nested inset sub-panels — each block is its own top-level flat card.
+    expect(src).not.toMatch(/size="inset"/);
   });
 
   it("no longer hardcodes a `borderWidth: 1,` or `borderRadius: 20` resting card", () => {

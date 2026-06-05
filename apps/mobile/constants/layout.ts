@@ -15,6 +15,10 @@ export const Layout = {
    * `Spacing.md` (16px) bump that made mobile Today feel airy vs web.
    */
   todayScrollGap: 10,
+  /** Figma TD1/TD2 — `mb-5` between section header and first card. */
+  todaySectionHeaderGap: Spacing.lg,
+  /** Figma TD1/TD2 — `mb-5` between sibling cards inside a section. */
+  todaySectionCardGap: Spacing.lg,
   todayScreenPaddingX: Spacing.lg,
   macroTileGridGap: 10,
   /** Plan tab — same density bar as Today; day blocks are section + flat meal card. */

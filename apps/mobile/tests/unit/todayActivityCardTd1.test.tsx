@@ -306,10 +306,20 @@ describe("TodayActivityBonusCard — TD1 burn-breakdown card (Sloe re-skin)", ()
 });
 
 describe("TodayActivityBonusCard — TD1 7-day rolling", () => {
-  it("renders the rolling header + the three derived lines", () => {
+  it("renders energy balance, burn breakdown, and weekly rollup as separate flat cards", () => {
+    const { getByTestId } = render(
+      <TodayActivityBonusCard
+        {...bonusProps({ basalBurnKcal: 1355, activityBurnKcal: 252 })}
+      />,
+    );
+    expect(getByTestId("today-energy-balance-card")).toBeTruthy();
+    expect(getByTestId("today-burn-breakdown-card")).toBeTruthy();
+  });
+
+  it("renders the rolling header + the three derived lines inside its own flat card", () => {
     // Two logged days with burn + food so the weekly section shows.
     const keys = ["2026-06-01", "2026-06-02"];
-    const { getByText } = render(
+    const { getByText, getByTestId } = render(
       <TodayActivityBonusCard
         {...bonusProps({
           trackerWeekSummaryKeys: keys,
@@ -328,6 +338,7 @@ describe("TodayActivityBonusCard — TD1 7-day rolling", () => {
     expect(getByText(/Avg daily (deficit|surplus)/)).toBeTruthy();
     expect(getByText(/Weekly (deficit|surplus)/)).toBeTruthy();
     expect(getByText(/Projected weekly (loss|gain)/)).toBeTruthy();
+    expect(getByTestId("today-weekly-rolling-card")).toBeTruthy();
   });
 
   it("renders the 7-DAY ROLLING overline in UPPERCASE (Figma TD1; Type.label)", () => {

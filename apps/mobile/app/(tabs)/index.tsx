@@ -221,6 +221,7 @@ import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { WeeklyInsightCard } from "@/components/today/WeeklyInsightCard";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
+import { TodayScrollSectionHeader } from "@/components/today/TodayScrollSectionHeader";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
 // Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
 // rebuild of #26). MacroFactor-style soft prompt that surfaces the
@@ -5313,49 +5314,47 @@ export default function TrackerScreen() {
           />
         )}
 
-        {/* Steps, active energy — per selected day (historic via header / DayStrip).
-            Water + stimulants live in the `HydrationStimulantsCard` at the
-            bottom of Today (post-TestFlight build 7 feedback, 2026-04-18).
-            Audit M4 (2026-04-18): gated until Apple Health / Google Fit has
-            synced at least once (steps map OR activity burn map non-empty).
-            First-run fallback is a small "Connect health" link that opens
-            the existing Health Sync screen. */}
-        {viewMode === "day" && showStepsCard && (
-          <TodayActivityCard
-            dayLabel={isToday ? "Today" : formatDateLabel(selectedDate)}
-            stepsCount={stepsCount}
-            dailyStepsGoal={dailyStepsGoal}
-            activityBurnKcal={activityBurnKcal}
-            onShowProvenance={() => {
-              // Pattern #9: load the last-sync timestamp lazily on
-              // first open so the AsyncStorage read doesn't run on
-              // every Today render.
-              void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
-              setProvenanceContext("activity");
-            }}
-            styles={styles}
-            textColor={colors.text}
-            textSecondaryColor={colors.textSecondary}
-            textTertiaryColor={colors.textTertiary}
-            borderColor={colors.border}
-          />
-        )}
-        {viewMode === "day" && !showStepsCard && (
-          <Pressable
-            onPress={() => router.push("/health-sync" as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Connect health"
-            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
+        {/* Figma TD1 — Activity & energy: plum section header + flat sibling cards. */}
+        {viewMode === "day" && (
+          <View
+            testID="today-activity-section"
+            style={{ marginTop: Spacing.xl, gap: Layout.todaySectionCardGap }}
           >
-            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
-              Connect health
-            </Text>
-          </Pressable>
-        )}
-
-        {/* Activity Bonus — show on Today even before Health fills burn maps, so prefs are discoverable */}
-        {viewMode === "day" && userId && (hasBurnData || isToday) && (
-          <TodayActivityBonusCard
+            <TodayScrollSectionHeader
+              title="Activity & energy"
+              subtitle={todayLongDateSubline(selectedDate)}
+              testID="today-activity-section-header"
+            />
+            {showStepsCard ? (
+              <TodayActivityCard
+                dayLabel={isToday ? "Today" : formatDateLabel(selectedDate)}
+                stepsCount={stepsCount}
+                dailyStepsGoal={dailyStepsGoal}
+                activityBurnKcal={activityBurnKcal}
+                onShowProvenance={() => {
+                  void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
+                  setProvenanceContext("activity");
+                }}
+                styles={styles}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                borderColor={colors.border}
+              />
+            ) : (
+              <Pressable
+                onPress={() => router.push("/health-sync" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Connect health"
+                style={{ paddingVertical: 4 }}
+              >
+                <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                  Connect health
+                </Text>
+              </Pressable>
+            )}
+            {userId && (hasBurnData || isToday) ? (
+              <TodayActivityBonusCard
             isToday={isToday}
             hasBurnData={hasBurnData}
             totalBurnKcal={totalBurnKcal}
@@ -5401,19 +5400,24 @@ export default function TrackerScreen() {
             borderColor={colors.border}
             cardColor={colors.card}
             cardBorderColor={colors.cardBorder}
-          />
+              />
+            ) : null}
+          </View>
         )}
 
-        {/* Batch 2.5 — hydration & stimulants (water + caffeine + alcohol).
-            Position (2026-04-18, post-TestFlight build 7 feedback): sits at
-            the bottom of Today — primary water quick-add lives in the macro
-            tile row up top; this card is detail + caffeine/alcohol quick-add.
-            Gating: visible once water target > 0 OR any water/caffeine/
-            alcohol logged. Caffeine + alcohol rows additionally self-hide
-            when their individual target is 0. First-run fallback is a tiny
-            "Track hydration?" link. */}
-        {viewMode === "day" && showHydrationCard && (
-          <HydrationStimulantsCard
+        {/* Figma TD2 — Hydration & stimulants: section header + sibling flat cards. */}
+        {viewMode === "day" && (
+          <View
+            testID="today-hydration-section"
+            style={{ marginTop: Spacing.xl, gap: Layout.todaySectionCardGap }}
+          >
+            <TodayScrollSectionHeader
+              title="Hydration & stimulants"
+              subtitle={todayLongDateSubline(selectedDate)}
+              testID="today-hydration-section-header"
+            />
+            {showHydrationCard ? (
+              <HydrationStimulantsCard
             selectedDateKey={dayKey}
             weekStartDay={weekStartDay}
             targets={{
@@ -5437,19 +5441,20 @@ export default function TrackerScreen() {
             onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}
             onAddAlcohol={(g, preset) => void addAlcoholG(g, preset ?? null)}
             onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
-          />
-        )}
-        {viewMode === "day" && !showHydrationCard && (
-          <Pressable
-            onPress={() => setHydrationManualExpanded(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Track hydration"
-            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
-          >
-            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
-              Track hydration?
-            </Text>
-          </Pressable>
+              />
+            ) : (
+              <Pressable
+                onPress={() => setHydrationManualExpanded(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Track hydration"
+                style={{ paddingVertical: 4 }}
+              >
+                <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                  Track hydration?
+                </Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {/* Complete Day button — only when viewing today and there are logged meals */}
