@@ -1,40 +1,95 @@
 import { writeScreen, ico, backHeader } from './_gen.mjs';
 
-function weekBars(heights, colorCls) {
-  const days = ['M','T','W','T','F','S','S'];
-  return `<div class="flex items-end gap-1">${heights.map((h,i)=>`<div class="flex-1 flex flex-col items-center gap-2"><div class="w-full flex items-end justify-center" style="height:120px"><div class="w-7 rounded-md ${i===heights.length-1?colorCls:colorCls+'/35'}" style="height:${Math.round(h*120)}px"></div></div><span class="font-label text-[10px] text-ink-faint">${days[i]}</span></div>`).join('')}</div>`;
+/* ============================================================
+   ACTIVITY SUMMARY (the burn-detail screen).
+   Best-in-class refs: Apple Fitness (hero + icon'd stat rows),
+   Fitbit (calm coaching), MacroFactor (clean equation summary).
+   Two variants written:
+     burn-detail.html        — burn ≤ maintenance, "No bonus earned"
+     burn-detail-bonus.html  — burn > maintenance, "+N kcal bonus"
+   Sloe locked Today card treatment: flat #F6F5F2 slabs, radius 24,
+   NO border, NO shadow. Hairline = #E8E2EC. Burn/active = honey.
+   ============================================================ */
+
+/* HERO — final burn as a large serif number with a flame glyph + caption,
+   over a calm honey-tinted slab with a slim baseline progress feel. */
+function burnHero(burn, caption){
+  return `<section class="bg-surface-card rounded-[24px] px-6 pt-7 pb-6 text-center">
+    <span class="inline-flex w-11 h-11 rounded-full bg-honey/15 items-center justify-center mb-3" style="color:#D6A24A">${ico('flame','text-[22px]')}</span>
+    <div class="flex items-baseline justify-center gap-2 leading-none">
+      <span class="font-headline text-[64px] leading-none text-ink tabular-nums">${burn.toLocaleString()}</span>
+    </div>
+    <p class="font-body text-[13px] text-ink-soft mt-2.5">kcal burned · ${caption}</p>
+  </section>`;
 }
 
-/* ---------------- BURN DETAIL ---------------- */
-function burnRow(icon, iconCls, title, sub, val){
-  return `<div class="flex items-center gap-3 py-3.5 border-b border-line last:border-0">
-    <span class="w-10 h-10 rounded-full ${iconCls.bg} flex items-center justify-center ${iconCls.fg}">${ico(icon,'text-[18px]')}</span>
-    <div class="flex-1"><p class="font-headline text-[15px] text-ink leading-tight">${title}</p><p class="font-body text-xs text-ink-faint">${sub}</p></div>
-    <span class="font-body text-sm font-semibold text-ink">${val}</span>
+/* ICON'D STAT ROW — leading tinted circle + label + grey descriptor + right value.
+   opts.bar = optional {pct, goal, color} thin progress under the row. */
+function statRow(icon, color, tint, title, sub, val, opts={}){
+  const bar = opts.bar
+    ? `<div class="mt-3 ml-[52px]"><div class="h-1.5 w-full bg-line rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${opts.bar.pct}%;background:${opts.bar.color}"></div></div></div>`
+    : '';
+  return `<div class="py-4 border-b border-line last:border-0">
+    <div class="flex items-center gap-3">
+      <span class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:${tint};color:${color}">${ico(icon,'text-[18px]')}</span>
+      <div class="flex-1 min-w-0"><p class="font-body text-[15px] font-medium text-ink leading-tight">${title}</p>${sub?`<p class="font-body text-[12px] text-ink-faint mt-0.5">${sub}</p>`:''}</div>
+      <span class="font-headline text-xl text-ink tabular-nums shrink-0">${val}${opts.bar?.goal?`<span class="font-body text-[13px] text-ink-faint"> / ${opts.bar.goal}</span>`:''}</span>
+    </div>${bar}
   </div>`;
 }
-const burn = `
-${backHeader('Energy out', ico('ellipsis'))}
-<main class="px-5 pt-6 pb-10 max-w-2xl mx-auto space-y-8">
-  <section class="bg-surface-card border border-line rounded-2xl p-6 text-center">
-    <span class="inline-flex w-12 h-12 rounded-full bg-amber/15 items-center justify-center text-amber mb-3">${ico('flame','text-2xl')}</span>
-    <div class="flex items-baseline justify-center gap-2"><span class="font-headline text-5xl text-ink">2,250</span><span class="font-body text-lg text-ink-soft">kcal</span></div>
-    <p class="font-body text-sm text-ink-faint mt-1">burned today · feeds a 410 kcal deficit</p>
-  </section>
-  <section>
-    <h2 class="font-headline text-xl text-ink mb-1">Where it came from</h2>
-    <div>
-      ${burnRow('heart-pulse',{bg:'bg-clay/12',fg:'text-clay'},'Resting (BMR)','Your body at rest','1,520')}
-      ${burnRow('footprints',{bg:'bg-sage/15',fg:'text-sage'},'Steps &amp; movement','9,240 steps','410')}
-      ${burnRow('dumbbell',{bg:'bg-honey/18',fg:'text-honey'},'Strength workout','45 min · upper body','320')}
+
+function statList(rows){
+  return `<section class="mb-7">
+    <h2 class="font-label text-[10px] uppercase tracking-[0.12em] text-ink-faint font-semibold mb-2 px-1">Breakdown</h2>
+    <div class="bg-surface-card rounded-[24px] px-5">${rows}</div>
+  </section>`;
+}
+
+/* BONUS — MacroFactor-style equation summary. earned=false → calm muted
+   "No bonus earned"; earned=true → honey "+N kcal bonus". */
+function bonusEquation(burn, maint, earned){
+  const bonus = burn - maint;
+  const resultLabel = earned ? `+${bonus.toLocaleString()} kcal` : 'No bonus earned';
+  const resultColor = earned ? '#D6A24A' : '#9B93A3';
+  const resultSerif = earned ? 'text-[28px]' : 'text-xl';
+  return `<section class="mb-7">
+    <h2 class="font-label text-[10px] uppercase tracking-[0.12em] text-ink-faint font-semibold mb-2 px-1">Activity bonus</h2>
+    <div class="bg-surface-card rounded-[24px] px-5 py-5">
+      <div class="flex items-center justify-between py-1.5">
+        <span class="font-body text-[14px] text-ink-soft">Final burn</span>
+        <span class="font-headline text-lg text-ink tabular-nums">${burn.toLocaleString()}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5">
+        <span class="font-body text-[14px] text-ink-soft">Maintenance estimate</span>
+        <span class="font-headline text-lg text-ink tabular-nums">− ${maint.toLocaleString()}</span>
+      </div>
+      <div class="flex items-center justify-between border-t border-line mt-2.5 pt-3.5">
+        <span class="font-body text-[15px] font-semibold text-ink">${earned?'Bonus earned':'Bonus'}</span>
+        <span class="font-headline ${resultSerif} tabular-nums leading-none" style="color:${resultColor}">${resultLabel}</span>
+      </div>
     </div>
-  </section>
-  <section>
-    <div class="flex items-baseline justify-between mb-4"><h2 class="font-headline text-xl text-ink">This week</h2><span class="font-body text-[13px] text-ink-faint">avg 2,180 kcal</span></div>
-    ${weekBars([0.78,0.82,0.74,0.9,0.8,0.95,0.88],'bg-amber')}
-  </section>
-  <p class="font-headline italic text-base text-ink text-center px-6">"Move a little, eat what you love — the deficit takes care of itself."</p>
-</main>`;
+    <p class="font-body text-[12px] text-ink-faint leading-relaxed mt-3 px-1">Burn above your maintenance estimate adds to your daily food budget.</p>
+  </section>`;
+}
+
+function activitySummary({burn, maint, active, resting, steps, earned}){
+  const caption = 'Yesterday';
+  return `<div id="cap" class="mx-auto bg-surface" style="width:500px;position:relative">
+${backHeader('Activity Summary', ico('ellipsis'))}
+<main class="px-5 pt-5 pb-12">
+  <div class="mb-7">${burnHero(burn, caption)}</div>
+  ${statList(`
+    ${statRow('flame','#D6A24A','rgba(214,162,74,0.14)','Active energy','Exercise, walking, movement above resting', active.toLocaleString())}
+    ${statRow('moon','#6A6072','rgba(106,96,114,0.10)','Resting energy','Energy your body uses while minimally active', resting.toLocaleString())}
+    ${statRow('footprints','#6A6072','rgba(106,96,114,0.10)','Steps','Daily movement goal', steps.toLocaleString(), {bar:{pct:Math.min(100,Math.round(steps/10000*100)),goal:'10,000',color:'#3B2A4D'}})}
+  `)}
+  ${bonusEquation(burn, maint, earned)}
+</main>
+</div>`;
+}
+
+const burn = activitySummary({ burn:492, maint:1289, active:11, resting:481, steps:538, earned:false });
+const burnBonus = activitySummary({ burn:1437, maint:1289, active:159, resting:481, steps:9240, earned:true });
 
 /* ---------------- MEAL NUTRITION ---------------- */
 function nutri(label, val, indent){
@@ -115,6 +170,7 @@ ${backHeader('Weight', ico('plus','text-2xl'))}
   </section>
 </main>`;
 
-console.log(writeScreen('burn-detail.html','Sloe · Energy out', burn));
+console.log(writeScreen('burn-detail.html','Sloe · Activity Summary', burn));
+console.log(writeScreen('burn-detail-bonus.html','Sloe · Activity Summary (bonus)', burnBonus));
 console.log(writeScreen('meal-nutrition.html','Sloe · Meal nutrition', meal));
 console.log(writeScreen('progress-metric.html','Sloe · Weight', metric));
