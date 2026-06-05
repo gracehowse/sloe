@@ -32,7 +32,7 @@ export function TodayStepsCard({
   activityBurnKcal,
 }: TodayStepsCardProps) {
   return (
-    <div className="rounded-card bg-card border border-border p-3 mb-4 card-elevated">
+    <div className="rounded-card bg-card card-slab-flat p-3 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <IconBox size="sm" tone="primary">
           <Icons.activity />

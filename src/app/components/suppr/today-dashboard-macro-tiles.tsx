@@ -260,7 +260,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-[14px] bg-card border border-border p-3 flex flex-col"
+            className="rounded-card bg-card card-slab-flat p-3 flex flex-col"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -356,7 +356,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
           {nutrientRows.map((row) => (
             <div
               key={row.key}
-              className="rounded-xl border border-border bg-card px-3 py-2.5"
+              className="rounded-card border border-border bg-card px-3 py-2.5"
             >
               <p className="text-[10px] text-muted-foreground">{row.label}</p>
               <p className="text-sm font-semibold tabular-nums text-foreground">

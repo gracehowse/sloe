@@ -102,20 +102,23 @@ over relocation"); the 400-line decomposition remains future work (ENG-621).
   rounded pill, logged days carry a sage dot, today (unselected) a faint clay
   dot. All paging/tap/calendar/jump-to-today/freeze-glyph/out-of-range
   navigation preserved untouched.
-- **Calorie ring (`CalorieRing`):** the over-budget treatment moved from
-  "whole ring turns destructive-red + diagonal HASH" → the Sloe rule: the
-  ring **stays plum** (dark lift #815E91) and a clean **red overage ARC**
-  (`overBudgetFg`, capped at half a lap) draws on top. `overHash` pattern
-  deleted. Centre numeral → Newsreader (`Type.ringValue`). Inner
-  protein/carbs/fat arcs unchanged (sage/clay/amber). Empty state, bonus
-  arc, animations, haptics, PostHog masking, long-press all preserved.
-- **Hero card chrome (`TodayHeroRing`):** added the Sloe **status chip**
-  (Fresh start / On track / {n} over — calm copy, NOT the forbidden
-  "under/over budget") + the **Remaining/Consumed toggle** (visible
-  counterpart to the ring long-press; both fire `onToggleDisplayMode`).
-  Restyled the Goal/Eaten/Bonus stats row to the Sloe `divide-x` 3-col
-  layout with Newsreader values; the 3rd cell flips to a red "Over −{n}"
-  when over budget.
+- **Calorie ring (`CalorieRing`):** over-budget treatment is **plum base lap +
+  lighter plum second lap** (Apple-Watch style; no red arc, no hash). Centre
+  numeral → Newsreader (`Type.ringValue` 48px). Inner protein/carbs/fat arcs
+  unchanged (sage/clay/amber). See `calorieRingOverageArc.test.tsx` and
+  `docs/decisions/2026-06-04-today-status-chip-budget-labels.md` (chip only
+  uses "budget" wording).
+- **Hero card chrome (`TodayHeroRing`):** Sloe **status chip** via
+  `todayStatusChip`: **Fresh start** / **Under budget** / **Over budget**
+  (Figma `01 · Today`; chip-only exception to forbidden bigrams) +
+  **Remaining/Consumed toggle** (visible counterpart to ring long-press).
+  Restyled Goal/Eaten/Bonus `divide-x` row with Newsreader values.
+- **Week strip:** **minimal** current day (clay numeral + dot, no filled pill)
+  per `docs/decisions/2026-06-03-today-week-strip-minimal-current-day.md` —
+  Figma `308:2` / Stitch `today.html` may still show the old pill until synced.
+- **Greeting:** centred Newsreader headline + long **en-GB** date subline;
+  today → `todayGreeting` (Morning/Afternoon/Evening + name); past days →
+  date-forward headline (`todayPastDayGreeting`).
 - **Macro tiles (`TodayDashboardMacroTiles`):** value numeral → Newsreader
   with a smaller inline unit (matches the frame). Tiles already carried the
   Sloe palette + progress bars. **Default macro display flipped `bars` →
@@ -125,11 +128,9 @@ over relocation"); the 400-line decomposition remains future work (ENG-621).
   `false → true` so the multi-ring shows the macro arcs on load (the Sloe
   hero IS a multi-ring). Long-press still collapses to calories-only.
 
-**Calm-tone carve-out (noted):** the Sloe HTML mock's chip read "Under
-budget" / "{n} over" — but "under/over budget" are `FORBIDDEN_TODAY_PHRASES`
-(`tests/unit/todayCopyParity.test.ts`, UCL/ED-cohort harm rationale). Shipped
-the calm equivalents instead (Fresh start / On track / {n} over). Minimal
-faithful choice; documented in `todayStatusChip()`.
+**North star (2026-06-04):** shows on today when `remaining > 0` (empty or
+partial meals); hides only when no calories left — not gated on
+`mealsToday.length === 0`. Photo-hero §3.5 in `today.md` still deferred.
 
 **Frozen contracts — all preserved (verified, not touched):** the
 WidgetSnapshot effect, `refreshAdaptiveTdeeForUser`, `profiles` writes,
@@ -142,7 +143,7 @@ default values + one import were added).
 **Validation:** iOS sim (iPhone 17, iOS 26.5) before/after captured live —
 `/tmp/today-hero-before.png` (empty), `/tmp/today-hero-after.png` (empty,
 re-skinned), `/tmp/today-hero-after-populated.png` (multi-ring, logged). The
-over-budget ring (plum + red arc, no hash) is validated via
+over-budget ring (plum second lap) is validated via
 `apps/mobile/tests/unit/calorieRingOverageArc.test.tsx` + the `today-over.html`
 reference (not a live capture — avoided logging ~900 extra kcal to Grace's
 account). Mobile typecheck + web typecheck clean; full mobile vitest green

@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 
 /**
  * TodayQuickLogStrip — 4 chips: Search / Voice / Snap / Scan.
@@ -98,7 +99,7 @@ export function TodayQuickLogStrip({
             gap: Spacing.xs,
             paddingVertical: Spacing.sm,
             paddingHorizontal: Spacing.xs,
-            borderRadius: Radius.md,
+            borderRadius: CARD_RADIUS,
             backgroundColor: cardColor,
           }}
         >

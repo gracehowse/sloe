@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe("SupprCard", () => {
-  it("renders children with default neutral tone + card elevation", () => {
+  it("renders children with default neutral tone + soft card elevation", () => {
     render(
       <SupprCard data-testid="card">
         <span>hello</span>
@@ -60,7 +60,13 @@ describe("SupprCard", () => {
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-tone", "neutral");
     expect(card).toHaveAttribute("data-elevation", "card");
-    expect(card.style.boxShadow).toContain("var(--elev-card)");
+    // Un-gated soft lift (ENG-795): the resting `card` tier paints its shadow
+    // via the `.card-slab` class (→ box-shadow var(--elev-card-soft)), NOT an
+    // inline var(--elev-card). So there is no inline boxShadow, and the soft
+    // marker + slab class are present. Mirrors mobile's un-gated default.
+    expect(card.getAttribute("data-soft-elevation")).toBe("true");
+    expect(card.className.split(/\s+/)).toContain("card-slab");
+    expect(card.style.boxShadow).toBe("");
   });
 
   it("applies the gradient bg only for tone=primary + gradient=true", () => {
@@ -87,10 +93,10 @@ describe("SupprCard", () => {
     expect(screen.getByTestId("flat").style.boxShadow).toBe("");
   });
 
-  it("uses --radius-card by default (lg)", () => {
+  it("uses --radius-card-lg (24px, the Sloe warm-slab corner) by default (lg)", () => {
     render(<SupprCard data-testid="card" />);
     expect(screen.getByTestId("card").className).toMatch(
-      /rounded-\[var\(--radius-card\)\]/,
+      /rounded-\[var\(--radius-card-lg\)\]/,
     );
   });
 

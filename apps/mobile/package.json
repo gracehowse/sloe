@@ -16,6 +16,7 @@
     "ios:usb-devices": "bash ./scripts/ios-usb-devices.sh",
     "ios:device:tunnel": "bash ./scripts/ios-device-with-tunnel.sh",
     "ios:device:tunnel:pinned": "bash ./scripts/ios-device-with-tunnel.sh 00008150-000A7DC11141401C",
+    "sync-ios-brand": "node ./scripts/sync-ios-brand-assets.mjs",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
     "prebuild:ios:personal": "EXPO_IOS_PERSONAL_TEAM=1 expo prebuild --clean --platform ios",

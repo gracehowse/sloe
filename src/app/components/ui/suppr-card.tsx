@@ -11,18 +11,13 @@
  * shadows. (Design Direction 2026, 2026-06-01.)
  *
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
- * same variants, same flag-gated elevation behaviour).
+ * same variants, same UN-GATED soft-lift behaviour as mobile).
  *
  * ── Elevation model (Design Direction 2026) ──
- * The card's resting tier (`elevation="card"`, the default) is the one
- * blessed elevation. When `design_system_elevation` is ON it adopts the
- * soft ambient shadow (`--elev-card-soft`, light = `0 4px 12px
- * rgba(28,25,22,.07)`) and DROPS its hairline border — one edge, no double
- * line — matching the mobile `useCardElevation` treatment and the
- * Settings/RecipeDetail/dialogs sweep already in flight. When the flag is
- * OFF the resting card keeps its exact prior flat `--elev-card` + hairline
- * border treatment, byte-for-byte. `sheet` / `float` / `none` tiers are
- * unaffected by the flag (overlays keep their heavier shadow).
+ * Resting tier (`elevation="card"`, default) uses `.card-slab`: soft shadow
+ * in light, no hairline; dark uses tonal lift + hairline (no shadow).
+ * Matches `apps/mobile/hooks/useCardElevation.ts`. `sheet` / `float` /
+ * `none` tiers keep their prior shadow tokens.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
@@ -32,12 +27,12 @@
  *  - `padding`: token key — `sm` (8px) / `md` (12px) / `lg` (16px) /
  *                `xl` (20px) / `none`. Default `md`.
  *  - `radius`: token key — `sm` / `md` / `lg` (default — matches
- *               `var(--radius-card)` 16px) / `xl`.
+ *               `var(--radius-card-lg)` 24px, the Sloe warm-slab corner;
+ *               mirrors mobile `CARD_RADIUS`/`TILE_RADIUS = 24`) / `xl`.
  */
 
 import * as React from "react";
 import { cn } from "./utils";
-import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 export type SupprCardTone =
   | "neutral"
@@ -46,7 +41,7 @@ export type SupprCardTone =
   | "warning"
   | "magenta";
 
-export type SupprCardElevation = "none" | "card" | "sheet" | "float";
+export type SupprCardElevation = "none" | "card" | "slab-flat" | "sheet" | "float";
 
 export type SupprCardPadding = "none" | "sm" | "md" | "lg" | "xl";
 
@@ -72,7 +67,7 @@ const paddingClasses: Record<SupprCardPadding, string> = {
 const radiusClasses: Record<SupprCardRadius, string> = {
   sm: "rounded-md",
   md: "rounded-lg",
-  lg: "rounded-[var(--radius-card)]", // 16px
+  lg: "rounded-[var(--radius-card-lg)]", // 24px — Sloe warm-slab corner (mirrors mobile CARD_RADIUS/TILE_RADIUS)
   xl: "rounded-2xl",
 };
 
@@ -146,19 +141,15 @@ export function SupprCard({
   children,
   ...props
 }: SupprCardProps) {
-  // Design Direction 2026 (ENG-795): soft ambient elevation on the resting
-  // `card` tier when `design_system_elevation` is ON. Mirrors the mobile
-  // SupprCard (`elevation === "card" && isFeatureEnabled(...)`). Flag OFF, or
-  // any non-`card` tier, keeps the exact prior flat treatment byte-for-byte.
-  const softElevation =
-    elevation === "card" && isFeatureEnabled("design_system_elevation");
+  const softSlab = elevation === "card";
+  const flatSlab = elevation === "slab-flat";
 
-  // Under soft elevation the hairline border is dropped (one edge, no double
-  // line) — so the tone style is recomputed with `border = false` to clear its
-  // `borderColor`, and the `border` utility class is omitted below.
-  const effectiveBorder = softElevation ? false : border;
+  // Light slab: shadow carries separation — no hairline. Dark slab: CSS
+  // `.card-slab` adds hairline + card-elevated fill; inline border off in light.
+  const effectiveBorder = softSlab || flatSlab ? false : border;
   const tStyle = toneStyle(tone, gradient, effectiveBorder);
-  const elev = softElevation ? "var(--elev-card-soft)" : elevationVar[elevation];
+  const elev =
+    softSlab || flatSlab ? undefined : elevationVar[elevation as Exclude<SupprCardElevation, "slab-flat">];
 
   const composedStyle: React.CSSProperties = {
     ...tStyle,
@@ -172,11 +163,14 @@ export function SupprCard({
       data-tone={tone}
       data-elevation={elevation}
       data-gradient={gradient ? "true" : undefined}
-      data-soft-elevation={softElevation ? "true" : undefined}
+      data-soft-elevation={softSlab ? "true" : undefined}
+      data-flat-slab={flatSlab ? "true" : undefined}
       className={cn(
         "block",
         radiusClasses[radius],
         paddingClasses[padding],
+        softSlab ? "card-slab" : "",
+        flatSlab ? "card-slab-flat" : "",
         effectiveBorder ? "border" : "",
         className,
       )}

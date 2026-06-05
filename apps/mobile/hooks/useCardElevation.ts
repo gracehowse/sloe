@@ -57,6 +57,13 @@ import { useTheme } from "@/context/theme";
  *   - `liftBg`      — the tonal-lift background to use (dark only), or
  *     `undefined` to keep the caller's existing background (light).
  */
+export type CardElevationVariant = "soft" | "flat";
+
+export interface UseCardElevationOptions {
+  /** `soft` (default) — soft lift off the page. `flat` — Figma Today slab. */
+  variant?: CardElevationVariant;
+}
+
 export interface CardElevation {
   /** Drop-shadow style to spread onto the (outer) card. `undefined` = none. */
   shadowStyle: ViewStyle | undefined;
@@ -66,10 +73,26 @@ export interface CardElevation {
   liftBg: string | undefined;
 }
 
-export function useCardElevation(): CardElevation {
+/** Figma `654:2` Today — `#F6F5F2` slab, no border, no resting shadow. */
+export function useTodayCardElevation(): CardElevation {
+  return useCardElevation({ variant: "flat" });
+}
+
+export function useCardElevation(
+  options?: UseCardElevationOptions,
+): CardElevation {
   const colors = useThemeColors();
   const { resolved } = useTheme();
   const isDark = resolved === "dark";
+  const variant = options?.variant ?? "soft";
+
+  if (variant === "flat") {
+    return {
+      shadowStyle: undefined,
+      useBorder: false,
+      liftBg: undefined,
+    };
+  }
 
   if (isDark) {
     // Dark soft-elevation — tonal lift + hairline, no shadow.

@@ -46,7 +46,7 @@ export function TodaySnapShortcut({
       data-testid={testID ?? "today-snap-shortcut"}
       aria-label={locked ? "Snap a meal (Pro)" : "Snap a meal"}
       className={[
-        "mb-3 w-full flex items-center gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left card-elevated",
+        "mb-3 w-full flex items-center gap-2 rounded-card bg-card card-slab-flat px-3 py-2.5 text-left",
         "hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         className ?? "",
       ]

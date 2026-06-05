@@ -273,8 +273,8 @@ export const Colors = {
     textTertiary: '#9B93A3',
     background: '#FFFFFF',          // white page (matches all Figma designs; oat removed 2026-06-03)
     backgroundSecondary: '#F6F5F2',
-    card: '#F6F5F2',                // Figma `card` var — grey card on white page (matches core screens)
-    cardElevated: '#F6F5F2',        // subtle warm lift
+    card: '#F6F5F2',                // Sloe surface-card — Figma `654:2` / stitch `surface.card`. Warm off-white slab on `#FFFFFF` (tonal separation only on flat Today; soft lift on other tabs).
+    cardElevated: '#F6F5F2',        // same fill in light; dark uses a stepped lift; soft shadow carries elevation on non-flat cards
     cardBorder: '#E8E2EC',          // hairline (Sloe line)
     border: '#E8E2EC',
     borderStrong: '#C9C2D6',
@@ -526,22 +526,32 @@ export const Elevation = {
   // `overflow: hidden` clips iOS shadows.
   //
   // Tuned to mirror web `--elev-card-soft` EXACTLY (src/styles/theme.css:
-  // `0 4px 14px rgba(34, 27, 38, 0.10)`): the aubergine Sloe ink (#221B26 ==
-  // rgba(34,27,38)) at 0.10 opacity, 14 radius, y+4 — a calm, premium plum-
+  // `0 6px 18px rgba(34, 27, 38, 0.16)`): the aubergine Sloe ink (#221B26 ==
+  // rgba(34,27,38)) at 0.16 opacity, 18 radius, y+6 — a calm, premium plum-
   // tinted lift, not a cheap/harsh Material drop shadow. Keeps web == mobile.
   //
-  // 2026-06-04 (Grace, "push it to 10%"): opacity bumped 0.07 → 0.10 so the
-  // `#F6F5F2` card separates more confidently from the `#FFFFFF` page on the
-  // sim — the 7% lift read too faint at device scale. Radius widened 12 → 14
-  // alongside (a softer, slightly more premium penumbra at the higher opacity;
-  // the y-offset stays +4). Both levers move in lockstep with web. The flat
-  // `card` above stays as the explicit flat fallback for any direct consumer.
+  // 2026-06-04 (Grace, "push it to 10%"): opacity bumped 0.07 → 0.10, radius
+  // 12 → 14, y stayed +4.
+  // 2026-06-04 (Grace, "cards still blend on-device — sim looks so different to
+  // Figma"): edge-pixel sampling of the sim PROVED the shadow was rendering
+  // (penumbra just below a card dipped #F6F5F2→#EEEEEE, ~17 lum under the white
+  // page) but far too weak to lift the card — the trap is that the #F6F5F2 fill
+  // sits only ~10 lum below the #FFFFFF page, so the shadow has to do ALL the
+  // separation, and a 10% / 14px halo was lighter than the card itself at its
+  // outer reach. Strengthened the lift to 0.16 / 18px / y+6: a confident,
+  // still-soft plum penumbra (NOT a hard Material drop shadow — radius stays
+  // wide and the colour stays the Sloe ink, so it reads as ambient lift). The
+  // wider radius keeps the penumbra gradient long (premium), the higher opacity
+  // makes the slab unmistakably raised on-device. Re-verified by re-sampling
+  // the edge pixels after the bump (see cardElevationSoftLiftDefault.test.tsx +
+  // the agent capture). Both levers move in lockstep with web. The flat `card`
+  // above stays as the explicit flat fallback for any direct consumer.
   cardSoft: {
     shadowColor: '#221B26',
-    shadowOpacity: 0.10,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   sheet: {
     shadowColor: '#000',

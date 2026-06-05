@@ -110,7 +110,7 @@ export function TodayWeekSidebar({
   return (
     <aside
       className={cn(
-        "rounded-card border border-border bg-card p-3 card-elevated",
+        "rounded-card bg-card card-slab-flat p-3",
         className,
       )}
       aria-label="Last 7 days"

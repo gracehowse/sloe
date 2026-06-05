@@ -98,7 +98,7 @@ export function TodayDesktopRightRail({
       {/* Streak card — the warm anchor of the rail. Card-elevated-hero
           carries a softer drop so it reads as the primary surface of
           the rail (over the two cards below it). */}
-      <div className="rounded-2xl bg-card border border-border p-5 card-elevated-hero">
+      <div className="rounded-card bg-card card-slab-flat p-5">
         <div className="flex items-center gap-3">
           <div
             className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
@@ -129,7 +129,7 @@ export function TodayDesktopRightRail({
       </div>
 
       {/* Week at a glance card */}
-      <div className="rounded-2xl bg-card border border-border p-5 card-elevated">
+      <div className="rounded-card bg-card card-slab-flat p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             This week
@@ -188,7 +188,7 @@ export function TodayDesktopRightRail({
       </div>
 
       {/* Last 7 days detail */}
-      <div className="rounded-2xl bg-card border border-border p-4 card-elevated">
+      <div className="rounded-card bg-card card-slab-flat p-4">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5 px-1">
           Daily breakdown
         </h2>

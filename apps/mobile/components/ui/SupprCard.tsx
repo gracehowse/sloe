@@ -24,12 +24,12 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  *
  * ── The Sloe card shell (the look this encapsulates) ──
  *   - fill `colors.card` (#F6F5F2 light) — the warm-grey card on the white page
- *   - `borderRadius: 20` (the Sloe rounded-card radius; `size="tile"` = 16)
- *   - a SOFT DROP SHADOW on an OUTER wrapper + the corner-clip on an INNER
- *     view. iOS clips shadows under `overflow: 'hidden'`, so the shadow MUST
- *     live on a wrapper separate from the clip — doing it here once means no
- *     per-card surface can ever re-introduce that clip bug (it used to be
- *     hand-rolled, and drifted, in ~6 places).
+ *   - `borderRadius: 24` (the Sloe rounded-card radius; `size="tile"` = 24 too —
+ *     the Figma chosen Today rounds cards AND tiles to 24, borderless warm slabs)
+ *   - a SOFT DROP SHADOW on an OUTER wrapper (default `lift="soft"`) + the
+ *     corner-clip on an INNER view. Today uses `lift="flat"` (Figma `654:2` —
+ *     tonal slab only). iOS clips shadows under `overflow: 'hidden'`, so the
+ *     shadow MUST live on a wrapper separate from the clip.
  *   - dark mode: no shadow (RN renders dark shadows poorly) — a tonal lift
  *     (`cardElevated`) + a hairline border carry the separation instead.
  *
@@ -41,9 +41,9 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
  *  - `size`:
- *      - `card` (default — radius 20, soft lift, the top-level resting card)
- *      - `tile` (radius 16, padding `md`, for the 2×2 macro tiles)
- *      - `inset` (radius 16, hairline border, NO drop shadow — a sub-panel
+ *      - `card` (default — radius 24, soft lift, the top-level resting card)
+ *      - `tile` (radius 24, padding `md`, for the 2×2 macro tiles)
+ *      - `inset` (radius 24, hairline border, NO drop shadow — a sub-panel
  *        nested ON a card, e.g. the burn-breakdown + 7-day-rolling panels
  *        inside the energy-balance card; a card-on-card must not double-shadow)
  *  - `gradient`: bool — north-star tinted surface when `tone='primary'`
@@ -67,6 +67,9 @@ export type SupprCardTone =
 
 export type SupprCardSize = "card" | "tile" | "inset";
 
+/** Resting-card lift. `soft` = default app chrome; `flat` = Figma Today slab. */
+export type SupprCardLift = "soft" | "flat";
+
 export type SupprCardPadding = "none" | "sm" | "md" | "lg" | "xl";
 
 export type SupprCardRadius = "sm" | "md" | "lg" | "xl";
@@ -74,11 +77,13 @@ export type SupprCardRadius = "sm" | "md" | "lg" | "xl";
 export interface SupprCardProps {
   tone?: SupprCardTone;
   size?: SupprCardSize;
+  /** Resting lift. Today uses `flat` per Figma `654:2`; other tabs default `soft`. */
+  lift?: SupprCardLift;
   gradient?: boolean;
   border?: boolean;
   padding?: SupprCardPadding;
   /** Override the size's default radius. Omit to use the size default
-   *  (`card` → 20, `tile` → 16). */
+   *  (`card`, `tile` and `inset` all → 24). */
   radius?: SupprCardRadius;
   /** Applied to the OUTER node (where tests + Maestro expect the testID). */
   testID?: string;
@@ -108,14 +113,16 @@ const radiusValues: Record<SupprCardRadius, number> = {
 
 /** The Sloe card radius (rounded-xl in the prototype, scaled to mobile). Not a
  *  `Radius` token — the token ladder tops out at `xl: 12` (pre-Sloe, tuned for
- *  Linear/Stripe density). The Sloe Figma cards round to 20; tiles to 16.
- *  Centralised here so every card shares the exact corner. */
-export const CARD_RADIUS = 20;
-export const TILE_RADIUS = 16;
+ *  Linear/Stripe density). The Sloe Figma chosen Today rounds cards AND tiles to
+ *  24 (borderless warm slabs — Grace, 2026-06-04). Centralised here so every
+ *  card shares the exact corner. */
+export const CARD_RADIUS = 24;
+export const TILE_RADIUS = 24;
 
 export function SupprCard({
   tone = "neutral",
   size = "card",
+  lift = "soft",
   gradient = false,
   border = true,
   padding,
@@ -127,7 +134,7 @@ export function SupprCard({
   children,
 }: SupprCardProps) {
   const colors = useThemeColors();
-  const elevation = useCardElevation();
+  const elevation = useCardElevation({ variant: lift });
 
   const isInset = size === "inset";
   const cornerRadius =
@@ -135,7 +142,7 @@ export function SupprCard({
       ? radiusValues[radius]
       : size === "card"
         ? CARD_RADIUS
-        : TILE_RADIUS; // tile + inset both round to 16
+        : TILE_RADIUS; // tile + inset both round to 24 (same as the card)
   // Tiles + insets default to a tighter padding; cards to the airy `lg`.
   const pad = paddingValues[padding ?? (size === "card" ? "lg" : "md")];
 

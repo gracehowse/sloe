@@ -85,19 +85,23 @@ describe("useCardElevation — soft lift is the default", () => {
   });
 });
 
-describe("Elevation.cardSoft — the 10% soft lift, web ↔ mobile", () => {
-  it("is bumped to 10% opacity (Grace 'push it to 10%', 2026-06-04)", () => {
-    // The lever the founder asked for: opacity 0.07 → 0.10 so the #F6F5F2 card
-    // separates more confidently from the #FFFFFF page. Pinned EXACTLY at 0.10
-    // (not a band) — the value is the point of this change.
-    expect(Elevation.cardSoft.shadowOpacity).toBe(0.1);
+describe("Elevation.cardSoft — the 16% soft lift, web ↔ mobile", () => {
+  it("is bumped to 16% opacity (Grace 'cards still blend on-device', 2026-06-04)", () => {
+    // The lever the founder asked for, twice: opacity 0.07 → 0.10 → 0.16. The
+    // second bump is because edge-pixel sampling on the sim PROVED the shadow
+    // was rendering but too weak — the #F6F5F2 fill sits only ~10 lum below the
+    // #FFFFFF page, so the shadow must do all the lifting, and 10% read flat.
+    // Pinned EXACTLY at 0.16 (not a band) — the value is the point of the change.
+    expect(Elevation.cardSoft.shadowOpacity).toBe(0.16);
   });
 
-  it("sits in the premium band (radius soft, y-offset small)", () => {
+  it("sits in the premium band (radius soft + wide, y-offset small)", () => {
     // Premium band (Grace red-lines a Material drop shadow as cheap): the radius
-    // widened 12 → 14 alongside the opacity bump; the y-offset stays +4.
-    expect(Elevation.cardSoft.shadowRadius).toBe(14);
-    expect(Elevation.cardSoft.shadowOffset.height).toBe(4);
+    // widened 12 → 14 → 18 and the y-offset 4 → 6 alongside the opacity bumps.
+    // The wide radius keeps the penumbra long/ambient so the stronger shadow
+    // still reads soft, not as a hard floating-card drop shadow.
+    expect(Elevation.cardSoft.shadowRadius).toBe(18);
+    expect(Elevation.cardSoft.shadowOffset.height).toBe(6);
   });
 
   it("is plum/aubergine-tinted (the Sloe ink), matching the web token exactly", () => {
@@ -106,7 +110,7 @@ describe("Elevation.cardSoft — the 10% soft lift, web ↔ mobile", () => {
     expect(Elevation.cardSoft.shadowColor.toLowerCase()).toBe("#221b26");
   });
 
-  it("matches the web --elev-card-soft token EXACTLY (10% / 14px / y+4 / Sloe ink)", () => {
+  it("matches the web --elev-card-soft token EXACTLY (16% / 18px / y+6 / Sloe ink)", () => {
     // The web token must carry the same three levers, so web == mobile cards.
     // Source-read the light :root token straight from theme.css.
     const themeCss = readFileSync(
@@ -117,8 +121,8 @@ describe("Elevation.cardSoft — the 10% soft lift, web ↔ mobile", () => {
     const m = root.match(/--elev-card-soft:\s*([^;]+);/);
     expect(m, "--elev-card-soft in :root").not.toBeNull();
     const webToken = m![1].trim().toLowerCase().replace(/\s+/g, " ");
-    // 0 4px 14px rgba(34, 27, 38, 0.10) — y+4, radius 14, Sloe ink at 10%.
-    expect(webToken).toBe("0 4px 14px rgba(34, 27, 38, 0.10)");
+    // 0 6px 18px rgba(34, 27, 38, 0.16) — y+6, radius 18, Sloe ink at 16%.
+    expect(webToken).toBe("0 6px 18px rgba(34, 27, 38, 0.16)");
   });
 
   it("the flat `card` token stays flat — it is no longer the hook default", () => {

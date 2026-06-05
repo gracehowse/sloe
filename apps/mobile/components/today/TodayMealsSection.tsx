@@ -656,11 +656,11 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           wrapper card above the slot cards so a future "logging section" can
           still surface them. */}
       {(showQuickAdd || (mealsTodayCount > 0 && showDuplicateDayInline)) && (
-        // Card chrome is the shared <SupprCard> shell (fill, radius, soft lift on
+        // Card chrome is the shared <SupprCard lift="flat"> shell (fill, radius, soft lift on
         // an outer wrapper, corner-clip — the iOS clip fix lives in the shell, so
         // this wrapper can never re-introduce it). Gated OFF on Today's main
         // scroll today (props kept wired for a future "logging section").
-        <SupprCard padding="none" style={{ marginBottom: Spacing.sm }}>
+        <SupprCard lift="flat" padding="none" style={{ marginBottom: Spacing.sm }}>
           {showQuickAdd && (
             <View
               style={{
@@ -767,7 +767,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               style={{
                 // TD4 — each slot is its own card. The card CHROME (warm-grey
                 // fill, radius 20, soft lift on an outer wrapper, corner-clip,
-                // hairline) is the shared <SupprCard> shell below — no more
+                // hairline) is the shared <SupprCard lift="flat"> shell below — no more
                 // hand-rolled per-slot chrome (Grace 2026-06-04). This animated
                 // wrapper only carries the entering animation, the bottom gap,
                 // and the empty-slot dim (logged slots read as the live ones).
@@ -775,7 +775,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 opacity: hasMeals ? 1 : 0.55,
               }}
             >
-              <SupprCard padding="none">
+              <SupprCard lift="flat" padding="none">
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{

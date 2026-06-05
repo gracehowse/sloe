@@ -308,6 +308,7 @@ export function TodayMealsSection({
         // under `design_system_elevation`, flat byte-for-byte when OFF.
         // `padding="none"` keeps the child-padded `overflow-hidden` layout.
         <SupprCard
+          elevation="slab-flat"
           radius="lg"
           padding="none"
           className="mb-3 overflow-hidden"
@@ -336,7 +337,7 @@ export function TodayMealsSection({
           ) : null}
         </SupprCard>
       )}
-      <SupprCard radius="lg" padding="none" className="overflow-hidden">
+      <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           // Preserve the distributeMealBudget call so any downstream
           // analytics side-effects remain identical. Result is unused
@@ -875,7 +876,7 @@ export function TodayMealsSection({
                     }
                     setUsualPicker(null);
                   }}
-                  className="w-full text-left rounded-card border border-border bg-card px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  className="w-full text-left rounded-card bg-card card-slab-flat px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
                   aria-label={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
                 >
                   <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>

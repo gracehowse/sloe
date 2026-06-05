@@ -202,7 +202,7 @@ export function TodayActivityBonusCard({
       : null;
 
   return (
-    <div className="rounded-card border border-border bg-card p-4 mt-4 card-elevated">
+    <div className="rounded-card bg-card card-slab-flat p-4 mt-4">
       {showDiscover ? (
         <div className="mb-3 rounded-lg border border-border bg-muted/30 p-3">
           <p className="text-[11px] font-semibold text-foreground">{ACTIVITY_BUDGET_DISCOVER_TITLE}</p>

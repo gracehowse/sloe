@@ -81,6 +81,7 @@ export function TodayHeroRing({
     // OFF keeps the prior flat `bg-card` + hairline treatment. `padding="none"`
     // preserves the exact asymmetric `px-4 py-3` geometry.
     <SupprCard
+      elevation="slab-flat"
       radius="lg"
       padding="none"
       className="flex flex-col items-center mb-3 px-4 py-3 gap-2"

@@ -4,7 +4,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
@@ -144,7 +144,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     onDismissActivityBudgetDiscover,
     showActivityBudgetDiscoverBanner = false,
   } = props;
-  const cardElevation = useCardElevation();
+  const cardElevation = useTodayCardElevation();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
@@ -263,7 +263,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     // lift, hairline) — no longer the host-passed `styles.card`. The inner gap
     // matches the prior card's `gap: Spacing.md`. Inner sub-cards (burn-breakdown,
     // 7-day-rolling) are their OWN <SupprCard>s below.
-    <SupprCard padding="lg" innerStyle={{ gap: Spacing.md }}>
+    <SupprCard lift="flat" padding="lg" innerStyle={{ gap: Spacing.md }}>
       {showDiscover ? (
         <View
           style={[{

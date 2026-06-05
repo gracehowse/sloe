@@ -228,7 +228,7 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     );
     // The wordmark text + its testID.
     expect(indexSrc).toMatch(/testID="today-wordmark"/);
-    expect(indexSrc).toMatch(/>\s*Sloe\s*</);
+    expect(indexSrc).toContain("SloeHeaderWordmark");
     // The avatar in the wordmark header routes to Settings.
     expect(indexSrc).toMatch(
       /gradientIdSuffix="today-wordmark-header"/,

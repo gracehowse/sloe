@@ -53,8 +53,11 @@ Apply all four, scoped to the mobile Sloe Today surfaces:
 
 ## Explicitly UNCHANGED (founder-confirmed correct, do not "fix" toward the mock)
 
-- Status chip copy stays **"On track"** — "under/over budget" is a forbidden
-  Today phrase; the mock's "Under budget" is the wrong copy, not a gap.
+- **Status chip (superseded 2026-06-04):** this note said **"On track"** and
+  rejected mock **Under budget**. Product direction now ships **Under budget**
+  / **Over budget** on the hero chip only — see
+  `docs/decisions/2026-06-04-today-status-chip-budget-labels.md`. Other
+  Today surfaces still avoid those phrases via `FORBIDDEN_TODAY_PHRASES`.
 - The week strip stays **minimal** (clay number + dot, no filled clay pill)
   per `2026-06-03-today-week-strip-minimal-current-day.md`. The mock's filled
   pill is the OLD design.

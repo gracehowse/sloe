@@ -1,8 +1,8 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Accent, MacroColors, Spacing } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
@@ -53,13 +53,14 @@ export function TodayDashboardMacroBars({
   waterGoalMl,
   mealsToday,
   onPressMacro,
-  cardColor,
-  cardBorderColor,
+  cardColor: _cardColor,
+  cardBorderColor: _cardBorderColor,
   textColor,
   textSecondaryColor,
   netCarbsLensEnabled,
 }: TodayDashboardMacroBarsProps) {
-  const cardElevation = useCardElevation();
+  void _cardColor;
+  void _cardBorderColor;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG:
@@ -103,7 +104,7 @@ export function TodayDashboardMacroBars({
       unit: "g",
     },
     fiber: {
-      label: "Fiber",
+      label: "Fibre",
       current: totals.fiber,
       target: targets.fiber,
       color: Accent.success,
@@ -133,21 +134,12 @@ export function TodayDashboardMacroBars({
   };
 
   return (
-    <View
-      style={[
-        {
-          backgroundColor: cardElevation.liftBg ?? cardColor,
-          borderColor: cardBorderColor,
-          // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
-          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
-          borderRadius: Radius.lg,
-          padding: Spacing.sm + 2,
-          marginBottom: Spacing.sm,
-          gap: Layout.todayScrollGap,
-        } as ViewStyle,
-        cardElevation.shadowStyle,
-      ]}
+    <SupprCard
+      lift="flat"
+      padding="md"
       testID="today-macro-bars"
+      style={{ marginBottom: Spacing.sm }}
+      innerStyle={{ gap: Layout.todayScrollGap }}
     >
       {/* Canonical 2026-05-22 C1: each macro is a single row —
           UPPERCASE label + bar fill + value/target with inline caption
@@ -243,6 +235,6 @@ export function TodayDashboardMacroBars({
           </Pressable>
         );
       })}
-    </View>
+    </SupprCard>
   );
 }

@@ -21,7 +21,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -57,6 +57,7 @@ import {
   X,
 } from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -90,7 +91,11 @@ import { didStreakReset } from "@suppr/shared/nutrition/streakReset";
 import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
-import { todayGreeting } from "@suppr/shared/copy/today";
+import {
+  todayGreeting,
+  todayLongDateSubline,
+  todayPastDayGreetingLines,
+} from "@suppr/shared/copy/today";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -237,6 +242,7 @@ import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet"
 // now opens the richer Cronometer-parity panel from PR #47.
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { GradientAvatar } from "@/components/GradientAvatar";
+import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
 import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
@@ -427,7 +433,7 @@ export default function TrackerScreen() {
     return first || undefined;
   }, [session?.user?.user_metadata]);
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  const cardElevation = useTodayCardElevation();
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -2775,8 +2781,7 @@ export default function TrackerScreen() {
         isToday &&
         isCheckinBannerDay &&
         checkinBannerDismissed === false,
-      northStar:
-        viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0,
+      northStar: viewMode === "day" && isToday && remaining > 0,
       snap: viewMode === "day" && isToday && mealsToday.length === 0,
       nudge: viewMode === "day" && isToday && mealsToday.length > 0,
     }),
@@ -3617,7 +3622,7 @@ export default function TrackerScreen() {
 
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.lg,
+          borderRadius: CARD_RADIUS,
           // Sloe: hairline (≈1 physical px), not 1pt (3px on @3x) — a 1pt
           // border read "boxed" vs the prototype's subtle `border border-line`
           // (1px-in-a-500px-frame). The Sloe `line` colour is already used.
@@ -4608,10 +4613,10 @@ export default function TrackerScreen() {
             <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
             <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
           </View>
-          <Shimmer style={{ height: 160, borderRadius: Radius.lg }} />
-          <Shimmer style={{ height: 80, borderRadius: Radius.lg }} />
+          <Shimmer style={{ height: 160, borderRadius: CARD_RADIUS }} />
+          <Shimmer style={{ height: 80, borderRadius: CARD_RADIUS }} />
           {[1, 2, 3, 4].map((i) => (
-            <Shimmer key={i} style={{ height: 64, borderRadius: Radius.lg }} />
+            <Shimmer key={i} style={{ height: 64, borderRadius: CARD_RADIUS }} />
           ))}
         </View>
       </View>
@@ -4685,13 +4690,7 @@ export default function TrackerScreen() {
             marginBottom: Spacing.sm,
           }}
         >
-          <Text
-            testID="today-wordmark"
-            accessibilityRole="header"
-            style={{ ...Type.title, fontSize: 22, color: MacroColors.calories }}
-          >
-            Sloe
-          </Text>
+          <SloeHeaderWordmark testID="today-wordmark" />
           <Pressable
             onPress={() => router.push("/(tabs)/settings")}
             accessibilityRole="button"
@@ -4716,31 +4715,34 @@ export default function TrackerScreen() {
             revives the time-of-day opener the 2026-05-22 calm pass had
             dropped — reinstated as the warm-coaching hero per the Sloe
             direction. */}
-        {viewMode === "day" ? (
+        {viewMode === "day" ? (() => {
+          const { headline, subline } = isToday
+            ? {
+                headline: todayGreeting(new Date().getHours(), greetingName),
+                subline: todayLongDateSubline(selectedDate),
+              }
+            : todayPastDayGreetingLines(selectedDate);
+          return (
           <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.md }}>
             <Text
               testID="today-hero-greeting"
               style={{ ...Type.title, fontSize: 26, lineHeight: 30, color: MacroColors.calories, textAlign: "center" }}
-              numberOfLines={1}
+              numberOfLines={2}
             >
-              {isToday
-                ? todayGreeting(new Date().getHours(), greetingName)
-                : formatDateLabel(selectedDate)}
+              {headline}
             </Text>
-            {isToday ? (
+            {subline ? (
               <Text
-                style={{ ...Type.body, color: colors.textSecondary, marginTop: 2 }}
+                testID="today-hero-greeting-subline"
+                style={{ ...Type.body, color: colors.textSecondary, marginTop: 2, textAlign: "center" }}
                 numberOfLines={1}
               >
-                {selectedDate.toLocaleDateString(undefined, {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
+                {subline}
               </Text>
             ) : null}
           </View>
-        ) : null}
+          );
+        })() : null}
 
         {/* Week strip (SLOE redesign 2026-06-03, `01 · Today` frame):
             the date header is now `stripOnly` — only the 7-day week

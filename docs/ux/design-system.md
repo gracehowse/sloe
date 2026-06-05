@@ -97,15 +97,23 @@ When tinting a surface with an accent colour (e.g., a subtle primary background 
 | Level | Light mode | Dark mode | Usage |
 |-------|-----------|-----------|-------|
 | None | `none` | `none` | Flat elements, items within cards |
-| Card (soft lift) | `0 4px 14px rgba(34,27,38,0.10)` (`Elevation.cardSoft` / `--elev-card-soft`) | `none` — tonal lift via `cardElevated` + hairline | Standard resting cards (the Sloe default) |
+| Card (soft lift) | `0 6px 18px rgba(34,27,38,0.16)` (`Elevation.cardSoft` / `--elev-card-soft`) | `none` — tonal lift via `cardElevated` + hairline | Standard resting cards (the Sloe default) |
 | Elevated | `0 4px 12px rgba(0,0,0,0.08)` | `0 4px 12px rgba(0,0,0,0.25)` | Modals, FABs, popovers |
 
-The card soft lift is **10% opacity** (Grace 2026-06-04 "push it to 10%" — the 7%
-lift read too faint on the sim; the lever moved 0.07 → 0.10 + radius 12 → 14 in
-lockstep on **both** platforms so web == mobile). Resting cards take the soft lift
-by default via the `<SupprCard>` shell / `useCardElevation()` (see "Resting-card
-elevation" below). Dark mode cards rely on the `cardElevated` tonal lift +
-`cardBorder` for definition, not a shadow.
+The card soft lift is **16% opacity** (`0 6px 18px rgba(34,27,38,0.16)`). It moved
+in two same-day bumps: 0.07 → 0.10 ("push it to 10%"), then 0.10 → 0.16 (Grace
+"cards still blend on-device"). The second bump is grounded in **edge-pixel
+sampling of the sim**: the shadow WAS rendering but was too weak — the `#F6F5F2`
+fill sits only ~10 luminance levels below the `#FFFFFF` page, so the shadow alone
+must carry the separation, and a 10%/14px halo read lighter than the card at its
+edge. At 0.16/18px/y+6 the penumbra below a card drops to ~lum 227 (≈28 under the
+white page) — a confident but still-soft plum lift, not a hard Material drop
+shadow (the wide 18px radius keeps it ambient). The card fill stays `#F6F5F2`
+(matches Figma — the problem was separation, not the fill); no border is
+re-introduced. Both levers move in lockstep on **both** platforms so web ==
+mobile. Resting cards take the soft lift by default via the `<SupprCard>` shell /
+`useCardElevation()` (see "Resting-card elevation" below). Dark mode cards rely
+on the `cardElevated` tonal lift + `cardBorder` for definition, not a shadow.
 
 ## Component patterns
 
@@ -193,15 +201,15 @@ hook returns:
   lift (`cardElevated` background via `liftBg`) plus a hairline instead.
 
 `Elevation.cardSoft` mirrors the web `--elev-card-soft` token EXACTLY
-(`0 4px 14px rgba(34,27,38,0.10)` — the aubergine Sloe ink `#221B26` at **0.10**,
-radius 14, y+4): a calm, plum-tinted ambient lift, not a harsh Material shadow.
+(`0 6px 18px rgba(34,27,38,0.16)` — the aubergine Sloe ink `#221B26` at **0.16**,
+radius 18, y+6): a calm, plum-tinted ambient lift, not a harsh Material shadow.
 
-**Web vs mobile (intentional difference, not drift):** the web `<SupprCard>` still
-*gates* the soft lift behind `design_system_elevation` (which resolves ON by
-default via `REDESIGN_DEFAULT_ON`), because on web flag-FORCE **works** — keeping
-the gate preserves the pre-redesign visual-capture path that web tests exercise in
-both flag states. Mobile dropped the gate (it's dead on the sim). Both render the
-identical 10% lift in production.
+**Web == mobile (no flag, no divergence):** the web `<SupprCard>` is **also
+un-gated** — its resting `elevation="card"` tier renders the `.card-slab` class
+(→ `box-shadow: var(--elev-card-soft)`) + `data-soft-elevation="true"`
+unconditionally, with no `design_system_elevation` read. Both platforms render the
+identical 16% lift in production, and the token is pinned character-for-character
+across `theme.css` ↔ `theme.ts` by `cardElevationSoftLiftDefault.test.tsx`.
 
 **iOS gotcha — shadow on an OUTER wrapper when the card clips its children.**
 RN clips a view's own shadow under `overflow: 'hidden'`. The `<SupprCard>` shell

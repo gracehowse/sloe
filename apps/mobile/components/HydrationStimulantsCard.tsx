@@ -112,6 +112,7 @@ function SloeCard({
   const colors = useThemeColors();
   return (
     <SupprCard
+      lift="flat"
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       padding="none"

@@ -152,13 +152,13 @@ describe("NorthStarBlock (mobile) — whyLine + macro row do not overlap", () =>
   // Walk from a node up to (and including) the card root, collecting
   // every ancestor's flattened style. `parent` is the RNTL test
   // instance chain.
+  type StyleNode = { parent: unknown; props?: { style?: unknown } };
   function ancestorStyles(node: { parent: unknown } | null): StyleObj[] {
     const out: StyleObj[] = [];
-    let cur: { parent: unknown; props?: { style?: unknown } } | null =
-      node as never;
+    let cur: StyleNode | null = node as StyleNode | null;
     while (cur) {
       if (cur.props?.style != null) out.push(flat(cur.props.style));
-      cur = (cur.parent ?? null) as never;
+      cur = (cur.parent ?? null) as StyleNode | null;
     }
     return out;
   }

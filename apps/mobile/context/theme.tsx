@@ -1,13 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SplashScreen from "expo-splash-screen";
 import { AppLaunchScreen } from "@/components/AppLaunchScreen";
 import { Colors } from "@/constants/theme";
-
-void SplashScreen.preventAutoHideAsync().catch(() => {
-  /* Simulator / hot reload may call twice — safe to ignore. */
-});
 
 export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
@@ -75,12 +70,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       : preference;
 
   const colors = resolved === "light" ? Colors.light : Colors.dark;
-
-  useEffect(() => {
-    if (loaded) {
-      void SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   if (!loaded) {
     const bootScheme: ResolvedTheme =

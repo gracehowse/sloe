@@ -135,7 +135,7 @@ function mealBlock(icon, slot, kcal, m, usual, usualTone, items){
 }
 function fiberBar(){
   return `<section class="mb-5"><div class="bg-surface-card rounded-xl border border-line p-4">
-    <div class="flex items-center justify-between mb-2"><span class="font-label text-[11px] uppercase tracking-wide text-ink-faint">Fiber</span><span class="font-body text-sm text-ink tabular-nums">6 <span class="text-ink-faint">/ 15 g · 9 g left</span></span></div>
+    <div class="flex items-center justify-between mb-2"><span class="font-label text-[11px] uppercase tracking-wide text-ink-faint">Fibre</span><span class="font-body text-sm text-ink tabular-nums">6 <span class="text-ink-faint">/ 15 g · 9 g left</span></span></div>
     <div class="h-1.5 w-full bg-line rounded-full overflow-hidden"><div class="h-full rounded-full bg-sage" style="width:40%"></div></div>
   </div></section>`;
 }

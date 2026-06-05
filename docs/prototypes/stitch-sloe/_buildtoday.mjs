@@ -5,6 +5,10 @@ import { writeScreen, ico, appBar, tabBar, multiRing } from './_gen.mjs';
    Single source of truth so the variants can never drift.
    ============================================================ */
 
+/** Resting Sloe cards — #F6F5F2 + soft lift, no hairline (matches sim). */
+const CARD_SLAB =
+  'bg-surface-card rounded-xl shadow-[0_4px_14px_rgba(34,27,38,0.10)]';
+
 const MAC = {
   light: { protein:'#7C8466', carbs:'#C8794E', fat:'#C9892C', fiber:'#4A7878' },
   dark:  { protein:'#A2AE88', carbs:'#D58A5E', fat:'#D6A24A', fiber:'#6FA3A3' },
@@ -16,27 +20,36 @@ const CLOCK = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 1
 const CHECK = '<path d="M20 6 9 17l-5-5"/>';
 
 function weekStrip(){
+  // st: 0 plain · 1 logged · 2 selected (today in mock) — minimal strip, no filled pill
   const days=[['S','22',1],['M','23',1],['T','24',2],['W','25',0],['T','26',0],['F','27',0],['S','28',0]];
-  return `<section class="mb-7"><div class="flex justify-between gap-1.5">${days.map(([d,n,st])=>
-    `<button class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-2xl ${st===2?'bg-clay shadow-sm':''}"><span class="text-[10px] uppercase tracking-wide ${st===2?'text-white/70':'text-ink-faint'}">${d}</span><span class="font-headline text-base ${st===2?'text-white':'text-ink'}">${n}</span><span class="w-1 h-1 rounded-full ${st===2?'bg-white':st===1?'bg-sage':'bg-transparent'}"></span></button>`).join('')}</div></section>`;
+  return `<section class="mb-7"><div class="flex justify-between gap-1.5">${days.map(([d,n,st])=>{
+    const sel=st===2;
+    const numCls=sel?'font-headline text-sm text-clay font-semibold':'font-headline text-sm text-ink';
+    const dotCls=sel?'bg-clay':st===1?'bg-sage':'bg-transparent';
+    return `<button class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-2xl"><span class="text-[10px] uppercase tracking-wide text-ink-faint">${d}</span><span class="${numCls}">${n}</span><span class="w-1 h-1 rounded-full ${dotCls}"></span></button>`;
+  }).join('')}</div></section>`;
 }
 function chip(text, tone){
   const map={under:['bg-sage/15','text-sage','circle-check'], over:['bg-destructive/10','text-destructive','circle-alert'], fresh:['bg-frost-mist','text-plum','sparkles']};
   const [bg,tx,ic]=map[tone]||map.under;
   return `<span class="inline-flex items-center gap-1.5 ${bg} ${tx} font-label text-xs font-semibold px-2.5 py-1 rounded-full">${ico(ic,'text-[14px]')} ${text}</span>`;
 }
-const toggle = `<span class="inline-flex bg-surface-card rounded-full border border-line p-0.5 text-[10px] font-medium"><span class="px-3 py-1 rounded-full shadow-sm" style="background:#FFFFFF;color:#3B2A4D">Remaining</span><span class="px-3 py-1 text-ink-soft">Consumed</span></span>`;
+function heroToggle(dark) {
+  const activeBg = dark ? '#35323A' : '#FFFFFF';
+  const activeFg = dark ? '#F5F3F4' : '#3B2A4D';
+  return `<span class="inline-flex bg-[#EFEFEF] rounded-full p-0.5 text-[10px] font-medium"><span class="px-3 py-1 rounded-full shadow-sm" style="background:${activeBg};color:${activeFg}">Remaining</span><span class="px-3 py-1 text-ink-soft">Consumed</span></span>`;
+}
 
 function macroTile(name, val, target, pct, color, icon){
-  return `<div class="bg-surface-card rounded-xl border border-line p-4 flex flex-col justify-between h-24">
+  return `<div class="${CARD_SLAB} p-4 flex flex-col justify-between h-24">
     <div class="flex items-start justify-between"><span class="text-xs text-ink-soft font-medium">${name}</span><span style="color:${color}">${ico(icon,'text-lg')}</span></div>
-    <div class="flex items-baseline gap-1"><span class="font-headline text-2xl text-ink">${val}<span class="text-lg text-ink-soft font-body font-normal ml-0.5">g</span></span><span class="text-xs text-ink-faint ml-1">/ ${target}g</span></div>
+    <div class="flex items-baseline gap-1"><span class="font-headline text-xl text-ink">${val}<span class="text-base text-ink-soft font-body font-normal ml-0.5">g</span></span><span class="text-xs text-ink-faint ml-1">/ ${target}g</span></div>
     <div class="h-1 w-full bg-line rounded-full mt-2 overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:${color}"></div></div>
   </div>`;
 }
 function whatNextCard(img, title, kcal, min){
-  return `<section class="mb-10"><h3 class="font-headline text-2xl text-plum mb-4">What to eat next</h3>
-  <div class="recipe-card rounded-2xl overflow-hidden border border-line relative cursor-pointer block h-80">
+  return `<section id="figma-capture-what-next" class="mb-10"><h3 class="font-headline text-2xl text-plum mb-4">What to eat next</h3>
+  <div class="recipe-card rounded-2xl overflow-hidden shadow-[0_4px_14px_rgba(34,27,38,0.10)] relative cursor-pointer block h-80">
     <div class="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent z-20"></div>
     <img src="./img/${img}" class="absolute inset-0 w-full h-full object-cover z-0"/>
     <div class="absolute top-4 left-4 z-30"><span class="bg-sage/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">${g(CHECK,'text-[14px]')} Fits your day</span></div>
@@ -44,8 +57,8 @@ function whatNextCard(img, title, kcal, min){
   </div></section>`;
 }
 function mealRow(img, slot, title, sub, logged){
-  return `<div class="bg-surface-card rounded-xl border border-line p-3 flex items-center gap-4">
-    <div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-line/50"><img src="./img/${img}" class="w-full h-full object-cover"/></div>
+  return `<div class="${CARD_SLAB} p-3 flex items-center gap-4">
+    <div class="w-16 h-16 rounded-lg overflow-hidden shrink-0"><img src="./img/${img}" class="w-full h-full object-cover"/></div>
     <div class="flex-1 min-w-0"><div class="flex items-center justify-between mb-1"><span class="text-[10px] text-ink-soft uppercase tracking-wider font-medium">${slot}</span>${logged?`<span class="text-xs text-ink-faint flex items-center gap-1">${g(CHECK,'text-[14px]')} Logged</span>`:''}</div><h4 class="font-headline text-lg text-ink truncate">${title}</h4><p class="text-xs text-ink-soft mt-0.5">${sub}</p></div>
   </div>`;
 }
@@ -57,7 +70,7 @@ function insightCard(title, text){
   return `<section class="mb-4"><div class="bg-frost-mist/40 rounded-xl border border-line p-5 relative overflow-hidden"><div class="flex items-start gap-3 relative z-10"><div class="bg-surface p-2 rounded-lg shadow-sm border border-line/50 mt-1 text-plum">${ico('trending-up','text-lg')}</div><div><h4 class="font-headline text-lg text-plum mb-1">${title}</h4><p class="text-sm text-ink-soft leading-relaxed">${text}</p></div></div></div></section>`;
 }
 function logFirstMeal(){
-  return `<section class="mb-10"><div class="bg-surface-card rounded-xl border border-line p-8 flex flex-col items-center text-center"><span class="w-12 h-12 rounded-full bg-frost-mist flex items-center justify-center text-clay mb-3">${ico('plus','text-2xl')}</span><h3 class="font-headline text-xl text-ink mb-1">Log your first meal</h3><p class="font-body text-sm text-ink-soft">Tap + to add breakfast — or import a recipe.</p></div></section>`;
+  return `<section class="mb-10"><div class="${CARD_SLAB} p-8 flex flex-col items-center text-center"><span class="w-12 h-12 rounded-full bg-frost-mist flex items-center justify-center text-clay mb-3">${ico('plus','text-2xl')}</span><h3 class="font-headline text-xl text-ink mb-1">Log your first meal</h3><p class="font-body text-sm text-ink-soft">Tap + to add breakfast — or import a recipe.</p></div></section>`;
 }
 
 function todayBody(o){
@@ -71,14 +84,16 @@ function todayBody(o){
   }).join('');
   const statsRow = `<div class="grid grid-cols-3 divide-x divide-line mt-6 pt-6 border-t border-line">${
     [['Goal',o.goal,''],['Eaten',o.eaten,''],[o.bonusLabel,o.bonus,o.bonusTone]].map(([l,v,t])=>
-      `<div class="text-center px-2"><span class="block text-[10px] uppercase tracking-wider mb-1 ${t||'text-ink-faint'}">${l}</span><span class="font-headline text-xl ${t||'text-ink'}">${v}</span></div>`).join('')}</div>`;
+      `<div class="text-center px-2"><span class="block text-[10px] uppercase tracking-wider mb-1 ${t||'text-ink-faint'}">${l}</span><span class="font-headline text-[19px] leading-tight ${t||'text-ink'}">${v}</span></div>`).join('')}</div>`;
+  const captureBg = o.dark ? '#19181C' : '#FFFFFF';
   return `
 ${appBar()}
-<main class="pt-3 px-4 md:px-6 max-w-2xl mx-auto pb-12">
-  <section class="mt-2 mb-5 text-center"><h2 class="font-headline text-3xl font-medium text-plum mb-1 tracking-tight">${o.greeting}</h2><p class="text-ink-soft text-sm">${o.date}</p></section>
+<div id="figma-capture-root" style="width:390px;margin:0 auto;background:${captureBg}">
+<main class="pt-3 px-4 pb-12">
+  <section class="mt-2 mb-5 text-center"><h2 class="font-headline text-2xl font-medium text-plum mb-1 tracking-tight">${o.greeting}</h2><p class="text-ink-soft text-[13px]">${o.date}</p></section>
   ${weekStrip()}
-  <section class="mb-8"><div class="bg-surface-card rounded-xl border border-line p-6 pt-5 relative">
-    <div class="flex justify-between items-center mb-3">${chip(o.chipText,o.chipTone)}${toggle}</div>
+  <section class="mb-8"><div class="${CARD_SLAB} p-6 pt-5 relative">
+    <div class="flex justify-between items-center mb-3">${chip(o.chipText,o.chipTone)}${heroToggle(o.dark)}</div>
     ${ring}
     ${statsRow}
   </div>
@@ -88,7 +103,8 @@ ${appBar()}
   ${o.empty ? '' : mealsSection(o.meals, o.total, o.showDinnerCTA)}
   ${o.insight ? insightCard(...o.insight) : ''}
 </main>
-${tabBar('Today')}`;
+${tabBar('Today')}
+</div>`;
 }
 
 /* ---------------- STATE DEFINITIONS ---------------- */
@@ -133,7 +149,7 @@ const STATE_EMPTY = {
 };
 const STATE_OVER = {
   greeting:'Evening, Grace', date:'Tuesday, 24 October',
-  chipText:'140 over', chipTone:'over',
+  chipText:'Over budget', chipTone:'over',
   cal:2180, calOf:2040, calColor:'#3B2A4D', track:'#EDEAF1', macros:macrosOver,
   goal:'2,040', eaten:'2,180', bonusLabel:'Over', bonus:'−140', bonusTone:'text-destructive',
   coach:"A little over today — tomorrow's a clean slate. No guilt.",

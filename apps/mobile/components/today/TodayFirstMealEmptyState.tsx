@@ -1,8 +1,8 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { SupprCard } from "@/components/ui/SupprCard";
 
 /**
  * TodayFirstMealEmptyState — friendly empty card surfaced under the
@@ -41,26 +41,19 @@ export function TodayFirstMealEmptyState({
   onDismissTip,
   textColor,
   textSecondaryColor,
-  cardColor,
-  cardBorderColor,
+  cardColor: _cardColor,
+  cardBorderColor: _cardBorderColor,
 }: TodayFirstMealEmptyStateProps) {
-  const cardElevation = useCardElevation();
+  void _cardColor;
+  void _cardBorderColor;
   const showTip = isBrandNew && !tipDismissed;
   return (
-    <View
-      accessibilityRole="summary"
+    <SupprCard
+      lift="flat"
+      padding="lg"
       accessibilityLabel="Ready to log your first meal?"
-      style={[{
-        backgroundColor: cardElevation.liftBg ?? cardColor,
-        borderRadius: Radius.lg,
-        // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
-        borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
-        borderColor: cardBorderColor,
-        padding: Spacing.lg,
-        marginBottom: Spacing.md,
-        alignItems: "center",
-        gap: 10,
-      }, cardElevation.shadowStyle]}
+      style={{ marginBottom: Spacing.md }}
+      innerStyle={{ alignItems: "center", gap: 10 }}
     >
       <Text style={{ ...Type.body, fontWeight: "700", color: textColor, textAlign: "center" }}>
         Ready to log your first meal?
@@ -144,7 +137,7 @@ export function TodayFirstMealEmptyState({
           </Pressable>
         </View>
       )}
-    </View>
+    </SupprCard>
   );
 }
 

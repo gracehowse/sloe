@@ -37,7 +37,7 @@ From repo root:
 
 ```bash
 npm run agent:verify-tools
-npm run agent:setup-mcp   # merges ios-simulator + playwright into ~/.cursor/mcp.json
+npm run agent:setup-mcp   # merges ios-simulator + playwright + Mobbin into ~/.cursor/mcp.json
 ```
 
 ## 2. MCP servers (Cursor)
@@ -48,10 +48,87 @@ Committed in **`.cursor/mcp.json`** (project):
 |--------|---------|------|
 | `ios-simulator` | `ios-simulator-mcp` | Tap, swipe, describe UI, screenshot, `launch_app` |
 | `playwright` | `@playwright/mcp@latest` | Browse localhost, click, snapshot DOM |
+| `Mobbin` | Official HTTP MCP | Search curated app screens/flows for benchmarks |
 
-**Also merge into `~/.cursor/mcp.json`** if you use global MCP (Sentry, Supabase, etc.): copy the `ios-simulator` and `playwright` blocks from `.cursor/mcp.json` into your user file, then **restart Cursor**.
+**Also merge into `~/.cursor/mcp.json`** if you use global MCP (Sentry, Supabase, etc.): copy blocks from `.cursor/mcp.json` into your user file, then **restart Cursor**.
 
-In Cursor: open MCP settings (or run the MCP panel) and confirm `ios-simulator` and `playwright` are **enabled** with green status.
+In Cursor: open MCP settings (or run the MCP panel) and confirm servers are **enabled** with green status.
+
+### Mobbin MCP (benchmarks — browser OAuth)
+
+Committed in **`.cursor/mcp.json`** and merged by `npm run agent:setup-mcp` into `~/.cursor/mcp.json`:
+
+```json
+"Mobbin": {
+  "type": "http",
+  "url": "https://api.mobbin.com/mcp",
+  "headers": {}
+}
+```
+
+**One-time connect (you must do this in the IDE):**
+
+1. **Restart Cursor** fully (`Cmd-Q`, reopen) after the config change.
+2. **Settings → Tools & MCP** (or MCP panel).
+3. Find **Mobbin** → click **Connect**.
+4. Sign in with your **Mobbin Pro or Team** account in the browser window (MCP is not on free plans).
+5. Confirm a **green** status dot.
+
+Do **not** use legacy `npx mobbin-mcp` packages — use only `https://api.mobbin.com/mcp`. Docs: [Mobbin MCP for Cursor](https://docs.mobbin.com/mcp/clients/cursor).
+
+Product refs already cite Mobbin URLs in `docs/ux/redesign/*.md` and `docs/ux/mobbin-refs/warm-coaching-direction.md`; with MCP connected, agents can search live instead of pasting static links only.
+
+### Stitch MCP (optional — user config only)
+
+Google Stitch exposes an MCP server for live project reads. **Never commit API keys** to the repo; do not put secrets in `.cursor/mcp.json` at the project root.
+
+1. Create a Stitch API key in Google Stitch (account settings).
+2. Add to **`~/.cursor/mcp.json`** (your user file, not the repo):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "url": "https://stitch.googleapis.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_STITCH_API_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+Or use an env var the MCP client supports (preferred so the key is not in plain JSON on disk):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "url": "https://stitch.googleapis.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${GOOGLE_STITCH_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Set `GOOGLE_STITCH_API_KEY` in your shell profile or Cursor env — **not** in `.env` files that ship with git.
+
+3. **Restart Cursor** after editing MCP config.
+
+#### When to use which tool
+
+| Need | Use |
+|------|-----|
+| Shipped UI on device, taps, scroll, pixels | **ios-simulator** MCP |
+| Local web at `localhost:3000` | **playwright** MCP |
+| Documented Sloe frames, screenshots by node ID | **Figma** MCP (`plugin-figma-figma`) — file `B3UdOFup7ITersgNuoXh0l` |
+| Best-in-class UI patterns (MacroFactor, Lifesum, Oura, …) | **Mobbin** MCP — search screens/flows during design reviews |
+| Committed static mock, Tailwind measurements, offline diff | **Stitch HTML** in `docs/prototypes/stitch-sloe/` (no MCP) |
+| Stitch project not yet exported to repo | **Stitch** MCP (if configured) |
+
+Pipeline map: `docs/ux/redesign/design-sources-stitch-figma.md`. Known Stitch ↔ Figma gaps: `docs/testing/figma-today-consistency-audit.md`.
 
 ### ios-simulator tools (common)
 

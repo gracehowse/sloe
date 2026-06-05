@@ -15,6 +15,8 @@
  *    - Landing `app/(landing)/LandingPage.tsx`
  */
 
+import { dateKeyFromDate } from "../nutrition/journalNavigation";
+
 /** Overline labels above the big number inside the daily calorie ring.
  *  The ring has three states:
  *    - `consumed` display mode   → label is `LOGGED`, number is kcal logged
@@ -95,30 +97,50 @@ export function firstNameFromMetadata(
   return first || undefined;
 }
 
-/** Calm status chip shown above the calorie ring on the Sloe Today hero
- *  (`01 · Today` frame). Three states map to the ring's three states.
- *
- *  IMPORTANT — calm-tone copy: the Sloe HTML mock labelled these "Under
- *  budget" / "{n} over" / "Fresh start", but **"under budget" / "over
- *  budget" are FORBIDDEN_TODAY_PHRASES** (UCL Oct 2025 + ED-cohort harm
- *  rationale, enforced by `todayCopyParity.test.ts`). The chip therefore
- *  ships the calm, already-ratified equivalents:
- *    - empty / nothing logged → "Fresh start"
- *    - logged, at/under target → "On track"  (matches the ratified
- *      `today-status-pills` "On track" phrase)
- *    - logged, over target    → "{n} over"   (factual delta — contains
- *      "over" but not the banned "over budget"/"you went over" bigrams)
- *  Same words web ↔ mobile. */
+/** Locale for Today hero date lines (British English). */
+export const TODAY_DATE_LOCALE = "en-GB" as const;
+
+/** Long date subline under the Today hero greeting (`01 · Today` frame).
+ *  e.g. "Wednesday, 4 June" in en-GB. Shared web ↔ mobile. */
+export function todayLongDateSubline(
+  d: Date,
+  locale: string = TODAY_DATE_LOCALE,
+): string {
+  return d.toLocaleDateString(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+/** Headline + optional subline for a historic journal day (not today).
+ *  Date-forward — no time-of-day greeting on past days. */
+export function todayPastDayGreetingLines(
+  d: Date,
+  now: Date = new Date(),
+): { headline: string; subline: string | null } {
+  const dk = dateKeyFromDate(d);
+  const todayStr = dateKeyFromDate(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = dateKeyFromDate(yesterday);
+  if (dk === yesterdayStr) {
+    return { headline: "Yesterday", subline: todayLongDateSubline(d) };
+  }
+  return { headline: todayLongDateSubline(d), subline: null };
+}
+
+/** Status chip above the calorie ring on the Sloe Today hero (`01 · Today`).
+ *  Aligns with Figma mock labels (Grace 2026-06-04): Under/Over budget on
+ *  the chip only — other Today surfaces still avoid those bigrams via
+ *  {@link FORBIDDEN_TODAY_PHRASES}. Same words web ↔ mobile. */
 export function todayStatusChip(
   state: "empty" | "under" | "over",
-  overByKcal?: number,
+  _overByKcal?: number,
 ): string {
   if (state === "empty") return "Fresh start";
-  if (state === "over") {
-    const n = Math.max(0, Math.round(overByKcal ?? 0));
-    return `${n.toLocaleString()} over`;
-  }
-  return "On track";
+  if (state === "over") return "Over budget";
+  return "Under budget";
 }
 
 /** Suffix rendered below the ring number, e.g. "of 1,800 kcal". Never
@@ -343,11 +365,11 @@ export function nextUnloggedMealSlot(
  *  so the drift is a deliberate decision.
  *
  *  Calm-tone audit (round 4, 2026-04-30): "Over budget" / "Under
- *  budget" surfaced on the Week-mode Today view (web + mobile);
- *  replaced with the canonical "Net deficit" / "Net surplus"
- *  phrasing per UCL Oct 2025 study + r/loseit data showing
- *  punitive-budget framing drives logging avoidance + ED-cohort
- *  harm. */
+ *  budget" were retired on general Today surfaces; replaced with
+ *  "Net deficit" / "Net surplus" on balance copy. The hero status chip
+ *  re-adopted "Under budget" / "Over budget" per Figma + Grace
+ *  2026-06-04 — see `docs/decisions/2026-06-04-today-status-chip-budget-labels.md`.
+ *  Those bigrams stay forbidden everywhere else. */
 export const FORBIDDEN_TODAY_PHRASES = [
   "below maint",
   "below maintenance",

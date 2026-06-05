@@ -129,10 +129,9 @@ function Stat({ label, value, valueColor, textSecondaryColor, dividerColor, test
  * StatusChip — the calm state pill above the ring (SLOE `01 · Today`
  * frame, chip-left). Three states with Sloe tints + a lucide glyph:
  *   - empty → "Fresh start" (frost-mist / plum, sparkles)
- *   - under → "On track"    (sage tint, circle-check)
- *   - over  → "{n} over"    (destructive tint, circle-alert)
- * Copy comes from the shared `todayStatusChip` helper, which uses the
- * calm-tone canonical phrases (NOT the forbidden "under/over budget").
+ *   - under → "Under budget" (sage tint, circle-check)
+ *   - over  → "Over budget"  (destructive tint, circle-alert)
+ * Copy comes from the shared `todayStatusChip` helper (Figma `01 · Today`).
  */
 function StatusChip({
   state,
@@ -273,10 +272,11 @@ export function TodayHeroRing({
       ? "over"
       : "under";
   return (
-    // Card chrome (fill #F6F5F2, radius 20, soft lift, hairline) is the shared
+    // Card chrome (fill #F6F5F2, radius 24, soft lift, hairline) is the shared
     // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
     // Only the ring's inner layout (centred, gap) lives here via innerStyle.
     <SupprCard
+      lift="flat"
       padding="lg"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >

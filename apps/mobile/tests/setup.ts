@@ -35,6 +35,9 @@ const RN_SHIM_PATH = pathResolve(__dirname, "shims", "react-native.cjs");
 const RN_SVG_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-svg.cjs");
 const RN_GH_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-gesture-handler.cjs");
 const LUCIDE_SHIM_PATH = pathResolve(__dirname, "shims", "lucide-react-native.cjs");
+// NOTE: static image `require(".../foo.png")` calls are handled by the
+// `transform` hook in vitest.config.ts (rewritten to an inline stub), not here —
+// vite-node's runtime `require` bypasses this resolver patch.
 
 type RequireInternal = typeof require & {
   resolve: RequireResolve;

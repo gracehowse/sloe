@@ -194,7 +194,14 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("NorthStarBlockHost below meals is gated by showBelowMealsNorthStar (ENG-690 empty-day-only)", () => {
+  it("northStar eligibility uses remaining > 0 without empty-day meals gate", () => {
+    const match = HOST_SRC.match(/northStar:\s*([^,\n]+)/);
+    expect(match?.[1]).toBeTruthy();
+    expect(match![1]).toMatch(/remaining\s*>\s*0/);
+    expect(match![1]).not.toMatch(/mealsToday\.length\s*===\s*0/);
+  });
+
+  it("NorthStarBlockHost below meals is gated by showBelowMealsNorthStar", () => {
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
     const northStarBelowIdx = HOST_SRC.indexOf("<NorthStarBlockHost", mealsIdx);
     expect(mealsIdx).toBeGreaterThan(-1);

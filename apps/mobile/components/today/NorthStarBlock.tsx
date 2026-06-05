@@ -130,7 +130,7 @@ export function NorthStarBlock({
 
   if (kind === "new-user") {
     return (
-      <SupprCard
+      <SupprCard lift="flat"
         testID={testID ?? "north-star-new-user"}
         tone="primary"
         padding="md"
@@ -179,7 +179,7 @@ export function NorthStarBlock({
 
   if (kind === "no-fit") {
     return (
-      <SupprCard
+      <SupprCard lift="flat"
         testID={testID ?? "north-star-no-fit"}
         tone="neutral"
         padding="md"
@@ -311,7 +311,7 @@ function NorthStarDefault({
       testID={testID ?? "north-star-default"}
       style={fadeStyle}
     >
-      <SupprCard tone="primary" padding="md" innerStyle={styles.defaultCard}>
+      <SupprCard lift="flat" tone="primary" padding="md" innerStyle={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"

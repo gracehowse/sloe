@@ -54,7 +54,7 @@ export function arcRing(value, of, frac, colorHex, trackHex, sub, size = 230) {
 // Concentric MULTI-RING (calories outer + macro rings) as real arc PATHS — captures clean in Figma.
 // Sloe Today standard (Grace 2026-06-02): calories ring + protein/carbs/fat rings, with macro tiles kept below.
 // calVal/calOf = calories; macros = [{value, of, color}] outer→inner (protein, carbs, fat). trackHex = ring track.
-export function multiRing(calVal, calOf, macros, trackHex = '#EDEAF1', size = 230, calColor = '#3B2A4D', overColor = '#C0533F') {
+export function multiRing(calVal, calOf, macros, trackHex = '#EDEAF1', size = 230, calColor = '#3B2A4D', overColor = '#6A4B7A') {
   const c = size / 2;
   const arc = (r, w, frac, color) => {
     let f = frac; if (f >= 1) f = 0.9999; if (f <= 0) return '';
@@ -72,12 +72,12 @@ export function multiRing(calVal, calOf, macros, trackHex = '#EDEAF1', size = 23
   const arcs = rings.map(rg => rg.frac >= 1
     ? `<circle cx="${c}" cy="${c}" r="${rg.r}" fill="none" stroke="${rg.color}" stroke-width="${rg.w}"/>`
     : arc(rg.r, rg.w, rg.frac, rg.color)).join('');
-  // over-budget: calorie ring stays its colour; a red overage arc shows the portion beyond 100% (capped at half a lap)
+  // over-budget: plum base lap full + lighter plum second lap (matches shipped CalorieRing)
   const overFrac = (calVal / calOf) > 1 ? Math.min(calVal / calOf - 1, 0.5) : 0;
   const overArc = overFrac > 0 ? arc(rCal, 11, overFrac, overColor) : '';
   return `<div class="relative mx-auto" style="width:${size}px;height:${size}px">
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${tracks}${arcs}${overArc}</svg>
-    <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="font-headline text-5xl text-ink">${calVal.toLocaleString()}</span><span class="font-body text-[13px] text-ink-faint mt-1">of ${calOf.toLocaleString()} kcal</span></div></div>`;
+    <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="font-headline text-[40px] leading-none tracking-tight text-ink">${calVal.toLocaleString()}</span><span class="font-body text-xs text-ink-faint mt-1">of ${calOf.toLocaleString()} kcal</span></div></div>`;
 }
 
 const HEAD = (title) => `<!DOCTYPE html>

@@ -8,8 +8,8 @@
  * now relies on, so a future change can't quietly re-diverge the cards:
  *   - the OUTER node carries the soft lift + fill + radius and the testID;
  *   - the INNER node clips (overflow:hidden) — the iOS clip fix lives here once;
- *   - `size` drives the radius (card=20, tile/inset=16) — every card shares the
- *     exact corner;
+ *   - `size` drives the radius (card/tile/inset all = 24, the Figma chosen Today
+ *     borderless warm slabs) — every card shares the exact corner;
  *   - `size="inset"` carries NO drop shadow (card-on-card must not double up);
  *   - the light resting `card` drops the border (the soft lift is the
  *     separation), while `inset` always draws the hairline.
@@ -69,8 +69,9 @@ describe("<SupprCard> — the consolidated card shell", () => {
     const style = flatten(outer.props.style);
     // Warm-grey #F6F5F2 fill — the same card colour everywhere.
     expect(style.backgroundColor).toBe("#F6F5F2");
-    // The canonical card radius (20).
+    // The canonical card radius (24).
     expect(style.borderRadius).toBe(CARD_RADIUS);
+    expect(CARD_RADIUS).toBe(24);
     // The soft lift rides the outer node.
     expect(style.shadowOpacity).toBe(Elevation.cardSoft.shadowOpacity);
     expect(style.shadowColor).toBe(Elevation.cardSoft.shadowColor);
@@ -93,16 +94,17 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(innerStyle.borderWidth).toBe(0);
   });
 
-  it("size='tile' rounds to 16 (the macro-tile corner)", () => {
+  it("size='tile' rounds to 24 (the macro-tile corner, same as the card)", () => {
     const { getByTestId } = render(
       <SupprCard testID="tile" size="tile">
         <></>
       </SupprCard>,
     );
     expect(flatten(getByTestId("tile").props.style).borderRadius).toBe(TILE_RADIUS);
+    expect(TILE_RADIUS).toBe(24);
   });
 
-  it("size='inset' rounds to 16, draws a hairline, and carries NO drop shadow", () => {
+  it("size='inset' rounds to 24, draws a hairline, and carries NO drop shadow", () => {
     themeState.resolved = "light";
     const { getByTestId } = render(
       <SupprCard testID="inset" size="inset">

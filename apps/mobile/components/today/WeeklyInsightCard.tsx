@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   weeklyInsightCoachLine,
@@ -134,9 +135,11 @@ export function WeeklyInsightCard({
   dailyKcalTarget,
   textColor,
   textSecondaryColor,
-  cardBackgroundColor,
-  borderColor,
+  cardBackgroundColor: _cardBackgroundColor,
+  borderColor: _borderColor,
 }: WeeklyInsightCardProps) {
+  void _cardBackgroundColor;
+  void _borderColor;
   const dayStates = React.useMemo(
     () => computeWeekBarStates(weekDailyKcal, dailyKcalTarget),
     [weekDailyKcal, dailyKcalTarget],
@@ -159,13 +162,11 @@ export function WeeklyInsightCard({
         : `${loggedDaysInWeek} days logged so far.`;
 
   return (
-    <View
+    <SupprCard
+      lift="flat"
+      padding="lg"
       testID="today-weekly-insight-mobile"
       accessibilityLabel="Weekly insight"
-      style={[
-        styles.card,
-        { backgroundColor: cardBackgroundColor, borderColor },
-      ]}
     >
       {/* Clay sparkle overline (frame: `text-clay` sparkle + uppercase). */}
       <View style={styles.headerRow}>
@@ -201,7 +202,7 @@ export function WeeklyInsightCard({
           label="Avg intake"
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
-          dividerColor={borderColor}
+          dividerColor={_borderColor}
         />
         <Stat
           value={
@@ -212,7 +213,7 @@ export function WeeklyInsightCard({
           label="On target"
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
-          dividerColor={borderColor}
+          dividerColor={_borderColor}
         />
       </View>
 
@@ -240,7 +241,7 @@ export function WeeklyInsightCard({
                   ? Accent.primary
                   : state === "loggedOff"
                     ? `${Accent.primary}66`
-                    : borderColor,
+                    : _borderColor,
             }}
           />
         ))}
@@ -265,16 +266,11 @@ export function WeeklyInsightCard({
           {weekAvgKcal != null ? " daily average." : ""}
         </Text>
       )}
-    </View>
+    </SupprCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    padding: Spacing.lg,
-  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

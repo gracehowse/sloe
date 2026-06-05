@@ -50,42 +50,87 @@ border. Two root causes, both real:
    `app/(tabs)/progress.tsx` `progress-3-stat-row` (same class of bug).
 
 3. **`Elevation.cardSoft` is tuned to match the web token exactly** —
-   `#221B26` (aubergine Sloe ink == `rgba(34,27,38)`) at `0.07` opacity, `12`
-   radius, `y+4` — mirroring web `--elev-card-soft`
-   (`0 4px 12px rgba(34,27,38,0.07)`). A calm, premium, plum-tinted ambient
+   `#221B26` (aubergine Sloe ink == `rgba(34,27,38)`) at `0.16` opacity, `18`
+   radius, `y+6` — mirroring web `--elev-card-soft`
+   (`0 6px 18px rgba(34,27,38,0.16)`). A calm, premium, plum-tinted ambient
    lift, not a cheap/harsh Material drop shadow. Keeps web == mobile.
 
+   **Two strength bumps after the initial fix (same day):** the lift shipped at
+   `0.07 / 12px / y+4`, was raised to `0.10 / 14px / y+4` ("push it to 10%"),
+   and then — because Grace reported the cards **still** blended on-device —
+   raised again to `0.16 / 18px / y+6`. The second bump was grounded in
+   **edge-pixel sampling of the sim**, which PROVED the shadow was rendering
+   (penumbra just below a card dipped `#F6F5F2`→`#EEEEEE`, ~17 lum under the
+   white page) but far too weak: the `#F6F5F2` fill sits only ~10 lum below the
+   `#FFFFFF` page, so the shadow has to do **all** the separation, and a
+   `0.10 / 14px` halo was actually *lighter* than the card at its outer reach.
+   At `0.16 / 18px / y+6` the same edge sample dropped to `#E4E3E4` (~28 lum
+   under the page) — a confident, still-soft plum penumbra (the wide radius
+   keeps it ambient, not a hard floating-card drop shadow). Verified by
+   re-sampling the edges + reading the capture before/after on the sim.
+
 The `#F6F5F2` card fill is **unchanged** — it matches the Figma; the problem
-was separation, not the fill.
+was separation, not the fill. The fix was the shadow alone (no fill change, no
+page-tone change, no border re-introduced).
 
 ## Parity
 
-Behavioural parity holds: web already lifts by default. Web `SupprCard` keeps
-its `isFeatureEnabled("design_system_elevation")` read, which resolves ON via
-the web `REDESIGN_DEFAULT_ON`, so web cards already get `--elev-card-soft`. Web
-has no equivalent clip bug (CSS `overflow: hidden` clips child box-shadows, not
-the element's own). The only difference is implementation (mobile dropped the
-flag read for RN-mock robustness + the dead env-force); not a behavioural
-divergence. The shadow TOKEN is identical across platforms.
+Behavioural parity holds and is exact. Web `SupprCard` is **also un-gated** —
+its resting `elevation="card"` tier renders the `.card-slab` class
+(→ `box-shadow: var(--elev-card-soft)`) and `data-soft-elevation="true"`
+unconditionally, with no `design_system_elevation` read. The shadow TOKEN is
+identical across platforms: mobile `Elevation.cardSoft` and web
+`--elev-card-soft` both carry `0.16 / 18px / y+6 / #221B26`, moved in lockstep
+and pinned character-for-character by
+`cardElevationSoftLiftDefault.test.tsx` (which source-reads the web token).
+Verified on 2026-06-04 by `getComputedStyle('.card-slab').boxShadow` ==
+`rgba(34, 27, 38, 0.16) 0px 6px 18px 0px` AND a rendered web swatch matching the
+sim. Web has no equivalent iOS clip bug (CSS `overflow: hidden` clips child
+box-shadows, not the element's own).
 
 ## Tests
 
 - `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx` — the hook
   returns the soft shadow as the LIGHT default (flags-cold), the tonal lift on
-  DARK, the `cardSoft` premium-band + plum tint, and a precise source scan that
-  no clipping View co-locates `overflow: 'hidden'` with the shadow on the four
-  swept cards.
-- Existing pins still hold: `elevationToken.test.ts` (`card` flat / `cardSoft`
-  real), `sloeCardHairlineBorders.test.tsx` (hairline grammar),
-  `designTokensPhase1.test.ts`.
+  DARK, the `cardSoft` premium-band + plum tint, the **exact `0.16 / 18px / y+6`
+  values** (pinned, not a band — the value is the point of the second bump), the
+  web↔mobile token match read straight from `theme.css`, and a precise source
+  scan that no clipping View co-locates `overflow: 'hidden'` with the shadow on
+  the swept cards.
+- `apps/mobile/tests/unit/elevationToken.test.ts` — bounds guard (`cardSoft`
+  never silently zeroed; `card` stays flat). Comment refreshed: the lift is
+  un-gated, not flag-gated.
+- Web: `tests/unit/supprPrimitives.test.tsx` + `tests/unit/progressDashboardElevation.test.tsx`
+  updated to the **un-gated web SupprCard** reality — the resting `card` tier
+  renders `.card-slab` + `data-soft-elevation="true"` with all flags OFF (the
+  old "flag OFF → flat" assertions were stale once the web card dropped its flag
+  read). The other web token consumers
+  (`recipeEditDialogTokenSweep`, `recipeDetailLayoutWeb`, `foodSearchPanelRedesign`,
+  `settingsElevationFlag`, `progressDetailRedesign`, `logSheetAddMealElevationMotion`,
+  `mealPlannerElevationAndWinPulse`) assert by token NAME, so the value bump
+  needed no change there.
 
 ## Files
 
-- `apps/mobile/hooks/useCardElevation.ts`
-- `apps/mobile/constants/theme.ts` (`Elevation.cardSoft`)
-- `apps/mobile/components/HydrationStimulantsCard.tsx`
-- `apps/mobile/components/today/TodayPlannedMealsCard.tsx`
-- `apps/mobile/components/today/TodayMealsSection.tsx`
-- `apps/mobile/app/(tabs)/progress.tsx`
-- `apps/mobile/tests/shims/analytics.ts` (+`isFeatureDisabled`, mirror surface)
-- `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx` (new)
+- `apps/mobile/constants/theme.ts` (`Elevation.cardSoft` → `0.16 / 18px / y+6`)
+- `src/styles/theme.css` (`--elev-card-soft` light → `0 6px 18px rgba(34,27,38,0.16)`; dark geometry tracked to `0 6px 18px`)
+- `apps/mobile/hooks/useCardElevation.ts` (un-gated; unchanged this pass)
+- `apps/mobile/components/ui/SupprCard.tsx` (outer-wrapper shadow split; unchanged this pass)
+- `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx`
+- `apps/mobile/tests/unit/elevationToken.test.ts`
+- `tests/unit/supprPrimitives.test.tsx`
+- `tests/unit/progressDashboardElevation.test.tsx`
+
+### Verification (sim, iOS 26.5, iPhone 17 Pro — edge-pixel evidence)
+
+| Sample | BEFORE (0.10/14/y4) | AFTER (0.16/18/y6) |
+|---|---|---|
+| Page bg | #FFFFFF (lum 255) | #FFFFFF (lum 255) |
+| Card fill | #F6F5F2 (lum 245) | #F6F5F2 (lum 245) — unchanged |
+| Penumbra below tile | #EEEEEE (lum 238) | **#E4E3E4 (lum 227)** |
+| Gutter between tiles | #EFEFF0 (lum 239) | **#E5E4E6 (lum 228)** |
+
+Captures: `apps/mobile/screenshots/agent/shadow-diag-before-224206.png`,
+`shadow-diag-after-224506.png`, `shadow-before-after-sidebyside-224535.png`,
+`shadow-diag-after-scrolled-224622.png`, `shadow-tiles-crop-224643.png`; web
+parity swatch `shadow-web-cardslab-swatch.png`.

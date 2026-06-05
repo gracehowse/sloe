@@ -110,6 +110,7 @@ function DesktopHeroStats({
     // the exact `px-4 py-4` geometry; `hidden md:block` display utility and
     // the `data-testid` are preserved.
     <SupprCard
+      elevation="slab-flat"
       radius="lg"
       padding="none"
       className="hidden md:block mb-3 px-4 py-4"

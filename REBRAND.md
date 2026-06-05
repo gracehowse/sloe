@@ -46,16 +46,14 @@ All localStorage keys now use the `suppr-*` prefix. Rebrand complete.
 
 ## Brand mark / icons
 
-Single source of truth: `public/suppr-mark.svg` (full mark) and `public/suppr-mark-mono.svg` (white S only).
-
-Regenerate every PNG icon — web favicons, apple-touch, PWA manifest, mobile iOS/Android, splash — from the master SVGs:
+**Sloe mobile (Today header, app icon, splash, launch screen):** Newsreader wordmark via:
 
 ```bash
-npm run build:icons
+npm run build:brand-icons
 ```
 
-Outputs:
-- `public/icon.svg`, `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/icon-maskable-512.png`
-- `apps/mobile/assets/images/{icon,favicon,splash-icon,android-icon-{foreground,background,monochrome}}.png`
+That runs `scripts/render-sloe-brand-png.mjs` (PNG + `docs/brand/sloe/assets/logo-wordmark-sloe-*.svg`) and `npm run sync-ios-brand --prefix apps/mobile`. Rebuild the iOS dev client after changing icons. Do **not** rasterize path-outline SVGs (`scale(0.13 -0.13)` in `wordmark-lockup.svg`) — they export upside-down in sharp.
 
-Brand blue: `#4c6ce0`. Update the master SVGs, then re-run `npm run build:icons` to fan out.
+**Legacy Suppr web PWA:** `public/suppr-mark.svg` and `npm run build:icons` (web PNGs only when that file exists).
+
+Outputs (Sloe): `apps/mobile/assets/images/{icon,favicon,splash-icon,android-icon-*}.png`, `ios/Suppr/Images.xcassets/*`.

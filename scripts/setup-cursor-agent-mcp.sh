@@ -64,10 +64,19 @@ cfg.mcpServers.playwright = {
   args: ["-y", "@playwright/mcp@latest"],
 };
 
+// Official Mobbin MCP (remote HTTP + browser OAuth). Requires Mobbin Pro/Team.
+// https://docs.mobbin.com/mcp/clients/cursor
+cfg.mcpServers.Mobbin = {
+  type: "http",
+  url: "https://api.mobbin.com/mcp",
+  headers: {},
+};
+
 fs.mkdirSync(path.dirname(cursorPath), { recursive: true });
 fs.writeFileSync(cursorPath, JSON.stringify(cfg, null, 2) + "\n");
 console.log("Updated", cursorPath);
 console.log("  + ios-simulator (idb:", idbPath + ")");
 console.log("  + playwright");
-console.log("Restart Cursor, then enable both servers in MCP settings.");
+console.log("  + Mobbin (https://api.mobbin.com/mcp — Connect in Cursor MCP settings)");
+console.log("Restart Cursor, then enable servers in MCP settings; click Connect on Mobbin to sign in.");
 NODE

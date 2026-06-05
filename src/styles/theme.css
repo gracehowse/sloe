@@ -50,7 +50,13 @@
    *  to match Linear / Stripe / Things 3 / Notion premium tier.
    *  --radius-sm/md/lg/xl derive from these below. */
   --radius: 0.375rem;         /* 6px base */
-  --radius-card: 0.5rem;       /* 8px cards — matches mobile Radius.lg */
+  --radius-card: 0.5rem;       /* 8px — the tight ladder radius (skeletons etc.) */
+  /* SupprCard resting-card corner. Decoupled from --radius-card on 2026-06-04:
+   * the Figma chosen Today rounds cards AND tiles to 24 (borderless warm slabs),
+   * which is rounder than the tight 8px ladder. Mirrors mobile
+   * `CARD_RADIUS`/`TILE_RADIUS = 24` in apps/mobile/components/ui/SupprCard.tsx
+   * (also a SupprCard-local constant, not the shared Radius token). */
+  --radius-card-lg: 1.5rem;    /* 24px ↔ mobile CARD_RADIUS / TILE_RADIUS */
 
   /** ── SLOE LIGHT PALETTE — Phase 0 token foundation (2026-06-03) ──
    *  Values-only re-skin: every token NAME is unchanged so no component
@@ -260,12 +266,17 @@
   --elev-card: 0 1px 3px rgba(34, 27, 38, 0.06);
   /** Soft resting-card shadow — ENG-795. The blessed resting-card lift, routed
    *  through <SupprCard>. Mirrors mobile `Elevation.cardSoft` EXACTLY:
-   *  aubergine Sloe ink (#221B26 == rgba(34,27,38)) at 0.10 opacity, 14px
-   *  radius, y+4. 2026-06-04 (Grace "push it to 10%"): bumped 0.07 → 0.10 +
-   *  12px → 14px in lockstep with mobile so the `#F6F5F2` card separates more
-   *  confidently from the `#FFFFFF` page. The flat `--elev-card` above stays as
-   *  the explicit flat fallback. */
-  --elev-card-soft: 0 4px 14px rgba(34, 27, 38, 0.10);
+   *  aubergine Sloe ink (#221B26 == rgba(34,27,38)) at 0.16 opacity, 18px
+   *  radius, y+6. 2026-06-04 (Grace "push it to 10%"): bumped 0.07 → 0.10 +
+   *  12px → 14px. 2026-06-04 (Grace "cards still blend on-device"): bumped again
+   *  0.10 → 0.16 + 14px → 18px + y+4 → y+6, in lockstep with mobile. Edge-pixel
+   *  sampling on the sim PROVED the shadow rendered but was too weak — the
+   *  #F6F5F2 fill sits only ~10 lum below the #FFFFFF page, so the shadow must
+   *  do all the lifting; a 10%/14px halo read lighter than the card at its
+   *  outer reach. 0.16/18px/y+6 is a confident-but-still-soft plum penumbra
+   *  (wide radius keeps it ambient, not a hard Material drop shadow). The flat
+   *  `--elev-card` above stays as the explicit flat fallback. */
+  --elev-card-soft: 0 6px 18px rgba(34, 27, 38, 0.16);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
   --elev-float-primary: 0 4px 16px rgba(200, 121, 78, 0.40);
@@ -471,10 +482,11 @@
   /** Soft resting-card shadow — dark. ENG-795. On dark the lift is a near-black
    *  shadow (a different regime to light's plum tint — RN renders dark shadows
    *  poorly, so MOBILE dark uses a tonal `cardElevated` lift + hairline instead;
-   *  this token is web-dark only). Radius widened 12 → 14 on 2026-06-04 to track
-   *  the light token's softer penumbra; the 0.45 opacity is kept (0.10 would be
-   *  invisible on a dark surface — opacity is a light-mode lever here). */
-  --elev-card-soft: 0 4px 14px rgba(0, 0, 0, 0.45);
+   *  this token is web-dark only). Radius widened 12 → 14 → 18 + y+4 → y+6 on
+   *  2026-06-04 to track the light token's softer/deeper penumbra; the 0.45
+   *  opacity is kept (a light-mode lever — 0.16 would be invisible on a dark
+   *  surface, so the dark opacity stays high and only the geometry tracks). */
+  --elev-card-soft: 0 6px 18px rgba(0, 0, 0, 0.45);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
   --elev-float-primary: 0 4px 16px rgba(213, 138, 94, 0.45);
@@ -626,6 +638,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-card: var(--radius-card);
+  --radius-card-lg: var(--radius-card-lg);
 
   /* Sidebar */
   --color-sidebar: var(--sidebar);
@@ -770,9 +783,52 @@
 }
 
 @layer utilities {
-  .card-elevated {
-    box-shadow: var(--shadow);
+  /**
+   * Resting Sloe card shell — #F6F5F2 on white, soft lift in light,
+   * tonal lift + hairline in dark (mirrors mobile useCardElevation).
+   */
+  .card-slab {
+    background-color: var(--card);
+    box-shadow: var(--elev-card-soft);
     border-color: transparent;
+    border-width: 0;
+  }
+
+  /** Figma Today `654:2` — warm slab on white, tonal separation only. */
+  .card-slab-flat {
+    background-color: var(--card);
+    box-shadow: none;
+    border-color: transparent;
+    border-width: 0;
+  }
+
+  .dark .card-slab-flat {
+    background-color: var(--card);
+    box-shadow: none;
+    border-width: 0;
+    border-color: transparent;
+  }
+
+  .dark .card-slab {
+    background-color: var(--card-elevated);
+    box-shadow: none;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--border);
+  }
+
+  .card-elevated {
+    box-shadow: var(--elev-card-soft);
+    border-color: transparent;
+    border-width: 0;
+  }
+
+  .dark .card-elevated {
+    background-color: var(--card-elevated);
+    box-shadow: none;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--border);
   }
 
   .card-elevated-hero {

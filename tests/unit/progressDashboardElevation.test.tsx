@@ -1,18 +1,22 @@
 /**
- * ProgressDashboard — resting-card elevation flag gate (ENG-822, gap #7).
+ * ProgressDashboard — resting-card soft elevation (ENG-822 gap #7, ENG-795).
  *
  * Web parity with the mobile `useCardElevation` hook. The Progress dashboard's
- * resting cards are now routed through the canonical <SupprCard> primitive,
- * which owns the `design_system_elevation` flag-gate internally:
- *   - flag ON  → soft `--elev-card-soft` ambient shadow (inline boxShadow) with
- *     the hairline border dropped — surfaced as `data-soft-elevation="true"`
- *     and no `border` utility class (one edge, no double line).
- *   - flag OFF → flat `card` tier: no soft-elevation marker, hairline border
- *     class kept, byte-for-byte cold path.
+ * resting cards route through the canonical <SupprCard> primitive, whose soft
+ * lift is now the UN-GATED default (2026-06-04 — the `design_system_elevation`
+ * gate was removed in lockstep with mobile, because flag-FORCE is dead in a
+ * bundled app and the gate only ever hid the lift the Figma requires). The
+ * resting `elevation="card"` tier therefore ALWAYS renders:
+ *   - `.card-slab` → soft `--elev-card-soft` ambient shadow (the lift Grace
+ *     red-lined as missing on the sim), surfaced as `data-soft-elevation="true"`,
+ *   - the hairline `border` utility class dropped in light (the shadow is the
+ *     separation — one edge, no double line).
  *
  * This is the end-to-end render check for the elevation behaviour (component →
  * SupprCard → DOM); the source-match siblings (settings/mealPlanner/today
- * sweeps) only assert the call sites use the primitive.
+ * sweeps) only assert the call sites use the primitive. The exact shadow values
+ * (16% / 18px / y+6, web == mobile) are pinned in the mobile
+ * `cardElevationSoftLiftDefault.test.tsx`.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -136,7 +140,7 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 
 import { ProgressDashboard } from "../../src/app/components/ProgressDashboard";
 
-describe("ProgressDashboard resting-card elevation gate (design_system_elevation)", () => {
+describe("ProgressDashboard resting-card soft elevation (un-gated, ENG-795)", () => {
   beforeEach(() => {
     mockListSavedMeals.mockClear();
     mockIsFeatureEnabled.mockReset();
@@ -148,32 +152,37 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     cleanup();
   });
 
-  it("flag OFF → maintenance card renders the flat SupprCard tier (border kept, no soft elevation)", async () => {
+  it("maintenance card renders the soft SupprCard tier even with all flags OFF (un-gated)", async () => {
+    // No flag is mocked ON — the soft lift must STILL be present. This is the
+    // regression guard for the un-gate: the cards used to read flat on the sim
+    // because the lift hid behind `design_system_elevation` (a gate that could
+    // never be exercised in a bundled app). The lift is now unconditional.
     mockIsFeatureEnabled.mockImplementation(() => false);
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    // ENG-822: the card is a <SupprCard>. Flag OFF → flat `card` tier.
+    // The card is a <SupprCard> and its resting tier is the soft slab.
     expect(card.getAttribute("data-slot")).toBe("suppr-card");
-    expect(card.getAttribute("data-soft-elevation")).toBeNull();
-    expect(card.className.split(/\s+/)).toContain("border");
+    expect(card.getAttribute("data-soft-elevation")).toBe("true");
+    // Light: shadow is the separation, so the hairline `border` class is dropped.
+    expect(card.className.split(/\s+/)).not.toContain("border");
+    // The soft lift comes from the `.card-slab` class (→ box-shadow
+    // var(--elev-card-soft)), not a flag.
+    expect(card.className.split(/\s+/)).toContain("card-slab");
   });
 
-  it("flag ON → maintenance card adopts the SupprCard soft elevation with the border dropped", async () => {
+  it("the soft lift does not depend on design_system_elevation (gate removed)", async () => {
+    // Even when the (now-dead) flag is forced ON, behaviour is identical to OFF —
+    // proving the soft tier no longer reads the flag at all.
     mockIsFeatureEnabled.mockImplementation(
       (flag: string) => flag === "design_system_elevation",
     );
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    // Soft tier: data-soft-elevation marker set, hairline border class dropped
-    // (the --elev-card-soft shadow itself is an inline boxShadow on SupprCard).
     expect(card.getAttribute("data-soft-elevation")).toBe("true");
     expect(card.className.split(/\s+/)).not.toContain("border");
   });
 
-  it("flag ON preserves each card's own spacing/testid (maintenance keeps mb-6 mt-6)", async () => {
-    mockIsFeatureEnabled.mockImplementation(
-      (flag: string) => flag === "design_system_elevation",
-    );
+  it("preserves each card's own spacing/testid (maintenance keeps mb-6 mt-6)", async () => {
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
     expect(card.className).toContain("mb-6");
@@ -181,16 +190,13 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     expect(card.className).toContain("p-4");
   });
 
-  it("flag ON elevates the loading-skeleton tile too (same paint system)", async () => {
+  it("elevates the loading-skeleton tile too (same paint system)", async () => {
     // Hold the profile read pending so the loading branch stays mounted.
     let resolveLoad: (v: { data: typeof profileRow; error: null }) => void = () => {};
     profileMaybeSingle.mockReturnValue(
       new Promise((res) => {
         resolveLoad = res;
       }),
-    );
-    mockIsFeatureEnabled.mockImplementation(
-      (flag: string) => flag === "design_system_elevation",
     );
     render(<ProgressDashboard />);
     const tile = await screen.findByTestId("progress-skeleton-tile-0");

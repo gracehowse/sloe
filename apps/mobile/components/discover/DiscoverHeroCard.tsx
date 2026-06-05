@@ -28,7 +28,7 @@ export function DiscoverHeroCard({ recipe, onPress }: DiscoverHeroCardProps) {
   // consolidation): this is a full-bleed editorial IMAGE hero with its own dark
   // fill (#1c1916) + gradient scrim, not a warm-grey #F6F5F2 resting content
   // card — so it can't route through SupprCard's neutral fill. It DOES share the
-  // canonical card RADIUS (`CARD_RADIUS` = 20) and the same soft lift
+  // canonical card RADIUS (`CARD_RADIUS` = 24) and the same soft lift
   // (`useCardElevation().shadowStyle`) so it sits consistently with the rest.
   // The card clips its image children (`overflow: 'hidden'`), which would clip
   // an iOS shadow, so the soft lift rides on an OUTER wrapper (per
@@ -85,7 +85,7 @@ export function DiscoverHeroCard({ recipe, onPress }: DiscoverHeroCardProps) {
 const styles = StyleSheet.create({
   // Outer wrapper carries the soft elevation so the inner card's
   // `overflow: 'hidden'` (which clips the image) doesn't clip the shadow.
-  // Radius is the canonical `CARD_RADIUS` (20) so this image hero corners match
+  // Radius is the canonical `CARD_RADIUS` (24) so this image hero corners match
   // every other Sloe card; it was `Radius.xl` (12) and read slightly squarer.
   shadowWrap: {
     borderRadius: CARD_RADIUS,

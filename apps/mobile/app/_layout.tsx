@@ -7,19 +7,6 @@ import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react-native';
-import {
-  useFonts,
-  Newsreader_400Regular,
-  Newsreader_400Regular_Italic,
-  Newsreader_500Medium,
-  Newsreader_600SemiBold,
-} from '@expo-google-fonts/newsreader';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
 
 // 2026-05-04 audit (#3 in `docs/audits/2026-05-04-full-sweep-audit.md`):
 // `TypeError: Network request failed` from the bundled whatwg-fetch polyfill
@@ -108,6 +95,7 @@ import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForw
 import { initErrorTracking } from '@/lib/errorTracking';
 import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
+import { FontGate } from '@/components/FontGate';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
@@ -509,36 +497,6 @@ function stackTitleForRoute(routeName: string): string {
 function RootLayoutInner() {
   const { resolved } = useTheme();
 
-  // Sloe Phase 0 (2026-06-03) — load the Newsreader (serif) + Inter (sans)
-  // families before first paint. `loaded` flips true on success; `fontError`
-  // is set if a font fails to load. We gate render on EITHER so a font failure
-  // can't strand the user on the splash — the System fallback baked into
-  // `Fonts`/`Type` carries the (rare) error case.
-  const [fontsLoaded, fontError] = useFonts({
-    Newsreader_400Regular,
-    Newsreader_400Regular_Italic,
-    Newsreader_500Medium,
-    Newsreader_600SemiBold,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
-  const fontsReady = fontsLoaded || !!fontError;
-
-  useEffect(() => {
-    if (fontsReady) {
-      void SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsReady]);
-
-  // Hold first paint (splash stays up) until fonts resolve. Returning null is
-  // safe — all hooks above run unconditionally every render, so the rules of
-  // hooks hold across this gate.
-  if (!fontsReady) {
-    return null;
-  }
-
   // Misconfigured dev builds use `createClient("", "")` — every fetch
   // fails with RN's generic "Network request failed" and the UI can
   // look like a blank grey screen with only a dev toast. Surface the
@@ -618,9 +576,11 @@ export default Sentry.wrap(function RootLayout() {
     <RootErrorBoundary>
       <AuthProvider>
         <AnalyticsProvider>
-          <SupprThemeProvider>
-            <RootLayoutInner />
-          </SupprThemeProvider>
+          <FontGate>
+            <SupprThemeProvider>
+              <RootLayoutInner />
+            </SupprThemeProvider>
+          </FontGate>
         </AnalyticsProvider>
       </AuthProvider>
     </RootErrorBoundary>

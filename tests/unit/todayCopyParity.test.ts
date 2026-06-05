@@ -37,6 +37,9 @@ import {
   todayRingSuffix,
   todayBalanceHeadline,
   todayGreeting,
+  todayLongDateSubline,
+  todayPastDayGreetingLines,
+  TODAY_DATE_LOCALE,
   todayStatusChip,
   weeklyInsightHeadline,
   weeklyInsightCoachLine,
@@ -174,32 +177,48 @@ describe("Sloe Today hero greeting (todayGreeting)", () => {
   });
 });
 
-describe("Sloe Today status chip (todayStatusChip) — calm copy", () => {
-  it("uses calm phrases, never the forbidden 'under/over budget'", () => {
+describe("Sloe Today hero dates (todayLongDateSubline / todayPastDayGreetingLines)", () => {
+  it("formats the today subline in British English", () => {
+    const d = new Date(2026, 5, 4); // 4 June 2026 local
+    expect(todayLongDateSubline(d)).toMatch(/June/);
+    expect(todayLongDateSubline(d, TODAY_DATE_LOCALE)).toBe(
+      d.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+    );
+  });
+
+  it("uses Yesterday + long date subline for the previous calendar day", () => {
+    const now = new Date(2026, 5, 4, 12, 0, 0);
+    const yesterday = new Date(2026, 5, 3);
+    expect(todayPastDayGreetingLines(yesterday, now)).toEqual({
+      headline: "Yesterday",
+      subline: todayLongDateSubline(yesterday),
+    });
+  });
+
+  it("uses a long date headline (no time greeting) for older days", () => {
+    const now = new Date(2026, 5, 4, 12, 0, 0);
+    const mon = new Date(2026, 5, 1);
+    expect(todayPastDayGreetingLines(mon, now)).toEqual({
+      headline: todayLongDateSubline(mon),
+      subline: null,
+    });
+  });
+});
+
+describe("Sloe Today status chip (todayStatusChip) — Figma labels", () => {
+  it("uses Fresh start / Under budget / Over budget", () => {
     expect(todayStatusChip("empty")).toBe("Fresh start");
-    expect(todayStatusChip("under")).toBe("On track");
-    expect(todayStatusChip("over", 140)).toBe("140 over");
+    expect(todayStatusChip("under")).toBe("Under budget");
+    expect(todayStatusChip("over", 140)).toBe("Over budget");
   });
 
-  it("never emits a forbidden phrase for any chip state", () => {
-    const samples = [
-      todayStatusChip("empty"),
-      todayStatusChip("under"),
-      todayStatusChip("over", 0),
-      todayStatusChip("over", 2400),
-    ];
-    for (const s of samples) {
-      const lower = s.toLowerCase();
-      for (const phrase of FORBIDDEN_TODAY_PHRASES) {
-        expect(lower.includes(phrase.toLowerCase())).toBe(false);
-      }
-    }
-  });
-
-  it("formats the over delta with a thousands separator and floors at 0", () => {
-    expect(todayStatusChip("over", 1450)).toBe("1,450 over");
-    expect(todayStatusChip("over", -50)).toBe("0 over");
-    expect(todayStatusChip("over")).toBe("0 over");
+  it("chip may use budget bigrams while other surfaces stay forbidden", () => {
+    expect(todayStatusChip("under").toLowerCase()).toContain("under budget");
+    expect(todayStatusChip("over").toLowerCase()).toContain("over budget");
   });
 });
 

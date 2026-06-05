@@ -90,7 +90,7 @@ export function TodayDashboardMacroTiles({
   waterGoalMl,
   mealsToday,
   onPressMacro,
-  // Tile fill is owned by the shared <SupprCard size="tile"> shell now; the
+  // Tile fill is owned by the shared <SupprCard lift="flat" size="tile"> shell now; the
   // prop stays in the API for call-site stability but no longer drives chrome.
   cardColor: _cardColor,
   cardBorderColor,
@@ -143,7 +143,7 @@ export function TodayDashboardMacroTiles({
       Icon: Wheat,
     },
     fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplets },
-    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Leaf },
+    fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: macroColorFor("sugar"), unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: macroColorFor("sodium"), unit: "mg", Icon: Gauge, referenceOnly: true },
     water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroColorFor("water"), unit: "ml", Icon: Droplet },
@@ -200,7 +200,7 @@ export function TodayDashboardMacroTiles({
 
         return (
           // The 2×2 macro tiles are the `size="tile"` variant of the shared
-          // <SupprCard> shell (radius 16 vs the full card's 20, tighter `md`
+          // <SupprCard lift="flat"> shell (radius 24, matching the full card, with tighter `md`
           // padding) — they're small tiles, not full cards, so they get the one
           // documented size variant rather than being a bespoke exception
           // (Grace 2026-06-04 consolidation; no silent divergence). The
@@ -223,7 +223,7 @@ export function TodayDashboardMacroTiles({
               opacity: pressed ? 0.85 : 1,
             })}
           >
-          <SupprCard size="tile">
+          <SupprCard lift="flat" size="tile">
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
                 <Text
                   style={{

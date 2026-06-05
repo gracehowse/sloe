@@ -101,9 +101,11 @@ Two linked issues, both real:
   SEPARATE inner node with no shadow, `tile`/`inset` radii, `inset` has no drop
   shadow, dark = tonal lift + hairline.
 - `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx` — updated: pins
-  `Elevation.cardSoft` at **0.10** and that it matches `--elev-card-soft` web
-  EXACTLY (`0 4px 14px rgba(34, 27, 38, 0.10)`); the iOS-clip section now asserts
-  the fix lives in the shell + the migrated surfaces route through it.
+  `Elevation.cardSoft` at **0.16 / 18px / y+6** (bumped 0.10 → 0.16 on 2026-06-04
+  after edge-pixel sampling proved the 10% lift still read too weak on-device)
+  and that it matches `--elev-card-soft` web EXACTLY
+  (`0 6px 18px rgba(34, 27, 38, 0.16)`); the iOS-clip section now asserts the fix
+  lives in the shell + the migrated surfaces route through it.
 - `apps/mobile/tests/unit/sloeCardHairlineBorders.test.tsx` — updated: split into
   "shell owns the hairline", "migrated → routes through `<SupprCard>`", and
   "still-hand-rolled → keeps the hairline pin" (the un-migrated surfaces in the

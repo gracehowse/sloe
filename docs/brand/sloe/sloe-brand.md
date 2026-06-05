@@ -177,6 +177,20 @@ weaker as an app icon. Keep as the minimal wordmark for tight horizontal spaces 
 Frost bloom catching the light — a single, premium, instantly-spellable jewel. Recognisable at
 60×60.
 
+**Shipped icon + splash (2026-06-04).** The icon currently on the phone is the **full lowercase
+"sloe" wordmark** (Fraunces) on the plum gradient — Grace's chosen mark — not the single-glyph
+Concept A above (Concept A stays a future option for the smallest sizes). The home-screen label is
+now **Sloe** (`CFBundleDisplayName`); the bundle id / scheme stay `suppr` until TM clearance.
+
+- **Icon source:** `assets/gen/wordmark-final/icon-fraunces-1024.png` → flattened opaque (iOS needs
+  no alpha) → `apps/mobile/assets/images/icon.png` → `ios/.../AppIcon.appiconset`.
+- **Splash:** plum "sloe" wordmark on cream **Oat `#FBF8F3`** (light) / white "sloe" on plum
+  **`#3B2A4D`** (dark), from `sloe-fraunces-base.svg` / `…-base-white.svg`. The launch screen
+  (`AppLaunchScreen.tsx`) uses the same cream/plum field so the native→JS handoff is seamless.
+- **Regenerate:** `node scripts/render-sloe-brand-png.mjs && npm run sync-ios-brand --prefix apps/mobile`
+  (or `npm run build:brand-icons`), then rebuild the dev client. The iOS project is bare — do **not**
+  `expo prebuild`. See `docs/decisions/2026-06-04-ios-app-icon-splash-sloe.md`.
+
 ---
 
 ## 5. Voice & tone

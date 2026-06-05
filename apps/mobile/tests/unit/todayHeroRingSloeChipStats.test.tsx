@@ -6,9 +6,8 @@
  *   - the status CHIP above the ring (calm copy, three states), and
  *   - the Goal / Eaten / Bonus(or Over) stats row below it.
  *
- * Calm-tone guard: the chip must use the ratified calm phrases
- * ("Fresh start" / "On track" / "{n} over") — NOT the forbidden
- * "under budget" / "over budget" (see `todayCopyParity.test.ts`).
+ * Chip copy matches Figma `01 · Today`: Fresh start / Under budget /
+ * Over budget (`todayStatusChip` in `src/lib/copy/today.ts`).
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
@@ -43,21 +42,18 @@ describe("TodayHeroRing — SLOE status chip", () => {
     expect(getByText("Fresh start")).toBeTruthy();
   });
 
-  it("under target → 'On track' chip (calm, not 'under budget')", () => {
-    const { getByText, queryByText } = render(
+  it("under target → 'Under budget' chip", () => {
+    const { getByText } = render(
       <TodayHeroRing {...baseProps} consumed={1200} goal={2000} />,
     );
-    expect(getByText("On track")).toBeTruthy();
-    expect(queryByText(/under budget/i)).toBeNull();
+    expect(getByText("Under budget")).toBeTruthy();
   });
 
-  it("over target → '{n} over' chip (calm, not 'over budget')", () => {
-    const { getByText, queryByText } = render(
+  it("over target → 'Over budget' chip", () => {
+    const { getByText } = render(
       <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
     );
-    // 2400 - 2000 = 400 over.
-    expect(getByText("400 over")).toBeTruthy();
-    expect(queryByText(/over budget/i)).toBeNull();
+    expect(getByText("Over budget")).toBeTruthy();
   });
 });
 
