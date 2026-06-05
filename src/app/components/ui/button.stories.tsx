@@ -32,9 +32,11 @@ export const CssCheck: Story = {
   args: { children: "Submit" },
   play: async ({ canvas }) => {
     const button = canvas.getByRole("button", { name: /submit/i });
-    // Sloe Phase 0 (2026-06-03): the default Button bg is `--primary-solid`,
-    // now deep clay #A05A30 = rgb(160, 90, 48) (was blue #3a6ec6).
-    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(160, 90, 48)");
+    // Sloe Phase 0: the default Button bg is `--primary-solid`, the deep clay
+    // `--accent-primary-solid`. Re-skin refined the light-theme value to
+    // #A0552E = rgb(160, 85, 46) (2026-06-05; was #A05A30 / rgb(160,90,48),
+    // originally blue #3a6ec6) — keep this in sync with src/styles/theme.css.
+    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(160, 85, 46)");
   },
 };
 
