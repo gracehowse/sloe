@@ -31,6 +31,10 @@ jobs:
       # which makes verify-production-env exit 1 under VERIFY_STRICT=1 (see scripts/verify-production-env.ts).
       # Run VERIFY_STRICT=1 locally or in deploy pipelines when you want a hard gate.
       VERIFY_STRICT: "0"
+      # Gate the optional food-search smoke step here — the `secrets` context is
+      # NOT allowed in a step-level `if:` (fails workflow validation), but a
+      # job-level env that reads the secret is, and `env.` IS allowed in `if:`.
+      SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -71,7 +75,7 @@ jobs:
           npx wait-on http://127.0.0.1:3100/login
           npm run test:e2e
       - name: Food search provider smoke (optional — F-05)
-        if: ${{ secrets.SUPPR_TEST_AUTH_BEARER != '' }}
+        if: ${{ env.SUPPR_TEST_AUTH_BEARER != '' }}
         env:
           SUPPR_TEST_API_BASE: http://127.0.0.1:3100
           SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
