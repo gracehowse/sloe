@@ -70,6 +70,20 @@ jobs:
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
           npm run test:e2e
+      - name: Food search provider smoke (optional — F-05)
+        if: ${{ secrets.SUPPR_TEST_AUTH_BEARER != '' }}
+        env:
+          SUPPR_TEST_API_BASE: http://127.0.0.1:3100
+          SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
+          FATSECRET_CLIENT_ID: ${{ secrets.FATSECRET_CLIENT_ID }}
+          FATSECRET_CLIENT_SECRET: ${{ secrets.FATSECRET_CLIENT_SECRET }}
+          USDA_FDC_API_KEY: ${{ secrets.USDA_FDC_API_KEY }}
+          EDAMAM_APP_ID: ${{ secrets.EDAMAM_APP_ID }}
+          EDAMAM_APP_KEY: ${{ secrets.EDAMAM_APP_KEY }}
+        run: |
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+          npm run test -- --run tests/unit/foodSearchProviderIntegration.test.ts
       - name: Upload Playwright HTML report (on failure)
         if: failure()
         uses: actions/upload-artifact@v7

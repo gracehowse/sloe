@@ -12,6 +12,14 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 
 void React;
 
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+  ResizeObserverStub;
+
 const { mockReplace, getSearchParams, setSearchParams } = vi.hoisted(() => {
   let params = new URLSearchParams();
   return {
@@ -123,8 +131,6 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 }));
 
 import { NutritionTracker } from "../../src/app/components/NutritionTracker";
-import { MISSED_YESTERDAY_COPY } from "../../src/lib/nutrition/missedYesterday";
-
 const loggedMeal = {
   id: "m1",
   name: "Oats",
@@ -180,8 +186,8 @@ describe("NutritionTracker render harness", () => {
     // field writes), NOT profileDisplayName.
     authMetadataState.current = { full_name: "Grace Turner" };
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-greeting")).toHaveTextContent(
-      "Good afternoon, Grace",
+    expect(screen.getByTestId("today-hero-greeting")).toHaveTextContent(
+      "Afternoon, Grace",
     );
   });
 
@@ -191,7 +197,7 @@ describe("NutritionTracker render harness", () => {
     // the greeting no longer sources the name from there.
     authMetadataState.current = {};
     render(<NutritionTracker userTier="free" />);
-    const greeting = screen.getByTestId("today-greeting");
+    const greeting = screen.getByTestId("today-hero-greeting");
     expect(greeting).toHaveTextContent("Good afternoon");
     expect(greeting).not.toHaveTextContent("Grace");
   });
@@ -228,7 +234,7 @@ describe("NutritionTracker render harness", () => {
     });
   });
 
-  it("shows missed-yesterday copy when prior history exists but yesterday was empty", () => {
+  it("does not show missed-yesterday copy — banner retired (F-07)", () => {
     appDataState.current = {
       ...appDataState.current,
       nutritionByDay: {
@@ -237,9 +243,9 @@ describe("NutritionTracker render harness", () => {
       },
     };
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-missed-yesterday-copy")).toHaveTextContent(
-      MISSED_YESTERDAY_COPY,
-    );
+    expect(
+      screen.queryByTestId("today-missed-yesterday-copy"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the offline banner when navigator.onLine is false", () => {

@@ -1,22 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Icons } from "../ui/icons";
-import { IconBox } from "../ui/icon-box";
+import { Flame, Footprints } from "lucide-react";
+import { todayHealthConnectActiveCaloriesHint } from "../../../lib/copy/today";
 
 /**
  * TodayStepsCard — Steps & active-energy card on the Today screen.
  *
  * Read-only on web — mirrors mobile
- * (`apps/mobile/components/today/TodayActivityCard.tsx`). Steps + active
- * energy come from Apple Health (or Google Fit on Android, future)
- * via the mobile app's HealthKit sync, which writes to
- * `profiles.steps_by_day` / `profiles.activity_burn_by_day`. Web reads
- * those columns and displays them — there's no manual entry path
- * because web has no Health source of its own (decision 2026-04-18).
- *
- * Layout matches the mobile card: Steps row with progress bar, then a
- * divider, then Active energy row.
+ * (`apps/mobile/components/today/TodayActivityCard.tsx`). Figma TD1
+ * (`today-activity.html`): Newsreader card title, steps track, hairline
+ * divider, active energy row.
  */
 export interface TodayStepsCardProps {
   stepsForSelectedDay: number | null;
@@ -24,58 +18,81 @@ export interface TodayStepsCardProps {
   /** Active energy (kcal) burned this day from Health, or null when
    *  Health hasn't synced anything for this day. */
   activityBurnKcal: number | null;
+  dayLabel?: string;
 }
 
 export function TodayStepsCard({
   stepsForSelectedDay,
   dailyStepsGoal,
   activityBurnKcal,
+  dayLabel = "Today",
 }: TodayStepsCardProps) {
   return (
-    <div className="rounded-card bg-card card-slab-flat p-3 mb-4">
-      <div className="flex items-center gap-2 mb-3">
-        <IconBox size="sm" tone="primary">
-          <Icons.activity />
-        </IconBox>
-        <span className="text-xs font-semibold text-foreground">Steps & activity</span>
+    <div
+      className="rounded-card bg-card card-slab-flat p-5"
+      data-testid="today-activity-card"
+    >
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">
+          Steps & activity
+        </h3>
+        <span className="text-xs text-muted-foreground">{dayLabel}</span>
       </div>
 
-      {/* Steps row */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-sm font-semibold text-foreground">Steps</span>
-        <span className="text-base font-extrabold tabular-nums text-foreground">
-          {stepsForSelectedDay != null ? stepsForSelectedDay.toLocaleString() : "—"}
-          {stepsForSelectedDay != null ? (
-            <span className="text-xs font-semibold text-muted-foreground"> / {dailyStepsGoal.toLocaleString()}</span>
+      <div className="space-y-4">
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2.5 text-[15px] text-foreground">
+              <Footprints className="h-[18px] w-[18px] text-muted-foreground" aria-hidden />
+              Steps
+            </span>
+            <span className="font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground">
+              {stepsForSelectedDay != null ? stepsForSelectedDay.toLocaleString() : "—"}
+              {stepsForSelectedDay != null ? (
+                <span className="font-body text-sm font-normal text-muted-foreground">
+                  {" "}/ {dailyStepsGoal.toLocaleString()}
+                </span>
+              ) : null}
+            </span>
+          </div>
+          {stepsForSelectedDay != null && dailyStepsGoal > 0 ? (
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min((stepsForSelectedDay / dailyStepsGoal) * 100, 100)}%`,
+                  background:
+                    stepsForSelectedDay >= dailyStepsGoal ? "var(--success)" : "var(--primary)",
+                }}
+              />
+            </div>
           ) : null}
-        </span>
-      </div>
-      {stepsForSelectedDay != null && dailyStepsGoal > 0 ? (
-        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-3">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${Math.min((stepsForSelectedDay / dailyStepsGoal) * 100, 100)}%`,
-              background: stepsForSelectedDay >= dailyStepsGoal ? "var(--success)" : "var(--primary)",
-            }}
-          />
         </div>
-      ) : null}
 
-      <div className="h-px bg-border my-2" />
+        <div className="h-px bg-border" />
 
-      {/* Active energy row */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-foreground">Active energy</span>
-        <span className="text-base font-extrabold tabular-nums text-foreground">
-          {activityBurnKcal != null ? `${activityBurnKcal.toLocaleString()} kcal` : "—"}
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2.5 text-[15px] text-foreground">
+            <Flame className="h-[18px] w-[18px] text-[var(--activity)]" aria-hidden />
+            Active energy
+          </span>
+          <span className="font-[family-name:var(--font-headline)] text-lg font-semibold tabular-nums text-foreground">
+            {activityBurnKcal != null ? (
+              <>
+                {activityBurnKcal.toLocaleString()}
+                <span className="font-body text-sm font-normal text-muted-foreground"> kcal</span>
+              </>
+            ) : (
+              "—"
+            )}
+          </span>
+        </div>
+        {activityBurnKcal == null ? (
+          <p className="text-[11px] text-muted-foreground">
+            {todayHealthConnectActiveCaloriesHint()}
+          </p>
+        ) : null}
       </div>
-      {activityBurnKcal == null ? (
-        <p className="text-[11px] text-muted-foreground mt-1">
-          Active calories appear here once a source is connected from the iOS app.
-        </p>
-      ) : null}
     </div>
   );
 }

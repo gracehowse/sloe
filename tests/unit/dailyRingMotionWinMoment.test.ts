@@ -60,10 +60,9 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
 
   it("flag ON renders the centre value at display size; flag OFF keeps the prior 22px treatment", () => {
     expect(SRC).toContain('motionEnabled');
-    // 36px (top of the ENG-119 type scale: 11|13|15|18|22|24|28|36) — the
-    // counting-hero display size. Was 34px, which the type-scale lint rejects
-    // as off-scale (check-type-scale.mjs); 36 is the nearest on-scale value.
-    expect(SRC).toContain('"text-[36px] font-extrabold"');
+    // 48px — mobile `Type.ringValue` / Stitch `text-[40px]` parity (Sloe 2026-06).
+    // (Not quote-anchored: the Sloe rework prepends a `font-[family-name…]` class.)
+    expect(SRC).toContain('text-[48px]');
     expect(SRC).toContain('"text-[22px] font-bold"');
   });
 });
@@ -93,13 +92,15 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     expect(SRC).toContain('"drop-shadow(0 0 8px var(--accent-win))"');
   });
 
-  it("leaves the steady ring (idle gradient / under-plum / over-red) intact below the celebration", () => {
-    // Sloe D-1: the under-budget steady stroke is now --macro-calories (plum),
-    // over stays --destructive; the celebration is additive (a Sloe-gradient
-    // OVERRIDE while pulsing), not a swap of the resting hue. ENG-826: the empty
-    // ring paints the calm idle gradient, not flat grey.
+  it("leaves the steady ring (idle gradient / under-plum / over = damson lap) intact below the celebration", () => {
+    // Sloe D-1 (redesigned 2026-06-04): under-budget steady stroke is
+    // --macro-calories (plum); over-budget is the Apple-Watch overage LAP
+    // (--ring-overage-lap), no longer a red recolour of the arc (the red arc
+    // "read as odd" — superseded). ENG-826: the empty ring paints the calm idle
+    // gradient. The celebration is additive (a Sloe-gradient OVERRIDE while
+    // pulsing), not a swap of the resting hue.
     expect(SRC).toContain('"var(--macro-calories)"');
-    expect(SRC).toContain('"var(--destructive)"');
+    expect(SRC).toContain('"var(--ring-overage-lap)"');
     expect(SRC).toContain('"url(#ringIdle)"');
   });
 });

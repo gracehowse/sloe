@@ -1,0 +1,444 @@
+{
+  "generatedAt": "2026-06-05T18:21:59.338Z",
+  "env": {
+    "fatsecret_configured": true,
+    "FATSECRET_CONSUMER_KEY": true,
+    "FATSECRET_CLIENT_SECRET": true,
+    "FATSECRET_CONSUMER_SECRET": false,
+    "USDA_FDC_API_KEY": true,
+    "EDAMAM_APP_ID": true,
+    "EDAMAM_APP_KEY": true
+  },
+  "results": [
+    {
+      "query": "Big Mac",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 6,
+        "edamam": 10
+      },
+      "providerErrors": [],
+      "elapsedMs": 3056,
+      "top5": [
+        {
+          "name": "Big Mac (McDonalds)",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "261/100g",
+          "portion": "—",
+          "score": 1.0706666666666667,
+          "tier": "verified"
+        },
+        {
+          "name": "McDonald's · Big Mac",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 580kcal | Fat: 34.00g | Carbs: 45.",
+          "score": 0.95,
+          "tier": "estimated"
+        },
+        {
+          "name": "McDONALD'S, BIG MAC",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "257/100g",
+          "portion": "—",
+          "score": 0.5373333333333333,
+          "tier": "estimated"
+        },
+        {
+          "name": "McDonald's · Big Macmeal",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 1170kcal | Fat: 49.00g | Carbs: 15",
+          "score": 0.5049999999999999,
+          "tier": "estimated"
+        },
+        {
+          "name": "McDONALD'S, BIG MAC (without Big Mac Sauce)",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "234/100g",
+          "portion": "—",
+          "score": 0.46399999999999997,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "starbucks latte",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 6,
+        "edamam": 10
+      },
+      "providerErrors": [],
+      "elapsedMs": 1066,
+      "top5": [
+        {
+          "name": "Starbucks · Starbucks Blonde Vanilla Latte (Grande)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 250kcal | Fat: 6.00g | Carbs: 37.0",
+          "score": 0.802032,
+          "tier": "estimated"
+        },
+        {
+          "name": "Starbucks · Starbucks Blonde Vanilla Latte (Tall)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 200kcal | Fat: 5.00g | Carbs: 28.0",
+          "score": 0.802032,
+          "tier": "estimated"
+        },
+        {
+          "name": "Starbucks · Matcha Latte (Grande)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 220kcal | Fat: 6.00g | Carbs: 31.0",
+          "score": 0.6937866666666667,
+          "tier": "estimated"
+        },
+        {
+          "name": "Starbucks · Chai Latte (Grande)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 190kcal | Fat: 3.50g | Carbs: 32.0",
+          "score": 0.6937866666666667,
+          "tier": "estimated"
+        },
+        {
+          "name": "Starbucks · Matcha Latte (Tall)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 170kcal | Fat: 5.00g | Carbs: 22.0",
+          "score": 0.6937866666666667,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "chipotle bowl",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 6,
+        "edamam": 10
+      },
+      "providerErrors": [],
+      "elapsedMs": 814,
+      "top5": [
+        {
+          "name": "FlexPro · Chipotle Bowl",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 460kcal | Fat: 18.00g | Carbs: 48.",
+          "score": 0.95,
+          "tier": "estimated"
+        },
+        {
+          "name": "Jimmy Dean · Chipotle Bowl",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 bowl - Calories: 410kcal | Fat: 24.00g | Carbs: 8.00g ",
+          "score": 0.95,
+          "tier": "estimated"
+        },
+        {
+          "name": "Chipotle Mexican Grill · Amelaine Bowl",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 bowl - Calories: 695kcal | Fat: 23.00g | Carbs: 49.00g",
+          "score": 0.73308,
+          "tier": "estimated"
+        },
+        {
+          "name": "Chipotle Mexican Grill · Chicken Bowl",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 bowl - Calories: 820kcal | Fat: 22.00g | Carbs: 90.00g",
+          "score": 0.73308,
+          "tier": "estimated"
+        },
+        {
+          "name": "Chipotle Mexican Grill · Wholesome Bowl",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 bowl - Calories: 460kcal | Fat: 29.00g | Carbs: 18.00g",
+          "score": 0.73308,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "salmon",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 10,
+        "edamam": 10
+      },
+      "providerErrors": [],
+      "elapsedMs": 696,
+      "top5": [
+        {
+          "name": "Salmon salad",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "213/100g",
+          "portion": "—",
+          "score": 1.1,
+          "tier": "verified"
+        },
+        {
+          "name": "Lomi salmon",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "60/100g",
+          "portion": "—",
+          "score": 0.951,
+          "tier": "verified"
+        },
+        {
+          "name": "Fish, salmon, canned",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "136/100g",
+          "portion": "—",
+          "score": 0.951,
+          "tier": "verified"
+        },
+        {
+          "name": "Fish, salmon, grilled",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "259/100g",
+          "portion": "—",
+          "score": 0.951,
+          "tier": "verified"
+        },
+        {
+          "name": "Salmon",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 146kcal | Fat: 5.93g | Carbs: 0.00g | P",
+          "score": 0.95,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "banana",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 8,
+        "edamam": 0
+      },
+      "providerErrors": [],
+      "elapsedMs": 684,
+      "top5": [
+        {
+          "name": "Banana, raw",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "97/100g",
+          "portion": "—",
+          "score": 1.1,
+          "tier": "verified"
+        },
+        {
+          "name": "Banana nectar",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "74/100g",
+          "portion": "—",
+          "score": 1.031,
+          "tier": "verified"
+        },
+        {
+          "name": "Banana pudding",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "160/100g",
+          "portion": "—",
+          "score": 1.031,
+          "tier": "verified"
+        },
+        {
+          "name": "Bananas",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 89kcal | Fat: 0.33g | Carbs: 22.84g | P",
+          "score": 0.95,
+          "tier": "estimated"
+        },
+        {
+          "name": "Banana",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 89kcal | Fat: 0.33g | Carbs: 22.84g | P",
+          "score": 0.95,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "brown rice",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 10,
+        "edamam": 0
+      },
+      "providerErrors": [],
+      "elapsedMs": 682,
+      "top5": [
+        {
+          "name": "Beans and brown rice",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "162/100g",
+          "portion": "—",
+          "score": 0.9906666666666666,
+          "tier": "verified"
+        },
+        {
+          "name": "Rice flour, brown",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "363/100g",
+          "portion": "—",
+          "score": 0.9906666666666666,
+          "tier": "verified"
+        },
+        {
+          "name": "Flavored rice, brown and wild",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "106/100g",
+          "portion": "—",
+          "score": 0.9906666666666666,
+          "tier": "verified"
+        },
+        {
+          "name": "Brown Rice",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 197g - Calories: 216kcal | Fat: 1.75g | Carbs: 44.76g | ",
+          "score": 0.95,
+          "tier": "estimated"
+        },
+        {
+          "name": "Kroger · Brown Rice",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1/2 cup - Calories: 150kcal | Fat: 1.50g | Carbs: 34.00g",
+          "score": 0.95,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "tesco chicken",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 6,
+        "edamam": 0
+      },
+      "providerErrors": [],
+      "elapsedMs": 713,
+      "top5": [
+        {
+          "name": "Chicken",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 101g - Calories: 239kcal | Fat: 13.60g | Carbs: 0.00g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Chicken Skin",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 101g - Calories: 454kcal | Fat: 40.68g | Carbs: 0.00g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Chicken skin",
+          "source": "USDA",
+          "verified": true,
+          "kcal": "450/100g",
+          "portion": "—",
+          "score": 0.63,
+          "tier": "verified"
+        },
+        {
+          "name": "Chicken Kiev",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 101g - Calories: 254kcal | Fat: 13.19g | Carbs: 4.27g | ",
+          "score": 0.425,
+          "tier": "estimated"
+        },
+        {
+          "name": "Almond Chicken",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 2360g - Calories: 2738kcal | Fat: 143.74g | Carbs: 153.8",
+          "score": 0.425,
+          "tier": "estimated"
+        }
+      ]
+    },
+    {
+      "query": "sainsbury's hummus",
+      "providerHits": {
+        "fatsecret": 10,
+        "usda": 6,
+        "edamam": 0
+      },
+      "providerErrors": [],
+      "elapsedMs": 1237,
+      "top5": [
+        {
+          "name": "Hummus",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 177kcal | Fat: 8.59g | Carbs: 20.12g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Hummus",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 177kcal | Fat: 8.59g | Carbs: 20.12g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Hummus (Commercial)",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 100g - Calories: 166kcal | Fat: 9.60g | Carbs: 14.29g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Fresh & Easy · Hummus",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 2 tbsp - Calories: 80kcal | Fat: 7.00g | Carbs: 4.00g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        },
+        {
+          "name": "Haig's · Hummus",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 2 tbsp - Calories: 80kcal | Fat: 6.00g | Carbs: 4.00g | ",
+          "score": 0.64,
+          "tier": "estimated"
+        }
+      ]
+    }
+  ]
+}

@@ -142,7 +142,10 @@ describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
       resolve(REPO, "src/app/components/suppr/today-eat-again-banner.tsx"),
       "utf-8",
     );
-    expect(bannerSrc).toMatch(/border-border bg-card/);
+    // Sloe re-skin (2026-06-04): the neutral chrome is now the flat warm slab
+    // `bg-card card-slab-flat` (was `border-border bg-card`). Still neutral —
+    // NOT a primary tint. Intent unchanged; only the slab token moved.
+    expect(bannerSrc).toMatch(/bg-card card-slab-flat/);
     expect(bannerSrc).not.toMatch(/border-primary\/30 bg-primary\/5/);
     expect(bannerSrc).toMatch(/text-muted-foreground">Eat again</);
     expect(bannerSrc).not.toMatch(/tracking-widest text-primary">Eat again/);

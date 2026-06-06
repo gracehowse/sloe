@@ -156,7 +156,7 @@ export function NorthStarBlock({
           type="button"
           onClick={onOpenLibrary}
           className={cn(
-            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
+            "shrink-0 rounded-md bg-primary-solid px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >
@@ -182,7 +182,7 @@ export function NorthStarBlock({
         <button
           type="button"
           onClick={onBrowse}
-          className="shrink-0 text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+          className="shrink-0 text-[11px] font-semibold text-primary-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           Browse →
         </button>
@@ -268,7 +268,7 @@ function NorthStarDefaultBlock({
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>
@@ -344,7 +344,7 @@ function NorthStarDefaultBlock({
           type="button"
           onClick={onPrimaryCta}
           className={cn(
-            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md bg-primary/10 px-3 text-[13px] font-semibold text-primary",
+            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md bg-primary/10 px-3 text-[13px] font-semibold text-primary-solid",
             "hover:bg-primary/15",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}

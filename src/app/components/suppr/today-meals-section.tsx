@@ -34,6 +34,7 @@ import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { sheetTransition } from "../../../lib/motion";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
+import { TodayScrollSectionHeader } from "./today-scroll-section-header";
 
 /**
  * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
@@ -199,6 +200,33 @@ function slotHintCtaClassName(sectionName: string): string {
   }
 }
 
+/** TD4 — slot total kcal + coloured macro grams (mobile `SlotMacroChips` parity). */
+function SlotMacroChips({
+  kcal,
+  protein,
+  carbs,
+  fat,
+  fiber,
+}: {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}) {
+  return (
+    <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-[11px] tabular-nums">
+      <span className="text-muted-foreground">{kcal} kcal</span>
+      <span className="text-[var(--macro-protein)]">{Math.round(protein)}g</span>
+      <span className="text-[var(--macro-carbs)]">{Math.round(carbs)}g</span>
+      <span className="text-[var(--macro-fat)]">{Math.round(fat)}g</span>
+      {Number.isFinite(fiber) && fiber > 0 ? (
+        <span className="text-[var(--macro-fiber)]">{Math.round(fiber * 10) / 10}g</span>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Saved meals matching a slot. A meal matches when either:
  *   - `defaultMealSlot === slot` (user explicitly tagged it); OR
@@ -289,13 +317,17 @@ export function TodayMealsSection({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Meals</h3>
+      <div className="flex items-start justify-between gap-3">
+        <TodayScrollSectionHeader
+          title="Today's Meals"
+          testID="today-meals-section-header"
+          className="mb-4 flex-1 min-w-0"
+        />
         {mealsForSelectedDate.length > 0 && (
           <button
             type="button"
             onClick={onOpenDuplicateDay}
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
+            className="mt-1 shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
             aria-label="Duplicate this day to another day"
           >
             <Icons.copyPlus className="w-3.5 h-3.5" />
@@ -337,8 +369,18 @@ export function TodayMealsSection({
           ) : null}
         </SupprCard>
       )}
-      <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">
+      <div className="flex flex-col gap-3">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
+          const hasMeals = sectionMeals.length > 0;
+          const isOpen = !collapsedSlots.has(sectionName);
+          const slotCals = Math.round(sectionMeals.reduce((sum, m) => sum + m.calories, 0));
+          const slotProtein = sectionMeals.reduce((sum, m) => sum + (m.protein ?? 0), 0);
+          const slotCarbs = sectionMeals.reduce((sum, m) => sum + (m.carbs ?? 0), 0);
+          const slotFat = sectionMeals.reduce((sum, m) => sum + (m.fat ?? 0), 0);
+          const slotFiber = sectionMeals.reduce(
+            (sum, m) => sum + ((m as { fiberG?: number }).fiberG ?? 0),
+            0,
+          );
           // Preserve the distributeMealBudget call so any downstream
           // analytics side-effects remain identical. Result is unused
           // today but this mirrors the pre-H3 source exactly.
@@ -363,39 +405,58 @@ export function TodayMealsSection({
           const extraSavedCount = slotSavedMeals.length - 1;
 
           return (
-            <div
+            <SupprCard
               key={sectionName}
+              elevation="slab-flat"
+              radius="lg"
+              padding="none"
               data-testid={`today-slot-${sectionName}`}
-              className="border-b border-border last:border-b-0"
+              className={`overflow-hidden ${hasMeals ? "" : "opacity-55"}`}
             >
-              {/* Meal header row */}
+              {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
                 data-testid={`today-slot-header-${sectionName}`}
-                className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border cursor-pointer select-none"
-                onClick={() => onToggleSlot(sectionName)}
+                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none ${hasMeals && isOpen ? "border-b border-border" : ""}`}
+                onClick={() => {
+                  if (!hasMeals) {
+                    onOpenAddForSlot(sectionName);
+                    return;
+                  }
+                  onToggleSlot(sectionName);
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onToggleSlot(sectionName);
+                    if (!hasMeals) onOpenAddForSlot(sectionName);
+                    else onToggleSlot(sectionName);
                   }
                 }}
-                aria-expanded={!collapsedSlots.has(sectionName)}
+                aria-expanded={hasMeals ? isOpen : undefined}
+                aria-label={
+                  hasMeals
+                    ? `${sectionName}, ${sectionMeals.length} items — expand or collapse`
+                    : `${sectionName} — add food`
+                }
               >
                 <IconBox size="sm" tone={mealIconInfo.tone}>
                   <mealIconInfo.icon />
                 </IconBox>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-foreground">{sectionName}</p>
-                  <p className="text-[11px] text-muted-foreground">{sectionMeals.length} item{sectionMeals.length !== 1 ? "s" : ""}</p>
+                  <p className="font-[family-name:var(--font-headline)] text-lg font-medium text-foreground truncate">
+                    {sectionName}
+                  </p>
+                  {hasMeals ? (
+                    <SlotMacroChips
+                      kcal={slotCals}
+                      protein={slotProtein}
+                      carbs={slotCarbs}
+                      fat={slotFat}
+                      fiber={slotFiber}
+                    />
+                  ) : null}
                 </div>
-                <span className="text-sm font-semibold text-muted-foreground tabular-nums">
-                  {/* ENG-785: raw sum — storage is baked at portion (F-70);
-                      re-scaling here double-counts vs the per-row + day total. */}
-                  {Math.round(sectionMeals.reduce((sum, m) => sum + m.calories, 0))}
-                </span>
-                <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
                 {/* Ship M1 — `Log usual: {name}` pill on slot headers with
                     ≥1 saved meal matching this slot. 2+ matches open the
                     picker sheet. Replaces the old 10px "Save combo"
@@ -519,7 +580,7 @@ export function TodayMealsSection({
                             />
                           );
                         })()}
-                        <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
+                        <span className="text-sm text-foreground truncate">{meal.recipeTitle}</span>
                         {/* 2026-05-22 (Grace, mirrored to web 2026-05-31): the
                             per-meal source badge (`✓ Verified` / `✎ Manual`
                             dingbats) was deliberately removed from the meal row
@@ -753,37 +814,27 @@ export function TodayMealsSection({
                       Save {sectionName} as a meal
                     </button>
                   )}
+
+                  {/* TD4 — in-card Add food (populated, open slots only). */}
+                  <button
+                    type="button"
+                    data-testid={`today-add-food-${sectionName}`}
+                    onClick={() => onOpenAddForSlot(sectionName)}
+                    className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left text-sm font-semibold text-[var(--primary-solid)] hover:opacity-80"
+                    aria-label={`Add food to ${sectionName}`}
+                  >
+                    <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
+                    Add food
+                  </button>
                 </div>
               )}
-
-              {/* Empty meal: dimmed slot with "Tap to add" matching mobile */}
-              {!collapsedSlots.has(sectionName) && sectionMeals.length === 0 && (
-                <button
-                  type="button"
-                  onClick={() => onOpenAddForSlot(sectionName)}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-3 opacity-45 hover:opacity-70 transition-opacity"
-                >
-                  <span className="size-7 rounded-lg bg-muted flex items-center justify-center">
-                    <Icons.add className="size-3.5 text-muted-foreground" />
-                  </span>
-                  <span className="text-xs text-muted-foreground">Tap to add</span>
-                </button>
-              )}
-            </div>
+            </SupprCard>
           );
         })}
+      </div>
 
-        {/* Empty-state primary CTA — opens the unified `<LogSheet>`.
-            2026-05-02 parity sweep: the prior empty state collage
-            (3 buttons — Add custom meal / Photo log / Voice log — plus
-            a duplicate "Log from today's plan" rows block) diverged
-            from mobile, which has no in-meals-card empty-state collage
-            (mobile uses raised "+" + per-slot "Tap to add" rows + the
-            standalone `<TodayPlannedMealsCard>` rendered above the
-            meals card). Web now matches: a single primary CTA, same
-            entry the bottom-bar raised "+" uses on mobile-web. The
-            LogSheet's right-edge icons cover scan / voice / photo. */}
-        {mealsForSelectedDate.length === 0 && (
+      {mealsForSelectedDate.length === 0 ? (
+        <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">
           <div
             data-testid="today-meals-empty-state"
             className="px-4 py-10 text-center"
@@ -808,8 +859,8 @@ export function TodayMealsSection({
               Log a meal
             </button>
           </div>
-        )}
-      </SupprCard>
+        </SupprCard>
+      ) : null}
       <DestructiveConfirmDialog
         open={deleteCandidate != null}
         onOpenChange={(o) => {

@@ -74,9 +74,18 @@ export const Accent = {
   carbs: '#C8794E',
   carbsLight: '#D58A5E',
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
-   *  cards, burn-detail bonus. Distinct from warning (amber) + over (red). */
+   *  cards, burn-detail bonus. Distinct from warning (amber) + over (red).
+   *  FILL-only (arc/dot/icon at 3:1) — see `activitySolid` for text. */
   activity: '#D6A24A',
   activityLight: '#E0B25E',
+  /** Deep honey — TEXT/icon-on-light variant of `activity` (mirrors web
+   *  `--activity-solid`). Base honey is fill-only (#D6A24A is 2.3:1 even on
+   *  white — never passes as text). Clears AA on the honey activity tint
+   *  (4.9:1) + on white (5.9:1). Use for burn-detail "Bonus earned" value +
+   *  workout-kcal text. `activitySolidDark` (= lifted honey) carries text on
+   *  the dark card (6.9:1). */
+  activitySolid: '#8A5A14',
+  activitySolidDark: '#E0B25E',
   /** Fiber — Sloe teal. */
   fiber: '#4A7878',
   fiberLight: '#6FA3A3',

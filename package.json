@@ -17,6 +17,7 @@
     "visual:compare": "node scripts/visual-compare.mjs",
     "check:type-scale": "node scripts/check-type-scale.mjs",
     "check:nutrition-claims": "node scripts/check-nutrition-claims.mjs",
+    "env:doctor": "node scripts/env-doctor.mjs",
     "test": "vitest run --config vitest.unit.config.ts",
     "test:coverage": "vitest run --config vitest.unit.config.ts --coverage",
     "test:watch": "vitest",

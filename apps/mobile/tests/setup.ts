@@ -1,3 +1,5 @@
+require("../scripts/load-repo-env.cjs");
+
 /**
  * Vitest global setup for the mobile workspace.
  *

@@ -144,16 +144,17 @@ function bonusProps(overrides: Partial<BonusProps> = {}): BonusProps {
 }
 
 describe("TodayActivityBonusCard — TD1 Energy balance hero", () => {
-  it("titles the card 'Energy balance' and promotes the net to a headline", () => {
+  it("labels the hero 'Net energy' with a deficit chip and promotes net to a headline", () => {
     const { getByText, getByTestId } = render(
       <TodayActivityBonusCard {...bonusProps({ totalBurnKcal: 2100, consumedCalories: 1500 })} />,
     );
-    expect(getByText("Energy balance")).toBeTruthy();
+    expect(getByText("Net energy")).toBeTruthy();
+    expect(getByTestId("today-activity-bonus-net-chip")).toBeTruthy();
     const headline = getByTestId("today-activity-bonus-net-headline");
     // net = 2100 - 1500 = 600 deficit.
     expect(headline).toBeTruthy();
     expect(getByText("600")).toBeTruthy();
-    expect(getByText("kcal net deficit")).toBeTruthy();
+    expect(getByText("kcal deficit")).toBeTruthy();
     expect(getByText(/You've burned 600 more than you've eaten today\./)).toBeTruthy();
   });
 
@@ -181,24 +182,20 @@ describe("TodayActivityBonusCard — TD1 Energy balance hero", () => {
     // BOTH must be UPPERCASE.
     getAllByText("Maintenance").forEach(expectUppercase);
     // Energy-balance axis labels under the calm slider (DEFICIT · SURPLUS).
-    expectUppercase(getByText("Deficit"));
+    // "Deficit" also appears on the state chip — assert ≥1 axis label.
+    getAllByText("Deficit").forEach(expectUppercase);
     expectUppercase(getByText("Surplus"));
-    // The section header itself stays Title case (NOT uppercased).
-    expectTitleCase(getByText("Energy balance"));
+    // "Net energy" is an overline label (uppercase via Type.label).
+    expectUppercase(getByText("Net energy"));
   });
 
-  it("keeps the P2-31 honesty rule: nothing eaten → the net headline reads neutral", () => {
-    const { getByText, getAllByText, queryByText, getByTestId } = render(
+  it("when nothing is eaten, shows burned-so-far subline and a deficit chip", () => {
+    const { getByText, getByTestId } = render(
       <TodayActivityBonusCard {...bonusProps({ totalBurnKcal: 500, consumedCalories: 0 })} />,
     );
-    // Headline shows the burn (500) but labelled as burn, not a "net deficit".
     expect(getByTestId("today-activity-bonus-net-headline")).toBeTruthy();
-    // "kcal burned so far" reads in BOTH the hero caption and the (re-skinned)
-    // burn-breakdown card below — both are legitimately burn copy, so assert
-    // ≥1 rather than uniqueness, and confirm the deficit framing is absent.
-    expect(getAllByText("kcal burned so far").length).toBeGreaterThanOrEqual(1);
-    expect(queryByText("kcal net deficit")).toBeNull();
-    expect(getByText(/Log a meal to see today's balance\./)).toBeTruthy();
+    expect(getByText("kcal deficit")).toBeTruthy();
+    expect(getByText(/500 kcal burned so far · no food logged yet\./)).toBeTruthy();
   });
 
   it("renders a surplus headline when more was eaten than burned", () => {
@@ -207,7 +204,7 @@ describe("TodayActivityBonusCard — TD1 Energy balance hero", () => {
     );
     // net = 1500 - 2100 = -600 → surplus of 600.
     expect(getByText("600")).toBeTruthy();
-    expect(getByText("kcal net surplus")).toBeTruthy();
+    expect(getByText("kcal surplus")).toBeTruthy();
   });
 });
 
@@ -292,8 +289,10 @@ describe("TodayActivityBonusCard — TD1 burn-breakdown card (Sloe re-skin)", ()
   it("keeps the honey hue on the +bonus and stays sentence-case (not UPPERCASE)", () => {
     const { getByText } = render(<TodayActivityBonusCard {...burnCardProps()} />);
     const bonus = flattenStyle(getByText("+318 bonus earned").props.style);
-    // Honey = Accent.activity (#D6A24A) — the earned reward keeps its colour.
-    expect(bonus.color).toBe("#D6A24A");
+    // Honey is the AA-safe `activitySolid` (ENG-885): the base #D6A24A honey is
+    // fill-only (2.3:1 even on white — never passes as text). Theme-aware: light
+    // #8A5A14 / dark #E0B25E. The earned-reward identity stays honey, just readable.
+    expect(["#8A5A14", "#E0B25E"]).toContain(bonus.color);
     // Sentence-case (Figma "+318 bonus earned"), NOT the uppercase Type.label.
     expect(bonus.textTransform).not.toBe("uppercase");
   });
@@ -377,7 +376,7 @@ describe("TodayActivityBonusCard — TD1 energy-balance calm slider", () => {
     expect(grad).toBeTruthy();
     // Sage deficit stop + amber surplus stop both present.
     expect(UNSAFE_getByProps({ stopColor: "#5E7C5A" })).toBeTruthy();
-    expect(UNSAFE_getByProps({ stopColor: "#C9892C" })).toBeTruthy();
+    expect(UNSAFE_getByProps({ stopColor: "#C8794E" })).toBeTruthy();
   });
 
   it("omits the slider entirely when there's no burn data and nothing eaten", () => {

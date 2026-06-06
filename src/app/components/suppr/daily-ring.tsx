@@ -271,27 +271,7 @@ function DailyRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
       >
-        {/* MFP-style diagonal hash pattern — mirrors mobile
-            `CalorieRing.tsx`. Hue matches --destructive so the
-            pattern reads as part of the red arc, not a new colour
-            layer. Grace 2026-05-22: own green/red + hashed overage. */}
         <defs>
-          <pattern
-            id="overHash"
-            patternUnits="userSpaceOnUse"
-            width={6}
-            height={6}
-            patternTransform="rotate(45)"
-          >
-            <line
-              x1={0}
-              y1={0}
-              x2={0}
-              y2={6}
-              stroke="var(--destructive)"
-              strokeWidth={3}
-            />
-          </pattern>
           {/* Win-moment celebration gradient — mirrors the
               `--accent-win-gradient` token (Sloe brand gradient #3B2A4D →
               #C8794E → #C9892C, 120°; Phase 0 dossier D-3). SVG `stroke` can't
@@ -332,9 +312,7 @@ function DailyRing({
               ? "url(#winSpectrum)"
               : isEmpty
                 ? "url(#ringIdle)"
-                : isOverBudget
-                  ? "var(--destructive)"
-                  : "var(--macro-calories)"
+                : "var(--macro-calories)"
           }
           // ENG-798 win-moment: a target-hit is by definition the
           // at/under-budget state, so the celebration only ever lights an
@@ -359,37 +337,52 @@ function DailyRing({
               : undefined,
           }}
         />
-        {/* Hashed overage segment — only when over budget. Starts at
-            top (12 o'clock after the parent's -rotate-90) and runs
-            clockwise for `(over / target) * circumference`. Capped
-            at one full lap. */}
+        {/* Over-budget overage lap — Apple-Watch wrap (2026-06-04, mobile
+            CalorieRing parity). Base ring stays plum; portion past 100% is a
+            second lap in lifted plum with a soft glow on the leading cap. */}
         {!isEmpty && isOverBudget && target > 0
           ? (() => {
-              const overFraction = Math.min(
-                (consumed - target) / target,
-                1,
-              );
-              const overLen = circumference * overFraction;
+              const overFrac = Math.min(consumed / target - 1, 1);
+              const overLen = circumference * overFrac;
+              const capAngle = (-90 + overFrac * 360) * (Math.PI / 180);
+              const capX = cx + radius * Math.cos(capAngle);
+              const capY = cx + radius * Math.sin(capAngle);
               return (
-                <circle
-                  cx={cx}
-                  cy={cx}
-                  r={radius}
-                  fill="none"
-                  stroke="url(#overHash)"
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={`${overLen} ${circumference}`}
-                  strokeDashoffset={0}
-                  strokeLinecap="butt"
-                />
+                <g data-testid="daily-ring-overage-lap">
+                  <circle
+                    cx={cx}
+                    cy={cx}
+                    r={radius}
+                    fill="none"
+                    stroke="var(--ring-overage-lap)"
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${overLen} ${circumference}`}
+                    strokeDashoffset={0}
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx={capX}
+                    cy={capY}
+                    r={strokeWidth * 0.95}
+                    fill="var(--ring-overage-glow)"
+                    opacity={0.28}
+                  />
+                  <circle
+                    cx={capX}
+                    cy={capY}
+                    r={strokeWidth * 0.5}
+                    fill="var(--ring-overage-glow)"
+                    opacity={0.65}
+                  />
+                </g>
               );
             })()
           : null}
         {/* Macro rings (shown when expanded).
             2026-05-14 — Grace's call: macro arcs always render in
             their own colour at full opacity, even when over-budget.
-            The red outer kcal ring carries the over-budget signal
-            — the inner arcs don't need to repeat it, and dimming
+            The plum overage lap on the outer ring carries the over-budget
+            signal — the inner arcs don't need to repeat it, and dimming
             them collapsed the multi-colour language. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
@@ -461,7 +454,7 @@ function DailyRing({
                 // heavy. Flag OFF keeps the prior 22px / font-bold treatment
                 // byte-for-byte.
                 motionEnabled
-                  ? "text-[36px] font-extrabold"
+                  ? "font-[family-name:var(--font-headline)] text-[48px] font-normal tracking-tight"
                   : "text-[22px] font-bold",
               )}
               style={{ color: centerValueColor ?? undefined }}

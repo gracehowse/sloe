@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { todayHealthConnectActiveCaloriesHint } from "@suppr/shared/copy/today";
 
 /**
  * TodayActivityCard — Steps & active-energy card on the Today screen.
@@ -122,10 +123,7 @@ export function TodayActivityCard({
         </View>
         {activityBurnKcal == null && (
           <Text style={{ fontSize: 11, color: textTertiaryColor }}>
-            {/* Debug audit 2026-05-04 (visual-qa): "More → Connected"
-                referenced a tab that no longer exists post-IA-collapse.
-                Settings now hosts Connections under the same path. */}
-            Active calories appear here once a source is connected (Settings → Connections).
+            {todayHealthConnectActiveCaloriesHint()}
           </Text>
         )}
       </View>

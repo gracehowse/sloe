@@ -276,6 +276,7 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_motion",
   "redesign_branded_sheets",
   "redesign_search_results",
+  "today-weekly-insight-mobile",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

@@ -14,13 +14,17 @@ export const Layout = {
    * phone horizontal padding 20px). Tighter than the 2026-05-19 global
    * `Spacing.md` (16px) bump that made mobile Today feel airy vs web.
    */
-  todayScrollGap: 10,
+  /** Tight gap within the hero cluster (ring, coach, macro tiles). */
+  todayScrollGap: 8,
+  /** Larger break before meals / insight / lower fold (ENG-871).
+   *  With `todayScrollGap` (8) yields 40px — matches Stitch `mb-10`. */
+  todaySectionBreak: 32,
   /** Figma TD1/TD2 — `mb-5` between section header and first card. */
   todaySectionHeaderGap: Spacing.lg,
   /** Figma TD1/TD2 — `mb-5` between sibling cards inside a section. */
   todaySectionCardGap: Spacing.lg,
   todayScreenPaddingX: Spacing.lg,
-  macroTileGridGap: 10,
+  macroTileGridGap: 12,
   /** Plan tab — same density bar as Today; day blocks are section + flat meal card. */
   planScrollGap: 10,
   planScreenPaddingX: Spacing.lg,

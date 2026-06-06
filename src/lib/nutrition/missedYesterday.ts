@@ -20,6 +20,9 @@ export interface ShouldShowMissedYesterdayInput {
   hasAnyJournalHistory: boolean;
   /** Number of meals the user logged on yesterday's date key. */
   mealsYesterdayCount: number;
+  /** Meals logged today — when zero the hero chip already reads "Fresh start"
+   *  (ENG-872: drop the redundant missed-yesterday banner). */
+  mealsTodayCount: number;
   /** 0=Sun … 6=Sat — today's day-of-week. */
   todayDayOfWeek: number;
   /** Profile's `week_start_day` preference. */
@@ -34,7 +37,10 @@ export interface ShouldShowMissedYesterdayInput {
  *     (`hasAnyJournalHistory`) — brand-new accounts get the
  *     first-meal empty state, not this.
  *  3. Yesterday's meal count is exactly zero.
- *  4. Today is not the first day of a fresh week (Mon for
+ *  4. (Retired F-07, 2026-06-05) Banner no longer shown — redundant when
+ *     today is empty (ENG-872 Fresh start chip) or when today has meals
+ *     (user is already logging again).
+ *  5. Today is not the first day of a fresh week (Mon for
  *     Monday-start users, Sun for Sunday-start users) — a week
  *     boundary already reads as a reset, and Sundays / Mondays
  *     already carry the weekly-checkin nudge.
@@ -45,12 +51,12 @@ export function shouldShowMissedYesterday(
   if (!input.isToday) return false;
   if (!input.hasAnyJournalHistory) return false;
   if (input.mealsYesterdayCount !== 0) return false;
-  const isFirstDayOfWeek =
-    input.weekStartDay === "monday"
-      ? input.todayDayOfWeek === 1
-      : input.todayDayOfWeek === 0;
-  if (isFirstDayOfWeek) return false;
-  return true;
+  // ENG-872 + F-07: never show — empty today uses Fresh start; populated
+  // today means the user is already back on track.
+  void input.mealsTodayCount;
+  void input.todayDayOfWeek;
+  void input.weekStartDay;
+  return false;
 }
 
 /** Canonical copy — pinned by `missedYesterday.test.ts`. */

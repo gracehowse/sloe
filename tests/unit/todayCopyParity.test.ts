@@ -47,6 +47,9 @@ import {
   nextUnloggedMealSlot,
   TODAY_ROOM_MIN_KCAL,
   TODAY_MEAL_SLOT_ORDER,
+  TODAY_HEALTH_CONNECT_ROUTE,
+  todayHealthConnectActiveCaloriesHint,
+  todayHealthConnectEnergyEmptyHint,
 } from "../../src/lib/copy/today";
 
 /** Absolute path to the repo root — tests run from the repo root via
@@ -209,6 +212,19 @@ describe("Sloe Today hero dates (todayLongDateSubline / todayPastDayGreetingLine
   });
 });
 
+describe("Today health connect route (ENG-873)", () => {
+  it("uses Settings → Connections in shared hints", () => {
+    expect(TODAY_HEALTH_CONNECT_ROUTE).toBe("Settings → Connections");
+    expect(todayHealthConnectActiveCaloriesHint()).toContain(
+      TODAY_HEALTH_CONNECT_ROUTE,
+    );
+    expect(todayHealthConnectEnergyEmptyHint()).toContain(
+      TODAY_HEALTH_CONNECT_ROUTE,
+    );
+    expect(todayHealthConnectActiveCaloriesHint()).not.toContain("More →");
+  });
+});
+
 describe("Sloe Today status chip (todayStatusChip) — Figma labels", () => {
   it("uses Fresh start / Under budget / Over budget", () => {
     expect(todayStatusChip("empty")).toBe("Fresh start");
@@ -264,21 +280,34 @@ describe("Sloe Weekly-insight copy (TD3) — honest + calm", () => {
 });
 
 describe("Sloe Today under-ring coach line (todayRoomForMeal) — forward + honest", () => {
-  it("names the next unlogged slot with the remaining budget (Figma 01)", () => {
+  it("names the next unlogged slot with the remaining budget when one slot is left (Figma 01)", () => {
+    const loggedMostMeals = ["Breakfast", "Lunch", "Snacks"];
     // "Room for dinner — about 620 kcal to play with. No rush."
+    expect(todayRoomForMeal(620, "Dinner", loggedMostMeals)).toBe(
+      "Room for dinner — about 620 kcal to play with. No rush.",
+    );
+    // Legacy call without loggedSlots still works for last-meal scenarios.
     expect(todayRoomForMeal(620, "Dinner")).toBe(
       "Room for dinner — about 620 kcal to play with. No rush.",
     );
-    expect(todayRoomForMeal(450, "Breakfast")).toBe(
-      "Room for breakfast — about 450 kcal to play with. No rush.",
+  });
+
+  it("does not suggest the full-day remainder as a breakfast target (901 kcal case)", () => {
+    expect(todayRoomForMeal(901, "Breakfast", [])).toBe(
+      "Plan your day — about 901 kcal left. No rush.",
     );
-    expect(todayRoomForMeal(300, "Lunch")).toBe(
-      "Room for lunch — about 300 kcal to play with. No rush.",
+    expect(todayRoomForMeal(901, "Breakfast", [])).not.toContain("901 kcal at breakfast");
+  });
+
+  it("suggests a slot-appropriate aim when two meals remain", () => {
+    // Breakfast + lunch logged; dinner next. 400 remaining → ~267 kcal dinner share.
+    expect(todayRoomForMeal(400, "Dinner", ["Breakfast", "Lunch"])).toBe(
+      "Aim for about 267 kcal at dinner. No rush.",
     );
   });
 
-  it("reads 'a snack' (singular, natural) for the Snacks slot", () => {
-    expect(todayRoomForMeal(180, "Snacks")).toBe(
+  it("reads 'for a snack' in the aim line for the Snacks slot", () => {
+    expect(todayRoomForMeal(180, "Snacks", ["Breakfast", "Lunch", "Dinner"])).toBe(
       "Room for a snack — about 180 kcal to play with. No rush.",
     );
   });

@@ -32,17 +32,25 @@ const {
   openURLSpy,
   openSettingsSpy,
   requestHealthPermissionsSpy,
+  requestDietaryHealthPermissionsSpy,
   syncHealthDataSpy,
   syncNutritionFromHealthSpy,
   probeHealthAccessSpy,
+  asyncStorageGetItemSpy,
 } = vi.hoisted(() => {
   return {
     openURLSpy: vi.fn(() => Promise.resolve()),
     openSettingsSpy: vi.fn(() => Promise.resolve()),
     requestHealthPermissionsSpy: vi.fn(),
+    requestDietaryHealthPermissionsSpy: vi.fn(() =>
+      Promise.resolve({ ok: true, bodySyncReady: true, dietaryImportReady: true, userMessage: "" }),
+    ),
     syncHealthDataSpy: vi.fn(),
     syncNutritionFromHealthSpy: vi.fn(),
     probeHealthAccessSpy: vi.fn(() => Promise.resolve("ok" as const)),
+    asyncStorageGetItemSpy: vi.fn<(key: string) => Promise<string | null>>(
+      () => Promise.resolve(null),
+    ),
   };
 });
 
@@ -62,7 +70,7 @@ vi.mock("react-native", async () => {
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
-    getItem: vi.fn(() => Promise.resolve(null)),
+    getItem: asyncStorageGetItemSpy,
     setItem: vi.fn(() => Promise.resolve()),
     removeItem: vi.fn(() => Promise.resolve()),
   },
@@ -122,9 +130,19 @@ vi.mock("@/lib/healthSync", () => ({
   isExpoGoRuntime: () => false,
   isHealthSyncAvailable: () => true,
   probeHealthAccess: probeHealthAccessSpy,
-  requestDietaryHealthPermissions: vi.fn(() =>
-    Promise.resolve({ dietaryImportReady: true, userMessage: "" }),
+  probeNutritionImport: vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      totalEnergyCount: 0,
+      externalEnergyCount: 0,
+      sourceApps: [],
+      ownSamplesSkipped: 0,
+    }),
   ),
+  probeNutritionWrite: vi.fn(() => Promise.resolve({ ok: true })),
+  formatNutritionImportSummary: (n: { imported: unknown[] }) =>
+    n.imported.length > 0 ? `Imported ${n.imported.length} meals from Health.` : "No new meals to import from Health.",
+  requestDietaryHealthPermissions: requestDietaryHealthPermissionsSpy,
   requestHealthPermissions: requestHealthPermissionsSpy,
   syncHealthData: syncHealthDataSpy,
   syncNutritionFromHealth: syncNutritionFromHealthSpy,
@@ -134,6 +152,15 @@ beforeEach(() => {
   openURLSpy.mockClear();
   openSettingsSpy.mockClear();
   requestHealthPermissionsSpy.mockReset();
+  requestDietaryHealthPermissionsSpy.mockReset();
+  requestDietaryHealthPermissionsSpy.mockResolvedValue({
+    ok: true,
+    bodySyncReady: true,
+    dietaryImportReady: true,
+    userMessage: "",
+  });
+  asyncStorageGetItemSpy.mockReset();
+  asyncStorageGetItemSpy.mockResolvedValue(null);
   syncHealthDataSpy.mockReset();
   syncNutritionFromHealthSpy.mockReset();
   probeHealthAccessSpy.mockReset();
@@ -193,6 +220,29 @@ describe("HealthSyncScreen — error recovery affordances (F-57 Build 41)", () =
 
     await waitFor(() => {
       expect(openURLSpy).toHaveBeenCalledWith("app-settings:");
+    });
+  });
+
+  it("re-requests dietary read permission when reconnecting with import already enabled", async () => {
+    asyncStorageGetItemSpy.mockImplementation((key: string) => {
+      if (key === "health_import_nutrition") return Promise.resolve("true");
+      return Promise.resolve(null);
+    });
+    requestHealthPermissionsSpy.mockResolvedValue({
+      ok: true,
+      bodySyncReady: true,
+      dietaryImportReady: false,
+      userMessage: "Steps connected.",
+    });
+
+    const { getByText } = render(<HealthSyncScreen />);
+
+    await act(async () => {
+      fireEvent.press(getByText("Connect Health Data"));
+    });
+
+    await waitFor(() => {
+      expect(requestDietaryHealthPermissionsSpy).toHaveBeenCalledTimes(1);
     });
   });
 

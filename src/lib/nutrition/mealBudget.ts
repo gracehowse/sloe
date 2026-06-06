@@ -3,12 +3,47 @@
  * Ratios roughly follow standard dietitian guidance.
  */
 
-const SLOT_RATIOS: Record<string, number> = {
+/** Standard slot shares — used by meal planning and Today coach copy. */
+export const MEAL_SLOT_CALORIE_RATIOS: Record<string, number> = {
   Breakfast: 0.25,
   Lunch: 0.30,
   Dinner: 0.30,
   Snacks: 0.15,
 };
+
+const SLOT_RATIOS = MEAL_SLOT_CALORIE_RATIOS;
+
+const MEAL_SLOT_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
+
+function normalisedLoggedSlots(loggedSlots: Iterable<string>): Set<string> {
+  const logged = new Set<string>();
+  for (const s of loggedSlots) {
+    const t = s.trim().toLowerCase();
+    if (t) logged.add(t);
+  }
+  return logged;
+}
+
+/** How many meal slots still have no logged food today. */
+export function unloggedMealSlotCount(loggedSlots: Iterable<string>): number {
+  const logged = normalisedLoggedSlots(loggedSlots);
+  return MEAL_SLOT_ORDER.filter((slot) => !logged.has(slot.toLowerCase())).length;
+}
+
+/** Suggested kcal for the *next* meal slot — redistributes remaining budget
+ *  across unlogged slots using {@link MEAL_SLOT_CALORIE_RATIOS}. */
+export function coachSlotAimKcal(
+  remainingKcal: number,
+  nextSlot: string,
+  loggedSlots: Iterable<string>,
+): number {
+  const logged = normalisedLoggedSlots(loggedSlots);
+  const unlogged = MEAL_SLOT_ORDER.filter((slot) => !logged.has(slot.toLowerCase()));
+  const ratioSum = unlogged.reduce((sum, slot) => sum + (SLOT_RATIOS[slot] ?? 0), 0);
+  const nextRatio = SLOT_RATIOS[nextSlot] ?? 0.25;
+  if (ratioSum <= 0) return Math.round(remainingKcal);
+  return Math.round(remainingKcal * (nextRatio / ratioSum));
+}
 
 export type MealBudget = {
   slot: string;

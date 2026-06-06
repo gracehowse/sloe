@@ -6,6 +6,7 @@ import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
@@ -23,6 +24,19 @@ import {
   type MaintenanceSource,
 } from "@suppr/shared/nutrition/resolveMaintenance";
 import { weekDeficitToKg } from "@suppr/shared/nutrition/maintenanceChain";
+import {
+  NET_ENERGY_CHIP_BG,
+  NET_ENERGY_CHIP_LABEL,
+  NET_ENERGY_STATE_COLOR,
+  netEnergyChipState,
+  netEnergyKcalUnit,
+  netEnergyMarkerFraction,
+  netEnergySubline,
+} from "@suppr/shared/nutrition/netEnergyBalance";
+import {
+  TODAY_HEALTH_CONNECT_ROUTE,
+  WEEKLY_ROLLING_DENOMINATOR_HINT,
+} from "@suppr/shared/copy/today";
 import {
   ACTIVITY_BUDGET_DISCOVER_BODY,
   ACTIVITY_BUDGET_DISCOVER_CTA,
@@ -146,6 +160,10 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     showActivityBudgetDiscoverBanner = false,
   } = props;
   const cardElevation = useTodayCardElevation();
+  // Theme-aware honey TEXT (base honey is fill-only): deep honey on light,
+  // lifted honey on dark; both clear AA. Mirrors web `--activity-solid`.
+  const activitySolid =
+    useColorScheme() === "dark" ? Accent.activitySolidDark : Accent.activitySolid;
   const [infoOpen, setInfoOpen] = React.useState(false);
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
@@ -187,43 +205,25 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
 
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
-
-  // Sloe TD1 energy-balance gradient marker (sage deficit → frost
-  // maintenance → amber surplus). Position is a PRESENTATION of existing
-  // data — no new nutrition value. When maintenance is known we place the
-  // marker by where intake sits relative to maintenance: eaten == 0 → far
-  // left, eaten == maintenance → centre, eaten == 2× maintenance → far
-  // right. Without a maintenance value we fall back to the net sign
-  // (deficit left of centre, surplus right). Clamped to a small inset so
-  // the dot never clips the bar ends.
-  const balanceFraction = (() => {
-    if (hasMaintenanceTile && maintenanceTdeeKcal! > 0) {
-      const frac = consumedCalories / (2 * maintenanceTdeeKcal!);
-      return Math.min(0.96, Math.max(0.04, frac));
-    }
-    if (consumedCalories === 0) return 0.04;
-    return isDeficit ? 0.25 : 0.75;
-  })();
-  // The headline net colour: sage for a deficit, amber for a surplus, but
-  // neutral grey when nothing's been eaten yet (the "net" is just the burn
-  // — not a real balance), mirroring the summary-tile rule below.
-  const netHeadlineColor =
-    consumedCalories === 0
-      ? textSecondaryColor
-      : isDeficit
-        ? Accent.success
-        : Accent.warning;
-  // Plain-language sub-line under the headline (frame: "You've burned 553
-  // more than you've eaten today."). Past days read in past tense per the
-  // project voice rule.
-  const netSubLine =
-    consumedCalories === 0
-      ? isToday
-        ? "Log a meal to see today's balance."
-        : "No food logged for this day."
-      : isDeficit
-        ? `You've burned ${Math.abs(net).toLocaleString()} more than you've eaten${isToday ? " today" : ""}.`
-        : `You've eaten ${Math.abs(net).toLocaleString()} more than you've burned${isToday ? " today" : ""}.`;
+  const chipState = netEnergyChipState(net);
+  const chipColor = NET_ENERGY_STATE_COLOR[chipState];
+  // AA-safe -solid chip background (white-on-fill needs 4.5:1). Headline +
+  // marker keep the vivid `chipColor`.
+  const chipBg = NET_ENERGY_CHIP_BG[chipState];
+  const balanceFraction = netEnergyMarkerFraction(
+    net,
+    hasMaintenanceTile ? maintenanceTdeeKcal : null,
+    consumedCalories,
+    isDeficit,
+  );
+  const netHeadlineColor = chipColor;
+  const netSubLine = netEnergySubline({
+    burnedKcal: totalBurnKcal,
+    eatenKcal: consumedCalories,
+    isToday,
+    netKcal: net,
+    isDeficit,
+  });
 
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
   // actually logged, not a hardcoded /7 — a mid-week calendar window was
@@ -311,30 +311,43 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </View>
         </View>
       ) : null}
-      {/* Sloe TD1 "Energy balance" header — Newsreader title + info icon
-          (preserved testID + gate). The maintenance-TDEE explainer popover
-          is unchanged below. */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
-        <Text style={[styles.cardTitle, { flex: 1, color: MacroColors.calories }]}>Energy balance</Text>
-        {popoverCopy ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="What is maintenance TDEE?"
-            testID="today-activity-bonus-info-trigger"
-            onPress={() => setInfoOpen(true)}
-            hitSlop={8}
-            style={{ padding: 4 }}
+      {/* Sloe TD1 — Net energy overline + state chip (Bevel pattern). */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm }}>
+        <Text style={{ ...Type.label, color: textTertiaryColor }}>Net energy</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {popoverCopy ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="What is maintenance TDEE?"
+              testID="today-activity-bonus-info-trigger"
+              onPress={() => setInfoOpen(true)}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
+            </Pressable>
+          ) : null}
+          <View
+            testID="today-activity-bonus-net-chip"
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: Radius.full,
+              backgroundColor: chipBg,
+            }}
           >
-            <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
-          </Pressable>
-        ) : null}
+            <Text style={{ ...Type.label, fontSize: 11, color: "#fff" }}>
+              {NET_ENERGY_CHIP_LABEL[chipState]}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {!hasBurnData && isToday ? (
         <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}>
           No resting or active energy for this day in Suppr yet. Open{" "}
-          <Text style={{ fontWeight: "700", color: textColor }}>More → Connected</Text>, enable Apple Health, then pull
-          to refresh or revisit this tab to sync.
+          <Text style={{ fontWeight: "700", color: textColor }}>{TODAY_HEALTH_CONNECT_ROUTE}</Text>
+          , enable Apple Health, then pull to refresh or revisit this tab to sync.
         </Text>
       ) : null}
 
@@ -348,23 +361,21 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
           <Text
             testID="today-activity-bonus-net-headline"
-            // `Type.ringValue` is now 48px (the Today ring centre, 2026-06-04).
-            // This energy-balance card headline is a SECONDARY number inline
-            // with a small caption — it keeps the pre-bump 36/36 so the ring
-            // bump doesn't silently oversize it. Same serif family/spacing.
-            style={{ ...Type.ringValue, fontSize: 36, lineHeight: 36, color: netHeadlineColor, fontVariant: ["tabular-nums"] }}
+            style={{
+              fontFamily: FontFamily.serifRegular,
+              fontSize: 52,
+              lineHeight: 52,
+              color: netHeadlineColor,
+              fontVariant: ["tabular-nums"],
+            }}
           >
             {Math.abs(net).toLocaleString()}
           </Text>
           <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-            {consumedCalories === 0
-              ? "kcal burned so far"
-              : isDeficit
-                ? "kcal net deficit"
-                : "kcal net surplus"}
+            {netEnergyKcalUnit(chipState)}
           </Text>
         </View>
-        <Text style={{ fontSize: 12, color: textTertiaryColor, marginTop: 2, marginBottom: Spacing.md }}>
+        <Text style={{ fontSize: 13, color: textTertiaryColor, marginTop: 8, marginBottom: Spacing.md }}>
           {netSubLine}
         </Text>
 
@@ -382,31 +393,31 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 the centre reads as the neutral line, not a hard segment. */}
             <View
               accessibilityRole="progressbar"
-              style={{ position: "relative", height: 14, justifyContent: "center", marginBottom: Spacing.sm }}
+              accessibilityLabel="Energy balance"
+              style={{ position: "relative", height: 20, justifyContent: "center", marginBottom: Spacing.sm }}
             >
-              <Svg width="100%" height={8}>
+              <Svg width="100%" height={10}>
                 <Defs>
                   <LinearGradient id="energyBalanceTrack" x1="0" y1="0" x2="1" y2="0">
                     <Stop offset="0" stopColor={Accent.success} />
                     <Stop offset="0.5" stopColor={borderColor} />
-                    <Stop offset="1" stopColor={Accent.warning} />
+                    <Stop offset="1" stopColor={Accent.primary} />
                   </LinearGradient>
                 </Defs>
-                {/* rx/ry round the painted track ends (the gradient pill). */}
-                <Rect x="0" y="0" width="100%" height={8} rx={4} ry={4} fill="url(#energyBalanceTrack)" />
+                <Rect x="0" y="0" width="100%" height={10} rx={5} ry={5} fill="url(#energyBalanceTrack)" />
               </Svg>
               <View
                 style={{
                   position: "absolute",
                   top: 0,
                   left: `${balanceFraction * 100}%`,
-                  marginLeft: -7,
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  backgroundColor: cardColor,
-                  borderWidth: 2,
-                  borderColor: isDeficit ? Accent.success : Accent.warning,
+                  marginLeft: -10,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 3,
+                  borderColor: chipColor,
                 }}
               />
             </View>
@@ -478,7 +489,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               style={{ alignItems: "center", flex: 1 }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
-                <Target size={IconSize.sm} color={textSecondaryColor} strokeWidth={2} />
+                <Target size={IconSize.sm} color={MacroColors.calories} strokeWidth={2} />
                 <Text style={{ ...Type.label, color: textTertiaryColor }}>
                   Maintenance
                 </Text>
@@ -508,7 +519,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                 {w.minutes > 0 ? `${w.minutes} min` : ""}
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.activity, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: activitySolid, fontVariant: ["tabular-nums"] }}>
                 {w.calories > 0 ? `${w.calories} kcal` : ""}
               </Text>
             </View>
@@ -581,7 +592,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                       ...Type.caption,
                       fontFamily: FontFamily.sansSemibold,
                       fontWeight: FontWeight.semibold,
-                      color: Accent.activity,
+                      color: activitySolid,
                     }}
                   >
                     +{todayActivityBudgetAddon.toLocaleString()} bonus earned
@@ -653,6 +664,16 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {weeklyKgRate.toFixed(2)} kg
                   </Text>
                 </View>
+                <Text
+                  style={{
+                    ...Type.caption,
+                    color: textTertiaryColor,
+                    marginTop: Spacing.sm,
+                    lineHeight: 16,
+                  }}
+                >
+                  {WEEKLY_ROLLING_DENOMINATOR_HINT}
+                </Text>
               </>
             );
           })()}

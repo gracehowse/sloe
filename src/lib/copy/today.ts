@@ -16,6 +16,7 @@
  */
 
 import { dateKeyFromDate } from "../nutrition/journalNavigation";
+import { coachSlotAimKcal, unloggedMealSlotCount } from "../nutrition/mealBudget";
 
 /** Overline labels above the big number inside the daily calorie ring.
  *  The ring has three states:
@@ -314,15 +315,33 @@ export const TODAY_ROOM_MIN_KCAL = 50;
  *    - All meals logged but budget remains (`nextMeal == null`) →
  *      "About {remaining} kcal left for today. No rush." (no slot to
  *      name, but the headroom is real and worth stating calmly).
- *    - Otherwise → "Room for {meal} — about {remaining} kcal to play
- *      with. No rush."
+ *    - When several slots remain and the full remaining budget would
+ *      misread as a single-meal target (e.g. 901 kcal "for breakfast")
+ *      → "Plan your day — about {remaining} kcal left. No rush." when
+ *      ≥3 slots are unlogged, else "Aim for about {slotAim} kcal at
+ *      {meal}. No rush." when remaining materially exceeds the slot
+ *      share (see {@link coachSlotAimKcal}).
+ *    - Otherwise (last meal / remaining ≈ slot share) → "Room for
+ *      {meal} — about {remaining} kcal to play with. No rush."
  *
  *  Calm-tone: contains no FORBIDDEN_TODAY_PHRASES; "No rush." is the
  *  permission close (matches the Sloe warm-coaching direction). Shared so
  *  web reads identically if/when it reaches Today parity. */
+/** When remaining exceeds the slot share by more than this factor, we
+ *  quote the slot aim instead of the full-day remainder. */
+const COACH_AIM_REMAINING_RATIO = 1.15;
+
+/** Unlogged slots at or above this → "Plan your day" (early-day headroom). */
+const COACH_PLAN_DAY_MIN_UNLOGGED_SLOTS = 3;
+
+function mealPhraseForAim(slot: TodayMealSlot): string {
+  return slot === "Snacks" ? "for a snack" : `at ${SLOT_SENTENCE_WORD[slot]}`;
+}
+
 export function todayRoomForMeal(
   remainingKcal: number,
   nextMeal: TodayMealSlot | null,
+  loggedSlots?: Iterable<string>,
 ): string | null {
   const remaining = Math.round(remainingKcal);
   if (remaining < TODAY_ROOM_MIN_KCAL) return null;
@@ -330,6 +349,18 @@ export function todayRoomForMeal(
   if (nextMeal == null) {
     return `About ${kcal} kcal left for today. No rush.`;
   }
+
+  if (loggedSlots) {
+    const unlogged = unloggedMealSlotCount(loggedSlots);
+    if (unlogged >= COACH_PLAN_DAY_MIN_UNLOGGED_SLOTS) {
+      return `Plan your day — about ${kcal} kcal left. No rush.`;
+    }
+    const slotAim = coachSlotAimKcal(remaining, nextMeal, loggedSlots);
+    if (remaining > slotAim * COACH_AIM_REMAINING_RATIO) {
+      return `Aim for about ${slotAim.toLocaleString()} kcal ${mealPhraseForAim(nextMeal)}. No rush.`;
+    }
+  }
+
   return `Room for ${SLOT_SENTENCE_WORD[nextMeal]} — about ${kcal} kcal to play with. No rush.`;
 }
 
@@ -370,6 +401,23 @@ export function nextUnloggedMealSlot(
  *  re-adopted "Under budget" / "Over budget" per Figma + Grace
  *  2026-06-04 — see `docs/decisions/2026-06-04-today-status-chip-budget-labels.md`.
  *  Those bigrams stay forbidden everywhere else. */
+/** Settings path for Apple Health / connections (post–IA-collapse 2026-04-28). */
+export const TODAY_HEALTH_CONNECT_ROUTE = "Settings → Connections";
+
+/** Steps & activity empty-state (ENG-873). */
+export function todayHealthConnectActiveCaloriesHint(): string {
+  return `Active calories appear here once a source is connected (${TODAY_HEALTH_CONNECT_ROUTE}).`;
+}
+
+/** Energy balance empty-state when no burn data yet (ENG-873). */
+export function todayHealthConnectEnergyEmptyHint(): string {
+  return `No resting or active energy for this day in Suppr yet. Open ${TODAY_HEALTH_CONNECT_ROUTE}, enable Apple Health, then pull to refresh or revisit this tab to sync.`;
+}
+
+/** 7-day rolling card — avg vs weekly totals use different denominators (F-06). */
+export const WEEKLY_ROLLING_DENOMINATOR_HINT =
+  "Weekly total is all 7 days in this window; daily average is logged days only.";
+
 export const FORBIDDEN_TODAY_PHRASES = [
   "below maint",
   "below maintenance",
@@ -380,6 +428,9 @@ export const FORBIDDEN_TODAY_PHRASES = [
   "don't break your streak",
   "streak lost",
   "broke your streak",
-  "Today's meals",
-  "Today’s meals",
+  "More → Connected",
+  // "Today's meals" was banned 2026-04-30 (per-slot headers only). The Sloe
+  // redesign (Figma `01 · Today` / `today-meallog`, 2026-06-04) reintroduces it
+  // as the SECTION header ABOVE the per-slot groups — which still render — so
+  // the parse-by-slot intent is preserved and the title is no longer forbidden.
 ] as const;

@@ -232,7 +232,7 @@ function SlotMacroChips({
 }) {
   return (
     <View
-      style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 3 }}
+      style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 3 }}
     >
       <Text
         style={{ ...Type.caption, color: kcalColor, fontVariant: ["tabular-nums"] }}
@@ -660,7 +660,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
         // an outer wrapper, corner-clip — the iOS clip fix lives in the shell, so
         // this wrapper can never re-introduce it). Gated OFF on Today's main
         // scroll today (props kept wired for a future "logging section").
-        <SupprCard lift="flat" padding="none" style={{ marginBottom: Spacing.sm }}>
+        <SupprCard lift="flat" padding="none" style={{ marginBottom: Spacing.xs }}>
           {showQuickAdd && (
             <View
               style={{
@@ -771,7 +771,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 // hand-rolled per-slot chrome (Grace 2026-06-04). This animated
                 // wrapper only carries the entering animation, the bottom gap,
                 // and the empty-slot dim (logged slots read as the live ones).
-                marginBottom: Spacing.sm,
+                marginBottom: 12,
                 opacity: hasMeals ? 1 : 0.55,
               }}
             >

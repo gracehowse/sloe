@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
-import { MACRO_RING_TOGGLE } from "../../../lib/copy/today";
+import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
@@ -15,18 +16,8 @@ import { SupprCard } from "../ui/suppr-card.tsx";
  *
  * Mirrors the mobile `TodayHeroRing` wrapper around `CalorieRing`.
  *
- * 2026-05-02 — segmented "Remaining / Consumed" chips removed for
- * mobile-web parity after user feedback that the chip control on
- * mobile felt redundant. Web is touch-driven on mobile-web and
- * mouse-driven on desktop; in both cases the canonical mode toggle
- * lives in the ring's own click affordance + the existing power-user
- * gesture (long-press on touch, click-and-hold on desktop). The chip
- * control did not survive the same UX bar that took it off mobile.
- * See `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
- *
- * `onDisplayModeChange` is still threaded through the host so the
- * tap-on-ring path can flip the mode if the host wires it; today the
- * host (NutritionTracker) only flips on explicit gesture, not tap.
+ * Sloe parity (2026-06-04): status chip + Remaining/Consumed toggle row
+ * above the ring, matching native `apps/mobile/components/today/TodayHeroRing.tsx`.
  */
 export interface TodayHeroRingProps {
   consumed: number;
@@ -37,21 +28,75 @@ export interface TodayHeroRingProps {
   expanded: boolean;
   onToggleExpanded: () => void;
   displayMode: CalorieRingDisplayMode;
-  /** Reserved for the long-press / click-and-hold gesture handlers
-   *  inside `DailyRing`. Wired through the host so any future click
-   *  affordance has a single mutation point. */
   onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
-
-  /** 2026-05-12 round 4 — pill dropped. Prop preserved on the type for
-   *  backwards compat with host wiring; no UI surfaces it here. The
-   *  explainer is now reached from the Targets sub-tab inside More
-   *  (mirrors mobile). */
   onPressWhy?: () => void;
-
-  /** ENG-798 win-moment ring pulse — forwarded to `DailyRing`. True for
-   *  ~200ms after a Today landmark fires (the web analog of mobile's
-   *  success haptic). */
   pulse?: boolean;
+}
+
+type ChipState = "empty" | "under" | "over";
+
+function HeroStatusChip({ state }: { state: ChipState }) {
+  const config =
+    state === "over"
+      ? {
+          label: todayStatusChip("over"),
+          className: "bg-destructive/10 text-destructive-solid",
+          Icon: CircleAlert,
+        }
+      : state === "empty"
+        ? {
+            label: todayStatusChip("empty"),
+            className: "bg-[#EDEAF1] text-foreground-brand",
+            Icon: Sparkles,
+          }
+        : {
+            label: todayStatusChip("under"),
+            className: "bg-success/15 text-success-solid",
+            Icon: CircleCheck,
+          };
+  const { label, className, Icon } = config;
+  return (
+    <span
+      data-testid="today-ring-status-chip"
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+    >
+      <Icon size={13} strokeWidth={2} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+function DisplayModeToggle({
+  displayMode,
+  onDisplayModeChange,
+}: {
+  displayMode: CalorieRingDisplayMode;
+  onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
+}) {
+  return (
+    <div
+      className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-[10px] font-medium"
+      role="group"
+      aria-label="Calorie ring display"
+      data-testid="today-ring-display-toggle"
+    >
+      {(["remaining", "consumed"] as const).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onDisplayModeChange(mode)}
+          aria-pressed={displayMode === mode}
+          className={`rounded-full px-3 py-1 capitalize transition-colors ${
+            displayMode === mode
+              ? "bg-card text-foreground-brand shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {mode}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function TodayHeroRing({
@@ -63,29 +108,28 @@ export function TodayHeroRing({
   expanded,
   onToggleExpanded,
   displayMode,
-  onDisplayModeChange: _onDisplayModeChange,
+  onDisplayModeChange,
   onPressWhy: _onPressWhy,
   pulse = false,
 }: TodayHeroRingProps) {
-  // 2026-05-12 round 4 (Grace TF, web parity with mobile): the
-  // "Why this number?" pill was dropped. Audit: pill signalled low
-  // confidence in the number. On mobile we relocated the affordance to
-  // Settings → Targets → "How is this calculated?" row, which opens
-  // the WhyThisNumberSheet inline there. Web mirrors: the explainer
-  // is reachable from the Targets sub-tab (inside More) on web too,
-  // not from Today's hero. Today stays clean.
+  const isEmpty = consumed === 0 || target <= 0;
+  const isOver = target > 0 && consumed > target;
+  const chipState: ChipState = isEmpty ? "empty" : isOver ? "over" : "under";
+
   return (
-    // Design Direction 2026 (ENG-795): routed through the canonical SupprCard
-    // so the resting hero card adopts the soft ambient elevation when
-    // `design_system_elevation` is ON (and drops its hairline border). Flag
-    // OFF keeps the prior flat `bg-card` + hairline treatment. `padding="none"`
-    // preserves the exact asymmetric `px-4 py-3` geometry.
     <SupprCard
       elevation="slab-flat"
       radius="lg"
       padding="none"
       className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
     >
+      <div className="flex w-full items-center justify-between gap-2">
+        <HeroStatusChip state={chipState} />
+        <DisplayModeToggle
+          displayMode={displayMode}
+          onDisplayModeChange={onDisplayModeChange}
+        />
+      </div>
       <DailyRing
         consumed={consumed}
         target={target}
@@ -102,7 +146,7 @@ export function TodayHeroRing({
         type="button"
         data-testid="today-macro-rings-toggle"
         onClick={onToggleExpanded}
-        className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
+        className="text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>

@@ -23,7 +23,12 @@ import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
-import { firstNameFromMetadata } from "../../lib/copy/today.ts";
+import {
+  firstNameFromMetadata,
+  todayGreeting,
+  todayLongDateSubline,
+  todayPastDayGreetingLines,
+} from "../../lib/copy/today.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
@@ -86,6 +91,7 @@ import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
 import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
+import { TodayScrollSectionHeader } from "./suppr/today-scroll-section-header";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { TodayDashboardMacroBars } from "./suppr/today-dashboard-macro-bars";
@@ -107,6 +113,7 @@ import {
 } from "./suppr/create-custom-food-dialog";
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
+import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
@@ -151,7 +158,13 @@ import {
   type DismissState as EatAgainDismissState,
 } from "../../lib/nutrition/eatAgainDismiss";
 import { SaveMealDialog } from "./suppr/save-meal-dialog";
-import { parseDateKey, shiftDateKey, todayKey, clampDateKey } from "../../lib/nutrition/trackerDate.ts";
+import {
+  parseDateKey,
+  shiftDateKey,
+  todayKey,
+  clampDateKey,
+  formatDateLabel,
+} from "../../lib/nutrition/trackerDate.ts";
 import { countWeighInDaysInWindow } from "../../lib/nutrition/weighInDays.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
 import {
@@ -709,10 +722,11 @@ export const NutritionTracker = memo(function NutritionTracker({
       isToday: selectedDateKey === todayKey(),
       hasAnyJournalHistory: loggedDays.size > 0,
       mealsYesterdayCount: mealsYesterday.length,
+      mealsTodayCount: mealsForSelectedDate.length,
       todayDayOfWeek: new Date().getDay(),
       weekStartDay,
     });
-  }, [selectedDateKey, loggedDays, nutritionByDay, weekStartDay]);
+  }, [selectedDateKey, loggedDays, nutritionByDay, weekStartDay, mealsForSelectedDate.length]);
   // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
   // alongside `week_start_day`; budget defaults to 3.
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
@@ -2264,15 +2278,15 @@ export const NutritionTracker = memo(function NutritionTracker({
   // source is the one the Settings "Your name" field writes — set it on
   // either platform and the greeting personalises on both.
   //
-  // NOTE: web keeps its existing "Good morning, {name}" wording here
-  // rather than switching to the shared `todayGreeting` ("Morning,
-  // {name}") — that's a meaning-changing copy shift that would need a
-  // feature-flag gate per CLAUDE.md. This change is data-source-only
-  // (no visible wording change), so it ships ungated. Converging web's
-  // greeting wording onto `todayGreeting` is a separate flagged change.
   const greetingName = firstNameFromMetadata(authUserMetadata) ?? null;
   const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const sloceHeroGreeting =
+    selectedDateKey === todayKey()
+      ? {
+          headline: todayGreeting(hour, greetingName),
+          subline: todayLongDateSubline(selectedDate),
+        }
+      : todayPastDayGreetingLines(selectedDate);
 
   return (
     <div className="product-shell py-pm-5 space-y-4 relative">
@@ -2330,12 +2344,30 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div
           className={
             viewMode === "day"
-              ? "flex-1 min-w-0 space-y-4 lg:max-w-[480px]"
-              : "flex-1 min-w-0 space-y-4"
+              ? "flex-1 min-w-0 space-y-3 lg:max-w-[480px]"
+              : "flex-1 min-w-0 space-y-3"
           }
         >
-      <div className="space-y-1 lg:space-y-0">
-        <TodayDateHeader
+      {viewMode === "day" ? (
+        <div className="text-center mb-5 mt-1">
+          <h2
+            data-testid="today-hero-greeting"
+            className="font-[family-name:var(--font-headline)] text-[26px] font-medium tracking-tight text-primary leading-tight"
+          >
+            {sloceHeroGreeting.headline}
+          </h2>
+          {sloceHeroGreeting.subline ? (
+            <p
+              data-testid="today-hero-greeting-subline"
+              className="text-sm text-muted-foreground mt-0.5"
+            >
+              {sloceHeroGreeting.subline}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         selectedDate={selectedDate}
@@ -2351,18 +2383,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
         onOpenSettings={() => onOpenSettings?.()}
         hideViewModeToggle
-        hideDayStrip
-        dayGreeting={
-          selectedDateKey === todayKey() && viewMode === "day"
-            ? greetingName
-              ? `${timeGreeting}, ${greetingName}`
-              : timeGreeting
-            : undefined
-        }
+        stripOnly={viewMode === "day"}
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
       />
-      </div>
 
       {missedYesterdayVisible && (
         <p
@@ -2456,15 +2480,23 @@ export const NutritionTracker = memo(function NutritionTracker({
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
       />
 
+      {viewMode === "day" &&
+      selectedDateKey === todayKey() &&
+      Math.max(0, effectiveCalorieTarget - totals.calories) > 0 ? (
+        <TodayDeficitInsight
+          remaining={Math.max(0, effectiveCalorieTarget - totals.calories)}
+          selectedDate={selectedDate}
+          byDay={nutritionByDay}
+        />
+      ) : null}
+
       {/* Single context block — priority order: fasting > eat-again >
           north-star. Mutually exclusive. Pre-Phase-4 these rendered as
           three separate stacked conditionals (sometimes multiple at
           once); the cap rule (teardown §2) is "never more than one
-          prompt above the meals". Web has no `TodayDeficitInsight`
-          equivalent (removed 2026-04-18, Pass 7) — when remaining > 0
-          but the user has already logged, the slot stays empty rather
-          than fall through to the north-star. The Net tile inside
-          `TodayHeroStats` already conveys the deficit on web. */}
+          prompt above the meals". When remaining > 0 but the user has
+          already logged, the coach line above covers headroom; this
+          slot stays empty rather than fall through to north-star. */}
       {(() => {
         // 1. Active fast wins outright.
         if (activeFast) {
@@ -2621,7 +2653,8 @@ export const NutritionTracker = memo(function NutritionTracker({
           above Meals. Default collapsed on first run; user's last choice
           persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
 
-      {/* 5. Meals Section */}
+      {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
+      <div className="mt-10">
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
         mealsForSelectedDate={mealsForSelectedDate}
@@ -2680,6 +2713,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           />
         }
       />
+      </div>
 
       {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
       {showBelowMealsNorthStarWeb && (
@@ -2784,109 +2818,102 @@ export const NutritionTracker = memo(function NutritionTracker({
         />
       ) : null}
 
-      {/* Steps & activity card — moved here (was between macro tiles
-          and the quick-log strip) to match mobile order
-          (`apps/mobile/app/(tabs)/index.tsx` 2960): meals → steps →
-          activity bonus. Read-only on web (mobile parity, 2026-04-18) —
-          steps + active energy come from the iOS app's HealthKit
-          sync. No card renders when no Health data has synced yet
-          because there's no manual-entry path on web. */}
-      {showStepsCard ? (
-        <TodayStepsCard
-          stepsForSelectedDay={stepsForSelectedDay}
-          dailyStepsGoal={dailyStepsGoal}
-          activityBurnKcal={activityBurnForSelectedDay > 0 ? Math.round(activityBurnForSelectedDay) : null}
-        />
+      {/* Figma TD1 — Activity & energy: plum section header + flat sibling cards. */}
+      {showStepsCard || hasBurnData ? (
+        <section className="mt-10 flex flex-col gap-5" data-testid="today-td1-section">
+          <TodayScrollSectionHeader
+            title="Activity & energy"
+            testID="today-td1-section-header"
+          />
+          {showStepsCard ? (
+            <TodayStepsCard
+              stepsForSelectedDay={stepsForSelectedDay}
+              dailyStepsGoal={dailyStepsGoal}
+              activityBurnKcal={
+                activityBurnForSelectedDay > 0 ? Math.round(activityBurnForSelectedDay) : null
+              }
+              dayLabel={formatDateLabel(selectedDate)}
+            />
+          ) : null}
+          <TodayActivityBonusCard
+            hasBurnData={hasBurnData}
+            totalBurnKcal={totalBurnKcal}
+            effectiveCalorieTarget={effectiveCalorieTarget}
+            consumedCalories={totals.calories}
+            basalBurnKcal={basalBurnKcal}
+            activityBurnForSelectedDay={activityBurnForSelectedDay}
+            workouts={dayWorkouts}
+            weekSummaryMode={weekSummaryMode}
+            weekSummaryKeys={trackerWeekSummaryKeys}
+            activityBurnByDay={activityBurnByDay}
+            basalBurnByDay={basalBurnByDay}
+            nutritionByDay={nutritionByDay}
+            selectedDateKey={selectedDateKey}
+            profileMeasurementSystem={profileMeasurementSystem}
+            maintenanceTdeeKcal={profileMaintenanceTdee}
+            profileSex={profileSex}
+            profileWeightKg={profileWeightKg}
+            profileHeightCm={profileHeightCm}
+            profileAge={profileAge}
+            profileActivityLevel={profileActivityLevel}
+            maintenanceSource={profileMaintenanceSource}
+            maintenanceConfidence={profileMaintenanceConfidence}
+            activityBudgetAddonKcal={activityAdjustment}
+            preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+            showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
+            onEnableActivityBudget={() => {
+              setPreferActivityAdjustedCalories(true);
+              if (authedUserId) {
+                void supabase
+                  .from("profiles")
+                  .update({ prefer_activity_adjusted_calories: true })
+                  .eq("id", authedUserId);
+              }
+              try {
+                window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+              } catch {
+                /* ignore */
+              }
+              setActivityBudgetDiscoverDismissed(true);
+            }}
+            onDismissActivityBudgetDiscover={() => {
+              try {
+                window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+              } catch {
+                /* ignore */
+              }
+              setActivityBudgetDiscoverDismissed(true);
+            }}
+          />
+        </section>
       ) : null}
 
-      {/* Activity Bonus */}
-      <TodayActivityBonusCard
-        hasBurnData={hasBurnData}
-        totalBurnKcal={totalBurnKcal}
-        effectiveCalorieTarget={effectiveCalorieTarget}
-        consumedCalories={totals.calories}
-        basalBurnKcal={basalBurnKcal}
-        activityBurnForSelectedDay={activityBurnForSelectedDay}
-        workouts={dayWorkouts}
-        weekSummaryMode={weekSummaryMode}
-        weekSummaryKeys={trackerWeekSummaryKeys}
-        // The deficit window (rolling 7-day vs calendar week) is changed
-        // from Settings ("Burn / deficit summary"), not in-place on Today.
-        // The mode still drives this card's summary; it hydrates from
-        // `notification_prefs.weekSummaryMode` via NotificationContext.
-        activityBurnByDay={activityBurnByDay}
-        basalBurnByDay={basalBurnByDay}
-        nutritionByDay={nutritionByDay}
-        selectedDateKey={selectedDateKey}
-        profileMeasurementSystem={profileMeasurementSystem}
-        maintenanceTdeeKcal={profileMaintenanceTdee}
-        profileSex={profileSex}
-        profileWeightKg={profileWeightKg}
-        profileHeightCm={profileHeightCm}
-        profileAge={profileAge}
-        profileActivityLevel={profileActivityLevel}
-        maintenanceSource={profileMaintenanceSource}
-        maintenanceConfidence={profileMaintenanceConfidence}
-        activityBudgetAddonKcal={activityAdjustment}
-        preferActivityAdjustedCalories={preferActivityAdjustedCalories}
-        showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
-        onEnableActivityBudget={() => {
-          setPreferActivityAdjustedCalories(true);
-          if (authedUserId) {
-            void supabase
-              .from("profiles")
-              .update({ prefer_activity_adjusted_calories: true })
-              .eq("id", authedUserId);
-          }
-          try {
-            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setActivityBudgetDiscoverDismissed(true);
-        }}
-        onDismissActivityBudgetDiscover={() => {
-          try {
-            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setActivityBudgetDiscoverDismissed(true);
-        }}
-      />
-
-      {/* Hydration & stimulants card (Batch 2.5).
-          Position (2026-04-18, post-TestFlight build 7 feedback): sits at the
-          bottom of Today — primary hydration quick-add lives in the macro
-          tiles up top; this card is detail + caffeine/alcohol quick-add.
-          Gating: visible once water target > 0 OR any water/caffeine/alcohol
-          logged. Caffeine + alcohol rows additionally self-hide when their
-          individual target is 0. First-run fallback is a tiny
-          "Track hydration?" link. */}
+      {/* Figma TD2 — Hydration & stimulants: section header + sibling flat cards. */}
       {showHydrationCard ? (
-        <HydrationStimulantsCard
-          selectedDateKey={selectedDateKey}
-          weekStartDay={weekStartDay}
-          targets={{
-            waterMl: targets.waterMl,
-            // Phase 2 / B1.4 (D-2026-04-27-08): caffeine + alcohol
-            // are gated by Settings opt-in. When the user hasn't
-            // opted in, force the target to 0 so the row hides via
-            // the existing HydrationStimulantsCard rule. The
-            // underlying data is preserved untouched.
-            caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
-            alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
-          }}
-          waterTotalMl={totalWaterMl}
-          waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-          caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
-          alcoholByDayG={alcoholByDayMerged}
-          measurementSystem={profileMeasurementSystem}
-          onAddWater={addWaterMlForSelectedDay}
-          onAddCaffeine={addCaffeineMgForSelectedDay}
-          onAddAlcohol={addAlcoholGForSelectedDay}
-          onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
-        />
+        <section className="mt-10 flex flex-col gap-5" data-testid="today-td2-section">
+          <TodayScrollSectionHeader
+            title="Hydration & stimulants"
+            testID="today-td2-section-header"
+          />
+          <HydrationStimulantsCard
+            selectedDateKey={selectedDateKey}
+            weekStartDay={weekStartDay}
+            targets={{
+              waterMl: targets.waterMl,
+              caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
+              alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
+            }}
+            waterTotalMl={totalWaterMl}
+            waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+            caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
+            alcoholByDayG={alcoholByDayMerged}
+            measurementSystem={profileMeasurementSystem}
+            onAddWater={addWaterMlForSelectedDay}
+            onAddCaffeine={addCaffeineMgForSelectedDay}
+            onAddAlcohol={addAlcoholGForSelectedDay}
+            onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+          />
+        </section>
       ) : (
         <div className="mb-3 text-center">
           <button

@@ -42,7 +42,7 @@ export function TodayPlannedMealsCard({
       aria-label="Planned meals for today"
     >
       <header className="flex items-center justify-between px-4 pt-4 pb-3">
-        <h3 className="text-sm font-bold tracking-tight text-primary">Planned</h3>
+        <h3 className="text-sm font-bold tracking-tight text-foreground-brand">Planned</h3>
         <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           From your meal plan
         </span>
@@ -117,7 +117,7 @@ function PlannedMealRow({
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="text-xs font-bold text-primary hover:underline focus:outline-none focus-visible:underline"
+            className="text-xs font-bold text-primary-solid hover:underline focus:outline-none focus-visible:underline"
           >
             Log today
           </button>

@@ -169,6 +169,7 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_motion",
   "redesign_branded_sheets",
   "redesign_search_results",
+  "today-weekly-insight-mobile",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

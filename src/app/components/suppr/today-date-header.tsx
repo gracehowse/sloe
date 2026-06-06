@@ -23,6 +23,8 @@ export interface TodayDateHeaderProps {
   onOpenSettings: () => void;
   hideViewModeToggle?: boolean;
   hideDayStrip?: boolean;
+  /** Sloe Today — week strip only (no chevrons / title / avatar). */
+  stripOnly?: boolean;
   dayGreeting?: string;
   streakDays?: number;
   freezeProtected?: boolean;
@@ -52,6 +54,7 @@ export function TodayDateHeader({
   onOpenSettings,
   hideViewModeToggle = false,
   hideDayStrip = false,
+  stripOnly = false,
   dayGreeting,
   streakDays,
   freezeProtected,
@@ -59,6 +62,21 @@ export function TodayDateHeader({
 }: TodayDateHeaderProps) {
   const calmDateNav = hideDayStrip && viewMode === "day";
   const isToday = selectedDateKey === todayKey();
+
+  if (stripOnly) {
+    return (
+      <div className="mb-2 flex flex-col gap-1">
+        <DayStrip
+          selectedDateKey={selectedDateKey}
+          weekStartDay={weekStartDay}
+          loggedDays={loggedDays}
+          protectedDateKeys={protectedDateKeys}
+          onSelectDateKey={onSelectDateKey}
+          onOpenCalendar={onOpenCalendar}
+        />
+      </div>
+    );
+  }
   const showStreakPip =
     viewMode === "day" &&
     isToday &&

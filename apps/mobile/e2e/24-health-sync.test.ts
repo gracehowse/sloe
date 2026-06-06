@@ -42,7 +42,11 @@ describe('Health Sync', () => {
       .scroll(200, 'down');
     await expect(element(by.text('Import meals from Health'))).toBeVisible();
     await expect(element(by.text('Share meals to Health'))).toBeVisible();
+    await expect(element(by.id('health-sync-test-import'))).toBeVisible();
   });
+
+  // HS-03+: import count after Sync Now requires live MFP → HealthKit samples
+  // on a physical device — see docs/testing/health-sync-functionality-matrix.md
 
   it('shows Clear all imported data button', async () => {
     await waitFor(element(by.text('Clear all imported data')))

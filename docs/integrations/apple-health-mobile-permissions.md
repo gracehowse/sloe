@@ -16,15 +16,17 @@
 
 ## Architecture (why it is this way)
 
-### Two-stage `initHealthKit` (`requestHealthPermissions`)
+### Two-step `initHealthKit` (Connect vs meal import — 2026-06-05 crash fix)
 
-- **Stage 1 — body metrics only** (`HEALTH_KIT_STAGE1_READ`): steps, weight, body fat %, active/basal energy, workouts — small read set so the system sheet is reliable.
-- **Stage 2 — dietary quantities** (`HEALTH_KIT_STAGE2_READ` = body + `HEALTH_DIETARY_IMPORT_PERMISSION_KEYS`): needed for meal import; **does not** request `FoodCorrelation` (known failures on current iOS + `react-native-health`; meal import still works without it — see comments in `healthSync.ts`).
-- **Writes** on both stages: `HEALTH_KIT_NUTRITION_WRITE` (energy, macros, fiber) for exporting meals to Health.
+- **Connect — body metrics only** (`requestHealthPermissions` → `HEALTH_KIT_STAGE1_READ`): steps, weight, body fat %, active/basal energy, workouts. **Does not** bulk-request dietary micros in the same tap (native crash on iOS 26+).
+- **Meal import — core dietary only** (`requestDietaryHealthPermissions` → `HEALTH_DIETARY_CORE_PERMISSION_KEYS`): energy + macros MFP needs. Runs right after first Connect (auto) or when the user toggles **Import meals from Health**. Extended micro types are fetched at sync when authorized; they are not all requested in one `initHealthKit` call.
+- **Do not** request `FoodCorrelation` in `initHealthKit` (known failures; meal import still works — see `healthSync.ts`).
+- **`Chromium`** is omitted from all permission lists (unsupported in `react-native-health` 1.19).
+- **Writes**: `HEALTH_KIT_NUTRITION_WRITE` on both init calls.
 
-### Retry path
+### Serial lock
 
-- **`requestDietaryHealthPermissions`**: second stage only, used when the user turns on **Import meals from Health** after body sync already succeeded.
+- All `initHealthKit` / `probeHealthAccess` calls run through `runWithHealthKitLock` so focus probes cannot overlap Connect.
 
 ---
 

@@ -2946,10 +2946,11 @@ export default function TrackerScreen() {
       isToday,
       hasAnyJournalHistory,
       mealsYesterdayCount: mealsYesterday.length,
+      mealsTodayCount: mealsToday.length,
       todayDayOfWeek: new Date().getDay(),
       weekStartDay,
     });
-  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay]);
+  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay, mealsToday.length]);
 
   /**
    * Feature 5 / Feature 9 (2026-05-14, premium-bar audit) — subtle
@@ -5114,7 +5115,9 @@ export default function TrackerScreen() {
             kept. Web parallel ships in NutritionTracker.tsx. */}
 
         {viewMode === "day" && (
-          <ReAnimated.View style={mealsEntrance.style}>
+          <ReAnimated.View
+            style={[mealsEntrance.style, { marginTop: Layout.todaySectionBreak }]}
+          >
           <TodayMealsSection
             slots={MEAL_SLOTS}
             mealGroups={mealGroups}
@@ -5190,6 +5193,7 @@ export default function TrackerScreen() {
             data layer exposes it. Every other figure is derived from
             `weekData` (already on screen). */}
         {viewMode === "day" && (
+          <View style={{ marginTop: Layout.todaySectionBreak }}>
           <WeeklyInsightCard
             householdSize={1}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
@@ -5205,6 +5209,7 @@ export default function TrackerScreen() {
             cardBackgroundColor={colors.card}
             borderColor={colors.cardBorder}
           />
+          </View>
         )}
 
         {/* D-02 (ENG-690): NorthStar block — empty-day-only. Shows
@@ -5318,11 +5323,10 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-activity-section"
-            style={{ marginTop: Spacing.xl, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Activity & energy"
-              subtitle={todayLongDateSubline(selectedDate)}
               testID="today-activity-section-header"
             />
             {showStepsCard ? (
@@ -5409,11 +5413,10 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-hydration-section"
-            style={{ marginTop: Spacing.xl, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Hydration & stimulants"
-              subtitle={todayLongDateSubline(selectedDate)}
               testID="today-hydration-section-header"
             />
             {showHydrationCard ? (

@@ -13,6 +13,7 @@ import Constants, { ExecutionEnvironment } from "expo-constants";
 import { supabase } from "./supabase";
 import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
 import {
+  HEALTH_DIETARY_CORE_PERMISSION_KEYS,
   HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
   buildFiberAndMicrosFromHealthTotals,
   unitForDietaryImportKey,
@@ -22,6 +23,14 @@ import {
   formatHealthImportFallbackTitle,
   isHealthImportFallbackTitle,
 } from "./healthImportLabels";
+import type { ImportedMeal } from "./healthSyncTypes";
+import {
+  formatNutritionImportSummary,
+  type NutritionImportResult,
+} from "./nutritionImportSummary";
+
+export type { ImportedMeal } from "./healthSyncTypes";
+export { formatNutritionImportSummary, type NutritionImportResult } from "./nutritionImportSummary";
 import {
   bucketEnergyShares,
   buildQuantityIdToCorrelationId,
@@ -209,15 +218,22 @@ const HEALTH_KIT_NUTRITION_WRITE = [
 ] as const;
 
 /**
- * Second stage: body + all **dietary quantity** reads from `HEALTH_DIETARY_IMPORT_PERMISSION_KEYS`.
+ * Dietary meal-import reads for `initHealthKit` — **core macros only** (not the full micro panel).
+ * Extended types in `HEALTH_DIETARY_IMPORT_PERMISSION_KEYS` are fetched at sync time when
+ * authorized; they are not bulk-requested here (native crash on iOS 26+ device builds).
  *
- * **Do not** request `FoodCorrelation` / `HKCorrelationTypeIdentifierFood` here: on current iOS +
- * `react-native-health`, `initHealthKit` fails with “Authorization to read … HKCorrelationTypeIdentifierFood
- * is disallowed” even on the first combined prompt. Meal import still works without it:
- * `getFoodCorrelationSamplesSafe` returns `[]` on denial, and `syncNutritionFromHealthImpl` groups
- * external samples by minute|bundle + energy anchor (see module docblock above `syncNutritionFromHealth`).
+ * **Do not** request `FoodCorrelation` — see module docblock on `syncNutritionFromHealth`.
  */
-const HEALTH_KIT_STAGE2_READ: readonly string[] = [...HEALTH_KIT_BODY_READ, ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
+const HEALTH_KIT_DIETARY_INIT_READ: readonly string[] = [...HEALTH_DIETARY_CORE_PERMISSION_KEYS];
+
+/** Serialize native HealthKit calls — concurrent probe + initHealthKit has crashed on device. */
+let healthKitOpChain: Promise<unknown> = Promise.resolve();
+
+function runWithHealthKitLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = healthKitOpChain.then(() => fn());
+  healthKitOpChain = run.catch(() => undefined);
+  return run;
+}
 
 function logHealthPermission(message: string, detail?: string): void {
   const line = detail ? `${message} — ${detail}` : message;
@@ -666,7 +682,7 @@ function saveFoodPromise(
 }
 
 /** Our own bundle ID — used to filter out samples we wrote to avoid re-importing them. */
-const OUR_BUNDLE_ID = "com.supprclub.suppr";
+const OUR_BUNDLE_ID = "com.supprclub.supprapp";
 
 function dateKey(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -1078,17 +1094,19 @@ export async function probeHealthAccess(): Promise<
 > {
   const hk = loadAppleHealthKit();
   if (!hk) return "unavailable";
-  const endDate = new Date();
-  const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
-  try {
-    await getDailyStepCountSamplesPromise(hk, {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-    });
-    return "connected";
-  } catch {
-    return "denied";
-  }
+  return runWithHealthKitLock(async () => {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+    try {
+      await getDailyStepCountSamplesPromise(hk, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+      return "connected" as const;
+    } catch {
+      return "denied" as const;
+    }
+  });
 }
 
 export type HealthKitPermissionOutcome = {
@@ -1120,6 +1138,10 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
 }
 
 async function runRequestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
+  return runWithHealthKitLock(() => runRequestHealthPermissionsUnlocked());
+}
+
+async function runRequestHealthPermissionsUnlocked(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     const debugDetail = "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
@@ -1175,40 +1197,15 @@ async function runRequestHealthPermissions(): Promise<HealthKitPermissionOutcome
     };
   }
 
-  try {
-    await initHealthKitPromiseWithTimeout(
-      hk,
-      {
-        permissions: {
-          read: [...HEALTH_KIT_STAGE2_READ],
-          write: [...HEALTH_KIT_NUTRITION_WRITE],
-        },
-      },
-      "dietary_init",
-    );
-  } catch (e) {
-    const debugDetail = formatHealthKitStepError(e, "dietary_init");
-    logHealthPermission("initHealthKit failed (dietary stage; body metrics OK)", debugDetail);
-    const detailLower = debugDetail.toLowerCase();
-    const looksLikeTimeout =
-      detailLower.includes("did not respond within") || detailLower.includes("healthkit did not respond");
-    return {
-      ok: true,
-      bodySyncReady: true,
-      dietaryImportReady: false,
-      userMessage: looksLikeTimeout
-        ? "Steps and activity are set up, but the extra meal-import permission didn’t finish in time. Stay on Health Sync, turn on “Import meals from Health” again, and respond to the sheet. Or adjust access under Settings → Health → Data Access & Devices → Suppr."
-        : "Apple Health is connected for steps, weight, and energy. Importing meals from other apps needs an extra permission — turn on “Import meals from Health” below to retry.",
-      debugDetail,
-    };
-  }
-
+  // Dietary permissions are requested separately via `requestDietaryHealthPermissions`
+  // (core macro set only). Bulk dietary+micro init in the same Connect tap crashed
+  // the native bridge on iOS 26+ (2026-06-05).
   return {
     ok: true,
     bodySyncReady: true,
-    dietaryImportReady: true,
+    dietaryImportReady: false,
     userMessage:
-      "Health data sync is now enabled. If the permission sheet did not appear, iOS may already remember your last choice—use Sync Now to pull data.",
+      "Steps, weight, and activity are connected. Turn on “Import meals from Health” below (or we’ll ask right after connect) to pull meals from MFP and other apps.",
   };
 }
 
@@ -1217,6 +1214,10 @@ async function runRequestHealthPermissions(): Promise<HealthKitPermissionOutcome
  * already succeeded — e.g. when the user enables “Import meals from Health”.
  */
 export async function requestDietaryHealthPermissions(): Promise<HealthKitPermissionOutcome> {
+  return runWithHealthKitLock(() => requestDietaryHealthPermissionsUnlocked());
+}
+
+async function requestDietaryHealthPermissionsUnlocked(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     return {
@@ -1244,11 +1245,11 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
       hk,
       {
         permissions: {
-          read: [...HEALTH_KIT_STAGE2_READ],
+          read: [...HEALTH_KIT_DIETARY_INIT_READ],
           write: [...HEALTH_KIT_NUTRITION_WRITE],
         },
       },
-      "dietary_retry",
+      "dietary_core_init",
     );
     return {
       ok: true,
@@ -1257,7 +1258,7 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
       userMessage: "Meal import from Health is enabled.",
     };
   } catch (e) {
-    const debugDetail = formatHealthKitStepError(e, "dietary_retry");
+    const debugDetail = formatHealthKitStepError(e, "dietary_core_init");
     logHealthPermission("requestDietaryHealthPermissions failed", debugDetail);
     return {
       ok: true,
@@ -1638,15 +1639,73 @@ function totalsRecordFromInner(inner: Map<string, number> | undefined): Record<s
   return o;
 }
 
-export type ImportedMeal = {
-  dateKey: string;
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  sourceApp: string;
-};
+let lastNutritionImportError: string | null = null;
+
+export function getLastNutritionImportError(): string | null {
+  return lastNutritionImportError;
+}
+
+function emptyNutritionImportResult(overrides?: Partial<NutritionImportResult>): NutritionImportResult {
+  return {
+    imported: [],
+    skippedOwn: 0,
+    skippedNoName: 0,
+    externalEnergyCount: 0,
+    skippedDedup: 0,
+    skippedNonPositive: 0,
+    insertAttempted: 0,
+    insertFailed: 0,
+    healthKitUnavailable: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Read-only diagnostic: count external dietary-energy samples HealthKit
+ * would see (last N days). Mirrors export-side `probeNutritionWrite`.
+ */
+export async function probeNutritionImport(
+  lookbackDays = 7,
+): Promise<
+  | {
+      ok: true;
+      /** All dietary-energy samples HealthKit returned (any source). */
+      totalEnergyCount: number;
+      externalEnergyCount: number;
+      sourceApps: string[];
+      ownSamplesSkipped: number;
+    }
+  | { ok: false; reason: string }
+> {
+  const hk = loadAppleHealthKit();
+  if (!hk) {
+    return { ok: false, reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null)." };
+  }
+  try {
+    return await runWithHealthKitLock(async () => {
+    const startDate = daysAgo(lookbackDays).toISOString();
+    const endDate = new Date().toISOString();
+    const energy = await getDietaryImportSamplesSafe(hk, "EnergyConsumed", { startDate, endDate });
+    const extEnergy = energy.filter((s) => !isOwnAppSample(s));
+    const sourceApps = [
+      ...new Set(
+        extEnergy
+          .map((s) => s.sourceName?.trim() || sourceBundleIdOf(s) || "Unknown app")
+          .filter(Boolean),
+      ),
+    ].slice(0, 8);
+    return {
+      ok: true,
+      totalEnergyCount: energy.length,
+      externalEnergyCount: extEnergy.length,
+      sourceApps,
+      ownSamplesSkipped: energy.length - extEnergy.length,
+    };
+    });
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 /**
  * Read individual dietary samples from HealthKit, correlate energy with macros,
@@ -1657,20 +1716,24 @@ export type ImportedMeal = {
 export async function syncNutritionFromHealth(
   userId: string,
   lookbackDays = 120,
-): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
+): Promise<NutritionImportResult> {
+  lastNutritionImportError = null;
   try {
     return await syncNutritionFromHealthImpl(userId, lookbackDays);
-  } catch {
-    return { imported: [], skippedOwn: 0, skippedNoName: 0 };
+  } catch (e) {
+    lastNutritionImportError = e instanceof Error ? e.message : String(e);
+    return emptyNutritionImportResult();
   }
 }
 
 async function syncNutritionFromHealthImpl(
   userId: string,
   lookbackDays = 120,
-): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
+): Promise<NutritionImportResult> {
   const hk = loadAppleHealthKit();
-  if (!hk) return { imported: [], skippedOwn: 0, skippedNoName: 0 };
+  if (!hk) {
+    return emptyNutritionImportResult({ healthKitUnavailable: true });
+  }
 
   let genericHealthImportLabels = false;
   try {
@@ -1720,6 +1783,8 @@ async function syncNutritionFromHealthImpl(
 
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
+  let skippedDedup = 0;
+  let skippedNonPositive = 0;
   const imported: ImportedMeal[] = [];
 
   // Pre-fetch existing apple_health entries for this user in the lookback window
@@ -1787,9 +1852,15 @@ async function syncNutritionFromHealthImpl(
     const sourceApp = sample.sourceName?.trim() || sourceBundleIdOf(sample) || "Unknown app";
     const when = effectiveConsumptionInstant(sample);
     const cal = Math.round(sample.value);
-    if (cal <= 0) continue;
+    if (cal <= 0) {
+      skippedNonPositive++;
+      continue;
+    }
 
-    if (sample.id && existingHkIds.has(sample.id)) continue;
+    if (sample.id && existingHkIds.has(sample.id)) {
+      skippedDedup++;
+      continue;
+    }
 
     const dk = dateKey(when);
 
@@ -1812,7 +1883,10 @@ async function syncNutritionFromHealthImpl(
         : `${foodLabel} (via ${sourceApp})`;
     const minuteBucket = Math.floor(when.getTime() / 60000);
     const dedupKey = `${dk}|${recipeTitle}|${cal}|${minuteBucket}`;
-    if (!sample.id && existingSet.has(dedupKey)) continue;
+    if (!sample.id && existingSet.has(dedupKey)) {
+      skippedDedup++;
+      continue;
+    }
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
@@ -1865,15 +1939,33 @@ async function syncNutritionFromHealthImpl(
   }
 
   // Bulk insert
+  let insertAttempted = 0;
+  let insertFailed = 0;
   if (toInsert.length > 0) {
     // Insert in batches of 50 to stay within Supabase limits
     for (let i = 0; i < toInsert.length; i += 50) {
       const batch = toInsert.slice(i, i + 50);
-      await supabase.from("nutrition_entries").insert(batch);
+      insertAttempted += batch.length;
+      const { error } = await supabase.from("nutrition_entries").insert(batch);
+      if (error) {
+        insertFailed += batch.length;
+        lastNutritionImportError = error.message;
+        console.warn("[healthSync] nutrition import insert failed:", error.message);
+      }
     }
   }
 
-  return { imported, skippedOwn, skippedNoName };
+  return {
+    imported,
+    skippedOwn,
+    skippedNoName,
+    externalEnergyCount: extEnergy.length,
+    skippedDedup,
+    skippedNonPositive,
+    insertAttempted,
+    insertFailed,
+    healthKitUnavailable: false,
+  };
 }
 
 const NUTRITION_IMPORT_THROTTLE_MS = 5 * 60 * 1000;

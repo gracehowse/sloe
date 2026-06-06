@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  brandedChainQueryBoost,
+  brandedMenuProductBoost,
   foodSearchRankScore,
   foodSearchTrustWeight,
+  genericBrandQueryPenalty,
+  ukRetailerGenericRowPenalty,
+  usdaBrandedMenuPenalty,
   searchRelevance,
   searchMatchScore,
   searchRowConfidenceTier,
@@ -269,5 +274,103 @@ describe("foodSearchPreviewPlausibilityWarning", () => {
         0,
       ),
     ).toBeNull();
+  });
+});
+
+describe("branded chain ranking (2026-06-04 audit)", () => {
+  it("boosts FatSecret when query names the brand", () => {
+    expect(
+      brandedChainQueryBoost({
+        query: "starbucks latte",
+        name: "Starbucks · Caffè Latte, Grande",
+        source: "FatSecret",
+      }),
+    ).toBeGreaterThan(0);
+  });
+
+  it("penalizes USDA dish rows for chipotle bowl", () => {
+    expect(
+      genericBrandQueryPenalty({
+        query: "chipotle bowl",
+        name: "Bowl, chipotle, with chicken",
+        source: "USDA",
+        verified: false,
+      }),
+    ).toBeLessThan(0);
+  });
+
+  it("ranks branded FatSecret above generic USDA for starbucks latte", () => {
+    const fs = foodSearchRankScore({
+      query: "starbucks latte",
+      name: "Starbucks · Caffè Latte, Grande",
+      source: "FatSecret",
+    });
+    const usda = foodSearchRankScore({
+      query: "starbucks latte",
+      name: "Latte, coffee",
+      source: "USDA",
+      verified: true,
+    });
+    expect(fs).toBeGreaterThan(usda);
+  });
+
+  it("boosts FatSecret menu product when query omits brand (big mac)", () => {
+    expect(
+      brandedMenuProductBoost({
+        query: "big mac",
+        name: "McDonald's · Big Mac",
+        source: "FatSecret",
+      }),
+    ).toBeGreaterThan(0);
+  });
+
+  it("penalises USDA branded scrape for menu-item query", () => {
+    expect(
+      usdaBrandedMenuPenalty({
+        query: "big mac",
+        name: "Big Mac (McDonalds)",
+        source: "USDA",
+        verified: true,
+      }),
+    ).toBeLessThan(0);
+  });
+
+  it("ranks FatSecret Big Mac above USDA branded scrape", () => {
+    const fs = foodSearchRankScore({
+      query: "big mac",
+      name: "McDonald's · Big Mac",
+      source: "FatSecret",
+    });
+    const usda = foodSearchRankScore({
+      query: "big mac",
+      name: "Big Mac (McDonalds)",
+      source: "USDA",
+      verified: true,
+    });
+    expect(fs).toBeGreaterThan(usda);
+  });
+
+  it("penalises generic FatSecret row for UK retailer query", () => {
+    expect(
+      ukRetailerGenericRowPenalty({
+        query: "tesco chicken",
+        name: "Chicken",
+        source: "FatSecret",
+      }),
+    ).toBeLessThan(0);
+  });
+
+  it("ranks Tesco branded row above generic chicken for tesco chicken", () => {
+    const branded = foodSearchRankScore({
+      query: "tesco chicken",
+      name: "Tesco · Chicken Breast",
+      source: "FatSecret",
+    });
+    const generic = foodSearchRankScore({
+      query: "tesco chicken",
+      name: "Chicken",
+      source: "FatSecret",
+    });
+    expect(branded).toBeGreaterThan(generic);
   });
 });

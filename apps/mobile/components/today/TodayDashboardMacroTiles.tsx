@@ -223,8 +223,13 @@ export function TodayDashboardMacroTiles({
               opacity: pressed ? 0.85 : 1,
             })}
           >
-          <SupprCard lift="flat" size="tile">
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
+          <SupprCard
+            lift="flat"
+            size="tile"
+            padding="md"
+            innerStyle={{ minHeight: 96, justifyContent: "space-between" }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
                 <Text
                   style={{
                     // SLOE (2026-06-04, Grace "card style off"): Title case
@@ -240,7 +245,7 @@ export function TodayDashboardMacroTiles({
                 </Text>
                 <def.Icon size={14} color={def.color} strokeWidth={1.75} />
               </View>
-              <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
                 {/* SLOE redesign (2026-06-03): macro value reads in
                     Newsreader (serif) to match the `01 · Today` frame's
                     `font-headline text-2xl` macro-tile numeral, with a
@@ -248,8 +253,8 @@ export function TodayDashboardMacroTiles({
                 <Text
                   style={{
                     ...Type.title,
-                    fontSize: 26,
-                    lineHeight: 30,
+                    fontSize: 24,
+                    lineHeight: 28,
                     color: textColor,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -261,7 +266,7 @@ export function TodayDashboardMacroTiles({
                   </Text>
                 </Text>
                 <Text
-                  style={{ ...Type.caption, flexShrink: 1, color: textTertiaryColor, marginLeft: 4 }}
+                  style={{ ...Type.caption, flexShrink: 1, color: textTertiaryColor }}
                   numberOfLines={1}
                 >
                   / {def.target}{def.unit === "g" ? "g" : ` ${def.unit}`}

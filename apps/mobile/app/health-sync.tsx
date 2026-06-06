@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -11,9 +11,11 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import {
+  formatNutritionImportSummary,
   isExpoGoRuntime,
   isHealthSyncAvailable,
   probeHealthAccess,
+  probeNutritionImport,
   probeNutritionWrite,
   requestDietaryHealthPermissions,
   requestHealthPermissions,
@@ -78,6 +80,8 @@ export default function HealthSyncScreen() {
   const [genericImportLabels, setGenericImportLabels] = useState(false);
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
+  /** Cooldown after Connect — avoid probeHealthAccess racing native settle (iOS 26+). */
+  const connectFinishedAtRef = useRef(0);
 
   // 2026-05-14 (premium-bar audit Group J #9): per-category last-sync
   // timestamps. Loaded from AsyncStorage on mount/focus; persisted in
@@ -159,6 +163,10 @@ export default function HealthSyncScreen() {
     useCallback(() => {
       let cancelled = false;
       void (async () => {
+        // Avoid concurrent HealthKit reads during connect/sync — native bridge
+        // crashes have been observed when probe + initHealthKit overlap (iOS 26+).
+        if (connecting || syncing) return;
+        if (Date.now() - connectFinishedAtRef.current < 6_000) return;
         const status = await probeHealthAccess();
         if (cancelled) return;
         if (status === "denied") {
@@ -172,7 +180,7 @@ export default function HealthSyncScreen() {
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [connecting, syncing]),
   );
 
   // If native never calls back, don’t leave the Connect button spinning when leaving this screen.
@@ -252,31 +260,33 @@ export default function HealthSyncScreen() {
       const outcome = await requestHealthPermissions();
       if (outcome.ok) {
         setConnected(true);
-        // ENG-824 — landmark: a fresh successful Health connect. Quiet success
-        // haptic + win-colour wash on the card (no full-screen win-moment;
-        // that's reserved for Today landmarks). No-op when the flag is off.
-        winMoment.celebrate();
+        let dietaryImportReady = outcome.dietaryImportReady;
+        let dietaryMessage = outcome.userMessage;
+        let dietaryDebug = outcome.debugDetail;
         try {
           const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
           await AsyncStorage.setItem(HEALTH_APPLE_CONNECTED_KEY, "true");
-          // P1-15 (TestFlight `AAcIj2Vc1D60ujE1j76PKLw`, 2026-04-25):
-          // tester expectation gap — "Apple Health successfully synced
-          // but hasn't pulled in historical meals." The import toggle
-          // was opt-in and buried below the connect button. Auto-enable
-          // it on first successful connect so the user gets the meal
-          // backfill they expect; user can still toggle it off if they
-          // don't want it. Idempotent — re-connects don't override an
-          // explicit opt-out (tracked by the existing key, written
-          // here for the first-time-grant case only).
+          // P1-15: auto-enable meal import on first connect — but request dietary
+          // permissions in a separate native call (bulk init crashed on iOS 26+).
           const existing = await AsyncStorage.getItem("health_import_nutrition");
           if (existing == null) {
-            await AsyncStorage.setItem("health_import_nutrition", "true");
+            const dietary = await requestDietaryHealthPermissions();
+            dietaryImportReady = dietary.dietaryImportReady;
+            dietaryMessage = dietary.userMessage;
+            dietaryDebug = dietary.debugDetail;
+            if (dietary.dietaryImportReady) {
+              await AsyncStorage.setItem("health_import_nutrition", "true");
+              setImportEnabled(true);
+            }
+          } else if (existing === "true") {
+            // Re-request dietary reads — stage-1-only connect (or a prior crash) can leave
+            // import ON in storage without EnergyConsumed read permission (HK returns []).
             setImportEnabled(true);
+            const dietary = await requestDietaryHealthPermissions();
+            dietaryImportReady = dietary.dietaryImportReady;
+            dietaryMessage = dietary.userMessage;
+            dietaryDebug = dietary.debugDetail;
           }
-          // Audit/2026-04-30 — match the read posture for write too:
-          // default ON on first connect (parity with MFP / Cal AI).
-          // User can still toggle off in Settings → Health Sync; the
-          // explicit opt-out is preserved (existing != null).
           const existingExport = await AsyncStorage.getItem("health_export_nutrition");
           if (existingExport == null) {
             await AsyncStorage.setItem("health_export_nutrition", "true");
@@ -285,17 +295,20 @@ export default function HealthSyncScreen() {
         } catch {
           /* ignore */
         }
-        const body = outcome.dietaryImportReady
-          ? outcome.userMessage
-          : `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
+        connectFinishedAtRef.current = Date.now();
+        // ENG-824 — after native work completes (quiet success haptic).
+        winMoment.celebrate();
+        const body = dietaryImportReady
+          ? dietaryMessage
+          : `${dietaryMessage}${dietaryDebug ? `\n\nTechnical detail:\n${dietaryDebug}` : ""}`;
         setLastResult(
-          outcome.dietaryImportReady
+          dietaryImportReady
             ? "Health connected. Use Sync Now to pull your latest data."
-            : "Health connected with limited permissions. See the alert for details.",
+            : "Health connected for activity. Meal import may need another permission — see the alert.",
         );
-        Alert.alert(outcome.dietaryImportReady ? "Connected" : "Connected (limited)", body, [
+        Alert.alert(dietaryImportReady ? "Connected" : "Connected (limited)", body, [
           { text: "OK" },
-          ...(outcome.ok && !outcome.dietaryImportReady
+          ...(!dietaryImportReady
             ? [{ text: "Open Settings", onPress: () => void Linking.openSettings() }]
             : []),
         ]);
@@ -404,13 +417,22 @@ export default function HealthSyncScreen() {
           : "No new data to sync";
 
       if (importEnabled) {
+        const dietary = await requestDietaryHealthPermissions();
+        if (!dietary.dietaryImportReady) {
+          bodyMsg = `${bodyMsg} Meal import needs Dietary Energy read access — toggle Import meals off and on, or open Settings → Health → Suppr and enable Dietary Energy.`;
+        }
         try {
-          const n = await syncNutritionFromHealth(userId, 120);
-          const mealLine =
-            n.imported.length > 0
-              ? `Imported ${n.imported.length} meal${n.imported.length === 1 ? "" : "s"} from Health.`
-              : "No new meals to import from Health.";
-          bodyMsg = `${bodyMsg} ${mealLine}`;
+          const n = dietary.dietaryImportReady
+            ? await syncNutritionFromHealth(userId, 120)
+            : { imported: [], skippedOwn: 0, skippedNoName: 0, externalEnergyCount: 0, skippedDedup: 0, skippedNonPositive: 0, insertAttempted: 0, insertFailed: 0, healthKitUnavailable: false };
+          bodyMsg = `${bodyMsg} ${formatNutritionImportSummary(n)}`;
+          if (n.insertFailed > 0) {
+            setErrorState({
+              kind: "sync",
+              message:
+                "Some meals from Apple Health could not be saved. Check your connection and try Sync Now again.",
+            });
+          }
         } catch {
           const errLine = "Meal import from Health failed.";
           bodyMsg = `${bodyMsg} ${errLine}`;
@@ -474,6 +496,54 @@ export default function HealthSyncScreen() {
   // single `saveFood` call with a labelled 1 kcal sample via
   // `probeNutritionWrite` so the alert can surface the real bridge
   // error instead of guessing at permissions.
+  const handleTestImport = useCallback(() => {
+    Alert.alert(
+      "Check meal import from Health?",
+      "This reads dietary energy samples from other apps (e.g. MyFitnessPal) in the last 7 days. Nothing is written to your journal.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Check",
+          onPress: async () => {
+            const dietary = await requestDietaryHealthPermissions();
+            if (!dietary.dietaryImportReady) {
+              Alert.alert(
+                "Meal read permission needed",
+                `${dietary.userMessage}${dietary.debugDetail ? `\n\nTechnical detail:\n${dietary.debugDetail}` : ""}\n\nWithout Dietary Energy read access, Apple Health looks empty to Suppr even when MyFitnessPal data is visible in the Health app.`,
+                [
+                  { text: "OK", style: "default" },
+                  { text: "Open Settings", onPress: () => void Linking.openSettings() },
+                ],
+              );
+              return;
+            }
+            const result = await probeNutritionImport(7);
+            if (!result.ok) {
+              Alert.alert("Import check failed", result.reason);
+              return;
+            }
+            const sources =
+              result.sourceApps.length > 0
+                ? result.sourceApps.join(", ")
+                : "none detected";
+            const permissionHint =
+              result.totalEnergyCount === 0
+                ? "\n\nHealth returned zero dietary-energy samples — Suppr may not have read permission yet. Open Settings → Health → Suppr and enable Dietary Energy (and other meal types if listed)."
+                : result.ownSamplesSkipped > 0 && result.externalEnergyCount === 0
+                  ? `\n\nHealth has ${result.totalEnergyCount} sample${result.totalEnergyCount === 1 ? "" : "s"}, but all are from Suppr (nothing from MFP/other apps yet).`
+                  : "";
+            Alert.alert(
+              result.externalEnergyCount > 0 ? "Meals found in Health ✓" : "No meals found in Health",
+              result.externalEnergyCount > 0
+                ? `Found ${result.externalEnergyCount} dietary energy sample${result.externalEnergyCount === 1 ? "" : "s"} from other apps in the last 7 days (sources: ${sources}). Tap Sync Now to import new items into Suppr.`
+                : `No dietary energy from other apps in the last 7 days. Log food in MyFitnessPal with Health sharing on, then open Health → Browse → Nutrition → Dietary Energy — you should see individual foods with times, not only one daily total.${permissionHint}`,
+            );
+          },
+        },
+      ],
+    );
+  }, []);
+
   const handleTestWrite = useCallback(() => {
     Alert.alert(
       "Send a test meal to Apple Health?",
@@ -658,6 +728,31 @@ export default function HealthSyncScreen() {
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
             Pull dietary energy (and matched macros when available) from other apps into your Today journal. Tap Sync Now after enabling.
           </Text>
+
+          {importEnabled && available && connected ? (
+            <Pressable
+              onPress={handleTestImport}
+              accessibilityRole="button"
+              accessibilityLabel="Check whether Apple Health has meals from other apps to import"
+              testID="health-sync-test-import"
+              style={({ pressed }) => ({
+                marginTop: Spacing.sm,
+                marginLeft: 28,
+                alignSelf: "flex-start",
+                paddingHorizontal: Spacing.md,
+                paddingVertical: 8,
+                borderRadius: Radius.md,
+                borderWidth: 1,
+                borderColor: Accent.primary + "55",
+                backgroundColor: Accent.primary + "10",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                Check meal import
+              </Text>
+            </Pressable>
+          ) : null}
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", opacity: importEnabled ? 1 : 0.45 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>

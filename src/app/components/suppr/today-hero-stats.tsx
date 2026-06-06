@@ -3,7 +3,12 @@
 import * as React from "react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
-import { MACRO_RING_TOGGLE, TODAY_STAT_LABELS } from "../../../lib/copy/today";
+import {
+  MACRO_RING_TOGGLE,
+  TODAY_STAT_LABELS,
+  todayStatusChip,
+} from "../../../lib/copy/today";
+import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
@@ -102,6 +107,13 @@ function DesktopHeroStats({
   const net = loggedKcal - targetKcal;
   const netStr = loggedKcal === 0 ? "—" : formatNet(net);
   const showStatRow = loggedKcal > 0;
+  const isEmpty = consumed === 0 || target <= 0;
+  const isOver = target > 0 && consumed > target;
+  const chipState: "empty" | "under" | "over" = isEmpty
+    ? "empty"
+    : isOver
+      ? "over"
+      : "under";
 
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
@@ -117,29 +129,35 @@ function DesktopHeroStats({
       data-testid="today-hero-desktop"
     >
       <div className="flex flex-col items-center gap-3">
-        {showStatRow ? (
-          <div
-            className="inline-flex rounded-md bg-muted/50 p-0.5"
-            role="group"
-            aria-label="Calorie ring display"
-          >
-            {(["remaining", "consumed"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onDisplayModeChange(mode)}
-                aria-pressed={displayMode === mode}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                  displayMode === mode
-                    ? "bg-card text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex w-full items-center justify-between gap-2">
+          <HeroStatusChip state={chipState} />
+          {showStatRow ? (
+            <div
+              className="inline-flex rounded-full border border-border bg-muted/40 p-0.5"
+              role="group"
+              aria-label="Calorie ring display"
+              data-testid="today-ring-display-toggle"
+            >
+              {(["remaining", "consumed"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onDisplayModeChange(mode)}
+                  aria-pressed={displayMode === mode}
+                  className={`rounded-full px-3 py-1 text-[10px] font-medium capitalize transition-colors ${
+                    displayMode === mode
+                      ? "bg-card text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="w-px shrink-0" aria-hidden />
+          )}
+        </div>
 
         <DailyRing
           consumed={consumed}
@@ -251,6 +269,37 @@ function StatCell({
         {value}
       </div>
     </div>
+  );
+}
+
+function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
+  const config =
+    state === "over"
+      ? {
+          label: todayStatusChip("over"),
+          className: "bg-destructive/10 text-destructive",
+          Icon: CircleAlert,
+        }
+      : state === "empty"
+        ? {
+            label: todayStatusChip("empty"),
+            className: "bg-[#EDEAF1] text-primary",
+            Icon: Sparkles,
+          }
+        : {
+            label: todayStatusChip("under"),
+            className: "bg-success/15 text-success",
+            Icon: CircleCheck,
+          };
+  const { label, className, Icon } = config;
+  return (
+    <span
+      data-testid="today-ring-status-chip"
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+    >
+      <Icon size={13} strokeWidth={2} aria-hidden />
+      {label}
+    </span>
   );
 }
 

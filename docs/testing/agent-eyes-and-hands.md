@@ -154,11 +154,29 @@ Env (set in `.cursor/mcp.json`):
 
 | Step | Command |
 |------|---------|
-| Metro | `npm run mobile:dev` or `npm run mobile:dev:maestro` |
+| Metro (simulator) | `npm run mobile:dev` → `http://127.0.0.1:8081` (no tunnel) |
+| Metro (physical iPhone) | `npm run mobile:ios:device:tunnel:pinned` — tunnel URL; sim **cannot** use `exp.direct` reliably |
 | Install / rebuild native dev client | `npm run mobile:ios:simulator` |
 | Web dev | `npm run dev` → `http://localhost:3000` |
 | Maestro (batch E2E) | `npm run mobile:test:e2e` (separate from MCP; still valuable) |
 | Route screenshots (no Maestro) | `bash apps/mobile/scripts/capture-every-route.sh` |
+
+### Mobile API host (`EXPO_PUBLIC_API_URL` — F-09)
+
+Food search on device calls Next.js `/api/*` via [`getSupprApiBase()`](../../apps/mobile/lib/supprWeb.ts). Defaults:
+
+| Target | `EXPO_PUBLIC_API_URL` | Notes |
+|--------|----------------------|--------|
+| iOS Simulator | `http://127.0.0.1:3000` | Set in `apps/mobile/.env.local` when testing **local** ranking/API changes |
+| Physical iPhone | `https://<your-tunnel-or-lan>:3000` or deployed preview | `127.0.0.1` is unreachable from the phone; unset → `app.json` `supprApiUrl` (production) |
+| CI / audit script | N/A (direct lib clients) | Live audit may **differ** from device UI if device hits prod |
+
+```bash
+# apps/mobile/.env.local — sim hitting local Next.js while ranking work is in flight
+EXPO_PUBLIC_API_URL=http://127.0.0.1:3000
+```
+
+Restart Metro after changing. ENG-877 native search golden pass should record which API host was used.
 
 **Auth:** Apple Sign In on device/sim — no email/password test form. Use silent Maestro env (`E2E_*`) or an already-signed-in sim for authed flows.
 
@@ -183,6 +201,7 @@ Same IDB prerequisite.
 | idb asyncio error on Python 3.14 | Reinstall with pipx + Python 3.12 (see above) |
 | MCP server red in Cursor | Restart Cursor; run `npm run agent:verify-tools` |
 | Dev launcher instead of app | Start Metro on :8081; open dev client URL (see `capture-every-route.sh` header) |
+| Simulator black screen / red box | Metro mode mismatch — sim needs `http://127.0.0.1:8081`, not tunnel `exp.direct` (F-08) |
 | Maestro WDA hangs (iOS 26.x) | Prefer MCP + idb or `capture-every-route.sh` (documented 2026-05-31) |
 
 ## References

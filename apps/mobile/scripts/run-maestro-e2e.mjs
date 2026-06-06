@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Loads repo-root `.env.local` + `apps/mobile/.env` into the Maestro child env (shell `&&` does not
+ * Loads repo-root `.env.local` into the Maestro child env (shell `&&` does not
  * keep vars set only inside a prior Node process). Preflight: disk, credentials, Metro `/status`.
  */
 import { spawnSync } from "node:child_process";
@@ -12,7 +12,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** This file lives in `apps/mobile/scripts/` → three `..` reach repo root (not two: that lands on `apps/`). */
 const mobileRoot = join(__dirname, "..");
 const repoRootEnvLocal = join(__dirname, "..", "..", "..", ".env.local");
-const mobileEnv = join(__dirname, "..", ".env");
 
 function parseEnvFile(absPath) {
   const out = {};
@@ -63,11 +62,9 @@ function metroStatusUrl(expoDevServerUrl) {
 
 function buildChildEnv() {
   const fromRoot = parseEnvFile(repoRootEnvLocal);
-  const fromMobile = parseEnvFile(mobileEnv);
   return {
     ...process.env,
     ...fromRoot,
-    ...fromMobile,
     MAESTRO_DRIVER_STARTUP_TIMEOUT:
       process.env.MAESTRO_DRIVER_STARTUP_TIMEOUT ?? fromRoot.MAESTRO_DRIVER_STARTUP_TIMEOUT ?? "180000",
   };

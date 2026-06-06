@@ -137,13 +137,14 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     });
   });
 
-  it("Today calorie rings use destructive red overage when over budget (Sloe D-1)", () => {
-    // Sloe D-1: under-budget is the plum calorie-macro arc (asserted in
-    // calorieRingSolidGreenAtTarget.test.ts); the OVER state paints a
-    // destructive-red overage on top. MOBILE (SLOE redesign 2026-06-03) now
-    // draws it as a clean red ARC via the `overBudgetFg` token (NOT the
-    // whole-ring `Accent.destructive` recolour, NOT a hash). WEB still uses
-    // the `--destructive` overage (reconciled in the web-parity slot).
+  it("Today calorie rings draw the lifted-plum overage LAP when over budget (Sloe D-1, 2026-06-04 redesign)", () => {
+    // Sloe D-1 (redesigned 2026-06-04, Grace): under-budget is the plum
+    // calorie-macro arc; the OVER state no longer paints a red arc. Both
+    // platforms now wrap an Apple-Watch-style "overage lap" in the plum family
+    // past 100% — the red arc "read as odd" (per CalorieRing.tsx), superseding
+    // `overArcColor`/`overBudgetFg`. The over-budget RED rule still holds for
+    // NET/text (D-2, next test). Web ↔ mobile parity: BOTH use the overage lap.
+    // (Same component pins as calorieRingSolidGreenAtTarget.test.ts.)
     const mobileRing = readFileSync(
       resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"),
       "utf8",
@@ -152,8 +153,11 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"),
       "utf8",
     );
-    expect(mobileRing).toMatch(/overArcColor = palette\.overBudgetFg/);
-    expect(webRing).toMatch(/isOverBudget[\s\S]{0,120}--destructive/);
+    // Mobile: lifted-plum overage lap, NOT the old red arc.
+    expect(mobileRing).toMatch(/stroke=\{overageLapColor\}/);
+    expect(mobileRing).not.toMatch(/overArcColor = palette\.overBudgetFg/);
+    // Web: the `--ring-overage-lap` token carries the wrap, NOT `--destructive`.
+    expect(webRing).toMatch(/var\(--ring-overage-lap\)/);
   });
 
   it("TodayHeroStats NET over-target uses the over-budget token (red in Sloe, D-2)", () => {

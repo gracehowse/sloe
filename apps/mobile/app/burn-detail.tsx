@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Flame, Footprints, Moon } from "lucide-react-native";
 
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
@@ -41,6 +44,11 @@ export default function BurnDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Theme-aware honey TEXT (base honey is fill-only — 2.3:1 even on white):
+  // deep honey on light, lifted honey on dark; both clear AA. Mirrors web
+  // `--activity-solid`.
+  const activitySolid =
+    useColorScheme() === "dark" ? Accent.activitySolidDark : Accent.activitySolid;
   const { session } = useAuth();
   const userId = session?.user?.id;
 
@@ -204,15 +212,28 @@ export default function BurnDetailScreen() {
     catch { return dk; }
   }
 
+  const dateCaption = formatDateLabel(viewKey);
+  const stepsPct =
+    data && dailyStepsGoal > 0
+      ? Math.min(100, Math.round((data.steps / dailyStepsGoal) * 100))
+      : 0;
+
   return (
     <View testID="screen-burn-detail" style={{ flex: 1, backgroundColor: colors.background }}>
       <PushScreenHeader
-        title={isPast ? "Activity Summary" : "Activity Bonus"}
-        caption={formatDateLabel(viewKey)}
+        title="Activity Summary"
+        caption={dateCaption}
         onBack={() => router.back()}
       />
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: Spacing.lg,
+          paddingTop: Spacing.md,
+          paddingBottom: insets.bottom + 40,
+          gap: Spacing.lg,
+        }}
+      >
         {!data && loadError ? (
           <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
             <Ionicons name="alert-circle-outline" size={28} color={colors.textTertiary} />
@@ -227,126 +248,180 @@ export default function BurnDetailScreen() {
           </View>
         ) : (
           <>
-            {/* Energy rows */}
-            <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Active energy</Text>
-                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{data.activeBurn.toLocaleString()}</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>Exercise, walking, movement above resting</Text>
-            </View>
-
-            <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Resting energy</Text>
-                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{data.restingBurn.toLocaleString()}</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>Energy your body uses while minimally active</Text>
-            </View>
-
-            {totals?.isProjected && totals.futureBurn > 0 && (
-              <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Estimated remaining</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{totals.futureBurn.toLocaleString()}</Text>
+            <SupprCard lift="flat" padding="none" testID="burn-detail-hero">
+              <View style={{ alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: 28, paddingBottom: 24 }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: "rgba(214,162,74,0.15)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 12,
+                  }}
+                >
+                  <Flame size={22} color={Accent.activity} strokeWidth={2} />
                 </View>
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>Based on your resting rate so far today</Text>
+                <Text
+                  testID="burn-detail-hero-kcal"
+                  style={{
+                    fontFamily: FontFamily.serifRegular,
+                    fontSize: 64,
+                    lineHeight: 64,
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {(totals?.total ?? data.restingBurn + data.activeBurn).toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 10 }}>
+                  kcal burned · {dateCaption}
+                </Text>
               </View>
-            )}
+            </SupprCard>
 
-            {/* Workouts */}
-            {data.workouts.length > 0 && (
-              <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 8 }}>Workouts</Text>
+            <View>
+              <Text style={{ ...Type.label, color: colors.textTertiary, marginBottom: 8, paddingHorizontal: 4 }}>
+                Breakdown
+              </Text>
+              <SupprCard lift="flat" padding="none" testID="burn-detail-breakdown">
+                <BurnStatRow
+                  icon={<Flame size={18} color={Accent.activity} strokeWidth={2} />}
+                  iconBg="rgba(214,162,74,0.14)"
+                  title="Active energy"
+                  subtitle="Exercise, walking, movement above resting"
+                  value={data.activeBurn.toLocaleString()}
+                  borderColor={colors.border}
+                  textColor={colors.text}
+                  subtitleColor={colors.textTertiary}
+                />
+                <BurnStatRow
+                  icon={<Moon size={18} color={colors.textSecondary} strokeWidth={2} />}
+                  iconBg="rgba(106,96,114,0.10)"
+                  title="Resting energy"
+                  subtitle="Energy your body uses while minimally active"
+                  value={data.restingBurn.toLocaleString()}
+                  borderColor={colors.border}
+                  textColor={colors.text}
+                  subtitleColor={colors.textTertiary}
+                />
+                {totals?.isProjected && totals.futureBurn > 0 ? (
+                  <BurnStatRow
+                    icon={<Moon size={18} color={colors.textSecondary} strokeWidth={2} />}
+                    iconBg="rgba(106,96,114,0.10)"
+                    title="Estimated remaining"
+                    subtitle="Based on your resting rate so far today"
+                    value={totals.futureBurn.toLocaleString()}
+                    borderColor={colors.border}
+                    textColor={colors.text}
+                    subtitleColor={colors.textTertiary}
+                  />
+                ) : null}
+                <BurnStatRow
+                  icon={<Footprints size={18} color={colors.textSecondary} strokeWidth={2} />}
+                  iconBg="rgba(106,96,114,0.10)"
+                  title="Steps"
+                  subtitle="Daily movement goal"
+                  value={data.steps.toLocaleString()}
+                  valueSuffix={` / ${dailyStepsGoal.toLocaleString()}`}
+                  borderColor={colors.border}
+                  textColor={colors.text}
+                  subtitleColor={colors.textTertiary}
+                  isLast
+                  stepsBar={{ pct: stepsPct, color: MacroColors.calories }}
+                />
                 {data.workouts.map((w, i) => (
-                  <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
+                  <View
+                    key={i}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: 10,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colors.border,
+                    }}
+                  >
                     <Ionicons name="barbell-outline" size={14} color={Accent.primary} />
                     <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
-                    {w.minutes > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>{w.minutes} min</Text>}
-                    {w.calories > 0 && <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.activity, fontVariant: ["tabular-nums"] }}>{w.calories}</Text>}
+                    {w.minutes > 0 ? (
+                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>{w.minutes} min</Text>
+                    ) : null}
+                    {w.calories > 0 ? (
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: activitySolid, fontVariant: ["tabular-nums"] }}>
+                        {w.calories}
+                      </Text>
+                    ) : null}
                   </View>
                 ))}
-              </View>
-            )}
+              </SupprCard>
+            </View>
 
-            {/* Steps — single-day count */}
-            {data.steps > 0 && (
-              <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Steps</Text>
-                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{data.steps.toLocaleString()}</Text>
-              </View>
-            )}
-
-            {/* 2026-05-12 (premium-bar audit Phase 2 — relocated from
-                /weight-tracker): 30-day steps trend with the user's
-                daily goal as a horizontal line. Burn detail is the
-                canonical activity drill-down per MFP + Lose It IA —
-                steps belongs here, not on the weight surface. Renders
-                only when there are at least 2 days of data.
-                2026-05-13 (TF feedback `AEAhefzqZ_0tuPnEONlytgI` —
-                "we don't need the last 30 days step chart here that
-                belongs in progress"): the 30-day steps chart removed
-                from Activity Bonus. Today's bonus surface is about
-                *today's* burn — a 30-day trend chart belongs in
-                Progress, not on the daily drill-down. The chart now
-                lives at the top of the burn-history rail in
-                Progress's burn / activity section (which still uses
-                the same `stepsHistory` data shape). */}
-
-            {/* Totals card — mirrors Lose It!'s breakdown so the rows
-                above the divider visibly produce the bonus below it.
-                Today: Projected burn − Maintenance = Bonus earned.
-                Closed: Final burn − Maintenance = Bonus earned. */}
-            {totals && (
-              <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, gap: 10 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                    {isPast ? "Final burn" : "Projected burn"}
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>{totals.total.toLocaleString()}</Text>
-                </View>
-                {data.maintenanceKcal > 0 && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>Maintenance</Text>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>{data.maintenanceKcal.toLocaleString()}</Text>
-                  </View>
-                )}
-                {data.maintenanceKcal > 0 && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: totals.bonus > 0 ? Accent.activity : colors.textTertiary }}>
-                      {totals.bonus > 0 ? "Bonus earned" : "No bonus earned"}
+            {totals ? (
+              <View>
+                <Text style={{ ...Type.label, color: colors.textTertiary, marginBottom: 8, paddingHorizontal: 4 }}>
+                  Activity bonus
+                </Text>
+                <SupprCard lift="flat" padding="lg" testID="burn-detail-bonus-card" innerStyle={{ gap: 0 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                      {isPast ? "Final burn" : "Projected burn"}
                     </Text>
-                    <Text style={{ fontSize: 16, fontWeight: "800", color: totals.bonus > 0 ? Accent.activity : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-                      {totals.bonus > 0 ? `+${totals.bonus.toLocaleString()}` : "0"}
+                    <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 18, color: colors.text, fontVariant: ["tabular-nums"] }}>
+                      {totals.total.toLocaleString()}
                     </Text>
                   </View>
-                )}
+                  {data.maintenanceKcal > 0 ? (
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
+                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>Maintenance estimate</Text>
+                      <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 18, color: colors.text, fontVariant: ["tabular-nums"] }}>
+                        − {data.maintenanceKcal.toLocaleString()}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {data.maintenanceKcal > 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 10,
+                        paddingTop: 14,
+                        borderTopWidth: StyleSheet.hairlineWidth,
+                        borderTopColor: colors.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>
+                        {totals.bonus > 0 ? "Bonus earned" : "Bonus"}
+                      </Text>
+                      <Text
+                        testID="burn-detail-bonus-result"
+                        style={{
+                          fontFamily: FontFamily.serifRegular,
+                          fontSize: totals.bonus > 0 ? 28 : 20,
+                          lineHeight: totals.bonus > 0 ? 28 : 24,
+                          color: totals.bonus > 0 ? activitySolid : colors.textTertiary,
+                          fontVariant: ["tabular-nums"],
+                        }}
+                      >
+                        {totals.bonus > 0 ? `+${totals.bonus.toLocaleString()} kcal` : "No bonus earned"}
+                      </Text>
+                    </View>
+                  ) : null}
+                </SupprCard>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 12, lineHeight: 18, paddingHorizontal: 4 }}>
+                  Burn above your maintenance estimate adds to your daily food budget.
+                </Text>
               </View>
-            )}
+            ) : null}
 
-            {/* 2026-05-13 (TF feedback `AOc1nHHposbaZ7yEgDLwPdE` —
-                "this should be a toggle so user can choose"):
-                inline switch right under the bonus so the user can
-                opt in / out without digging into Settings. When ON,
-                today's bonus is added to the calorie target on
-                Today; OFF (default) keeps the target static and
-                the bonus is informational only. Bug repro from the
-                same feedback ("bonus earned over 300 but not
-                reflected in target") was the default-OFF case;
-                surfacing the toggle here closes the loop. */}
-            {totals && totals.bonus > 0 ? (
-              <View
-                style={{
-                  marginTop: Spacing.lg,
-                  padding: Spacing.md,
-                  borderRadius: Radius.md,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                }}
+            {totals && totals.bonus > 0 && isToday ? (
+              <SupprCard
+                lift="flat"
+                padding="md"
+                innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12 }}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -368,33 +443,85 @@ export default function BurnDetailScreen() {
                         .from("profiles")
                         .update({ prefer_activity_adjusted_calories: next })
                         .eq("id", userId);
-                      if (error) {
-                        // Roll back on error so the UI stays
-                        // honest about what's persisted.
-                        setPreferActivityAdjustedCalories(!next);
-                      }
+                      if (error) setPreferActivityAdjustedCalories(!next);
                     } finally {
                       setSavingPreference(false);
                     }
                   }}
                   trackColor={{ true: Accent.primary, false: colors.border }}
                 />
-              </View>
+              </SupprCard>
             ) : null}
-
-            {/* 2026-05-07 ui-critic F6: trimmed the activity-bonus
-                explainer to the one fact that matters at this level —
-                "burn above maintenance counts as extra food budget".
-                The longer paragraph (with the "your calorie target
-                already accounts for typical daily activity" caveat)
-                belongs in onboarding / a one-time tip, not under
-                every burn-detail render. */}
-            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.lg, lineHeight: 16 }}>
-              Burn above your maintenance estimate adds to your daily food budget.
-            </Text>
           </>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function BurnStatRow({
+  icon,
+  iconBg,
+  title,
+  subtitle,
+  value,
+  valueSuffix,
+  borderColor,
+  textColor,
+  subtitleColor,
+  isLast = false,
+  stepsBar,
+}: {
+  icon: ReactNode;
+  iconBg: string;
+  title: string;
+  subtitle: string;
+  value: string;
+  valueSuffix?: string;
+  borderColor: string;
+  textColor: string;
+  subtitleColor: string;
+  isLast?: boolean;
+  stepsBar?: { pct: number; color: string };
+}) {
+  return (
+    <View
+      style={{
+        paddingVertical: 16,
+        paddingHorizontal: Spacing.md,
+        borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+        borderBottomColor: borderColor,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: iconBg,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {icon}
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: textColor }}>{title}</Text>
+          <Text style={{ fontSize: 12, color: subtitleColor, marginTop: 2 }}>{subtitle}</Text>
+        </View>
+        <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 20, color: textColor, fontVariant: ["tabular-nums"] }}>
+          {value}
+          {valueSuffix ? (
+            <Text style={{ fontSize: 13, color: subtitleColor }}>{valueSuffix}</Text>
+          ) : null}
+        </Text>
+      </View>
+      {stepsBar ? (
+        <View style={{ marginTop: 12, marginLeft: 52, height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
+          <View style={{ height: "100%", width: `${stepsBar.pct}%`, borderRadius: 3, backgroundColor: stepsBar.color }} />
+        </View>
+      ) : null}
     </View>
   );
 }

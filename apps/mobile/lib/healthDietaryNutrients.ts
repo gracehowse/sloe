@@ -37,7 +37,11 @@ export {
  * Omit `FatTrans`: `HKQuantityTypeIdentifierDietaryFatTrans` was removed in newer HealthKit
  * SDKs; requesting it breaks authorization on device (Connect shows generic failure).
  */
-export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
+/**
+ * Small set for `initHealthKit` — MFP meal import needs these; requesting all
+ * micro types in one native call has crashed the bridge on iOS 26+ (2026-06-05).
+ */
+export const HEALTH_DIETARY_CORE_PERMISSION_KEYS = [
   "EnergyConsumed",
   "Protein",
   "Carbohydrates",
@@ -45,6 +49,10 @@ export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "Fiber",
   "Sugar",
   "Sodium",
+] as const;
+
+export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
+  ...HEALTH_DIETARY_CORE_PERMISSION_KEYS,
   "FatSaturated",
   "FatMonounsaturated",
   "FatPolyunsaturated",
@@ -61,7 +69,8 @@ export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "Manganese",
   "Molybdenum",
   "Iodine",
-  "Chromium",
+  // Chromium omitted — not in react-native-health Permissions (1.19); requesting it in
+  // initHealthKit can crash the native bridge on device (2026-06-05 HS connect).
   "Chloride",
   "Thiamin",
   "Riboflavin",
@@ -137,7 +146,6 @@ export function buildFiberAndMicrosFromHealthTotals(totals: Readonly<Record<stri
   pushMgFromG("manganeseMg", g("Manganese"));
   pushMcgFromG("molybdenumMcg", g("Molybdenum"));
   pushMcgFromG("iodineMcg", g("Iodine"));
-  pushMcgFromG("chromiumMcg", g("Chromium"));
   pushMgFromG("chlorideMg", g("Chloride"));
 
   pushMgFromG("thiaminMg", g("Thiamin"));

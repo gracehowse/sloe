@@ -1,36 +1,22 @@
 /**
  * Pattern #9 — "Where this comes from" provenance affordance.
  *
- * Closes the architectural gap behind tracker `AN8GJ1Dr3M` ("steps and
- * total burn are wrong for this day"). Untriageable in build 12 because
- * the tester had no UI to see the underlying source / sample window /
- * sync freshness. This sheet turns vague reports into screenshottable
- * evidence and makes derived activity numbers feel honest.
- *
- * Mirrors the structural language of `WhyThisNumberSheet.tsx` — same
- * bottom-sheet shell + header + 3-row breakdown + secondary action.
- *
- * Two scopes:
- *  - "steps + active energy" combined sheet (Today card)
- *  - "burn breakdown" sheet (Burn detail screen — wired separately)
- *
- * No new schema. Last-sync timestamp is read from AsyncStorage
- * (`@suppr/healthSyncMeta/lastSyncedAt/v1`), which `healthSync.ts`
- * stamps after every successful update. When missing, the sheet
- * falls back to "Synced recently" rather than rendering an empty row.
+ * Sloe re-skin (2026-06-04): light dim veil, white sheet, flat #F6F5F2
+ * grouped rows, full-width clay "Sync now". SSOT:
+ * `docs/prototypes/stitch-sloe/energy-source-sheet.html`.
  */
 
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { RefreshCw, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 
 export interface WhereThisComesFromSheetProps {
   visible: boolean;
   onClose: () => void;
-  /** "8,420 steps · 312 kcal active" — caller provides exact copy. */
+  /** "492 kcal · Active 11 · Resting 481" — caller provides exact copy. */
   headline: string;
   /** "Apple Health" / "Apple Health (Apple Watch · iPhone)" / "Manual estimate". */
   source: string;
@@ -92,10 +78,8 @@ export function WhereThisComesFromSheet({
   primaryCta,
   backgroundColor,
   cardColor,
-  cardBorderColor,
   textColor,
   textSecondaryColor,
-  textTertiaryColor,
 }: WhereThisComesFromSheetProps) {
   const insets = useSafeAreaInsets();
   const lastSynced = formatLastSynced(lastSyncedAtMs);
@@ -104,7 +88,7 @@ export function WhereThisComesFromSheet({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(34,27,38,0.22)" }]}
           onPress={onClose}
           accessibilityLabel="Close"
         />
@@ -112,23 +96,33 @@ export function WhereThisComesFromSheet({
           testID="where-this-comes-from-sheet"
           style={{
             backgroundColor,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
-            paddingTop: Spacing.md,
-            paddingBottom: insets.bottom + Spacing.xl,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingBottom: insets.bottom + Spacing.lg,
           }}
         >
-          {/* Header — title + close */}
+          <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+            <View style={{ width: 40, height: 6, borderRadius: 3, backgroundColor: "#E8E2EC" }} />
+          </View>
+
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: "flex-start",
               paddingHorizontal: Spacing.lg,
-              marginBottom: Spacing.sm,
+              paddingTop: Spacing.sm,
             }}
           >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: textColor }}>
+            <Text
+              style={{
+                flex: 1,
+                fontFamily: FontFamily.serifRegular,
+                fontSize: 24,
+                lineHeight: 28,
+                color: textColor,
+              }}
+            >
               Where this comes from
             </Text>
             <Pressable
@@ -136,80 +130,54 @@ export function WhereThisComesFromSheet({
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Close"
+              style={{ marginTop: 2, marginLeft: 8 }}
             >
               <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
             </Pressable>
           </View>
 
-          {/* Headline */}
-          <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "700",
-                color: textColor,
-                letterSpacing: -0.4,
-                fontVariant: ["tabular-nums"],
-              }}
-              testID="where-this-comes-from-headline"
-            >
-              {headline}
-            </Text>
-          </View>
-
-          {/* Breakdown rows */}
-          <View
-            style={{
-              marginHorizontal: Spacing.lg,
-              backgroundColor: cardColor,
-              borderRadius: Radius.lg,
-              borderWidth: 1,
-              borderColor: cardBorderColor,
-              overflow: "hidden",
-            }}
-          >
-            <Row
-              label="Source"
-              value={source}
-              borderBottom={range != null}
-              borderColor={cardBorderColor}
-              labelColor={textTertiaryColor}
-              valueColor={textColor}
-            />
-            {range != null ? (
-              <Row
-                label="Range"
-                value={range}
-                borderBottom
-                borderColor={cardBorderColor}
-                labelColor={textTertiaryColor}
-                valueColor={textColor}
-              />
-            ) : null}
-            <Row
-              label="Last synced"
-              value={lastSynced}
-              borderBottom={false}
-              borderColor={cardBorderColor}
-              labelColor={textTertiaryColor}
-              valueColor={textColor}
-            />
-          </View>
-
-          {/* Footer explainer */}
           <Text
             style={{
               paddingHorizontal: Spacing.lg,
-              marginTop: Spacing.md,
-              fontSize: 12,
-              lineHeight: 17,
-              color: textTertiaryColor,
+              marginTop: 4,
+              fontSize: 14,
+              color: textSecondaryColor,
+              fontVariant: ["tabular-nums"],
+            }}
+            testID="where-this-comes-from-headline"
+          >
+            {headline}
+          </Text>
+
+          <View style={{ paddingHorizontal: Spacing.lg, marginTop: Spacing.lg }}>
+            <View
+              style={{
+                backgroundColor: cardColor,
+                borderRadius: Radius.xl,
+                paddingHorizontal: Spacing.md,
+                overflow: "hidden",
+              }}
+            >
+              <ProvenanceRow label="Source" value={source} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder={range != null} />
+              {range != null ? (
+                <ProvenanceRow label="Range" value={range} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder />
+              ) : null}
+              <ProvenanceRow label="Last synced" value={lastSynced} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder={false} />
+            </View>
+          </View>
+
+          <Text
+            style={{
+              paddingHorizontal: Spacing.lg,
+              marginTop: Spacing.lg,
+              fontSize: 13,
+              lineHeight: 20,
+              color: textSecondaryColor,
             }}
           >
             {footerExplainer}
           </Text>
 
-          {/* Optional primary CTA */}
           {primaryCta ? (
             <Pressable
               onPress={primaryCta.onPress}
@@ -219,15 +187,19 @@ export function WhereThisComesFromSheet({
               style={{
                 marginHorizontal: Spacing.lg,
                 marginTop: Spacing.lg,
-                paddingVertical: 12,
-                borderRadius: Radius.md,
+                paddingVertical: 14,
+                borderRadius: Radius.full,
                 backgroundColor: Accent.primary,
+                flexDirection: "row",
                 alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 opacity: primaryCta.busy ? 0.6 : 1,
               }}
               testID="where-this-comes-from-cta"
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <RefreshCw size={17} color="#fff" strokeWidth={2} />
+              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
                 {primaryCta.busy ? "Syncing…" : primaryCta.label}
               </Text>
             </Pressable>
@@ -238,44 +210,35 @@ export function WhereThisComesFromSheet({
   );
 }
 
-function Row({
+function ProvenanceRow({
   label,
   value,
-  borderBottom,
   borderColor,
   labelColor,
   valueColor,
+  showBorder,
 }: {
   label: string;
   value: string;
-  borderBottom: boolean;
   borderColor: string;
   labelColor: string;
   valueColor: string;
+  showBorder: boolean;
 }) {
   return (
     <View
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.md,
-        borderBottomWidth: borderBottom ? 1 : 0,
-        borderBottomColor: borderColor,
+        alignItems: "flex-start",
         gap: Spacing.md,
+        paddingVertical: Spacing.md,
+        borderBottomWidth: showBorder ? StyleSheet.hairlineWidth : 0,
+        borderBottomColor: borderColor,
       }}
     >
-      <Text style={{ fontSize: 13, color: labelColor, fontWeight: "600" }}>{label}</Text>
-      <Text
-        style={{
-          fontSize: 13,
-          color: valueColor,
-          fontWeight: "500",
-          flexShrink: 1,
-          textAlign: "right",
-        }}
-      >
+      <Text style={{ fontSize: 14, color: labelColor, flexShrink: 0 }}>{label}</Text>
+      <Text style={{ fontSize: 14, color: valueColor, fontWeight: "500", flexShrink: 1, textAlign: "right" }}>
         {value}
       </Text>
     </View>

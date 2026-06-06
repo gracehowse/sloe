@@ -86,3 +86,50 @@ export function shouldShowBarcodeFallbackHint(locale: string | null | undefined)
  * keep this in sync by hand.
  */
 export const US_DATASET_REGIONS_FOR_TESTS: ReadonlySet<string> = US_REGIONS;
+
+// ── UK grocery retailers (search ranking — ENG-877 / deep-dive F-02) ──
+
+function normalizeRetailerToken(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[''´`]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/** Normalized tokens for UK supermarket brands in FatSecret/OFF rows. */
+export const UK_GROCERY_RETAILER_TOKENS: readonly string[] = [
+  "tesco",
+  "sainsburys",
+  "asda",
+  "morrisons",
+  "waitrose",
+  "aldi",
+  "lidl",
+  "iceland",
+  "coop",
+  "marksandspencer",
+];
+
+/**
+ * When the query leads with a UK retailer ("tesco chicken"), ranking should
+ * prefer that retailer's branded FS/OFF rows over generic homonyms.
+ */
+export function queryLeadingUkRetailer(query: string): string | null {
+  const raw = query.trim().toLowerCase().split(/\s+/)[0];
+  if (!raw) return null;
+  const norm = normalizeRetailerToken(raw);
+  if (!norm) return null;
+  if (norm.startsWith("sainsbury")) return "sainsburys";
+  if (norm === "ms" || norm.startsWith("marks")) return "marksandspencer";
+  for (const r of UK_GROCERY_RETAILER_TOKENS) {
+    if (norm === r || norm.startsWith(r) || r.startsWith(norm)) return r;
+  }
+  return null;
+}
+
+/** True when a FatSecret/OFF display name includes the retailer token. */
+export function foodNameIncludesUkRetailer(name: string, retailer: string): boolean {
+  const normName = normalizeRetailerToken(name);
+  const normRetailer = normalizeRetailerToken(retailer);
+  return normName.includes(normRetailer);
+}

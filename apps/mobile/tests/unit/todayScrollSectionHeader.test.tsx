@@ -19,15 +19,24 @@ function flattenStyle(style: unknown): Record<string, unknown> {
 }
 
 describe("TodayScrollSectionHeader — Figma TD1/TD2 section chrome", () => {
-  it("renders the plum section title and muted date subline", () => {
-    const { getByText } = render(
+  it("renders the plum section title (full Today scroll — no duplicate date)", () => {
+    const { getByText, queryByText } = render(
       <TodayScrollSectionHeader
         title="Activity & energy"
-        subtitle="Wednesday, 3 June"
         testID="today-activity-section-header"
       />,
     );
     expect(getByText("Activity & energy")).toBeTruthy();
+    expect(queryByText("Wednesday, 3 June")).toBeNull();
+  });
+
+  it("renders an optional date subline for isolated TD1/TD2 frames", () => {
+    const { getByText } = render(
+      <TodayScrollSectionHeader
+        title="Activity & energy"
+        subtitle="Wednesday, 3 June"
+      />,
+    );
     expect(getByText("Wednesday, 3 June")).toBeTruthy();
   });
 

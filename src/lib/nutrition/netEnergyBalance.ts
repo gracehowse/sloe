@@ -1,0 +1,86 @@
+/**
+ * Net energy headline + state chip (Bevel-style) for Sloe TD1 energy balance.
+ * SSOT: `docs/prototypes/stitch-sloe/energy-balance.html`,
+ * `docs/prototypes/stitch-sloe/_buildenergy.mjs`.
+ */
+
+export type NetEnergyChipState = "deficit" | "surplus" | "maintenance";
+
+const CHIP_THRESHOLD_KCAL = 60;
+
+export function netEnergyChipState(netKcal: number): NetEnergyChipState {
+  if (netKcal > CHIP_THRESHOLD_KCAL) return "deficit";
+  if (netKcal < -CHIP_THRESHOLD_KCAL) return "surplus";
+  return "maintenance";
+}
+
+export const NET_ENERGY_CHIP_LABEL: Record<NetEnergyChipState, string> = {
+  deficit: "Deficit",
+  surplus: "Surplus",
+  maintenance: "Maintenance",
+};
+
+/**
+ * Headline + slider-marker accent (sage / clay / plum). These are FILL hues —
+ * correct for the 52px net headline (large text, 3:1 bar) and the marker ring
+ * (graphical, 3:1). Do NOT use for the small white-on-fill state chip: white on
+ * clay #C8794E is only 3.33:1 (AA-normal needs 4.5:1). The chip reads its own
+ * AA-safe `NET_ENERGY_CHIP_BG` below instead.
+ */
+export const NET_ENERGY_STATE_COLOR = {
+  deficit: "#5E7C5A",
+  surplus: "#C8794E",
+  maintenance: "#3B2A4D",
+} as const;
+
+/**
+ * Chip background — the deep `-solid` variant of each state hue, so the small
+ * uppercase WHITE chip label clears WCAG AA (white text needs ≥4.5:1):
+ *   deficit  sage-solid  #466046 → white 6.95:1
+ *   surplus  clay-solid  #A0552E → white 5.48:1  (base clay #C8794E was 3.33:1)
+ *   maintenance plum      #3B2A4D → white 12.9:1  (already deep — unchanged)
+ * Mirrors web `--accent-*-solid` + the global `Button` (which already ships
+ * `bg-primary-solid`). The headline + marker keep `NET_ENERGY_STATE_COLOR`.
+ */
+export const NET_ENERGY_CHIP_BG = {
+  deficit: "#466046",
+  surplus: "#A0552E",
+  maintenance: "#3B2A4D",
+} as const;
+
+export function netEnergyKcalUnit(state: NetEnergyChipState): string {
+  return `kcal ${state}`;
+}
+
+/** Slider knob position along deficit ↔ maintenance ↔ surplus bar. */
+export function netEnergyMarkerFraction(
+  netKcal: number,
+  maintenanceKcal: number | null,
+  consumedCalories: number,
+  isDeficit: boolean,
+): number {
+  if (maintenanceKcal != null && maintenanceKcal > 0) {
+    const ratio = 0.5 - netKcal / (maintenanceKcal * 2);
+    return Math.min(0.94, Math.max(0.06, ratio));
+  }
+  if (consumedCalories === 0) return 0.31;
+  return isDeficit ? 0.25 : 0.75;
+}
+
+export function netEnergySubline(args: {
+  burnedKcal: number;
+  eatenKcal: number;
+  isToday: boolean;
+  netKcal: number;
+  isDeficit: boolean;
+}): string {
+  const { burnedKcal, eatenKcal, isToday, netKcal, isDeficit } = args;
+  if (eatenKcal === 0) {
+    const tail = isToday ? "yet" : "for this day";
+    return `${burnedKcal.toLocaleString()} kcal burned so far · no food logged ${tail}.`;
+  }
+  if (isDeficit) {
+    return `You've burned ${Math.abs(netKcal).toLocaleString()} more than you've eaten${isToday ? " today" : ""}.`;
+  }
+  return `You've eaten ${Math.abs(netKcal).toLocaleString()} more than you've burned${isToday ? " today" : ""}.`;
+}

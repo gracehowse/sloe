@@ -252,7 +252,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
 
   return (
     <div className="mb-3">
-    <div className="grid grid-cols-2 gap-2.5 max-w-[480px]">
+    <div className="grid grid-cols-2 gap-3 max-w-[480px]">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
@@ -260,7 +260,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-card bg-card card-slab-flat p-3 flex flex-col"
+            className="rounded-card bg-card card-slab-flat p-4 flex flex-col justify-between min-h-24"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -287,11 +287,11 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 via `min-w-0` on the flex container so long imperial
                 targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
                 wrap to a second line. */}
-            <div className="flex items-baseline min-w-0">
+            <div className="flex items-baseline min-w-0 gap-1">
               <span className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] shrink-0">
                 {tile.valueText}
               </span>
-              <span className="text-xs text-muted-foreground ml-[3px] truncate">
+              <span className="text-xs text-muted-foreground truncate">
                 {tile.targetText}
               </span>
             </div>

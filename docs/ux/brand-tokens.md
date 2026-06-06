@@ -29,6 +29,7 @@ contrast ratios.
 | **Primary solid (text/icon)** | `#A0552E` (light) / `#C8794E` (dark) | `Accent.primarySolid` | `--accent-primary-solid` | Clay as small text / icon / link on light (AA-safe) |
 | **Primary light** | `#D58A5E` | `Accent.primaryLight` | n/a | Dark-mode primary, selected tabs |
 | **Nav / brand primary** | `#3B2A4D` (light) / `#815E91` (dark) | `Colors.*.navPrimary` | `--sidebar-primary` (web mirror) | Nav + brand chrome — the centre Log **FAB** (mobile), wordmark, page titles. Plum. Distinct from clay `tint` (locked Grace 2026-06-04: plum = nav/brand, clay = content CTAs). |
+| **Brand heading ink (text)** | `#3B2A4D` (light) / `#A98CB8` (dark) | `MacroColors.calories` (mobile, light only — see ENG-886) | `--foreground-brand` (`text-foreground-brand`) | Newsreader **card titles** ("Steps & activity", "Hydration", "Planned", …) — the plum hue as TEXT (AA-safe: 11.9:1 light, 5.4:1 dark). The text variant of the plum/nav hue; dark uses the lighter `#A98CB8` lift, NOT the `#815E91` fill-lift (only 2.99:1 as text). Web card titles previously (wrongly) used clay `text-primary` — ENG-885. |
 | **Body ink** | `#221B26` (light) / `#F5F3F4` (dark) | `Colors.*.text` | `--foreground` | Aubergine ink — headlines and body copy, not button fill |
 | **brandBlue alias** | `#C8794E` | `Accent.brandBlue` | n/a | Legacy alias — now clay; same as `Accent.primary` |
 | **Success** | `#5E7C5A` (light) / `#83A57E` (dark) | `Accent.success` | `--accent-success` / `--success` | Confirmations, calorie-ring at/under-target signal, positive states — Sloe sage |
@@ -36,7 +37,8 @@ contrast ratios.
 | **Warning** | `#C9892C` (light) / `#D6A24A` (dark) | `Accent.warning` | `--accent-warning` / `--warning` | Approaching limits — Sloe amber. **Not** over-budget (that is red, D-2); **not** activity bonus (that owns honey) |
 | **Warning solid (text)** | `#956619` | `Accent.warningSolid` | `--accent-warning-solid` | Amber as small text on light (AA-safe) |
 | **Carbs** | `#C8794E` (light) / `#D58A5E` (dark) | `Accent.carbs` | `--macro-carbs` | Carbs (+ sugar) macro track — Sloe clay (same hue family as primary) |
-| **Activity** | `#D6A24A` (light) / `#E0B25E` (dark) | `Accent.activity` | `--activity` | Activity / burn / earned-bonus — Sloe honey, distinct from amber warning + red over-budget |
+| **Activity** | `#D6A24A` (light) / `#E0B25E` (dark) | `Accent.activity` | `--activity` | Activity / burn / earned-bonus — Sloe honey, distinct from amber warning + red over-budget. **FILL-ONLY** — honey is 2.3:1 even on white, so it can never be text (any size) |
+| **Activity solid (text)** | `#8A5A14` (light) / `#E0B25E` (dark) | `Accent.activitySolid` / `Accent.activitySolidDark` | `--activity-solid` (`text-activity-solid`) | Deep honey for burn-detail "Bonus earned" value + workout-kcal TEXT (AA-safe: 4.9:1 on the honey tint, 5.9:1 on white). Added ENG-885 |
 | **Fiber** | `#4A7878` (light) / `#6FA3A3` (dark) | `Accent.fiber` | `--macro-fiber` | Fibre macro — Sloe teal |
 | **Carbs light** | `#D58A5E` | `Accent.carbsLight` | `--macro-carbs` (dark) | Dark-mode carbs tint |
 | **Destructive** | `#C0533F` (light) / `#DC6B55` (dark) | `Accent.destructive` | `--accent-destructive` / `--destructive` | Errors, dangerous actions, **and over-budget** (D-2) — Sloe warm brick |
@@ -163,7 +165,10 @@ _Canonical 2026-05-22 lock — tighter ladder (Linear / Stripe / Things 3 tier).
 4. **Four-role colour law (Sloe, refined Grace 2026-06-04).** NAV/BRAND = plum (`navPrimary` — the centre Log FAB, wordmark, page titles; nav chrome only); PRIMARY = clay CTA (the one inline "do it" content action per region — Save, Log Dinner, Start Cooking); SUCCESS = sage (calorie ring at/under-target + macro identity); WIN = damson (landmark celebration only — not a CTA, not a state, not a macro). The plum/clay split is load-bearing: the FAB is plum so it reads as nav chrome, never "just another clay content CTA".
 5. **Over-budget = destructive red (`#C0533F`), not amber (dossier D-2).** Fat now owns amber, so the over-budget signal moved to red. The calorie ring is plum under-target and gets a red overage when over.
 6. **Macro colours are immutable.** They must not change per-screen or per-context.
-7. **Use the `*-solid` / `*Solid` variant for accent TEXT/ICON on light.** The base clay / amber / sage fills clear the 3:1 graphical bar but not 4.5:1 text — switch to the darkened solid token for small text or icons.
+7. **Use the `*-solid` / `*Solid` variant for accent TEXT/ICON on light.** The base clay / amber / sage / honey fills clear the 3:1 graphical bar but not 4.5:1 text — switch to the darkened solid token for small text or icons. Corollaries (ENG-885, verified by `tests/unit/sloeContrastTokens.test.ts`):
+   - **Honey `--activity` is fill-only** — it's 2.3:1 even on white, so it can NEVER be text at any size. Use `--activity-solid` / `Accent.activitySolid` for burn/bonus text.
+   - **White text on an accent fill needs the `-solid` fill** (white on clay `#C8794E` is only 3.33:1). The global `Button` (`bg-primary-solid`) and the net-energy state chip (`NET_ENERGY_CHIP_BG` in `src/lib/nutrition/netEnergyBalance.ts`) both follow this. The vivid base fill stays correct for large headlines (≥18.66px bold / ≥24px, 3:1 bar) and graphical marks.
+   - **Card titles use plum `--foreground-brand`, not clay.** Headings are nav/brand chrome (plum), not content CTAs (clay).
 
 ## Fonts (Sloe Phase 0)
 

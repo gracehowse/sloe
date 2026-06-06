@@ -103,3 +103,6 @@ docs/workflows/stitch-claude-code.md
 
 # Generated brand-asset exploration (AI images — kept local, too heavy for git)
 docs/brand/sloe/assets/gen/
+.playwright-mcp/
+tmp/
+*.tsbuildinfo
