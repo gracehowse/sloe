@@ -34,16 +34,18 @@ export const NET_ENERGY_STATE_COLOR = {
 } as const;
 
 /**
- * Chip background — the deep `-solid` variant of each state hue, so the small
- * uppercase WHITE chip label clears WCAG AA (white text needs ≥4.5:1):
- *   deficit  sage-solid  #466046 → white 6.95:1
- *   surplus  clay-solid  #A0552E → white 5.48:1  (base clay #C8794E was 3.33:1)
- *   maintenance plum      #3B2A4D → white 12.9:1  (already deep — unchanged)
- * Mirrors web `--accent-*-solid` + the global `Button` (which already ships
- * `bg-primary-solid`). The headline + marker keep `NET_ENERGY_STATE_COLOR`.
+ * Chip background for the small uppercase WHITE state-chip label (needs ≥4.5:1).
+ * Only the SURPLUS chip actually fails as the base hue, so only it is darkened —
+ * deficit + maintenance match `NET_ENERGY_STATE_COLOR` exactly (= the Figma
+ * `energy-balance.html` chip == its headline):
+ *   deficit  sage  #5E7C5A → white 4.66:1  (Figma value; passes — unchanged)
+ *   surplus  clay-solid #A0552E → white 5.48:1  (base clay #C8794E was 3.33:1)
+ *   maintenance plum   #3B2A4D → white 12.9:1  (already deep — unchanged)
+ * The headline + marker keep `NET_ENERGY_STATE_COLOR`; for surplus the headline
+ * stays vivid clay #C8794E (large text, 3:1 OK) while only the chip deepens.
  */
 export const NET_ENERGY_CHIP_BG = {
-  deficit: "#466046",
+  deficit: "#5E7C5A",
   surplus: "#A0552E",
   maintenance: "#3B2A4D",
 } as const;
