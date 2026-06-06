@@ -34,7 +34,7 @@ export function TodayDeficitInsight({
   return (
     <p
       data-testid="today-coach-line"
-      className="text-center font-[family-name:var(--font-headline)] italic text-[17px] leading-snug text-primary/90 px-4 pt-1 pb-2"
+      className="text-center font-[family-name:var(--font-headline)] italic text-[18px] leading-snug text-foreground-brand/90 px-4 pt-1 pb-2"
     >
       {line}
     </p>

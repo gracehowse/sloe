@@ -2352,7 +2352,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div className="text-center mb-5 mt-1">
           <h2
             data-testid="today-hero-greeting"
-            className="font-[family-name:var(--font-headline)] text-[26px] font-medium tracking-tight text-primary leading-tight"
+            className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand leading-tight"
           >
             {sloceHeroGreeting.headline}
           </h2>
