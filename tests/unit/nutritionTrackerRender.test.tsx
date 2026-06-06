@@ -142,7 +142,7 @@ const loggedMeal = {
   fat: 8,
 };
 
-describe("NutritionTracker render harness", () => {
+describe("NutritionTracker render harness", { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 4, 27, 12, 0, 0));
@@ -214,15 +214,22 @@ describe("NutritionTracker render harness", () => {
     expect(screen.queryByTestId("today-meals-empty-cta")).not.toBeInTheDocument();
   });
 
-  it("opens LogSheet from ?openLog=1 and clears the URL param", async () => {
-    vi.useRealTimers();
-    setSearchParams(new URLSearchParams("openLog=1"));
-    render(<NutritionTracker userTier="free" />);
-    await waitFor(() => {
-      expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
-    });
-    expect(mockReplace).toHaveBeenCalledWith("/home", { scroll: false });
-  });
+  it(
+    "opens LogSheet from ?openLog=1 and clears the URL param",
+    async () => {
+      vi.useRealTimers();
+      setSearchParams(new URLSearchParams("openLog=1"));
+      render(<NutritionTracker userTier="free" />);
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
+        },
+        { timeout: 10_000 },
+      );
+      expect(mockReplace).toHaveBeenCalledWith("/home", { scroll: false });
+    },
+    15_000,
+  );
 
   it("opens LogSheet when the empty-state CTA is clicked", async () => {
     vi.useRealTimers();

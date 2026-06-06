@@ -38,8 +38,8 @@ function resolveMetadataBase(): URL {
 export const metadata: Metadata = {
   metadataBase: resolveMetadataBase(),
   title: {
-    default: "Suppr",
-    template: "%s — Suppr",
+    default: "Sloe",
+    template: "%s — Sloe",
   },
   description: "Recipes, verified macros, and meal planning in one workspace.",
   icons: {

@@ -259,7 +259,7 @@ export function HouseholdPanel() {
   // No household — show create/join options
   if (!data?.household) {
     return (
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <div className="rounded-xl bg-card p-4 card-slab-flat">
         {scopeBanner}
         {/* F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06):
             received-invites banner above the create/join CTAs. When
@@ -331,7 +331,7 @@ export function HouseholdPanel() {
     <div className="space-y-4">
       {scopeBanner}
       {/* Header */}
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <div className="rounded-xl bg-card p-4 card-slab-flat">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <IconBox size="sm" tone="primary"><Icons.users /></IconBox>
@@ -469,7 +469,7 @@ export function HouseholdPanel() {
       </div>
 
       {/* Today's shared meals */}
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <div className="rounded-xl bg-card p-4 card-slab-flat">
         <p className="text-sm font-semibold text-foreground mb-2">Today&apos;s Shared Meals</p>
         {todayMeals.length === 0 ? (
           <p className="text-xs text-muted-foreground">No shared meals planned for today.</p>
@@ -510,7 +510,7 @@ export function HouseholdPanel() {
 
       {/* Upcoming meals */}
       {upcomingMeals.length > 0 && (
-        <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+        <div className="rounded-xl bg-card p-4 card-slab-flat">
           <p className="text-sm font-semibold text-foreground mb-2">Upcoming</p>
           <div className="space-y-1.5">
             {upcomingMeals.slice(0, 7).map((meal) => (

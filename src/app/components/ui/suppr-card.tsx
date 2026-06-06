@@ -132,7 +132,7 @@ function toneStyle(
 
 export function SupprCard({
   tone = "neutral",
-  elevation = "card",
+  elevation = "slab-flat",
   gradient = false,
   border = true,
   padding = "md",

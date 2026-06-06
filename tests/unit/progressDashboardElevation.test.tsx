@@ -1,22 +1,8 @@
 /**
- * ProgressDashboard — resting-card soft elevation (ENG-822 gap #7, ENG-795).
+ * ProgressDashboard — resting-card flat slab (Figma 2026-06-04).
  *
- * Web parity with the mobile `useCardElevation` hook. The Progress dashboard's
- * resting cards route through the canonical <SupprCard> primitive, whose soft
- * lift is now the UN-GATED default (2026-06-04 — the `design_system_elevation`
- * gate was removed in lockstep with mobile, because flag-FORCE is dead in a
- * bundled app and the gate only ever hid the lift the Figma requires). The
- * resting `elevation="card"` tier therefore ALWAYS renders:
- *   - `.card-slab` → soft `--elev-card-soft` ambient shadow (the lift Grace
- *     red-lined as missing on the sim), surfaced as `data-soft-elevation="true"`,
- *   - the hairline `border` utility class dropped in light (the shadow is the
- *     separation — one edge, no double line).
- *
- * This is the end-to-end render check for the elevation behaviour (component →
- * SupprCard → DOM); the source-match siblings (settings/mealPlanner/today
- * sweeps) only assert the call sites use the primitive. The exact shadow values
- * (16% / 18px / y+6, web == mobile) are pinned in the mobile
- * `cardElevationSoftLiftDefault.test.tsx`.
+ * Progress resting cards route through <SupprCard> whose default is
+ * `elevation="slab-flat"`: `.card-slab-flat`, no shadow, no hairline border.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -140,7 +126,7 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 
 import { ProgressDashboard } from "../../src/app/components/ProgressDashboard";
 
-describe("ProgressDashboard resting-card soft elevation (un-gated, ENG-795)", () => {
+describe("ProgressDashboard resting-card flat slab (ENG-795 superseded)", () => {
   beforeEach(() => {
     mockListSavedMeals.mockClear();
     mockIsFeatureEnabled.mockReset();
@@ -152,33 +138,23 @@ describe("ProgressDashboard resting-card soft elevation (un-gated, ENG-795)", ()
     cleanup();
   });
 
-  it("maintenance card renders the soft SupprCard tier even with all flags OFF (un-gated)", async () => {
-    // No flag is mocked ON — the soft lift must STILL be present. This is the
-    // regression guard for the un-gate: the cards used to read flat on the sim
-    // because the lift hid behind `design_system_elevation` (a gate that could
-    // never be exercised in a bundled app). The lift is now unconditional.
+  it("maintenance card renders the flat SupprCard tier by default", async () => {
     mockIsFeatureEnabled.mockImplementation(() => false);
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    // The card is a <SupprCard> and its resting tier is the soft slab.
     expect(card.getAttribute("data-slot")).toBe("suppr-card");
-    expect(card.getAttribute("data-soft-elevation")).toBe("true");
-    // Light: shadow is the separation, so the hairline `border` class is dropped.
+    expect(card.getAttribute("data-flat-slab")).toBe("true");
     expect(card.className.split(/\s+/)).not.toContain("border");
-    // The soft lift comes from the `.card-slab` class (→ box-shadow
-    // var(--elev-card-soft)), not a flag.
-    expect(card.className.split(/\s+/)).toContain("card-slab");
+    expect(card.className.split(/\s+/)).toContain("card-slab-flat");
   });
 
-  it("the soft lift does not depend on design_system_elevation (gate removed)", async () => {
-    // Even when the (now-dead) flag is forced ON, behaviour is identical to OFF —
-    // proving the soft tier no longer reads the flag at all.
+  it("flat slab does not depend on design_system_elevation (gate removed)", async () => {
     mockIsFeatureEnabled.mockImplementation(
       (flag: string) => flag === "design_system_elevation",
     );
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    expect(card.getAttribute("data-soft-elevation")).toBe("true");
+    expect(card.getAttribute("data-flat-slab")).toBe("true");
     expect(card.className.split(/\s+/)).not.toContain("border");
   });
 
@@ -190,7 +166,7 @@ describe("ProgressDashboard resting-card soft elevation (un-gated, ENG-795)", ()
     expect(card.className).toContain("p-4");
   });
 
-  it("elevates the loading-skeleton tile too (same paint system)", async () => {
+  it("flat-slabs the loading-skeleton tile too (same paint system)", async () => {
     // Hold the profile read pending so the loading branch stays mounted.
     let resolveLoad: (v: { data: typeof profileRow; error: null }) => void = () => {};
     profileMaybeSingle.mockReturnValue(
@@ -200,7 +176,7 @@ describe("ProgressDashboard resting-card soft elevation (un-gated, ENG-795)", ()
     );
     render(<ProgressDashboard />);
     const tile = await screen.findByTestId("progress-skeleton-tile-0");
-    expect(tile.getAttribute("data-soft-elevation")).toBe("true");
+    expect(tile.getAttribute("data-flat-slab")).toBe("true");
     expect(tile.className.split(/\s+/)).not.toContain("border");
     // Skeleton-specific geometry preserved.
     expect(tile.className).toContain("min-h-[86px]");

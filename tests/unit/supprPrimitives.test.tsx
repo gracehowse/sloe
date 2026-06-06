@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe("SupprCard", () => {
-  it("renders children with default neutral tone + soft card elevation", () => {
+  it("renders children with default neutral tone + flat slab elevation", () => {
     render(
       <SupprCard data-testid="card">
         <span>hello</span>
@@ -59,13 +59,11 @@ describe("SupprCard", () => {
     );
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-tone", "neutral");
-    expect(card).toHaveAttribute("data-elevation", "card");
-    // Un-gated soft lift (ENG-795): the resting `card` tier paints its shadow
-    // via the `.card-slab` class (→ box-shadow var(--elev-card-soft)), NOT an
-    // inline var(--elev-card). So there is no inline boxShadow, and the soft
-    // marker + slab class are present. Mirrors mobile's un-gated default.
-    expect(card.getAttribute("data-soft-elevation")).toBe("true");
-    expect(card.className.split(/\s+/)).toContain("card-slab");
+    expect(card).toHaveAttribute("data-elevation", "slab-flat");
+    // Figma `654:2` default (2026-06-04): flat borderless slab — no shadow,
+    // no hairline. Painted via `.card-slab-flat`, not inline boxShadow.
+    expect(card.getAttribute("data-flat-slab")).toBe("true");
+    expect(card.className.split(/\s+/)).toContain("card-slab-flat");
     expect(card.style.boxShadow).toBe("");
   });
 

@@ -157,7 +157,7 @@ describe("TodayMealsSection (web) — redesign_branded_sheets kebab header (#6, 
       within(header).getByText(/620 kcal · 42g P · 58g C · 21g F/),
     ).toBeTruthy();
     // The brand mark (svg with aria-label "Suppr") is present.
-    expect(within(header).getByLabelText("Suppr")).toBeTruthy();
+    expect(within(header).getByLabelText("Sloe")).toBeTruthy();
     // Legacy actions remain reachable under the branded chrome.
     expect(screen.getByText("Copy to another day…")).toBeTruthy();
     expect(screen.getByText("Delete")).toBeTruthy();
@@ -247,6 +247,6 @@ describe("CopyMealDialog (web) — branded chrome (#7)", () => {
     expect(
       within(header).getByText(/620 kcal · 42g P · 58g C · 21g F/),
     ).toBeTruthy();
-    expect(within(header).getByLabelText("Suppr")).toBeTruthy();
+    expect(within(header).getByLabelText("Sloe")).toBeTruthy();
   });
 });

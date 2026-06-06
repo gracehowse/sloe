@@ -8,24 +8,28 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
 /**
  * Self-contained inline brand ring — `global-error.tsx` REPLACES the root
  * layout, so the global stylesheet (and heavy client components like
- * `SupprMark`) aren't guaranteed to be loaded here. We inline the canonical
- * ring motif (mirrors `SupprPlateMark` / mobile `InlineBrandMark`) and use
- * inline-style colours so the branded screen renders correctly even when the
- * app's CSS never mounts. Mirrors mobile `RootErrorBoundary.renderBranded()`,
- * which likewise renders a self-contained dark brand surface.
+ * `SupprMark`) aren't guaranteed to be loaded here. We inline the Sloe
+ * wordmark and use inline-style colours so the branded screen renders
+ * correctly even when the app's CSS never mounts. Mirrors mobile
+ * `RootErrorBoundary.renderBranded()`, which likewise renders a
+ * self-contained dark brand surface.
  */
-function InlineBrandRing({ size = 44, ring }: { size?: number; ring: string }) {
+function InlineSloeWordmark({ size = 32, color }: { size?: number; color: string }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
+    <span
       role="img"
-      aria-label="Suppr"
+      aria-label="Sloe"
+      style={{
+        color,
+        fontSize: size,
+        fontWeight: 500,
+        letterSpacing: "-0.02em",
+        lineHeight: 1,
+        fontFamily: 'Georgia, "Times New Roman", serif',
+      }}
     >
-      <circle cx="16" cy="16" r="9.5" stroke={ring} strokeWidth="2" fill="none" opacity={0.95} />
-      <circle cx="16" cy="16" r="5.5" stroke={ring} strokeWidth="1" fill="none" opacity={0.35} />
-    </svg>
+      sloe
+    </span>
   );
 }
 
@@ -83,9 +87,9 @@ export default function GlobalError({
                 gap: "12px",
               }}
             >
-              <InlineBrandRing size={44} ring="#ffffff" />
+              <InlineSloeWordmark size={32} color="#ffffff" />
               <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
-                Suppr ran into a problem
+                Sloe ran into a problem
               </h1>
               <p style={{ margin: 0, fontSize: "0.875rem", color: "#a8a29e", maxWidth: "20rem" }}>
                 The team has been notified. Try reloading the page.
@@ -107,7 +111,7 @@ export default function GlobalError({
       <body>
         <div className="min-h-screen grid place-items-center px-6 py-12 bg-slate-50 dark:bg-slate-950">
           <div className="w-full max-w-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/40 p-6 shadow-lg">
-            <h1 className="text-slate-900 dark:text-white mb-2">Suppr ran into a problem</h1>
+            <h1 className="text-slate-900 dark:text-white mb-2">Sloe ran into a problem</h1>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
               Try reloading the page. If this keeps happening, let us know.
             </p>

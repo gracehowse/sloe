@@ -33,7 +33,7 @@ export function ProgressTabChrome({ overline, trailing, className }: ProgressTab
             </p>
             <h1
               data-testid="progress-header"
-              className="text-[24px] font-extrabold tracking-tight text-foreground"
+              className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand"
             >
               Progress
             </h1>

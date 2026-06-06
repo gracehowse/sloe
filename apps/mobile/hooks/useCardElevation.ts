@@ -84,7 +84,7 @@ export function useCardElevation(
   const colors = useThemeColors();
   const { resolved } = useTheme();
   const isDark = resolved === "dark";
-  const variant = options?.variant ?? "soft";
+  const variant = options?.variant ?? "flat";
 
   if (variant === "flat") {
     return {

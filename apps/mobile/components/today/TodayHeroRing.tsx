@@ -70,6 +70,7 @@ interface StatProps {
   label: string;
   value: string;
   valueColor: string;
+  labelColor?: string;
   textSecondaryColor: string;
   /** Sloe redesign: a hairline divider on the left of the 2nd/3rd cells
    *  (`divide-x divide-line` in the `01 · Today` frame). */
@@ -84,7 +85,15 @@ interface StatProps {
  * The value colour still links each stat to its ring segment where it
  * carries meaning (Bonus → sage when positive, red when over).
  */
-function Stat({ label, value, valueColor, textSecondaryColor, dividerColor, testID }: StatProps) {
+function Stat({
+  label,
+  value,
+  valueColor,
+  labelColor,
+  textSecondaryColor,
+  dividerColor,
+  testID,
+}: StatProps) {
   return (
     <View
       testID={testID}
@@ -102,7 +111,7 @@ function Stat({ label, value, valueColor, textSecondaryColor, dividerColor, test
         style={{
           fontSize: 10,
           fontWeight: "600",
-          color: textSecondaryColor,
+          color: labelColor ?? textSecondaryColor,
           textTransform: "uppercase",
           letterSpacing: 0.6,
         }}
@@ -219,6 +228,7 @@ function DisplayModeToggle({
       </View>
     );
   };
+  const trackBg = isDark ? cardBackgroundColor : "#EFEFEF";
   return (
     <Pressable
       onPress={onToggleDisplayMode}
@@ -227,9 +237,7 @@ function DisplayModeToggle({
       testID="today-ring-display-toggle"
       style={{
         flexDirection: "row",
-        backgroundColor: cardBackgroundColor,
-        borderWidth: 1,
-        borderColor,
+        backgroundColor: trackBg,
         borderRadius: Radius.full,
         padding: 2,
       }}
@@ -259,7 +267,7 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onToggleDisplayMode,
-  textTertiaryColor: _textTertiaryColor,
+  textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
   const isDark = useColorScheme() === "dark";
@@ -340,12 +348,14 @@ export function TodayHeroRing({
             label="Goal"
             value={Math.round(goal).toLocaleString()}
             valueColor={textColor}
+            labelColor={textTertiaryColor}
             textSecondaryColor={secondaryColor}
           />
           <Stat
             label="Eaten"
             value={Math.round(consumed).toLocaleString()}
             valueColor={textColor}
+            labelColor={textTertiaryColor}
             textSecondaryColor={secondaryColor}
             dividerColor={borderColor}
           />
@@ -355,6 +365,7 @@ export function TodayHeroRing({
               testID="today-ring-bonus"
               value={`−${Math.round(consumed - goal).toLocaleString()}`}
               valueColor={isDark ? Accent.destructiveLight : Accent.destructive}
+              labelColor={textTertiaryColor}
               textSecondaryColor={secondaryColor}
               dividerColor={borderColor}
             />
@@ -368,13 +379,20 @@ export function TodayHeroRing({
                   : "0"
               }
               // Sage (success) for earned headroom — matches the Sloe
-              // frame's `text-sage` bonus value.
-              valueColor={
+              // frame's `text-sage` bonus label + value.
+              labelColor={
                 baseGoal && baseGoal < goal
                   ? isDark
                     ? Accent.successLight
                     : Accent.success
                   : secondaryColor
+              }
+              valueColor={
+                baseGoal && baseGoal < goal
+                  ? isDark
+                    ? Accent.successLight
+                    : Accent.success
+                  : textTertiaryColor
               }
               textSecondaryColor={secondaryColor}
               dividerColor={borderColor}

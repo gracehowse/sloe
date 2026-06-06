@@ -995,8 +995,7 @@ function ProgressDashboardContent() {
         </p>
         <h1
           data-testid="progress-header"
-          className="text-[24px] font-bold text-foreground tracking-tight mt-0.5"
-          style={{ letterSpacing: "-0.5px" }}
+          className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand mt-0.5"
         >
           Progress
         </h1>

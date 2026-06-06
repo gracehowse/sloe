@@ -181,14 +181,14 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       data-testid={`daystrip-dot-minimal-${dotKind}`}
                       className={`flex-1 flex flex-col items-center gap-1.5 py-2 ${outOfRange ? "opacity-35" : ""}`}
                     >
-                      <span className="text-[10px] font-semibold uppercase tracking-wide leading-none text-muted-foreground">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide leading-none text-foreground-tertiary">
                         {label}
                       </span>
                       <div className="relative">
                         <span
                           className={[
-                            "text-base tabular-nums leading-5",
-                            isActive ? "font-bold text-primary" : "font-semibold text-foreground",
+                            "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",
+                            isActive ? "font-semibold text-primary" : "font-normal text-foreground",
                           ].join(" ")}
                         >
                           {date.getDate()}

@@ -23,6 +23,11 @@
  * No live AI calls — the upstream `fetch` is stubbed with `vi.stubGlobal`.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  clearIntegrationAiKeys,
+  isolateAiBudgetForIntegrationTest,
+  stubClaudeMessagesFetch,
+} from "../helpers/aiRouteTestEnv";
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
@@ -67,13 +72,9 @@ const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 type FetchInit = RequestInit & { body?: string };
 type StubSpec = { status: number; body: unknown };
 
-/** Helper: stub `globalThis.fetch` to return a single AI-shaped response. */
+/** Helper: stub Claude Messages API with a fresh Response per call. */
 function stubAi(spec: StubSpec) {
-  const fakeResp = new Response(JSON.stringify(spec.body), {
-    status: spec.status,
-    headers: { "content-type": "application/json" },
-  });
-  vi.stubGlobal("fetch", vi.fn(async (_url: string, _init?: FetchInit) => fakeResp));
+  stubClaudeMessagesFetch(spec.body, spec.status);
 }
 
 /** Helper: model JSON wrapped in Claude's Messages API envelope.
@@ -119,6 +120,7 @@ const HAPPY_MODEL_BODY = modelEnvelope(
 describe("POST /api/nutrition/photo-log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isolateAiBudgetForIntegrationTest();
     // Default to the Claude path (preferred). Tests that need to
     // exercise the OpenAI fallback override this in the test body.
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
@@ -298,6 +300,8 @@ describe("POST /api/nutrition/photo-log", () => {
 
   it("returns 503 ai_not_configured when neither AI key is set (after gate passes)", async () => {
     vi.unstubAllEnvs();
+    isolateAiBudgetForIntegrationTest();
+    clearIntegrationAiKeys();
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
     const res = await POST(
@@ -312,41 +316,42 @@ describe("POST /api/nutrition/photo-log", () => {
 
   it("falls back to OpenAI when only OPENAI_API_KEY is set", async () => {
     vi.unstubAllEnvs();
+    isolateAiBudgetForIntegrationTest();
     vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
-    // Stub OpenAI envelope shape for this test (choices/message/content).
-    const openaiResp = new Response(
-      JSON.stringify({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                items: [
-                  {
-                    name: "Pita",
-                    category: "Bread + dips",
-                    calories: { low: 120, high: 150 },
-                    protein: null,
-                    carbs: null,
-                    fat: null,
-                    confidence: "high",
-                  },
-                ],
-              }),
-            },
-          },
-        ],
-      }),
-      { status: 200, headers: { "content-type": "application/json" } },
-    );
-    let called: string = "";
+    let called = "";
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string) => {
-        called = url;
-        return openaiResp;
-      }),
+      vi.fn(async (url: RequestInfo) => {
+        const u = String(url);
+        if (u.includes("/capture/")) return new Response(null, { status: 200 });
+        called = u;
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    items: [
+                      {
+                        name: "Pita",
+                        category: "Bread + dips",
+                        calories: { low: 120, high: 150 },
+                        protein: null,
+                        carbs: null,
+                        fat: null,
+                        confidence: "high",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }) as typeof fetch,
     );
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {
@@ -362,17 +367,18 @@ describe("POST /api/nutrition/photo-log", () => {
   it("uses Claude (Anthropic) when ANTHROPIC_API_KEY is set", async () => {
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
-    stubAi({ status: 200, body: HAPPY_MODEL_BODY });
-    let called: string = "";
+    let called = "";
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string) => {
-        called = url;
+      vi.fn(async (url: RequestInfo) => {
+        const u = String(url);
+        if (u.includes("/capture/")) return new Response(null, { status: 200 });
+        called = u;
         return new Response(JSON.stringify(HAPPY_MODEL_BODY), {
           status: 200,
           headers: { "content-type": "application/json" },
         });
-      }),
+      }) as typeof fetch,
     );
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {

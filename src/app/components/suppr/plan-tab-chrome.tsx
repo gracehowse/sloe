@@ -37,7 +37,7 @@ export function PlanTabChrome({
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Plan
         </p>
-        <h1 className="text-[24px] font-extrabold tracking-tight text-foreground">{title}</h1>
+        <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand">{title}</h1>
         {subtitle ? (
           <p className="text-[13px] font-semibold text-muted-foreground">{subtitle}</p>
         ) : null}

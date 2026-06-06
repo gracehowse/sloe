@@ -95,6 +95,10 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   target: number;
   size?: number;
   strokeWidth?: number;
+  /** Sloe geometry override — mobile parity radii from `calorieRingGeometry`. */
+  ringRadius?: number;
+  macroRadii?: [number, number, number];
+  macroStroke?: number;
   /** Macro progress values 0-1 */
   proteinPct?: number;
   carbsPct?: number;
@@ -130,6 +134,9 @@ function DailyRing({
   target,
   size = 160,
   strokeWidth = 10,
+  ringRadius,
+  macroRadii: macroRadiiProp,
+  macroStroke: macroStrokeProp,
   className,
   proteinPct = 0,
   carbsPct = 0,
@@ -141,7 +148,7 @@ function DailyRing({
   ...props
 }: DailyRingProps) {
   const cx = size / 2;
-  const radius = (size - strokeWidth) / 2 - 2;
+  const radius = ringRadius ?? Math.round(size * 0.44);
   const circumference = 2 * Math.PI * radius;
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
   const offset = circumference * (1 - pct);
@@ -234,8 +241,12 @@ function DailyRing({
   // (160 vs 140) so it can carry the same proportional bump
   // comfortably. Audit flagged the macro arcs as "too thin to read at
   // a glance" — fattening reads them as macros, not hairlines.
-  const macroStroke = 7;
-  const macroRadii = [radius - 13, radius - 24, radius - 35];
+  const macroStroke = macroStrokeProp ?? Math.max(4, Math.round(size * 0.028));
+  const macroRadii: [number, number, number] = macroRadiiProp ?? [
+    Math.round(size * 0.368),
+    Math.round(size * 0.314),
+    Math.round(size * 0.259),
+  ];
 
   const macroRings = [
     { r: macroRadii[0], pct: proteinPct, color: "var(--macro-protein)" },
@@ -282,21 +293,13 @@ function DailyRing({
             <stop offset="50%" stopColor="#C8794E" />
             <stop offset="100%" stopColor="#C9892C" />
           </linearGradient>
-          {/* ENG-826 — calm "calibrating" idle gradient for the EMPTY ring
-              (zero logged / no target yet): a soft brand-blue tonal arc instead
-              of a flat grey track, matching the prototype's brand-gradient idle.
-              Deliberately NOT the win spectrum (reserved for celebration). */}
-          <linearGradient id="ringIdle" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#588CE4" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#7BA3EA" stopOpacity="0.22" />
-          </linearGradient>
         </defs>
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={isEmpty ? "url(#ringIdle)" : "var(--ring-bg)"}
+          stroke="var(--ring-bg)"
           strokeWidth={strokeWidth}
           opacity={1}
         />
@@ -311,7 +314,7 @@ function DailyRing({
             celebrating
               ? "url(#winSpectrum)"
               : isEmpty
-                ? "url(#ringIdle)"
+                ? "var(--ring-bg)"
                 : "var(--macro-calories)"
           }
           // ENG-798 win-moment: a target-hit is by definition the
@@ -428,11 +431,11 @@ function DailyRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-1 px-2">
-            <span className="text-lg font-bold leading-none text-center text-foreground tracking-tight">
+            <span className="font-[family-name:var(--font-headline)] text-[17px] font-medium leading-snug text-center text-foreground">
               Start your day
             </span>
             {target > 0 ? (
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
                 {Math.round(target).toLocaleString()} kcal goal
               </span>
             ) : null}
@@ -447,34 +450,36 @@ function DailyRing({
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
             <span
-              className={cn(
-                "tabular-nums text-foreground -tracking-[0.02em] leading-none ph-mask",
-                // Design Direction 2026 — under `redesign_motion` the calorie
-                // total is the "counting hero": render it at display size,
-                // heavy. Flag OFF keeps the prior 22px / font-bold treatment
-                // byte-for-byte.
-                motionEnabled
-                  ? "font-[family-name:var(--font-headline)] text-[48px] font-normal tracking-tight"
-                  : "text-[22px] font-bold",
-              )}
+              className="font-[family-name:var(--font-headline)] text-[48px] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
               style={{ color: centerValueColor ?? undefined }}
             >
               {animatedCenterValue.toLocaleString()}
             </span>
-            <span
-              className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-foreground ph-mask"
-              style={{ color: centerLabelColor ?? undefined }}
-            >
-              {centerLabel}
-            </span>
-            {/* Budget anchor only when macro rings are hidden (collapsed
-                ring). Parity with mobile `CalorieRing` — expanded +
-                "of X kcal" squished the centre copy. */}
-            {!expanded && target > 0 ? (
-              <span className="text-xs text-muted-foreground mt-0.5 tabular-nums ph-mask">
+            {/* Mobile parity (2026-06-06): remaining + under-budget shows
+                only "of X kcal"; over/consumed show the status label. */}
+            {!isOverBudget &&
+            displayMode === "remaining" &&
+            target > 0 ? (
+              <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
                 of {Math.round(target).toLocaleString()} kcal
               </span>
-            ) : null}
+            ) : (
+              <>
+                <span
+                  className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground ph-mask"
+                  style={{ color: centerLabelColor ?? undefined }}
+                >
+                  {centerLabel}
+                </span>
+                {!expanded &&
+                displayMode === "consumed" &&
+                target > 0 ? (
+                  <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
+                    of {Math.round(target).toLocaleString()} kcal
+                  </span>
+                ) : null}
+              </>
+            )}
           </>
         )}
       </div>

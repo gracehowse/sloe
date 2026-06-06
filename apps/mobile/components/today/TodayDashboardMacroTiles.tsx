@@ -5,7 +5,6 @@ import {
   Candy,
   ChevronRight,
   Droplet,
-  Droplets,
   Gauge,
   Leaf,
   Wheat,
@@ -104,11 +103,9 @@ export function TodayDashboardMacroTiles({
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
   const isDark = useColorScheme() === "dark";
-  // Progress-bar track tone. Light: frost-mist (#EDEAF1) per the Stitch mock
-  // — a touch lighter than the card border so the bar reads as a track. Dark:
-  // the theme hairline tone (`cardBorderColor`, #35323A) so the light
-  // frost-mist hex doesn't glare on the dark card.
-  const barTrackColor = isDark ? cardBorderColor : "#EDEAF1";
+  // Progress-bar track tone. Light: Sloe `line` (#E8E2EC) per Figma `654:2`.
+  // Dark: theme hairline so the light track hex doesn't glare.
+  const barTrackColor = isDark ? cardBorderColor : "#E8E2EC";
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -142,7 +139,7 @@ export function TodayDashboardMacroTiles({
       unit: "g",
       Icon: Wheat,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplets },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplet },
     fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: macroColorFor("sugar"), unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: macroColorFor("sodium"), unit: "mg", Icon: Gauge, referenceOnly: true },
@@ -236,14 +233,15 @@ export function TodayDashboardMacroTiles({
                     // ("Protein"), not the uppercase Type.label ("PROTEIN") —
                     // matches the Figma 01 tile labels.
                     ...Type.caption,
-                    fontSize: 13,
+                    fontSize: 12,
                     lineHeight: 16,
-                    color: textTertiaryColor,
+                    fontWeight: "500",
+                    color: textSecondaryColor,
                   }}
                 >
                   {def.label}
                 </Text>
-                <def.Icon size={14} color={def.color} strokeWidth={1.75} />
+                <def.Icon size={18} color={def.color} strokeWidth={1.75} />
               </View>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
                 {/* SLOE redesign (2026-06-03): macro value reads in
@@ -253,8 +251,8 @@ export function TodayDashboardMacroTiles({
                 <Text
                   style={{
                     ...Type.title,
-                    fontSize: 24,
-                    lineHeight: 28,
+                    fontSize: 20,
+                    lineHeight: 24,
                     color: textColor,
                     fontVariant: ["tabular-nums"],
                   }}

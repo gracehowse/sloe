@@ -29,10 +29,10 @@ export function TodayScrollSectionHeader({
       data-testid={testID}
       className={cn("mt-1 mb-5 flex flex-col gap-1", className)}
     >
-      <h2 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-primary">
+      <h2 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand">
         {title}
       </h2>
-      {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
+      {subtitle ? <p className="text-sm text-foreground-secondary">{subtitle}</p> : null}
     </header>
   );
 }

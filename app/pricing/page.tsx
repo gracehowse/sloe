@@ -40,7 +40,7 @@ function normalisePaywallFrom(raw: string | string[] | undefined): PaywallViewed
 }
 
 export const metadata: Metadata = {
-  title: "Pricing — Suppr",
+  title: "Pricing — Sloe",
   description: "Choose a plan that fits your goals. Free or Pro.",
 };
 
@@ -178,10 +178,10 @@ export default async function PricingPage({
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link
             href="/"
-            className="text-lg font-bold bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)" }}
+            className="text-[22px] font-medium font-[family-name:var(--font-newsreader)] tracking-tight text-foreground-brand"
+            aria-label="Sloe"
           >
-            Suppr
+            sloe
           </Link>
           <Link
             href="/login"

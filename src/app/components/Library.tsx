@@ -399,7 +399,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   }}
                   padding="none"
                   radius="xl"
-                  className="group text-left overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  className="group text-left overflow-hidden cursor-pointer w-full transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
                     {/* Phase 5 / B5 (2026-04-27) — view-transition-name
@@ -556,7 +556,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   }}
                 padding="none"
                 radius="xl"
-                className="group overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left cursor-pointer"
+                className="group overflow-hidden transition-all duration-300 text-left cursor-pointer"
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (

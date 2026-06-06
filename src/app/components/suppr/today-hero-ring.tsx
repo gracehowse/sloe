@@ -4,24 +4,18 @@ import * as React from "react";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
+import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
- * TodayHeroRing — Today-screen calorie ring wrapper.
- *
- * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). This is
- * a pure presentation wrapper — it holds no state of its own beyond what
- * the parent passes in. Keeping it thin so any visual or behavioural
- * change still flows through the composition root.
- *
- * Mirrors the mobile `TodayHeroRing` wrapper around `CalorieRing`.
- *
- * Sloe parity (2026-06-04): status chip + Remaining/Consumed toggle row
- * above the ring, matching native `apps/mobile/components/today/TodayHeroRing.tsx`.
+ * TodayHeroRing — Today-screen calorie ring wrapper (mobile-web).
+ * Mirrors `apps/mobile/components/today/TodayHeroRing.tsx`.
  */
 export interface TodayHeroRingProps {
   consumed: number;
   target: number;
+  /** Base calorie target before activity bonus (for Bonus stat). */
+  baseGoal?: number;
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
@@ -51,7 +45,7 @@ function HeroStatusChip({ state }: { state: ChipState }) {
           }
         : {
             label: todayStatusChip("under"),
-            className: "bg-success/15 text-success-solid",
+            className: "bg-success/15 text-success",
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
@@ -75,7 +69,7 @@ function DisplayModeToggle({
 }) {
   return (
     <div
-      className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-[10px] font-medium"
+      className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
       role="group"
       aria-label="Calorie ring display"
       data-testid="today-ring-display-toggle"
@@ -89,7 +83,7 @@ function DisplayModeToggle({
           className={`rounded-full px-3 py-1 capitalize transition-colors ${
             displayMode === mode
               ? "bg-card text-foreground-brand shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-foreground-secondary"
           }`}
         >
           {mode}
@@ -99,9 +93,41 @@ function DisplayModeToggle({
   );
 }
 
+function RingStatCell({
+  label,
+  value,
+  labelClassName,
+  valueClassName,
+  divider,
+}: {
+  label: string;
+  value: string;
+  labelClassName?: string;
+  valueClassName?: string;
+  divider?: boolean;
+}) {
+  return (
+    <div
+      className={`flex-1 text-center px-2 ${divider ? "border-l border-border" : ""}`}
+    >
+      <div
+        className={`text-[10px] font-semibold uppercase tracking-wider ${labelClassName ?? "text-foreground-tertiary"}`}
+      >
+        {label}
+      </div>
+      <div
+        className={`mt-1 font-[family-name:var(--font-headline)] text-[19px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export function TodayHeroRing({
   consumed,
   target,
+  baseGoal,
   proteinPct,
   carbsPct,
   fatPct,
@@ -115,6 +141,9 @@ export function TodayHeroRing({
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
   const chipState: ChipState = isEmpty ? "empty" : isOver ? "over" : "under";
+  const ringGeometry = useCalorieRingGeometry();
+  const bonusKcal =
+    baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
 
   return (
     <SupprCard
@@ -133,8 +162,11 @@ export function TodayHeroRing({
       <DailyRing
         consumed={consumed}
         target={target}
-        size={128}
-        strokeWidth={9}
+        size={ringGeometry.size}
+        strokeWidth={ringGeometry.strokeWidth}
+        ringRadius={ringGeometry.radius}
+        macroRadii={ringGeometry.macroRadii}
+        macroStroke={ringGeometry.macroStroke}
         proteinPct={proteinPct}
         carbsPct={carbsPct}
         fatPct={fatPct}
@@ -142,6 +174,38 @@ export function TodayHeroRing({
         displayMode={displayMode}
         pulse={pulse}
       />
+      {consumed > 0 && target > 0 ? (
+        <div
+          className="grid w-full grid-cols-3 border-t border-border pt-3 mt-1"
+          data-testid="today-ring-stats-row"
+        >
+          <RingStatCell
+            label="Goal"
+            value={Math.round(target).toLocaleString()}
+          />
+          <RingStatCell
+            label="Eaten"
+            value={Math.round(consumed).toLocaleString()}
+            divider
+          />
+          {isOver ? (
+            <RingStatCell
+              label="Over"
+              value={`−${Math.round(consumed - target).toLocaleString()}`}
+              valueClassName="text-[var(--over-budget-fg)]"
+              divider
+            />
+          ) : (
+            <RingStatCell
+              label="Bonus"
+              value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+              labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
+              valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
+              divider
+            />
+          )}
+        </div>
+      ) : null}
       <button
         type="button"
         data-testid="today-macro-rings-toggle"

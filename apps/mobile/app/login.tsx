@@ -23,6 +23,7 @@ import { Accent, Spacing, Radius, Fonts } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { AppLaunchScreen } from "@/components/AppLaunchScreen";
+import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 
 function createAppleRawNonce(): string {
   const c = globalThis.crypto;
@@ -126,26 +127,6 @@ export default function LoginScreen() {
     brandSection: {
       alignItems: "center",
       marginBottom: Spacing.xxxl + Spacing.lg,
-    },
-    brandCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: colors.tint,
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: Spacing.lg,
-      shadowColor: "#1c1916",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 12,
-    },
-    brandLetter: { color: colors.primaryForeground, fontSize: 32, fontWeight: "800" },
-    title: {
-      fontSize: 28,
-      fontWeight: "700",
-      color: colors.text,
-      letterSpacing: -0.4,
     },
     tagline: {
       fontSize: 14,
@@ -341,11 +322,8 @@ export default function LoginScreen() {
     >
       {/* Brand */}
       <View style={styles.brandSection}>
-        <View style={styles.brandCircle}>
-          <Text style={styles.brandLetter}>S</Text>
-        </View>
-        <Text style={styles.title}>Suppr</Text>
-        <Text style={styles.tagline}>Sign in to Suppr</Text>
+        <SloeHeaderWordmark fontSize={40} />
+        <Text style={styles.tagline}>Sign in to Sloe</Text>
       </View>
 
       {/* Form */}

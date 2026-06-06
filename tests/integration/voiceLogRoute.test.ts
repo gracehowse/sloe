@@ -3,6 +3,10 @@
  * OpenAI config, and body validation (no live OpenAI calls).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  clearIntegrationAiKeys,
+  isolateAiBudgetForIntegrationTest,
+} from "../helpers/aiRouteTestEnv";
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
@@ -30,6 +34,7 @@ function req(body: unknown): Request {
 describe("POST /api/nutrition/voice-log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isolateAiBudgetForIntegrationTest();
     vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
   });
 
@@ -58,6 +63,8 @@ describe("POST /api/nutrition/voice-log", () => {
     // returns vendor-neutral `ai_not_configured` instead of the
     // OpenAI-specific code.
     vi.unstubAllEnvs();
+    isolateAiBudgetForIntegrationTest();
+    clearIntegrationAiKeys();
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
     const res = await POST(req({ transcript: "two eggs" }));

@@ -717,7 +717,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div className="p-2 bg-muted rounded-xl">
             <Icons.settings className="w-5 h-5 text-muted-foreground" />
           </div>
-          <h1 className="text-foreground font-bold tracking-tight" style={{ fontSize: 24, letterSpacing: "-0.4px" }}>Settings</h1>
+          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
         </div>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
@@ -780,7 +780,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Your plan</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Your plan</h3>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -820,7 +820,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Personal</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Personal</h3>
         </div>
         <div className="space-y-4">
           {/* Your name — personalises the Today greeting. Writes the auth
@@ -917,7 +917,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Preferences</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Preferences</h3>
         </div>
         <div className="space-y-6">
           {/* Measurement system — P1-7 (audit 2026-04-30) consolidated
@@ -1199,7 +1199,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 elevation is on, the parent card already carries the ambient
                 shadow — this inner group keeps only its border (no shadow-on-
                 shadow). Flag OFF → today's `card-elevated`. */}
-            <div className={`rounded-xl border border-border bg-card divide-y divide-border ${isFeatureEnabled("design_system_elevation") ? "" : "card-elevated"}`}>
+            <div className="rounded-xl bg-card divide-y divide-border card-slab-flat">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm text-foreground">Track caffeine</span>
@@ -1387,7 +1387,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Notifications</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Notifications</h3>
         </div>
         <div className="space-y-4">
           {/* P1-8 (audit 2026-04-30) — notification toggles use the
@@ -1506,7 +1506,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">About</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">About</h3>
         </div>
         <div className="space-y-3">
           <Link
@@ -1528,7 +1528,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       >
         <div className="flex items-center gap-2 mb-4">
           <Icons.ticket className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Promo code</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Promo code</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Redeem a code to upgrade your plan (one use per account per code).
@@ -1583,7 +1583,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Privacy & Security</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Privacy & Security</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Download your nutrition log in a spreadsheet-friendly CSV, or take a full JSON backup for developers and migrations.

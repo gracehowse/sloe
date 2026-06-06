@@ -58,12 +58,10 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
     expect(SRC).toContain("function useAnimatedNumber(");
   });
 
-  it("flag ON renders the centre value at display size; flag OFF keeps the prior 22px treatment", () => {
+  it("renders the centre value at 48px Newsreader (Sloe ring parity)", () => {
     expect(SRC).toContain('motionEnabled');
-    // 48px — mobile `Type.ringValue` / Stitch `text-[40px]` parity (Sloe 2026-06).
-    // (Not quote-anchored: the Sloe rework prepends a `font-[family-name…]` class.)
     expect(SRC).toContain('text-[48px]');
-    expect(SRC).toContain('"text-[22px] font-bold"');
+    expect(SRC).toContain('font-[family-name:var(--font-headline)]');
   });
 });
 
@@ -97,10 +95,10 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     // --macro-calories (plum); over-budget is the Apple-Watch overage LAP
     // (--ring-overage-lap), no longer a red recolour of the arc (the red arc
     // "read as odd" — superseded). ENG-826: the empty ring paints the calm idle
-    // gradient. The celebration is additive (a Sloe-gradient OVERRIDE while
+    // grey track (mobile parity). The celebration is additive (a Sloe-gradient OVERRIDE while
     // pulsing), not a swap of the resting hue.
     expect(SRC).toContain('"var(--macro-calories)"');
     expect(SRC).toContain('"var(--ring-overage-lap)"');
-    expect(SRC).toContain('"url(#ringIdle)"');
+    expect(SRC).toContain('"var(--ring-bg)"');
   });
 });

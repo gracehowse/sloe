@@ -75,7 +75,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const bootScheme: ResolvedTheme =
       systemScheme === "light" ? "light" : "dark";
     return (
-      <AppLaunchScreen scheme={bootScheme} message="Starting Suppr…" />
+      <AppLaunchScreen scheme={bootScheme} message="Starting Sloe…" />
     );
   }
 

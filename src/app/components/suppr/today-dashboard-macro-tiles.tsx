@@ -5,7 +5,6 @@ import {
   Beef,
   Candy,
   Droplet,
-  Droplets,
   Gauge,
   Leaf,
   Wheat,
@@ -175,7 +174,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Fat",
-      Icon: Droplets,
+      Icon: Droplet,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -189,7 +188,7 @@ function buildMacroTile(
     const tgt = fiberTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
-      label: "Fiber",
+      label: "Fibre",
       Icon: Leaf,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
@@ -263,18 +262,11 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             className="rounded-card bg-card card-slab-flat p-4 flex flex-col justify-between min-h-24"
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: tile.fillVar }}
-                  aria-hidden
-                />
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                  {tile.label}
-                </span>
-              </div>
+              <span className="text-xs font-medium text-foreground-secondary">
+                {tile.label}
+              </span>
               <Icon
-                size={14}
+                size={18}
                 strokeWidth={1.75}
                 style={{ color: tile.fillVar }}
                 aria-hidden
@@ -288,56 +280,25 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
                 wrap to a second line. */}
             <div className="flex items-baseline min-w-0 gap-1">
-              <span className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] shrink-0">
+              <span className="font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums text-foreground tracking-tight shrink-0">
                 {tile.valueText}
               </span>
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs text-foreground-tertiary truncate">
                 {tile.targetText}
               </span>
             </div>
             <div
-              className="mt-2.5 h-[6px] rounded-full overflow-hidden"
-              style={{
-                background: `color-mix(in_oklab, ${tile.fillVar} 16%, transparent)`,
-              }}
+              className="mt-2 h-1 rounded-full overflow-hidden bg-border"
             >
               <div
                 className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
                 style={{
                   width: `${tile.pct}%`,
                   background: tile.fillVar,
+                  opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
                 }}
               />
             </div>
-            {tile.caption ? (
-              <span
-                className={`text-[11px] mt-1.5 tabular-nums ${
-                  tile.isOverBudget ? "font-bold" : "text-muted-foreground"
-                }`}
-                style={
-                  tile.isOverBudget
-                    ? { color: "var(--over-budget-fg)" }
-                    : undefined
-                }
-              >
-                {tile.caption}
-              </span>
-            ) : null}
-            {macroKey === "water" ? (
-              <div className="flex gap-1 mt-2">
-                {([250, 500] as const).map((ml) => (
-                  <button
-                    key={ml}
-                    type="button"
-                    onClick={() => onAddWaterMl(ml)}
-                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-[color-mix(in_oklab,var(--macro-water)_12%,transparent)] text-[var(--macro-water)] border border-[color-mix(in_oklab,var(--macro-water)_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--macro-water)_20%,transparent)] transition-colors"
-                    aria-label={`Add ${ml}ml water`}
-                  >
-                    +{ml}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
         );
       })}

@@ -206,41 +206,18 @@ export function LoginClient({
             back / Sign in to continue.") — two competing headlines for
             the same surface. */}
         <div className="text-center mb-6 sm:mb-8">
-          {/* 2026-05-22 (DRIFT-01 fix): aligned with the 2026-05-19
-              brand-mark decision — black-on-cream / white-on-black
-              via the same `--brand-mark-*` tokens used by the
-              canonical SupprMark and the mobile SupprMark. Previous
-              `var(--primary)` indigo treatment created three different
-              brand badges (web indigo / mobile light cream / mobile
-              dark black). */}
-          {/* Canonical 2026-05-22: brand mark is paper-on-paper (light)
-              / ink-on-ink (dark) per the lock. No coloured tile, no
-              shadow chip — the "S" is a glyph sitting on the page,
-              like a magazine drop-cap. The letterform alone carries
-              the brand. */}
           <div
-            className="inline-flex items-center justify-center mb-4 font-extrabold"
-            style={{
-              color: "var(--brand-mark-ring)",
-              fontSize: 32,
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-            }}
-            aria-label="Suppr"
+            className="inline-flex items-center justify-center mb-4 font-[family-name:var(--font-newsreader)] font-medium tracking-tight text-foreground-brand"
+            style={{ fontSize: 32, letterSpacing: "-0.02em", lineHeight: 1 }}
+            role="img"
+            aria-label="Sloe"
           >
-            S
+            sloe
           </div>
         </div>
 
         {/* Auth form */}
-        <div
-          className="rounded-2xl p-5 sm:p-8"
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            boxShadow: "0 4px 32px rgba(0,0,0,0.08)",
-          }}
-        >
+        <div className="rounded-[var(--radius-card-lg)] p-5 sm:p-8 card-slab-flat">
           <h2
             className="text-2xl font-bold mb-1 -tracking-[0.01em]"
             style={{ color: "var(--foreground)" }}
@@ -481,7 +458,7 @@ export function LoginClient({
               className="mt-6 text-xs text-center"
               style={{ color: "var(--muted-foreground)" }}
             >
-              New to Suppr?{" "}
+              New to Sloe?{" "}
               <a
                 href="/signup"
                 className="font-semibold underline"

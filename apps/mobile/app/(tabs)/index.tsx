@@ -4728,7 +4728,7 @@ export default function TrackerScreen() {
           <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.md }}>
             <Text
               testID="today-hero-greeting"
-              style={{ ...Type.title, fontSize: 26, lineHeight: 30, color: MacroColors.calories, textAlign: "center" }}
+              style={{ ...Type.title, fontWeight: "500", color: MacroColors.calories, textAlign: "center" }}
               numberOfLines={2}
             >
               {headline}
@@ -4736,7 +4736,7 @@ export default function TrackerScreen() {
             {subline ? (
               <Text
                 testID="today-hero-greeting-subline"
-                style={{ ...Type.body, color: colors.textSecondary, marginTop: 2, textAlign: "center" }}
+                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.textSecondary, marginTop: 4, textAlign: "center" }}
                 numberOfLines={1}
               >
                 {subline}

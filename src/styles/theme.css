@@ -566,6 +566,9 @@
   /* Core */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Sloe ink scale — Figma `ink` / `ink-soft` / `ink-faint`. */
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-tertiary: var(--foreground-tertiary);
   /* Brand-tinted heading ink (plum) — Newsreader card titles. `text-foreground-brand`. */
   --color-foreground-brand: var(--foreground-brand);
   --color-card: var(--card);

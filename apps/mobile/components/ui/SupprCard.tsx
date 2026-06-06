@@ -122,7 +122,7 @@ export const TILE_RADIUS = 24;
 export function SupprCard({
   tone = "neutral",
   size = "card",
-  lift = "soft",
+  lift = "flat",
   gradient = false,
   border = true,
   padding,

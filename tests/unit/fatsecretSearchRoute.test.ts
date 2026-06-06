@@ -23,6 +23,7 @@
  *      `page_number=1`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearIntegrationFatSecretKeys } from "../helpers/aiRouteTestEnv";
 
 const fatSecretFoodSearchMock = vi.fn();
 
@@ -93,6 +94,8 @@ describe("/api/fatsecret/search — auth + validation", () => {
 
   it("returns 503 when FatSecret creds are missing", async () => {
     vi.unstubAllEnvs();
+    clearIntegrationFatSecretKeys();
+    vi.resetModules();
     const GET = await loadRoute();
     const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=milk"));
     expect(res.status).toBe(503);

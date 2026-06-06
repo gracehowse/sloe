@@ -10,6 +10,7 @@ import {
 } from "../../../lib/copy/today";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { calorieRingGeometryFromSize } from "../../../lib/nutrition/calorieRingGeometry";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
@@ -29,6 +30,7 @@ import { SupprCard } from "../ui/suppr-card.tsx";
  */
 
 const HERO_RING_SIZE = 160;
+const DESKTOP_RING_GEOMETRY = calorieRingGeometryFromSize(HERO_RING_SIZE);
 
 export interface TodayHeroStatsProps extends TodayHeroRingProps {
   loggedKcal: number;
@@ -62,6 +64,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
   const {
     consumed,
     target,
+    baseGoal,
     proteinPct,
     carbsPct,
     fatPct,
@@ -75,6 +78,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
   return {
     consumed,
     target,
+    baseGoal,
     proteinPct,
     carbsPct,
     fatPct,
@@ -162,8 +166,11 @@ function DesktopHeroStats({
         <DailyRing
           consumed={consumed}
           target={target}
-          size={HERO_RING_SIZE}
-          strokeWidth={10}
+          size={DESKTOP_RING_GEOMETRY.size}
+          strokeWidth={DESKTOP_RING_GEOMETRY.strokeWidth}
+          ringRadius={DESKTOP_RING_GEOMETRY.radius}
+          macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
+          macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
           proteinPct={proteinPct}
           carbsPct={carbsPct}
           fatPct={fatPct}

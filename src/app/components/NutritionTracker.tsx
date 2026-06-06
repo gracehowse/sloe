@@ -87,7 +87,6 @@ import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
-import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
 import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
@@ -114,6 +113,7 @@ import {
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
+import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
@@ -2352,14 +2352,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div className="text-center mb-5 mt-1">
           <h2
             data-testid="today-hero-greeting"
-            className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand leading-tight"
+            className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-none tracking-tight text-foreground-brand"
           >
             {sloceHeroGreeting.headline}
           </h2>
           {sloceHeroGreeting.subline ? (
             <p
               data-testid="today-hero-greeting-subline"
-              className="text-sm text-muted-foreground mt-0.5"
+              className="text-[13px] text-foreground-secondary mt-1"
             >
               {sloceHeroGreeting.subline}
             </p>
@@ -2461,6 +2461,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
+        baseGoal={baseCalorieTarget}
         proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
         carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
         fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
@@ -2480,25 +2481,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
       />
 
-      {viewMode === "day" &&
-      selectedDateKey === todayKey() &&
-      Math.max(0, effectiveCalorieTarget - totals.calories) > 0 ? (
-        <TodayDeficitInsight
-          remaining={Math.max(0, effectiveCalorieTarget - totals.calories)}
-          selectedDate={selectedDate}
-          byDay={nutritionByDay}
-        />
-      ) : null}
-
-      {/* Single context block — priority order: fasting > eat-again >
-          north-star. Mutually exclusive. Pre-Phase-4 these rendered as
-          three separate stacked conditionals (sometimes multiple at
-          once); the cap rule (teardown §2) is "never more than one
-          prompt above the meals". When remaining > 0 but the user has
-          already logged, the coach line above covers headroom; this
-          slot stays empty rather than fall through to north-star. */}
+      {/* Single context block — priority order: fasting > deficit.
+          Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
+          from Today scroll (2026-05-22 v4); shortcuts live in Log sheet. */}
       {(() => {
-        // 1. Active fast wins outright.
         if (activeFast) {
           return (
             <TodayFastingPill
@@ -2507,24 +2493,20 @@ export const NutritionTracker = memo(function NutritionTracker({
             />
           );
         }
-        // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
-        // 2. Budget met or exceeded, with a re-log suggestion that
-        //    hasn't been dismissed today.
+        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
         if (
-          eatAgainSuggestion &&
-          !eatAgainDismissedForToday &&
-          selectedDateKey === todayKey()
+          viewMode === "day" &&
+          selectedDateKey === todayKey() &&
+          remainingToday > 0
         ) {
           return (
-            <TodayEatAgainBanner
-              suggestion={eatAgainSuggestion}
-              slot={currentSlotFromTime}
-              onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-              onDismiss={dismissEatAgain}
+            <TodayDeficitInsight
+              remaining={remainingToday}
+              selectedDate={selectedDate}
+              byDay={nutritionByDay}
             />
           );
         }
-        // 3. North-star moved below meals (Today premium sprint 2026-05-19).
         return null;
       })()}
 
@@ -2715,6 +2697,16 @@ export const NutritionTracker = memo(function NutritionTracker({
       />
       </div>
 
+      <TodayWeeklyInsightMobileCard
+        householdSize={1}
+        loggedDaysInWeek={weekData.loggedDaysInWeek}
+        weekAvgKcal={
+          weekData.loggedDaysInWeek > 0 ? weekData.weekAvg.calories : null
+        }
+        weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
+        dailyKcalTarget={Math.round(effectiveCalorieTarget)}
+      />
+
       {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
       {showBelowMealsNorthStarWeb && (
           <NorthStarBlockHost
@@ -2818,8 +2810,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         />
       ) : null}
 
-      {/* Figma TD1 — Activity & energy: plum section header + flat sibling cards. */}
-      {showStepsCard || hasBurnData ? (
+      {/* Figma TD1 — Activity & energy (mobile parity: section shell always on day view). */}
+      {viewMode === "day" ? (
         <section className="mt-10 flex flex-col gap-5" data-testid="today-td1-section">
           <TodayScrollSectionHeader
             title="Activity & energy"
@@ -2835,6 +2827,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               dayLabel={formatDateLabel(selectedDate)}
             />
           ) : null}
+          {authedUserId && (hasBurnData || selectedDateKey === todayKey()) ? (
           <TodayActivityBonusCard
             hasBurnData={hasBurnData}
             totalBurnKcal={totalBurnKcal}
@@ -2885,48 +2878,51 @@ export const NutritionTracker = memo(function NutritionTracker({
               setActivityBudgetDiscoverDismissed(true);
             }}
           />
+          ) : null}
         </section>
       ) : null}
 
-      {/* Figma TD2 — Hydration & stimulants: section header + sibling flat cards. */}
-      {showHydrationCard ? (
+      {/* Figma TD2 — Hydration & stimulants (mobile parity: header always on day view). */}
+      {viewMode === "day" ? (
         <section className="mt-10 flex flex-col gap-5" data-testid="today-td2-section">
           <TodayScrollSectionHeader
             title="Hydration & stimulants"
             testID="today-td2-section-header"
           />
-          <HydrationStimulantsCard
-            selectedDateKey={selectedDateKey}
-            weekStartDay={weekStartDay}
-            targets={{
-              waterMl: targets.waterMl,
-              caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
-              alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
-            }}
-            waterTotalMl={totalWaterMl}
-            waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-            caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
-            alcoholByDayG={alcoholByDayMerged}
-            measurementSystem={profileMeasurementSystem}
-            onAddWater={addWaterMlForSelectedDay}
-            onAddCaffeine={addCaffeineMgForSelectedDay}
-            onAddAlcohol={addAlcoholGForSelectedDay}
-            onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
-          />
+          {showHydrationCard ? (
+            <HydrationStimulantsCard
+              selectedDateKey={selectedDateKey}
+              weekStartDay={weekStartDay}
+              targets={{
+                waterMl: targets.waterMl,
+                caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
+                alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
+              }}
+              waterTotalMl={totalWaterMl}
+              waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+              caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
+              alcoholByDayG={alcoholByDayMerged}
+              measurementSystem={profileMeasurementSystem}
+              onAddWater={addWaterMlForSelectedDay}
+              onAddCaffeine={addCaffeineMgForSelectedDay}
+              onAddAlcohol={addAlcoholGForSelectedDay}
+              onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+            />
+          ) : (
+            <div className="mb-3 text-center">
+              <button
+                type="button"
+                onClick={() => setHydrationManualExpanded(true)}
+                className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+                aria-expanded={false}
+                aria-controls="today-hydration-card"
+              >
+                Track hydration?
+              </button>
+            </div>
+          )}
         </section>
-      ) : (
-        <div className="mb-3 text-center">
-          <button
-            type="button"
-            onClick={() => setHydrationManualExpanded(true)}
-            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
-            aria-expanded={false}
-            aria-controls="today-hydration-card"
-          >
-            Track hydration?
-          </button>
-        </div>
-      )}
+      ) : null}
 
       {/* Complete Day */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (

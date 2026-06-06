@@ -34,7 +34,7 @@ export function SloeHeaderWordmark({
         style,
       ]}
     >
-      Sloe
+      sloe
     </Text>
   );
 }

@@ -87,8 +87,7 @@ describe("CookieConsent — chrome tokens (gap #31)", () => {
 
   it("renders the quiet brand mark pre-consent without evaluating the brandmark flag", async () => {
     const { container } = await renderBanner();
-    // SupprPlateMark renders a static svg with data-slot, no flag read.
-    const mark = container.querySelector('[data-slot="suppr-plate-mark"]');
+    const mark = container.querySelector('[data-slot="sloe-mark"]');
     expect(mark).toBeTruthy();
   });
 

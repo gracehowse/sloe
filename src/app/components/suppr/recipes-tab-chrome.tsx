@@ -38,7 +38,7 @@ export function RecipesTabChrome({
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Recipes
         </p>
-        <h1 className="text-[24px] font-extrabold tracking-tight text-foreground">
+        <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand">
           {SECTION_TITLE[activeId]}
         </h1>
       </div>
