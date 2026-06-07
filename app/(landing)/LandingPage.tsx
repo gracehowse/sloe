@@ -200,7 +200,7 @@ function Trending() {
             </button>
           </div>
         </div>
-        <div className="lp-trending-rail" ref={railRef}>
+        <div className="lp-trending-rail" ref={railRef} tabIndex={0} role="region" aria-label="Trending recipes">
           {TRENDING_RECIPES.map((recipe) => (
             <article className="lp-recipe-card" key={recipe.title}>
               <div className="lp-recipe-card-top">
