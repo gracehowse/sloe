@@ -17,13 +17,24 @@
  * that snack↔fat collision (the original 2026-05-01 bug) must never regress.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 import { View } from "react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { MacroColors, SlotColors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
+
+// Per-slot icon TINTS, the micros-fibre chip, and the collapse/add affordances
+// pinned here live in the LEGACY TD4 slot layout, which renders when
+// `today_meals_figma_654` is OFF. The Figma 654:2 layout (default-on) replaced
+// them with neutral utensil tiles + a consolidated CTA. Force the legacy branch
+// so these still-live (flag-gated fallback) invariants stay covered — same mock
+// as `todayMealsSectionTd4.test.tsx`.
+vi.mock("../../lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+}));
 
 void React;
 

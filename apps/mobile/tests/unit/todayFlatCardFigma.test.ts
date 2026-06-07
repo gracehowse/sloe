@@ -84,12 +84,16 @@ describe("Today flat borderless slab (Figma 654:2)", () => {
     expect(src).toMatch(/borderRadius:\s*CARD_RADIUS/);
   });
 
-  it("soft lift remains the default for non-Today hooks", () => {
+  it("flat lift is the default; soft is the opt-in for elevated cards", () => {
+    // The 2026-06-04 "flat slabs" sweep (commit 664df1cb) made FLAT the hook
+    // (and SupprCard) default — Today is no longer the lone flat exception.
+    // Soft is now requested explicitly by the elevated recipe-card surfaces
+    // (Discover, Library, recipe detail) and still carries a real ambient lift.
     const hookSrc = readFileSync(
       join(ROOT, "hooks/useCardElevation.ts"),
       "utf8",
     );
-    expect(hookSrc).toContain('variant ?? "soft"');
+    expect(hookSrc).toContain('variant ?? "flat"');
     expect(Elevation.cardSoft.shadowOpacity).toBeGreaterThan(0);
   });
 });
