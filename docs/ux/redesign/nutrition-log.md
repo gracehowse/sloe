@@ -782,7 +782,7 @@ Each nutrient row shows a chevron (Inter 12px, `--sage`). Tapping opens a mini t
 
 ### 3.16 Eat-again + Quick-log surfaces
 
-**Current purpose:** `TodayEatAgainBanner`, `TodayEatAgainScroller`, `TodayQuickLogStrip` — surfaces frequently-logged foods for one-tap re-logging. `TodaySnapShortcut`, `TodayPlannedMealsCard` — planned meal shortcuts.
+**Current purpose:** `TodayQuickLogStrip` — surfaces frequently-logged foods for one-tap re-logging. `TodaySnapShortcut`, `TodayPlannedMealsCard` — planned meal shortcuts. (`TodayEatAgainBanner` / `TodayEatAgainScroller` were retired from Today in the Figma 654:2 unification — the components still exist + are test-pinned but are no longer mounted; re-logging now lives in the Quick Add Recent/Frequent tabs.)
 
 No structural redesign needed. Apply card tokens (16px radius, `--card` bg, `--border` hairline). Section header in Fraunces 16px. Food name in Inter 15px. Kcal in Inter 13px `--sage`. Log button (+) in `--terracotta`.
 

@@ -117,7 +117,6 @@ import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobil
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
-  computeEatAgainForSlot,
   computeRecentMeals,
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
@@ -148,15 +147,6 @@ import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   parsePendingUsualMealSave,
 } from "../../lib/nutrition/pendingUsualMealSave";
-import {
-  LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
-  STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
-  readDismissState as readEatAgainDismiss,
-  recordDismiss as recordEatAgainDismiss,
-  serialiseDismissState as serialiseEatAgainDismiss,
-  shouldShowEatAgain,
-  type DismissState as EatAgainDismissState,
-} from "../../lib/nutrition/eatAgainDismiss";
 import { SaveMealDialog } from "./suppr/save-meal-dialog";
 import {
   parseDateKey,
@@ -835,36 +825,6 @@ export const NutritionTracker = memo(function NutritionTracker({
     });
   }, []);
 
-  /** Infer the default meal slot from local clock time for Eat-again /
-   * Quick Add defaults. Mirrors the mobile rule of thumb in
-   * `apps/mobile/app/(tabs)/index.tsx` (shared `slotForHour`). */
-  const currentSlotFromTime = useMemo(
-    () => slotForHour(new Date().getHours()),
-    [],
-  );
-  // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
-  // `{ dateKey, dismissedAt }` so a device clock rollback can't
-  // resurrect the banner on the same real-world day. Reads migrate
-  // v1 on the fly; writes always use v2.
-  const [eatAgainDismissState, setEatAgainDismissState] = useState<EatAgainDismissState | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return readEatAgainDismiss(
-        window.localStorage.getItem(EAT_AGAIN_STORAGE_KEY),
-        window.localStorage.getItem(EAT_AGAIN_LEGACY_KEY_V1),
-        new Date(),
-      );
-    } catch {
-      return null;
-    }
-  });
-
-  /** Suggestion for the "Eat again" card — previous-day meal in the
-   * slot matching the current clock time. `null` disables the card. */
-  const eatAgainSuggestion = useMemo(() => {
-    return computeEatAgainForSlot(nutritionByDay, currentSlotFromTime, new Date());
-  }, [nutritionByDay, currentSlotFromTime]);
-
   /**
    * 2026-05-01 (journey-architect P1) — first-meal empty-state state.
    * Two pieces:
@@ -912,9 +872,9 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
   }, []);
 
-  /** Log a history row (Favourite / Frequent / Recent / Eat again) into
-   * the active meal slot. Shared by QuickAddPanel + Eat-again card so
-   * the event shape is consistent. */
+  /** Log a history row (Favourite / Frequent / Recent) into the active
+   * meal slot. Shared by the QuickAddPanel history rows so the event
+   * shape is consistent. */
   const logHistoryItem = useCallback(
     (item: FoodHistoryItem, slot: string) => {
       // Audit L6 G1 (2026-04-18) — the canonical `food_logged` event
@@ -925,10 +885,10 @@ export const NutritionTracker = memo(function NutritionTracker({
       //
       // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
       // alcohol micros so the journal-state insert path picks up the
-      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals` /
-      // `computeEatAgainForSlot` average per-occurrence stimulant
-      // contribution into `item.caffeineMg` / `item.alcoholG`. Missing
-      // → no key in `micros` (and `addLoggedMeal` skips the bump).
+      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals`
+      // average per-occurrence stimulant contribution into
+      // `item.caffeineMg` / `item.alcoholG`. Missing → no key in
+      // `micros` (and `addLoggedMeal` skips the bump).
       const micros: Record<string, number> = {};
       if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
       if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
@@ -1308,19 +1268,6 @@ export const NutritionTracker = memo(function NutritionTracker({
     },
     [authedUserId],
   );
-
-  const dismissEatAgain = useCallback(() => {
-    const state = recordEatAgainDismiss(new Date());
-    setEatAgainDismissState(state);
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(EAT_AGAIN_STORAGE_KEY, serialiseEatAgainDismiss(state));
-      } catch {
-        /* noop */
-      }
-    }
-  }, []);
-  const eatAgainDismissedForToday = !shouldShowEatAgain(eatAgainDismissState, new Date());
 
   useEffect(() => {
     const id = setInterval(() => setFastingNowTick(Date.now()), 60_000);
@@ -3452,7 +3399,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             if (!found) return;
             // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
             // in the afternoon was logging picks as Snacks because this
-            // path used currentSlotFromTime instead of the user's choice
+            // path used the time-of-day slot instead of the user's choice
             // (mealSlot). Mobile parity: apps/mobile/app/(tabs)/index.tsx
             // recents.onPick. Generic LogSheet-open paths reset mealSlot
             // to time-of-day so the default is fresh.
