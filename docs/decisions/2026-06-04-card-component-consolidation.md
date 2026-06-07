@@ -100,7 +100,8 @@ Two linked issues, both real:
   and pins the contract: testID/fill/radius/lift on the OUTER node, clip on a
   SEPARATE inner node with no shadow, `tile`/`inset` radii, `inset` has no drop
   shadow, dark = tonal lift + hairline.
-- `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx` — updated: pins
+- `apps/mobile/tests/unit/cardElevationVariants.test.tsx` (renamed from
+  `cardElevationSoftLiftDefault.test.tsx`) — updated: pins
   `Elevation.cardSoft` at **0.16 / 18px / y+6** (bumped 0.10 → 0.16 on 2026-06-04
   after edge-pixel sampling proved the 10% lift still read too weak on-device)
   and that it matches `--elev-card-soft` web EXACTLY

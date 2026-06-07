@@ -3,8 +3,16 @@
  * Validates calorie band compliance, fiber propagation, day variety,
  * no intra-day recipe duplication, and portion multiplier bounds.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { generateSmartPlan, type SimpleRecipe } from "@/lib/nutrition/mealPlanAlgo";
+
+// Every test here runs a full 7-day `generateSmartPlan` (~2s in isolation —
+// fine alone, but the large unit suite runs many workers in parallel and the
+// CPU contention can push these slow-but-correct tests past the 5s default,
+// reading as flaky timeouts. A file-wide generous timeout absorbs the load
+// variance without changing any assertion (mirror of the mobile
+// `mealPlanAlgo.test.ts` fix).
+vi.setConfig({ testTimeout: 30_000 });
 
 const recipes: SimpleRecipe[] = [
   { id: "r1", title: "Oats", calories: 350, protein: 12, carbs: 55, fat: 8, fiberG: 6 },

@@ -111,9 +111,12 @@ white page) — a confident but still-soft plum lift, not a hard Material drop
 shadow (the wide 18px radius keeps it ambient). The card fill stays `#F6F5F2`
 (matches Figma — the problem was separation, not the fill); no border is
 re-introduced. Both levers move in lockstep on **both** platforms so web ==
-mobile. Resting cards take the soft lift by default via the `<SupprCard>` shell /
-`useCardElevation()` (see "Resting-card elevation" below). Dark mode cards rely
-on the `cardElevated` tonal lift + `cardBorder` for definition, not a shadow.
+mobile. Resting cards default to a FLAT warm slab (Figma `654:2`) via the
+`<SupprCard>` shell / `useCardElevation()` — the fill on the page is the
+separation. The elevated recipe-card surfaces (Discover, Library, recipe detail)
+opt into the soft lift with mobile `lift="soft"` / web `elevation="card"` (see
+"Resting-card elevation" below). Dark mode cards rely on the `cardElevated` tonal
+lift + `cardBorder` for definition, not a shadow.
 
 ## Component patterns
 
@@ -204,18 +207,20 @@ hook returns:
 (`0 6px 18px rgba(34,27,38,0.16)` — the aubergine Sloe ink `#221B26` at **0.16**,
 radius 18, y+6): a calm, plum-tinted ambient lift, not a harsh Material shadow.
 
-**Web == mobile (no flag, no divergence):** the web `<SupprCard>` is **also
-un-gated** — its resting `elevation="card"` tier renders the `.card-slab` class
-(→ `box-shadow: var(--elev-card-soft)`) + `data-soft-elevation="true"`
-unconditionally, with no `design_system_elevation` read. Both platforms render the
-identical 16% lift in production, and the token is pinned character-for-character
-across `theme.css` ↔ `theme.ts` by `cardElevationSoftLiftDefault.test.tsx`.
+**Web == mobile (no flag, no divergence):** both platforms default to the FLAT
+slab and expose the SAME soft opt-in. When opted in (web `elevation="card"` /
+mobile `lift="soft"`) the web `<SupprCard>` is **un-gated** — the `card` tier
+renders the `.card-slab` class (→ `box-shadow: var(--elev-card-soft)`) +
+`data-soft-elevation="true"` with no `design_system_elevation` read. Both
+platforms render the identical 16% lift, and the token is pinned
+character-for-character across `theme.css` ↔ `theme.ts` by
+`cardElevationVariants.test.tsx`.
 
 **iOS gotcha — shadow on an OUTER wrapper when the card clips its children.**
 RN clips a view's own shadow under `overflow: 'hidden'`. The `<SupprCard>` shell
 handles this once: the shadow rides the OUTER wrapper, the clip + border sit on an
 INNER `View`. This is why you must never hand-roll a card — the bug is solved in
-the shell. Pinned by `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx`
+the shell. Pinned by `apps/mobile/tests/unit/cardElevationVariants.test.tsx`
 + `supprCardShell.test.tsx`.
 
 ### Empty state

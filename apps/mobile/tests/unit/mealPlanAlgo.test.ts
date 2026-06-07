@@ -33,6 +33,15 @@ function makeTargets(calories: number) {
   };
 }
 
+// A full 7-day `generateSmartPlan` (joint optimizer + per-day seeded retries)
+// takes ~2s in isolation — comfortably under the 5s default ON ITS OWN, but the
+// 270-file suite runs many workers in parallel, and under that CPU contention
+// these slow-but-correct tests intermittently blow the 5s wall-clock and read as
+// failures (the documented `mealPlanAlgo fiberG` timeout-flake). A generous
+// per-test timeout absorbs the load variance without masking any real failure —
+// the assertions are unchanged; they just get the wall-clock room to finish.
+const SLOW_PLAN_MS = 30_000;
+
 describe("generateSmartPlan (mobile parity)", () => {
   it("1200 kcal target: daily totals within 20% band", () => {
     const plan = generateSmartPlan({
@@ -46,7 +55,7 @@ describe("generateSmartPlan (mobile parity)", () => {
       expect(day.totals.calories).toBeGreaterThanOrEqual(960);
       expect(day.totals.calories).toBeLessThanOrEqual(1440);
     }
-  });
+  }, SLOW_PLAN_MS);
 
   it("fiberG propagates from recipe to meal output", () => {
     const plan = generateSmartPlan({
@@ -58,7 +67,7 @@ describe("generateSmartPlan (mobile parity)", () => {
     const allMeals = plan.flatMap((d) => d.meals);
     const hasFiber = allMeals.some((m) => m.fiberG != null && m.fiberG > 0);
     expect(hasFiber).toBe(true);
-  });
+  }, SLOW_PLAN_MS);
 
   it("7-day plan rotates through multiple distinct day combinations", () => {
     const plan = generateSmartPlan({
@@ -77,7 +86,7 @@ describe("generateSmartPlan (mobile parity)", () => {
     // than picking worse-fit sets just for raw variety. Three
     // distinct combos cycled across 7 days is the new floor.
     expect(unique.size).toBeGreaterThanOrEqual(3);
-  });
+  }, SLOW_PLAN_MS);
 
   it("no same recipe appears twice in one day", () => {
     const plan = generateSmartPlan({
@@ -91,5 +100,5 @@ describe("generateSmartPlan (mobile parity)", () => {
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(ids.length);
     }
-  });
+  }, SLOW_PLAN_MS);
 });

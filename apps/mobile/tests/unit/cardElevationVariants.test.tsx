@@ -1,21 +1,24 @@
 // @vitest-environment jsdom
 /**
- * useCardElevation — soft-lift is the DEFAULT, and the iOS overflow-clip is
- * fixed on the prominent Today cards (2026-06-04, Grace: "sim cards are
- * blending into the background, figma does not do this").
+ * useCardElevation — FLAT is the default; SOFT is the opt-in for elevated
+ * cards — plus the `Elevation.cardSoft` token values (web ↔ mobile) and the
+ * iOS overflow-clip fix that lives in the shared `<SupprCard>` shell.
  *
- * ROOT CAUSE these guard:
- *  1. The Sloe Figma lifts `#F6F5F2` cards off the `#FFFFFF` page with a soft
- *     DROP SHADOW, not a heavier border. On the sim the cards read flat because
- *     (a) flag-FORCE is dead in a bundled app (ENG-840) so the old
- *     `design_system_elevation` gate could never be exercised, and (b) the most
- *     prominent Today cards spread the shadow onto the SAME View that clips its
- *     children with `overflow: 'hidden'` — and iOS clips shadows under
- *     `overflow: 'hidden'`, so the shadow was swallowed.
- *  2. The fix makes the soft lift the UNCONDITIONAL light default of
- *     `useCardElevation` (no flag read — the hook is consumed by ~30 components
- *     and an analytics read here throws under their partial mocks), and splits
- *     the clipping cards so the shadow sits on an OUTER wrapper.
+ * DIRECTION these guard (2026-06-04 "flat slabs" sweep, commit 664df1cb):
+ *  1. The Sloe Figma `654:2` Today renders `#F6F5F2` cards AND tiles as
+ *     borderless, shadowless warm slabs — the fill against the `#FFFFFF` page
+ *     is the separation. So `useCardElevation()` with no args (and the
+ *     `SupprCard` `lift` default) returns FLAT: no shadow, no border, no lift.
+ *  2. SOFT is the opt-in for the few ELEVATED surfaces that float off the page
+ *     — the recipe-card grids/detail (Discover, Library, recipe detail) pass
+ *     `{ variant: "soft" }`. When requested, soft adds the ambient drop shadow
+ *     (light) / tonal lift + hairline (dark). It is NOT flag-gated (flag-FORCE
+ *     is dead in a bundled app, ENG-840, and an `@/lib/analytics` read here
+ *     throws under the ~30 consumer tests' partial mocks).
+ *  3. iOS clips shadows under `overflow: 'hidden'`, so the soft shadow must
+ *     ride an OUTER wrapper separate from the corner-clip. That split now lives
+ *     in ONE place — the `<SupprCard>` shell — instead of being re-rolled
+ *     (and drifting) per card.
  *
  * Two layers, mirroring the repo convention (see `sloeCardHairlineBorders`):
  *  - the hook's RETURN shape is render-tested (shadow values are not subpixel,
@@ -49,12 +52,52 @@ vi.mock("@/context/theme", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { useCardElevation } from "../../hooks/useCardElevation";
+import {
+  useCardElevation,
+  useTodayCardElevation,
+} from "../../hooks/useCardElevation";
 
-describe("useCardElevation — soft lift is the default", () => {
-  it("LIGHT default carries the soft drop shadow and drops the border", () => {
+describe("useCardElevation — FLAT is the default", () => {
+  it("the no-arg default is a FLAT slab in LIGHT (no shadow, no border, no lift)", () => {
+    // Figma `654:2`: borderless, shadowless warm slab — the `#F6F5F2` fill on
+    // the white page is the separation. The no-arg default pins `?? "flat"`.
     themeState.resolved = "light";
     const { result } = renderHook(() => useCardElevation());
+    expect(result.current.shadowStyle).toBeUndefined();
+    expect(result.current.useBorder).toBe(false);
+    expect(result.current.liftBg).toBeUndefined();
+  });
+
+  it("the no-arg default is FLAT in DARK too (variant wins over theme)", () => {
+    // Flat short-circuits before the dark branch — it returns the same flat
+    // shape regardless of theme, so a no-arg card never picks up the dark
+    // tonal lift + hairline (that is the SOFT-in-dark treatment).
+    themeState.resolved = "dark";
+    const { result } = renderHook(() => useCardElevation());
+    expect(result.current.shadowStyle).toBeUndefined();
+    expect(result.current.useBorder).toBe(false);
+    expect(result.current.liftBg).toBeUndefined();
+    themeState.resolved = "light"; // restore for later test ordering
+  });
+
+  it("useTodayCardElevation() is the named flat wrapper Today uses", () => {
+    // Today (`(tabs)/index`, TodayActivityBonusCard) routes through this wrapper
+    // so the `654:2` slab is requested by name, not by a bare default.
+    themeState.resolved = "light";
+    const { result } = renderHook(() => useTodayCardElevation());
+    expect(result.current.shadowStyle).toBeUndefined();
+    expect(result.current.useBorder).toBe(false);
+    expect(result.current.liftBg).toBeUndefined();
+  });
+});
+
+describe("useCardElevation — SOFT is the opt-in for elevated cards", () => {
+  // The recipe-card surfaces (Discover, Library, recipe detail) pass
+  // `{ variant: "soft" }` to float off the page. Soft is the ONLY path to the
+  // ambient shadow / tonal lift — the default never reaches it.
+  it("SOFT in LIGHT carries the drop shadow and drops the border", () => {
+    themeState.resolved = "light";
+    const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
     // The shadow is the separation — it lifts the card off the white page.
     expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
     // Border dropped (shadow carries it — no double edge, no heavy 1pt box).
@@ -63,20 +106,20 @@ describe("useCardElevation — soft lift is the default", () => {
     expect(result.current.liftBg).toBeUndefined();
   });
 
-  it("the LIGHT default is NOT gated behind the elevation flag (renders flags-cold)", () => {
+  it("SOFT is NOT gated behind the elevation flag (renders flags-cold)", () => {
     // No flag is mocked ON here — the global `@/lib/analytics` shim resolves
     // every flag OFF / cold. The soft lift must STILL be returned, proving the
     // hook no longer hides the shadow behind `design_system_elevation` (the bug
     // was that a cold/forced-off flag on the sim left the cards flat).
     themeState.resolved = "light";
-    const { result } = renderHook(() => useCardElevation());
+    const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
     expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
     expect(result.current.shadowStyle?.shadowOpacity).toBeGreaterThan(0);
   });
 
-  it("DARK default uses a tonal lift + hairline, never a (poorly-rendered) shadow", () => {
+  it("SOFT in DARK uses a tonal lift + hairline, never a (poorly-rendered) shadow", () => {
     themeState.resolved = "dark";
-    const { result } = renderHook(() => useCardElevation());
+    const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
     expect(result.current.shadowStyle).toBeUndefined();
     expect(result.current.useBorder).toBe(true);
     expect(result.current.liftBg).toBe(themeState.colors.cardElevated);

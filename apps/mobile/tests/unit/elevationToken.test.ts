@@ -11,7 +11,7 @@ import { Elevation } from "../../constants/theme";
  * was removed 2026-06-04 — flag-FORCE is dead in a bundled app), keeping the
  * flat `card` token only as an explicit fallback for direct consumers. The
  * exact values (0.16 / 18px / y+6) are pinned in
- * `cardElevationSoftLiftDefault.test.tsx`; these bounds just guard "never a
+ * `cardElevationVariants.test.tsx`; these bounds just guard "never a
  * no-op".
  */
 describe("Elevation tokens", () => {

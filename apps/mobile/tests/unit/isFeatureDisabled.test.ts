@@ -137,6 +137,13 @@ describe("isFeatureEnabled/Disabled (mobile) — hyphenated flag env-key normali
   beforeEach(() => {
     isEnabledMock.mockReset();
     vi.stubGlobal("__DEV__", true);
+    // Hermetic baseline: a local `.env.local` may force this flag ON for
+    // Maestro/preview (`EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR=true`),
+    // which vitest auto-loads. Clear the (settable, normalised) key so each
+    // test controls the env it asserts on — otherwise the "raw hyphenated key
+    // is ignored" guard reads the ambient value and reports a false failure
+    // locally (it passes in clean CI, which has no `.env.local`).
+    vi.stubEnv(NORMALISED_ENV, undefined as unknown as string);
   });
   afterEach(() => {
     vi.unstubAllGlobals();

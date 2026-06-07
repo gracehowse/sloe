@@ -2,8 +2,19 @@
 
 - **Date:** 2026-06-04
 - **Area:** Design system / mobile Today + Progress
-- **Status:** Resolved
+- **Status:** Resolved — **default superseded** (see banner)
 - **Trigger:** Grace (founder), on the sim: "sim cards are blending into the background, figma does not do this."
+
+> **⚠️ Superseded in part (2026-06-04, "flat slabs" sweep, commit `664df1cb`).**
+> The "soft lift is the **default**" decision below was reversed shortly after by
+> the Figma `654:2` flat-slab direction: `useCardElevation` and `<SupprCard>` now
+> default to **`flat`** (a borderless, shadowless warm slab — the fill is the
+> separation), and the **soft lift is the opt-in** for the elevated recipe-card
+> surfaces (Discover, Library, recipe detail) via mobile `lift="soft"` / web
+> `elevation="card"`. The rest of this decision still holds: the lift is
+> **un-gated** (no `design_system_elevation` read), the **iOS shadow-clip fix**
+> lives in the `<SupprCard>` shell, and the soft **token** keeps its `0.16 / 18px
+> / y+6 / #221B26` tuning. See `docs/decisions/2026-06-04-card-component-consolidation.md`.
 
 ## Problem
 
@@ -82,7 +93,7 @@ unconditionally, with no `design_system_elevation` read. The shadow TOKEN is
 identical across platforms: mobile `Elevation.cardSoft` and web
 `--elev-card-soft` both carry `0.16 / 18px / y+6 / #221B26`, moved in lockstep
 and pinned character-for-character by
-`cardElevationSoftLiftDefault.test.tsx` (which source-reads the web token).
+`cardElevationVariants.test.tsx` (which source-reads the web token).
 Verified on 2026-06-04 by `getComputedStyle('.card-slab').boxShadow` ==
 `rgba(34, 27, 38, 0.16) 0px 6px 18px 0px` AND a rendered web swatch matching the
 sim. Web has no equivalent iOS clip bug (CSS `overflow: hidden` clips child
@@ -90,9 +101,10 @@ box-shadows, not the element's own).
 
 ## Tests
 
-- `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx` — the hook
-  returns the soft shadow as the LIGHT default (flags-cold), the tonal lift on
-  DARK, the `cardSoft` premium-band + plum tint, the **exact `0.16 / 18px / y+6`
+- `apps/mobile/tests/unit/cardElevationVariants.test.tsx` (renamed from
+  `cardElevationSoftLiftDefault.test.tsx` when the default flipped to flat) — the
+  hook returns the soft shadow when opted in (`variant: "soft"`, flags-cold), the
+  tonal lift on DARK, the `cardSoft` premium-band + plum tint, the **exact `0.16 / 18px / y+6`
   values** (pinned, not a band — the value is the point of the second bump), the
   web↔mobile token match read straight from `theme.css`, and a precise source
   scan that no clipping View co-locates `overflow: 'hidden'` with the shadow on
@@ -116,7 +128,7 @@ box-shadows, not the element's own).
 - `src/styles/theme.css` (`--elev-card-soft` light → `0 6px 18px rgba(34,27,38,0.16)`; dark geometry tracked to `0 6px 18px`)
 - `apps/mobile/hooks/useCardElevation.ts` (un-gated; unchanged this pass)
 - `apps/mobile/components/ui/SupprCard.tsx` (outer-wrapper shadow split; unchanged this pass)
-- `apps/mobile/tests/unit/cardElevationSoftLiftDefault.test.tsx`
+- `apps/mobile/tests/unit/cardElevationVariants.test.tsx` (renamed from `cardElevationSoftLiftDefault.test.tsx`)
 - `apps/mobile/tests/unit/elevationToken.test.ts`
 - `tests/unit/supprPrimitives.test.tsx`
 - `tests/unit/progressDashboardElevation.test.tsx`

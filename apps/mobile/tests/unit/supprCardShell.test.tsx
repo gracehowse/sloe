@@ -6,15 +6,17 @@
  *
  * This renders the shell and pins the consolidation CONTRACT every card surface
  * now relies on, so a future change can't quietly re-diverge the cards:
- *   - the OUTER node carries the soft lift + fill + radius and the testID;
+ *   - the default lift is FLAT (Figma `654:2` slab — no shadow, no border); the
+ *     elevated recipe-card surfaces opt into `lift="soft"`;
+ *   - the OUTER node carries the lift (when `soft`) + fill + radius + the testID;
  *   - the INNER node clips (overflow:hidden) — the iOS clip fix lives here once;
  *   - `size` drives the radius (card/tile/inset all = 24, the Figma chosen Today
  *     borderless warm slabs) — every card shares the exact corner;
  *   - `size="inset"` carries NO drop shadow (card-on-card must not double up);
- *   - the light resting `card` drops the border (the soft lift is the
- *     separation), while `inset` always draws the hairline.
+ *   - the flat slab and the light soft-lift both drop the border (the fill /
+ *     shadow is the separation), while `inset` always draws the hairline.
  *
- * Harness mirrors `cardElevationSoftLiftDefault.test.tsx` (the theme is mocked
+ * Harness mirrors `cardElevationVariants.test.tsx` (the theme is mocked
  * so `useCardElevation` resolves a deterministic light/dark treatment).
  */
 import * as React from "react";
@@ -58,10 +60,31 @@ function flatten(style: unknown): Record<string, unknown> {
 }
 
 describe("<SupprCard> — the consolidated card shell", () => {
-  it("puts the testID, fill, radius and soft lift on the OUTER node", () => {
+  it("the default (no lift) is a FLAT slab on the OUTER node — fill + radius, no shadow", () => {
+    // Figma `654:2`: the default card is a borderless, shadowless warm slab —
+    // the `#F6F5F2` fill on the white page is the separation. Pins the shell's
+    // `lift="flat"` default (flipped in the 2026-06-04 "flat slabs" sweep).
     themeState.resolved = "light";
     const { getByTestId } = render(
-      <SupprCard testID="card-x">
+      <SupprCard testID="card-flat">
+        <></>
+      </SupprCard>,
+    );
+    const outer = getByTestId("card-flat");
+    const style = flatten(outer.props.style);
+    expect(style.backgroundColor).toBe("#F6F5F2");
+    expect(style.borderRadius).toBe(CARD_RADIUS);
+    expect(CARD_RADIUS).toBe(24);
+    // Flat slab — no drop shadow on the outer node, and no inner border.
+    expect(style.shadowOpacity).toBeUndefined();
+    expect(flatten(outer.props.children.props.style).borderWidth).toBe(0);
+  });
+
+  it("puts the testID, fill, radius and soft lift on the OUTER node (lift='soft')", () => {
+    // Render the SOFT opt-in so there is a lift to verify rides the OUTER node.
+    themeState.resolved = "light";
+    const { getByTestId } = render(
+      <SupprCard testID="card-x" lift="soft">
         <></>
       </SupprCard>,
     );
@@ -78,9 +101,11 @@ describe("<SupprCard> — the consolidated card shell", () => {
   });
 
   it("clips on a SEPARATE inner node (the iOS clip fix), which has NO shadow", () => {
+    // Use the SOFT opt-in — the clip fix only matters when there IS a shadow:
+    // it must ride the outer wrapper, never the inner `overflow:hidden` node.
     themeState.resolved = "light";
     const { getByTestId } = render(
-      <SupprCard testID="card-clip">
+      <SupprCard testID="card-clip" lift="soft">
         <></>
       </SupprCard>,
     );
@@ -90,7 +115,7 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(innerStyle.overflow).toBe("hidden");
     // The inner (clipping) node must not carry the shadow — iOS would swallow it.
     expect(innerStyle.shadowOpacity).toBeUndefined();
-    // And the light resting card drops the inner border (lift is the separation).
+    // And the light soft-lift card drops the inner border (shadow is the separation).
     expect(innerStyle.borderWidth).toBe(0);
   });
 
@@ -122,10 +147,12 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(innerStyle.borderColor).toBe("#E8E2EC");
   });
 
-  it("dark mode uses a tonal lift + hairline, never a (poorly-rendered) shadow", () => {
+  it("dark mode (soft) uses a tonal lift + hairline, never a (poorly-rendered) shadow", () => {
+    // Soft in dark → tonal lift (`cardElevated`) + hairline, no shadow (RN
+    // renders dark shadows poorly). A flat default in dark would have neither.
     themeState.resolved = "dark";
     const { getByTestId } = render(
-      <SupprCard testID="dark-card">
+      <SupprCard testID="dark-card" lift="soft">
         <></>
       </SupprCard>,
     );

@@ -58,9 +58,13 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
     expect(SRC).toContain("function useAnimatedNumber(");
   });
 
-  it("renders the centre value at 48px Newsreader (Sloe ring parity)", () => {
+  it("renders the centre value at a ring-proportional size in Newsreader (Sloe ring parity)", () => {
     expect(SRC).toContain('motionEnabled');
-    expect(SRC).toContain('text-[48px]');
+    // Centre value scales WITH the ring (`size * 0.23`) rather than a fixed 48px,
+    // so it keeps mobile's 48/207≈0.23 proportion at every ring size — a fixed
+    // 48px overflowed the smaller 160px desktop ring (Grace, 2026-06-07).
+    expect(SRC).toMatch(/fontSize:\s*Math\.round\(size \* 0\.23\)/);
+    expect(SRC).not.toContain('text-[48px]');
     expect(SRC).toContain('font-[family-name:var(--font-headline)]');
   });
 });

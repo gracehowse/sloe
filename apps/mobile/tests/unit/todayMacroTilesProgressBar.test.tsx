@@ -18,7 +18,7 @@
  * @testing-library/react-native, no provider). This test asserts only the
  * progress-bar behaviour; the tile's resting-card elevation (now an
  * unconditional soft lift via `useCardElevation`) is covered separately by
- * `cardElevationSoftLiftDefault.test.tsx`.
+ * `cardElevationVariants.test.tsx`.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";

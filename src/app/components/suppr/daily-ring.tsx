@@ -462,7 +462,7 @@ function DailyRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-1 px-2">
-            <span className="font-[family-name:var(--font-headline)] text-[17px] font-medium leading-snug text-center text-foreground">
+            <span className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-snug text-center text-foreground">
               Start your day
             </span>
             {target > 0 ? (
@@ -480,9 +480,14 @@ function DailyRing({
                 "Start your day" empty-state copy above is intentionally
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
+            {/* Centre value scales WITH the ring (like its radii/strokes/arcs,
+                all `size * k`) so it holds mobile's proportion at every ring
+                size. A fixed 48px — tuned for the ~207-230px mobile ring —
+                overflowed the smaller 160px DESKTOP ring and crowded the macro
+                arcs (Grace, 2026-06-07). 0.23 ≈ mobile's 48/207 ratio: 160 → 37. */}
             <span
-              className="font-[family-name:var(--font-headline)] text-[48px] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
-              style={{ color: centerValueColor ?? undefined }}
+              className="font-[family-name:var(--font-headline)] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
+              style={{ fontSize: Math.round(size * 0.23), color: centerValueColor ?? undefined }}
             >
               {animatedCenterValue.toLocaleString()}
             </span>
