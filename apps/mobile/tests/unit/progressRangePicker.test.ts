@@ -47,9 +47,11 @@ describe("Progress prototype port — header + range picker", () => {
     // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
     expect(mobileChromeSrc).toContain("overline={null}");
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
-    // Progress chrome uses compact title sizing (22pt) via ScreenSectionChrome.
+    // Progress chrome uses compact title sizing (22pt) + the Sloe Newsreader
+    // serif with tuned -0.3 tracking, via ScreenSectionChrome.
+    expect(mobileSectionSrc).toMatch(/fontFamily:\s*"Newsreader_400Regular"/);
     expect(mobileSectionSrc).toMatch(/fontSize:\s*compact\s*\?\s*22\s*:\s*Layout\.titleSize/);
-    expect(mobileSectionSrc).toMatch(/letterSpacing:\s*compact\s*\?\s*-0\.4\s*:\s*Layout\.titleTracking/);
+    expect(mobileSectionSrc).toMatch(/letterSpacing:\s*compact\s*\?\s*-0\.3\s*:\s*-0\.3/);
   });
 
   it("mobile header carries a trailing log-weight control", () => {
@@ -92,8 +94,10 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).not.toContain("Weekly report");
     expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
-    // 24pt per the prototype mirrors mobile title size after 2026-05-22 sweep.
-    expect(webChromeSrc).toMatch(/text-\[24px\]/);
+    // 24pt per the prototype mirrors mobile title size — uses Tailwind `text-2xl`
+    // (1.5rem = 24px) with the Sloe headline font.
+    expect(webChromeSrc).toMatch(/text-2xl/);
+    expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
   });
 
   it("web header carries a calendar icon button", () => {

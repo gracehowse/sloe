@@ -35,11 +35,15 @@ describe("Today hero layout parity", () => {
     expect(WEB_STATS).not.toMatch(/grid-cols-\[auto_1fr\]/);
   });
 
-  it("macro rings are opt-in via explicit toggle (not ring tap on web)", () => {
+  it("macro rings have an explicit toggle; the ring also taps to toggle (654:2 parity)", () => {
+    // The explicit toggle button is always present (the guaranteed affordance).
     expect(WEB_STATS).toMatch(/data-testid="today-macro-rings-toggle"/);
     expect(WEB_STATS).toMatch(/MACRO_RING_TOGGLE/);
     expect(WEB_RING).toMatch(/today-macro-rings-toggle/);
-    expect(WEB_RING).not.toMatch(/onToggle=\{onToggleExpanded\}/);
+    // Closing Figma 654:2 parity (commit e7790278) made the web ring tappable
+    // to toggle the macro arcs, matching mobile — so the ring now wires
+    // `onToggle` in addition to the explicit button.
+    expect(WEB_RING).toMatch(/onToggle=\{onToggleExpanded\}/);
   });
 
   it("mobile defaults ringExpanded to EXPANDED (Sloe multi-ring); web stays collapsed pending its parity slot", () => {
