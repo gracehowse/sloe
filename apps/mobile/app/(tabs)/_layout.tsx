@@ -48,53 +48,45 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname() ?? '';
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  // Assume complete until profiles says otherwise — never block tab mount
+  // on a network fetch (device hangs showed endless launch screens).
   const [onboardingCompleted, setOnboardingCompleted] = useState(true);
 
   useEffect(() => {
     if (!session?.user?.id) return;
     let cancelled = false;
     const PROFILE_ONBOARDING_TIMEOUT_MS = 8000;
-    const profileOnboardingQuery = supabase
-      .from('profiles')
-      .select('onboarding_completed')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    const userId = session.user.id;
 
     (async () => {
-      // Flip `onboardingChecked` after any outcome: success, throw, OR
-      // hung network. `try/finally` alone does NOT run `finally` until the
-      // awaited promise settles — a PostgREST/client hang would leave the
-      // user on the tab spinner forever (`session && !onboardingChecked`).
-      // Race against a timeout so the gate always opens; on timeout we keep
-      // the default `onboardingCompleted === true` (same as the catch path).
       try {
         const timedOut = Symbol('profile_onboarding_timeout');
         const result = await Promise.race([
-          profileOnboardingQuery,
+          supabase
+            .from('profiles')
+            .select('onboarding_completed')
+            .eq('id', userId)
+            .maybeSingle(),
           new Promise<typeof timedOut>((resolve) => {
             setTimeout(() => resolve(timedOut), PROFILE_ONBOARDING_TIMEOUT_MS);
           }),
         ]);
-        if (cancelled) return;
-        if (result === timedOut) return;
+        if (cancelled || result === timedOut) return;
         const { data } = result;
-        setOnboardingCompleted(data?.onboarding_completed === true);
+        if (data?.onboarding_completed !== true) {
+          setOnboardingCompleted(false);
+        }
       } catch {
-        // Silent — `onboardingCompleted` stays at its default true.
-      } finally {
-        if (!cancelled) setOnboardingChecked(true);
+        // Keep default true on error — same as timeout path.
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [session?.user?.id]);
 
   if (loading) {
     return <AppLaunchScreen message="Checking your account…" />;
-  }
-
-  if (session && !onboardingChecked) {
-    return <AppLaunchScreen message="Getting Today ready…" />;
   }
 
   if (!session) {

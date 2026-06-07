@@ -541,7 +541,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
     return s;
   }, [nutritionByDay]);
-  const [ringExpanded, setRingExpanded] = useState(false);
+  const [ringExpanded, setRingExpanded] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
@@ -2095,24 +2095,15 @@ export const NutritionTracker = memo(function NutritionTracker({
     ready: winReady,
   });
 
+  const showAboveMealsNorthStarWeb =
+    selectedDateKey === todayKey() &&
+    Math.max(0, effectiveCalorieTarget - totals.calories) > 0;
+
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({
-      northStar:
-        selectedDateKey === todayKey() &&
-        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
-        mealsForSelectedDate.length === 0,
       snap: selectedDateKey === todayKey() && mealsForSelectedDate.length === 0,
     }),
-    [
-      selectedDateKey,
-      effectiveCalorieTarget,
-      totals.calories,
-      mealsForSelectedDate.length,
-    ],
-  );
-  const showBelowMealsNorthStarWeb = isBelowMealsPromptVisible(
-    "northStar",
-    belowMealsPromptEligibleWeb,
+    [selectedDateKey, mealsForSelectedDate.length],
   );
   const showBelowMealsSnapWeb = isBelowMealsPromptVisible(
     "snap",
@@ -2468,7 +2459,12 @@ export const NutritionTracker = memo(function NutritionTracker({
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
-        onDisplayModeChange={setRingDisplayMode}
+        onToggleDisplayMode={() => {
+          setRingDisplayMode((m) =>
+            m === "remaining" ? "consumed" : "remaining",
+          );
+          setRingExpanded((e) => !e);
+        }}
         pulse={winPulse}
         isOnTrack={
           totals.calories > 100 &&
@@ -2635,6 +2631,31 @@ export const NutritionTracker = memo(function NutritionTracker({
           above Meals. Default collapsed on first run; user's last choice
           persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
 
+      {/* Figma `654:2` — What to eat next above Today's Meals. */}
+      {showAboveMealsNorthStarWeb && (
+        <NorthStarBlockHost
+          viewMode={viewMode}
+          savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+          remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+          remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
+          remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
+          remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
+          onPrimaryCta={(_recipeId) => {
+            setMealSlot(slotForHour(new Date().getHours()));
+            setLogSheetOpen(true);
+          }}
+          onBrowseLibrary={() => {
+            setMealSlot(slotForHour(new Date().getHours()));
+            setLogSheetOpen(true);
+          }}
+          selectedDateKey={selectedDateKey}
+          userCreatedAt={authUserCreatedAt}
+          hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+            (meals) => Array.isArray(meals) && meals.length > 0,
+          )}
+        />
+      )}
+
       {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
       <div className="mt-10">
       <TodayMealsSection
@@ -2708,29 +2729,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       />
 
       {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
-      {showBelowMealsNorthStarWeb && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
-            remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-            remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
-            remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
-            remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
-            onPrimaryCta={(_recipeId) => {
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            onBrowseLibrary={() => {
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            selectedDateKey={selectedDateKey}
-            userCreatedAt={authUserCreatedAt}
-            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
-              (meals) => Array.isArray(meals) && meals.length > 0,
-            )}
-          />
-        )}
       {showBelowMealsSnapWeb && (
         <TodaySnapShortcut
           onPress={() => {

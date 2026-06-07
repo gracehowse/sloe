@@ -71,7 +71,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     expanded,
     onToggleExpanded,
     displayMode,
-    onDisplayModeChange,
+    onToggleDisplayMode,
     onPressWhy,
     pulse,
   } = props;
@@ -85,7 +85,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     expanded,
     onToggleExpanded,
     displayMode,
-    onDisplayModeChange,
+    onToggleDisplayMode,
     onPressWhy,
     pulse,
   };
@@ -103,7 +103,7 @@ function DesktopHeroStats({
   expanded,
   onToggleExpanded,
   displayMode,
-  onDisplayModeChange,
+  onToggleDisplayMode,
   isOnTrack,
   tdeeLearnDays,
   pulse,
@@ -136,28 +136,27 @@ function DesktopHeroStats({
         <div className="flex w-full items-center justify-between gap-2">
           <HeroStatusChip state={chipState} />
           {showStatRow ? (
-            <div
-              className="inline-flex rounded-full border border-border bg-muted/40 p-0.5"
-              role="group"
-              aria-label="Calorie ring display"
+            <button
+              type="button"
+              onClick={onToggleDisplayMode}
+              className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
+              aria-label={`Showing ${displayMode} calories. Tap to switch.`}
               data-testid="today-ring-display-toggle"
             >
               {(["remaining", "consumed"] as const).map((mode) => (
-                <button
+                <span
                   key={mode}
-                  type="button"
-                  onClick={() => onDisplayModeChange(mode)}
-                  aria-pressed={displayMode === mode}
-                  className={`rounded-full px-3 py-1 text-[10px] font-medium capitalize transition-colors ${
+                  aria-hidden
+                  className={`rounded-full px-3 py-1 capitalize transition-colors ${
                     displayMode === mode
-                      ? "bg-card text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-card text-foreground-brand shadow-sm"
+                      : "text-foreground-secondary"
                   }`}
                 >
                   {mode}
-                </button>
+                </span>
               ))}
-            </div>
+            </button>
           ) : (
             <span className="w-px shrink-0" aria-hidden />
           )}
@@ -175,7 +174,9 @@ function DesktopHeroStats({
           carbsPct={carbsPct}
           fatPct={fatPct}
           expanded={expanded}
+          onToggle={onToggleExpanded}
           displayMode={displayMode}
+          onLongPressToggleDisplayMode={onToggleDisplayMode}
           pulse={pulse}
         />
 

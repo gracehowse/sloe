@@ -48,6 +48,7 @@ import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
+import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -603,6 +604,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
   // verbatim. State holds the meal whose row was long-pressed.
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
+  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_654");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
   // Shared "Share meal" handler used by BOTH the native Alert path and
@@ -733,7 +735,65 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           )}
         </SupprCard>
       )}
-      {slots.map((slot, slotIndex) => {
+      {mealsFigmaLayout ? (
+        <TodayMealsFigmaLayout
+          mealGroups={mealGroups}
+          collapsedSlots={collapsedSlots}
+          onToggleSlotCollapse={onToggleSlotCollapse}
+          onOpenFabForSlot={onOpenFabForSlot}
+          renderSlotExpanded={(slot, meals) => (
+            <View>
+              {meals.map((m) => (
+                <Pressable
+                  key={m.id}
+                  onPress={() => onPressMeal(m.id)}
+                  onLongPress={() => onLongPressEdit(m)}
+                  style={{
+                    paddingVertical: 9,
+                    paddingHorizontal: 14,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: cardBorderColor + "20",
+                  }}
+                >
+                  <Text
+                    style={{ ...Type.body, color: textColor, flex: 1, minWidth: 0 }}
+                    numberOfLines={1}
+                  >
+                    {m.recipeTitle}
+                  </Text>
+                  <Text style={{ ...Type.caption, color: textSecondaryColor, marginLeft: 8 }}>
+                    {Math.round(m.calories)} kcal
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={() => onOpenFabForSlot(slot)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: cardBorderColor + "20",
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Add food to ${slot}`}
+                testID={`today-add-food-${slot}`}
+              >
+                <Plus size={16} color={Accent.primary} strokeWidth={2} />
+                <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
+                  Add food
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      ) : (
+        slots.map((slot, slotIndex) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
           // 2026-05-22 — slot-total macro icon row (Grace ask: "macro
@@ -1371,7 +1431,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               </SupprCard>
             </ReAnimated.View>
           );
-        })}
+        })
+      )}
 
       {/* Ship M1 — usual-meal picker for slots with 2+ matches.
           Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"

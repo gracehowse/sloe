@@ -22,7 +22,6 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { Accent, Spacing, Radius, Fonts } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
-import { AppLaunchScreen } from "@/components/AppLaunchScreen";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 
 function createAppleRawNonce(): string {
@@ -68,8 +67,6 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Positive assent to Terms + Privacy required at account creation
   // (browsewrap is unenforceable — Nguyen v. Barnes & Noble). Defaults
@@ -80,42 +77,6 @@ export default function LoginScreen() {
     if (Platform.OS !== "ios") return;
     void AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
   }, []);
-
-  useEffect(() => {
-    if (!session) { setOnboardingChecked(false); return; }
-    let cancelled = false;
-    const PROFILE_TIMEOUT_MS = 12_000;
-    const timedOut = Symbol("profile_onboarding_timeout");
-    (async () => {
-      // Race so `finally` always runs: a hung PostgREST await never
-      // resolves, which previously left `onboardingChecked` false and
-      // this screen returning `null` (blank white).
-      try {
-        const result = await Promise.race([
-          supabase
-            .from("profiles")
-            .select("onboarding_completed")
-            .eq("id", session.user.id)
-            .maybeSingle(),
-          new Promise<typeof timedOut>((resolve) => {
-            setTimeout(() => resolve(timedOut), PROFILE_TIMEOUT_MS);
-          }),
-        ]);
-        if (cancelled) return;
-        if (result === timedOut) {
-          setNeedsOnboarding(false);
-          return;
-        }
-        const { data } = result;
-        setNeedsOnboarding(!data?.onboarding_completed);
-      } catch {
-        if (!cancelled) setNeedsOnboarding(false);
-      } finally {
-        if (!cancelled) setOnboardingChecked(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [session]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -220,11 +181,10 @@ export default function LoginScreen() {
     );
   }
 
-  if (session && onboardingChecked) {
-    return <Redirect href={needsOnboarding ? "/onboarding" : "/(tabs)"} />;
-  }
-  if (session && !onboardingChecked) {
-    return <AppLaunchScreen message="Signing you in…" />;
+  // Signed-in users skip this screen immediately. Onboarding is gated in
+  // `(tabs)/_layout.tsx` — no intermediate launch screen here.
+  if (session?.user?.id) {
+    return <Redirect href="/(tabs)" />;
   }
 
   async function onSubmit() {

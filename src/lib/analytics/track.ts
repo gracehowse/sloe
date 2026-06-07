@@ -170,6 +170,7 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_branded_sheets",
   "redesign_search_results",
   "today-weekly-insight-mobile",
+  "today_meals_figma_654",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

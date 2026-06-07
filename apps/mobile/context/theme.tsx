@@ -26,7 +26,9 @@ const ThemeContext = createContext<ThemeContextValue>({
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>("auto");
-  const [loaded, setLoaded] = useState(false);
+  // Start open — preference hydrates in the background. Blocking here stacked
+  // with FontGate and left some devices on the logo screen for seconds+.
+  const [loaded, setLoaded] = useState(true);
 
   // Load saved preference — never hang boot: if AsyncStorage stalls (seen
   // on some devices), `loaded` must still flip or the whole tree stays

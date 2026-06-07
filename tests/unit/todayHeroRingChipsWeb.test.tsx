@@ -30,20 +30,17 @@ const baseProps = {
 
 describe("TodayHeroRing (web) — Sloe chip + display toggle (2026-06-04)", () => {
   it("renders the Remaining/Consumed segmented display toggle (Figma-restored)", () => {
-    const { queryByRole } = render(
+    const { getByTestId } = render(
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
-        onDisplayModeChange={() => {}}
+        onToggleDisplayMode={() => {}}
       />,
     );
-    // The toggle group carries role="group" + the "Calorie ring display" name.
-    const group = queryByRole("group", { name: "Calorie ring display" });
-    expect(group).not.toBeNull();
-    // Two segment buttons — scoped to the group so we don't collide with the
-    // ring's own "remaining" display label. Text is lowercase (CSS `capitalize`).
-    const segments = within(group!).getAllByRole("button");
-    expect(segments.map((b) => b.textContent)).toEqual(["remaining", "consumed"]);
+    const toggle = getByTestId("today-ring-display-toggle");
+    expect(toggle.tagName).toBe("BUTTON");
+    expect(toggle.textContent).toMatch(/remaining/i);
+    expect(toggle.textContent).toMatch(/consumed/i);
   });
 
   it("does NOT render the 'Why this number?' pill even when onPressWhy is provided (2026-05-12 round 4)", () => {
@@ -52,7 +49,7 @@ describe("TodayHeroRing (web) — Sloe chip + display toggle (2026-06-04)", () =
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
-        onDisplayModeChange={() => {}}
+        onToggleDisplayMode={() => {}}
         onPressWhy={onPressWhy}
       />,
     );

@@ -32,7 +32,7 @@ function renderStats(overrides: {
       expanded={false}
       onToggleExpanded={() => {}}
       displayMode="remaining"
-      onDisplayModeChange={() => {}}
+      onToggleDisplayMode={() => {}}
     />,
   );
 }

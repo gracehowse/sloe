@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import {
-  Beef,
   Candy,
   Droplet,
+  Flame,
   Gauge,
   Leaf,
+  Link2,
   Wheat,
   type LucideIcon,
 } from "lucide-react";
@@ -130,7 +131,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Protein",
-      Icon: Beef,
+      Icon: Link2,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -174,7 +175,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Fat",
-      Icon: Droplet,
+      Icon: Flame,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,

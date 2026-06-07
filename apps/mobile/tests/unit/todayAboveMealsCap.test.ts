@@ -180,9 +180,10 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
     expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
   });
 
-  it("NorthStarBlockHost does not render between macro tiles and meals", () => {
+  it("NorthStarBlockHost renders between macro tiles and meals (Figma 654:2)", () => {
     const between = macroGridToMealsSlice(HOST_SRC);
-    expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/showAboveMealsNorthStar/);
   });
 });
 
@@ -190,23 +191,22 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
   it("uses shared below-meals prompt cap (max 2, ENG-585)", () => {
     expect(HOST_SRC).toMatch(/belowMealsPromptSelection/);
     expect(HOST_SRC).toMatch(/isBelowMealsPromptVisible/);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar/);
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("northStar eligibility uses remaining > 0 without empty-day meals gate", () => {
-    const match = HOST_SRC.match(/northStar:\s*([^,\n]+)/);
-    expect(match?.[1]).toBeTruthy();
-    expect(match![1]).toMatch(/remaining\s*>\s*0/);
-    expect(match![1]).not.toMatch(/mealsToday\.length\s*===\s*0/);
+  it("North Star above meals uses remaining > 0 without empty-day meals gate", () => {
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*=/);
+    expect(HOST_SRC).toMatch(/remaining\s*>\s*0/);
+    expect(HOST_SRC).not.toMatch(/showBelowMealsNorthStar/);
   });
 
-  it("NorthStarBlockHost below meals is gated by showBelowMealsNorthStar", () => {
+  it("NorthStarBlockHost above meals is gated by showAboveMealsNorthStar", () => {
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
-    const northStarBelowIdx = HOST_SRC.indexOf("<NorthStarBlockHost", mealsIdx);
+    const northStarAboveIdx = HOST_SRC.indexOf("<NorthStarBlockHost");
     expect(mealsIdx).toBeGreaterThan(-1);
-    expect(northStarBelowIdx).toBeGreaterThan(mealsIdx);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
+    expect(northStarAboveIdx).toBeGreaterThan(-1);
+    expect(northStarAboveIdx).toBeLessThan(mealsIdx);
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {

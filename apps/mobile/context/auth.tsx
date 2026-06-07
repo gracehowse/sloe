@@ -57,11 +57,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // Initial session load with timeout — prevents infinite spinner
-    // if the Supabase call hangs (e.g., slow network on simulator).
+    // Belt-and-suspenders if neither INITIAL_SESSION nor getSession settles.
+    const BOOT_AUTH_TIMEOUT_MS = 5000;
     const timeout = setTimeout(() => {
       if (!cancelled) setLoading(false);
-    }, 10000);
+    }, BOOT_AUTH_TIMEOUT_MS);
+
+    const clearBootTimeout = () => {
+      clearTimeout(timeout);
+    };
+
+    // Register BEFORE getSession — Supabase emits INITIAL_SESSION from the
+    // listener; on a hung getSession() (device AsyncStorage + network wedge)
+    // loading used to stay true forever and the tab gate showed endless
+    // "Checking your account…".
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (cancelled) return;
+      setSession(s);
+      setLoading(false);
+      clearBootTimeout();
+      // P1-13: keep observability identity in sync with auth state.
+      // Covers SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED.
+      syncObservabilityUser(s);
+      if (s?.user?.id) {
+        void syncProfileTimezone(supabase, s.user.id);
+      }
+      // 2026-05-05 (audit Y02) — clear non-profile AsyncStorage keys
+      // when the user signs out so the next sign-in (potentially as a
+      // different user on this device) starts with an empty
+      // cached_user_tier, fresh push-prompt-dismissed state, fresh
+      // HealthKit-written-IDs in memory, etc. Fire-and-forget — sign-
+      // out must complete even if the wipe fails.
+      if (event === "SIGNED_OUT") {
+        void clearUserScopedAsyncStorage();
+      }
+    });
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (cancelled) return;
@@ -80,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password: process.env.EXPO_PUBLIC_E2E_PASSWORD,
         });
         if (!cancelled) {
-          clearTimeout(timeout);
+          clearBootTimeout();
           setSession(signIn.session ?? null);
           setLoading(false);
           // P1-13: also stamp identity on the E2E auto-sign-in path so
@@ -91,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      clearTimeout(timeout);
+      clearBootTimeout();
       setSession(data.session);
       setLoading(false);
       // P1-13: stamp Sentry + PostHog with the user id so crashes and
@@ -104,28 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }).catch(() => {
       if (!cancelled) {
-        clearTimeout(timeout);
+        clearBootTimeout();
         setLoading(false);
-      }
-    });
-
-    // Listen for auth changes (sign in, sign out, token refresh)
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      setSession(s);
-      // P1-13: keep observability identity in sync with auth state.
-      // Covers SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED.
-      syncObservabilityUser(s);
-      if (s?.user?.id) {
-        void syncProfileTimezone(supabase, s.user.id);
-      }
-      // 2026-05-05 (audit Y02) — clear non-profile AsyncStorage keys
-      // when the user signs out so the next sign-in (potentially as a
-      // different user on the same device) starts with an empty
-      // cached_user_tier, fresh push-prompt-dismissed state, fresh
-      // HealthKit-written-IDs in memory, etc. Fire-and-forget — sign-
-      // out must complete even if the wipe fails.
-      if (event === "SIGNED_OUT") {
-        void clearUserScopedAsyncStorage();
       }
     });
 
@@ -152,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      clearBootTimeout();
       sub.subscription.unsubscribe();
       appStateSub.remove();
     };

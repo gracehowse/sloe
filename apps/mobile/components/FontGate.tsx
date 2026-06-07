@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -14,11 +14,14 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 
+function hideNativeSplash(): void {
+  void SplashScreen.hideAsync().catch(() => {});
+}
+
 /**
- * Loads Newsreader + Inter before any branded UI (including
- * `AppLaunchScreen`). Without this gate, `SupprThemeProvider` renders
- * `AppLaunchScreen` / `SloeHeaderWordmark` while `RootLayoutInner` is
- * unmounted, so `useFonts` never runs and header text falls back to system font.
+ * Loads Newsreader + Inter for branded UI. Does **not** block the router tree —
+ * blocking here previously stacked with `ThemeProvider` + auth gates and, via a
+ * require cycle through `AppLaunchScreen`, could strand cold boot on the logo.
  */
 export function FontGate({ children }: { children: React.ReactNode }) {
   const [fontsLoaded, fontError] = useFonts({
@@ -31,17 +34,22 @@ export function FontGate({ children }: { children: React.ReactNode }) {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-  const fontsReady = fontsLoaded || !!fontError;
+
+  useLayoutEffect(() => {
+    hideNativeSplash();
+  }, []);
 
   useEffect(() => {
-    if (fontsReady) {
-      void SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsReady]);
+    hideNativeSplash();
+    const retry = setInterval(hideNativeSplash, 1500);
+    return () => clearInterval(retry);
+  }, []);
 
-  if (!fontsReady) {
-    return null;
-  }
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      hideNativeSplash();
+    }
+  }, [fontsLoaded, fontError]);
 
   return children;
 }

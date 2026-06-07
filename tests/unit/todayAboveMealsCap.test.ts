@@ -63,9 +63,10 @@ describe("Today above-meals cap (web) — macro tiles to meals gap", () => {
     expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
   });
 
-  it("NorthStarBlockHost does not render between macro tiles and meals", () => {
+  it("NorthStarBlockHost renders between macro tiles and meals (Figma 654:2)", () => {
     const between = macroGridToMealsSlice(HOST_SRC);
-    expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/showAboveMealsNorthStarWeb/);
   });
 });
 
@@ -93,11 +94,14 @@ describe("Today above-meals cap (web) — canonical four primitives", () => {
 });
 
 describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
-  it("NorthStarBlockHost renders in the below-meals block, not the context IIFE", () => {
-    expect(HOST_SRC).toMatch(/Below-meals prompts \(Today premium sprint 2026-05-19\)/);
-    expect(HOST_SRC).toMatch(
-      /NorthStarBlockHost[\s\S]+?mealsForSelectedDate\.length === 0/,
-    );
+  it("NorthStarBlockHost renders above meals when calories remain (Figma 654:2)", () => {
+    const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
+    const northStarIdx = HOST_SRC.indexOf("<NorthStarBlockHost");
+    expect(mealsIdx).toBeGreaterThan(-1);
+    expect(northStarIdx).toBeGreaterThan(-1);
+    expect(northStarIdx).toBeLessThan(mealsIdx);
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStarWeb/);
+    expect(HOST_SRC).not.toMatch(/showBelowMealsNorthStarWeb/);
   });
 
   it("does not render idle Start fast in the context IIFE", () => {

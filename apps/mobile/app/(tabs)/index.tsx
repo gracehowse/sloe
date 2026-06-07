@@ -2775,6 +2775,9 @@ export default function TrackerScreen() {
   const remainingCarbs = Math.max(0, effectiveMacroTargets.carbs - totals.carbs);
   const remainingFat = Math.max(0, effectiveMacroTargets.fat - totals.fat);
 
+  const showAboveMealsNorthStar =
+    viewMode === "day" && isToday && remaining > 0;
+
   const belowMealsPromptEligible = useMemo(
     () => ({
       checkin:
@@ -2782,7 +2785,6 @@ export default function TrackerScreen() {
         isToday &&
         isCheckinBannerDay &&
         checkinBannerDismissed === false,
-      northStar: viewMode === "day" && isToday && remaining > 0,
       snap: viewMode === "day" && isToday && mealsToday.length === 0,
       nudge: viewMode === "day" && isToday && mealsToday.length > 0,
     }),
@@ -2791,17 +2793,12 @@ export default function TrackerScreen() {
       isToday,
       isCheckinBannerDay,
       checkinBannerDismissed,
-      remaining,
       mealsToday.length,
     ],
   );
 
   const showBelowMealsCheckin = isBelowMealsPromptVisible(
     "checkin",
-    belowMealsPromptEligible,
-  );
-  const showBelowMealsNorthStar = isBelowMealsPromptVisible(
-    "northStar",
     belowMealsPromptEligible,
   );
   const showBelowMealsSnap = isBelowMealsPromptVisible("snap", belowMealsPromptEligible);
@@ -5114,6 +5111,27 @@ export default function TrackerScreen() {
             vs deficit insight via the `!(remaining > 0)` gate, which we
             kept. Web parallel ships in NutritionTracker.tsx. */}
 
+        {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
+        {showAboveMealsNorthStar && (
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary}
+            remainingCalories={Math.max(0, remaining)}
+            remainingProtein={remainingProtein}
+            remainingCarbs={remainingCarbs}
+            remainingFat={remainingFat}
+            onPrimaryCta={(recipeId) => {
+              router.push(`/recipe/${recipeId}` as any);
+            }}
+            onBrowseLibrary={() => {
+              router.push("/(tabs)/library" as any);
+            }}
+            selectedDateKey={dayKey}
+            userCreatedAt={session?.user?.created_at ?? null}
+            hasEverLoggedAnyMeal={hasAnyJournalHistory}
+          />
+        )}
+
         {viewMode === "day" && (
           <ReAnimated.View
             style={[mealsEntrance.style, { marginTop: Layout.todaySectionBreak }]}
@@ -5212,31 +5230,6 @@ export default function TrackerScreen() {
           </View>
         )}
 
-        {/* D-02 (ENG-690): NorthStar block — empty-day-only. Shows
-            "what to eat next" / "log your first meal" prompts only
-            when the user hasn't logged anything yet today. Once the
-            first meal lands, showBelowMealsNorthStar flips false and
-            the block disappears so it never reads as stale clutter on
-            a populated Today screen. */}
-        {showBelowMealsNorthStar && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary}
-            remainingCalories={Math.max(0, remaining)}
-            remainingProtein={remainingProtein}
-            remainingCarbs={remainingCarbs}
-            remainingFat={remainingFat}
-            onPrimaryCta={(recipeId) => {
-              router.push(`/recipe/${recipeId}` as any);
-            }}
-            onBrowseLibrary={() => {
-              router.push("/(tabs)/library" as any);
-            }}
-            selectedDateKey={dayKey}
-            userCreatedAt={session?.user?.created_at ?? null}
-            hasEverLoggedAnyMeal={hasAnyJournalHistory}
-          />
-        )}
         {showBelowMealsCheckin && (
             <WeeklyCheckinBanner
               textColor={colors.text}

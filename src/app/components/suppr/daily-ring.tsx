@@ -107,6 +107,8 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   expanded?: boolean;
   /** Toggle expanded */
   onToggle?: () => void;
+  /** Mobile parity: long-press flips display mode + macro rings (host-coupled). */
+  onLongPressToggleDisplayMode?: () => void;
   /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
   displayMode?: CalorieRingDisplayMode;
   /**
@@ -143,10 +145,21 @@ function DailyRing({
   fatPct = 0,
   expanded = false,
   onToggle,
+  onLongPressToggleDisplayMode,
   displayMode = "remaining",
   pulse = false,
   ...props
 }: DailyRingProps) {
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const clearLongPressTimer = React.useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+  React.useEffect(() => () => clearLongPressTimer(), [clearLongPressTimer]);
   const cx = size / 2;
   const radius = ringRadius ?? Math.round(size * 0.44);
   const circumference = 2 * Math.PI * radius;
@@ -254,7 +267,7 @@ function DailyRing({
     { r: macroRadii[2], pct: fatPct, color: "var(--macro-fat)" },
   ];
 
-  const interactive = Boolean(onToggle);
+  const interactive = Boolean(onToggle || onLongPressToggleDisplayMode);
 
   return (
     <div
@@ -264,11 +277,29 @@ function DailyRing({
         className,
       )}
       style={{ width: size, height: size }}
-      onClick={interactive ? onToggle : undefined}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
+      onClick={onToggle ? onToggle : undefined}
+      onPointerDown={
+        onLongPressToggleDisplayMode
+          ? () => {
+              clearLongPressTimer();
+              longPressTimerRef.current = setTimeout(() => {
+                longPressTimerRef.current = null;
+                onLongPressToggleDisplayMode();
+              }, 500);
+            }
+          : undefined
+      }
+      onPointerUp={onLongPressToggleDisplayMode ? clearLongPressTimer : undefined}
+      onPointerLeave={
+        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
+      }
+      onPointerCancel={
+        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
+      }
+      role={onToggle ? "button" : undefined}
+      tabIndex={onToggle ? 0 : undefined}
       onKeyDown={
-        interactive
+        onToggle
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") onToggle?.();
             }

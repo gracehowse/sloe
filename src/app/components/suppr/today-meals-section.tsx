@@ -35,6 +35,7 @@ import { sheetTransition } from "../../../lib/motion";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 import { TodayScrollSectionHeader } from "./today-scroll-section-header";
+import { TodayMealsFigmaLayout } from "./today-meals-figma-layout";
 
 /**
  * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
@@ -315,26 +316,32 @@ export function TodayMealsSection({
   // animation stays alive when the flag is off. See src/lib/motion.ts.
   const redesignMotion = isFeatureEnabled("redesign_motion");
 
+  // Figma `654:2` — summary meal cards (photo + Logged + Log {slot} CTA),
+  // not TD4 `481:2` slot-grouped IconBox headers.
+  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_654");
+
   return (
     <div className="mb-6">
-      <div className="flex items-start justify-between gap-3">
-        <TodayScrollSectionHeader
-          title="Today's Meals"
-          testID="today-meals-section-header"
-          className="mb-4 flex-1 min-w-0"
-        />
-        {mealsForSelectedDate.length > 0 && (
-          <button
-            type="button"
-            onClick={onOpenDuplicateDay}
-            className="mt-1 shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
-            aria-label="Duplicate this day to another day"
-          >
-            <Icons.copyPlus className="w-3.5 h-3.5" />
-            Duplicate day…
-          </button>
-        )}
-      </div>
+      {!mealsFigmaLayout ? (
+        <div className="flex items-start justify-between gap-3">
+          <TodayScrollSectionHeader
+            title="Today's Meals"
+            testID="today-meals-section-header"
+            className="mb-4 flex-1 min-w-0"
+          />
+          {mealsForSelectedDate.length > 0 && (
+            <button
+              type="button"
+              onClick={onOpenDuplicateDay}
+              className="mt-1 shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
+              aria-label="Duplicate this day to another day"
+            >
+              <Icons.copyPlus className="w-3.5 h-3.5" />
+              Duplicate day…
+            </button>
+          )}
+        </div>
+      ) : null}
       {showQuickAdd && (
         // Design Direction 2026 (ENG-795): canonical SupprCard — soft elevation
         // under `design_system_elevation`, flat byte-for-byte when OFF.
@@ -369,6 +376,119 @@ export function TodayMealsSection({
           ) : null}
         </SupprCard>
       )}
+      {mealsFigmaLayout ? (
+        <>
+          <TodayMealsFigmaLayout
+            mealsGrouped={mealsGrouped}
+            collapsedSlots={collapsedSlots}
+            onToggleSlot={onToggleSlot}
+            onOpenAddForSlot={onOpenAddForSlot}
+            renderSlotExpanded={(sectionName, sectionMeals) => (
+              <div
+                className="border-t border-border/10"
+                data-testid={`today-meals-figma-expanded-${sectionName}`}
+              >
+                {sectionMeals.map((meal) => (
+                  <div
+                    key={meal.id}
+                    className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      {(() => {
+                        const thumbUrl = mealRowImageUrl(meal);
+                        if (thumbUrl) {
+                          return (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                            />
+                          );
+                        }
+                        return (
+                          <SourceDot
+                            source={mapMealSourceToDot(meal.source)}
+                            size={6}
+                            className="shrink-0"
+                          />
+                        );
+                      })()}
+                      <span className="truncate text-sm text-foreground">
+                        {meal.recipeTitle}
+                      </span>
+                    </div>
+                    <div className="ml-2 flex shrink-0 items-center gap-2">
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {Math.round(meal.calories)}
+                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="px-1 text-muted-foreground hover:text-foreground"
+                            aria-label={`More actions for ${meal.recipeTitle}`}
+                          >
+                            <Icons.more className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {onOpenMealNutrition ? (
+                            <DropdownMenuItem
+                              onSelect={() => onOpenMealNutrition(meal.id)}
+                            >
+                              View nutrition
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem
+                            onSelect={() => onRequestCopyMeal(meal.id)}
+                          >
+                            Copy to another day…
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setDeleteCandidate({
+                                id: meal.id,
+                                recipeTitle: meal.recipeTitle,
+                              });
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  data-testid={`today-add-food-${sectionName}`}
+                  onClick={() => onOpenAddForSlot(sectionName)}
+                  className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left text-sm font-semibold text-[var(--primary-solid)] hover:opacity-80"
+                  aria-label={`Add food to ${sectionName}`}
+                >
+                  <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
+                  Add food
+                </button>
+              </div>
+            )}
+          />
+          {mealsForSelectedDate.length > 0 ? (
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={onOpenDuplicateDay}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                aria-label="Duplicate this day to another day"
+              >
+                <Icons.copyPlus className="h-3.5 w-3.5" />
+                Duplicate day…
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : (
       <div className="flex flex-col gap-3">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           const hasMeals = sectionMeals.length > 0;
@@ -832,6 +952,7 @@ export function TodayMealsSection({
           );
         })}
       </div>
+      )}
 
       {mealsForSelectedDate.length === 0 ? (
         <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">

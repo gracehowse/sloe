@@ -29,6 +29,11 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
+vi.mock("../../lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+}));
+
 void React;
 
 const NOOP = () => undefined;

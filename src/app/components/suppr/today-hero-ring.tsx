@@ -22,7 +22,8 @@ export interface TodayHeroRingProps {
   expanded: boolean;
   onToggleExpanded: () => void;
   displayMode: CalorieRingDisplayMode;
-  onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
+  /** Mobile parity: flips remaining/consumed AND macro-ring visibility. */
+  onToggleDisplayMode: () => void;
   onPressWhy?: () => void;
   pulse?: boolean;
 }
@@ -62,24 +63,23 @@ function HeroStatusChip({ state }: { state: ChipState }) {
 
 function DisplayModeToggle({
   displayMode,
-  onDisplayModeChange,
+  onToggleDisplayMode,
 }: {
   displayMode: CalorieRingDisplayMode;
-  onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
+  onToggleDisplayMode: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onToggleDisplayMode}
       className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
-      role="group"
-      aria-label="Calorie ring display"
+      aria-label={`Showing ${displayMode} calories. Tap to switch.`}
       data-testid="today-ring-display-toggle"
     >
       {(["remaining", "consumed"] as const).map((mode) => (
-        <button
+        <span
           key={mode}
-          type="button"
-          onClick={() => onDisplayModeChange(mode)}
-          aria-pressed={displayMode === mode}
+          aria-hidden
           className={`rounded-full px-3 py-1 capitalize transition-colors ${
             displayMode === mode
               ? "bg-card text-foreground-brand shadow-sm"
@@ -87,9 +87,9 @@ function DisplayModeToggle({
           }`}
         >
           {mode}
-        </button>
+        </span>
       ))}
-    </div>
+    </button>
   );
 }
 
@@ -134,7 +134,7 @@ export function TodayHeroRing({
   expanded,
   onToggleExpanded,
   displayMode,
-  onDisplayModeChange,
+  onToggleDisplayMode,
   onPressWhy: _onPressWhy,
   pulse = false,
 }: TodayHeroRingProps) {
@@ -156,7 +156,7 @@ export function TodayHeroRing({
         <HeroStatusChip state={chipState} />
         <DisplayModeToggle
           displayMode={displayMode}
-          onDisplayModeChange={onDisplayModeChange}
+          onToggleDisplayMode={onToggleDisplayMode}
         />
       </div>
       <DailyRing
@@ -171,7 +171,9 @@ export function TodayHeroRing({
         carbsPct={carbsPct}
         fatPct={fatPct}
         expanded={expanded}
+        onToggle={onToggleExpanded}
         displayMode={displayMode}
+        onLongPressToggleDisplayMode={onToggleDisplayMode}
         pulse={pulse}
       />
       {consumed > 0 && target > 0 ? (

@@ -40,7 +40,7 @@ function baseProps(overrides: Partial<TodayHeroStatsProps> = {}): TodayHeroStats
     expanded: false,
     onToggleExpanded: () => undefined,
     displayMode: "remaining",
-    onDisplayModeChange: () => undefined,
+    onToggleDisplayMode: () => undefined,
     ...overrides,
   };
 }

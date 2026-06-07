@@ -12,6 +12,11 @@ import {
   type TodayMealsSectionProps,
 } from "../../src/app/components/suppr/today-meals-section";
 
+vi.mock("../../src/lib/analytics/track", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+}));
+
 void React;
 
 const HAM: TodayMealSectionMeal = {
