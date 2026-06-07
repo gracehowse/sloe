@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CircleCheck, Sparkles } from "lucide-react";
+import { CircleCheck, Sparkles, TrendingUp } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import {
   weeklyInsightCoachLine,
@@ -32,8 +32,9 @@ export function TodayWeeklyInsightMobileCard({
   weekDailyKcal,
   dailyKcalTarget,
 }: TodayWeeklyInsightMobileCardProps) {
-  if (!isFeatureEnabled("today-weekly-insight-mobile")) return null;
-
+  // Hooks must run unconditionally (react-hooks/rules-of-hooks): compute
+  // these before any feature-flag early return, or eslint errors and the
+  // hook order changes between the flag-on / flag-off renders.
   const dayStates = React.useMemo(
     () => computeWeekBarStates(weekDailyKcal, dailyKcalTarget),
     [weekDailyKcal, dailyKcalTarget],
@@ -42,6 +43,9 @@ export function TodayWeeklyInsightMobileCard({
     () => computeDaysOnTarget(weekDailyKcal, dailyKcalTarget),
     [weekDailyKcal, dailyKcalTarget],
   );
+
+  const figmaLayout = isFeatureEnabled("today_meals_figma_654");
+  if (!isFeatureEnabled("today-weekly-insight-mobile") && !figmaLayout) return null;
 
   const headline = weeklyInsightHeadline(loggedDaysInWeek, onTargetDays);
   const coachLine = weeklyInsightCoachLine(loggedDaysInWeek, onTargetDays);
@@ -52,6 +56,38 @@ export function TodayWeeklyInsightMobileCard({
       : loggedDaysInWeek === 1
         ? "1 day logged so far."
         : `${loggedDaysInWeek} days logged so far.`;
+
+  const proseBody =
+    coachLine ??
+    (loggedDaysInWeek === 0
+      ? loggedLine
+      : weekAvgKcal != null
+        ? `${loggedLine} ${Math.round(weekAvgKcal).toLocaleString()} kcal daily average.`
+        : loggedLine);
+
+  if (figmaLayout) {
+    return (
+      <div
+        className="md:hidden mb-4 rounded-xl border border-border bg-[color-mix(in_srgb,var(--frost-mist)_40%,transparent)] p-5"
+        data-testid="today-weekly-insight-mobile"
+        aria-label="Weekly insight"
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-1 rounded-lg border border-border/50 bg-card p-2 shadow-sm text-foreground-brand">
+            <TrendingUp className="h-5 w-5" aria-hidden />
+          </div>
+          <div>
+            <h4 className="font-[family-name:var(--font-headline)] text-lg text-foreground-brand mb-1">
+              Weekly Insight
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {proseBody}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SupprCard

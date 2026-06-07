@@ -51,7 +51,7 @@ function formatAuthError(err: unknown): string {
     lower.includes("host lookup") ||
     lower.includes("connection")
   ) {
-    return "Can't reach Suppr's servers. Try Wi‑Fi or cellular, turn off VPN or iCloud Private Relay, or confirm the Supabase project isn't paused.";
+    return "Can't reach Sloe's servers. Try Wi‑Fi or cellular, turn off VPN or iCloud Private Relay, or confirm the Supabase project isn't paused.";
   }
   return msg;
 }
@@ -165,7 +165,9 @@ export default function LoginScreen() {
   if (!hasSupabaseConfig()) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.title}>Suppr</Text>
+        <View style={styles.brandSection}>
+          <SloeHeaderWordmark fontSize={40} />
+        </View>
         <Text style={styles.errorText}>
           {"Sign-in isn't configured for this build. Use the web app or contact support."}
         </Text>
