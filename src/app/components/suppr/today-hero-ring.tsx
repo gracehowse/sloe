@@ -116,7 +116,7 @@ function RingStatCell({
         {label}
       </div>
       <div
-        className={`mt-1 font-[family-name:var(--font-headline)] text-[19px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
+        className={`mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
       >
         {value}
       </div>

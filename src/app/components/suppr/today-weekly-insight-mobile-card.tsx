@@ -105,7 +105,7 @@ export function TodayWeeklyInsightMobileCard({
         </span>
       </div>
 
-      <h3 className="font-[family-name:var(--font-headline)] text-[17px] font-medium leading-snug text-foreground-brand mb-2">
+      <h3 className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-snug text-foreground-brand mb-2">
         {headline}
       </h3>
 
@@ -196,7 +196,7 @@ function StatCell({
     <div
       className={`flex flex-col items-center text-center px-1 ${divider ? "border-l border-border" : ""}`}
     >
-      <span className="font-[family-name:var(--font-headline)] text-[17px] font-medium tabular-nums text-foreground">
+      <span className="font-[family-name:var(--font-headline)] text-[18px] font-medium tabular-nums text-foreground">
         {value}
       </span>
       <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground mt-0.5">
