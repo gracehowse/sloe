@@ -37,7 +37,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beef, Wheat, Droplets, Leaf, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Dumbbell, Wheat, Droplet, Sprout, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -296,7 +296,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "protein",
         label: "Protein",
-        Icon: Beef,
+        Icon: Dumbbell,
         current: todayMacros.protein,
         target: targets.protein,
         fillVar: "var(--macro-protein)",
@@ -321,7 +321,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fat",
         label: "Fat",
-        Icon: Droplets,
+        Icon: Droplet,
         current: todayMacros.fat,
         target: targets.fat,
         fillVar: "var(--macro-fat)",
@@ -329,7 +329,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fiber",
         label: "Fiber",
-        Icon: Leaf,
+        Icon: Sprout,
         current: todayMacros.fiber,
         target: targets.fiber,
         fillVar: "var(--success)",

@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Beef, Check, Circle, Flame, Leaf, Wheat, Droplet } from "lucide-react-native";
+import { Dumbbell, Check, Circle, Flame, Leaf, Wheat, Droplet } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -222,7 +222,7 @@ export default function ProfileScreen() {
     label: string;
     unit: string;
     color: string;
-    Icon: typeof Beef;
+    Icon: typeof Dumbbell;
   }) {
     // DRIFT-07 fix (2026-05-22): align Profile Daily Targets tile with
     // Today's macro tile visual language — uppercase label top-left,
@@ -490,7 +490,7 @@ export default function ProfileScreen() {
                 breaks the across-app convention where Protein=blue,
                 Carbs=amber, Fat=magenta. */}
             <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={Flame} />
-            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Beef} />
+            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Dumbbell} />
             <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={Wheat} />
             <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={Droplet} />
           </View>
