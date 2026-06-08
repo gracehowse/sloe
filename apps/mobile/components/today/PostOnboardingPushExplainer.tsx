@@ -10,7 +10,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -64,6 +65,9 @@ export function PostOnboardingPushExplainer(
   const { visible, onSkip, onEnable } = props;
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the bell icon ring
+  // and the "Notify me" CTA.
+  const accent = useAccent();
 
   return (
     <Modal
@@ -89,10 +93,10 @@ export function PostOnboardingPushExplainer(
           <View
             style={[
               styles.iconRing,
-              { backgroundColor: Accent.primary + "1A" },
+              { backgroundColor: accent.primary + "1A" },
             ]}
           >
-            <Bell size={28} color={Accent.primary} strokeWidth={2.25} />
+            <Bell size={28} color={accent.primary} strokeWidth={2.25} />
           </View>
 
           <Text style={[styles.heading, { color: colors.text }]}>
@@ -111,7 +115,7 @@ export function PostOnboardingPushExplainer(
             onPress={onEnable}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { backgroundColor: Accent.primary, opacity: pressed ? 0.9 : 1 },
+              { backgroundColor: accent.primary, opacity: pressed ? 0.9 : 1 },
             ]}
           >
             <Text style={styles.primaryBtnText}>Notify me</Text>

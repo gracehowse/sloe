@@ -20,6 +20,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
@@ -434,6 +435,13 @@ export default function TrackerScreen() {
     return first || undefined;
   }, [session?.user?.user_metadata]);
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Today CTAs:
+  // the add-food submit, the offline pill (border + icon), Complete Day, and
+  // the Quick-add "Logging to <slot>" caption. The plum Log FAB, meal-slot
+  // tints, macro/status hues, and source/confidence dots keep their own
+  // tokens. Threaded into the `styles` useMemo (deps include `accent`) so the
+  // StyleSheet members that paint the accent flip with the flag.
+  const accent = useAccent();
   const cardElevation = useTodayCardElevation();
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
@@ -3703,7 +3711,7 @@ export default function TrackerScreen() {
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
         submitBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
@@ -3723,13 +3731,13 @@ export default function TrackerScreen() {
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.primary + "30",
+          borderColor: accent.primary + "30",
           alignSelf: "flex-start",
         },
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
 
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, accent],
   );
 
   const loadJournal = useCallback(async () => {
@@ -4812,7 +4820,7 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <CloudOff size={14} color={Accent.primary} strokeWidth={1.75} />
+            <CloudOff size={14} color={accent.primary} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
@@ -5486,7 +5494,7 @@ export default function TrackerScreen() {
               marginTop: Spacing.lg,
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               alignItems: "center",
             }}
           >
@@ -6137,7 +6145,7 @@ export default function TrackerScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
             <View>
               <Text style={{ ...Type.headline, color: colors.text }}>Quick add</Text>
-              <Text style={{ ...Type.caption, color: Accent.primary, fontWeight: "600", marginTop: 2 }}>
+              <Text style={{ ...Type.caption, color: accent.primary, fontWeight: "600", marginTop: 2 }}>
                 Logging to {activeMealSlot}
               </Text>
             </View>

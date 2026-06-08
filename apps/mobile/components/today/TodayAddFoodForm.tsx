@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Search } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * TodayAddFoodForm — inline quick-add card with slot toggle + 4 macro
@@ -55,6 +56,10 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
     textTertiaryColor,
   } = props;
 
+  // Secondary accent (Frost flag → damson, else clay) for the active slot
+  // toggle + the Search CTA fill.
+  const accent = useAccent();
+
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Log to {activeMealSlot}</Text>
@@ -68,7 +73,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
               paddingVertical: 6,
               borderRadius: Radius.sm,
               alignItems: "center",
-              backgroundColor: activeMealSlot === s ? Accent.primary : borderColor + "30",
+              backgroundColor: activeMealSlot === s ? accent.primary : borderColor + "30",
             }}
           >
             <Text
@@ -128,7 +133,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
           <Text style={styles.submitBtnText}>Add to Today</Text>
         </Pressable>
         <Pressable
-          style={[styles.submitBtn, { flex: 1, backgroundColor: Accent.primary }]}
+          style={[styles.submitBtn, { flex: 1, backgroundColor: accent.primary }]}
           onPress={onOpenSearch}
         >
           <Search size={16} color="#fff" style={{ marginRight: 4 }} />

@@ -305,7 +305,10 @@ function MealActionRow({
   testID: string;
   colors: ReturnType<typeof useThemeColors>;
 }) {
-  const accent = danger ? Accent.destructive : Accent.primary;
+  // Secondary accent (Frost flag → damson, else clay) for the non-danger row
+  // glyph/tint. Danger keeps `Accent.destructive` (status — never secondary).
+  const themeAccent = useAccent();
+  const accent = danger ? Accent.destructive : themeAccent.primary;
   return (
     <Pressable
       testID={testID}
@@ -348,6 +351,9 @@ function MealActionSheet({
   onClose,
 }: MealActionSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the thumbnail
+  // fallback tint below.
+  const accent = useAccent();
   const thumbUrl = meal ? mealRowImageUrl(meal) : undefined;
   const kcal = meal ? Math.round(meal.calories) : 0;
 
@@ -383,8 +389,8 @@ function MealActionSheet({
                 accessibilityIgnoresInvertColors
               />
             ) : (
-              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: Accent.primary + "14" }]}>
-                <UtensilsCrossed size={22} color={Accent.primary} />
+              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: accent.primary + "14" }]}>
+                <UtensilsCrossed size={22} color={accent.primary} />
               </View>
             )}
             <View style={mas.headerMeta}>
@@ -789,8 +795,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 accessibilityLabel={`Add food to ${slot}`}
                 testID={`today-add-food-${slot}`}
               >
-                <Plus size={16} color={Accent.primary} strokeWidth={2} />
-                <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
+                <Plus size={16} color={accent.primary} strokeWidth={2} />
+                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
                   Add food
                 </Text>
               </Pressable>

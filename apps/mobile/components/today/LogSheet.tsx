@@ -30,6 +30,7 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
@@ -352,6 +353,8 @@ export function LogSheet({
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active slot pill.
+  const accent = useAccent();
 
   // Pill toggle defaults to Recent. Resets on every fresh open so a
   // returning user doesn't land on Saved if they last left the sheet
@@ -454,9 +457,9 @@ export function LogSheet({
                           // primary text on the tint is only ~3.34:1 and
                           // would fail WCAG AA 4.5:1 for this 12px label,
                           // whereas foreground clears it comfortably.
-                          borderColor: active ? Accent.primary : colors.border,
+                          borderColor: active ? accent.primary : colors.border,
                           backgroundColor: active
-                            ? Accent.primarySoft
+                            ? accent.primarySoft
                             : "transparent",
                         },
                       ]}
@@ -522,6 +525,9 @@ function LoggedConfirmation({
   confirmation: NonNullable<LogSheetProps["confirmation"]>;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Done CTA. The
+  // success check keeps `Accent.successSolid`.
+  const accent = useAccent();
   const { title, kcal, slot, source, onDone, onUndo } = confirmation;
   return (
     <View
@@ -580,10 +586,10 @@ function LoggedConfirmation({
           }}
           style={({ pressed }) => [
             styles.confirmPrimary,
-            { backgroundColor: Accent.primary, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: accent.primary, opacity: pressed ? 0.85 : 1 },
           ]}
         >
-          <Text style={{ color: Accent.primaryForeground, fontSize: 14, fontWeight: "700" }}>
+          <Text style={{ color: accent.primaryForeground, fontSize: 14, fontWeight: "700" }}>
             Done
           </Text>
         </Pressable>
@@ -838,6 +844,9 @@ function BrowseAndFooter({
   onAddManually?: () => void;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the saved-tab
+  // indicator dot.
+  const accent = useAccent();
   // The active tab can become stale if a host removes one of its
   // sources mid-flight (rare). Snap back to the first visible tab to
   // keep the content area legible.
@@ -918,7 +927,7 @@ function BrowseAndFooter({
                         width: 6,
                         height: 6,
                         borderRadius: 3,
-                        backgroundColor: Accent.primary,
+                        backgroundColor: accent.primary,
                       }}
                     />
                   ) : null}
@@ -1155,6 +1164,9 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the empty-state
+  // "Browse recipes" CTA.
+  const accent = useAccent();
   const { recipes, onPick, onBrowseRecipes, state } = library;
 
   if (state?.loading) {
@@ -1184,7 +1196,7 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
             style={({ pressed }) => [
               styles.libraryEmptyCta,
               {
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 opacity: pressed ? 0.85 : 1,
               },
             ]}
@@ -1355,6 +1367,8 @@ function BarcodeManualEntry({
   onConfirm?: NonNullable<NonNullable<LogSheetProps["barcode"]>["onConfirmManual"]>;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Log it" CTA.
+  const accent = useAccent();
   const [portion, setPortion] = React.useState("100");
   const [kcal, setKcal] = React.useState("");
   const [protein, setProtein] = React.useState("");
@@ -1492,7 +1506,7 @@ function BarcodeManualEntry({
           height: 44,
           // Sloe DS — pill-soft CTA (mirrors web `rounded-xl`).
           borderRadius: Radius.xl,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           alignItems: "center",
           justifyContent: "center",
         }}

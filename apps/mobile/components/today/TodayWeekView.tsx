@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -220,6 +221,11 @@ export function TodayWeekView(props: TodayWeekViewProps) {
   const maxCal = Math.max(1, ...days.map((d, i) => Math.max(d.totals.calories, dayGoals[i] ?? calorieTarget)));
   const todayDk = dateKeyFromDate(new Date());
   const reduceMotion = useReduceMotion();
+  // Secondary accent (Frost flag → damson, else clay) for the calorie-chart
+  // accent series: logged-under bars, the scrubbed/current-day highlight, the
+  // target rule, and the "Daily avg" figure. The over-budget amber + the
+  // deficit/surplus status hues keep their own `Accent.warning`/`.success`.
+  const accent = useAccent();
 
   /** Tap-to-scrub: the bar index whose tooltip is currently visible.
    *  `null` means no tooltip is open. */
@@ -277,7 +283,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
               const barColor = over
                 ? Accent.warning + "CC"
                 : day.totals.calories > 0
-                  ? Accent.primary
+                  ? accent.primary
                   : borderColor;
               return (
                 <Pressable
@@ -310,7 +316,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
                   <AnimatedBar
                     targetHeight={barHeight}
                     width={isScrubbed ? 32 : 28}
-                    color={isScrubbed ? Accent.primary : barColor}
+                    color={isScrubbed ? accent.primary : barColor}
                     delayMs={i * 40}
                     reduceMotion={reduceMotion}
                   />
@@ -318,7 +324,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
                     style={{
                       fontSize: 11,
                       fontWeight: isCurrentDay || isScrubbed ? "800" : "600",
-                      color: isCurrentDay || isScrubbed ? Accent.primary : textSecondaryColor,
+                      color: isCurrentDay || isScrubbed ? accent.primary : textSecondaryColor,
                     }}
                   >
                     {day.short}
@@ -347,7 +353,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
                 right: 0,
                 height: 0,
                 borderTopWidth: 1,
-                borderTopColor: Accent.primary + "66",
+                borderTopColor: accent.primary + "66",
                 borderStyle: "dashed",
                 transform: [{ translateY: -targetRuleY }],
               }}
@@ -393,7 +399,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Total kcal</Text>
           </View>
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontSize: 24, fontWeight: "800", color: Accent.primary, fontVariant: ["tabular-nums"] }}>
+            <Text style={{ fontSize: 24, fontWeight: "800", color: accent.primary, fontVariant: ["tabular-nums"] }}>
               {Math.round(weekAvg.calories)}
             </Text>
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>

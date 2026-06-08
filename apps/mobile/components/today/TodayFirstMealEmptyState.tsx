@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 
 /**
@@ -47,6 +48,9 @@ export function TodayFirstMealEmptyState({
   void _cardColor;
   void _cardBorderColor;
   const showTip = isBrandNew && !tipDismissed;
+  // Secondary accent (Frost flag → damson, else clay) for the "Log a meal"
+  // CTA. Web parity flips via the `.flag-frost` CSS cascade.
+  const accent = useAccent();
   return (
     <SupprCard
       lift="flat"
@@ -96,7 +100,7 @@ export function TodayFirstMealEmptyState({
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: Radius.md,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           marginTop: 4,
         }}
       >

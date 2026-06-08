@@ -36,7 +36,8 @@
 import { Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface WeeklyCheckinBannerProps {
@@ -52,6 +53,9 @@ export function WeeklyCheckinBanner({
   onOpen,
   onDismiss,
 }: WeeklyCheckinBannerProps) {
+  // Secondary accent (Frost flag → damson, else clay) for the eyebrow + the
+  // OPEN CTA. The nudge accent rides the content, not the (neutral) card.
+  const accent = useAccent();
   return (
     <SupprCard
       lift="flat"
@@ -65,13 +69,13 @@ export function WeeklyCheckinBanner({
       }}
     >
       <View style={{ flex: 1 }}>
-        {/* Clay eyebrow — the nudge accent now lives in the CONTENT, not a
+        {/* Accent eyebrow — the nudge accent now lives in the CONTENT, not a
             card border (the slab is neutral cream like every Today card). */}
         <Text
           style={{
             fontSize: 10,
             fontWeight: "700",
-            color: Accent.primary,
+            color: accent.primary,
             letterSpacing: 1,
           }}
         >
@@ -107,7 +111,7 @@ export function WeeklyCheckinBanner({
           paddingHorizontal: 12,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         }}
       >
         <Text

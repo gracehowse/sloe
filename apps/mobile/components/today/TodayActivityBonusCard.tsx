@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -164,6 +165,11 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   // lifted honey on dark; both clear AA. Mirrors web `--activity-solid`.
   const activitySolid =
     useColorScheme() === "dark" ? Accent.activitySolidDark : Accent.activitySolid;
+  // Secondary accent (Frost flag → damson, else clay) for the two CTAs on this
+  // card (the "Enable activity budget" discover button + the popover "Close").
+  // The honey activity data (flame/arc/kcal via `Accent.activity*`), the sage/
+  // amber status hues, and the energy-balance track stay on their own tokens.
+  const accent = useAccent();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
@@ -295,7 +301,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
               }}
             >
               <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
@@ -398,6 +404,12 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             >
               <Svg width="100%" height={10}>
                 <Defs>
+                  {/* Energy-balance scale (deficit→maintenance→surplus) — a
+                      DATA track, not a CTA, so the surplus end stays warm and
+                      does NOT follow the Frost accent. (The TD1 spec calls for
+                      amber `#C9892C` at the surplus end, not clay
+                      `Accent.primary` — a separate latent fix, out of scope for
+                      the Frost flag: see ENG-997 follow-up.) */}
                   <LinearGradient id="energyBalanceTrack" x1="0" y1="0" x2="1" y2="0">
                     <Stop offset="0" stopColor={Accent.success} />
                     <Stop offset="0.5" stopColor={borderColor} />
@@ -514,6 +526,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 2 }}>Workouts</Text>
           {dayWorkouts.map((w, i) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
+              {/* Workout-row glyph stays warm (activity context, not a CTA) —
+                  intentionally NOT migrated to the Frost accent. */}
               <Ionicons name="barbell-outline" size={16} color={Accent.primary} />
               <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{w.type}</Text>
               <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
@@ -723,7 +737,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 onPress={() => setInfoOpen(false)}
                 style={{ marginTop: Spacing.sm, paddingVertical: 8, alignItems: "flex-end" }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>Close</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary }}>Close</Text>
               </Pressable>
             </View>
           </Pressable>

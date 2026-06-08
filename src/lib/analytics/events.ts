@@ -55,6 +55,28 @@ export const AnalyticsEvents = {
    */
   recipe_import_pipeline_stage: "recipe_import_pipeline_stage",
   /**
+   * Supadata acquisition (ENG-994, 2026-06-08) — SERVER-side, fires once
+   * per URL import after the acquisition adapter runs (BEFORE the existing
+   * extraction step), behind the `supadata-acquisition` flag. Measures how
+   * often Supadata acquisition succeeds vs falls back to the existing
+   * scrape/oEmbed path — the data needed to decide whether to ramp the flag.
+   *
+   * Payload contract:
+   *   {
+   *     adapter: "supadata",
+   *     kind: "scrape" | "transcript" | null,   // null when acquisition failed
+   *     platform: "blog" | "instagram" | "tiktok" | "youtube" | "unknown",
+   *     outcome: "acquired" | "fallback",        // fallback → existing path ran
+   *     reason?: "not_configured" | "rate_limited" | "blocked_by_policy"
+   *            | "empty" | "error",              // present when outcome === "fallback"
+   *     contentChars?: number,                   // length of acquired content (acquired only)
+   *   }
+   *
+   * Fired via `serverTrack`; `distinctId` is the request user id. No raw
+   * URLs or content in the payload (PII / content-rights hygiene).
+   */
+  recipe_acquisition: "recipe_acquisition",
+  /**
    * Import-progress v2 (2026-06-08) — CLIENT-side, fires when one import
    * job advances to a new *user-visible* stage in the staged-progress +
    * queue UX (`import-progress-v2` flag). Distinct from the SERVER-side

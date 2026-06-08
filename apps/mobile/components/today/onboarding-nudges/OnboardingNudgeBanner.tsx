@@ -3,7 +3,8 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { BookOpen, Heart, Link2 } from "lucide-react-native";
 
-import { Accent, FontWeight, Radius, Spacing } from "@/constants/theme";
+import { FontWeight, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions } from "@/lib/healthSync";
@@ -142,6 +143,9 @@ export function OnboardingNudgeBanner({
   const { session } = useAuth();
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the nudge card tint,
+  // icon, and primary CTA. Read before the early return so the hook is stable.
+  const accent = useAccent();
   const userId = session?.user?.id ?? null;
   const [busy, setBusy] = React.useState(false);
 
@@ -275,9 +279,9 @@ export function OnboardingNudgeBanner({
         marginTop: Spacing.sm,
         padding: Spacing.md,
         borderRadius: Radius.md,
-        backgroundColor: Accent.primary + "0A",
+        backgroundColor: accent.primary + "0A",
         borderWidth: 1,
-        borderColor: Accent.primary + "30",
+        borderColor: accent.primary + "30",
       }}
     >
       <View
@@ -294,10 +298,10 @@ export function OnboardingNudgeBanner({
             borderRadius: Radius.sm,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: Accent.primary + "1A",
+            backgroundColor: accent.primary + "1A",
           }}
         >
-          <Icon size={16} color={Accent.primary} strokeWidth={2.25} />
+          <Icon size={16} color={accent.primary} strokeWidth={2.25} />
         </View>
         <View style={{ flex: 1 }}>
           <Text
@@ -353,7 +357,7 @@ export function OnboardingNudgeBanner({
             paddingHorizontal: Spacing.lg,
             height: 36,
             borderRadius: Radius.sm + 2,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,

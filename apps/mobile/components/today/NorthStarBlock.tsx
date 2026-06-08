@@ -27,7 +27,8 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Accent, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -126,6 +127,11 @@ export function NorthStarBlock({
 }: NorthStarBlockProps) {
   const colors = useThemeColors();
   const reduceMotion = useReduceMotion();
+  // Secondary accent (Frost flag → damson, else clay) for the Browse link, the
+  // "What to eat next" overline, and the suggestion CTA. Read before the early
+  // returns so the hook is always called. The band-fit green chip + plum keep
+  // their own tokens.
+  const accent = useAccent();
 
   if (kind === "over-budget") {
     return (
@@ -210,7 +216,7 @@ export function NorthStarBlock({
           <Text
             style={[
               Type.caption,
-              { color: Accent.primary, fontWeight: "700" },
+              { color: accent.primary, fontWeight: "700" },
             ]}
           >
             Browse →
@@ -390,6 +396,10 @@ function NorthStarDefault({
   colors,
   testID,
 }: NorthStarDefaultProps) {
+  // Secondary accent (Frost flag → damson, else clay) for the "What to eat
+  // next" overline + the suggestion CTA. The band-fit green chip + plum keep
+  // their own tokens.
+  const accent = useAccent();
   // Pan responder for swipe-to-skip. We use raw PanResponder rather
   // than reanimated here because the block is a single-state gesture
   // (commit on release > threshold) — the simplicity of PanResponder
@@ -498,11 +508,11 @@ function NorthStarDefault({
 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Sparkles size={IconSize.xs} color={Accent.primary} />
+            <Sparkles size={IconSize.xs} color={accent.primary} />
             <Text
               style={{
                 ...Type.label,
-                color: Accent.primary,
+                color: accent.primary,
               }}
             >
               What to eat next
@@ -596,9 +606,10 @@ function NorthStarDefault({
               previously used solid Accent.primary, matching the
               persistent Today FAB and creating two competing
               same-colour buttons within a thumb's reach. Demote to
-              a subtle-fill variant (8% Accent + Accent text) so the
+              a subtle-fill variant (8% accent + accent text) so the
               FAB stays the loudest pixel and this card reads as a
-              suggestion, not a demand. */}
+              suggestion, not a demand. (Accent flag-aware → damson
+              under Frost; the plum FAB is unchanged.) */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={ctaLabel}
@@ -606,14 +617,14 @@ function NorthStarDefault({
             style={({ pressed }) => [
               styles.cta,
               {
-                backgroundColor: `${Accent.primary}14`,
+                backgroundColor: `${accent.primary}14`,
                 marginTop: 8,
                 alignSelf: "flex-start",
                 opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
-            <Text style={[styles.ctaLabel, { color: Accent.primary }]}>{ctaLabel}</Text>
+            <Text style={[styles.ctaLabel, { color: accent.primary }]}>{ctaLabel}</Text>
           </Pressable>
         </View>
       </SupprCard>

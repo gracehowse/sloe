@@ -249,6 +249,16 @@ function DailyRing({
   const winEnabled = isFeatureEnabled("redesign_winmoment");
   const celebrating = pulse && winEnabled && !isEmpty && !isOverBudget;
 
+  // Frost secondary-colour flag (`brand_frost_secondary`). SVG `stroke` can't
+  // reference the CSS `--accent-win-gradient` token, so the celebration arc
+  // paints an inline `<linearGradient>` whose mid (clay → damson) + end
+  // (amber → honey) stops mirror the `.flag-frost --accent-win-gradient`
+  // override in `theme.css` and the mobile `AccentWinGradientFrost`. Plum
+  // start holds. Flag OFF keeps the byte-identical clay gradient.
+  const frostOn = isFeatureEnabled("brand_frost_secondary");
+  const winMidStop = frostOn ? "#6A4B7A" : "#C8794E";
+  const winEndStop = frostOn ? "#D6A24A" : "#C9892C";
+
   // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
   // macro arc stroke 5 → 7. The web ring is bigger than mobile
   // (160 vs 140) so it can carry the same proportional bump
@@ -315,14 +325,17 @@ function DailyRing({
       >
         <defs>
           {/* Win-moment celebration gradient — mirrors the
-              `--accent-win-gradient` token (Sloe brand gradient #3B2A4D →
-              #C8794E → #C9892C, 120°; Phase 0 dossier D-3). SVG `stroke` can't
-              take a CSS `linear-gradient()`, so the celebration arc references
-              this def. Only painted while `celebrating`. */}
+              `--accent-win-gradient` token (Sloe brand gradient plum →
+              clay/damson → amber/honey, 120°; Phase 0 dossier D-3). SVG
+              `stroke` can't take a CSS `linear-gradient()`, so the celebration
+              arc references this def; the mid + end stops read the
+              `brand_frost_secondary` flag (clay→damson, amber→honey) to stay in
+              lockstep with the `.flag-frost` token + mobile
+              `AccentWinGradientFrost`. Only painted while `celebrating`. */}
           <linearGradient id="winSpectrum" x1="0%" y1="0%" x2="86%" y2="50%">
             <stop offset="0%" stopColor="#3B2A4D" />
-            <stop offset="50%" stopColor="#C8794E" />
-            <stop offset="100%" stopColor="#C9892C" />
+            <stop offset="50%" stopColor={winMidStop} />
+            <stop offset="100%" stopColor={winEndStop} />
           </linearGradient>
         </defs>
         <circle

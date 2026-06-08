@@ -23,6 +23,40 @@ function emit(userId: string | null, payload: Record<string, unknown>): void {
   void serverTrack(AnalyticsEvents.recipe_import_pipeline_stage, userId, payload);
 }
 
+/** Stage 0 — acquisition (ENG-994). Fires once per URL import after the
+ *  Supadata acquisition adapter runs and BEFORE extraction, behind the
+ *  `supadata-acquisition` flag. `outcome` is `acquired` when Supadata produced
+ *  usable content, or `fallback` when the route fell through to the existing
+ *  scrape/oEmbed path (with `reason`). Emits the dedicated `recipe_acquisition`
+ *  event (not `recipe_import_pipeline_stage`) so the acquisition funnel is
+ *  queryable on its own. Never carries the URL or the content itself — only
+ *  shape + length. */
+export function traceAcquisition(
+  userId: string | null,
+  result:
+    | { outcome: "acquired"; adapter: string; kind: "scrape" | "transcript"; platform: string; contentChars: number }
+    | { outcome: "fallback"; adapter: string; platform: string; reason: string },
+): void {
+  if (!userId) return;
+  const payload: Record<string, unknown> =
+    result.outcome === "acquired"
+      ? {
+          adapter: result.adapter,
+          kind: result.kind,
+          platform: result.platform,
+          outcome: "acquired",
+          contentChars: result.contentChars,
+        }
+      : {
+          adapter: result.adapter,
+          kind: null,
+          platform: result.platform,
+          outcome: "fallback",
+          reason: result.reason,
+        };
+  void serverTrack(AnalyticsEvents.recipe_acquisition, userId, payload);
+}
+
 /** Stage 1 — extraction. Fires after the title + ingredients[] have
  *  been pulled out of the source (HTML / image / caption). */
 export function traceExtraction(

@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -149,6 +150,11 @@ export function WeeklyInsightCard({
     [dayStates],
   );
 
+  // Secondary accent (Frost flag → damson, else clay) for the overline +
+  // on-target week-bar pills. Read before the early return so the hook is
+  // always called. Sage check + plum headline keep their own tokens.
+  const accent = useAccent();
+
   const figmaLayout = isFeatureEnabled("today_meals_figma_654");
   if (!isFeatureEnabled("today-weekly-insight-mobile") && !figmaLayout) return null;
 
@@ -221,10 +227,11 @@ export function WeeklyInsightCard({
       testID="today-weekly-insight-mobile"
       accessibilityLabel="Weekly insight"
     >
-      {/* Clay sparkle overline (frame: `text-clay` sparkle + uppercase). */}
+      {/* Accent sparkle overline (frame: `text-clay` sparkle + uppercase;
+          flag-aware → damson under Frost). */}
       <View style={styles.headerRow}>
-        <Sparkles size={15} color={Accent.primarySolid} strokeWidth={1.75} />
-        <Text style={[styles.headerLabel, { color: Accent.primarySolid }]}>
+        <Sparkles size={15} color={accent.primarySolid} strokeWidth={1.75} />
+        <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
           WEEKLY INSIGHT
         </Text>
       </View>
@@ -270,9 +277,9 @@ export function WeeklyInsightCard({
         />
       </View>
 
-      {/* 7-segment week bar — one pill per day. On-target → clay; logged
-          but off the band → faded clay; no log → line. Derived only from
-          data already on screen. */}
+      {/* 7-segment week bar — one pill per day. On-target → accent; logged
+          but off the band → faded accent; no log → line. Derived only from
+          data already on screen. (Accent flag-aware → damson under Frost.) */}
       <View
         style={styles.weekBar}
         accessibilityRole="image"
@@ -291,9 +298,9 @@ export function WeeklyInsightCard({
               borderRadius: Radius.full,
               backgroundColor:
                 state === "onTarget"
-                  ? Accent.primary
+                  ? accent.primary
                   : state === "loggedOff"
-                    ? `${Accent.primary}66`
+                    ? `${accent.primary}66`
                     : _borderColor,
             }}
           />

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { IconSize, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import type { ThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -53,6 +54,8 @@ export function PortionStepper({
   testIDPrefix = "portion",
 }: PortionStepperProps) {
   const [text, setText] = useState(formatMultiplier(value));
+  // Secondary accent (Frost flag → damson, else clay) for the active chip.
+  const accent = useAccent();
 
   // Re-sync the buffer whenever the canonical value changes (± / chip /
   // external reset) so the field always reflects the committed state.
@@ -107,8 +110,8 @@ export function PortionStepper({
               style={[
                 s.chip,
                 {
-                  borderColor: active ? Accent.primary : colors.border,
-                  backgroundColor: active ? Accent.primarySoft : "transparent",
+                  borderColor: active ? accent.primary : colors.border,
+                  backgroundColor: active ? accent.primarySoft : "transparent",
                 },
               ]}
             >

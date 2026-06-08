@@ -29,7 +29,8 @@ export function SloeCheckIcon({ className }: { className?: string }) {
   );
 }
 
-/** Sloe stroke plus — Figma `654:2` Log {slot} CTA (clay). */
+/** Sloe stroke plus — Figma `654:2` Log {slot} CTA. Tinted via the flag-aware
+ *  `text-primary-solid` token at the call site (clay flag-off, damson flag-on). */
 export function SloePlusIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -180,7 +181,7 @@ export function TodayMealsFigmaLayout({
             className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card-lg)] bg-card p-4 min-h-[58px] transition-colors hover:bg-muted/30"
             aria-label={`Log ${nextSlot}`}
           >
-            <span className="text-[var(--clay,#C8794E)]">
+            <span className="text-primary-solid">
               <SloePlusIcon className="h-5 w-5" />
             </span>
             <span className="font-medium text-[#6a6072]">
