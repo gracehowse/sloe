@@ -1,8 +1,9 @@
 import * as React from "react";
 import { View, Text } from "react-native";
 import { Sparkles } from "lucide-react-native";
-import { Accent, Radius } from "@/constants/theme";
+import { Radius } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -35,6 +36,10 @@ export function MobileAppChoiceStep() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the post-pick
+  // confirmation note's tinted box + sparkles glyph. The OptionCards flip via
+  // their own `useAccent`.
+  const accent = useAccent();
   const options = React.useMemo(() => buildAppChoiceOptions(), []);
 
   const choose = React.useCallback(
@@ -87,15 +92,15 @@ export function MobileAppChoiceStep() {
             alignItems: "flex-start",
             padding: 12,
             borderRadius: Radius.md,
-            backgroundColor: Accent.primary + "0D",
+            backgroundColor: accent.primary + "0D",
             borderWidth: 1,
-            borderColor: Accent.primary + "26",
+            borderColor: accent.primary + "26",
           }}
           accessibilityLabel="app-choice-followup"
         >
           <Sparkles
             size={14}
-            color={Accent.primaryLight}
+            color={accent.primaryLight}
             style={{ marginTop: 1 }}
           />
           <Text

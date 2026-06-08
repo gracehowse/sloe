@@ -7,8 +7,8 @@ import {
   TrendingUp,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Goal } from "@/lib/onboarding";
 import { useOnboarding } from "../context";
@@ -42,6 +42,9 @@ export function MobileGoalStep() {
   const { state, set, go } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the selected option's
+  // icon tint. The card chrome itself flips via `OptionCard`'s own `useAccent`.
+  const accent = useAccent();
   // 2026-05-14 (premium-bar audit B cross-cutting #6): single-choice
   // steps auto-advance after a 200ms hold so the selection state
   // registers visually before transition. Pattern mirrored on Sex +
@@ -84,7 +87,7 @@ export function MobileGoalStep() {
               icon={
                 <g.Icon
                   size={20}
-                  color={selected ? Accent.primaryLight : colors.icon}
+                  color={selected ? accent.primaryLight : colors.icon}
                   strokeWidth={2.25}
                 />
               }

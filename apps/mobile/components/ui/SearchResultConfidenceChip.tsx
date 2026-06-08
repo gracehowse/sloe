@@ -52,6 +52,11 @@ const defaultLabel: Record<SearchResultConfidenceTier, string> = {
 // tokens — `Accent.primary` (blue) and `Accent.win` (the landmark amber,
 // the closest warm-amber to the prototype's #bf8324 without reaching for
 // the orange `warning` slot which reads as "over-budget").
+//
+// HELD WARM (Frost flag `brand_frost_secondary`, ENG-997): the `verified` fg
+// stays `Accent.primary` (clay) and does NOT migrate to `useAccent()`. This is
+// a CONFIDENCE / provenance indicator, not a CTA — per the ship plan, confidence
+// chips/dots stay warm regardless of the flag (only true CTAs flip to damson).
 const TIER_STYLE: Record<
   SearchResultConfidenceTier,
   { bg: string; fg: string }

@@ -46,6 +46,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions, syncHealthData } from "@/lib/healthSync";
@@ -112,6 +113,11 @@ export function MobileDataBridgesStep() {
 function ManualTargetsCard() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the card's leading
+  // glyph. The kcal field label stays clay deliberately (calories identity —
+  // calories→plum reconciliation is a separate follow-up per the ship plan's
+  // open Q1); the P/C/F field labels keep their `MacroColors`.
+  const accent = useAccent();
   // Mirror state.* into local string buffers so the user can clear
   // a field mid-edit (numeric inputs don't tolerate empty-string
   // round-trips through Number).
@@ -146,11 +152,13 @@ function ManualTargetsCard() {
   return (
     <BridgeCard
       icon="calculator-outline"
-      iconColor={Accent.primaryLight}
+      iconColor={accent.primaryLight}
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >
       <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+        {/* kcal label held clay (calories identity, not the secondary accent) —
+            calories→plum reconciliation is a separate follow-up (ship plan Q1). */}
         <TargetInput
           label="kcal"
           value={kcal}
@@ -257,6 +265,10 @@ function TargetInput({
 function AppleHealthCard({ userId }: { userId: string | null }) {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Open Settings"
+  // link and the "Allow Health access" CTA. The card's heart glyph keeps
+  // `MacroColors.fat`, and the permission-error box keeps `Accent.warning`.
+  const accent = useAccent();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.healthGranted === true;
@@ -323,7 +335,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             {error}
           </Text>
           <Pressable onPress={onOpenSettings}>
-            <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primaryLight }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primaryLight }}>
               Open Settings
             </Text>
           </Pressable>
@@ -340,16 +352,16 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             marginTop: 12,
             height: 40,
             borderRadius: 12,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,
           })}
         >
           {busy ? (
-            <ActivityIndicator color={Accent.primaryForeground} size="small" />
+            <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Allow Health access
             </Text>
           )}
@@ -365,6 +377,9 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
 
 function NotificationsCard({ userId }: { userId: string | null }) {
   const { state, set } = useOnboarding();
+  // Secondary accent (Frost flag → damson, else clay) for the "Turn on" CTA.
+  // The card's bell glyph + the permission-error text keep `Accent.warning`.
+  const accent = useAccent();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.notifGranted === true;
@@ -432,16 +447,16 @@ function NotificationsCard({ userId }: { userId: string | null }) {
             marginTop: 12,
             height: 40,
             borderRadius: 12,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,
           })}
         >
           {busy ? (
-            <ActivityIndicator color={Accent.primaryForeground} size="small" />
+            <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Turn on
             </Text>
           )}

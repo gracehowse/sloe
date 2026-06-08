@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View, ViewStyle, StyleProp } from "react-native";
-import { Accent, Radius } from "@/constants/theme";
+import { Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
@@ -32,6 +33,9 @@ export function MobileSegmented<T extends string = string>({
 }: MobileSegmentedProps<T>) {
   const colors = useThemeColors();
   const haptics = useHaptics();
+  // Secondary accent (Frost flag → damson, else clay) for the selected
+  // segment's soft fill + label. The unselected label keeps `textSecondary`.
+  const accent = useAccent();
   return (
     <View
       accessibilityRole="radiogroup"
@@ -67,14 +71,14 @@ export function MobileSegmented<T extends string = string>({
               borderRadius: Radius.sm,
               // Canonical 2026-05-22: selected = soft fill + primary text,
               // NOT solid indigo. Solid reserved for primary action only.
-              backgroundColor: on ? Accent.primarySoft : "transparent",
+              backgroundColor: on ? accent.primarySoft : "transparent",
             }}
           >
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: on ? Accent.primary : colors.textSecondary,
+                color: on ? accent.primary : colors.textSecondary,
               }}
             >
               {opt.label}

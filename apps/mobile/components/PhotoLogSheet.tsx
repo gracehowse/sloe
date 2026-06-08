@@ -55,6 +55,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ArrowRight, Camera, Images, Plus, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   averageConfidence,
@@ -144,6 +145,11 @@ export default function PhotoLogSheet({
   // (`navPrimary`) for the serif sheet title isn't in that contract, so
   // read it from the shared theme hook here.
   const themeColors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the camera affordance,
+  // the parsing spinner, the tinted preview frame, and the primary CTAs (Log /
+  // Add). Low-confidence rows keep `Accent.warning` (amber) and errors keep
+  // `Accent.destructive`.
+  const accent = useAccent();
   const [stage, setStage] = useState<Stage>("pick");
   const [asset, setAsset] = useState<PickedAsset | null>(null);
   const [items, setItems] = useState<PhotoLogItemRanged[]>([]);
@@ -577,14 +583,14 @@ export default function PhotoLogSheet({
                       paddingVertical: 12,
                       alignItems: "center",
                       borderRadius: Radius.md,
-                      backgroundColor: Accent.primary + "22",
+                      backgroundColor: accent.primary + "22",
                       flexDirection: "row",
                       justifyContent: "center",
                       gap: 6,
                     }}
                   >
-                    <Camera size={IconSize.base} color={Accent.primary} strokeWidth={2.25} />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>Camera</Text>
+                    <Camera size={IconSize.base} color={accent.primary} strokeWidth={2.25} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary }}>Camera</Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -615,7 +621,7 @@ export default function PhotoLogSheet({
 
             {stage === "analysing" && (
               <View style={{ alignItems: "center", paddingVertical: Spacing.xl, gap: 10 }}>
-                <ActivityIndicator size="small" color={Accent.primary} />
+                <ActivityIndicator size="small" color={accent.primary} />
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>Analysing your photo…</Text>
               </View>
             )}
@@ -739,7 +745,7 @@ export default function PhotoLogSheet({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: Accent.primary + "1A",
+                    backgroundColor: accent.primary + "1A",
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     borderRadius: Radius.md,
@@ -864,7 +870,7 @@ export default function PhotoLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: asset ? Accent.primary : colors.cardBorder,
+                    backgroundColor: asset ? accent.primary : colors.cardBorder,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Analyse</Text>
@@ -880,7 +886,7 @@ export default function PhotoLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary,
+                    backgroundColor: accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
@@ -897,7 +903,7 @@ export default function PhotoLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
+                    backgroundColor: items.length === 0 ? colors.cardBorder : accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>

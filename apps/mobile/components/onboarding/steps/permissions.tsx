@@ -2,6 +2,7 @@ import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions } from "@/lib/healthSync";
@@ -164,6 +165,11 @@ function PermissionCard({
   onSkip: () => void;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Allow" CTA + the
+  // "Undo / Try again" link. The card's per-permission glyph (Health = fat,
+  // Notifications = warning), the granted border/badge (`Accent.success*`), and
+  // the disabled state keep their own tokens.
+  const accent = useAccent();
   return (
     <View
       style={{
@@ -231,7 +237,7 @@ function PermissionCard({
                 style={{
                   fontSize: 12,
                   fontWeight: "700",
-                  color: busy ? colors.textTertiary : Accent.primaryLight,
+                  color: busy ? colors.textTertiary : accent.primaryLight,
                 }}
               >
                 {busy ? "Asking…" : errorMessage ? "Try again" : "Undo"}
@@ -251,13 +257,13 @@ function PermissionCard({
               flex: 1,
               height: 40,
               borderRadius: 12,
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               alignItems: "center",
               justifyContent: "center",
               opacity: busy ? 0.6 : pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               {busy ? "Asking…" : "Allow"}
             </Text>
           </Pressable>

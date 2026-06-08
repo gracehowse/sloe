@@ -30,6 +30,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
@@ -45,6 +46,11 @@ export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for this screen's CTAs,
+  // scan-frame, preset/retry/manual chips, and serving hint. Threaded into the
+  // `styles` useMemo (deps below). The Log/Use button keeps `Accent.success`
+  // (green commit) and the error icon keeps `Accent.destructive`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -415,7 +421,7 @@ export default function BarcodeScreen() {
           width: "80%",
           height: "30%",
           borderWidth: 2,
-          borderColor: Accent.primary + "80",
+          borderColor: accent.primary + "80",
           borderRadius: Radius.lg,
         },
         overlay: {
@@ -435,7 +441,7 @@ export default function BarcodeScreen() {
         permIcon: { marginBottom: Spacing.sm },
         permText: { color: colors.textSecondary, fontSize: 16, textAlign: "center", maxWidth: 280 },
         permBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           paddingHorizontal: Spacing.xxl,
           paddingVertical: 14,
           borderRadius: Radius.md,
@@ -474,11 +480,11 @@ export default function BarcodeScreen() {
           paddingVertical: 5,
           borderRadius: Radius.sm,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: Accent.primary + "55",
+          borderColor: accent.primary + "55",
           ...(cardElevation.shadowStyle ?? {}),
         },
-        presetChipSelected: { backgroundColor: Accent.primary + "22", borderColor: Accent.primary },
-        presetChipText: { fontSize: 11, fontWeight: "600" as const, color: Accent.primary },
+        presetChipSelected: { backgroundColor: accent.primary + "22", borderColor: accent.primary },
+        presetChipText: { fontSize: 11, fontWeight: "600" as const, color: accent.primary },
         btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xs },
         logBtn: {
           flex: 2,
@@ -506,24 +512,24 @@ export default function BarcodeScreen() {
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: Accent.primary + "55",
+          borderColor: accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.sm,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        retryBtnText: { color: Accent.primary, fontWeight: "600" },
+        retryBtnText: { color: accent.primary, fontWeight: "600" },
         manualEntryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: Accent.primary + "55",
+          borderColor: accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.xs,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        manualEntryBtnText: { color: Accent.primary, fontWeight: "600" },
+        manualEntryBtnText: { color: accent.primary, fontWeight: "600" },
         manualOverlay: {
           position: "absolute",
           left: 0,
@@ -546,7 +552,7 @@ export default function BarcodeScreen() {
           fontSize: 15,
         },
         manualInputRow: { flexDirection: "row", gap: Spacing.sm },
-        corrLink: { color: Accent.primary, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },
+        corrLink: { color: accent.primary, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },
         corrOverlay: {
           position: "absolute" as const,
           left: 0,
@@ -561,13 +567,13 @@ export default function BarcodeScreen() {
         corrTitle: { color: "#fff", fontWeight: "700" as const, fontSize: 18 },
         corrSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
       }),
-    [colors, insets.bottom, cardElevation],
+    [colors, insets.bottom, cardElevation, accent],
   );
 
   if (!permission) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Accent.primary} />
+        <ActivityIndicator size="large" color={accent.primary} />
         <Text style={styles.permText}>Checking camera permission…</Text>
       </View>
     );
@@ -638,7 +644,7 @@ export default function BarcodeScreen() {
       <View style={styles.overlay}>
         {loading && (
           <>
-            <ActivityIndicator size="small" color={Accent.primary} />
+            <ActivityIndicator size="small" color={accent.primary} />
             <Text style={styles.hint}>Looking up product…</Text>
           </>
         )}
@@ -684,7 +690,7 @@ export default function BarcodeScreen() {
               />
             </View>
             {rememberedPortion != null && rememberedPortion > 0 ? (
-              <Text style={[styles.servingHint, { color: Accent.primary }]}>
+              <Text style={[styles.servingHint, { color: accent.primary }]}>
                 You usually log {Math.round(rememberedPortion)} g — using that.
               </Text>
             ) : (
@@ -746,7 +752,7 @@ export default function BarcodeScreen() {
             )}
             <View style={styles.btnRow}>
               <Pressable
-                style={[styles.logBtn, searchRedesign && { backgroundColor: Accent.primary }]}
+                style={[styles.logBtn, searchRedesign && { backgroundColor: accent.primary }]}
                 onPress={handleLog}
                 disabled={logging}
                 accessibilityLabel={`Log ${product.name} to tracker`}
@@ -848,7 +854,7 @@ export default function BarcodeScreen() {
             <Pressable
               style={[
                 styles.logBtn,
-                searchRedesign && { backgroundColor: Accent.primary },
+                searchRedesign && { backgroundColor: accent.primary },
                 { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 },
               ]}
               onPress={handleManualLog}

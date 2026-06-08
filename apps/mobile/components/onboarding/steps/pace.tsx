@@ -2,6 +2,7 @@ import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -367,6 +368,12 @@ function PaceWarningBanner({
   onAcknowledgeChange: (next: boolean) => void;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the lowest-severity
+  // `info` banner only — it's styled in the brand accent, not a status colour.
+  // The `danger` / `warn` levels keep their dedicated `Accent.destructive` /
+  // `Accent.warning` status hues regardless of the Frost flag, as does the
+  // danger acknowledgement checkbox below.
+  const accent = useAccent();
   const config = {
     danger: {
       bg: "rgba(217,69,69,0.18)",
@@ -381,9 +388,9 @@ function PaceWarningBanner({
       icon: "warning-outline" as const,
     },
     info: {
-      bg: Accent.primary + "1a",
-      border: Accent.primary + "59",
-      accent: Accent.primaryLight,
+      bg: accent.primary + "1a",
+      border: accent.primary + "59",
+      accent: accent.primaryLight,
       icon: "information-circle-outline" as const,
     },
   }[warning.level];

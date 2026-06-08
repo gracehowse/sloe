@@ -19,6 +19,7 @@ import {
   Star as StarIcon,
 } from "lucide-react-native";
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
@@ -164,14 +165,20 @@ const EMPTY_COPY: Record<Exclude<Tab, "saved">, { title: string; description?: s
  * primitive's 72pt primary-tinted disc.
  */
 const ILLUSTRATION_SIZE = 32;
-function emptyIllustrationFor(tab: Exclude<Tab, "saved">): React.ReactNode {
+// `accent` is passed from the call site (where `useAccent()` is available) so
+// the empty-state glyph follows the Frost flag (damson when ON, else clay) —
+// this module-level helper can't read a hook itself.
+function emptyIllustrationFor(
+  tab: Exclude<Tab, "saved">,
+  accent: typeof Accent,
+): React.ReactNode {
   switch (tab) {
     case "favourites":
-      return <StarIcon size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+      return <StarIcon size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />;
     case "frequent":
-      return <History size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+      return <History size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />;
     case "recent":
-      return <Clock size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+      return <Clock size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />;
   }
 }
 
@@ -193,6 +200,10 @@ export function QuickAddPanel({
   void _onOpenSaveCombo;
 
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for this panel's
+  // empty-state glyphs, the active tab pill, loading spinners, and the
+  // sign-in/save illustrations. Source/slot dots (`SourceDot`) stay warm.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   // Ship M1 — when the caller leaves `defaultTab` unset, the first saved
@@ -551,7 +562,7 @@ export function QuickAddPanel({
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
                 alignItems: "center",
-                backgroundColor: active ? Accent.primary : colors.border + "40",
+                backgroundColor: active ? accent.primary : colors.border + "40",
               }}
             >
               <Text
@@ -579,13 +590,13 @@ export function QuickAddPanel({
         >
           {savedMealsLoading && (
             <View style={{ paddingTop: 40, alignItems: "center" }}>
-              <ActivityIndicator color={Accent.primary} />
+              <ActivityIndicator color={accent.primary} />
             </View>
           )}
           {!savedMealsLoading && !userId && (
             <EmptyState
               illustration={
-                <LogIn size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />
+                <LogIn size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />
               }
               title="Sign in to save a usual meal for one-tap re-logging."
             />
@@ -593,7 +604,7 @@ export function QuickAddPanel({
           {!savedMealsLoading && userId && savedMeals.length === 0 && (
             <EmptyState
               illustration={
-                <Bookmark size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />
+                <Bookmark size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />
               }
               title={`Log 2 or more items in a slot, then tap "Save {Slot} as a meal" to re-log it in one tap.`}
             />
@@ -677,7 +688,7 @@ export function QuickAddPanel({
                   </Pressable>
                   <PlusCircle
                     size={IconSize.hero}
-                    color={Accent.primary}
+                    color={accent.primary}
                     strokeWidth={2.25}
                   />
                 </Pressable>
@@ -695,12 +706,12 @@ export function QuickAddPanel({
         >
           {tab === "favourites" && favoritesLoading && (
             <View style={{ paddingTop: 40, alignItems: "center" }}>
-              <ActivityIndicator color={Accent.primary} />
+              <ActivityIndicator color={accent.primary} />
             </View>
           )}
           {rows.length === 0 && !(tab === "favourites" && favoritesLoading) && (
             <EmptyState
-              illustration={emptyIllustrationFor(tab as Exclude<Tab, "saved">)}
+              illustration={emptyIllustrationFor(tab as Exclude<Tab, "saved">, accent)}
               title={EMPTY_COPY[tab as Exclude<Tab, "saved">].title}
               description={EMPTY_COPY[tab as Exclude<Tab, "saved">].description}
             />
@@ -789,7 +800,7 @@ export function QuickAddPanel({
                 </Pressable>
                 <PlusCircle
                   size={IconSize.hero}
-                  color={Accent.primary}
+                  color={accent.primary}
                   strokeWidth={2.25}
                 />
               </Pressable>

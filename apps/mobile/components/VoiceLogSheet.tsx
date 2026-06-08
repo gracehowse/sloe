@@ -26,6 +26,7 @@ import {
 import { Mic, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   averageConfidence,
@@ -82,6 +83,10 @@ export default function VoiceLogSheet({
   // Sloe brand plum (`navPrimary`) used for the serif sheet title isn't in
   // that contract, so read it from the shared theme hook here.
   const themeColors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the parsing spinner
+  // and the primary CTAs (Log / Add). The record mic keeps `Accent.success`
+  // (green), and parse errors keep `Accent.destructive`.
+  const accent = useAccent();
   const [stage, setStage] = useState<Stage>("input");
   const [transcript, setTranscript] = useState("");
   const [items, setItems] = useState<AiLoggedItem[]>([]);
@@ -323,7 +328,7 @@ export default function VoiceLogSheet({
 
             {stage === "parsing" && (
               <View style={{ alignItems: "center", paddingVertical: Spacing.xl, gap: 10 }}>
-                <ActivityIndicator size="small" color={Accent.primary} />
+                <ActivityIndicator size="small" color={accent.primary} />
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>Parsing your description…</Text>
               </View>
             )}
@@ -393,7 +398,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: transcript.trim() ? Accent.primary : colors.cardBorder,
+                    backgroundColor: transcript.trim() ? accent.primary : colors.cardBorder,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Parse</Text>
@@ -409,7 +414,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary,
+                    backgroundColor: accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
@@ -426,7 +431,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
+                    backgroundColor: items.length === 0 ? colors.cardBorder : accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>

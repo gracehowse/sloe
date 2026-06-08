@@ -10,6 +10,7 @@ import Svg, {
 import * as Haptics from "expo-haptics";
 import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
@@ -24,6 +25,12 @@ import { MobileMethodologyNote } from "../scaffold";
 export function MobileRevealStep() {
   const { targets, state } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the target-reveal
+  // ring gradient, the weight-skipped Scale glyph, and the "Log meals" next-step
+  // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),
+  // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
+  // `MacroColors` — none of those are the secondary accent.
+  const accent = useAccent();
   const target = targets?.target ?? 0;
 
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -106,14 +113,14 @@ export function MobileRevealStep() {
             width: 88,
             height: 88,
             borderRadius: 44,
-            backgroundColor: `${Accent.primary}1A`,
+            backgroundColor: `${accent.primary}1A`,
             alignItems: "center",
             justifyContent: "center",
           }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Scale size={48} color={Accent.primaryLight} strokeWidth={1.75} />
+          <Scale size={48} color={accent.primaryLight} strokeWidth={1.75} />
         </View>
         <Text
           style={{
@@ -195,8 +202,8 @@ export function MobileRevealStep() {
           >
             <Defs>
               <SvgLinearGradient id="reveal-grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={Accent.primaryLight} />
-                <Stop offset="1" stopColor={Accent.primary} />
+                <Stop offset="0" stopColor={accent.primaryLight} />
+                <Stop offset="1" stopColor={accent.primary} />
               </SvgLinearGradient>
             </Defs>
             <Circle
@@ -387,11 +394,14 @@ export function MobileRevealStep() {
           </Text>
           <NextStepRow
             Icon={BookOpen}
-            iconBg={`${Accent.primary}1A`}
-            iconColor={Accent.primary}
+            iconBg={`${accent.primary}1A`}
+            iconColor={accent.primary}
             title="Log meals as you eat"
             sub="Search, barcode, photo, voice — whichever's fastest."
           />
+          {/* "Watch the ring fill" intentionally uses `Accent.success` (green
+              status), NOT the secondary accent — held warm regardless of the
+              Frost flag. */}
           <NextStepRow
             Icon={Target}
             iconBg={`${Accent.success}1A`}
@@ -627,6 +637,9 @@ function RevealShowTheMaths({
   goal: "lose" | "maintain" | "gain" | "recomp";
 }) {
   const [open, setOpen] = React.useState(false);
+  // Secondary accent (Frost flag → damson, else clay) for the "Show the maths"
+  // disclosure link + chevron.
+  const accent = useAccent();
   const adjSigned =
     goal === "gain"
       ? `+${kcalAdj.toLocaleString()}`
@@ -672,16 +685,16 @@ function RevealShowTheMaths({
           style={{
             fontSize: 12,
             fontWeight: "600",
-            color: Accent.primary,
+            color: accent.primary,
             letterSpacing: 0.1,
           }}
         >
           {open ? "Hide the maths" : "Show the maths"}
         </Text>
         {open ? (
-          <ChevronUp size={14} color={Accent.primary} strokeWidth={2.25} />
+          <ChevronUp size={14} color={accent.primary} strokeWidth={2.25} />
         ) : (
-          <ChevronDown size={14} color={Accent.primary} strokeWidth={2.25} />
+          <ChevronDown size={14} color={accent.primary} strokeWidth={2.25} />
         )}
       </Pressable>
       {open ? (

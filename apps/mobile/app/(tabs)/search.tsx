@@ -7,6 +7,7 @@ import { authedFetch } from "@/lib/authedFetch";
 import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
 
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -19,6 +20,9 @@ type Hit = { description?: string; fdcId?: number };
 
 export default function SearchScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Search CTA;
+  // threaded into the `styles` useMemo deps. Error text keeps `Accent.warning`.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const base = apiBase();
   // 2026-05-13 (premium-bar audit Group J #19): default empty, not
@@ -79,7 +83,7 @@ export default function SearchScreen() {
       backgroundColor: colors.inputBg,
     },
     btn: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.md,
       justifyContent: "center",
@@ -99,7 +103,7 @@ export default function SearchScreen() {
     },
     itemText: { fontSize: 14, color: colors.text },
     meta: { fontSize: 12, color: colors.textTertiary, marginTop: Spacing.xs },
-  }), [colors]);
+  }), [colors, accent]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>

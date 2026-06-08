@@ -1,7 +1,8 @@
 import * as React from "react";
 import { ScrollView, Text, View, ViewStyle, StyleProp } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "./context";
 
@@ -126,14 +127,18 @@ export function MobileMethodologyNote({
   children: React.ReactNode;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the methodology
+  // callout's tinted fill, hairline, and sparkles glyph. The note's body text
+  // keeps its own theme `textSecondary`.
+  const accent = useAccent();
   return (
     <View
       style={{
         marginTop: Spacing.lg,
         padding: Spacing.md,
-        backgroundColor: Accent.primary + "10",
+        backgroundColor: accent.primary + "10",
         borderWidth: 1,
-        borderColor: Accent.primary + "26",
+        borderColor: accent.primary + "26",
         borderRadius: Radius.md,
         flexDirection: "row",
         gap: 10,
@@ -143,7 +148,7 @@ export function MobileMethodologyNote({
       <Ionicons
         name="sparkles-outline"
         size={14}
-        color={Accent.primaryLight}
+        color={accent.primaryLight}
         style={{ marginTop: 1 }}
       />
       <Text

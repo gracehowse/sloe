@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const MEAL_OPTIONS = [
@@ -18,6 +19,9 @@ type Props = {
 
 export default function MealTypePicker({ selected, onChange, label }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the selected meal-type
+  // chips' border, tint, glyph, and label.
+  const accent = useAccent();
 
   const toggle = (value: string) => {
     if (selected.includes(value)) {
@@ -44,17 +48,17 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
               style={[
                 styles.chip,
                 {
-                  borderColor: active ? Accent.primary : colors.border,
-                  backgroundColor: active ? Accent.primary + "15" : "transparent",
+                  borderColor: active ? accent.primary : colors.border,
+                  backgroundColor: active ? accent.primary + "15" : "transparent",
                 },
               ]}
             >
-              <Ionicons name={opt.icon} size={14} color={active ? Accent.primary : colors.textSecondary} />
+              <Ionicons name={opt.icon} size={14} color={active ? accent.primary : colors.textSecondary} />
               <Text
                 style={{
                   fontSize: 13,
                   fontWeight: active ? "700" : "500",
-                  color: active ? Accent.primary : colors.text,
+                  color: active ? accent.primary : colors.text,
                 }}
               >
                 {opt.label}

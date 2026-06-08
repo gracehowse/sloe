@@ -110,10 +110,16 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 // Light theme so useCardElevation's light branch (soft shadow, no border)
-// is exercised when the elevation flag is on.
-vi.mock("@/context/theme", () => ({
-  useTheme: () => ({ resolved: "light", colors: {} }),
-}));
+// is exercised when the elevation flag is on. `useAccent` returns the clay
+// `Accent` (flag-OFF default) so the Frost-flag-aware CTA reads resolve to a
+// real palette in the renderer (ENG-997).
+vi.mock("@/context/theme", async () => {
+  const { Accent } = await import("@/constants/theme");
+  return {
+    useTheme: () => ({ resolved: "light", colors: {} }),
+    useAccent: () => Accent,
+  };
+});
 
 vi.mock("../../components/CreateCustomFoodSheet", () => ({
   __esModule: true,

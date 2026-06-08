@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
@@ -44,6 +44,10 @@ export function MobileDietStep() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the selected diet
+  // icon tints and the selected allergy chips. The diet cards' chrome flips via
+  // `OptionCard`'s own `useAccent`; the "Allergies" overline keeps `textTertiary`.
+  const accent = useAccent();
   const toggleAllergy = (a: string) =>
     set((prev) => ({
       allergies: prev.allergies.includes(a)
@@ -93,7 +97,7 @@ export function MobileDietStep() {
                   <Ionicons
                     name={d.icon}
                     size={17}
-                    color={selected ? Accent.primaryLight : colors.icon}
+                    color={selected ? accent.primaryLight : colors.icon}
                   />
                 }
                 title={d.title}
@@ -129,9 +133,9 @@ export function MobileDietStep() {
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 borderRadius: 999,
-                backgroundColor: on ? Accent.primary + "26" : colors.card,
+                backgroundColor: on ? accent.primary + "26" : colors.card,
                 borderWidth: 1,
-                borderColor: on ? Accent.primary : colors.border,
+                borderColor: on ? accent.primary : colors.border,
                 opacity: pressed ? 0.85 : 1,
               })}
             >
@@ -139,7 +143,7 @@ export function MobileDietStep() {
                 style={{
                   fontSize: 13,
                   fontWeight: "600",
-                  color: on ? Accent.primaryLight : colors.text,
+                  color: on ? accent.primaryLight : colors.text,
                 }}
               >
                 {a}

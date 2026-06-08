@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import { MobileNumberStepper } from "../number-stepper";
@@ -23,6 +23,10 @@ export function MobileAgeStep() {
   const overline = useStepOverline();
   const colors = useThemeColors();
   const [helpOpen, setHelpOpen] = React.useState(false);
+  // Secondary accent (Frost flag → damson, else clay) for the help-toggle glyph
+  // and the expanded explainer's tinted box + overline. The number stepper keeps
+  // its own neutral chrome.
+  const accent = useAccent();
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -57,7 +61,7 @@ export function MobileAgeStep() {
         <Ionicons
           name="information-circle-outline"
           size={14}
-          color={Accent.primaryLight}
+          color={accent.primaryLight}
         />
         <Text
           style={{
@@ -75,8 +79,8 @@ export function MobileAgeStep() {
           style={{
             marginTop: 12,
             padding: 14,
-            backgroundColor: Accent.primary + "10",
-            borderColor: Accent.primary + "33",
+            backgroundColor: accent.primary + "10",
+            borderColor: accent.primary + "33",
             borderWidth: 1,
             borderRadius: 12,
           }}
@@ -87,7 +91,7 @@ export function MobileAgeStep() {
               fontWeight: "700",
               textTransform: "uppercase",
               letterSpacing: 1.2,
-              color: Accent.primaryLight,
+              color: accent.primaryLight,
               marginBottom: 8,
             }}
           >

@@ -45,7 +45,8 @@ import {
   Search as SearchIcon,
   X,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "./KeyboardSafeView";
 import FoodSearchPanel, {
@@ -118,6 +119,9 @@ export default function FoodSearchModal({
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the barcode / voice /
+  // photo quick-add glyphs in this search modal.
+  const accent = useAccent();
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const hasQuickAdd = !!(onScanBarcode || onVoiceLog || onPhotoLog);
@@ -249,7 +253,7 @@ export default function FoodSearchModal({
                   testID="food-search-scan-barcode"
                   style={styles.quickAddBtn}
                 >
-                  <ScanBarcode size={20} color={Accent.primary} strokeWidth={1.75} />
+                  <ScanBarcode size={20} color={accent.primary} strokeWidth={1.75} />
                 </Pressable>
               ) : null}
               {onVoiceLog ? (
@@ -261,7 +265,7 @@ export default function FoodSearchModal({
                   testID="food-search-voice-log"
                   style={styles.quickAddBtn}
                 >
-                  <MicIcon size={20} color={Accent.primary} strokeWidth={1.75} />
+                  <MicIcon size={20} color={accent.primary} strokeWidth={1.75} />
                 </Pressable>
               ) : null}
               {onPhotoLog ? (
@@ -273,7 +277,7 @@ export default function FoodSearchModal({
                   testID="food-search-photo-log"
                   style={styles.quickAddBtn}
                 >
-                  <CameraIcon size={20} color={Accent.primary} strokeWidth={1.75} />
+                  <CameraIcon size={20} color={accent.primary} strokeWidth={1.75} />
                 </Pressable>
               ) : null}
             </>

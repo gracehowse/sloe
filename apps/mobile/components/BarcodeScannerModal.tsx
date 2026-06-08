@@ -37,6 +37,7 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
@@ -92,6 +93,12 @@ type Props = {
 export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoFallback, onAddAsCustomFood }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for this sheet's CTAs,
+  // preset/basis chips, the scan-frame, search/camera glyphs, and the per-100g
+  // link. Threaded into the `styles` useMemo (deps below) so the StyleSheet
+  // rebuilds when the flag flips. The correction-success card keeps
+  // `Accent.success` (green status), and any source/confidence chrome stays warm.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   // ENG-816 — gate the lucide-react-native glyph swap behind
@@ -701,7 +708,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     centered: { alignItems: "center", justifyContent: "center", flex: 1, gap: Spacing.md, padding: Spacing.xl },
     permText: { color: colors.textSecondary, fontSize: 16, textAlign: "center" },
     permBtn: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xxl,
       paddingVertical: 14,
@@ -716,7 +723,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       width: "80%",
       height: "50%",
       borderWidth: 2,
-      borderColor: Accent.primary + "80",
+      borderColor: accent.primary + "80",
       borderRadius: Radius.lg,
     },
     // F-134 (2026-05-08): when the camera collapses on result, the
@@ -727,12 +734,12 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     errorText: { color: colors.textSecondary, fontSize: 14, textAlign: "center" },
     retryBtn: {
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
     },
-    retryBtnText: { color: Accent.primary, fontWeight: "600" },
+    retryBtnText: { color: accent.primary, fontWeight: "600" },
     productCard: {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
@@ -816,13 +823,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       paddingVertical: 5,
       borderRadius: Radius.sm,
       borderWidth: 1,
-      borderColor: Accent.primary + "40",
+      borderColor: accent.primary + "40",
     },
     presetChipSelected: {
-      backgroundColor: Accent.primary + "18",
-      borderColor: Accent.primary,
+      backgroundColor: accent.primary + "18",
+      borderColor: accent.primary,
     },
-    presetChipText: { fontSize: 11, fontWeight: "600", color: Accent.primary },
+    presetChipText: { fontSize: 11, fontWeight: "600", color: accent.primary },
     // F-18 (2026-04-19) — reduced top margin ~8px so the Log/Scan-again
     // pair sits tighter below the chip row.
     btnRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 0 },
@@ -885,7 +892,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       textTransform: "none",
     },
     manualSubmitBtn: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.md,
       paddingVertical: 14,
       alignItems: "center",
@@ -893,13 +900,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     manualSubmitText: { color: "#fff", fontWeight: "700", fontSize: 15 },
     manualEntryBtn: {
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
       marginTop: Spacing.xs,
     },
-    manualEntryBtnText: { color: Accent.primary, fontWeight: "600", textAlign: "center" },
+    manualEntryBtnText: { color: accent.primary, fontWeight: "600", textAlign: "center" },
     // Audit 2026-04-30 — primary "Snap the label instead" CTA in the
     // not-found branch. Filled tint marks it as the recommended next
     // step; manual entry stays one tap away as a tinted-border ghost.
@@ -908,7 +915,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
@@ -926,11 +933,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       backgroundColor: colors.inputBg,
     },
     basisChipSelected: {
-      borderColor: Accent.primary,
-      backgroundColor: Accent.primary + "18",
+      borderColor: accent.primary,
+      backgroundColor: accent.primary + "18",
     },
     basisChipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-    basisChipTextSelected: { color: Accent.primary },
+    basisChipTextSelected: { color: accent.primary },
     // F-138 — post-submit success card (replaces the form, not the whole
     // sheet). White-card + soft success ring + Done button. Mirrors the
     // F-139 goals-hit banner restyle so the language stays consistent
@@ -1035,7 +1042,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       color: colors.textTertiary,
       fontVariant: ["tabular-nums"],
     },
-  }), [colors]);
+  }), [colors, accent]);
 
   return (
     <Modal
@@ -1100,7 +1107,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
             <View style={styles.resultArea}>
               {loading && (
                 <View style={styles.centered}>
-                  <ActivityIndicator size="large" color={Accent.primary} />
+                  <ActivityIndicator size="large" color={accent.primary} />
                   <Text style={styles.lookupText}>Looking up product...</Text>
                 </View>
               )}
@@ -1129,9 +1136,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       string is shown. */}
                   {error === "Product not found in database." ? (
                     useLucideIcons ? (
-                      <Search size={32} color={Accent.primary} />
+                      <Search size={32} color={accent.primary} />
                     ) : (
-                      <Ionicons name="search-outline" size={32} color={Accent.primary} />
+                      <Ionicons name="search-outline" size={32} color={accent.primary} />
                     )
                   ) : useLucideIcons ? (
                     <CircleAlert size={32} color={Accent.destructive} />
@@ -1222,8 +1229,8 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       alignItems: "center",
                       justifyContent: "center",
                       gap: Spacing.sm,
-                      backgroundColor: Accent.primary + "1f",
-                      borderColor: Accent.primary,
+                      backgroundColor: accent.primary + "1f",
+                      borderColor: accent.primary,
                       borderWidth: 1,
                       borderRadius: Radius.md,
                       paddingHorizontal: Spacing.xl,
@@ -1235,13 +1242,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     disabled={scanLabelLoading}
                   >
                     {scanLabelLoading ? (
-                      <ActivityIndicator color={Accent.primary} size="small" />
+                      <ActivityIndicator color={accent.primary} size="small" />
                     ) : useLucideIcons ? (
-                      <Camera size={18} color={Accent.primary} />
+                      <Camera size={18} color={accent.primary} />
                     ) : (
-                      <Ionicons name="camera-outline" size={18} color={Accent.primary} />
+                      <Ionicons name="camera-outline" size={18} color={accent.primary} />
                     )}
-                    <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 14 }}>
+                    <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 14 }}>
                       {scanLabelLoading ? "Reading label..." : "Scan the label"}
                     </Text>
                   </Pressable>
@@ -1403,7 +1410,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       />
                     ) : null}
                     {rememberedPortion != null && rememberedPortion > 0 ? (
-                      <Text style={[styles.per100g, { marginTop: Spacing.sm, color: Accent.primary }]}>
+                      <Text style={[styles.per100g, { marginTop: Spacing.sm, color: accent.primary }]}>
                         You usually log {Math.round(rememberedPortion)} g — using that.
                       </Text>
                     ) : null}

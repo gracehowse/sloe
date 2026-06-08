@@ -50,11 +50,14 @@ describe("barcode result — redesign gate", () => {
     expect(BARCODE).toMatch(/<Check size=\{11\}/);
   });
 
-  it("paints the commit CTA blue (Accent.primary) under the flag", () => {
+  it("paints the commit CTA with the secondary accent under the flag", () => {
     // The default StyleSheet logBtn stays green (flag-off path); the call
-    // site overrides to Accent.primary when searchRedesign is on.
+    // site overrides to the secondary accent when searchRedesign is on.
+    // ENG-997: that read is now the flag-aware `accent.primary` (from
+    // `useAccent()` — clay by default, damson when `brand_frost_secondary` is on)
+    // rather than the static `Accent.primary`.
     expect(BARCODE).toMatch(
-      /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*Accent\.primary\s*\}/,
+      /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/,
     );
   });
 

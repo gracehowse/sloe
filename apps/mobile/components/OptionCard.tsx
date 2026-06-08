@@ -7,7 +7,8 @@ import {
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -16,12 +17,18 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * Mirrors the web component at `src/app/components/ui/option-card.tsx`.
  *
  * Behaviour:
- *  - Renders a Pressable; selected state uses `Accent.primary` border +
- *    8% tinted background so it reads against both light and dark.
- *  - Optional `icon` slot uses a tinted square that flips to primary
+ *  - Renders a Pressable; selected state uses the secondary accent (Frost
+ *    flag → damson, else clay) for the border + an 8% tinted background so it
+ *    reads against both light and dark.
+ *  - Optional `icon` slot uses a tinted square that flips to the accent
  *    when selected.
  *  - `trailing` prop overrides the default check/uncheck radio (pass
  *    `null` to suppress, e.g. for chip-style multi-select).
+ *
+ * Used only by onboarding steps (goal/sex/activity/diet/app-choice/strategy),
+ * so this single accent read flips every step's selected-card chrome in
+ * lockstep with `scaffold.tsx` — the per-step icon tints are passed in by the
+ * step files.
  */
 
 export interface OptionCardProps {
@@ -38,8 +45,6 @@ export interface OptionCardProps {
   accessibilityLabel?: string;
 }
 
-const PRIMARY_TINT = Accent.primary + "14"; // ~8% alpha
-
 export function OptionCard({
   selected = false,
   onPress,
@@ -53,6 +58,12 @@ export function OptionCard({
   accessibilityLabel,
 }: OptionCardProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the selected card's
+  // border, 8% tint fill, icon-square, and checkmark. Lifted from a former
+  // module-level `PRIMARY_TINT` constant so the hook can drive it (the
+  // `TodayPlannedMealsCard` StyleSheet-lift pattern).
+  const accent = useAccent();
+  const primaryTint = accent.primary + "14"; // ~8% alpha
   const showCheckbox = trailing === undefined;
 
   // Wrap onPress so the disabled guard is enforced even if a host
@@ -80,9 +91,9 @@ export function OptionCard({
           gap: compact ? Spacing.sm + 2 : Spacing.md + 2,
           padding: compact ? 12 : 16,
           borderRadius: Radius.lg,
-          backgroundColor: selected ? PRIMARY_TINT : colors.card,
+          backgroundColor: selected ? primaryTint : colors.card,
           borderWidth: 1,
-          borderColor: selected ? Accent.primary : colors.border,
+          borderColor: selected ? accent.primary : colors.border,
           opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
         },
         style,
@@ -97,7 +108,7 @@ export function OptionCard({
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: selected
-              ? Accent.primary + "26"
+              ? accent.primary + "26"
               : colors.inputBg,
           }}
         >
@@ -157,8 +168,8 @@ export function OptionCard({
                 height: 22,
                 borderRadius: 11,
                 borderWidth: 1.5,
-                borderColor: selected ? Accent.primary : colors.cardBorder,
-                backgroundColor: selected ? Accent.primary : "transparent",
+                borderColor: selected ? accent.primary : colors.cardBorder,
+                backgroundColor: selected ? accent.primary : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
               }}

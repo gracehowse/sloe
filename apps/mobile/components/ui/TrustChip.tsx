@@ -11,6 +11,12 @@ import type { TrustChipVariant } from "@suppr/shared/types/trust";
  * `src/app/components/ui/trust-chip.tsx`.
  *
  * Geometry: 22pt height, padding 3 x 8, radius `Radius.full`.
+ *
+ * HELD WARM (Frost flag `brand_frost_secondary`, ENG-997): every variant fg —
+ * including `off-adjusted`'s `Accent.primary` — is a SOURCE / provenance /
+ * confidence signal, not a CTA, so it stays warm regardless of the flag and is
+ * intentionally NOT migrated to `useAccent()`. (Source/confidence chips + dots
+ * are on the ship plan's hold-clay list.)
  */
 
 export type { TrustChipVariant } from "@suppr/shared/types/trust";

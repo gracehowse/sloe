@@ -11,8 +11,9 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureDisabled, isFeatureEnabled, track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
@@ -61,6 +62,10 @@ export function MobileFlow() {
     isRefreshPlan,
   } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the footer Continue
+  // CTA, its foreground, and the refresh-plan pill. The back chevron, progress
+  // track, and disabled-state surfaces keep their own theme tokens.
+  const accent = useAccent();
   // Debug audit 2026-05-04 (visual-qa): the welcome step uses a dark
   // gradient where `light-content` (white status-bar icons) is correct,
   // but every subsequent step renders on `colors.background` — light
@@ -538,9 +543,9 @@ export function MobileFlow() {
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 999,
-                backgroundColor: `${Accent.primaryLight}1f`,
+                backgroundColor: `${accent.primaryLight}1f`,
                 borderWidth: 1,
-                borderColor: `${Accent.primaryLight}40`,
+                borderColor: `${accent.primaryLight}40`,
               }}
               accessibilityLabel="Refreshing your plan"
             >
@@ -549,7 +554,7 @@ export function MobileFlow() {
                   fontSize: 11,
                   fontWeight: "700",
                   letterSpacing: 0.6,
-                  color: Accent.primaryLight,
+                  color: accent.primaryLight,
                 }}
               >
                 REFRESH PLAN
@@ -612,7 +617,7 @@ export function MobileFlow() {
               // `inputBg` sits between the two — clearly inert without
               // disappearing into the backdrop. (audit 2026-04-30 medium
               // polish.)
-              backgroundColor: isDisabled ? colors.inputBg : Accent.primary,
+              backgroundColor: isDisabled ? colors.inputBg : accent.primary,
               alignItems: "center",
               justifyContent: "center",
               opacity: isDisabled ? 1 : pressed ? 0.9 : 1,
@@ -620,13 +625,13 @@ export function MobileFlow() {
           }}
         >
           {completing ? (
-            <ActivityIndicator color={Accent.primaryForeground} />
+            <ActivityIndicator color={accent.primaryForeground} />
           ) : (
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "700",
-                color: !canAdvance ? colors.textTertiary : Accent.primaryForeground,
+                color: !canAdvance ? colors.textTertiary : accent.primaryForeground,
               }}
             >
               {isTerminal
@@ -645,6 +650,9 @@ export function MobileFlow() {
 
 function ProgressBar({ value, total }: { value: number; total: number }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the filled portion of
+  // the onboarding progress bar; the track stays the neutral `inputBg`.
+  const accent = useAccent();
   const pct = Math.max(4, (value / Math.max(1, total)) * 100);
   return (
     <View
@@ -663,7 +671,7 @@ function ProgressBar({ value, total }: { value: number; total: number }) {
           width: `${pct}%`,
           height: "100%",
           borderRadius: 2,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         }}
       />
     </View>

@@ -3,7 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { Camera, Lock } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
-import { Accent, FontWeight, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -43,6 +44,9 @@ export function TodaySnapShortcut({
   testID,
 }: TodaySnapShortcutProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the shutter circle,
+  // its glyph, and the Pro lock badge + chip on this photo-log CTA.
+  const accent = useAccent();
 
   return (
     <View style={{ marginBottom: Spacing.md }}>
@@ -83,7 +87,7 @@ export function TodaySnapShortcut({
             shutter button): the leading affordance was a flat
             primary-tinted 32×32 square with a Camera glyph. The
             audit upgrades this to an iOS-Camera-shutter-style
-            filled circle: 44×44, solid `Accent.primary` background,
+            filled circle: 44×44, solid `accent.primary` background,
             white 22pt glyph. The card now reads as a tap-the-shutter
             button rather than a generic icon card; matches the
             shutter-press haptic that was already added on tap. */}
@@ -93,7 +97,7 @@ export function TodaySnapShortcut({
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
@@ -101,7 +105,7 @@ export function TodaySnapShortcut({
         >
           <Camera
             size={22}
-            color={Accent.primaryForeground}
+            color={accent.primaryForeground}
             strokeWidth={2.25}
           />
           {locked ? (
@@ -114,7 +118,7 @@ export function TodaySnapShortcut({
                 width: 14,
                 height: 14,
                 borderRadius: Radius.sm,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 1.5,
@@ -144,7 +148,7 @@ export function TodaySnapShortcut({
                   paddingHorizontal: 6,
                   paddingVertical: 1,
                   borderRadius: Radius.sm,
-                  backgroundColor: Accent.primary,
+                  backgroundColor: accent.primary,
                 }}
               >
                 <Text
@@ -152,7 +156,7 @@ export function TodaySnapShortcut({
                     fontSize: 9,
                     fontWeight: "800",
                     letterSpacing: 0.6,
-                    color: Accent.primaryForeground,
+                    color: accent.primaryForeground,
                   }}
                 >
                   PRO
