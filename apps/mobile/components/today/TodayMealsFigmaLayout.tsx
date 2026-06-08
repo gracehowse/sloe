@@ -1,13 +1,14 @@
 import React, { type ReactNode } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { Utensils } from "lucide-react-native";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import {
   nextUnloggedMealSlot,
   TODAY_MEAL_SLOT_ORDER,
 } from "@suppr/shared/copy/today";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { SupprCard, CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -129,7 +130,7 @@ export function TodayMealsFigmaLayout({
                     style={{
                       width: 64,
                       height: 64,
-                      borderRadius: Radius.md,
+                      borderRadius: Radius.lg,
                     }}
                   />
                 ) : (
@@ -137,10 +138,14 @@ export function TodayMealsFigmaLayout({
                     style={{
                       width: 64,
                       height: 64,
-                      borderRadius: Radius.md,
-                      backgroundColor: colors.textTertiary + "20",
+                      borderRadius: Radius.lg,
+                      backgroundColor: colors.card,
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
-                  />
+                  >
+                    <Utensils size={24} color={colors.textTertiary} />
+                  </View>
                 )}
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <View
@@ -208,14 +213,13 @@ export function TodayMealsFigmaLayout({
               justifyContent: "center",
               gap: 8,
               padding: 16,
-              borderRadius: Radius.lg,
-              borderWidth: 1,
-              borderStyle: "dashed",
-              borderColor: colors.textTertiary + "60",
+              minHeight: 58,
+              borderRadius: CARD_RADIUS,
+              backgroundColor: colors.card,
             }}
           >
             <SloePlusIcon size={20} color={Accent.primary} />
-            <Text style={{ ...Type.body, fontWeight: "500", color: colors.textSecondary }}>
+            <Text style={{ ...Type.body, fontWeight: "500", color: "#6a6072" }}>
               Log {nextSlot}
             </Text>
           </Pressable>

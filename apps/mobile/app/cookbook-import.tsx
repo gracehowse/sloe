@@ -17,7 +17,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
@@ -311,11 +311,14 @@ export default function CookbookImportScreen() {
         scroll: { padding: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl },
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
         label: { fontSize: 13, fontWeight: "600", color: colors.textSecondary, marginTop: Spacing.md, marginBottom: 6 },
+        // SLOE DS reskin (2026-06-07): cream `surface-card` slabs, 24px Sloe
+        // radius (Radius.xl * 2), plum serif headings. Presentation only —
+        // PDF pick / extract / parse / commit logic untouched.
         textInput: {
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: Radius.md,
-          padding: 12,
+          borderRadius: 16,
+          padding: 14,
           fontSize: 15,
           color: colors.text,
           backgroundColor: colors.card,
@@ -324,16 +327,17 @@ export default function CookbookImportScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           borderStyle: "dashed",
-          borderRadius: Radius.lg,
-          padding: Spacing.lg,
+          borderRadius: Radius.xl * 2,
+          backgroundColor: colors.card,
+          padding: Spacing.xl,
           marginTop: Spacing.sm,
         },
-        uploadTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+        uploadTitle: { ...Type.headline, color: colors.text },
         uploadHint: { fontSize: 13, color: colors.textSecondary, marginTop: 6, lineHeight: 18 },
         primaryBtn: {
           backgroundColor: Accent.primary,
-          borderRadius: Radius.md,
-          paddingVertical: 14,
+          borderRadius: 16,
+          paddingVertical: 16,
           alignItems: "center",
           marginTop: Spacing.lg,
         },
@@ -341,10 +345,10 @@ export default function CookbookImportScreen() {
         parseCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl },
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
-          padding: Spacing.md,
+          borderRadius: Radius.xl * 2,
+          padding: Spacing.lg,
           marginBottom: Spacing.sm,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: 1,
           borderColor: colors.border,
         },
         cardTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
@@ -352,8 +356,8 @@ export default function CookbookImportScreen() {
         seg: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
         segBtn: {
           flex: 1,
-          paddingVertical: 10,
-          borderRadius: Radius.md,
+          paddingVertical: 12,
+          borderRadius: 14,
           borderWidth: 1,
           borderColor: colors.border,
           alignItems: "center",
@@ -370,11 +374,11 @@ export default function CookbookImportScreen() {
         <PushScreenHeader title="Import cookbook" onBack={() => setStep("pick")} />
         <View style={styles.parseCenter}>
           <ActivityIndicator size="large" color={Accent.primary} />
-          <Text style={{ marginTop: Spacing.lg, fontSize: 18, fontWeight: "700", color: colors.text }}>
+          <Text style={{ ...Type.title, marginTop: Spacing.lg, color: colors.navPrimary, textAlign: "center" }}>
             {parsingMessage}
           </Text>
           <Text style={{ marginTop: 8, fontSize: 14, color: colors.textSecondary, textAlign: "center" }}>
-            Ingredients are matched to Suppr foods — exclude any bad rows before saving.
+            Ingredients are matched to Sloe foods — exclude any bad rows before saving.
           </Text>
         </View>
       </View>
@@ -501,7 +505,7 @@ export default function CookbookImportScreen() {
       <PushScreenHeader title="Import cookbook" onBack={() => router.back()} />
       <View style={styles.scroll}>
         <Text style={styles.subtitle}>
-          Upload one searchable PDF from your scanner app. Suppr extracts every recipe with
+          Upload one searchable PDF from your scanner app. Sloe extracts every recipe with
           ingredients — then you build your week in Plan.
         </Text>
         <Pressable testID="cookbook-import-pick-pdf" style={styles.uploadZone} onPress={() => void pickPdf()}>

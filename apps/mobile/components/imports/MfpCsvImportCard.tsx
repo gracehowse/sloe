@@ -275,7 +275,7 @@ export function MobileMfpCsvImportCard({
             }}
           >
             MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
-            we&rsquo;ll bring your meal history into Suppr without changing the
+            we&rsquo;ll bring your meal history into Sloe without changing the
             macros you already logged.
           </Text>
 

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Sparkles } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -8,6 +9,14 @@ import {
   splitBodyIntoSegments,
   type ProgressCommentaryResult,
 } from "@/lib/progressCommentary";
+
+// Sloe Figma 492:2 — the THIS WEEK insight card sits on a soft LILAC
+// (damson at ~12% alpha) wash with a hairline damson border. Mirrors web
+// `PROGRESS_INSIGHT_LILAC_STYLE` (`--slot-dinner-soft` ≈ #6A4B7A12). The
+// story-gate placeholder shares the exact same wash so the card never
+// changes tone when the user crosses the 3-day data floor.
+export const PROGRESS_INSIGHT_LILAC_BG = "rgba(106, 75, 122, 0.12)";
+export const PROGRESS_INSIGHT_LILAC_BORDER = "rgba(106, 75, 122, 0.16)";
 
 /**
  * Mobile `<ProgressHeadline>` — production design spec Surface E
@@ -47,25 +56,29 @@ export function ProgressHeadline({
         styles.card,
         cardElevation.shadowStyle,
         {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
-          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+          // Sloe Figma 492:2 — lilac insight wash + hairline damson edge
+          // (was cream `colors.card`). The frame's THIS WEEK card is lilac.
+          backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
+          borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
+          borderWidth: StyleSheet.hairlineWidth,
         },
         style,
       ]}
     >
-      <Text
-        style={[
-          Type.label,
-          {
-            color: Accent.primary,
-            marginBottom: 6,
-          },
-        ]}
-      >
-        THIS WEEK
-      </Text>
+      <View style={styles.eyebrowRow}>
+        {/* Clay sparkle by the THIS WEEK eyebrow (frame). Mirrors web. */}
+        <Sparkles size={14} color={Accent.primary} strokeWidth={1.75} />
+        <Text
+          style={[
+            Type.label,
+            {
+              color: Accent.primary,
+            },
+          ]}
+        >
+          THIS WEEK
+        </Text>
+      </View>
 
       <Text
         style={[
@@ -121,6 +134,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
   },
   body: {
     // Per spec: body 12pt text-secondary inside the headline card.

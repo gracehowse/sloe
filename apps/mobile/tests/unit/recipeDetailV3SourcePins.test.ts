@@ -115,42 +115,56 @@ describe("mobile recipe-detail v3 — Fix 3 (kcal hero card removed)", () => {
   });
 });
 
-describe("mobile recipe-detail v4 — Fix 4 (4-up macro grid, equal-width tiles)", () => {
-  it("the macros grid carries `recipe-macros-grid` testID", () => {
+describe("mobile recipe-detail — macro summary is the ENG-920 flat Figma 332:2 strip", () => {
+  // ENG-920 (resolved 2026-06-07): the macro summary renders as a FLAT NUMBER
+  // STRIP (CAL / PRO / CARB / FAT — calories first), serif Newsreader value +
+  // small-caps label, four equal columns in one white slab, NO per-macro
+  // progress bar. Replaces the v4 progress-bar tiles. Net-carbs lens + all
+  // tracked values preserved (micros fall to a chip row).
+  it("the strip carries `recipe-macros-grid` testID and leads with CAL", () => {
     expect(SRC).toMatch(/testID="recipe-macros-grid"/);
+    expect(SRC).toContain("macroStrip");
+    expect(SRC).toContain('label: "CAL"');
+    expect(SRC).toContain('label: "PRO"');
+    expect(SRC).toContain('label: "FAT"');
   });
 
-  it("macro tiles use `flex: 1` (no `maxWidth: \"48%\"`) so 4 fit on one row", () => {
-    // v3 used `flexGrow: 1, maxWidth: "48%"` which forced a 2x2 wrap
-    // and left fiber alone on row 2 at half-width. v4 spec: `flex: 1`
-    // with `flexWrap` preserved, so all tiles share width.
-    expect(SRC).toMatch(/flex:\s*1,\s*minWidth:\s*70/);
+  it("strip columns carry stable per-macro testIDs keyed by macro key", () => {
+    expect(SRC).toMatch(/testID=\{`recipe-macro-tile-\$\{m\.key\}`\}/);
+  });
+
+  it("strip values render in the Newsreader serif at 24px (not the old sans bold tile)", () => {
+    const strip = SRC.slice(
+      SRC.indexOf('testID="recipe-macros-grid"'),
+      SRC.indexOf("recipe-macro-micro-chips"),
+    );
+    expect(strip).toContain("FontFamily.serifRegular");
+    expect(strip).toContain("fontSize: 24");
+    // Flat strip: NO per-macro progress-bar fill (the old `width: %` bar).
+    expect(strip).not.toMatch(/width:\s*`\$\{Math\.min\(m\.cur/);
+    // Column dividers via borderLeft (the strip column rule).
+    expect(strip).toContain("borderLeftWidth");
+  });
+
+  it("the old per-macro progress-bar tile structure is gone", () => {
+    // v4 tiles used `flex: 1, minWidth: 70` + a `width: %` fill bar.
+    expect(SRC).not.toMatch(/flex:\s*1,\s*minWidth:\s*70/);
     expect(SRC).not.toMatch(/maxWidth:\s*"48%"/);
+    // The stale "ENG-920 ... DEFERRED" comment is gone (now resolved).
+    expect(SRC).not.toMatch(/ENG-920[^]*?DEFERRED/);
   });
 
-  it("tiles carry stable per-macro testIDs so RTL renders can target them", () => {
-    expect(SRC).toMatch(/testID=\{`recipe-macro-tile-\$\{macro\}`\}/);
+  it("net-carbs lens preserved (label + value swap via shared helpers)", () => {
+    expect(SRC).toContain("carbsLabel(");
+    expect(SRC).toContain("netCarbsForRow(");
+    expect(SRC).toContain('? "NET" : "CARB"');
   });
 
-  it("macro tile container row uses Spacing.sm gap (8pt) for the 4-up density", () => {
-    // Was `gap: 10` in v3 with 2x2 wrap. v4 tightens to Spacing.sm
-    // (8pt) to fit 4-up at 393pt without truncation. The `style` prop
-    // sits immediately before `testID` on the container View, so the
-    // `gap: Spacing.sm` token appears within ~200 chars before the
-    // `recipe-macros-grid` testID.
-    const gridIdx = SRC.indexOf('testID="recipe-macros-grid"');
-    expect(gridIdx).toBeGreaterThan(0);
-    const lookbackStart = Math.max(0, gridIdx - 400);
-    const lookbackBlock = SRC.slice(lookbackStart, gridIdx);
-    expect(lookbackBlock).toMatch(/gap:\s*Spacing\.sm/);
-    // And it must not regress to the v3 hard-coded `gap: 10`.
-    expect(lookbackBlock).not.toMatch(/gap:\s*10\b/);
-  });
-
-  it("macro tiles still use a bold tabular-nums value treatment", () => {
-    // v4 dropped `fontSize: 20` to `fontSize: 18` to fit the 4-up
-    // grid at 393pt without truncation. Weight 800 + tabular preserved.
-    expect(SRC).toMatch(/fontSize:\s*18,\s*fontWeight:\s*"800"/);
+  it("tracked micros (fiber/sugar/sodium) fall to a chip row — no value dropped", () => {
+    expect(SRC).toContain("recipe-macro-micro-chips");
+    expect(SRC).toMatch(/recipeMacrosToShow\.includes\("fiber"\)/);
+    expect(SRC).toMatch(/recipeMacrosToShow\.includes\("sugar"\)/);
+    expect(SRC).toMatch(/recipeMacrosToShow\.includes\("sodium"\)/);
   });
 });
 
@@ -222,15 +236,19 @@ describe("mobile recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
  * card + silent commit.
  */
 describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () => {
-  it("resting detail card consumes `useCardElevation` (shadow/border/lift branch)", () => {
+  it("resting detail card is a WHITE slab on cream with the soft `useCardElevation` lift (Figma 332:2)", () => {
     expect(SRC).toMatch(/import \{ useCardElevation \} from "@\/hooks\/useCardElevation"/);
-    expect(SRC).toMatch(/const cardElevation = useCardElevation\(\);/);
-    // The card style threads the hook output: lift bg, flag-driven border,
-    // and the soft shadow spread.
-    expect(SRC).toMatch(/backgroundColor:\s*cardElevation\.liftBg\s*\?\?\s*colors\.card/);
-    expect(SRC).toMatch(/borderWidth:\s*cardElevation\.useBorder\s*\?\s*1\s*:\s*0/);
+    // Superseded 2026-06-07 (Figma 332:2): the page is cream, so the card is
+    // an UNCONDITIONAL white slab (the `soft` variant carries the lift); the
+    // dark tonal-lift branch still resolves via `liftBg`.
+    expect(SRC).toMatch(/const cardElevation = useCardElevation\(\{ variant: "soft" \}\);/);
+    // White fill on light (`colors.background`), tonal lift on dark (`liftBg`).
+    expect(SRC).toMatch(/backgroundColor:\s*cardElevation\.liftBg\s*\?\?\s*colors\.background/);
+    // Always-on hairline (cardBorder) — the slab is delineated even before the
+    // shadow renders — plus the soft shadow spread.
+    expect(SRC).toMatch(/borderColor:\s*colors\.cardBorder/);
     expect(SRC).toMatch(/\.\.\.\(cardElevation\.shadowStyle\s*\?\?\s*\{\}\)/);
-    // And the StyleSheet useMemo depends on it so it re-derives on flag flip.
+    // And the StyleSheet useMemo depends on it so it re-derives on theme flip.
     expect(SRC).toMatch(/\}\), \[colors, insets\.top, cardElevation\]\)/);
   });
 

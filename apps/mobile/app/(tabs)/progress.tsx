@@ -1,27 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
+import { ActivityIndicator, Dimensions, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import {
   BarChart3,
-  CalendarDays,
-  CheckCircle2,
   ArrowRight,
   ChevronDown,
   ChevronRight,
   ChevronUp,
   Flag,
-  Flame,
-  Footprints,
-  LineChart,
-  List as ListIcon,
   Scale,
   TrendingDown,
   TrendingUp,
-  Trophy,
   Zap,
-  type LucideIcon,
 } from "lucide-react-native";
 import Svg, { Polyline, Circle } from "react-native-svg";
 
@@ -29,7 +21,7 @@ import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleH
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/constants/layout";
@@ -64,11 +56,11 @@ import {
   coerceWeightSurfaceMode,
   type WeightSurfaceMode,
 } from "@suppr/shared/nutrition/weightSurfaceMode";
-import { computeWeightTrendCopy } from "@suppr/shared/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
+import { buildWeekStats, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
 import {
   buildCaloriesRangeStats,
+  buildMacroAdherenceRangeStats,
   buildWeightRangeStats,
   type RangeKey,
 } from "@suppr/shared/nutrition/progressRangeStats";
@@ -106,19 +98,17 @@ import { HouseholdBar } from "@/components/HouseholdBar";
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
 import { ProgressHeadline } from "@/components/today/ProgressHeadline";
 import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
-import { ProgressHeroMetric } from "@/components/progress/ProgressHeroMetric";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { TrajectoryCard } from "@/components/progress/TrajectoryCard";
-import { TrendSummaryCard } from "@/components/progress/TrendSummaryCard";
 import { computeDayOfWeekPattern } from "@suppr/shared/nutrition/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
-import { WeightChart } from "@/components/progress/WeightChart";
-import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
-import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
 import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";
-import { WeightTrendHeader } from "@/components/progress/WeightTrendHeader";
+// Sloe Figma 492:2 — frame sections (web + mobile parity).
+import { ProgressAverageAdherence } from "@/components/progress/ProgressAverageAdherence";
+import { ProgressEnergyTriad } from "@/components/progress/ProgressEnergyTriad";
+import { ProgressOnTargetRibbon } from "@/components/progress/ProgressOnTargetRibbon";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
@@ -156,7 +146,10 @@ function IconBox({ color, size = 28, children }: { color: string; size?: number;
   );
 }
 
-const DEFAULT_TARGETS = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat };
+// `fiber: 28` mirrors the web `normalizeMacroTargets` default (src/types/
+// profile.ts) so the AVERAGE ADHERENCE card's Fibre bar reads the SAME
+// baseline on both platforms when the user has no explicit fibre target.
+const DEFAULT_TARGETS = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: 28 };
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
@@ -426,14 +419,18 @@ export default function ProgressScreen() {
     const entriesPromise = (async () =>
       await supabase
         .from("nutrition_entries")
-        .select("date_key, calories, protein, carbs, fat")
+        // Sloe Figma 492:2 — `fiber_g` added so the AVERAGE ADHERENCE card's
+        // Fibre bar reads a REAL value (matches web `nutritionByDay.fiberG`),
+        // not a phantom 0. Legacy rows with null fibre count as 0 (never
+        // fabricated).
+        .select("date_key, calories, protein, carbs, fat, fiber_g")
         .eq("user_id", userId)
         .gte("date_key", ninetyDaysAgo)
         .order("created_at", { ascending: true }))();
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
         .eq("id", userId)
         .maybeSingle())();
     const [entriesResult, profileResult] = await Promise.all([
@@ -482,6 +479,9 @@ export default function ProgressScreen() {
         protein: (profile.target_protein as number) ?? DEFAULT_TARGETS.protein,
         carbs: (profile.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
         fat: (profile.target_fat as number) ?? DEFAULT_TARGETS.fat,
+        // Sloe Figma 492:2 — real fibre target for the AVERAGE ADHERENCE
+        // Fibre bar; falls back to the shared 28g default when unset.
+        fiber: ((profile as { target_fiber_g?: number | null }).target_fiber_g as number) ?? DEFAULT_TARGETS.fiber,
       });
       const w = profile.weight_kg != null ? Number(profile.weight_kg) : null;
       const gw = profile.goal_weight_kg != null ? Number(profile.goal_weight_kg) : null;
@@ -572,6 +572,8 @@ export default function ProgressScreen() {
           protein: (r.protein as number) ?? 0,
           carbs: (r.carbs as number) ?? 0,
           fat: (r.fat as number) ?? 0,
+          // Sloe Figma 492:2 — fibre rollup for the AVERAGE ADHERENCE card.
+          fiberG: ((r as { fiber_g?: number | null }).fiber_g as number) ?? 0,
         });
       }
       setByDay(loaded);
@@ -733,18 +735,10 @@ export default function ProgressScreen() {
     [byDay, targets, weekStartDay, weekTargetsByDay, weekActivity],
   );
 
-  // Raw streak retained so the "Raw streak" disclosure row can surface it
-  // alongside the protected value — never misrepresented.
-  const rawStreakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
-  const protectedStreakInfo = useMemo(
-    () => computeProtectedStreak(byDay as any, freezeLedger, freezeBudgetMax),
-    [byDay, freezeLedger, freezeBudgetMax],
-  );
-  const streakDays = protectedStreakInfo.streakLength;
-  const freezesAvailable = useMemo(
-    () => availableFreezes(freezeLedger, freezeBudgetMax),
-    [freezeLedger, freezeBudgetMax],
-  );
+  // Streak chips were demoted out of the Progress frame (Sloe Figma
+  // 492:2); the streak + freeze figures now surface only inside the Week
+  // Digest, which derives them from `recap` (streakLength / freezesAvailable)
+  // below. `freezeLedger` + `freezeBudgetMax` are still fed into the recap.
 
   // Batch 4.11 — weekly recap derivation + visibility gating.
   const currentWeekKey = useMemo(
@@ -801,15 +795,17 @@ export default function ProgressScreen() {
     setTrajectoryBoxEnabled(isFeatureEnabled("progress_trajectory_box"));
   }, []);
 
-  // ENG-773 — Progress layout restructure flag. When on, the render order
-  // matches the approved prototype: insight card (lead) → weight chart →
-  // 3-stat row → segment picker → daily calories → macro adherence →
-  // apple health → maintenance → projected weight → week digest.
-  // Flag off preserves byte-for-byte the current layout.
-  const [progressLayoutV2, setProgressLayoutV2] = useState(false);
-  useEffect(() => {
-    setProgressLayoutV2(isFeatureEnabled("design_system_elevation"));
-  }, []);
+  // Sloe Figma 492:2 — the dual `progressLayoutV2` flag (ENG-773) is
+  // retired. The frame layout is now the single production path (no flag,
+  // no alternate version) per the redesign governance: range toggle →
+  // THIS WEEK insight → AVERAGE ADHERENCE → weight card → AVG/TDEE/DEFICIT
+  // triad → DAILY CALORIES → on-target ribbon, with Apple Health /
+  // maintenance / journey / digest preserved below.
+
+  // Weight card Trend/Scale segmented toggle (Sloe Figma 492:2). "trend"
+  // renders the smoothed moving-average line; "scale" the raw weigh-ins.
+  // Mirrors web `weightView`.
+  const [weightView, setWeightView] = useState<"trend" | "scale">("trend");
 
   // Ship M1 — saved meals + usual-meal insight for the recap card.
   const [hostSavedMealsForRecap, setHostSavedMealsForRecap] = useState<SavedMeal[]>([]);
@@ -916,30 +912,12 @@ export default function ProgressScreen() {
   // week-boundary off-by-one bug; removing the schedule also removed the
   // bug. Server-side emit remains the canonical signal.
 
-  // Weight trend (last entries)
-  const weightTrend = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setHours(0, 0, 0, 0);
-    cutoff.setDate(cutoff.getDate() - 90);
-    const cutoffStr = dateKeyFromDate(cutoff);
-    const keys = Object.keys(weightKgByDay)
-      .filter((k) => k >= cutoffStr)
-      .sort();
-    if (keys.length < 2) return null;
-    const first = weightKgByDay[keys[0]];
-    const last = weightKgByDay[keys[keys.length - 1]];
-    const diff = last - first;
-    return { diff: Math.round(diff * 10) / 10, direction: diff < 0 ? "down" : diff > 0 ? "up" : "flat" as const };
-  }, [weightKgByDay]);
-
-  // Weight chart trend — drives WeightChart + WeightRangeToggle
+  // Weight chart trend — drives the weight card's clay sparkline (Trend =
+  // smoothed moving-average, Scale = raw weigh-ins) + START/CURRENT/GOAL/RATE.
   const weightChartTrend = useMemo(
     () => computeWeightTrend(weightKgByDayToPoints(weightKgByDay), weightChartRange, goalWeightKg),
     [weightKgByDay, weightChartRange, goalWeightKg],
   );
-
-  // Steps today
-  const stepsToday = stepsByDay[todayKey] ?? 0;
 
   // 2026-04-20 prototype Phase 2 — WEIGHT + Calories cards read from
   // these shared helpers so web + mobile can't drift. Range window is
@@ -952,6 +930,20 @@ export default function ProgressScreen() {
     () => buildCaloriesRangeStats(byDay as any, targets.calories, rangeKey as RangeKey, new Date()),
     [byDay, targets.calories, rangeKey],
   );
+  // Sloe Figma 492:2 — range-scoped macro adherence so the AVERAGE
+  // ADHERENCE card's four bars describe the SAME window as the headline
+  // calorie adherence (responds to the time-range toggle). Shared helper →
+  // web + mobile read identical figures.
+  const macroRange = useMemo(
+    () =>
+      buildMacroAdherenceRangeStats(
+        byDay as any,
+        { protein: targets.protein, carbs: targets.carbs, fat: targets.fat, fiber: targets.fiber },
+        rangeKey as RangeKey,
+        new Date(),
+      ),
+    [byDay, targets.protein, targets.carbs, targets.fat, targets.fiber, rangeKey],
+  );
 
   const t = {
     text: colors.text,
@@ -961,6 +953,9 @@ export default function ProgressScreen() {
     elevated: colors.card,
     border: colors.cardBorder,
     accent: Accent.primary,
+    // Sloe plum (nav/brand primary) — fills the active range pill per
+    // Figma 492:2. Mirrors web `bg-foreground-brand`.
+    plum: colors.navPrimary,
     green: Accent.success,
     amber: Accent.warning,
     red: Accent.destructive,
@@ -1028,23 +1023,26 @@ export default function ProgressScreen() {
           testID="progress-range-picker-skeleton"
           style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}
         >
-          {(["7d", "30d", "90d", "all"] as const).map((k) => (
-            <View
-              key={k}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                alignItems: "center",
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: t.border,
-                backgroundColor: k === rangeKey ? t.elevated : "transparent",
-                opacity: 0.6,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: t.sub }}>{k === "all" ? "All" : k}</Text>
-            </View>
-          ))}
+          {(["7d", "30d", "90d", "all"] as const).map((k) => {
+            const active = k === rangeKey;
+            return (
+              <View
+                key={k}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderRadius: 999,
+                  borderWidth: active ? 0 : 1,
+                  borderColor: t.border,
+                  backgroundColor: active ? t.plum : t.elevated,
+                  opacity: 0.6,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "500", color: active ? "#FFFFFF" : t.sub }}>{k === "all" ? "All" : k}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* 2x2 tile skeletons — match real tile footprint (47% width,
@@ -1096,1007 +1094,24 @@ export default function ProgressScreen() {
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
       <HouseholdBar />
 
-      {/* ── ENG-773: v2 layout (flag-gated) ──────────────────────────
-          Approved prototype order: insight → weight chart → 3-stat →
-          segment picker → daily calories → macro → apple health →
-          maintenance → projected weight → week digest.
-          TrendSummaryCard + Streak/Trend chips removed from render.
-          Flag off → byte-for-byte existing layout below. */}
-      {progressLayoutV2 ? (
-        <>
-        {/* 1. INSIGHT CARD (the lead) — ProgressHeadline / StoryGate */}
-        <ReAnimated.View style={heroEntrance.style}>
-        <View>
-          {hasEnoughDataForStory(weekStats.daysWithFood) ? (
-            <ProgressHeadline
-              commentary={generateProgressCommentary({
-                current:
-                  adaptiveTdee != null && adaptiveConfidence != null
-                    ? {
-                        tdee: adaptiveTdee,
-                        confidence:
-                          adaptiveConfidence === "high" ||
-                          adaptiveConfidence === "medium" ||
-                          adaptiveConfidence === "low"
-                            ? adaptiveConfidence
-                            : "low",
-                        loggingDays: Object.keys(byDay ?? {}).length,
-                        weighInCount: Object.keys(weightKgByDay ?? {}).length,
-                        avgDailyIntake: 0,
-                        smoothedWeightChangeKgPerDay: 0,
-                        windowDays: 28,
-                      }
-                    : null,
-                loggingDays: weekStats.daysWithFood,
-              })}
-            />
-          ) : (
-            <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
-          )}
-        </View>
-        </ReAnimated.View>
+      {/* ── Sloe Figma 492:2 — single production layout (web + mobile
+          parity). Order: range toggle → THIS WEEK insight (lilac) →
+          AVERAGE ADHERENCE → weight card (Trend/Scale + stat row + log) →
+          AVG/TDEE/DEFICIT triad → DAILY CALORIES → on-target ribbon. Every
+          previously-wired surface (Apple Health, adaptive maintenance,
+          journey/projection, week digest) is preserved below the frame's
+          above-fold story. No feature flags, no duplicate components, no
+          alternate versions — this is THE layout. */}
 
-        {/* 2. WEIGHT TREND CARD — promoted to position 2 */}
-        <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
-        {weightSurfaceMode === "trends_only" && (
-          <WeightTrendOnlyCard
-            weekDeltaKg={weightRange.weekDeltaKg}
-            rangeKey={rangeKey}
-            theme={t}
-          />
-        )}
-        {weightSurfaceMode === "show" && chartsReady ? (
-          <View
-            style={[{
-              backgroundColor: cardElevation.liftBg ?? t.elevated,
-              borderRadius: Radius.lg,
-              borderWidth: cardElevation.useBorder ? 1 : 0,
-              borderColor: t.border,
-              padding: 20,
-            }, cardElevation.shadowStyle]}
-          >
-            {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
-              <View style={{ alignSelf: "flex-end", backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
-              </View>
-            )}
-            {weightChartTrend.points.length >= 1 && (
-              <View style={{ marginTop: 12 }}>
-                <WeightTrendHeader
-                  trend={weightChartTrend}
-                  isImperial={measurementSystem === "imperial"}
-                  periodLabel={
-                    weightChartTrend.periodRangeLabel ?? weightChartTrend.sinceLabel
-                  }
-                />
-              </View>
-            )}
-            <View style={{ marginTop: 4 }}>
-              {weightChartTrend.points.length >= 1 ? (
-                <WeightChart
-                  trend={weightChartTrend}
-                  goalKg={goalWeightKg}
-                  isImperial={measurementSystem === "imperial"}
-                  range={weightChartRange}
-                />
-              ) : (
-                <WeightSparseState
-                  points={weightChartTrend.points}
-                  onLogWeight={() => setLogWeightOpen(true)}
-                />
-              )}
-            </View>
-            {Object.keys(weightKgByDay).length > 0 && (
-              <Pressable
-                onPress={() => setAllWeightDataOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel="View all measurements"
-                hitSlop={8}
-                testID="progress-view-all-measurements"
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  alignSelf: "flex-start",
-                  gap: 4,
-                  marginTop: 10,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>
-                  View all measurements
-                </Text>
-                <ArrowRight size={12} color={t.accent} strokeWidth={2} />
-              </Pressable>
-            )}
-          </View>
-        ) : weightSurfaceMode === "show" ? (
-          <View
-            testID="progress-weight-chart-pending"
-            style={[{
-              backgroundColor: cardElevation.liftBg ?? t.elevated,
-              borderRadius: Radius.lg,
-              borderWidth: cardElevation.useBorder ? 1 : 0,
-              borderColor: t.border,
-              padding: 20,
-              minHeight: 140,
-            }, cardElevation.shadowStyle]}
-          >
-            <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
-            <ActivityIndicator size="small" color={colors.tint} />
-          </View>
-        ) : null}
-
-        {/* 3. 3-STAT ENGINEERED ROW — avg intake | maintenance | deficit */}
-        {hasData && (() => {
-          const avgCal = caloriesRange.avgCaloriesPerDay;
-          const maintenanceKcal = adaptiveTdee ?? targets.calories;
-          const deficitKcal = avgCal != null && maintenanceKcal > 0
-            ? Math.round(maintenanceKcal - avgCal)
-            : null;
-          return (
-            <>
-            <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginLeft: 2 }}>
-              Calories vs target
-            </Text>
-            {/* Card chrome (fill, radius 20, soft lift on an outer wrapper,
-                corner-clip, hairline) is the shared <SupprCard> shell — the iOS
-                clip fix + the consolidation both live in the shell now (Grace
-                2026-06-04). testID stays on the shell's outer node so the
-                Progress capture/Maestro targets are stable. The 3 divider cells
-                are the inner contents. */}
-            <SupprCard
-              testID="progress-3-stat-row"
-              padding="none"
-              innerStyle={{ flexDirection: "row" }}
-            >
-              {/* Cell: Avg Intake */}
-              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                  Avg intake
-                </Text>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {avgCal != null ? avgCal.toLocaleString() : "—"}
-                </Text>
-              </View>
-              {/* Divider */}
-              <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
-              {/* Cell: Maintenance */}
-              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                  Maintenance
-                </Text>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {maintenanceKcal > 0 ? maintenanceKcal.toLocaleString() : "—"}
-                </Text>
-              </View>
-              {/* Divider */}
-              <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
-              {/* Cell: Deficit — shown in GREEN (progress, not alarm) */}
-              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                  Deficit
-                </Text>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: deficitKcal != null && deficitKcal > 0 ? t.green : deficitKcal != null && deficitKcal < 0 ? t.amber : t.text, fontVariant: ["tabular-nums"] }}>
-                  {deficitKcal != null ? (deficitKcal > 0 ? `${deficitKcal.toLocaleString()}` : deficitKcal === 0 ? "0" : `${Math.abs(deficitKcal).toLocaleString()}`) : "—"}
-                </Text>
-                {deficitKcal != null && deficitKcal < 0 && (
-                  <Text style={{ fontSize: 9, color: t.amber, fontWeight: "500", marginTop: 2 }}>surplus</Text>
-                )}
-              </View>
-            </SupprCard>
-            </>
-          );
-        })()}
-
-        {/* 4. SEGMENT PICKER (7d/30d/90d/All) */}
-        <View
-          testID="progress-range-picker"
-          accessibilityRole="tablist"
-          style={{
-            flexDirection: "row",
-            gap: 6,
-            backgroundColor: colors.backgroundSecondary,
-            borderRadius: 10,
-            padding: 4,
-          }}
-        >
-          {(["7d", "30d", "90d", "all"] as const).map((k) => {
-            const active = rangeKey === k;
-            const label = k === "all" ? "All" : k;
-            return (
-              <Pressable
-                key={k}
-                testID={`progress-range-pill-${k}`}
-                accessibilityRole="tab"
-                accessibilityLabel={`Range ${label}`}
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  if (!active) haptics.select();
-                  setRangeKey(k);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
-                style={({ pressed }) => [{
-                  flex: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 4,
-                  alignItems: "center",
-                  borderRadius: 7,
-                  backgroundColor: active ? t.elevated : "transparent",
-                  shadowColor: "#000",
-                  shadowOpacity: active ? 0.1 : 0,
-                  shadowRadius: active ? 2 : 0,
-                  shadowOffset: { width: 0, height: 1 },
-                  elevation: active ? 1 : 0,
-                  opacity: pressed ? 0.8 : 1,
-                }]}
-              >
-                <Text style={{ fontSize: 12, fontWeight: "600", color: active ? t.text : t.sub }}>{label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        </ReAnimated.View>
-
-        <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
-        {!hasData ? (
-          <View style={[{ padding: 24, borderRadius: Radius.lg, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
-            <IconBox color={t.accent} size={40}>
-              <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
-            </IconBox>
-            <Text style={{ ...Type.headline, color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
-            <Text style={{ ...Type.body, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
-              Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
-            </Text>
-          </View>
-        ) : (
-          <>
-          {/* 5. DAILY CALORIES chart card */}
-          {!chartsReady ? (
-            <View
-              testID="progress-charts-pending"
-              style={[{
-                backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderRadius: Radius.lg,
-                borderWidth: cardElevation.useBorder ? 1 : 0,
-                borderColor: t.border,
-                padding: 20,
-                minHeight: 140,
-              }, cardElevation.shadowStyle]}
-            >
-              <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
-              <ActivityIndicator size="small" color={colors.tint} />
-            </View>
-          ) : (
-          <>
-          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}>
-            <Text style={{ ...Type.headline, color: t.text, marginBottom: 16 }}>Daily Calories</Text>
-            {(() => {
-              const chartHeight = 90;
-              const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
-              const barMax = chartHeight * 0.78;
-              const targetY = maxCal > 0 ? (targets.calories / (maxCal * 1.15)) * barMax : 0;
-              return (
-                <View style={{ height: chartHeight, marginTop: 8 }}>
-                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
-                    {weekStats.days.map((d) => {
-                      const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
-                      const overTarget = d.calories > d.effectiveTargetCalories;
-                      const isDayToday = d.key === todayKey;
-                      const isPast = d.key < todayKey;
-                      const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
-                      return (
-                        <Pressable
-                          key={d.key}
-                          onPress={() => {
-                            router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
-                          }}
-                          accessibilityHint={showApproxCue ? "Compared against today's target. No saved target for that day." : undefined}
-                          style={{ flex: 1, alignItems: "center", gap: 4 }}
-                        >
-                          <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
-                            {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
-                          </Text>
-                          <View
-                            testID={`progress-day-bar-${d.key}`}
-                            style={{
-                              width: "100%",
-                              height: barH,
-                              borderRadius: 5,
-                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
-                              opacity: isDayToday ? 1 : 0.75,
-                              ...(showApproxCue
-                                ? {
-                                    borderWidth: 1,
-                                    borderStyle: "dashed",
-                                    borderColor: t.dim,
-                                  }
-                                : {}),
-                            }}
-                          />
-                          <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
-                        </Pressable>
-                      );
-                    })}
-                    {targets.calories > 0 && maxCal > 0 && (
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          right: 0,
-                          bottom: 16 + targetY,
-                          height: 1,
-                          borderTopWidth: 1,
-                          borderStyle: "dashed",
-                          borderColor: t.accent,
-                          opacity: 0.7,
-                        }}
-                      />
-                    )}
-                  </View>
-                </View>
-              );
-            })()}
-            <View style={{ flexDirection: "column", marginTop: 8, gap: 4 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>At or under daily target</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Over daily target</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 10, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.accent }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Base target {targets.calories.toLocaleString()} kcal</Text>
-                </View>
-              </View>
-              <Text style={{ fontSize: 10, color: t.dim }}>
-                Each bar compares to your target for that day — higher on days you earned an activity bonus.
-              </Text>
-            </View>
-          </View>
-
-          {/* 6. MACRO ADHERENCE */}
-          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}>
-            <Text style={{ ...Type.headline, color: t.text, marginBottom: 16 }}>Macro Adherence</Text>
-            <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
-              Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
-            </Text>
-            {([
-              ["Protein", weekStats.proteinAdherence, t.protein],
-              ["Carbs", weekStats.carbsAdherence, t.carbs],
-              ["Fat", weekStats.fatAdherence, t.fat],
-            ] as const).map(([name, pct, color]) => {
-              const bar = formatMacroAdherenceBar({ adherencePct: pct });
-              return (
-                <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
-                  <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
-                  <View
-                    style={{
-                      flex: 1,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: t.border,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      testID={`macro-adherence-bar-${name.toLowerCase()}`}
-                      style={{
-                        width: `${bar.barFillPct}%`,
-                        height: "100%",
-                        borderRadius: 3,
-                        backgroundColor: bar.isOver ? Accent.warning : color,
-                      }}
-                    />
-                  </View>
-                  <Text
-                    testID={`macro-adherence-label-${name.toLowerCase()}`}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: bar.isOver ? Accent.warning : color,
-                      minWidth: 56,
-                      textAlign: "right",
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {bar.label}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* 7. APPLE HEALTH */}
-          {userId ? (
-            <AppleHealthCardHost
-              userId={userId}
-              stepsToday={stepsByDay[todayKey] ?? null}
-              latestWeightKg={latestWeightKg}
-              useImperial={measurementSystem === "imperial"}
-            />
-          ) : null}
-
-          {/* 8. MAINTENANCE card */}
-          {staticTdee != null && (() => {
-            const resolved = resolveMaintenance({
-              adaptive_tdee: adaptiveTdee,
-              adaptive_tdee_confidence: adaptiveConfidence,
-              adaptive_tdee_updated_at: adaptiveUpdatedAt,
-              sex: profileSexState as any,
-              weight_kg: latestWeightKg ?? 70,
-              height_cm: profileHeightCmState,
-              age: profileAgeState,
-              activity_level: profileActivityLevelState as any,
-            });
-            if (!resolved) return null;
-            const showAdaptiveExtras = resolved.source === "adaptive";
-            return (
-            <View
-              testID="progress-maintenance-card"
-              style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <IconBox color={t.accent} size={28}>
-                    <Zap size={14} color={t.accent} strokeWidth={1.75} />
-                  </IconBox>
-                  <Text style={{ ...Type.headline, color: t.text }}>Maintenance</Text>
-                </View>
-                {showAdaptiveExtras ? (
-                  <View
-                    testID="maintenance-source-pill"
-                    accessibilityLabel="Maintenance source: adaptive"
-                    style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
-                  </View>
-                ) : (
-                  <View
-                    testID="maintenance-source-pill"
-                    accessibilityLabel="Maintenance source: formula estimate"
-                    style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-                <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
-                  {resolved.kcal.toLocaleString()}
-                </Text>
-                <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
-              </View>
-
-              {showAdaptiveExtras && resolved.formulaKcal != null && (
-                <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
-                  Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
-                  {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
-                    <Text style={{ fontWeight: "600", color: t.text }}>
-                      {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
-                    </Text>
-                  )}
-                </Text>
-              )}
-
-              {showAdaptiveExtras && adaptiveConfidence && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
-                  <View style={{ flexDirection: "row", gap: 3 }}>
-                    {(["low", "medium", "high"] as const).map((level) => {
-                      const filled =
-                        (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
-                        (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
-                        (level === "high" && adaptiveConfidence === "high");
-                      return (
-                        <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
-                      );
-                    })}
-                  </View>
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: adaptiveConfidence === "high" ? t.green : adaptiveConfidence === "medium" ? t.amber : t.dim, textTransform: "capitalize" }}>
-                    {adaptiveConfidence}
-                  </Text>
-                </View>
-              )}
-
-              <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
-                {showAdaptiveExtras
-                  ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
-                  : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
-                }
-              </Text>
-
-              {!showAdaptiveExtras && (
-                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                  <View style={{ flexDirection: "row", gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Weigh-ins</Text>
-                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(weightKgByDay).length}/7</Text>
-                      </View>
-                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
-                        <View style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
-                      </View>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Log days</Text>
-                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}/21</Text>
-                      </View>
-                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
-                        <View style={{ width: `${Math.min(100, (Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length / 21) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {(() => {
-                const chain = buildMaintenanceChain(
-                  {
-                    sex: profileSexState as any,
-                    weight_kg: latestWeightKg ?? 70,
-                    height_cm: profileHeightCmState,
-                    age: profileAgeState,
-                    activity_level: profileActivityLevelState as any,
-                  },
-                  resolved,
-                  planPace,
-                  userGoal,
-                );
-                if (!chain) return null;
-                return (
-                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                    <Pressable
-                      onPress={() => setMaintenanceExplainerOpen((v) => !v)}
-                      accessibilityRole="button"
-                      accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
-                      accessibilityState={{ expanded: maintenanceExplainerOpen }}
-                      hitSlop={8}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
-                        {maintenanceExplainerOpen ? "Hide" : "How this works"}
-                      </Text>
-                      {maintenanceExplainerOpen ? (
-                        <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
-                      ) : (
-                        <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
-                      )}
-                    </Pressable>
-                    {maintenanceExplainerOpen && (
-                      <View style={{ marginTop: 10, gap: 6 }}>
-                        {chain.steps.map((step, i) => {
-                          const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
-                          return (
-                            <View
-                              key={`${step.kind}-${i}`}
-                              style={{
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: 12,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  flex: 1,
-                                  fontSize: 12,
-                                  lineHeight: 17,
-                                  color: isSummary ? t.sub : t.text,
-                                  fontWeight: step.emphasis ? "700" : "500",
-                                }}
-                              >
-                                {step.label}
-                              </Text>
-                              {step.value ? (
-                                <Text
-                                  style={{
-                                    fontSize: 12,
-                                    color: step.emphasis ? t.text : t.sub,
-                                    fontWeight: step.emphasis ? "700" : "500",
-                                    fontVariant: ["tabular-nums"],
-                                  }}
-                                >
-                                  {step.value}
-                                </Text>
-                              ) : null}
-                            </View>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                );
-              })()}
-            </View>
-            );
-          })()}
-
-          {/* 9. PROJECTED WEIGHT card */}
-          {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (
-            <TrajectoryCard
-              byDay={byDay}
-              latestWeightKg={latestWeightKg}
-              targetCalories={targets.calories}
-              maintenanceTdeeKcal={
-                isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee
-              }
-              goal={userGoal}
-              timeline={
-                latestWeightKg != null && goalWeightKg != null
-                  ? calcGoalTimeline({
-                      currentWeightKg: latestWeightKg,
-                      goalWeightKg,
-                      weightKgByDay,
-                    })
-                  : null
-              }
-            />
-          ) : null}
-
-          {weightSurfaceMode === "show" &&
-            latestWeightKg != null &&
-            goalWeightKg != null &&
-            Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
-            (() => {
-              const timeline = calcGoalTimeline({
-                currentWeightKg: latestWeightKg,
-                goalWeightKg: goalWeightKg,
-                weightKgByDay,
-              });
-              const journeyProg = weightJourneyProgress({
-                goalKg: goalWeightKg,
-                latestKg: latestWeightKg,
-                weightKgByDay,
-              });
-              const pctFrac = journeyProg
-                ? computeWeightJourneyProgressPct({
-                    startKg: journeyProg.baselineKg,
-                    currentKg: latestWeightKg,
-                    goalKg: goalWeightKg,
-                  })
-                : null;
-              const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
-              const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
-              const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
-              const recentDays = daysWithFood.slice(-7);
-              const avgCals = recentDays.length > 0
-                ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
-                : 0;
-              const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
-              const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
-              const observedKgPerWeek =
-                typeof timeline.weeklyRateKg === "number"
-                  ? timeline.trendDirection === "losing"
-                    ? -Math.abs(timeline.weeklyRateKg)
-                    : timeline.trendDirection === "gaining"
-                      ? Math.abs(timeline.weeklyRateKg)
-                      : 0
-                  : 0;
-              const dailyProjection =
-                projectionEligible && avgCals > 0 && latestWeightKg != null
-                  ? projectWeight({
-                      currentWeightKg: latestWeightKg,
-                      todayCalories: avgCals,
-                      targetCalories: targets.calories,
-                      maintenanceTdeeKcal,
-                      goal: userGoal,
-                      observedKgPerWeek,
-                    })
-                  : null;
-
-              return (
-                <Pressable
-                  onPress={() => setLogWeightOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Weight journey and charts"
-                  accessibilityHint="Opens detailed weight progress"
-                  style={({ pressed }) => [{
-                    backgroundColor: cardElevation.liftBg ?? t.elevated,
-                    borderRadius: Radius.lg,
-                    borderWidth: cardElevation.useBorder ? 1 : 0,
-                    borderColor: t.border,
-                    padding: 20,
-                    opacity: pressed ? 0.94 : 1,
-                  }, cardElevation.shadowStyle]}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <IconBox color={t.green} size={28}>
-                        <Flag size={14} color={t.green} strokeWidth={1.75} />
-                      </IconBox>
-                      <Text style={{ ...Type.headline, color: t.text }}>Journey</Text>
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      {timeline.daysToGoal != null ? (
-                        <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
-                          {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
-                        </Text>
-                      ) : timeline.cappedAtMaxDays ? (
-                        <Text
-                          testID="progress-journey-capped"
-                          style={{ fontSize: 12, fontWeight: "600", color: t.sub }}
-                        >
-                          More than 1 year at current rate
-                        </Text>
-                      ) : null}
-                      <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
-                    </View>
-                  </View>
-
-                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
-                    {timeline.remainingKg > 0.1
-                      ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
-                      : "You've reached your goal weight."}
-                    {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
-                  </Text>
-
-                  {journeyProg && (
-                    <View style={{ marginBottom: 4 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
-                      </View>
-                      <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
-                        <View style={{
-                          width: `${progressPct}%` as any,
-                          height: "100%",
-                          borderRadius: 3,
-                          backgroundColor: progressPct >= 100 ? t.green : t.accent,
-                        }} />
-                      </View>
-                      <Text
-                        testID="progress-journey-copy"
-                        style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}
-                      >
-                        {progressCopy
-                          ? `Now: ${latestWeightKg} kg · ${progressCopy}`
-                          : `Now: ${latestWeightKg} kg`}
-                      </Text>
-                    </View>
-                  )}
-
-                  {dailyProjection && maintenanceTdeeKcal != null && (
-                    <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                      {(() => {
-                        const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
-                        const deficitLabel =
-                          avgDeficit > 0
-                            ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
-                            : avgDeficit < 0
-                              ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
-                              : "at maintenance";
-                        return (
-                          <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                            Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
-                            <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
-                          </Text>
-                        );
-                      })()}
-                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
-                        Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
-                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
-                  </View>
-                </Pressable>
-              );
-            })()
-          )}
-
-          {/* 10. WEEK DIGEST — moved after main data cards */}
-          {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
-            const digestSeed = (() => {
-              if (usualMealInsight?.kind !== "prompt") return null;
-              const seed = selectMostFrequentSlotSeed(byDay as any, usualMealInsight.suggestedSlot);
-              if (!seed || seed.seedItems.length < 2) return null;
-              return seed;
-            })();
-            const digestSeedItems = digestSeed
-              ? digestSeed.seedItems.map((it) => {
-                  const row: Omit<SavedMealItem, "id" | "position"> = {
-                    recipeTitle: it.recipeTitle,
-                    calories: it.calories,
-                    protein: it.protein,
-                    carbs: it.carbs,
-                    fat: it.fat,
-                    portionMultiplier: 1,
-                  };
-                  if (it.fiber != null) row.fiber = it.fiber;
-                  if (it.source) row.source = it.source;
-                  return row;
-                })
-              : undefined;
-            const usualMeal: DigestUsualMeal | null =
-              usualMealInsight?.kind === "celebration"
-                ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
-                : usualMealInsight?.kind === "prompt"
-                  ? {
-                      kind: "prompt",
-                      suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
-                      ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
-                      ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
-                    }
-                  : null;
-            const closestToTarget = recap.bestDay
-              ? {
-                  label: recap.bestDay.label,
-                  protein: recap.bestDay.protein,
-                  calories: recap.bestDay.calories,
-                }
-              : null;
-            const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
-            const mealsLogged = Object.values(byDay).reduce(
-              (total: number, day: any) => total + (Array.isArray(day) ? day.length : 0),
-              0,
-            );
-            const headline = resolveDigestHeadline({
-              weightDeltaKg: recap.weightDeltaKg,
-              closestToTargetLabel: closestToTarget?.label ?? null,
-              streakDays: recap.streakLength,
-              daysLogged: recap.daysLogged,
-            });
-            const digestState: "success" | "empty" | "partial" =
-              recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
-            const blendedExtras: DigestBlendedExtras = {
-              dayOfWeekPattern: computeDayOfWeekPattern(byDay as any),
-              closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
-            };
-            return (
-              <Digest
-                blended={digestBlendEnabled}
-                blendedExtras={blendedExtras}
-                onAdjustPace={() => router.push("/targets" as any)}
-                weekKey={recap.weekKey}
-                weekLabel={recap.weekLabel}
-                daysLogged={recap.daysLogged}
-                mealsLogged={mealsLogged}
-                headline={headline}
-                stats={{
-                  streakDays: recap.streakLength,
-                  streakFreezesAvailable: recap.freezesAvailable,
-                  avgCalories: recap.avgCalories,
-                  avgProtein: recap.avgProtein,
-                  proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
-                  weightDeltaKg: recap.weightDeltaKg,
-                  weightFirstKg: recap.weightFirstKg,
-                  weightLastKg: recap.weightLastKg,
-                }}
-                narrative={{ closestToTarget, maintenanceLine, usualMeal }}
-                shareText={formatRecapForShare(recap)}
-                state={digestState}
-                weightSurfaceMode={weightSurfaceMode}
-                onShare={() => { /* Digest owns share sheet + analytics */ }}
-                onDismiss={dismissRecap}
-                onOpenSaveCombo={(slot, items) => {
-                  const serialized = serializePendingUsualMealSave(slot, items);
-                  if (serialized) {
-                    AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(() => {});
-                  }
-                  router.navigate({ pathname: "/(tabs)" as any });
-                }}
-                onStartUsualMealSave={() => {
-                  router.navigate({ pathname: "/(tabs)" as any });
-                }}
-              />
-            );
-          })() : null}
-
-          {digestBlendEnabled ? null : (
-            <DigestStoryCard
-              weekLabel={recap.weekLabel}
-              daysLogged={weekStats.daysWithFood}
-              avgCalories={weekStats.avgCalories}
-              targetCalories={targets.calories}
-              avgProtein={recap.avgProtein}
-              targetProtein={targets.protein}
-              proteinOnTargetDays={weekStats.proteinOnTarget}
-              closestToTarget={recap.bestDay
-                ? {
-                    label: recap.bestDay.label,
-                    calories: recap.bestDay.calories,
-                    protein: recap.bestDay.protein,
-                  }
-                : null}
-              dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
-            />
-          )}
-
-          {/* 11. TrendSummaryCard + Streak/Trend chips — REMOVED in v2.
-              The 3-stat row replaces them. Components still imported but
-              not rendered on this path. */}
-          </>
-          )}
-          </>
-        )}
-        <Text
-          testID="progress-nutrition-estimate-footer"
-          style={{
-            fontSize: 11,
-            color: colors.textTertiary,
-            textAlign: "center",
-            lineHeight: 16,
-            marginTop: 16,
-            marginBottom: 8,
-            paddingHorizontal: 16,
-          }}
-        >
-          Nutrition data are estimates. Not medical or dietetic advice.
-        </Text>
-        </ReAnimated.View>
-        </>
-      ) : (
-      <>
-      {/* ── EXISTING LAYOUT (flag off — byte-for-byte preserved) ── */}
-      {/* ENG-616: Oura-style hero metric — one big number at the top. */}
+      {/* 1. TIME-RANGE TOGGLE — [7d, 30d, 90d, All]. Active = solid plum
+          fill (`t.plum`) + white text; the rest bordered cream pills.
+          Mirrors web `bg-foreground-brand`. Drives every range stat below
+          + the weight/calorie windows. */}
       <ReAnimated.View style={heroEntrance.style}>
-      <ProgressHeroMetric
-        adherencePct={caloriesRange.adherencePct}
-        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
-        targetCalories={targets.calories}
-        daysLogged={caloriesRange.daysLogged}
-        streak={streakDays}
-      />
-
-      {/* Phase 4 / B3.1 — Progress story headline (Surface E). */}
-      <View style={{ marginBottom: Spacing.md }}>
-        {hasEnoughDataForStory(weekStats.daysWithFood) ? (
-          <ProgressHeadline
-            commentary={generateProgressCommentary({
-              current:
-                adaptiveTdee != null && adaptiveConfidence != null
-                  ? {
-                      tdee: adaptiveTdee,
-                      confidence:
-                        adaptiveConfidence === "high" ||
-                        adaptiveConfidence === "medium" ||
-                        adaptiveConfidence === "low"
-                          ? adaptiveConfidence
-                          : "low",
-                      loggingDays: Object.keys(byDay ?? {}).length,
-                      weighInCount: Object.keys(weightKgByDay ?? {}).length,
-                      avgDailyIntake: 0,
-                      smoothedWeightChangeKgPerDay: 0,
-                      windowDays: 28,
-                    }
-                  : null,
-              loggingDays: weekStats.daysWithFood,
-            })}
-          />
-        ) : (
-          <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
-        )}
-      </View>
-      </ReAnimated.View>
-
-      <ReAnimated.View style={chartsEntrance.style}>
-      {/* Range-picker segmented control — [7d, 30d, 90d, All]. Port
-          of prototype `screens-mobile.jsx:581-591` (2026-04-21 D5):
-          single muted container with an inset active chip that uses
-          `t.elevated` (card) + a subtle shadow. Replaces the earlier
-          individual outlined pills so the selector reads as a modern
-          segmented control on both platforms. Selection drives the
-          overline text in the header. */}
       <View
         testID="progress-range-picker"
         accessibilityRole="tablist"
-        style={{
-          flexDirection: "row",
-          gap: 6,
-          marginBottom: Spacing.md,
-          backgroundColor: t.border,
-          borderRadius: 10,
-          padding: 4,
-        }}
+        style={{ flexDirection: "row", gap: 6 }}
       >
         {(["7d", "30d", "90d", "all"] as const).map((k) => {
           const active = rangeKey === k;
@@ -2109,1326 +1124,804 @@ export default function ProgressScreen() {
               accessibilityLabel={`Range ${label}`}
               accessibilityState={{ selected: active }}
               onPress={() => {
-                // Selection haptic on an actual range change — matches the
-                // canonical `MobileSegmented` control (`haptics.select()` on
-                // change). Always-on selection feedback (not a visual change,
-                // so not flag-gated); guarded so re-tapping the active pill
-                // doesn't buzz.
                 if (!active) haptics.select();
                 setRangeKey(k);
               }}
-              // 2026-05-13 (premium-bar audit Group H weight chart #7):
-              // visible pill is ~28pt tall; hitSlop extends the touch
-              // target above + below to ≥40pt without changing visual
-              // geometry. Apple HIG recommends ≥44pt; testers reported
-              // missed taps on the range row at the prior visual size.
               hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
               style={({ pressed }) => [{
                 flex: 1,
                 paddingVertical: 8,
                 paddingHorizontal: 4,
                 alignItems: "center",
-                borderRadius: 7,
-                backgroundColor: active ? t.elevated : "transparent",
-                // Prototype: `0 1px 2px rgba(0,0,0,0.1)` on the active chip only.
-                shadowColor: "#000",
-                shadowOpacity: active ? 0.1 : 0,
-                shadowRadius: active ? 2 : 0,
-                shadowOffset: { width: 0, height: 1 },
-                elevation: active ? 1 : 0,
-                opacity: pressed ? 0.8 : 1,
+                borderRadius: Radius.full,
+                backgroundColor: active ? t.plum : t.elevated,
+                borderWidth: active ? 0 : 1,
+                borderColor: t.border,
+                opacity: pressed ? 0.85 : 1,
               }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: active ? t.text : t.sub }}>{label}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "500", color: active ? "#FFFFFF" : t.sub }}>{label}</Text>
             </Pressable>
           );
         })}
       </View>
 
-      {/* ── 2026-04-20 Prototype Phase 2 cards ──
-          Inserted below the range picker and above every legacy card
-          (freeze panel, maintenance, journey, daily calories bar,
-          weekly recap, macro adherence) so the two new hero cards are
-          the first thing a user sees after picking a range. Each card
-          reads from the shared `progressRangeStats` helpers so web +
-          mobile numbers can't drift. Household bar sits elsewhere
-          (owned by another agent). */}
-      {/* T13.2 — gate the absolute-weight surface on profile.weight_surface_mode.
-          "show": full WeightRangeCard with kg/lb numbers (legacy default).
-          "trends_only": direction tile only (arrow + "Slightly down/up/Stable").
-          "hide": skip entirely. Same gate applies to the WeightChart and
-          Weight Projection / Journey cards lower in the screen so a single
-          opt-out reflects everywhere on Progress. */}
-      {/* 2026-05-11 (Grace TF feedback — "this is duplicative"): the
-          full `<WeightRangeCard>` ("show" mode) was rendering a second
-          weight surface above the big Weight Chart Card lower on this
-          screen — same data, smaller chart, different time-range
-          buttons. Killed in show mode; the big chart card below is the
-          single canonical weight surface now. The body-neutral
-          `trends_only` mode keeps its lightweight single-line tile
-          because that's intentionally NOT the big chart; users opt
-          into trends-only specifically to hide absolute numbers. */}
+      {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
+          commentary; the StoryGate placeholder shares the same lilac wash
+          until the user crosses the 3-day data floor (geometry matches so
+          the slot doesn't jump). On `trends_only` the direction tile still
+          renders above so opt-out users keep a weight signal. */}
       {weightSurfaceMode === "trends_only" && (
-        <WeightTrendOnlyCard
-          // P1-14 (TestFlight `AOVuCyOCNB1pI_TjMGNiAeg`, `AHEeeC9a4-lKIyW5n7HgJxs`,
-          // 2026-04-22): when there's no weigh-in in the past 7 days,
-          // `weekDeltaKg` is null. The previous fallback to the
-          // whole-range `deltaKg` then labelled a month-old delta as
-          // "this week" — pure fiction. Drop the fallback: if no recent
-          // data, the card shows direction copy only ("Stable this
-          // week"-style — see WeightTrendOnlyCard for the threshold).
-          weekDeltaKg={weightRange.weekDeltaKg}
-          rangeKey={rangeKey}
-          theme={t}
-        />
+        <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} rangeKey={rangeKey} theme={t} />
       )}
-      <CaloriesRangeCard
-        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
-        deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
-        adherencePct={caloriesRange.adherencePct}
-        daysLogged={caloriesRange.daysLogged}
-        targetCalories={targets.calories}
-        theme={t}
-      />
+      {hasEnoughDataForStory(weekStats.daysWithFood) ? (
+        <ProgressHeadline
+          commentary={generateProgressCommentary({
+            current:
+              adaptiveTdee != null && adaptiveConfidence != null
+                ? {
+                    tdee: adaptiveTdee,
+                    confidence:
+                      adaptiveConfidence === "high" ||
+                      adaptiveConfidence === "medium" ||
+                      adaptiveConfidence === "low"
+                        ? adaptiveConfidence
+                        : "low",
+                    loggingDays: Object.keys(byDay ?? {}).length,
+                    weighInCount: Object.keys(weightKgByDay ?? {}).length,
+                    avgDailyIntake: 0,
+                    smoothedWeightChangeKgPerDay: 0,
+                    windowDays: 28,
+                  }
+                : null,
+            loggingDays: weekStats.daysWithFood,
+          })}
+        />
+      ) : (
+        <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
+      )}
       </ReAnimated.View>
 
-      <ReAnimated.View style={detailsEntrance.style}>
-      {!hasData ? (
-        <View style={[{ padding: 24, borderRadius: Radius.lg, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
-          <IconBox color={t.accent} size={40}>
-            <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
-          </IconBox>
-          <Text style={{ ...Type.headline, color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
-          <Text style={{ ...Type.body, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
-            Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* WEEK DIGEST (D3) — replaces WeeklyRecapCard. Host flattens
-              the weekly-recap data + usual-meal insight into the shared
-              `DigestProps` shape so web + mobile cannot drift. See
-              `docs/design/digest-primitive.md`.
+      <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
+      {/* 3. AVERAGE ADHERENCE — big calorie-adherence % + on-target dot
+          streak + four macro bars (Protein sage / Carbs clay / Fat amber /
+          Fibre teal). Every figure is real (range adherence + range macro
+          adherence). The "up N%" trend chip stays hidden until the weekly
+          aggregate stream lands (documented data gap) — never invented. */}
+      <ProgressAverageAdherence
+        adherencePct={caloriesRange.adherencePct}
+        onTargetDays={weekStats.days.map(
+          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+        )}
+        macros={[
+          { name: "Protein", pct: macroRange.proteinPct, color: t.protein },
+          { name: "Carbs", pct: macroRange.carbsPct, color: t.carbs },
+          { name: "Fat", pct: macroRange.fatPct, color: t.fat },
+          { name: "Fibre", pct: macroRange.fiberPct, color: MacroColors.fiber },
+        ]}
+      />
 
-              ENG-740 — when `progress_digest_blend` is on, this block
-              renders the merged premium card (gated on always-on
-              `digestBlendVisible`) and the legacy `<DigestStoryCard>`
-              below is suppressed. Flag off → legacy recap (Sat→Tue) +
-              story card both render. */}
-          {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
-            const digestSeed = (() => {
-              if (usualMealInsight?.kind !== "prompt") return null;
-              const seed = selectMostFrequentSlotSeed(byDay as any, usualMealInsight.suggestedSlot);
-              if (!seed || seed.seedItems.length < 2) return null;
-              return seed;
-            })();
-            const digestSeedItems = digestSeed
-              ? digestSeed.seedItems.map((it) => {
-                  const row: Omit<SavedMealItem, "id" | "position"> = {
-                    recipeTitle: it.recipeTitle,
-                    calories: it.calories,
-                    protein: it.protein,
-                    carbs: it.carbs,
-                    fat: it.fat,
-                    portionMultiplier: 1,
-                  };
-                  if (it.fiber != null) row.fiber = it.fiber;
-                  if (it.source) row.source = it.source;
-                  return row;
-                })
-              : undefined;
-            const usualMeal: DigestUsualMeal | null =
-              usualMealInsight?.kind === "celebration"
-                ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
-                : usualMealInsight?.kind === "prompt"
-                  ? {
-                      kind: "prompt",
-                      suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
-                      ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
-                      ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
-                    }
-                  : null;
-            const closestToTarget = recap.bestDay
-              ? {
-                  label: recap.bestDay.label,
-                  protein: recap.bestDay.protein,
-                  calories: recap.bestDay.calories,
-                }
-              : null;
-            const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
-            const mealsLogged = Object.values(byDay).reduce(
-              (total: number, day: any) => total + (Array.isArray(day) ? day.length : 0),
-              0,
-            );
-            const headline = resolveDigestHeadline({
-              weightDeltaKg: recap.weightDeltaKg,
-              closestToTargetLabel: closestToTarget?.label ?? null,
-              streakDays: recap.streakLength,
-              daysLogged: recap.daysLogged,
-            });
-            const digestState: "success" | "empty" | "partial" =
-              recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
-            // ENG-740 — extras the blended layout consumes. PATTERN row
-            // reuses the same `computeDayOfWeekPattern` the legacy story
-            // card fed; the hero track reads the closest day's per-day
-            // target. Both real computed values — never fabricated.
-            const blendedExtras: DigestBlendedExtras = {
-              dayOfWeekPattern: computeDayOfWeekPattern(byDay as any),
-              closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
-            };
-            return (
-              <Digest
-                blended={digestBlendEnabled}
-                blendedExtras={blendedExtras}
-                onAdjustPace={() => router.push("/targets" as any)}
-                weekKey={recap.weekKey}
-                weekLabel={recap.weekLabel}
-                daysLogged={recap.daysLogged}
-                mealsLogged={mealsLogged}
-                headline={headline}
-                stats={{
-                  streakDays: recap.streakLength,
-                  streakFreezesAvailable: recap.freezesAvailable,
-                  avgCalories: recap.avgCalories,
-                  avgProtein: recap.avgProtein,
-                  proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
-                  weightDeltaKg: recap.weightDeltaKg,
-                  weightFirstKg: recap.weightFirstKg,
-                  weightLastKg: recap.weightLastKg,
-                }}
-                narrative={{ closestToTarget, maintenanceLine, usualMeal }}
-                shareText={formatRecapForShare(recap)}
-                state={digestState}
-                weightSurfaceMode={weightSurfaceMode}
-                onShare={() => { /* Digest owns share sheet + analytics */ }}
-                onDismiss={dismissRecap}
-                onOpenSaveCombo={(slot, items) => {
-                  const serialized = serializePendingUsualMealSave(slot, items);
-                  if (serialized) {
-                    AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(() => {});
-                  }
-                  router.navigate({ pathname: "/(tabs)" as any });
-                }}
-                onStartUsualMealSave={() => {
-                  router.navigate({ pathname: "/(tabs)" as any });
-                }}
-              />
-            );
-          })() : null}
-
-          {/* ENG-755 — trend summary tiles (mobile port of web's
-              `TrendSummaryCardWeb`). Flag-gated; renders ABOVE the week
-              digest. Every figure is a count derived from `weekStats`
-              (calorie / protein adherence) + `weightKgByDay` (weigh-ins)
-              the screen already holds. The projected-goal row shows only
-              when a goal weight + a finite days-to-goal are known. */}
-          {(() => {
-            // "Hit" = at or under the day's effective target (snapshot or
-            // fallback). The old ±10% window false-negatives on days you
-            // were well under (e.g. 938 vs 1,100 effective = miss at 14.7%).
-            const daysHitCalorieTarget = weekStats.days.reduce((n, d) => {
-              if (d.targetCalories <= 0 || d.calories <= 0) return n;
-              return d.calories <= d.effectiveTargetCalories ? n + 1 : n;
-            }, 0);
-            const weighInsThisWeek = weekStats.days.filter(
-              (d) => (weightKgByDay[d.key] ?? 0) > 0,
-            ).length;
-            let goalWeightDisplay: string | null = null;
-            let goalDateLabel: string | null = null;
-            if (goalWeightKg != null && latestWeightKg != null) {
-              const timeline = calcGoalTimeline({
-                currentWeightKg: latestWeightKg,
-                goalWeightKg,
-                weightKgByDay,
-              });
-              if (timeline.daysToGoal != null && Number.isFinite(timeline.daysToGoal)) {
-                goalWeightDisplay = formatWeightForUnit({
-                  kg: goalWeightKg,
-                  system: measurementSystem,
-                });
-                const goalDate = new Date();
-                goalDate.setDate(goalDate.getDate() + timeline.daysToGoal);
-                goalDateLabel = goalDate.toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                });
-              }
-            }
-            return (
-              <View style={{ marginBottom: Spacing.md }}>
-                <TrendSummaryCard
-                  daysHitCalorieTarget={daysHitCalorieTarget}
-                  totalDaysInWindow={weekStats.days.length}
-                  daysHitProteinTarget={weekStats.proteinOnTarget}
-                  weighInsThisWeek={weighInsThisWeek}
-                  goalWeightDisplay={goalWeightDisplay}
-                  goalDateLabel={goalDateLabel}
-                />
-              </View>
-            );
-          })()}
-
-          {/* Week digest — narrative LEAD card. Replaces the 2x2 grid
-              as the visual focus. customer-lens audit 2026-04-30 +
-              D-2026-04-27-17.
-
-              ENG-740 — suppressed when `progress_digest_blend` is on;
-              the blended card above absorbs this narrative (closest day
-              + PATTERN row). Left intact for the flag-off path.
-
-              `dayOfWeekPattern` is the Lose It "Closer" parity slot
-              (audit 2026-04-30) — observational pattern across the
-              rolling 4-week window. Helper enforces the 14-day +
-              200-kcal-delta gates so we don't surface noise. */}
-          {digestBlendEnabled ? null : (
-            <View style={{ marginBottom: Spacing.md }}>
-              <DigestStoryCard
-                weekLabel={recap.weekLabel}
-                daysLogged={weekStats.daysWithFood}
-                avgCalories={weekStats.avgCalories}
-                targetCalories={targets.calories}
-                avgProtein={recap.avgProtein}
-                targetProtein={targets.protein}
-                proteinOnTargetDays={weekStats.proteinOnTarget}
-                closestToTarget={recap.bestDay
-                  ? {
-                      label: recap.bestDay.label,
-                      calories: recap.bestDay.calories,
-                      protein: recap.bestDay.protein,
-                    }
-                  : null}
-                dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
-              />
-            </View>
-          )}
-
-          {/* DEMOTED stat chips (D-2026-04-27-17 — tiles demoted, not
-              deleted). Was a 4-tile 2x2 grid that anchored the page;
-              now a compact 2-row chip list of small KPIs that still
-              link out to per-metric drill-downs (`progress-metric` +
-              `weight-tracker`). Smaller padding, smaller numerals,
-              no IconBox tinted backgrounds — reads as a footer
-              summary, not the lead.
-              2026-05-23 (Grace de-dup ask) — dropped Avg Calories +
-              Protein Hit tiles because they now duplicate the
-              reworked WEEK DIGEST hero row (which shows days-logged,
-              calorie delta, and avg/protein in one block). Streak +
-              Trend remain because the digest doesn't carry those —
-              they're the unique-data tiles. */}
+      {/* 4. WEIGHT CARD (Sloe Figma 492:2) — serif kg headline + "↓ N this
+          week" + Trend/Scale segmented toggle, clay sparkline, dashed goal
+          line, START/CURRENT/GOAL/RATE stat row, "＋ Log weight" button,
+          "View all measurements". The detailed Withings-style chart +
+          all-data list stay reachable via the sheets (no feature lost).
+          Gated on `show` — opt-out users saw the direction tile above. */}
+      {weightSurfaceMode === "show" && chartsReady ? (() => {
+        const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
+        const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
+        const weekDeltaKg = weightRange.weekDeltaKg;
+        const rateKgPerWeek =
+          latestWeightKg != null && goalWeightKg != null
+            ? (() => {
+                const tl = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay });
+                if (tl.weeklyRateKg === 0) return 0;
+                return tl.trendDirection === "losing"
+                  ? -Math.abs(tl.weeklyRateKg)
+                  : tl.trendDirection === "gaining"
+                    ? Math.abs(tl.weeklyRateKg)
+                    : 0;
+              })()
+            : null;
+        const goalDateLabel = (() => {
+          if (latestWeightKg == null || goalWeightKg == null) return null;
+          const tl = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay });
+          if (tl.daysToGoal == null || tl.daysToGoal <= 0) return null;
+          const d = new Date();
+          d.setDate(d.getDate() + tl.daysToGoal);
+          return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        })();
+        // Trend = smoothed moving-average line; Scale = raw weigh-ins.
+        const sparkSeries =
+          weightView === "scale"
+            ? weightChartTrend.points.map((p) => p.kg)
+            : weightChartTrend.movingAvg
+                .map((m, i) => (m != null ? m : weightChartTrend.points[i]?.kg))
+                .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+        const fmtW = (kg: number) => formatWeightForUnit({ kg, system: measurementSystem });
+        return (
           <View
-            testID="progress-demoted-chips"
-            style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: Spacing.md }}
+            testID="progress-weight-card"
+            style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
           >
-            {([
-              [
-                "Streak",
-                `${streakDays} day${streakDays !== 1 ? "s" : ""}`,
-                freezesAvailable > 0
-                  ? `· ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`
-                  : "logging streak",
-                streakDays >= 3 ? t.green : t.accent,
-                Trophy,
-              ],
-              [
-                "Trend",
-                weightTrend
-                  ? formatWeightForUnit({ kg: weightTrend.diff, system: measurementSystem, signed: true })
-                  : latestWeightKg != null
-                    ? formatWeightForUnit({ kg: latestWeightKg, system: measurementSystem })
-                    : "—",
-                weightTrend
-                  ? weightTrend.direction === "down"
-                    ? "losing (90d)"
-                    : weightTrend.direction === "up"
-                      ? "gaining (90d)"
-                      : "maintaining (90d)"
-                  : "no weight data",
-                weightTrend?.direction === "down" ? t.green : weightTrend?.direction === "up" ? t.amber : t.accent,
-                weightTrend?.direction === "down" ? TrendingDown : weightTrend?.direction === "up" ? TrendingUp : LineChart,
-              ],
-            ] as const).map(([title, val, sub, color, IconCmp], i) => {
-              const Icon = IconCmp as LucideIcon;
-              const openTile = () => {
-                if (title === "Trend") {
-                  setLogWeightOpen(true);
-                  return;
-                }
-                const metric = title === "Streak" ? "streak" : null;
-                if (metric) {
-                  router.push({ pathname: "/progress-metric" as any, params: { metric } });
-                }
-              };
-              const a11yLabel =
-                title === "Trend"
-                  ? `Weight trend, ${val}, ${sub}`
-                  : `Logging streak, ${val}, ${sub}`;
-              return (
-                <Pressable
-                  key={i}
-                  testID={`progress-demoted-chip-${i}`}
-                  onPress={openTile}
-                  accessibilityRole="button"
-                  accessibilityLabel={a11yLabel}
-                  accessibilityHint="Opens detailed breakdown"
-                  style={({ pressed }) => [
-                    {
-                      width: "48%",
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderRadius: Radius.md,
-                      backgroundColor: "transparent",
-                      borderWidth: 1,
-                      borderColor: t.border,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    },
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <Icon size={12} color={color as string} strokeWidth={1.75} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 10,
-                        color: t.dim,
-                        fontWeight: "500",
-                        textTransform: "uppercase",
-                        letterSpacing: 0.4,
-                      }}
-                    >
-                      {title}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 13,
-                        color: t.text,
-                        fontWeight: "600",
-                        fontVariant: ["tabular-nums"],
-                        marginTop: 1,
-                      }}
-                    >
-                      {val}
-                      <Text style={{ fontSize: 11, color: t.sub, fontWeight: "400" }}>
-                        {sub ? `  ${sub}` : ""}
-                      </Text>
-                    </Text>
-                  </View>
-                  <ChevronRight size={12} color={t.dim} strokeWidth={1.75} />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* H-4 — `chartsReady` defers mounting the heavy chart + card
-              stack by one frame after load so the stat-grid + recap
-              paint first. Placeholder card keeps the scroll position
-              stable; swap happens within ~16ms on warm focus. */}
-          {!chartsReady ? (
-            <View
-              testID="progress-charts-pending"
-              style={[{
-                backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderRadius: Radius.lg,
-                borderWidth: cardElevation.useBorder ? 1 : 0,
-                borderColor: t.border,
-                padding: 16,
-                marginBottom: Spacing.md,
-                minHeight: 140,
-              }, cardElevation.shadowStyle]}
-            >
-              <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
-              {/* P3 dark-mode fix — see note above the loading spinner. */}
-              <ActivityIndicator size="small" color={colors.tint} />
-            </View>
-          ) : (
-          <>
-          {/* Daily Calories Bar Chart
-              TestFlight `AISAWnLgU9cjRBOuEY-HuJU` (2026-04-18) — tester
-              said "not intuitive". The bars were green/amber with no
-              intake-target line on the chart itself + no legend for what
-              the colours meant. Added: (a) dashed target line across the
-              full chart at `targets.calories`, with its value labelled
-              at the right edge; (b) a one-line legend under the chart
-              stating exactly what each colour means. */}
-          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}>
-            <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Daily Calories</Text>
-            {(() => {
-              const chartHeight = 90;
-              const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
-              const barMax = chartHeight * 0.78; // leaves room above for value labels
-              const targetY = maxCal > 0 ? (targets.calories / (maxCal * 1.15)) * barMax : 0;
-              return (
-                <View style={{ height: chartHeight }}>
-                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
-                    {weekStats.days.map((d) => {
-                      const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
-                      // F-2 + ENG-787 — colour each bar against the
-                      // budget that was actually in force on that day:
-                      // the snapshot/current base target PLUS the earned
-                      // activity bonus (`effectiveTargetCalories`). Using
-                      // the bare base target painted bars amber on days the
-                      // user ate into a bonus they'd earned — the bug Grace
-                      // reported ("hasn't taken into account the fact i
-                      // earned bonus cals"). Collapses to base when the
-                      // activity-adjusted preference is off.
-                      const overTarget = d.calories > d.effectiveTargetCalories;
-                      const isDayToday = d.key === todayKey;
-                      // Action 13 Item #11 (2026-04-19) — past days
-                      // without a snapshot render with a dashed border
-                      // so the user can tell the bar's colour was
-                      // judged against today's target (the current
-                      // fallback) rather than the target they actually
-                      // had on that day. Today and future days don't
-                      // have historical-target ambiguity, so skip the
-                      // cue there.
-                      const isPast = d.key < todayKey;
-                      const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
-                      return (
-                        <Pressable
-                          key={d.key}
-                          onPress={() => {
-                            router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
-                          }}
-                          accessibilityHint={showApproxCue ? "Compared against today's target. No saved target for that day." : undefined}
-                          style={{ flex: 1, alignItems: "center", gap: 4 }}
-                        >
-                          <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
-                            {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
-                          </Text>
-                          <View
-                            testID={`progress-day-bar-${d.key}`}
-                            style={{
-                              width: "100%",
-                              height: barH,
-                              borderRadius: 5,
-                              // Match the calorie-ring 3-state rule:
-                              // empty=border tint, under=success green,
-                              // over=WARNING AMBER. Canonical 2026-05-22 v2
-                              // (anti-MFP nudge, not alarm). Memory file
-                              // `feedback_calorie_ring_colour_mapping.md`
-                              // reverted from red to amber.
-                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
-                              opacity: isDayToday ? 1 : 0.75,
-                              ...(showApproxCue
-                                ? {
-                                    borderWidth: 1,
-                                    borderStyle: "dashed",
-                                    borderColor: t.dim,
-                                  }
-                                : {}),
-                            }}
-                          />
-                          <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
-                        </Pressable>
-                      );
-                    })}
-                    {/* Dashed target line — positioned from the bar base up
-                        to the target y. Pointer-events off so the bars stay
-                        tappable. */}
-                    {targets.calories > 0 && maxCal > 0 && (
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          right: 0,
-                          bottom: 16 /* room for day label */ + targetY,
-                          height: 1,
-                          borderTopWidth: 1,
-                          borderStyle: "dashed",
-                          borderColor: t.accent,
-                          opacity: 0.7,
-                        }}
-                      />
-                    )}
-                  </View>
-                </View>
-              );
-            })()}
-            {/* Legend + target label */}
-            <View style={{ flexDirection: "column", marginTop: 8, gap: 4 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>At or under daily target</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Over daily target</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 10, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.accent }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Base target {targets.calories.toLocaleString()} kcal</Text>
-                </View>
-              </View>
-              <Text style={{ fontSize: 10, color: t.dim }}>
-                Each bar compares to your target for that day — higher on days you earned an activity bonus.
-              </Text>
-            </View>
-          </View>
-
-          {/* Macro Adherence */}
-          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}>
-            <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Macro Adherence</Text>
-            <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
-              Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
-            </Text>
-            {([
-              // Action 13 Item #4 (2026-04-19) — pass the raw adherence
-              // through `formatMacroAdherenceBar` so the bar fill caps
-              // at 150% and the label preserves the actual value with
-              // a "(capped at 150)" suffix when over the cap. Identical
-              // helper drives web `ProgressDashboard.tsx` so the figure
-              // can't drift between platforms.
-              ["Protein", weekStats.proteinAdherence, t.protein],
-              ["Carbs", weekStats.carbsAdherence, t.carbs],
-              ["Fat", weekStats.fatAdherence, t.fat],
-            ] as const).map(([name, pct, color]) => {
-              const bar = formatMacroAdherenceBar({ adherencePct: pct });
-              return (
-                <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
-                  <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
-                  {/* F-117 v2 (Grace, 2026-05-07): bar fill is now
-                      pre-clamped at 100 in `formatMacroAdherenceBar`,
-                      and the over-budget signal moved into the label
-                      colour (destructive instead of macro). The
-                      "(capped at 150)" suffix is gone. `overflow:hidden`
-                      stays as a defence-in-depth guard. */}
-                  <View
-                    style={{
-                      flex: 1,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: t.border,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      testID={`macro-adherence-bar-${name.toLowerCase()}`}
-                      style={{
-                        width: `${bar.barFillPct}%`,
-                        height: "100%",
-                        borderRadius: 3,
-                        backgroundColor: bar.isOver ? Accent.warning : color,
-                      }}
-                    />
-                  </View>
-                  <Text
-                    testID={`macro-adherence-label-${name.toLowerCase()}`}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: bar.isOver ? Accent.warning : color,
-                      minWidth: 56,
-                      textAlign: "right",
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {bar.label}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* D4 (2026-04-21) — Apple Health card. Sits below the weekly
-              protein bar (Macro Adherence above) per the prototype.
-              Component is pure; host pulls today's values from the
-              profile maps we already hydrate on focus. */}
-          {userId ? (
-            <AppleHealthCardHost
-              userId={userId}
-              stepsToday={stepsByDay[todayKey] ?? null}
-              latestWeightKg={latestWeightKg}
-              useImperial={measurementSystem === "imperial"}
-            />
-          ) : null}
-
-          {/* Maintenance card — F-3 (2026-04-19, TestFlight
-              `ADFYpDgEEb0QH-j3BXshPTo`). Was "Your TDEE"; value + label
-              now read from the shared `resolveMaintenance` so Today's
-              Activity Bonus card and this card can't drift. Adaptive
-              badge, confidence bars, and the "Formula estimate / +N
-              actual" subline are preserved so power users still see
-              the underlying spread. */}
-          {staticTdee != null && (() => {
-            const resolved = resolveMaintenance({
-              adaptive_tdee: adaptiveTdee,
-              adaptive_tdee_confidence: adaptiveConfidence,
-              adaptive_tdee_updated_at: adaptiveUpdatedAt,
-              sex: profileSexState as any,
-              weight_kg: latestWeightKg ?? 70,
-              height_cm: profileHeightCmState,
-              age: profileAgeState,
-              activity_level: profileActivityLevelState as any,
-            });
-            if (!resolved) return null;
-            const showAdaptiveExtras = resolved.source === "adaptive";
-            return (
-            <View
-              testID="progress-maintenance-card"
-              style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <IconBox color={t.accent} size={28}>
-                    <Zap size={14} color={t.accent} strokeWidth={1.75} />
-                  </IconBox>
-                  <Text style={{ ...Type.headline, color: t.text }}>Maintenance</Text>
-                </View>
-                {showAdaptiveExtras ? (
-                  <View
-                    testID="maintenance-source-pill"
-                    accessibilityLabel="Maintenance source: adaptive"
-                    style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
-                  </View>
-                ) : (
-                  /* Action 13 Item #14 (2026-04-19) — explicit
-                     "Formula estimate" pill when the resolver fell
-                     back to the formula. Previously formula-fallback
-                     users got no source label at all; coupled with
-                     the prior confidence-bar layout this read as if
-                     the displayed kcal was a low-confidence adaptive
-                     number when in fact it was the formula. The
-                     confidence bar below remains gated on
-                     `showAdaptiveExtras` so it still hides for
-                     formula. */
-                  <View
-                    testID="maintenance-source-pill"
-                    accessibilityLabel="Maintenance source: formula estimate"
-                    style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-                <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
-                  {resolved.kcal.toLocaleString()}
-                </Text>
-                <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
-              </View>
-
-              {showAdaptiveExtras && resolved.formulaKcal != null && (
-                <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
-                  Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
-                  {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
-                    <Text style={{ fontWeight: "600", color: t.text }}>
-                      {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
-                    </Text>
-                  )}
-                </Text>
-              )}
-
-              {/* Confidence bars — only meaningful when adaptive won. */}
-              {showAdaptiveExtras && adaptiveConfidence && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
-                  <View style={{ flexDirection: "row", gap: 3 }}>
-                    {(["low", "medium", "high"] as const).map((level) => {
-                      const filled =
-                        (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
-                        (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
-                        (level === "high" && adaptiveConfidence === "high");
-                      return (
-                        <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
-                      );
-                    })}
-                  </View>
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: adaptiveConfidence === "high" ? t.green : adaptiveConfidence === "medium" ? t.amber : t.dim, textTransform: "capitalize" }}>
-                    {adaptiveConfidence}
-                  </Text>
-                </View>
-              )}
-
-              <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
-                {showAdaptiveExtras
-                  ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
-                  : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
-                }
-              </Text>
-
-              {/* Data progress for non-adaptive users */}
-              {!showAdaptiveExtras && (
-                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                  <View style={{ flexDirection: "row", gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Weigh-ins</Text>
-                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(weightKgByDay).length}/7</Text>
-                      </View>
-                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
-                        <View style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
-                      </View>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Log days</Text>
-                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}/21</Text>
-                      </View>
-                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
-                        <View style={{ width: `${Math.min(100, (Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length / 21) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* G-4 (2026-04-19, TestFlight `ALcwMFPjfmJvyBLjs4CRt1k`)
-                  — "How this works" expandable. Chain from BMR through
-                  Maintenance, Calorie goal, and projected weekly loss
-                  so the tester can see how every number connects. No
-                  new DB reads; all inputs are already loaded for this
-                  screen. Parity pinned by
-                  `tests/unit/maintenanceChain.test.ts`. */}
-              {(() => {
-                const chain = buildMaintenanceChain(
-                  {
-                    sex: profileSexState as any,
-                    weight_kg: latestWeightKg ?? 70,
-                    height_cm: profileHeightCmState,
-                    age: profileAgeState,
-                    activity_level: profileActivityLevelState as any,
-                  },
-                  resolved,
-                  planPace,
-                  userGoal,
-                );
-                if (!chain) return null;
-                return (
-                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                    <Pressable
-                      onPress={() => setMaintenanceExplainerOpen((v) => !v)}
-                      accessibilityRole="button"
-                      accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
-                      accessibilityState={{ expanded: maintenanceExplainerOpen }}
-                      hitSlop={8}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
-                        {maintenanceExplainerOpen ? "Hide" : "How this works"}
-                      </Text>
-                      {maintenanceExplainerOpen ? (
-                        <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
-                      ) : (
-                        <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
-                      )}
-                    </Pressable>
-                    {maintenanceExplainerOpen && (
-                      <View style={{ marginTop: 10, gap: 6 }}>
-                        {chain.steps.map((step, i) => {
-                          const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
-                          return (
-                            <View
-                              key={`${step.kind}-${i}`}
-                              style={{
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: 12,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  flex: 1,
-                                  fontSize: 12,
-                                  lineHeight: 17,
-                                  color: isSummary ? t.sub : t.text,
-                                  fontWeight: step.emphasis ? "700" : "500",
-                                }}
-                              >
-                                {step.label}
-                              </Text>
-                              {step.value ? (
-                                <Text
-                                  style={{
-                                    fontSize: 12,
-                                    color: step.emphasis ? t.text : t.sub,
-                                    fontWeight: step.emphasis ? "700" : "500",
-                                    fontVariant: ["tabular-nums"],
-                                  }}
-                                >
-                                  {step.value}
-                                </Text>
-                              ) : null}
-                            </View>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                );
-              })()}
-            </View>
-            );
-          })()}
-
-          {/* Steps Card
-              Action 13 Item #10 (2026-04-19) — render the card against
-              the HK sync status, not just the raw `stepsByDay` map.
-                - pending: skeleton (we haven't asked HK yet — never
-                  show "0" we can't justify)
-                - failed:  honest "Steps sync paused — open Health
-                  permissions" with a tap-to-retry; never a 0
-                - success: real count (0 = legitimate 0)
-              Previous version always rendered "(stepsByDay[todayKey]
-              ?? 0)", which made a permissions failure look like a
-              normal "you haven't walked yet". */}
-          <View
-            testID="progress-steps-card"
-            style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <IconBox color={t.green} size={28}>
-                <Footprints size={14} color={t.green} strokeWidth={1.75} />
-              </IconBox>
-              <Text style={{ ...Type.headline, color: t.text }}>Steps Today</Text>
-            </View>
-            {stepsSyncStatus === "pending" ? (
-              <View testID="progress-steps-skeleton" style={{ height: 30, justifyContent: "center" }}>
-                <ActivityIndicator size="small" color={t.accent} />
-              </View>
-            ) : stepsSyncStatus === "failed" ? (
-              <View testID="progress-steps-sync-failed">
-                <Text style={{ fontSize: 13, color: t.amber, marginBottom: 6 }}>
-                  Steps sync paused — open Health permissions
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Retry activity sync"
-                  testID="progress-steps-sync-retry"
-                  disabled={stepsSyncRetrying}
-                  onPress={async () => {
-                    if (!userId) return;
-                    setStepsSyncRetrying(true);
-                    setStepsSyncStatus("pending");
-                    try {
-                      await syncHealthDataThrottled(userId, { bypassThrottle: true });
-                      setStepsSyncStatus("success");
-                      // Re-read steps so the card reflects the new value.
-                      const { data: refreshed } = await supabase
-                        .from("profiles")
-                        .select("steps_by_day")
-                        .eq("id", userId)
-                        .maybeSingle();
-                      if (refreshed) setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
-                    } catch {
-                      setStepsSyncStatus("failed");
-                    } finally {
-                      setStepsSyncRetrying(false);
-                    }
-                  }}
-                  style={({ pressed }) => ({
-                    alignSelf: "flex-start",
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    backgroundColor: t.accent + "18",
-                    borderWidth: 1,
-                    borderColor: t.accent + "40",
-                    opacity: pressed || stepsSyncRetrying ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: t.accent }}>
-                    {stepsSyncRetrying ? "Retrying…" : "Retry sync"}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <>
-                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-                  <Text style={{ fontSize: 28, fontWeight: "700", color: stepsToday >= dailyStepsGoal ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
-                    {stepsToday.toLocaleString()}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: t.sub }}>/ {dailyStepsGoal.toLocaleString()}</Text>
-                </View>
-                <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8 }}>
-                  <View style={{ width: `${Math.min((stepsToday / dailyStepsGoal) * 100, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: t.green }} />
-                </View>
-              </>
-            )}
-          </View>
-
-          {/* Weight Chart Card — T13.2: only render in full "show" mode.
-              The chart visualises absolute kg progression, which is
-              exactly what trends_only / hide users opted out of. */}
-          {weightSurfaceMode === "show" ? (
-          <View
-            style={[{
-              backgroundColor: cardElevation.liftBg ?? t.elevated,
-              borderRadius: Radius.lg,
-              borderWidth: cardElevation.useBorder ? 1 : 0,
-              borderColor: t.border,
-              padding: 16,
-              marginBottom: Spacing.md,
-            }, cardElevation.shadowStyle]}
-          >
-            {/* 2026-05-11 (Grace TF feedback — mockup signed off):
-                tabs + list button on ONE row (was an orphan row above
-                the tabs holding only the list button — ~28px of dead
-                whitespace). Stale-log badge becomes a small line above
-                the row instead of riding alongside the button. */}
-            {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
-              <View style={{ alignSelf: "flex-end", backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
-              </View>
-            )}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
+                <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
+                  {latestWeightKg != null ? fmtW(latestWeightKg) : "—"}
+                </Text>
+                {weekDeltaKg != null && Math.abs(weekDeltaKg) >= 0.05 ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    {weekDeltaKg < 0 ? (
+                      <TrendingDown size={14} color={t.sub} strokeWidth={1.75} />
+                    ) : (
+                      <TrendingUp size={14} color={t.sub} strokeWidth={1.75} />
+                    )}
+                    <Text style={{ fontSize: 13, color: t.sub, fontVariant: ["tabular-nums"] }}>
+                      {fmtW(Math.abs(weekDeltaKg))} this week
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-              {Object.keys(weightKgByDay).length > 0 && (
-                <Pressable
-                  onPress={() => setAllWeightDataOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="View all weight data"
-                  hitSlop={6}
-                  testID="progress-all-weight-data-button"
-                  style={({ pressed }) => ({
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: colors.inputBg,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <ListIcon size={16} color={t.text} strokeWidth={2} />
-                </Pressable>
-              )}
+              {/* Trend/Scale segmented toggle */}
+              <View
+                testID="progress-weight-view-toggle"
+                accessibilityRole="tablist"
+                style={{ flexDirection: "row", backgroundColor: t.border, borderRadius: 999, padding: 2 }}
+              >
+                {(["trend", "scale"] as const).map((v) => {
+                  const active = weightView === v;
+                  return (
+                    <Pressable
+                      key={v}
+                      testID={`progress-weight-view-${v}`}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => {
+                        if (!active) haptics.select();
+                        setWeightView(v);
+                      }}
+                      style={({ pressed }) => [{
+                        paddingHorizontal: 12,
+                        paddingVertical: 4,
+                        borderRadius: 999,
+                        backgroundColor: active ? t.elevated : "transparent",
+                        opacity: pressed ? 0.85 : 1,
+                      }]}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "500", color: active ? t.text : t.sub, textTransform: "capitalize" }}>{v}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-            {/* Withings-style WEIGHT + TREND header (2026-05-11, Grace
-                TF feedback). Renders the chart's status + signed delta
-                prominently above the chart so users don't have to read
-                the small trend line at the bottom. Period label is
-                drawn from the chart's `sinceLabel` so it tracks the
-                selected range automatically. */}
-              {/* 2026-05-11 (Grace TF feedback — "only show no data
-                  where there is none at all"): render the header
-                  whenever the user has ANY entry. The header itself
-                  shows "No data" only when the trend payload says so
-                  (zero points, after the raw-delta fallback). */}
-              {weightChartTrend.points.length >= 1 && (
-                <View style={{ marginTop: 12 }}>
-                  <WeightTrendHeader
-                    trend={weightChartTrend}
-                    isImperial={measurementSystem === "imperial"}
-                    periodLabel={
-                      weightChartTrend.periodRangeLabel ?? weightChartTrend.sinceLabel
-                    }
-                  />
+            {goalWeightKg != null ? (
+              <Text style={{ fontSize: 13, color: t.sub, marginTop: 6 }}>
+                Goal {fmtW(goalWeightKg)}
+                {goalDateLabel ? ` · on track for ~${goalDateLabel}` : ""}
+              </Text>
+            ) : null}
+            {/* Clay sparkline with a dashed goal line. */}
+            {sparkSeries.length >= 2 ? (
+              <View style={{ marginTop: 12, height: 110, position: "relative" }}>
+                {(() => {
+                  // Card inner width = screen − screen padding − card padding (20×2).
+                  const chartW = Dimensions.get("window").width - Layout.screenPaddingX * 2 - 40;
+                  const chartH = 110;
+                  const goalKgConv = goalWeightKg;
+                  const allVals = goalKgConv != null ? [...sparkSeries, goalKgConv] : sparkSeries;
+                  const minV = Math.min(...allVals);
+                  const maxV = Math.max(...allVals);
+                  const span = maxV - minV === 0 ? 1 : maxV - minV;
+                  const goalY = goalKgConv != null ? 4 + (chartH - 8) - ((goalKgConv - minV) / span) * (chartH - 8) : null;
+                  return (
+                    <>
+                      {goalY != null ? (
+                        <View
+                          pointerEvents="none"
+                          style={{ position: "absolute", left: 0, right: 0, top: goalY, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.sub, opacity: 0.5 }}
+                        />
+                      ) : null}
+                      <Sparkline points={sparkSeries} color={t.carbs} width={chartW} height={chartH} />
+                    </>
+                  );
+                })()}
+              </View>
+            ) : null}
+            {/* START / CURRENT / GOAL / RATE stat row */}
+            <View style={{ flexDirection: "row", marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
+              {([
+                ["Start", startKg != null ? fmtW(startKg) : "—"],
+                ["Current", latestWeightKg != null ? fmtW(latestWeightKg) : "—"],
+                ["Goal", goalWeightKg != null ? fmtW(goalWeightKg) : "—"],
+                ["Rate", rateKgPerWeek != null && rateKgPerWeek !== 0
+                  ? `${formatWeightForUnit({ kg: rateKgPerWeek, system: measurementSystem, signed: true })}/wk`
+                  : "—"],
+              ] as const).map(([label, val]) => (
+                <View key={label} style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>{val}</Text>
                 </View>
-              )}
-            <View style={{ marginTop: 4 }}>
-              {/*
-                2026-05-06: relaxed >=3 → >=2 so the chart renders a
-                line as soon as the user has two weigh-ins. The chart
-                code already handles low-count cases (no MA below 3
-                points), and the smart bucket fallback in
-                computeWeightTrend prevents long ranges from
-                collapsing short histories into <3 buckets.
-              */}
-              {/* 2026-05-12 round 4 (Grace TF, Withings parity): show
-                  the chart structure even with a single weigh-in.
-                  Withings draws the chart at count === 1 (one dot on
-                  the gridlines, no trend line) — way more readable
-                  than the sparse-state template ("scale icon + Log
-                  weight" replaced the chart entirely). The chart
-                  already handles count === 1 gracefully: today's
-                  vertical indicator + the prominent halo dot + no
-                  trend line. count === 0 still falls back to the
-                  Log-weight CTA template since there's literally
-                  nothing to chart. */}
-              {weightChartTrend.points.length >= 1 ? (
-                <WeightChart
-                  trend={weightChartTrend}
-                  goalKg={goalWeightKg}
-                  isImperial={measurementSystem === "imperial"}
-                  range={weightChartRange}
-                />
-              ) : (
-                <WeightSparseState
-                  points={weightChartTrend.points}
-                  onLogWeight={() => setLogWeightOpen(true)}
-                />
-              )}
+              ))}
             </View>
-            {/* 2026-05-11 (Grace TF feedback — "still looks super
-                messy"): the bottom trend copy line ("Down 0.8 kg on
-                average. Last 30 days.") duplicated the new
-                WEIGHT/TREND header above the chart byte-for-byte.
-                Removed. The header is the source of truth now. */}
-
-            {/* 2026-05-14 (premium-bar audit Group H #1): labelled
-                "View all measurements →" link beneath the chart that
-                opens the AllWeightDataSheet. The 32px round list-icon
-                button next to the range toggle is the same affordance
-                but reads as decorative chrome — testers in pixel-audit
-                sessions missed it. A labelled text link makes the
-                "drill into raw weigh-ins" path discoverable without
-                changing the underlying sheet. */}
-            {Object.keys(weightKgByDay).length > 0 && (
+            {/* ＋ Log weight (centred) + View all measurements */}
+            <Pressable
+              testID="progress-log-weight"
+              accessibilityRole="button"
+              accessibilityLabel="Log weight"
+              onPress={() => setLogWeightOpen(true)}
+              style={({ pressed }) => [{
+                marginTop: 14,
+                alignSelf: "center",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 18,
+                paddingVertical: 9,
+                borderRadius: 999,
+                backgroundColor: t.accent,
+                opacity: pressed ? 0.9 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>＋  Log weight</Text>
+            </Pressable>
+            {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable
                 onPress={() => setAllWeightDataOpen(true)}
                 accessibilityRole="button"
                 accessibilityLabel="View all measurements"
                 hitSlop={8}
                 testID="progress-view-all-measurements"
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  alignSelf: "flex-start",
-                  gap: 4,
-                  marginTop: 10,
-                  opacity: pressed ? 0.7 : 1,
-                })}
+                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 4, marginTop: 10, opacity: pressed ? 0.7 : 1 })}
               >
-                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>
-                  View all measurements
-                </Text>
+                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>View all measurements</Text>
                 <ArrowRight size={12} color={t.accent} strokeWidth={2} />
               </Pressable>
-            )}
+            ) : null}
           </View>
-          ) : null}
+        );
+      })() : weightSurfaceMode === "show" ? (
+        <View
+          testID="progress-weight-chart-pending"
+          style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20, minHeight: 140 }, cardElevation.shadowStyle]}
+        >
+          <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+          <ActivityIndicator size="small" color={colors.tint} />
+        </View>
+      ) : null}
 
-          {/* ENG-741 — Trajectory card. Sits directly under the weight
-              chart. Flag-gated (`progress_trajectory_box`); default-off
-              preserves the current layout. Same weightSurfaceMode ===
-              "show" gate as the chart + Journey card so a single opt-out
-              hides every absolute-weight surface. Reuses the shared
-              `computeTrajectory` helper (+ `calcGoalTimeline` for the
-              observed-rate override) — no projection maths re-derived. */}
-          {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (
-            <TrajectoryCard
-              byDay={byDay}
-              latestWeightKg={latestWeightKg}
-              targetCalories={targets.calories}
-              maintenanceTdeeKcal={
-                isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee
-              }
-              goal={userGoal}
-              timeline={
-                latestWeightKg != null && goalWeightKg != null
-                  ? calcGoalTimeline({
-                      currentWeightKg: latestWeightKg,
-                      goalWeightKg,
-                      weightKgByDay,
-                    })
-                  : null
-              }
-            />
-          ) : null}
+      {/* 5. AVG INTAKE / EST. TDEE (ADAPTIVE) / DEFICIT triad — real range
+          intake + resolved maintenance; deficit = maintenance − intake.
+          Sage TDEE/deficit, amber surplus. Three separate cream cells. */}
+      {hasData ? (
+        <ProgressEnergyTriad
+          avgIntakeKcal={caloriesRange.avgCaloriesPerDay}
+          maintenanceKcal={recapMaintenance?.kcal ?? staticTdee}
+          isAdaptive={recapMaintenance?.source === "adaptive"}
+        />
+      ) : null}
+      </ReAnimated.View>
 
-          {/* Weight Projection / Journey Card — T13.2: also gated on
-              weightSurfaceMode === "show". Projection visualises absolute
-              kg vs goal kg, which is the exact thing opt-out users hide. */}
-          {weightSurfaceMode === "show" &&
-            latestWeightKg != null &&
-            goalWeightKg != null &&
-            Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
-            (() => {
-              const timeline = calcGoalTimeline({
-                currentWeightKg: latestWeightKg,
-                goalWeightKg: goalWeightKg,
-                weightKgByDay,
-              });
-              const journeyProg = weightJourneyProgress({
-                goalKg: goalWeightKg,
-                latestKg: latestWeightKg,
-                weightKgByDay,
-              });
-              // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`):
-              // formula is `(start - current) / (start - goal)` clamped
-              // to [0, 1], via the shared helper. The old
-              // `Math.max(3, …)` floor made 0% render as 3% which looked
-              // like a broken progress bar on day-one accounts. At 0 we
-              // now render an empty bar + "Just starting" copy.
-              const pctFrac = journeyProg
-                ? computeWeightJourneyProgressPct({
-                    startKg: journeyProg.baselineKg,
-                    currentKg: latestWeightKg,
-                    goalKg: goalWeightKg,
+      <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
+      {!hasData ? (
+        <View style={[{ padding: 24, borderRadius: CARD_RADIUS, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
+          <IconBox color={t.accent} size={40}>
+            <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <Text style={{ ...Type.headline, color: t.plum, textAlign: "center" }}>Your progress will appear here</Text>
+          <Text style={{ ...Type.body, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
+            Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
+          </Text>
+        </View>
+      ) : (
+        <>
+        {/* 6. DAILY CALORIES (Sloe Figma 492:2) — M–S bars, sage = on
+            target, amber = over, a goal dot above each bar + an "On target /
+            Over" legend. Reads the same effective-target colouring as the
+            Today ring. */}
+        {!chartsReady ? (
+          <View
+            testID="progress-charts-pending"
+            style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20, minHeight: 140 }, cardElevation.shadowStyle]}
+          >
+            <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+            <ActivityIndicator size="small" color={colors.tint} />
+          </View>
+        ) : (
+        <>
+        <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]} testID="progress-daily-calories-card">
+          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <View>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>Daily Calories</Text>
+              <Text style={{ ...Type.display, fontSize: 24, lineHeight: 28, color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                {weekStats.avgCalories.toLocaleString()}<Text style={{ fontSize: 14, color: t.sub }}> avg</Text>
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: t.carbs }} />
+              <Text style={{ fontSize: 11, color: t.dim }}>goal</Text>
+            </View>
+          </View>
+          {(() => {
+            const chartHeight = 96;
+            const dotReserve = 10;
+            const barMax = chartHeight * 0.72;
+            const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories), 1);
+            const scaleMax = maxCal * 1.15;
+            return (
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, marginTop: 16 }}>
+                {weekStats.days.map((d) => {
+                  const overTarget = d.calories > d.effectiveTargetCalories;
+                  const barH = maxCal > 0 ? Math.max(4, (d.calories / scaleMax) * barMax) : 4;
+                  const goalDotBottom = d.effectiveTargetCalories > 0 ? Math.min(dotReserve + (d.effectiveTargetCalories / scaleMax) * barMax, chartHeight - 16) : null;
+                  const isDayToday = d.key === todayKey;
+                  return (
+                    <Pressable
+                      key={d.key}
+                      onPress={() => {
+                        router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
+                      }}
+                      style={{ flex: 1, height: chartHeight, justifyContent: "flex-end", alignItems: "center", position: "relative" }}
+                    >
+                      {goalDotBottom != null ? (
+                        <View style={{ position: "absolute", bottom: goalDotBottom, width: 6, height: 6, borderRadius: 999, backgroundColor: t.carbs }} />
+                      ) : null}
+                      <View
+                        testID={`progress-day-bar-${d.key}`}
+                        style={{ width: "100%", height: barH, borderRadius: 6, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.85 }}
+                      />
+                      <Text style={{ fontSize: 10, fontWeight: isDayToday ? "700" : "500", color: isDayToday ? t.text : t.dim, marginTop: 6 }}>{d.label.charAt(0)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })()}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
+              <Text style={{ fontSize: 11, color: t.dim }}>On target</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+              <Text style={{ fontSize: 11, color: t.dim }}>Over</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 7. ON-TARGET RIBBON — real count of on-target days this week. */}
+        <ProgressOnTargetRibbon
+          onTargetCount={weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length}
+          subtitle="Your most consistent week this month."
+        />
+
+        {/* ── Preserved detail (below the frame's above-fold story) ──
+            Apple Health, adaptive maintenance + explainer, journey /
+            projection, week digest — every wired surface kept. */}
+
+        {/* APPLE HEALTH */}
+        {userId ? (
+          <AppleHealthCardHost
+            userId={userId}
+            stepsToday={stepsByDay[todayKey] ?? null}
+            latestWeightKg={latestWeightKg}
+            useImperial={measurementSystem === "imperial"}
+          />
+        ) : null}
+
+        {/* MAINTENANCE card */}
+        {staticTdee != null && (() => {
+          const resolved = resolveMaintenance({
+            adaptive_tdee: adaptiveTdee,
+            adaptive_tdee_confidence: adaptiveConfidence,
+            adaptive_tdee_updated_at: adaptiveUpdatedAt,
+            sex: profileSexState as any,
+            weight_kg: latestWeightKg ?? 70,
+            height_cm: profileHeightCmState,
+            age: profileAgeState,
+            activity_level: profileActivityLevelState as any,
+          });
+          if (!resolved) return null;
+          const showAdaptiveExtras = resolved.source === "adaptive";
+          return (
+          <View
+            testID="progress-maintenance-card"
+            style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <IconBox color={t.accent} size={28}>
+                  <Zap size={14} color={t.accent} strokeWidth={1.75} />
+                </IconBox>
+                <Text style={{ ...Type.headline, color: t.plum }}>Maintenance</Text>
+              </View>
+              {showAdaptiveExtras ? (
+                <View
+                  testID="maintenance-source-pill"
+                  accessibilityLabel="Maintenance source: adaptive"
+                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                </View>
+              ) : (
+                <View
+                  testID="maintenance-source-pill"
+                  accessibilityLabel="Maintenance source: formula estimate"
+                  style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+              <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+                {resolved.kcal.toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
+            </View>
+
+            {showAdaptiveExtras && resolved.formulaKcal != null && (
+              <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
+                Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
+                {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
+                  <Text style={{ fontWeight: "600", color: t.text }}>
+                    {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
+                  </Text>
+                )}
+              </Text>
+            )}
+
+            {showAdaptiveExtras && adaptiveConfidence && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
+                <View style={{ flexDirection: "row", gap: 3 }}>
+                  {(["low", "medium", "high"] as const).map((level) => {
+                    const filled =
+                      (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                      (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                      (level === "high" && adaptiveConfidence === "high");
+                    return (
+                      <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
+                    );
+                  })}
+                </View>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: adaptiveConfidence === "high" ? t.green : adaptiveConfidence === "medium" ? t.amber : t.dim, textTransform: "capitalize" }}>
+                  {adaptiveConfidence}
+                </Text>
+              </View>
+            )}
+
+            <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
+              {showAdaptiveExtras
+                ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
+                : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
+              }
+            </Text>
+
+            {(() => {
+              const chain = buildMaintenanceChain(
+                {
+                  sex: profileSexState as any,
+                  weight_kg: latestWeightKg ?? 70,
+                  height_cm: profileHeightCmState,
+                  age: profileAgeState,
+                  activity_level: profileActivityLevelState as any,
+                },
+                resolved,
+                planPace,
+                userGoal,
+              );
+              if (!chain) return null;
+              return (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                  <Pressable
+                    onPress={() => setMaintenanceExplainerOpen((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
+                    accessibilityState={{ expanded: maintenanceExplainerOpen }}
+                    hitSlop={8}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
+                      {maintenanceExplainerOpen ? "Hide" : "How this works"}
+                    </Text>
+                    {maintenanceExplainerOpen ? (
+                      <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
+                    ) : (
+                      <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
+                    )}
+                  </Pressable>
+                  {maintenanceExplainerOpen && (
+                    <View style={{ marginTop: 10, gap: 6 }}>
+                      {chain.steps.map((step, i) => {
+                        const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
+                        return (
+                          <View
+                            key={`${step.kind}-${i}`}
+                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}
+                          >
+                            <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: isSummary ? t.sub : t.text, fontWeight: step.emphasis ? "700" : "500" }}>
+                              {step.label}
+                            </Text>
+                            {step.value ? (
+                              <Text style={{ fontSize: 12, color: step.emphasis ? t.text : t.sub, fontWeight: step.emphasis ? "700" : "500", fontVariant: ["tabular-nums"] }}>
+                                {step.value}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+          </View>
+          );
+        })()}
+
+        {/* PROJECTED WEIGHT (trajectory) card — flag-gated feature kept. */}
+        {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (
+          <TrajectoryCard
+            byDay={byDay}
+            latestWeightKg={latestWeightKg}
+            targetCalories={targets.calories}
+            maintenanceTdeeKcal={isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee}
+            goal={userGoal}
+            timeline={
+              latestWeightKg != null && goalWeightKg != null
+                ? calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay })
+                : null
+            }
+          />
+        ) : null}
+
+        {/* JOURNEY / projection card */}
+        {weightSurfaceMode === "show" &&
+          latestWeightKg != null &&
+          goalWeightKg != null &&
+          Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
+          (() => {
+            const timeline = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg: goalWeightKg, weightKgByDay });
+            const journeyProg = weightJourneyProgress({ goalKg: goalWeightKg, latestKg: latestWeightKg, weightKgByDay });
+            const pctFrac = journeyProg
+              ? computeWeightJourneyProgressPct({ startKg: journeyProg.baselineKg, currentKg: latestWeightKg, goalKg: goalWeightKg })
+              : null;
+            const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
+            const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
+            const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
+            const recentDays = daysWithFood.slice(-7);
+            const avgCals = recentDays.length > 0
+              ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
+              : 0;
+            const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
+            const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+            const observedKgPerWeek =
+              typeof timeline.weeklyRateKg === "number"
+                ? timeline.trendDirection === "losing"
+                  ? -Math.abs(timeline.weeklyRateKg)
+                  : timeline.trendDirection === "gaining"
+                    ? Math.abs(timeline.weeklyRateKg)
+                    : 0
+                : 0;
+            const dailyProjection =
+              projectionEligible && avgCals > 0 && latestWeightKg != null
+                ? projectWeight({
+                    currentWeightKg: latestWeightKg,
+                    todayCalories: avgCals,
+                    targetCalories: targets.calories,
+                    maintenanceTdeeKcal,
+                    goal: userGoal,
+                    observedKgPerWeek,
                   })
                 : null;
-              const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
-              const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
-              // Also show daily projection based on average recent intake
-              const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
-              const recentDays = daysWithFood.slice(-7);
-              const avgCals = recentDays.length > 0
-                ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
-                : 0;
-              // Prefer the user's real TDEE (adaptive when available, else static
-              // Mifflin) as the break-even number so the projection respects
-              // actual burn and doesn't flag a genuine deficit as a gain. See
-              // TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
-              const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
-              // Action 13 Item #8 (2026-04-19) — gate the projection on
-              // ≥5 recent food-logged days via the shared
-              // `shouldRenderDailyProjection`. Projecting from 2 days
-              // of food was dishonest — a single high or low day
-              // dragged the projection ±2-3 kg out. Below the floor we
-              // suppress the entire projection line; the journey card
-              // still renders progress + days-to-goal.
-              const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
-              // F-126 (Grace, 2026-05-07): prefer the observed weekly
-              // weight rate over the formula deficit when it's
-              // reliable. The Journey card already shows
-              // "Currently losing ~0.3 kg/week" derived from
-              // `timeline.weeklyRateKg`; pass that in so the
-              // projection respects the scale instead of forecasting
-              // from a stale TDEE estimate. Sign convention: negative
-              // for loss (user's actual rate × goal direction).
-              const observedKgPerWeek =
-                typeof timeline.weeklyRateKg === "number"
-                  ? timeline.trendDirection === "losing"
-                    ? -Math.abs(timeline.weeklyRateKg)
-                    : timeline.trendDirection === "gaining"
-                      ? Math.abs(timeline.weeklyRateKg)
-                      : 0
-                  : 0;
-              const dailyProjection =
-                projectionEligible && avgCals > 0 && latestWeightKg != null
-                  ? projectWeight({
-                      currentWeightKg: latestWeightKg,
-                      todayCalories: avgCals,
-                      targetCalories: targets.calories,
-                      maintenanceTdeeKcal,
-                      goal: userGoal,
-                      observedKgPerWeek,
-                    })
-                  : null;
 
-              return (
-                <Pressable
-                  onPress={() => setLogWeightOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Weight journey and charts"
-                  accessibilityHint="Opens detailed weight progress"
-                  style={({ pressed }) => [{
-                    backgroundColor: cardElevation.liftBg ?? t.elevated,
-                    borderRadius: Radius.lg,
-                    borderWidth: cardElevation.useBorder ? 1 : 0,
-                    borderColor: t.border,
-                    padding: 16,
-                    marginBottom: Spacing.md,
-                    opacity: pressed ? 0.94 : 1,
-                  }, cardElevation.shadowStyle]}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <IconBox color={t.green} size={28}>
-                        <Flag size={14} color={t.green} strokeWidth={1.75} />
-                      </IconBox>
-                      <Text style={{ ...Type.headline, color: t.text }}>Journey</Text>
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      {timeline.daysToGoal != null ? (
-                        <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
-                          {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
-                        </Text>
-                      ) : timeline.cappedAtMaxDays ? (
-                        /* Action 13 Item #15 (2026-04-19) — > 365 days
-                           projected, surface honest "more than 1 year"
-                           copy instead of an empty headline. Rate
-                           continues to render in the line below so the
-                           user can see the current pace. */
-                        <Text
-                          testID="progress-journey-capped"
-                          style={{ fontSize: 12, fontWeight: "600", color: t.sub }}
-                        >
-                          More than 1 year at current rate
-                        </Text>
-                      ) : null}
-                      <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
-                    </View>
+            return (
+              <Pressable
+                onPress={() => setLogWeightOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Weight journey and charts"
+                accessibilityHint="Opens detailed weight progress"
+                style={({ pressed }) => [{
+                  backgroundColor: cardElevation.liftBg ?? t.elevated,
+                  borderRadius: CARD_RADIUS,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
+                  borderColor: t.border,
+                  padding: 20,
+                  opacity: pressed ? 0.94 : 1,
+                }, cardElevation.shadowStyle]}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <IconBox color={t.green} size={28}>
+                      <Flag size={14} color={t.green} strokeWidth={1.75} />
+                    </IconBox>
+                    <Text style={{ ...Type.headline, color: t.plum }}>Journey</Text>
                   </View>
-
-                  {/* Progress description */}
-                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
-                    {timeline.remainingKg > 0.1
-                      ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
-                      : "You've reached your goal weight."}
-                    {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
-                  </Text>
-
-                  {/* Progress bar with start weight label */}
-                  {journeyProg && (
-                    <View style={{ marginBottom: 4 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
-                        <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
-                      </View>
-                      <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
-                        <View style={{
-                          width: `${progressPct}%` as any,
-                          height: "100%",
-                          borderRadius: 3,
-                          backgroundColor: progressPct >= 100 ? t.green : t.accent,
-                        }} />
-                      </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {timeline.daysToGoal != null ? (
+                      <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
+                        {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
+                      </Text>
+                    ) : timeline.cappedAtMaxDays ? (
                       <Text
-                        testID="progress-journey-copy"
-                        style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}
+                        testID="progress-journey-capped"
+                        style={{ fontSize: 12, fontWeight: "600", color: t.sub }}
                       >
-                        {progressCopy
-                          ? `Now: ${latestWeightKg} kg \u00B7 ${progressCopy}`
-                          : `Now: ${latestWeightKg} kg`}
+                        More than 1 year at current rate
                       </Text>
-                    </View>
-                  )}
-
-                  {/* Daily projection */}
-                  {dailyProjection && maintenanceTdeeKcal != null && (
-                    <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                      {(() => {
-                        const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
-                        const deficitLabel =
-                          avgDeficit > 0
-                            ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
-                            : avgDeficit < 0
-                              ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
-                              : "at maintenance";
-                        return (
-                          <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                            {/* Deficit drives the projection — show it alongside
-                                intake so the user can see both the input (what
-                                you ate) and the mechanism (deficit vs maintenance). */}
-                            Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
-                            <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
-                          </Text>
-                        );
-                      })()}
-                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
-                        Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
-                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
+                    ) : null}
+                    <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
                   </View>
-                </Pressable>
-              );
-            })()
-          )}
+                </View>
 
-          {/* Weekly Insight — removed (Action 5 Item 1, 2026-04-19).
-              The card restated numbers already on screen above (avg
-              calories, protein on target, streak). Replacement is being
-              scoped by `ui-product-designer` as a card-grammar-conformant
-              component; re-introduce when the new spec lands. */}
-          </>
-          )}
+                <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
+                  {timeline.remainingKg > 0.1
+                    ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
+                    : "You've reached your goal weight."}
+                  {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+                </Text>
+
+                {journeyProg && (
+                  <View style={{ marginBottom: 4 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
+                      <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
+                    </View>
+                    <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
+                      <View style={{ width: `${progressPct}%` as any, height: "100%", borderRadius: 3, backgroundColor: progressPct >= 100 ? t.green : t.accent }} />
+                    </View>
+                    <Text
+                      testID="progress-journey-copy"
+                      style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}
+                    >
+                      {progressCopy ? `Now: ${latestWeightKg} kg · ${progressCopy}` : `Now: ${latestWeightKg} kg`}
+                    </Text>
+                  </View>
+                )}
+
+                {dailyProjection && maintenanceTdeeKcal != null && (
+                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                    {(() => {
+                      const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
+                      const deficitLabel =
+                        avgDeficit > 0
+                          ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
+                          : avgDeficit < 0
+                            ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
+                            : "at maintenance";
+                      return (
+                        <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                          Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
+                          <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
+                        </Text>
+                      );
+                    })()}
+                    <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
+                      Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.
+                    </Text>
+                  </View>
+                )}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
+                  <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
+                </View>
+              </Pressable>
+            );
+          })()
+        )}
+
+        {/* WEEK DIGEST */}
+        {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
+          const digestSeed = (() => {
+            if (usualMealInsight?.kind !== "prompt") return null;
+            const seed = selectMostFrequentSlotSeed(byDay as any, usualMealInsight.suggestedSlot);
+            if (!seed || seed.seedItems.length < 2) return null;
+            return seed;
+          })();
+          const digestSeedItems = digestSeed
+            ? digestSeed.seedItems.map((it) => {
+                const row: Omit<SavedMealItem, "id" | "position"> = {
+                  recipeTitle: it.recipeTitle,
+                  calories: it.calories,
+                  protein: it.protein,
+                  carbs: it.carbs,
+                  fat: it.fat,
+                  portionMultiplier: 1,
+                };
+                if (it.fiber != null) row.fiber = it.fiber;
+                if (it.source) row.source = it.source;
+                return row;
+              })
+            : undefined;
+          const usualMeal: DigestUsualMeal | null =
+            usualMealInsight?.kind === "celebration"
+              ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
+              : usualMealInsight?.kind === "prompt"
+                ? {
+                    kind: "prompt",
+                    suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
+                    ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
+                    ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
+                  }
+                : null;
+          const closestToTarget = recap.bestDay
+            ? { label: recap.bestDay.label, protein: recap.bestDay.protein, calories: recap.bestDay.calories }
+            : null;
+          const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
+          const mealsLogged = Object.values(byDay).reduce(
+            (total: number, day: any) => total + (Array.isArray(day) ? day.length : 0),
+            0,
+          );
+          const headline = resolveDigestHeadline({
+            weightDeltaKg: recap.weightDeltaKg,
+            closestToTargetLabel: closestToTarget?.label ?? null,
+            streakDays: recap.streakLength,
+            daysLogged: recap.daysLogged,
+          });
+          const digestState: "success" | "empty" | "partial" =
+            recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
+          const blendedExtras: DigestBlendedExtras = {
+            dayOfWeekPattern: computeDayOfWeekPattern(byDay as any),
+            closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
+          };
+          return (
+            <Digest
+              blended={digestBlendEnabled}
+              blendedExtras={blendedExtras}
+              onAdjustPace={() => router.push("/targets" as any)}
+              weekKey={recap.weekKey}
+              weekLabel={recap.weekLabel}
+              daysLogged={recap.daysLogged}
+              mealsLogged={mealsLogged}
+              headline={headline}
+              stats={{
+                streakDays: recap.streakLength,
+                streakFreezesAvailable: recap.freezesAvailable,
+                avgCalories: recap.avgCalories,
+                avgProtein: recap.avgProtein,
+                proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
+                weightDeltaKg: recap.weightDeltaKg,
+                weightFirstKg: recap.weightFirstKg,
+                weightLastKg: recap.weightLastKg,
+              }}
+              narrative={{ closestToTarget, maintenanceLine, usualMeal }}
+              shareText={formatRecapForShare(recap)}
+              state={digestState}
+              weightSurfaceMode={weightSurfaceMode}
+              onShare={() => { /* Digest owns share sheet + analytics */ }}
+              onDismiss={dismissRecap}
+              onOpenSaveCombo={(slot, items) => {
+                const serialized = serializePendingUsualMealSave(slot, items);
+                if (serialized) {
+                  AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(() => {});
+                }
+                router.navigate({ pathname: "/(tabs)" as any });
+              }}
+              onStartUsualMealSave={() => {
+                router.navigate({ pathname: "/(tabs)" as any });
+              }}
+            />
+          );
+        })() : null}
+
+        {digestBlendEnabled ? null : (
+          <DigestStoryCard
+            weekLabel={recap.weekLabel}
+            daysLogged={weekStats.daysWithFood}
+            avgCalories={weekStats.avgCalories}
+            targetCalories={targets.calories}
+            avgProtein={recap.avgProtein}
+            targetProtein={targets.protein}
+            proteinOnTargetDays={weekStats.proteinOnTarget}
+            closestToTarget={recap.bestDay
+              ? { label: recap.bestDay.label, calories: recap.bestDay.calories, protein: recap.bestDay.protein }
+              : null}
+            dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
+          />
+        )}
+        </>
+        )}
         </>
       )}
       <Text
@@ -3446,8 +1939,6 @@ export default function ProgressScreen() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </Text>
       </ReAnimated.View>
-      </>
-      )}
     </ScrollView>
     <LogWeightSheet
       visible={logWeightOpen}
@@ -3615,15 +2106,6 @@ function Sparkline({
   );
 }
 
-function pillStyle(bg: string) {
-  return {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: bg,
-  } as const;
-}
-
 /**
  * T13.2 — direction-only Weight tile rendered in `trends_only` mode.
  * Mirrors `WeightTrendOnlyCardWeb` in `src/app/components/ProgressDashboard.tsx`
@@ -3691,239 +2173,6 @@ function WeightTrendOnlyCard({
       <Text style={{ fontSize: 12, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
         Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
       </Text>
-    </View>
-  );
-}
-
-function WeightRangeCard({
-  series,
-  latestKg,
-  weekDeltaKg,
-  deltaKg,
-  rangeKey,
-  goalWeightKg,
-  measurementSystem,
-  theme,
-}: {
-  series: { dateKey: string; kg: number }[];
-  latestKg: number | null;
-  weekDeltaKg: number | null;
-  deltaKg: number | null;
-  rangeKey: "7d" | "30d" | "90d" | "all";
-  goalWeightKg: number | null;
-  measurementSystem: MeasurementSystem;
-  theme: CardTheme;
-}) {
-  const cardElev = useCardElevation();
-  // Do not render the card at all until we know the user has logged a
-  // weight — otherwise we'd surface "— kg" which invents no value but
-  // looks broken.
-  if (latestKg == null) {
-    return (
-      <View
-        testID="progress-weight-range-card-empty"
-        style={[{
-          backgroundColor: cardElev.liftBg ?? theme.elevated,
-          borderRadius: Radius.lg,
-          borderWidth: cardElev.useBorder ? 1 : 0,
-          borderColor: theme.border,
-          padding: 20,
-          marginBottom: Spacing.md,
-        }, cardElev.shadowStyle]}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            backgroundColor: theme.accent + "14",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <Scale size={16} color={theme.accent} strokeWidth={1.75} />
-          </View>
-          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1 }}>Weight</Text>
-        </View>
-        <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
-          Your trend starts with a weigh-in
-        </Text>
-        <Text style={{ fontSize: 13, color: theme.sub, marginTop: 4, lineHeight: 18 }}>
-          Log a weight and we&apos;ll chart your trajectory over time.
-        </Text>
-      </View>
-    );
-  }
-  const weekDelta = weekDeltaKg ?? deltaKg;
-  // "On track" pill: losing weight toward a lower goal, or gaining
-  // toward a higher goal. When we have no goal we keep the tone
-  // neutral rather than guessing a direction.
-  let onTrackPill: { label: string; tone: "green" | "neutral" } = { label: "", tone: "neutral" };
-  if (goalWeightKg != null && weekDelta != null) {
-    const towardGoal =
-      (goalWeightKg < latestKg && weekDelta < -0.05) ||
-      (goalWeightKg > latestKg && weekDelta > 0.05);
-    onTrackPill = towardGoal
-      ? { label: "On track", tone: "green" }
-      : { label: "", tone: "neutral" };
-  }
-  const latestDisplay = formatWeightForUnit({ kg: latestKg, system: measurementSystem });
-  const weekDeltaDisplay =
-    weekDelta != null && Math.abs(weekDelta) >= 0.05
-      ? formatWeightForUnit({ kg: weekDelta, system: measurementSystem, signed: true })
-      : null;
-  const windowLabel =
-    rangeKey === "7d" ? "last 7 days" : rangeKey === "30d" ? "last 30 days" : rangeKey === "90d" ? "last 90 days" : "all time";
-
-  return (
-    <View
-      testID="progress-weight-range-card"
-      style={[{
-        backgroundColor: cardElev.liftBg ?? theme.elevated,
-        borderRadius: Radius.lg,
-        borderWidth: cardElev.useBorder ? 1 : 0,
-        borderColor: theme.border,
-        padding: 16,
-        marginBottom: Spacing.md,
-      }, cardElev.shadowStyle]}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
-          Weight
-        </Text>
-        {onTrackPill.label ? (
-          <View testID="progress-weight-on-track-pill" style={pillStyle(theme.green + "22")}>
-            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.green }}>{onTrackPill.label}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text
-        testID="progress-weight-range-value"
-        style={{ fontSize: 24, fontWeight: "700", color: theme.text, fontVariant: ["tabular-nums"], letterSpacing: -0.3 }}
-      >
-        {latestDisplay}
-      </Text>
-      {weekDeltaDisplay ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-          {weekDelta! < 0 ? (
-            <TrendingDown size={12} color={theme.sub} strokeWidth={1.75} />
-          ) : (
-            <TrendingUp size={12} color={theme.sub} strokeWidth={1.75} />
-          )}
-          <Text style={{ fontSize: 12, color: theme.sub, fontVariant: ["tabular-nums"] }}>
-            {weekDeltaDisplay} this week
-          </Text>
-        </View>
-      ) : null}
-      <View style={{ marginTop: 10 }}>
-        <Sparkline
-          points={series.map((p) => p.kg)}
-          color={theme.accent}
-          width={280}
-          height={48}
-        />
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-        {series.length >= 2 ? (
-          <>
-            <Text style={{ fontSize: 10, color: theme.dim }}>{series[0].dateKey.slice(5)}</Text>
-            <Text style={{ fontSize: 10, color: theme.dim }}>{series[series.length - 1].dateKey.slice(5)}</Text>
-          </>
-        ) : (
-          <Text style={{ fontSize: 10, color: theme.dim }}>Need at least 2 weigh-ins</Text>
-        )}
-      </View>
-      <Text style={{ fontSize: 11, color: theme.dim, marginTop: 8, lineHeight: 16 }}>
-        Trend across the {windowLabel}. Projection appears in the Journey card below once you have enough data.
-      </Text>
-    </View>
-  );
-}
-
-function CaloriesRangeCard({
-  avgCaloriesPerDay,
-  deltaVsTargetKcal,
-  adherencePct,
-  daysLogged,
-  targetCalories,
-  theme,
-}: {
-  avgCaloriesPerDay: number | null;
-  deltaVsTargetKcal: number | null;
-  adherencePct: number | null;
-  daysLogged: number;
-  targetCalories: number;
-  theme: CardTheme;
-}) {
-  const cardElev = useCardElevation();
-  return (
-    <View testID="progress-calories-range-wrapper" style={{ marginBottom: Spacing.md }}>
-      {/* 17pt bold header sits OUTSIDE the card per the prototype. */}
-      <Text
-        testID="progress-calories-range-header"
-        style={{ fontSize: 17, fontWeight: "700", color: theme.text, letterSpacing: -0.2, marginBottom: 8 }}
-      >
-        Calories
-      </Text>
-      <View
-        testID="progress-calories-range-card"
-        style={[{
-          backgroundColor: cardElev.liftBg ?? theme.elevated,
-          borderRadius: Radius.lg,
-          borderWidth: cardElev.useBorder ? 1 : 0,
-          borderColor: theme.border,
-          padding: 16,
-        }, cardElev.shadowStyle]}
-      >
-        {avgCaloriesPerDay == null ? (
-          <View style={{ paddingVertical: 8 }}>
-            <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
-              Your calorie trends will show here
-            </Text>
-            <Text style={{ fontSize: 13, color: theme.sub, marginTop: 4, lineHeight: 18 }}>
-              Log meals on Today and your averages will build over time.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <View style={{ flex: 1 }}>
-                <Text
-                  testID="progress-calories-range-avg"
-                  style={{ fontSize: 24, fontWeight: "700", color: theme.text, fontVariant: ["tabular-nums"], letterSpacing: -0.3 }}
-                >
-                  {avgCaloriesPerDay.toLocaleString()}<Text style={{ fontSize: 13, fontWeight: "500", color: theme.sub }}> avg/day</Text>
-                </Text>
-              </View>
-              {deltaVsTargetKcal != null ? (
-                <View
-                  testID="progress-calories-range-delta-pill"
-                  style={pillStyle(deltaVsTargetKcal <= 0 ? theme.green + "22" : theme.red + "22")}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "700",
-                      color: deltaVsTargetKcal <= 0 ? theme.green : theme.red,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {deltaVsTargetKcal > 0 ? "+" : "−"}
-                    {Math.abs(deltaVsTargetKcal).toLocaleString()} vs target
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-            <Text
-              testID="progress-calories-range-subtitle"
-              style={{ fontSize: 12, color: theme.sub, marginTop: 6, fontVariant: ["tabular-nums"] }}
-            >
-              Target {targetCalories.toLocaleString()}
-              {adherencePct != null ? ` · ${adherencePct}% avg` : ""}
-              {daysLogged > 0 ? ` · ${daysLogged} logged day${daysLogged === 1 ? "" : "s"}` : ""}
-            </Text>
-          </>
-        )}
-      </View>
     </View>
   );
 }

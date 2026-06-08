@@ -13,12 +13,14 @@ const inter = Inter({
 });
 
 // Sloe Phase 0 (2026-06-03) — editorial serif for headlines, display headings,
-// and the calorie-ring numerals. Weights 400/500/600 match the headings/display
-// roles wired in `src/styles/theme.css` (`--font-headline` / `--font-display`).
+// and the calorie-ring numerals. Weights 300/400/500/600: 300 is the light
+// editorial weight the landing display headings use (calm Sloe look); 400/500/600
+// match the headings/display roles wired in `src/styles/theme.css`
+// (`--font-headline` / `--font-display`).
 const newsreader = Newsreader({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600"],
+  weight: ["300", "400", "500", "600"],
   variable: "--font-newsreader",
 });
 

@@ -36,6 +36,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { SupprMark } from "@/components/SupprMark";
@@ -416,7 +417,7 @@ function MealActionSheet({
             <MealActionRow
               Glyph={Share2}
               label="Share meal"
-              sublabel="Send as a Suppr recipe card"
+              sublabel="Send as a Sloe recipe card"
               onPress={() => meal && onShare(meal)}
               testID="meal-action-share"
               colors={colors}
@@ -588,6 +589,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     { slot: string; options: SavedMeal[] } | null
   >(null);
   const [usualPickerShowAll, setUsualPickerShowAll] = useState(false);
+  // Secondary accent (Frost flag → damson, else clay) for the in-slot
+  // "Add food" CTA below. The macro/slot tints + plum chrome are NOT
+  // secondary-accent and keep their own `MacroColors`/`SlotColors` imports.
+  const accent = useAccent();
 
   // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
   // `Log usual: <name>` chip moves out of the section-header trailing
@@ -1422,8 +1427,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     paddingHorizontal: 14,
                   }}
                 >
-                  <Plus size={15} color={Accent.primarySolid} strokeWidth={2.25} />
-                  <Text style={{ ...Type.body, color: Accent.primarySolid }}>
+                  <Plus size={15} color={accent.primarySolid} strokeWidth={2.25} />
+                  <Text style={{ ...Type.body, color: accent.primarySolid }}>
                     Add food
                   </Text>
                 </Pressable>

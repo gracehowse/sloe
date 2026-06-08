@@ -94,9 +94,10 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).not.toContain("Weekly report");
     expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
-    // 24pt per the prototype mirrors mobile title size — uses Tailwind `text-2xl`
-    // (1.5rem = 24px) with the Sloe headline font.
-    expect(webChromeSrc).toMatch(/text-2xl/);
+    // Sloe Figma 492:2 redesign sized the serif "Progress" title at 28px
+    // (the calm subtitle replaced the uppercase range overline). Web/mobile
+    // Progress header-size + subtitle parity tracked in ENG-985.
+    expect(webChromeSrc).toMatch(/text-\[28px\]/);
     expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
   });
 
@@ -146,25 +147,32 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).toMatch(/\[0, 1, 2, 3\]\.map/);
   });
 
-  it("mobile range picker is a segmented control (muted container, inset chip)", () => {
-    // 2026-04-21 D5 port — prototype `screens-mobile.jsx:581-591`.
-    // Container wraps the pills in a muted bg + padding + 10px radius.
-    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?backgroundColor: t\.border[\s\S]*?borderRadius: 10[\s\S]*?padding: 4/);
-    // Active chip uses `t.elevated` (card) not the accent; individual
-    // pill rows no longer set a `borderWidth`/`borderColor`.
-    expect(mobileSrc).toMatch(/active \? t\.elevated : "transparent"/);
-    expect(mobileSrc).not.toMatch(/borderColor: active \? t\.accent : t\.border/);
-    // Subtle shadow marks the active chip (prototype's `0 1px 2px rgba(0,0,0,0.1)`).
-    expect(mobileSrc).toMatch(/shadowOpacity: active \? 0\.1 : 0/);
+  it("mobile range picker is the Sloe plum-fill pill rail (web parity, Figma 492:2)", () => {
+    // 2026-06-07 DS-tightening: the mobile picker moved from the old inset
+    // segmented control (muted `colors.backgroundSecondary` container + 10px
+    // radius + `t.elevated` active chip) to the Sloe Figma 492:2 pill rail —
+    // active range = solid plum (`t.plum`) with white text; the rest are
+    // bordered cream pills. This closes the web↔mobile parity gap (web already
+    // used plum-fill pills). The old segmented-control container is gone.
+    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: 6 \}\}/);
+    expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
+    // Active pill = plum fill + white label; inactive = bordered cream pill.
+    expect(mobileSrc).toMatch(/backgroundColor: active \? t\.plum : t\.elevated/);
+    expect(mobileSrc).toMatch(/borderWidth: active \? 0 : 1/);
+    expect(mobileSrc).toMatch(/color: active \? "#FFFFFF" : t\.sub/);
+    // `t.plum` is the nav-brand plum, mirroring web `bg-foreground-brand`.
+    expect(mobileSrc).toMatch(/plum: colors\.navPrimary/);
   });
 
-  it("web range picker is a segmented control (muted container, inset chip)", () => {
-    // 2026-04-21 D5 — mirrors mobile. `bg-muted` wraps the pills with
-    // `p-1` + `rounded-[10px]`, and the active chip swaps to
-    // `bg-card text-foreground shadow-sm` (no primary fill).
-    expect(webSrc).toMatch(/data-testid="progress-range-picker"[\s\S]*?bg-muted/);
-    expect(webSrc).toMatch(/p-1 rounded-\[10px\] bg-muted/);
-    expect(webSrc).toMatch(/"bg-card text-foreground shadow-sm"/);
+  it("web range picker uses plum-fill active pills (Sloe Figma 492:2 — now at mobile parity)", () => {
+    // Sloe Figma 492:2: the web picker uses plum-fill active pills
+    // (`bg-foreground-brand text-white`) with bordered inactive pills. As of
+    // the 2026-06-07 DS-tightening the MOBILE picker matches this exactly
+    // (asserted above) — the ENG-985 web↔mobile picker parity gap is closed.
+    expect(webSrc).toMatch(/data-testid="progress-range-picker"/);
+    expect(webSrc).toContain("bg-foreground-brand text-white");
+    expect(webSrc).toMatch(/bg-card border border-border text-muted-foreground/);
+    // Not the old primary-fill chip styling.
     expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);
   });
 

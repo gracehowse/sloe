@@ -13,7 +13,8 @@ export function TodayBrandBar({ className }: { className?: string }) {
       className={cn("flex items-center min-h-[28px] lg:hidden", className)}
       data-testid="today-brand-bar"
     >
-      <SupprWordmark size={24} />
+      {/* size 28 → 20px wordmark (`text-xl`), matching Figma `654:2`. */}
+      <SupprWordmark size={28} />
     </div>
   );
 }

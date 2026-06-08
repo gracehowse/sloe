@@ -46,7 +46,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   {
     id: "fasting",
     label: "Intermittent fasting",
-    sub: "Pick your fast / eat window (16:8, 18:6, 20:4, 14:10)",
+    sub: "Pick your fast / eat window (16:8, 18:6, 20:4, 14:10, OMAD)",
     section: "Goals & targets",
     keywords: [
       "fast",
@@ -64,6 +64,9 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
       "18:6",
       "20:4",
       "14:10",
+      "23:1",
+      "omad",
+      "one meal a day",
     ],
     route: "/fasting",
   },

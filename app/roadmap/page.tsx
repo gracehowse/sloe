@@ -6,7 +6,7 @@ import { ROADMAP, type RoadmapStatus } from "../../src/lib/landing/content";
 export const metadata: Metadata = {
   title: "Roadmap — Suppr",
   description:
-    "What we’re building next on Suppr — mobile, creators, discovery, and macro-first meal planning.",
+    "What we’re building next on Sloe — mobile, creators, discovery, and macro-first meal planning.",
 };
 
 /**

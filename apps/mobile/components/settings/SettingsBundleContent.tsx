@@ -51,7 +51,6 @@ import {
   Square,
   Sun,
   Timer,
-  Trash2,
   User,
   Users,
   Wine,
@@ -59,8 +58,8 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { GradientAvatar } from "@/components/GradientAvatar";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -73,6 +72,7 @@ import {
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
 import { supabase } from "@/lib/supabase";
+import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
@@ -131,6 +131,15 @@ type Context = "more" | "settings";
 
 const HOUSEHOLD_ROW_TEST_ID = "settings-household-row";
 
+/**
+ * Sloe warm-slab corner radius for every Settings section card — the
+ * canonical `CARD_RADIUS` (24) from `SupprCard`, mirroring web
+ * `var(--radius-card-lg)`. Bumped from the legacy 14 in the Settings
+ * reskin so the cards carry the same rounded slab silhouette as the
+ * Today / Recipes cards (Figma 09 Settings `335:2`).
+ */
+const SETTINGS_CARD_RADIUS = CARD_RADIUS;
+
 function IconBox({
   color,
   size = 36,
@@ -140,13 +149,23 @@ function IconBox({
   size?: number;
   children: React.ReactNode;
 }) {
+  const colors = useThemeColors();
+  // Sloe DS (Figma 09 Settings `335:2`): every settings-row glyph sits
+  // in a WHITE circle with a hairline outline (not a colour-tinted
+  // rounded square). The circle reads as a quiet container; the glyph
+  // itself carries any semantic colour the caller passes (e.g. clay
+  // for nav rows, sage for Apple Health, red for delete). `color` is
+  // intentionally NOT used as a fill any more — the frame's plates are
+  // uniform white with a `cardBorder` ring.
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
-        backgroundColor: color + "18",
+        borderRadius: size / 2,
+        backgroundColor: colors.background,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -158,15 +177,27 @@ function IconBox({
 
 function SectionHeading({ title }: { title: string }) {
   const colors = useThemeColors();
+  // Sloe DS (Figma 09 Settings `335:2`): section headers are small
+  // ALL-CAPS grey eyebrows (GOALS & TARGETS / DISPLAY / CONNECTIONS /
+  // REMINDERS / ACCOUNT), letter-spaced — the iOS-grouped-list pattern
+  // in the frame. Was Newsreader serif plum 19px; the uppercase eyebrow
+  // groups more aggressively + reads faster (design-system §2.2
+  // `section-eyebrow`: Inter 10–11pt, +0.08em tracking, muted). The
+  // serif plum is reserved for the screen title + profile name.
   return (
     <Text
+      accessibilityRole="header"
       style={{
-        fontSize: 14,
-        fontWeight: "700",
-        color: colors.text,
-        letterSpacing: -0.1,
-        marginTop: 22,
-        marginBottom: 10,
+        fontFamily: FontFamily.sansSemibold,
+        fontSize: 11,
+        lineHeight: 14,
+        fontWeight: "600",
+        color: colors.textSecondary,
+        letterSpacing: 0.9,
+        textTransform: "uppercase",
+        marginTop: 24,
+        marginBottom: 8,
+        marginLeft: 2,
       }}
     >
       {title}
@@ -215,7 +246,10 @@ function SettingsCard({
       style={[
         {
           backgroundColor: liftBg ?? colors.card,
-          borderRadius: 14,
+          // Sloe warm-slab corner — 24px (mirrors web
+          // `var(--radius-card-lg)` + mobile `CARD_RADIUS`/`TILE_RADIUS`).
+          // Was 14 (the IA + palette drift the Settings reskin closes).
+          borderRadius: SETTINGS_CARD_RADIUS,
           borderWidth: useBorder ? 1 : 0,
           borderColor: colors.cardBorder,
           overflow: "hidden",
@@ -231,7 +265,11 @@ function SettingsCard({
   // Light soft-elevation: shadow must live on a non-clipping outer wrapper so
   // iOS doesn't clip it. Dark / flag-off: no shadow → render the card directly.
   if (shadowStyle) {
-    return <View style={[shadowStyle, { borderRadius: 14 }]}>{inner}</View>;
+    return (
+      <View style={[shadowStyle, { borderRadius: SETTINGS_CARD_RADIUS }]}>
+        {inner}
+      </View>
+    );
   }
   return inner;
 }
@@ -980,7 +1018,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     await Linking.openURL(url).catch(() => {
       Alert.alert(
         "Couldn't open subscription settings",
-        "Manage your Suppr subscription from the App Store / Play Store app.",
+        "Manage your Sloe subscription from the App Store / Play Store app.",
       );
     });
   }, []);
@@ -1001,6 +1039,88 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     });
     setCancelPromptOpen(true);
   }, [profileData.userTier]);
+
+  /**
+   * Delete account — Sloe DS (Figma 09 Settings `335:2`) renders this as a
+   * centered clay "Delete account" text at the very bottom (not a
+   * destructive card row). Extracted from the inline Danger-zone row
+   * onPress (unchanged flow) so the centered affordance can call it.
+   * Two-step deliberate confirm: an explainer Alert → a typed-"delete"
+   * prompt → `DELETE /api/account/delete` with the bearer token → sign
+   * out. Pinned by `settingsBundleParity.test.ts`.
+   */
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      "Delete your account?",
+      "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "I want to delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.prompt?.(
+              "Type 'delete' to confirm",
+              "We won't be able to recover this account.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete account",
+                  style: "destructive",
+                  onPress: async (text?: string) => {
+                    // P1-7 (2026-05-01) — the compare lowercases the
+                    // typed input so "Delete" / "DELETE" both work.
+                    if ((text ?? "").trim().toLowerCase() !== "delete") {
+                      Alert.alert(
+                        "Not deleted",
+                        "Type the word delete to confirm.",
+                      );
+                      return;
+                    }
+                    try {
+                      const { data: sessionData } =
+                        await supabase.auth.getSession();
+                      const token = sessionData?.session?.access_token;
+                      const base = getSupprWebBase();
+                      if (!base) {
+                        Alert.alert(
+                          "Error",
+                          "API URL not configured. Please contact support.",
+                        );
+                        return;
+                      }
+                      const res = await fetch(`${base}/api/account/delete`, {
+                        method: "DELETE",
+                        headers: token
+                          ? { Authorization: `Bearer ${token}` }
+                          : {},
+                      });
+                      const json = await res.json();
+                      if (json.ok) {
+                        await supabase.auth.signOut();
+                        Alert.alert(
+                          "Account deleted",
+                          "Your account has been permanently deleted.",
+                        );
+                      } else {
+                        Alert.alert(
+                          "Deletion failed",
+                          json.error || "Please try again.",
+                        );
+                      }
+                    } catch {
+                      Alert.alert("Deletion failed", "Please try again later.");
+                    }
+                  },
+                },
+              ],
+              "plain-text",
+            );
+          },
+        },
+      ],
+    );
+  }, []);
 
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
@@ -1364,69 +1484,126 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     session?.user?.email?.split("@")[0] ??
     "Your Profile";
   // Base tier collapsed into Free post-Free+Pro consolidation; legacy
-  // `userTier === "base"` rows render as "Free".
+  // `userTier === "base"` rows render as "Free". Drives both the profile
+  // plan label ("Free plan" / "Pro plan") and the Sloe Pro banner action.
   const tierLabel = profileData.userTier === "pro" ? "Pro" : "Free";
-  const tierBadgeColor =
-    profileData.userTier === "pro" ? Accent.primary : colors.textSecondary;
-  const joinedLabel = (() => {
-    const createdAt = session?.user?.created_at;
-    if (!createdAt) return "Joined recently";
-    const d = new Date(createdAt);
-    const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
-    if (diffDays < 7) return "Joined this week";
-    if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
-    if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
-    return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
-  })();
 
   return (
     <>
-      {/* Profile card */}
-      <SettingsCard
+      {/* Profile row — Sloe DS (Figma 09 Settings `335:2`): plum filled
+          circle avatar (white serif initial) + name in Newsreader serif
+          + plan label ("Free plan" / "Pro plan") in grey, sitting
+          directly on the white page (no card chrome). The whole row taps
+          through to /profile (the full editor). Tier is shown as the
+          plan-label line, not a pill — the frame leads with identity,
+          not a status marker. */}
+      <Pressable
+        testID="settings-profile-row"
+        accessibilityRole="button"
+        accessibilityLabel="Edit profile"
+        onPress={() => router.push("/profile" as any)}
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 14,
-          padding: 14,
-          marginBottom: 4,
+          gap: 16,
+          paddingVertical: 8,
+          marginTop: 4,
         }}
       >
-        <GradientAvatar
-          size={52}
-          initial={avatarInitial}
-          fontSize={18}
-          gradientIdSuffix={`${context}-card`}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>
-            {displayName}
-          </Text>
-          <Text
-            style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
-          >
-            {tierLabel} tier · {joinedLabel}
-          </Text>
-        </View>
         <View
           style={{
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 999,
-            backgroundColor: tierBadgeColor + "1a",
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.navPrimary,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Text
             style={{
-              fontSize: 11,
-              fontWeight: "700",
-              color: tierBadgeColor,
-              letterSpacing: 0.2,
+              fontFamily: FontFamily.serifSemibold,
+              fontSize: 22,
+              fontWeight: "600",
+              color: "#fff",
             }}
           >
-            {tierLabel}
+            {avatarInitial}
           </Text>
         </View>
-      </SettingsCard>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontFamily: FontFamily.serifSemibold,
+              fontSize: 24,
+              lineHeight: 28,
+              fontWeight: "600",
+              color: colors.text,
+              letterSpacing: -0.3,
+            }}
+            numberOfLines={1}
+          >
+            {displayName}
+          </Text>
+          <Text
+            style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
+          >
+            {tierLabel === "Pro" ? "Pro plan" : "Free plan"}
+          </Text>
+        </View>
+      </Pressable>
+
+      {/* Sloe Pro upsell banner — Figma 09 Settings `335:2` / `335:23`.
+          Full-width soft peach/clay-tint rounded card: sparkle + "Sloe Pro"
+          (clay) on the left, "Manage" (clay) on the right. For free/base
+          users "Manage" routes to the paywall (upgrade); for Pro users it
+          opens the existing manage-subscription flow (RevenueCat customer
+          center). The detailed upgrade/manage/promo rows still live in the
+          Membership card below — this banner is the at-a-glance entry. */}
+      <Pressable
+        testID="settings-sloe-pro-banner"
+        accessibilityRole="button"
+        accessibilityLabel={
+          profileData.userTier === "pro"
+            ? "Manage your Sloe Pro subscription"
+            : "Get Sloe Pro"
+        }
+        onPress={() => {
+          if (profileData.userTier === "pro") {
+            void handleManageSubscription();
+          } else {
+            router.push("/paywall?from=settings" as any);
+          }
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: 16,
+          paddingHorizontal: 16,
+          borderRadius: SETTINGS_CARD_RADIUS,
+          backgroundColor: "rgba(200, 121, 78, 0.16)",
+          marginTop: 18,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Sparkles size={18} color={Accent.primarySolid} strokeWidth={1.75} />
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: Accent.primarySolid,
+            }}
+          >
+            Sloe Pro
+          </Text>
+        </View>
+        <Text
+          style={{ fontSize: 14, fontWeight: "600", color: Accent.primarySolid }}
+        >
+          Manage
+        </Text>
+      </Pressable>
 
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-22 subtractive: hide tiles whose value is zero
@@ -1453,7 +1630,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 flex: 1,
                 alignItems: "center",
                 paddingVertical: 12,
-                borderRadius: 14,
+                // Sloe reskin: 16px inner stat tile (was 14) so the
+                // Recipes / Streak chips round in step with the slab.
+                borderRadius: 16,
                 backgroundColor: colors.inputBg,
                 borderWidth: 1,
                 borderColor: c + "55",
@@ -1584,7 +1763,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: 12,
                 backgroundColor: Accent.primary + "22",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1644,7 +1823,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: 12,
                 backgroundColor: Accent.primary + "18",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1863,9 +2042,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             matches", with no other in-app entry point to change the
             fasting window after onboarding). Routes to /fasting
             which now hosts the timer ring, start/end, history AND
-            the 16:8 / 18:6 / 20:4 / 14:10 preset picker, matching
-            the web FastingTimer. Sub copy mirrors the stored window
-            so the user can see at a glance what they picked. */}
+            the 16:8 / 18:6 / 20:4 / 14:10 / OMAD preset picker (ENG-922),
+            matching the web FastingTimer. Sub copy mirrors the stored
+            window so the user can see at a glance what they picked. */}
         <SettingsRow
           testID="settings-bundle-fasting-row"
           icon={Timer}
@@ -1881,7 +2060,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fast > 0 &&
               eat > 0
             ) {
-              return `${fast}:${eat} window · ${fast}h fast / ${eat}h eat`;
+              return `${fastingWindowLabel(fastingWindow)} window · ${fast}h fast / ${eat}h eat`;
             }
             return "Tap to set fast / eat window";
           })()}
@@ -1896,7 +2075,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           `TRACKING_EXTRAS_STORAGE_KEY`; Today's tracker host re-reads
           on focus. Hydration stays on regardless; turning these off
           hides the row on Today but preserves any historical logs. */}
-      <SectionHeading title="Display & extras" />
+      <SectionHeading title="Display" />
       <SettingsCard testID="settings-card-display">
         <View
           style={{
@@ -2098,7 +2277,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </SettingsCard>
 
-      {/* Connections */}
+      {/* Connections — Sloe DS (Figma 09 Settings `335:2`): device /
+          health integrations only. Reminder rows (Notifications, Weekly
+          recap) moved to their own REMINDERS section below to match the
+          frame's grouping. Apple Health is the only wired integration on
+          iOS; Google Fit (in the frame) has no backing integration on the
+          iOS-only build, so it is intentionally omitted rather than
+          shipped as a dead row (see settings.md redesign note + migration
+          tracker). */}
       <SectionHeading title="Connections" />
       <SettingsCard testID="settings-card-connections">
         <SettingsRow
@@ -2122,8 +2308,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           onPress={() => router.push("/health-sync" as any)}
         />
+      </SettingsCard>
+
+      {/* Reminders — Sloe DS (Figma 09 Settings `335:2`): the frame
+          splits reminder controls (Daily reminder → time, Notifications)
+          out of Connections into their own group. The Notifications row
+          carries the daily-reminder time as its value ("Daily reminder at
+          08:00"); Weekly recap is the second reminder output. */}
+      <SectionHeading title="Reminders" />
+      <SettingsCard testID="settings-card-reminders">
         <SettingsRow
           testID="settings-bundle-notifications-row"
+          isFirst
           icon={Bell}
           iconColor={t.accent}
           label="Notifications"
@@ -2162,8 +2358,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </SettingsCard>
 
-      {/* App */}
-      <SectionHeading title="App" />
+      {/* Account — Sloe DS (Figma 09 Settings `335:2`): data + export
+          rows live under the ACCOUNT eyebrow in the frame ("Export
+          data"). Renamed from "App" so the group label matches the frame;
+          testID stays `settings-card-app` (pinned by
+          settingsElevationAndMarker.test.ts). Privacy / terms stay in a
+          distinct LEGAL group below per the redesign spec (settings.md). */}
+      <SectionHeading title="Account" />
       <SettingsCard testID="settings-card-app">
         {context === "more" ? (
           <SettingsRow
@@ -2324,98 +2525,28 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
-        <SettingsRow
-          testID="settings-bundle-delete-account-row"
-          icon={Trash2}
-          iconColor={t.red}
-          label="Delete my account"
-          sub="Permanently removes account + all data"
-          onPress={() => {
-            // Two-step deliberate confirm: first explains the
-            // consequence, then requires typing "delete" so it can't
-            // happen via accidental double-tap.
-            Alert.alert(
-              "Delete your account?",
-              "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "I want to delete",
-                  style: "destructive",
-                  onPress: () => {
-                    Alert.prompt?.(
-                      "Type 'delete' to confirm",
-                      "We won't be able to recover this account.",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete account",
-                          style: "destructive",
-                          onPress: async (text?: string) => {
-                            // P1-7 (2026-05-01) — drop the
-                            // "(lowercase)" qualifier. The compare
-                            // already lowercases the typed input so
-                            // the hint was misleading: "Delete" /
-                            // "DELETE" both worked but the copy
-                            // implied otherwise.
-                            if (
-                              (text ?? "").trim().toLowerCase() !== "delete"
-                            ) {
-                              Alert.alert(
-                                "Not deleted",
-                                "Type the word delete to confirm.",
-                              );
-                              return;
-                            }
-                            try {
-                              const { data: sessionData } =
-                                await supabase.auth.getSession();
-                              const token = sessionData?.session?.access_token;
-                              const base = getSupprWebBase();
-                              if (!base) {
-                                Alert.alert(
-                                  "Error",
-                                  "API URL not configured. Please contact support.",
-                                );
-                                return;
-                              }
-                              const res = await fetch(`${base}/api/account/delete`, {
-                                method: "DELETE",
-                                headers: token
-                                  ? { Authorization: `Bearer ${token}` }
-                                  : {},
-                              });
-                              const json = await res.json();
-                              if (json.ok) {
-                                await supabase.auth.signOut();
-                                Alert.alert(
-                                  "Account deleted",
-                                  "Your account has been permanently deleted.",
-                                );
-                              } else {
-                                Alert.alert(
-                                  "Deletion failed",
-                                  json.error || "Please try again.",
-                                );
-                              }
-                            } catch {
-                              Alert.alert(
-                                "Deletion failed",
-                                "Please try again later.",
-                              );
-                            }
-                          },
-                        },
-                      ],
-                      "plain-text",
-                    );
-                  },
-                },
-              ],
-            );
-          }}
-        />
       </SettingsCard>
+
+      {/* Delete account — Sloe DS (Figma 09 Settings `335:2`): a centered
+          clay text affordance at the very bottom, not a destructive card
+          row. Same two-step typed-"delete" confirm flow as before (now in
+          `handleDeleteAccount`). testID `settings-bundle-delete-account-row`
+          preserved (pinned by settingsBundleParity.test.ts). */}
+      <Pressable
+        testID="settings-bundle-delete-account-row"
+        accessibilityRole="button"
+        accessibilityLabel="Delete my account"
+        onPress={handleDeleteAccount}
+        style={{
+          alignItems: "center",
+          paddingVertical: 18,
+          marginTop: 12,
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "600", color: t.red }}>
+          Delete account
+        </Text>
+      </Pressable>
 
       {/* Sign Out lives in the parent /(tabs)/settings.tsx as a single
           neutral row beneath this bundle. Sign Out is reversible

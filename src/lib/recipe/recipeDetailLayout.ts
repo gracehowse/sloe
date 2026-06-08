@@ -127,6 +127,46 @@ export type FitsYourDayVerdict = {
   fits: boolean;
 };
 
+/**
+ * Compose the meta row (Figma `332:2` §5): `★ rating · ⏱ time · 📊 difficulty
+ * · 🗂 N items`. The frame shows four stats, but the `recipes` table carries no
+ * aggregate rating and no difficulty column — only timing + ingredient count
+ * are real data. Per the spec ("use real recipe data; hide a stat if unknown")
+ * we surface ONLY the stats we can back with real data and never invent a
+ * rating or a difficulty label.
+ *
+ * Returns an ordered list of `{ key, icon, label }` so web + mobile render the
+ * exact same visible stats in the same order with zero copy/gating drift.
+ */
+export type RecipeMetaIcon = "rating" | "time" | "difficulty" | "items";
+export type RecipeMetaStat = {
+  key: RecipeMetaIcon;
+  /** Glance label, e.g. "20 min" or "10 items". */
+  label: string;
+};
+
+export function composeRecipeMeta(args: {
+  prepMin: number | null | undefined;
+  cookMin: number | null | undefined;
+  ingredientCount: number | null | undefined;
+}): RecipeMetaStat[] {
+  const out: RecipeMetaStat[] = [];
+  // Rating + difficulty are deliberately omitted — no real backing data on the
+  // recipes table (see ENG-890 / no-fakes rule). Add here if/when those columns
+  // and an aggregate-rating pipeline land.
+  const prep = args.prepMin ?? 0;
+  const cook = args.cookMin ?? 0;
+  const total = (prep > 0 ? prep : 0) + (cook > 0 ? cook : 0);
+  if (total > 0) {
+    out.push({ key: "time", label: total < 60 ? `${total} min` : `${Math.floor(total / 60)}h${total % 60 ? ` ${total % 60}m` : ""}` });
+  }
+  const count = args.ingredientCount ?? 0;
+  if (count > 0) {
+    out.push({ key: "items", label: `${count} item${count === 1 ? "" : "s"}` });
+  }
+  return out;
+}
+
 export function computeFitsYourDayVerdict(args: {
   kcal: number | null | undefined;
   targetCals: number | null | undefined;

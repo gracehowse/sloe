@@ -18,6 +18,14 @@ export interface ProgressHeroMetricProps {
   targetCalories: number;
   daysLogged: number;
   streak: number;
+  /**
+   * Sloe Figma 492:2 — per-day on-target booleans for the dot ribbon
+   * (filled sage = logged at/under the day's effective budget, hollow =
+   * off-target or unlogged). Real days from `weekStatsBundle.days`; never
+   * fabricated. Optional so legacy callers keep the dot-less hero. Web
+   * mirror: `src/app/components/suppr/progress-hero-metric.tsx`.
+   */
+  onTargetDays?: boolean[];
 }
 
 // 2026-05-22 evening (Grace): ring shrunk from 120 → 64 and pulled
@@ -52,6 +60,7 @@ export function ProgressHeroMetric({
   targetCalories,
   daysLogged,
   streak,
+  onTargetDays,
 }: ProgressHeroMetricProps) {
   const colors = useThemeColors();
 
@@ -154,6 +163,29 @@ export function ProgressHeroMetric({
         >
           {statLine.join("  ·  ")}
         </Text>
+        {/* Sloe Figma 492:2 — on-target days ribbon. Filled sage dot = a
+            logged day at/under its effective budget; hollow border dot =
+            off-target or unlogged. Renders only the real days the host
+            supplies (no fabricated days). */}
+        {onTargetDays && onTargetDays.length > 0 ? (
+          <View
+            testID="progress-hero-ontarget-dots"
+            accessibilityLabel={`${onTargetDays.filter(Boolean).length} of ${onTargetDays.length} days on target`}
+            style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+          >
+            {onTargetDays.map((on, i) => (
+              <View
+                key={i}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: on ? Accent.success : colors.border,
+                }}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
     </View>
   );

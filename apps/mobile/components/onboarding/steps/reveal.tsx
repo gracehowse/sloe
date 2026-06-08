@@ -9,7 +9,7 @@ import Svg, {
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
@@ -155,10 +155,10 @@ export function MobileRevealStep() {
         <Text
           style={{
             fontSize: 11,
-            fontWeight: "700",
+            fontWeight: "600",
             textTransform: "uppercase",
             letterSpacing: 1.3,
-            color: Accent.primaryLight,
+            color: colors.textTertiary,
             marginBottom: 10,
           }}
         >
@@ -167,13 +167,17 @@ export function MobileRevealStep() {
         {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
             re-titled the reveal h1 from "Here's what your day looks
             like." → "Your plan is ready." Cal AI parity — leads with
-            completion + reward beat, not "look at this dashboard". */}
+            completion + reward beat, not "look at this dashboard".
+            Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
+            Newsreader serif hero title (`colors.navPrimary` theme-aware
+            plum). Mirrors the web reveal hero. */}
         <Text
           style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: colors.text,
-            letterSpacing: -0.4,
+            fontFamily: FontFamily.serifSemibold,
+            fontSize: 24,
+            fontWeight: "500",
+            color: colors.navPrimary,
+            letterSpacing: -0.3,
             marginBottom: 16,
             textAlign: "center",
           }}
@@ -225,12 +229,17 @@ export function MobileRevealStep() {
                 than empty (the page hasn't loaded). */}
             {revealStarted ? (
               <>
+                {/* Sloe reskin — ring calorie numeral in the Newsreader
+                    serif display face + plum heading ink, matching the
+                    Today ring + Figma 192:2. tabular-nums preserved so
+                    the count-up doesn't jitter. */}
                 <Text
                   style={{
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 56,
-                    fontWeight: "800",
-                    letterSpacing: -1.8,
-                    color: colors.text,
+                    fontWeight: "400",
+                    letterSpacing: -1.2,
+                    color: colors.navPrimary,
                     fontVariant: ["tabular-nums"],
                     lineHeight: 56,
                     includeFontPadding: false,
@@ -329,7 +338,7 @@ export function MobileRevealStep() {
         </View>
 
         <MobileMethodologyNote>
-          Values are estimates based on the Mifflin-St Jeor equation. Suppr
+          Values are estimates based on the Mifflin-St Jeor equation. Sloe
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MobileMethodologyNote>
@@ -395,7 +404,7 @@ export function MobileRevealStep() {
             iconBg={`${MacroColors.fat}1A`}
             iconColor={MacroColors.fat}
             title="Adapt over the first ~2 weeks"
-            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+            sub="As you log + weigh in, Sloe re-tunes your TDEE to what your body actually does."
           />
         </View>
       </View>

@@ -64,8 +64,13 @@ export function TodayDateHeader({
   const isToday = selectedDateKey === todayKey();
 
   if (stripOnly) {
+    // Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
+    // (`mb-7` ≈ 28px between the week strip and the ring hero). `mb-5`
+    // (20px) + the host `space-y-3` (12px) ≈ the frame's strip→hero gap;
+    // replaces the cramped `mb-2`. Mirrors the mobile `marginBottom`
+    // bump in `(tabs)/index.tsx`.
     return (
-      <div className="mb-2 flex flex-col gap-1">
+      <div className="mb-5 flex flex-col gap-1">
         <DayStrip
           selectedDateKey={selectedDateKey}
           weekStartDay={weekStartDay}
@@ -143,7 +148,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground shrink-0"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white shrink-0"
             aria-label="Open settings"
           >
             {avatarLetter}
@@ -234,7 +239,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white"
             aria-label="Open settings"
           >
             {avatarLetter}

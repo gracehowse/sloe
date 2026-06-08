@@ -43,7 +43,7 @@ export function MobileActivityStep() {
       <MobileStepHeader
         overline={overline}
         title="How active are you?"
-        subtitle="Rough estimate — Suppr will refine this using your activity data over ~2 weeks."
+        subtitle="Rough estimate — Sloe will refine this using your activity data over ~2 weeks."
       />
       <View style={{ gap: 8 }}>
         {ACTIVITIES.map((a) => {

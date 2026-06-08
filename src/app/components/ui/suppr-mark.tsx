@@ -2,12 +2,16 @@ import * as React from "react";
 import { cn } from "./utils";
 
 /**
- * Sloe brand mark — wordmark only (2026-06-04 Grace decision).
+ * Sloe brand mark — wordmark only.
  *
- * The logo is the lowercase "sloe" wordmark in Newsreader + plum ink
- * (`--foreground-brand`). No berry glyph, no plate ring, no lockup.
- * Component names keep the historical `Suppr*` exports so call-sites
- * stay stable until a rename pass.
+ * The logo is the "Sloe" wordmark (capital S) in Newsreader semibold + plum
+ * ink (`--foreground-brand`). No berry glyph, no plate ring, no lockup.
+ * Casing + weight match the canonical Figma `654:2` Today frame
+ * (`font-headline text-xl font-semibold text-plum`) — updated 2026-06-08 from
+ * the earlier lowercase "sloe" / medium treatment so every surface (Today
+ * brand bar, sidebar, onboarding, auth) reads the wordmark identically.
+ * Component names keep the historical `Suppr*` exports so call-sites stay
+ * stable until a rename pass.
  */
 
 interface SloeWordmarkTextProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -31,7 +35,7 @@ function SloeWordmarkText({
       aria-label="Sloe"
       data-slot={slotName}
       className={cn(
-        "font-[family-name:var(--font-newsreader)] font-medium tracking-tight text-foreground-brand shrink-0",
+        "font-[family-name:var(--font-newsreader)] font-semibold tracking-tight text-foreground-brand shrink-0",
         className,
       )}
       style={{
@@ -41,7 +45,7 @@ function SloeWordmarkText({
       }}
       {...props}
     >
-      sloe
+      Sloe
     </span>
   );
 }

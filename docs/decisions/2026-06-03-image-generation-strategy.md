@@ -4,8 +4,27 @@
 **Owner:** Grace
 **Context:** We've been generating Sloe imagery (ingredients, allergens, food) via **Stitch** for the redesign — good results, but two needs have emerged: (1) a repeatable way to generate brand imagery *as we go* at design-time, and (2) a **runtime product feature** — let a user generate a recipe image on import when their own recipe has no photo, or when an Instagram/TikTok import's photo is poor. Julienne (Afternoon Labs) ships exactly this ("recipe image generation so you no longer have default images"), so it's table stakes for the import/viral hook.
 
+---
+
+## 2026-06-07 head-to-head + dual-engine decision
+
+**What changed:** ran a like-for-like head-to-head between **FLUX 2 Pro** (`fal-ai/flux-2-pro`) and **Nano Banana Pro** (`fal-ai/nano-banana-pro`, Google's SOTA image model) on the *same* locked Sloe prompts — the 8 Template-D social/lifestyle scenes (`docs/brand/sloe-social-image-set-2026-06-07.md`) and the 5 landing "Trending" Template-A dishes (Warm Tahini Grain Bowl, Three Cheese Fusilli, Chicken Kale Salad, Blueberry Baked Oats, Crispy Gnocchi Traybake). Nano outputs at 2K live in `screenshots/social-set/nano/` and `public/landing/nano/` (FLUX originals kept side-by-side for comparison; nothing live overwritten — Grace picks).
+
+**Result — Nano Banana Pro won on editorial quality.** Across both sets it produced more convincing **window light**, real **depth** (foreground-to-background falloff, not a flat backdrop), and genuine **kitchen context** (dressers, shelves, copper pans, sage cabinetry) — the `@thelittleplantation`/`@_foodstories_` register the templates aim for. It also **fixed the two worst FLUX misses** on the trending set: FLUX's `trending-5` rendered raw oats in a wooden scoop instead of a Crispy Gnocchi Traybake (wrong dish entirely) and `trending-4` came out as a banned overhead flat-lay — Nano returns a correct side-lit gnocchi skillet and an editorial baked-oats dish. Ingredient fidelity to the recipe was higher on every dish, and no baked-in logo/watermark appeared (FLUX had previously stamped a "SUPPR" mark into a trending frame). One minor Nano watch-item: the iPad lifestyle frame (`c`) invents faint app-UI text on the screen — keep `{ON_SCREEN}` vague or composite the real screenshot for any screen-prominent frame, same guard as before.
+
+**Cost:** Nano Banana Pro is **$0.15/image** on fal; FLUX 2 Pro is **$0.01–0.04/image** (4–10× cheaper). At low marketing volumes that's noise (~$2 for this whole 13-image batch); at per-user runtime scale it is not.
+
+**Decision — dual-engine split (prompt templates unchanged, model-swappable):**
+
+- **Nano Banana Pro = default for hero / marketing / social / Discover-feature / recipe-hero imagery** — the quality-critical, low-volume surfaces where editorial polish is the whole point and the per-image cost is irrelevant.
+- **FLUX 2 Pro = default for runtime per-user recipe-gen** — the cost-critical, high-volume, cache-by-recipe path (§Layer 2). The 4–10× price gap dominates at viral scale, and the runtime path is already guarded by cache + abuse-cap; FLUX's quality is more than good enough for a user's own imported recipe behind the "Sloe image" label.
+
+The **locked prompt templates (A/B/C/D) do not change** — they are model-swappable by design (`sloe-image-prompt-template.md` §6 already states the prompt is the constant). The same assembled prompt string drives either engine; only the fal `endpoint_id` and a couple of param names differ (Nano takes `resolution: "2K"` + `aspect_ratio`; both lack a separate `negative_prompt`, so the trailing `Avoid: …` clause stays). Re-run the head-to-head if either model ships a major revision.
+
+---
+
 ## Principle: one engine for both layers
-Use a **single image engine + one locked Sloe prompt template** for design-time and runtime, so everything looks like one brand and we maintain one integration ("prefer one tool over two").
+Use a **single image engine + one locked Sloe prompt template** for design-time and runtime, so everything looks like one brand and we maintain one integration ("prefer one tool over two"). _Amended 2026-06-07 (see above): still **one integration** (fal.ai) and **one prompt template set**, but a **dual-engine split by surface** — Nano Banana Pro for quality-critical marketing/hero imagery, FLUX 2 Pro for cost-critical runtime per-user gen. Brand consistency holds because the prompt is the constant, not the model._
 
 ## Recommended engine: fal.ai (unified API) → FLUX 2 Pro (default food model)
 - **fal.ai** is a unified API hosting FLUX, GPT Image, and others under one integration with token-based pricing. One integration, model-swappable, and it lets us call OpenAI's GPT Image **without a direct OpenAI key** (our worktree env can't hold one — see memory). Replicate is the equivalent alternative.

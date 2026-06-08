@@ -5,9 +5,10 @@
  *
  * The mark used to gate on `design_system_brandmark` (legacy S-glyph ↔ ring
  * motif). That whole branch is RETIRED: `SupprMark` / `SupprPlateMark` now
- * render ONE unconditional brand — the lowercase "sloe" wordmark — with NO
- * flag read and NO legacy 'S'. This file pins that single-canonical-mark
- * contract so the glyph + flag can never sneak back:
+ * render ONE unconditional brand — the "Sloe" wordmark (capital S, Newsreader
+ * semibold; casing updated 2026-06-08 to match Figma `654:2`) — with NO flag
+ * read and NO legacy 'S'. This file pins that single-canonical-mark contract
+ * so the glyph + flag can never sneak back:
  *
  *  - the mark renders the Sloe wordmark regardless of flag state;
  *  - it never renders a standalone 'S' glyph;
@@ -79,6 +80,6 @@ describe("SupprPlateMark — always the Sloe wordmark (mobile, ENG-797)", () => 
 
   it("composes the Sloe wordmark in the lockup", () => {
     const { getByText } = render(<SupprPlateWordmark />);
-    expect(getByText("sloe")).toBeTruthy();
+    expect(getByText("Sloe")).toBeTruthy();
   });
 });

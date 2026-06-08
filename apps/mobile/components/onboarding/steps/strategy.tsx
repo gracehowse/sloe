@@ -130,7 +130,7 @@ export function MobileStrategyStep() {
         })}
       </View>
       <MobileMethodologyNote>
-        Macro ratios are a starting point. Suppr recalibrates protein and carbs
+        Macro ratios are a starting point. Sloe recalibrates protein and carbs
         as you log and weigh in.
       </MobileMethodologyNote>
     </MobileStepBody>

@@ -1,8 +1,8 @@
-# Decision: intermittent fasting — web vs mobile (2026-04, updated 2026-05-14)
+# Decision: intermittent fasting — web vs mobile (2026-04, updated 2026-06-07)
 
-**Status:** updated 2026-05-14 — web now ships an expanded surface.
+**Status:** updated 2026-06-07 — both surfaces migrated to the Sloe design system + OMAD added.
 **Backlog:** T13 in `docs/planning/sweep-2026-04-executor-backlog.md` (closed).
-**Audit reference:** `docs/planning/premium-bar-systematic-followups-2026-05-12.md` line 456.
+**Audit reference:** `docs/planning/premium-bar-systematic-followups-2026-05-12.md` line 456; `docs/ux/redesign/figma-migration-tracker.md` (Fasting area, ENG-922).
 
 ## Decision (2026-04, original)
 
@@ -22,6 +22,17 @@ Per the premium-bar audit (line 456 — "Web Fasting expansion to Zero/Apple Hea
 
 The window picker is now disabled while a fast is active so we don't silently rebase the goal mid-session (parity with mobile, where the preset row is also hidden during an active fast).
 
+## Update (2026-06-07) — Sloe DS migration + OMAD
+
+Per the Figma migration tracker (Fasting area; frames `305:2` D5 timer, `498:2`/`498:3` K4 Today fasting entry) the fasting surfaces were migrated off the legacy **indigo** skin onto the **Sloe** design system, and OMAD was added.
+
+1. **Indigo → Sloe colour migration.** Every colour now sources a Sloe token — clay (`--accent-primary` / `Accent.primary`) for the progress arc + End-fast pill, plum (`--foreground-brand` / `colors.navPrimary`) for serif headings + selected preset pills, frost-mist (`--ring-bg` / `colors.ringTrack`) for the ring track, surface-card (`--card` / `colors.card`) cream slabs, sage (`--success`) for the completed state. No hardcoded indigo anywhere on either platform.
+2. **Sloe layout** (web `FastingTimer.tsx` + mobile `fasting.tsx`): plum serif heading, frost-mist/plum preset pills, 248px clay ring with a flame **stage chip** + serif elapsed numeral + "elapsed · X left" sub-line, a **Fasting stages** cream slab (Fed → Fat burning → Ketosis → Deep — shared `src/lib/fasting/stages.ts`), a Started/Goal cream slab, a clay End-fast pill, and the stage narrative as an **italic serif quote**.
+3. **OMAD preset (ENG-922).** Suppr now supports all five windows — 16:8 / 18:6 / 20:4 / 14:10 / **OMAD** (stored as `23:1`, rendered "OMAD"). The preset list is shared (`FASTING_WINDOW_PRESETS` + `fastingWindowLabel` in `src/lib/fasting/milestones.ts`) so web + mobile never drift.
+4. **All wired functionality preserved** — load/persist, the live timer + animated ring, start/end (mobile long-press End-fast), the in-app window picker, quick-start chips, history with long-press delete + "Extended" badge. Reskin + OMAD only.
+
+The shared `src/lib/fasting/stages.ts` model (`FASTING_STAGES`, `fastingStageAtHours`, `fastingStageBarFraction`) is pure + unit-tested (`tests/unit/fastingStages.test.ts`), so the stage bar / chip / narrative never contradict each other and mobile + web share one definition.
+
 ## Voice + trust posture
 
 - Milestones are **descriptive, not prescriptive**. "Glycogen / Ketosis / Deep fast" describe commonly-cited body states from intermittent fasting literature. There is no "fast longer to lose weight" copy.
@@ -30,10 +41,11 @@ The window picker is now disabled while a fast is active so we don't silently re
 
 ## Related
 
-- Component: [`src/app/components/FastingTimer.tsx`](../../src/app/components/FastingTimer.tsx)
-- Shared helper: [`src/lib/fasting/milestones.ts`](../../src/lib/fasting/milestones.ts)
-- Unit tests: [`tests/unit/fastingMilestones.test.ts`](../../tests/unit/fastingMilestones.test.ts)
-- Mobile counterpart: [`apps/mobile/app/fasting.tsx`](../../apps/mobile/app/fasting.tsx)
+- Component (web): [`src/app/components/FastingTimer.tsx`](../../src/app/components/FastingTimer.tsx) + page [`app/fasting/page.tsx`](../../app/fasting/page.tsx)
+- Today entry (web): [`src/app/components/suppr/today-fasting-pill.tsx`](../../src/app/components/suppr/today-fasting-pill.tsx)
+- Shared helpers: [`src/lib/fasting/milestones.ts`](../../src/lib/fasting/milestones.ts) (presets + labels), [`src/lib/fasting/stages.ts`](../../src/lib/fasting/stages.ts) (stage bar)
+- Unit tests: [`tests/unit/fastingMilestones.test.ts`](../../tests/unit/fastingMilestones.test.ts), [`tests/unit/fastingStages.test.ts`](../../tests/unit/fastingStages.test.ts)
+- Mobile counterpart: [`apps/mobile/app/fasting.tsx`](../../apps/mobile/app/fasting.tsx) + Today entry [`apps/mobile/components/today/TodayFastingPill.tsx`](../../apps/mobile/components/today/TodayFastingPill.tsx)
 - Parity scope table: [`docs/product/web-mobile-parity-scope.md`](../product/web-mobile-parity-scope.md)
 - In-app help: [`app/help/page.tsx`](../../app/help/page.tsx) — Intermittent fasting timer entry
 

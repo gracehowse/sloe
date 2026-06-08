@@ -1,6 +1,11 @@
 /**
- * ENG-758 — real weigh-in count for the Today "Adaptive TDEE learning ·
- * N of 7 days" pill (replaces the adaptiveTdeeConfidence-tier proxy).
+ * ENG-758 — real weigh-in count in the trailing 7-day window
+ * (`countWeighInDaysInWindow`, replaces the adaptiveTdeeConfidence-tier proxy).
+ *
+ * Note (2026-06-08): the Today "Adaptive TDEE learning · N of 7 days" line was
+ * removed from the hero to match Figma `654:2`. This count helper is still
+ * wired (the host passes it as `tdeeLearnDays` for call-site stability and the
+ * learning state is surfaced on Progress), so its behaviour stays pinned here.
  */
 import { describe, it, expect } from "vitest";
 import { countWeighInDaysInWindow } from "../../src/lib/nutrition/weighInDays.ts";

@@ -54,6 +54,31 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
   });
 });
 
+describe("Settings — Figma `335:2` frame reskin (web parity)", () => {
+  it("renders the peach Sloe Pro upsell banner with a Manage affordance", () => {
+    // Mirrors the mobile banner (frame `335:23`). Free → /pricing,
+    // Pro → /account/billing. The clay-tint fill uses --primary @16%.
+    expect(settings).toContain('data-testid="settings-sloe-pro-banner"');
+    expect(settings).toMatch(/>\s*Sloe Pro\s*</);
+    expect(settings).toMatch(/>\s*Manage\s*</);
+    expect(settings).toMatch(
+      /userTier === "pro" \? "\/account\/billing" : "\/pricing"/,
+    );
+  });
+
+  it("the profile name reads in the Newsreader serif display face", () => {
+    // Frame `335:2`: the user's name is an editorial identity header in
+    // the serif display face (plum ink), not sans-bold.
+    expect(settings).toMatch(
+      /font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand[^"]*"[^>]*>\s*\{profileDisplayLabel\}/,
+    );
+  });
+
+  it("the plan label reads 'Free plan' / 'Pro plan'", () => {
+    expect(settings).toMatch(/\{profileTierLabel\} plan/);
+  });
+});
+
 describe("DesktopSidebar — Progress primary + profile entry (2026-05-19 IA)", () => {
   it("Progress primary has no sub-tabs; Settings opens from profile entry", () => {
     expect(sidebar).toMatch(/you:\s*\[\s*\]/);

@@ -112,6 +112,7 @@ import {
   Moon,
   SunMedium,
   Sparkles,
+  Award,
   Crown,
   BadgeCheck,
   ShoppingCart,
@@ -220,6 +221,7 @@ export const Icons = {
 
   // Progress & data
   trophy: Trophy,
+  award: Award,
   streak: Streak,
   streakFreeze: Snowflake,
   calendarCheck: CalendarCheck,

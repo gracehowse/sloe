@@ -56,7 +56,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { Accent, AccentWinGradient, Type } from "@/constants/theme";
+import { Accent, Type } from "@/constants/theme";
+import { useWinGradient } from "@/context/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -158,6 +159,11 @@ export function WinMomentPlayer({
   testID,
 }: WinMomentPlayerProps) {
   const reduceMotion = useReduceMotion();
+  // Win-moment gradient — Frost variant (plum → damson → honey) when
+  // `brand_frost_secondary` is ON, else the clay-mid Sloe brand gradient. The
+  // static `Accent.win` fill/track/text is damson in BOTH states (the win role
+  // is damson regardless), so only the gradient mid-stop moves.
+  const winGradient = useWinGradient();
 
   // Ring geometry — a single gold gradient arc inside the player box.
   const stroke = Math.max(8, Math.round(size * 0.045));
@@ -284,10 +290,10 @@ export function WinMomentPlayer({
         <Svg width={size} height={size} style={{ position: "absolute" }}>
           <Defs>
             <LinearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              {AccentWinGradient.stops.map((c, i) => (
+              {winGradient.stops.map((c, i) => (
                 <Stop
                   key={c}
-                  offset={`${AccentWinGradient.offsets[i] * 100}%`}
+                  offset={`${winGradient.offsets[i] * 100}%`}
                   stopColor={c}
                 />
               ))}
@@ -323,7 +329,7 @@ export function WinMomentPlayer({
         {!reduceMotion
           ? Array.from({ length: CONFETTI_COUNT }).map((_, i) => {
               const angle = (i / CONFETTI_COUNT) * Math.PI * 2;
-              const stop = AccentWinGradient.stops[i % AccentWinGradient.stops.length];
+              const stop = winGradient.stops[i % winGradient.stops.length];
               return (
                 <ConfettiDot
                   key={i}

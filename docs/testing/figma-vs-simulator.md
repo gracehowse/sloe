@@ -79,11 +79,22 @@ Until Figma MCP is connected, fall back to Stitch HTML with **lower confidence**
 
 When diffing non-Today surfaces, do not “fix” Figma toward sim lift without an explicit product call.
 
+## Conformed to canonical `654:2` (2026-06-08)
+
+These four Today gaps were closed to match the canonical frame `654:2` (web + mobile). They are NO LONGER drift — the app matches the frame:
+
+| Topic | Figma `654:2` | Shipped (web + mobile) | Record |
+|-------|---------------|------------------------|--------|
+| Wordmark | "Sloe" (capital S, Newsreader semibold, plum, `text-xl` ≈ 20px) | "Sloe" semibold plum | `suppr-mark.tsx`, `SloeHeaderWordmark.tsx`, `SupprMark.tsx`; `supprMark`/`brandMark` tests |
+| Week strip labels | Single letters `S M T W T F S` (no 3-letter abbrevs) | Single letters via shared `weekdayInitials` | `src/lib/today/weekdayLabels.ts`; `weekdayLabels.test.ts` |
+| Week strip dot | Conditional pip — sage (logged), clay (current/selected), transparent (none) | Same (shared `dayStripIndicator`) | `dayStripIndicator.ts`; daystrip indicator tests |
+| Adaptive-TDEE line | Not present (nothing between Goal/Eaten/Bonus and the "Room for dinner" coach line) | Removed from Today hero (learning state lives on Progress; logic preserved) | `today-hero-stats.tsx`, `TodayHero.tsx`; `todayStatusPills` tests |
+
 ## Intentional vs Figma frame drift (do not file as bugs)
 
 | Topic | Figma `308:2` (or mock) | Shipped sim | Record |
 |-------|-------------------------|-------------|--------|
-| Week strip selected day | Filled **clay pill** | **Minimal** clay number + dot, no fill | `docs/decisions/2026-06-03-today-week-strip-minimal-current-day.md` |
+| Week strip selected day | Filled **clay pill** (deprecated `308:2`) | **Minimal** clay number + conditional dot, no fill (matches `654:2`) | `docs/decisions/2026-06-03-today-week-strip-minimal-current-day.md` |
 | Status chip | Under / Over budget | Same (`todayStatusChip`) | `docs/decisions/2026-06-04-today-status-chip-budget-labels.md` |
 | Overage ring arc | Red / hash (older mock) | Plum second lap | `CalorieRing.tsx`, `calorieRingOverageArc.test.tsx` |
 | FAB / active tab | Varies in old mocks | Plum FAB, clay active tab | `docs/decisions/2026-06-04-plum-nav-clay-content-cta-split.md` |

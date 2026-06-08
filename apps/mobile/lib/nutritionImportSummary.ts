@@ -25,7 +25,7 @@ export function formatNutritionImportSummary(result: NutritionImportResult): str
     return `Imported ${result.imported.length} meal${result.imported.length === 1 ? "" : "s"} from Health.`;
   }
   if (result.externalEnergyCount === 0) {
-    return "No meals from other apps in the lookback window. Log food in MyFitnessPal (Health sharing on), confirm per-food rows under Health → Browse → Nutrition → Dietary Energy (not only a day total), then Sync Now. If empty there too, open Settings → Health → Suppr and turn on Dietary Energy read.";
+    return "No meals from other apps in the lookback window. Log food in MyFitnessPal (Health sharing on), confirm per-food rows under Health → Browse → Nutrition → Dietary Energy (not only a day total), then Sync Now. If empty there too, open Settings → Health → Sloe and turn on Dietary Energy read.";
   }
   if (result.skippedDedup >= result.externalEnergyCount) {
     return `No new meals to import (${result.externalEnergyCount} Health sample${result.externalEnergyCount === 1 ? "" : "s"} already in your journal).`;

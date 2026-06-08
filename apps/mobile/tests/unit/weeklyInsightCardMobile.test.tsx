@@ -16,6 +16,16 @@
  *      start the week.") and the no-fabrication rule (null avg → "—", no
  *      target → on-target "—").
  *   4. The derived headline + on-target stat for a logged week.
+ *
+ * TWO render branches (Figma 654:2 "flat slabs" sweep):
+ *   - The legacy TD3 stat-grid renders when `today-weekly-insight-mobile` is
+ *     on and `today_meals_figma_654` is OFF — the tests below force that branch
+ *     with the same `flag !== "today_meals_figma_654"` mock the TD4 suite uses,
+ *     because the stat-grid path is kept alive behind the flag until it's
+ *     formally retired.
+ *   - The Figma 654:2 narrative card (icon + "Weekly Insight" + one derived
+ *     prose line) renders when `today_meals_figma_654` is on — the DEFAULT in
+ *     production (it's in `REDESIGN_DEFAULT_ON`). Covered by its own block.
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -77,12 +87,15 @@ describe("computeWeekBarStates / computeDaysOnTarget (TD3 on-target band)", () =
   });
 });
 
-describe("WeeklyInsightCard (mobile) — TD3 render", () => {
+describe("WeeklyInsightCard (mobile) — legacy TD3 stat-grid (figma flag OFF)", () => {
   beforeEach(() => {
     flagFn.mockReset();
+    // Force the legacy stat-grid branch: keep the rollout gate ON, the
+    // figma-654 layout OFF (mirrors `todayMealsSectionTd4.test.tsx`).
+    flagFn.mockImplementation((flag: string) => flag !== "today_meals_figma_654");
   });
 
-  it("renders nothing when the flag is off", () => {
+  it("renders nothing when both layout flags are off", () => {
     flagFn.mockReturnValue(false);
     const { toJSON } = render(
       <WeeklyInsightCard
@@ -98,7 +111,6 @@ describe("WeeklyInsightCard (mobile) — TD3 render", () => {
   });
 
   it("renders the honest empty-week state with no fabricated values", () => {
-    flagFn.mockReturnValue(true);
     const { getByText, queryByText } = render(
       <WeeklyInsightCard
         householdSize={1}
@@ -118,7 +130,6 @@ describe("WeeklyInsightCard (mobile) — TD3 render", () => {
   });
 
   it("renders the days-logged, on-target stat, and derived headline for a logged week", () => {
-    flagFn.mockReturnValue(true);
     const { getByTestId, getByText } = render(
       <WeeklyInsightCard
         householdSize={2}
@@ -142,7 +153,6 @@ describe("WeeklyInsightCard (mobile) — TD3 render", () => {
   });
 
   it("shows '—' for on-target when there is no calorie target to judge against", () => {
-    flagFn.mockReturnValue(true);
     const { getByText } = render(
       <WeeklyInsightCard
         householdSize={1}
@@ -157,5 +167,60 @@ describe("WeeklyInsightCard (mobile) — TD3 render", () => {
     // headline degrades to the neutral "Your week so far".
     expect(getByText("—")).toBeTruthy();
     expect(getByText("Your week so far")).toBeTruthy();
+  });
+});
+
+describe("WeeklyInsightCard (mobile) — Figma 654:2 narrative card (default)", () => {
+  beforeEach(() => {
+    flagFn.mockReset();
+    // `today_meals_figma_654` ON → the narrative branch (production default).
+    flagFn.mockReturnValue(true);
+  });
+
+  it("renders the icon + 'Weekly Insight' title + a single derived prose line", () => {
+    const { getByText, getByTestId, queryByText } = render(
+      <WeeklyInsightCard
+        householdSize={2}
+        loggedDaysInWeek={4}
+        weekAvgKcal={1840}
+        weekDailyKcal={[1960, 2000, 2040, 1500, 0, 0, 0]}
+        dailyKcalTarget={2000}
+        {...COLORS}
+      />,
+    );
+    expect(getByTestId("today-weekly-insight-mobile")).toBeTruthy();
+    expect(getByText("Weekly Insight")).toBeTruthy();
+    // 3 of 4 logged days on target → the coach line is the prose body.
+    expect(getByText("3 of 4 days landed on target — nice.")).toBeTruthy();
+    // The narrative card drops the stat grid — no "4 / 7" tile.
+    expect(queryByText("4 / 7")).toBeNull();
+  });
+
+  it("uses the honest empty prose when no day is logged", () => {
+    const { getByText } = render(
+      <WeeklyInsightCard
+        householdSize={1}
+        loggedDaysInWeek={0}
+        weekAvgKcal={null}
+        weekDailyKcal={[0, 0, 0, 0, 0, 0, 0]}
+        dailyKcalTarget={2000}
+        {...COLORS}
+      />,
+    );
+    expect(getByText("Log a meal to start the week.")).toBeTruthy();
+  });
+
+  it("falls back to logged-count + average prose when there is no target", () => {
+    const { getByText } = render(
+      <WeeklyInsightCard
+        householdSize={1}
+        loggedDaysInWeek={2}
+        weekAvgKcal={1700}
+        weekDailyKcal={[1700, 1700, 0, 0, 0, 0, 0]}
+        dailyKcalTarget={0}
+        {...COLORS}
+      />,
+    );
+    expect(getByText("2 days logged so far. 1,700 kcal daily average.")).toBeTruthy();
   });
 });

@@ -12,6 +12,7 @@ import {
 } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { dayStripIndicatorStyle } from "@suppr/shared/today/dayStripIndicator";
+import { weekdayInitials } from "@suppr/shared/today/weekdayLabels";
 
 type Props = {
   selectedDate: Date;
@@ -59,16 +60,13 @@ export default function DayStrip({
   const selectedDk = dateKeyFromDate(selectedDate);
   const todayDk = dateKeyFromDate(new Date());
 
-  // 2026-05-14 — reverted F5/F9 stacked-tile treatment back to
-  // day-label-above-circle. Grace's call: the stacked 32x44 pills
-  // read as ovals and felt heavier than the clean 30x30 circles.
-  // Three-letter labels also restored for readability ("Mon" beats
-  // "M" at a glance).
+  // Sloe redesign (2026-06-08) — single-letter weekday labels to match the
+  // canonical Figma `654:2` Today frame (`S M T W T F S`), replacing the
+  // 2026-05-14 three-letter `Mon/Tue/Wed` treatment. The day NUMBER below the
+  // letter disambiguates the date. Shared with web `DayStrip` via
+  // `weekdayInitials` so the two surfaces can't drift.
   const dowLabels = useMemo(
-    () =>
-      weekStartDay === "monday"
-        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    () => weekdayInitials(weekStartDay),
     [weekStartDay],
   );
 

@@ -96,10 +96,16 @@ describe("Round 2 — algorithm display fixes", () => {
 });
 
 describe("Round 2 — colour token alignment", () => {
-  it("D20: Recipe Detail uses MacroColors.fiber (not Accent.success direct ref) for fiber", () => {
+  it("D20: Recipe Detail macro strip is the uncoloured Figma 332:2 flat strip (no per-macro colour token)", () => {
     const SRC = read("apps/mobile/app/recipe/[id].tsx");
-    // The macro map's fiber row references the canonical token.
-    expect(SRC).toMatch(/fiber:\s*\{\s*label:\s*"Fiber"[^}]*color:\s*MacroColors\.fiber/);
+    // Superseded by Figma 332:2 / ENG-920 (resolved 2026-06-07): the colour-coded
+    // macro map — where fiber routed through `MacroColors.fiber` rather than a
+    // direct `Accent.success` — was replaced by a FLAT number strip (four serif
+    // CAL/PRO/CARB/FAT columns, NO per-macro colour). So there is no fiber colour
+    // token left to align; the concern is moot for this surface.
+    expect(SRC).toContain('testID="recipe-macros-grid"');
+    // The old colour-coded fiber macro-row pattern must stay gone.
+    expect(SRC).not.toMatch(/fiber:\s*\{\s*label:\s*"Fiber"[^}]*color:/);
   });
 });
 

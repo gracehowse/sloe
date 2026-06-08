@@ -211,7 +211,7 @@ export function HouseholdInviteSheet({
                 </Pressable>
               </View>
               <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 16 }}>
-                {"They'll see an Accept / Decline prompt the next time they open Suppr."}
+                {"They'll see an Accept / Decline prompt the next time they open Sloe."}
               </Text>
             </View>
 

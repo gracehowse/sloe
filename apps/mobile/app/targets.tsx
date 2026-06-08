@@ -902,7 +902,7 @@ export default function TargetsScreen() {
          */}
         <Text style={styles.disclaimer}>
           Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference
-          NIH/NHS guidance. Suppr is not a substitute for medical advice — consult
+          NIH/NHS guidance. Sloe is not a substitute for medical advice — consult
           your doctor before any significant dietary change, especially if you&apos;re
           pregnant, under 18, or managing a medical condition.
         </Text>

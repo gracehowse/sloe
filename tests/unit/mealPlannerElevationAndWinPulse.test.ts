@@ -88,6 +88,9 @@ describe("MealPlanner redesign_winmoment rising-edge pulse (gap #33)", () => {
 
   it("leaves the steady-state colour shift (transition-colors) intact for the flag-off else", () => {
     // The colour-only payoff must survive — the pulse is additive, not a swap.
-    expect(SRC).toContain("text-foreground font-bold -tracking-[0.01em] transition-colors");
+    // Sloe redesign restyled the headline to the serif plum ink
+    // (`text-foreground-brand`); the `transition-colors` steady-state shift
+    // that the flag-off else rides is preserved.
+    expect(SRC).toContain("tracking-tight text-foreground-brand transition-colors");
   });
 });

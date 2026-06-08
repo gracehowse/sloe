@@ -560,14 +560,23 @@ describe("createRecipeWizard — Library entry-point pin", () => {
   const LIBRARY_PATH = resolve(__dirname, "../../app/(tabs)/library.tsx");
   const LIBRARY_SRC = readFileSync(LIBRARY_PATH, "utf8");
 
-  it("Library exposes a + Create button that routes to /recipe/create", () => {
-    // Header pill — primary affordance from the Library tab.
-    expect(LIBRARY_SRC).toMatch(/router\.push\("\/recipe\/create"\)/);
+  it("Library exposes a + Create header button (multi-source action sheet)", () => {
+    // Header pill — primary create affordance from the Library tab.
+    // ENG-921: the create flow opens the multi-source action sheet
+    // (paste-link / photo / manual) rather than hard-routing to the
+    // manual wizard; the wizard is still reachable from that sheet.
     expect(LIBRARY_SRC).toMatch(/createBtn/);
+    expect(LIBRARY_SRC).toMatch(/setCreateSheetOpen\(true\)/);
+    expect(LIBRARY_SRC).toMatch(/CreateRecipeActionSheet/);
   });
 
-  it("the empty state surfaces 'Create a recipe' as the primary CTA", () => {
-    expect(LIBRARY_SRC).toMatch(/Create a recipe/);
+  it("the empty state surfaces 'Import a recipe' as the primary CTA (Figma S7)", () => {
+    // ENG-921 / Figma `529:2`: the empty-state primary CTA leads with
+    // Import (the Reel/TikTok save loop, matching Sloe positioning),
+    // paired with an "Explore Discover" secondary. Create stays
+    // reachable via the header + Create button above.
+    expect(LIBRARY_SRC).toMatch(/Import a recipe/);
+    expect(LIBRARY_SRC).toMatch(/Explore Discover/);
   });
 });
 

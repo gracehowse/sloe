@@ -120,7 +120,7 @@ export function MobileSexStep() {
               marginBottom: 8,
             }}
           >
-            What Suppr does with this
+            What Sloe does with this
           </Text>
           <Text
             style={{
@@ -157,7 +157,7 @@ export function MobileSexStep() {
             }}
           >
             For best results, consult your doctor. You can change this at any
-            time — Suppr also re-calibrates from your actual logs.
+            time — Sloe also re-calibrates from your actual logs.
           </Text>
         </View>
       ) : null}
@@ -184,7 +184,7 @@ export function MobileSexStep() {
             lineHeight: 17,
           }}
         >
-          Stored privately on your device and synced only to your Suppr
+          Stored privately on your device and synced only to your Sloe
           account. Never shared.
         </Text>
       </View>

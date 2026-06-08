@@ -1,8 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { CircleCheck, Sparkles } from "lucide-react-native";
+import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { SupprCard, CARD_RADIUS } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   weeklyInsightCoachLine,
@@ -149,7 +149,8 @@ export function WeeklyInsightCard({
     [dayStates],
   );
 
-  if (!isFeatureEnabled("today-weekly-insight-mobile")) return null;
+  const figmaLayout = isFeatureEnabled("today_meals_figma_654");
+  if (!isFeatureEnabled("today-weekly-insight-mobile") && !figmaLayout) return null;
 
   const headline = weeklyInsightHeadline(loggedDaysInWeek, onTargetDays);
   const coachLine = weeklyInsightCoachLine(loggedDaysInWeek, onTargetDays);
@@ -160,6 +161,46 @@ export function WeeklyInsightCard({
       : loggedDaysInWeek === 1
         ? "1 day logged so far."
         : `${loggedDaysInWeek} days logged so far.`;
+
+  const proseBody =
+    coachLine ??
+    (loggedDaysInWeek === 0
+      ? loggedLine
+      : weekAvgKcal != null
+        ? `${loggedLine} ${Math.round(weekAvgKcal).toLocaleString()} kcal daily average.`
+        : loggedLine);
+
+  if (figmaLayout) {
+    return (
+      <View
+        testID="today-weekly-insight-mobile"
+        accessibilityLabel="Weekly insight"
+        style={[
+          styles.figmaInsightCard,
+          { borderColor: _borderColor, backgroundColor: "rgba(237,234,241,0.4)" },
+        ]}
+      >
+        <View style={styles.figmaInsightRow}>
+          <View
+            style={[
+              styles.figmaInsightIcon,
+              { borderColor: _borderColor, backgroundColor: _cardBackgroundColor },
+            ]}
+          >
+            <TrendingUp size={18} color={MacroColors.calories} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.figmaInsightTitle, { color: MacroColors.calories }]}>
+              Weekly Insight
+            </Text>
+            <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
+              {proseBody}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <SupprCard
@@ -324,6 +365,33 @@ const styles = StyleSheet.create({
   },
   summaryLine: {
     ...Type.caption,
+  },
+  figmaInsightCard: {
+    borderWidth: 1,
+    // 24px Sloe slab corner (Figma 654:2) — NOT Radius.lg/xl, which the
+    // `todayFlatCardFigma` guard forbids for Today cards.
+    borderRadius: CARD_RADIUS,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  figmaInsightRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.md,
+  },
+  figmaInsightIcon: {
+    marginTop: 4,
+    padding: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+  },
+  figmaInsightTitle: {
+    ...Type.headline,
+    marginBottom: 4,
+  },
+  figmaInsightBody: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

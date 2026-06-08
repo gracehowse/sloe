@@ -478,3 +478,65 @@ describe("LogSheet (web) — 'Or add manually' footer", () => {
     expect(onAddManually).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("LogSheet (web) — S13 logged-confirmation (Figma 202:2)", () => {
+  // Presentation-only success state shown AFTER the host commits a log.
+  // The LogSheet never persists anything; it confirms what the host
+  // already logged and offers Done / Undo.
+  const confirmation = {
+    title: "Greek yogurt",
+    kcal: 130,
+    slot: "Breakfast",
+    source: "off" as const,
+  };
+
+  it("renders the confirmation card with slot-aware headline + estimated kcal", () => {
+    open({ confirmation: { ...confirmation, onDone: () => {} } });
+    expect(screen.getByText("Logged to Breakfast")).toBeDefined();
+    expect(screen.getByText("Greek yogurt")).toBeDefined();
+    // Trust posture — nutrition is always an estimate, never absolute.
+    expect(screen.getByText("Est. 130 kcal")).toBeDefined();
+  });
+
+  it("falls back to a bare 'Logged' headline when no slot is supplied", () => {
+    open({ confirmation: { title: "Greek yogurt", kcal: 130, onDone: () => {} } });
+    expect(screen.getByText("Logged")).toBeDefined();
+  });
+
+  it("suppresses the search + browse composition while confirming", () => {
+    open({
+      recent: { entries: [], onPick: () => {} },
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    expect(screen.queryByLabelText("Search foods")).toBeNull();
+    expect(
+      screen.queryByText("Your recent foods will appear here"),
+    ).toBeNull();
+  });
+
+  it("Done fires onDone", () => {
+    const onDone = vi.fn();
+    open({ confirmation: { ...confirmation, onDone } });
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders Undo only when onUndo is wired, and tapping it fires onUndo", () => {
+    const onUndo = vi.fn();
+    const { rerender } = open({
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    // The button's accessible name comes from its `aria-label` ("Undo log"),
+    // not its visible text ("Undo").
+    expect(screen.queryByRole("button", { name: "Undo log" })).toBeNull();
+    rerender(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        confirmation={{ ...confirmation, onDone: () => {}, onUndo }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo log" }));
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+});

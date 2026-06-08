@@ -3,7 +3,7 @@ import { Pressable, Text, useColorScheme, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -64,18 +64,24 @@ export function MobileWelcomeStep() {
 
         <FloatingPreview />
         <SupprMark size={44} />
+        {/* Sloe reskin (Figma welcome 285:2): cold-open hero headline in
+            plum Newsreader serif (`FontFamily.serifRegular` +
+            `colors.navPrimary` theme-aware plum), matching the
+            warm-coaching brand + the web welcome treatment. Copy moves to
+            the Sloe positioning line. */}
         <Text
           style={{
-            fontSize: 36,
-            fontWeight: "800",
-            letterSpacing: -1.3,
-            color: colors.text,
+            fontFamily: FontFamily.serifRegular,
+            fontSize: 38,
+            fontWeight: "400",
+            letterSpacing: -0.8,
+            color: colors.navPrimary,
             marginTop: 24,
             marginBottom: 12,
-            lineHeight: 38,
+            lineHeight: 42,
           }}
         >
-          Eat well,{"\n"}without{"\n"}overthinking it.
+          Eat well,{"\n"}on your terms.
         </Text>
         <Text
           style={{
@@ -85,8 +91,9 @@ export function MobileWelcomeStep() {
             maxWidth: 360,
           }}
         >
-          Import recipes from the sites you already use. We&apos;ll break down
-          the macros and help you hit targets that fit your life.
+          Cook what you love and still hit your goals. Import recipes from the
+          sites you already use — Sloe breaks down the macros and calibrates
+          targets to you.
         </Text>
       </View>
 

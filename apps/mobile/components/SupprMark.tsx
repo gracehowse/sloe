@@ -1,14 +1,17 @@
 import * as React from "react";
 import { Text, View, ViewStyle, StyleProp } from "react-native";
-import { useThemeColors } from "@/hooks/use-theme-colors";
 import { FontFamily, MacroColors } from "@/constants/theme";
 
 /**
- * Sloe brand mark — wordmark only (2026-06-04 Grace decision).
+ * Sloe brand mark — wordmark only.
  *
- * Lowercase "sloe" in Newsreader + plum (`MacroColors.calories`). No berry
- * glyph, no plate ring, no lockup. Historical `Suppr*` export names stay
- * until a rename pass.
+ * "Sloe" (capital S) in Newsreader semibold + plum (`MacroColors.calories`).
+ * No berry glyph, no plate ring, no lockup. Casing + weight match the
+ * canonical Figma `654:2` Today frame (`font-headline text-xl font-semibold
+ * text-plum`) — updated 2026-06-08 from the earlier lowercase "sloe" / medium
+ * treatment so every surface reads the wordmark identically (web parity:
+ * `src/app/components/ui/suppr-mark.tsx`). Historical `Suppr*` export names
+ * stay until a rename pass.
  */
 
 export interface SupprMarkProps {
@@ -29,15 +32,15 @@ function SloeWordmarkText({ size = 28 }: { size?: number }) {
       accessibilityRole="image"
       accessibilityLabel="Sloe"
       style={{
-        fontFamily: FontFamily.serifRegular,
+        fontFamily: FontFamily.serifSemibold,
         fontSize: sloeFontSize(size),
         color: MacroColors.calories,
-        fontWeight: "500",
+        fontWeight: "600",
         letterSpacing: -0.4,
         includeFontPadding: false,
       }}
     >
-      sloe
+      Sloe
     </Text>
   );
 }

@@ -107,16 +107,18 @@ export function RevealStep({ compact = false }: RevealProps) {
     >
       {/* Hero */}
       <div className={compact ? "px-5 pt-6 pb-4 text-center" : "px-8 pt-8 pb-5 text-center"}>
-        <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary mb-2.5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
           Your daily target
         </div>
         {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
             re-titled from "Here's what your day looks like." → "Your
             plan is ready." Cal AI parity — leads with completion +
-            reward beat. Mobile mirrored. */}
+            reward beat. Mobile mirrored.
+            Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
+            Newsreader serif hero title. */}
         <h1
-          className={`font-bold tracking-tight m-0 mb-5 text-foreground leading-tight ${compact ? "text-xl" : "text-[22px]"}`}
-          style={{ letterSpacing: "-0.02em", textWrap: "balance" } as React.CSSProperties}
+          className={`font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[26px]"}`}
+          style={{ letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties}
         >
           Your plan is ready.
         </h1>
@@ -161,11 +163,16 @@ export function RevealStep({ compact = false }: RevealProps) {
           <div className="absolute inset-0 flex flex-col justify-center items-center">
             {revealStarted ? (
               <>
+                {/* Sloe reskin — the ring calorie numeral reads in the
+                    Newsreader serif display face (Sloe ring numerals),
+                    plum heading ink, matching the Today ring + Figma
+                    192:2. tabular-nums preserved so the count-up
+                    animation doesn't jitter. */}
                 <div
-                  className="font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+                  className="font-[family-name:var(--font-display)] font-normal tracking-tight tabular-nums leading-none text-foreground-brand"
                   style={{
                     fontSize: compact ? 52 : 60,
-                    letterSpacing: "-0.035em",
+                    letterSpacing: "-0.02em",
                   }}
                 >
                   {displayCals.toLocaleString()}

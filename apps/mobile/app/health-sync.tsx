@@ -370,7 +370,7 @@ export default function HealthSyncScreen() {
         setErrorState({
           kind: "sync",
           message:
-            "Health is taking too long to respond. Try again, or open iOS Settings → Privacy → Health → Suppr to confirm permissions.",
+            "Health is taking too long to respond. Try again, or open iOS Settings → Privacy → Health → Sloe to confirm permissions.",
         });
         return;
       }
@@ -419,7 +419,7 @@ export default function HealthSyncScreen() {
       if (importEnabled) {
         const dietary = await requestDietaryHealthPermissions();
         if (!dietary.dietaryImportReady) {
-          bodyMsg = `${bodyMsg} Meal import needs Dietary Energy read access — toggle Import meals off and on, or open Settings → Health → Suppr and enable Dietary Energy.`;
+          bodyMsg = `${bodyMsg} Meal import needs Dietary Energy read access — toggle Import meals off and on, or open Settings → Health → Sloe and enable Dietary Energy.`;
         }
         try {
           const n = dietary.dietaryImportReady
@@ -450,7 +450,7 @@ export default function HealthSyncScreen() {
       setErrorState({
         kind: "sync",
         message:
-          "Sync from Apple Health failed. Check that Suppr still has permission in iOS Settings.",
+          "Sync from Apple Health failed. Check that Sloe still has permission in iOS Settings.",
       });
     } finally {
       setSyncing(false);
@@ -476,7 +476,7 @@ export default function HealthSyncScreen() {
       } catch {
         Alert.alert(
           "Couldn't open Settings",
-          "Open the Settings app, scroll to Suppr, then tap Health to manage permissions.",
+          "Open the Settings app, scroll to Sloe, then tap Health to manage permissions.",
         );
       }
     }
@@ -509,7 +509,7 @@ export default function HealthSyncScreen() {
             if (!dietary.dietaryImportReady) {
               Alert.alert(
                 "Meal read permission needed",
-                `${dietary.userMessage}${dietary.debugDetail ? `\n\nTechnical detail:\n${dietary.debugDetail}` : ""}\n\nWithout Dietary Energy read access, Apple Health looks empty to Suppr even when MyFitnessPal data is visible in the Health app.`,
+                `${dietary.userMessage}${dietary.debugDetail ? `\n\nTechnical detail:\n${dietary.debugDetail}` : ""}\n\nWithout Dietary Energy read access, Apple Health looks empty to Sloe even when MyFitnessPal data is visible in the Health app.`,
                 [
                   { text: "OK", style: "default" },
                   { text: "Open Settings", onPress: () => void Linking.openSettings() },
@@ -528,9 +528,9 @@ export default function HealthSyncScreen() {
                 : "none detected";
             const permissionHint =
               result.totalEnergyCount === 0
-                ? "\n\nHealth returned zero dietary-energy samples — Suppr may not have read permission yet. Open Settings → Health → Suppr and enable Dietary Energy (and other meal types if listed)."
+                ? "\n\nHealth returned zero dietary-energy samples — Sloe may not have read permission yet. Open Settings → Health → Sloe and enable Dietary Energy (and other meal types if listed)."
                 : result.ownSamplesSkipped > 0 && result.externalEnergyCount === 0
-                  ? `\n\nHealth has ${result.totalEnergyCount} sample${result.totalEnergyCount === 1 ? "" : "s"}, but all are from Suppr (nothing from MFP/other apps yet).`
+                  ? `\n\nHealth has ${result.totalEnergyCount} sample${result.totalEnergyCount === 1 ? "" : "s"}, but all are from Sloe (nothing from MFP/other apps yet).`
                   : "";
             Alert.alert(
               result.externalEnergyCount > 0 ? "Meals found in Health ✓" : "No meals found in Health",
@@ -547,7 +547,7 @@ export default function HealthSyncScreen() {
   const handleTestWrite = useCallback(() => {
     Alert.alert(
       "Send a test meal to Apple Health?",
-      'This writes a labelled 1 kcal entry called "Suppr test write" to verify the connection. You can delete it from the Health app afterwards.',
+      'This writes a labelled 1 kcal entry called "Sloe test write" to verify the connection. You can delete it from the Health app afterwards.',
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -557,7 +557,7 @@ export default function HealthSyncScreen() {
             if (result.ok) {
               Alert.alert(
                 "Test write succeeded ✓",
-                "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Suppr. Real meals will write automatically as you log them.",
+                "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Sloe. Real meals will write automatically as you log them.",
               );
             } else {
               Alert.alert("Test write blocked", result.reason);
@@ -709,7 +709,7 @@ export default function HealthSyncScreen() {
             internal jargon ("Complete Day"). Rewritten in plain
             English for the user-facing surface. */}
         <Text style={styles.desc}>
-          Share your Suppr meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
+          Share your Sloe meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
         </Text>
 
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
@@ -918,7 +918,7 @@ export default function HealthSyncScreen() {
             </Pressable>
           </View>
           <Text style={{ fontSize: 11, color: colors.textTertiary, lineHeight: 14, marginTop: 2 }}>
-            In Settings: tap Privacy & Security → Health → Suppr → enable
+            In Settings: tap Privacy & Security → Health → Sloe → enable
             every category you want to share.
           </Text>
         </View>

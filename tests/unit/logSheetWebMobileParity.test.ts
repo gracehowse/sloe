@@ -134,6 +134,47 @@ describe("LogSheet slot selector — web ↔ mobile parity (ENG-773)", () => {
   });
 });
 
+describe("LogSheet S13 logged-confirmation — web ↔ mobile parity (Figma 202:2)", () => {
+  const web = read(WEB_LOG_SHEET);
+  const mobile = read(MOBILE_LOG_SHEET);
+
+  it("both surfaces declare an optional `confirmation` prop of the same shape", () => {
+    for (const src of [web, mobile]) {
+      // confirmation?: { title; kcal; slot?; source?; onDone; onUndo? } | null
+      expect(src).toMatch(/confirmation\?:\s*\{/);
+      expect(src).toMatch(/onDone:\s*\(\)\s*=>\s*void/);
+      expect(src).toMatch(/onUndo\?:\s*\(\)\s*=>\s*void/);
+    }
+  });
+
+  it("both surfaces tag the confirmation surface with the `log-sheet-confirmation` handle", () => {
+    expect(web).toContain("log-sheet-confirmation");
+    expect(mobile).toContain("log-sheet-confirmation");
+  });
+
+  it("both surfaces render the confirmation via a dedicated LoggedConfirmation component", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toContain("function LoggedConfirmation");
+      expect(src).toContain("<LoggedConfirmation confirmation={confirmation!} />");
+    }
+  });
+
+  it("both surfaces keep nutrition copy as an estimate (`Est.` prefix), never absolute", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/Est\.\s*\{kcal\}\s*kcal/);
+    }
+  });
+
+  it("both surfaces ship the Done + Undo confirmation actions", () => {
+    // Done + Undo labels present on both (web `aria-label` / mobile
+    // `accessibilityLabel`).
+    expect(web).toContain('aria-label="Done"');
+    expect(mobile).toContain('accessibilityLabel="Done"');
+    expect(web).toContain('aria-label="Undo log"');
+    expect(mobile).toContain('accessibilityLabel="Undo log"');
+  });
+});
+
 describe("today-meals-section — empty-state collage REMOVED on web (mobile parity)", () => {
   const web = read(WEB_TODAY_MEALS_SECTION);
   const mobile = read(MOBILE_TODAY_MEALS_SECTION);

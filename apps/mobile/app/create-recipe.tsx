@@ -338,8 +338,8 @@ export default function CreateRecipeScreen() {
         Alert.alert(
           "Add matched ingredients",
           needsReview
-            ? "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods. Some matches are uncertain—review each row after adding."
-            : "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods.",
+            ? "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Sloe foods. Some matches are uncertain—review each row after adding."
+            : "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Sloe foods.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Append", onPress: () => apply("append") },
@@ -1060,7 +1060,7 @@ export default function CreateRecipeScreen() {
           <Pressable style={[styles.modalCard, { paddingBottom: insets.bottom + Spacing.lg }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.label, { letterSpacing: 0 }]}>Paste ingredient list</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-              One ingredient per line (amounts help). We match each line like MyFitnessPal: USDA, Open Food Facts, FatSecret, Edamam, then Suppr foods.
+              One ingredient per line (amounts help). We match each line like MyFitnessPal: USDA, Open Food Facts, FatSecret, Edamam, then Sloe foods.
             </Text>
             <TextInput
               style={styles.pasteInput}

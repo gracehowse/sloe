@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { Accent, AccentWinGradient } from "../../constants/theme";
+import {
+  Accent,
+  AccentFrost,
+  AccentWinGradient,
+  AccentWinGradientFrost,
+} from "../../constants/theme";
 
 /**
  * SLOE Phase 0 (`docs/ux/redesign/phase-0-token-foundation-dossier.md`, dossier
@@ -61,5 +66,90 @@ describe("AccentWinGradient (win-moment fill)", () => {
 
   it("offsets mirror the web 0% / 50% / 100% stop positions", () => {
     expect(AccentWinGradient.offsets).toEqual([0, 0.5, 1]);
+  });
+});
+
+/**
+ * FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`).
+ * Exploration only (`docs/brand/2026-06-07-secondary-colour-exploration.md`).
+ * `AccentFrost` moves ONLY the secondary-accent keys clay → Damson; every other
+ * role (carbs/sugar = clay, status, fiber, win, activity/honey) stays identical
+ * to `Accent`. These tests are the regression guard: if a future edit lets the
+ * Frost swap leak into carbs/sugar/status, the build fails. Mirrors the web
+ * `.flag-frost` block in `src/styles/theme.css`.
+ */
+describe("AccentFrost (Frost secondary-accent flag palette)", () => {
+  it("moves the secondary-accent keys clay → Damson", () => {
+    expect(AccentFrost.primary).toBe("#6A4B7A");
+    expect(AccentFrost.primaryLight).toBe("#9A7BAA");
+    expect(AccentFrost.primarySolid).toBe("#54356A");
+    expect(AccentFrost.primarySolidDark).toBe("#B6ACC6");
+    expect(AccentFrost.primarySoft).toBe("rgba(106, 75, 122, 0.10)");
+    expect(AccentFrost.primarySoftDark).toBe("rgba(154, 123, 170, 0.16)");
+    expect(AccentFrost.brandBlue).toBe("#6A4B7A");
+    expect(AccentFrost.brandBlueLight).toBe("#9A7BAA");
+  });
+
+  it("the moved keys differ from the clay Accent (the swap actually happened)", () => {
+    expect(AccentFrost.primary).not.toBe(Accent.primary);
+    expect(AccentFrost.primarySolid).not.toBe(Accent.primarySolid);
+    expect(AccentFrost.brandBlue).not.toBe(Accent.brandBlue);
+  });
+
+  it("carbs + sugar STAY clay in the Frost palette (regression guard)", () => {
+    // The macro identity colour must NOT move in either flag state.
+    expect(AccentFrost.carbs).toBe(Accent.carbs);
+    expect(AccentFrost.carbs).toBe("#C8794E");
+    expect(AccentFrost.carbsLight).toBe(Accent.carbsLight);
+  });
+
+  it("status / fiber / win / honey roles are untouched by Frost", () => {
+    expect(AccentFrost.success).toBe(Accent.success);
+    expect(AccentFrost.warning).toBe(Accent.warning);
+    expect(AccentFrost.destructive).toBe(Accent.destructive);
+    expect(AccentFrost.fiber).toBe(Accent.fiber);
+    expect(AccentFrost.win).toBe(Accent.win);
+    expect(AccentFrost.winSoft).toBe(Accent.winSoft);
+    expect(AccentFrost.activity).toBe(Accent.activity);
+    expect(AccentFrost.activitySolid).toBe(Accent.activitySolid);
+    expect(AccentFrost.info).toBe(Accent.info);
+  });
+
+  it("ONLY the eight secondary-accent keys differ from Accent — nothing else", () => {
+    const movedKeys = new Set([
+      "primary",
+      "primaryLight",
+      "primarySolid",
+      "primarySolidDark",
+      "primarySoft",
+      "primarySoftDark",
+      "brandBlue",
+      "brandBlueLight",
+    ]);
+    const drifted = (Object.keys(Accent) as (keyof typeof Accent)[]).filter(
+      (k) => Accent[k] !== AccentFrost[k],
+    );
+    expect(new Set(drifted)).toEqual(movedKeys);
+  });
+});
+
+/**
+ * The Frost win-moment gradient shifts ONLY the mid clay stop to damson; the
+ * plum + honey ends and the offsets are unchanged. Mirrors the web
+ * `.flag-frost --accent-win-gradient`.
+ */
+describe("AccentWinGradientFrost (Frost win-moment fill)", () => {
+  it("has plum → damson → honey stops in paint order", () => {
+    expect(AccentWinGradientFrost.stops).toEqual(["#3B2A4D", "#6A4B7A", "#D6A24A"]);
+  });
+
+  it("the middle stop moved clay → damson; the ends held", () => {
+    expect(AccentWinGradientFrost.stops[0]).toBe(AccentWinGradient.stops[0]); // plum held
+    expect(AccentWinGradientFrost.stops[1]).toBe("#6A4B7A"); // clay → damson
+    expect(AccentWinGradientFrost.stops[1]).not.toBe(AccentWinGradient.stops[1]);
+  });
+
+  it("offsets are unchanged from the clay gradient", () => {
+    expect(AccentWinGradientFrost.offsets).toEqual(AccentWinGradient.offsets);
   });
 });

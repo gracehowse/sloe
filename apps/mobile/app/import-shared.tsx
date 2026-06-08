@@ -21,7 +21,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, FontFamily } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
@@ -961,10 +961,14 @@ export default function ImportSharedScreen() {
     },
     scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: 0 },
 
+    // SLOE DS reskin (2026-06-07): the import panel is a cream `surface-card`
+    // slab at the 24px Sloe radius (Radius.xl * 2); the panel title moves to
+    // the plum serif voice. Presentation only — the paste / parse / save logic
+    // is unchanged.
     panelCard: {
       alignSelf: "stretch",
       backgroundColor: colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl * 2,
       borderWidth: 1,
       borderColor: colors.border,
       padding: Spacing.xxxl,
@@ -976,10 +980,11 @@ export default function ImportSharedScreen() {
     // pre-rebrand). See `apps/mobile/components/SupprMark.tsx`.
     loaderGap: { marginVertical: Spacing.sm },
     panelTitle: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: colors.text,
+      fontFamily: FontFamily.serifSemibold,
+      fontSize: 22,
+      color: colors.navPrimary,
       textAlign: "center",
+      letterSpacing: -0.3,
     },
     panelSub: {
       fontSize: 14,
@@ -1004,22 +1009,26 @@ export default function ImportSharedScreen() {
       marginBottom: Spacing.sm,
     },
 
+    // SLOE DS (M6 import-success, frame 304:2): the success surface is a
+    // cream `surface-card` slab with the 24px Sloe radius and a soft
+    // plum-tinted lift. Sage check + sage kicker keep the "saved / on
+    // track" semantic; the recipe title moves to the plum serif voice.
     successSheet: {
       width: "100%",
       maxWidth: 400,
       alignSelf: "center",
       backgroundColor: colors.card,
-      borderRadius: Radius.xl,
+      borderRadius: Radius.xl * 2,
       borderWidth: 1,
       borderColor: Accent.success + "35",
       paddingVertical: Spacing.xxxl,
       paddingHorizontal: Spacing.xxl,
       alignItems: "center",
       gap: Spacing.md,
-      // subtle "sheet" depth
-      shadowColor: Accent.primary,
+      // subtle "sheet" depth — Sloe ink (plum) penumbra, not a cheap drop.
+      shadowColor: "#221B26",
       shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.16,
       shadowRadius: 24,
       elevation: 8,
     },
@@ -1033,12 +1042,14 @@ export default function ImportSharedScreen() {
       letterSpacing: 3,
       marginTop: Spacing.xs,
     },
+    // Plum serif recipe title — the Sloe display voice.
     successRecipeTitle: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.text,
+      fontFamily: FontFamily.serifSemibold,
+      fontSize: 24,
+      color: colors.navPrimary,
       textAlign: "center",
-      lineHeight: 28,
+      lineHeight: 30,
+      letterSpacing: -0.3,
       paddingHorizontal: Spacing.sm,
     },
     libraryChip: {
@@ -1060,10 +1071,11 @@ export default function ImportSharedScreen() {
       color: Accent.success,
     },
 
+    // Paste-link pill — soft Sloe radius on the URL field.
     input: {
       alignSelf: "stretch",
       backgroundColor: colors.inputBg,
-      borderRadius: Radius.md,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: Spacing.lg,
@@ -1078,7 +1090,7 @@ export default function ImportSharedScreen() {
       justifyContent: "center",
       gap: Spacing.sm,
       backgroundColor: Accent.primary,
-      borderRadius: Radius.md,
+      borderRadius: 16,
       paddingVertical: 16,
       marginTop: Spacing.xs,
     },
@@ -1090,7 +1102,7 @@ export default function ImportSharedScreen() {
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: 14,
-      borderRadius: Radius.md,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: Accent.primary + "55",
       marginTop: Spacing.xs,
@@ -1136,19 +1148,19 @@ export default function ImportSharedScreen() {
       flex: 1,
       minWidth: 64,
       backgroundColor: colors.card,
-      borderRadius: Radius.md,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: 8,
-      paddingVertical: 14,
+      paddingVertical: 16,
       alignItems: "center",
       gap: Spacing.sm,
     },
     sourceButtonPressed: { opacity: 0.7 },
     sourceIconBox: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+      width: 36,
+      height: 36,
+      borderRadius: 12,
       backgroundColor: Accent.primary + "22",
       alignItems: "center",
       justifyContent: "center",
@@ -1241,10 +1253,15 @@ export default function ImportSharedScreen() {
       color: colors.text,
     },
 
-    // Macro impact card
+    // Macro-check reassurance card (Figma 177:81) — the "how this fits your
+    // day" sage slab. Sloe 24px radius keeps it consistent with the cream
+    // panel it sits inside.
     macroCardContainer: {
+      alignSelf: "stretch",
       backgroundColor: Accent.success + "18",
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl * 2,
+      borderWidth: 1,
+      borderColor: Accent.success + "30",
       padding: Spacing.lg,
       marginBottom: Spacing.lg,
       gap: Spacing.sm,
@@ -1840,7 +1857,7 @@ export default function ImportSharedScreen() {
               <SupprMark size={56} />
               <Text style={styles.panelTitle}>Paste a recipe link</Text>
               <Text style={styles.panelSub}>
-                From Instagram, TikTok, or any recipe site. If you just shared to Suppr, the link may already be on
+                From Instagram, TikTok, or any recipe site. If you just shared to Sloe, the link may already be on
                 your clipboard — tap below.
               </Text>
               <TextInput
@@ -1888,7 +1905,7 @@ export default function ImportSharedScreen() {
                   >
                     <Ionicons name="share-outline" size={16} color={Accent.primary} style={{ marginTop: 2 }} />
                     <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
-                      {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Suppr — that captures the caption text directly.
+                      {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Sloe — that captures the caption text directly.
                     </Text>
                   </View>
                 );

@@ -1191,7 +1191,7 @@ async function runRequestHealthPermissionsUnlocked(): Promise<HealthKitPermissio
       bodySyncReady: false,
       dietaryImportReady: false,
       userMessage: looksLikeTimeout
-        ? "Apple Health didn’t finish in time. Open More → Health Sync, tap Connect, and stay on that screen until the system sheet appears and you choose Allow or Don’t Allow. If no sheet appears, use Open Settings → Privacy & Security → Health → Data Access & Devices → Suppr."
+        ? "Apple Health didn’t finish in time. Open More → Health Sync, tap Connect, and stay on that screen until the system sheet appears and you choose Allow or Don’t Allow. If no sheet appears, use Open Settings → Privacy & Security → Health → Data Access & Devices → Sloe."
         : "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
       debugDetail,
     };
@@ -2048,7 +2048,7 @@ export async function writeNutritionToHealth(
   for (const meal of meals) {
     try {
       const ok = await saveFoodPromise(hk, {
-        foodName: meal.name || "Suppr meal",
+        foodName: meal.name || "Sloe meal",
         mealType: meal.mealType || "Snack",
         energy: meal.calories,
         protein: meal.protein,
@@ -2088,7 +2088,7 @@ export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false;
   }
   try {
     const ok = await saveFoodPromise(hk, {
-      foodName: "Suppr test write",
+      foodName: "Sloe test write",
       mealType: "Snack",
       energy: 1,
       protein: 0,
@@ -2100,7 +2100,7 @@ export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false;
     if (ok) return { ok: true };
     return {
       ok: false,
-      reason: "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Suppr.",
+      reason: "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Sloe.",
     };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
@@ -2131,7 +2131,7 @@ export async function exportDayToHealth(
   const meals: MealToExport[] = (entries ?? [])
     .filter((e: any) => e.source !== "apple_health") // don't re-export imports
     .map((e: any) => ({
-      name: e.recipe_title || e.name || "Suppr meal",
+      name: e.recipe_title || e.name || "Sloe meal",
       calories: e.calories ?? 0,
       protein: e.protein ?? undefined,
       carbs: e.carbs ?? undefined,
@@ -2157,7 +2157,7 @@ export async function exportDayToHealth(
       const hk = loadAppleHealthKit();
       if (hk) {
         const ok = await saveFoodPromise(hk, {
-          foodName: "Suppr caffeine",
+          foodName: "Sloe caffeine",
           mealType: "Snack",
           energy: 0,
           caffeine: mg / 1000, // react-native-health expects grams, UI stores mg

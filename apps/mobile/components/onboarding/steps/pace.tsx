@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -186,12 +186,16 @@ export function MobilePaceStep() {
           Rate
         </Text>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+          {/* Sloe reskin (Figma pace 191:2): rate hero numeral in the
+              Newsreader serif display face + plum heading ink, mirroring
+              the web pace numeral. */}
           <Text
             style={{
+              fontFamily: FontFamily.serifRegular,
               fontSize: 34,
-              fontWeight: "800",
-              letterSpacing: -1,
-              color: colors.text,
+              fontWeight: "400",
+              letterSpacing: -0.6,
+              color: colors.navPrimary,
               fontVariant: ["tabular-nums"],
               lineHeight: 38,
               includeFontPadding: false,
@@ -344,7 +348,7 @@ export function MobilePaceStep() {
 
       <MobileMethodologyNote>
         Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors
-        reference NIH/NHS guidance. Suppr is not a substitute for medical
+        reference NIH/NHS guidance. Sloe is not a substitute for medical
         advice — consult your doctor before any significant dietary change,
         especially if you&apos;re pregnant, under 18, or managing a medical
         condition.

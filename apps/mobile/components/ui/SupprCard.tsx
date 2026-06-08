@@ -26,10 +26,12 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  *   - fill `colors.card` (#F6F5F2 light) — the warm-grey card on the white page
  *   - `borderRadius: 24` (the Sloe rounded-card radius; `size="tile"` = 24 too —
  *     the Figma chosen Today rounds cards AND tiles to 24, borderless warm slabs)
- *   - a SOFT DROP SHADOW on an OUTER wrapper (default `lift="soft"`) + the
- *     corner-clip on an INNER view. Today uses `lift="flat"` (Figma `654:2` —
- *     tonal slab only). iOS clips shadows under `overflow: 'hidden'`, so the
- *     shadow MUST live on a wrapper separate from the clip.
+ *   - a FLAT tonal slab by default (`lift="flat"`, Figma `654:2` — no shadow,
+ *     no border). The elevated recipe-card surfaces (Discover, Library, recipe
+ *     detail) opt into `lift="soft"`, which adds a SOFT DROP SHADOW on an OUTER
+ *     wrapper + the corner-clip on an INNER view. iOS clips shadows under
+ *     `overflow: 'hidden'`, so the shadow MUST live on a wrapper separate from
+ *     the clip.
  *   - dark mode: no shadow (RN renders dark shadows poorly) — a tonal lift
  *     (`cardElevated`) + a hairline border carry the separation instead.
  *
@@ -48,8 +50,9 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  *        inside the energy-balance card; a card-on-card must not double-shadow)
  *  - `gradient`: bool — north-star tinted surface when `tone='primary'`
  *  - `border`: bool (default true) — only drawn when the elevation treatment
- *              calls for it (dark, a flat caller, or an `inset`); the light
- *              soft-lift `card` drops it (the shadow is the separation)
+ *              calls for it (an `inset` sub-panel, or a `soft` card in dark via
+ *              `useBorder`); the flat slab and the light soft-lift both drop it
+ *              (the fill / shadow is the separation)
  *  - `padding`: `none` / `sm` (8) / `md` (16) / `lg` (20, default) / `xl` (24)
  *  - `radius`: explicit override of the size default (`sm`/`md`/`lg`/`xl`)
  *
@@ -67,7 +70,8 @@ export type SupprCardTone =
 
 export type SupprCardSize = "card" | "tile" | "inset";
 
-/** Resting-card lift. `soft` = default app chrome; `flat` = Figma Today slab. */
+/** Resting-card lift. `flat` = default (Figma Today slab); `soft` = the opt-in
+ *  ambient lift for elevated recipe-card surfaces. */
 export type SupprCardLift = "soft" | "flat";
 
 export type SupprCardPadding = "none" | "sm" | "md" | "lg" | "xl";
@@ -77,7 +81,8 @@ export type SupprCardRadius = "sm" | "md" | "lg" | "xl";
 export interface SupprCardProps {
   tone?: SupprCardTone;
   size?: SupprCardSize;
-  /** Resting lift. Today uses `flat` per Figma `654:2`; other tabs default `soft`. */
+  /** Resting lift. Defaults to `flat` (Figma `654:2` slab); the elevated
+   *  recipe-card surfaces pass `soft` to float off the page. */
   lift?: SupprCardLift;
   gradient?: boolean;
   border?: boolean;

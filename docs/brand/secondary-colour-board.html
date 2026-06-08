@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sloe — Secondary colour exploration board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --page: #F6F5F2;        /* cream board ground */
+    --oat: #FBF8F3;         /* Sloe marketing/app ground */
+    --plum: #3B2A4D;        /* hero chrome / heading ink */
+    --ink: #2A2333;
+    --muted: #6E6577;
+    --hair: #E7E3DC;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--page); color: var(--ink); }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 56px 72px;
+  }
+  h1, h2, h3, .serif { font-family: 'Newsreader', Georgia, serif; }
+
+  .masthead { max-width: 1480px; margin: 0 auto 40px; }
+  .masthead h1 {
+    font-size: 46px; line-height: 1.04; font-weight: 600;
+    color: var(--plum); margin: 0 0 12px; letter-spacing: -0.01em;
+  }
+  .masthead .sub {
+    font-size: 16px; line-height: 1.55; color: var(--muted);
+    max-width: 920px; margin: 0;
+  }
+  .masthead .meta {
+    margin-top: 14px; font-size: 12.5px; color: var(--muted);
+    letter-spacing: 0.02em; text-transform: uppercase; font-weight: 600;
+  }
+  .proposed-pill {
+    display: inline-block; margin-left: 10px; padding: 3px 10px;
+    border-radius: 999px; background: rgba(106,75,122,0.12); color: var(--plum);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    font-family: 'Inter', sans-serif; vertical-align: middle;
+  }
+
+  /* ---- column grid ---- */
+  .board {
+    max-width: 1480px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 20px; align-items: stretch;
+  }
+  .col {
+    background: var(--card); border: 1px solid var(--hair);
+    border-radius: 22px; padding: 22px 20px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+    box-shadow: 0 1px 2px rgba(40,30,55,0.03), 0 14px 30px -22px rgba(40,30,55,0.18);
+  }
+  .col.today { background: #FBFAF8; border-color: #E7E3DC; }
+
+  .col-head { display: flex; flex-direction: column; gap: 6px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .col.today .tag { color: #A8742E; }
+  .col-name {
+    font-family: 'Newsreader', serif; font-size: 20px; line-height: 1.12;
+    font-weight: 600; color: var(--plum); margin: 0;
+  }
+  .accent-hex {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+  }
+  .accent-dot { width: 13px; height: 13px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.07); }
+
+  .block-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #9A93A2; margin: 2px 0 -4px;
+  }
+
+  /* ---- CTA pill ---- */
+  .cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; padding: 13px 18px; border-radius: 999px;
+    font-size: 15px; font-weight: 600; letter-spacing: 0.01em;
+    border: none; cursor: default;
+  }
+
+  /* ---- calorie ring ---- */
+  .ring-wrap { display: flex; align-items: center; gap: 14px; }
+  .ring-meta { display: flex; flex-direction: column; gap: 1px; }
+  .ring-meta .big { font-family: 'Newsreader', serif; font-size: 21px; font-weight: 600; color: var(--plum); line-height: 1; }
+  .ring-meta .small { font-size: 11.5px; color: var(--muted); }
+
+  /* ---- recipe card ---- */
+  .recipe {
+    border-radius: 16px; overflow: hidden; border: 1px solid var(--hair);
+    background: var(--oat);
+  }
+  .recipe .photo {
+    height: 92px; position: relative;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 9px;
+  }
+  .cat-tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+    padding: 4px 9px; border-radius: 999px;
+  }
+  .bookmark {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.92); box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .recipe .body { padding: 10px 12px 12px; }
+  .recipe .title { font-family: 'Newsreader', serif; font-size: 15px; font-weight: 600; color: var(--plum); margin: 0 0 3px; line-height: 1.15; }
+  .recipe .sub { font-size: 11.5px; color: var(--muted); margin: 0; }
+
+  /* ---- section heading sample ---- */
+  .heading-sample h3 {
+    font-family: 'Newsreader', serif; font-size: 18px; font-weight: 600;
+    color: var(--plum); margin: 0 0 4px;
+  }
+  .heading-sample .rule { height: 3px; width: 38px; border-radius: 2px; margin-top: 6px; }
+  .heading-sample p { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
+
+  /* ---- encouragement pill (warm micro-moment) ---- */
+  .encourage {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  }
+
+  /* ---- swatch strip ---- */
+  .swatches { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; }
+  .swatch { display: flex; align-items: center; gap: 10px; }
+  .swatch .chip { width: 30px; height: 30px; border-radius: 8px; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .swatch .info { display: flex; flex-direction: column; line-height: 1.2; }
+  .swatch .nm { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .swatch .hx { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+  .contrast {
+    margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.5;
+    border-top: 1px solid var(--hair); padding-top: 12px;
+  }
+  .contrast b { color: var(--ink); font-weight: 600; }
+  .pass { color: #2F7D52; font-weight: 700; }
+  .fail { color: #B0322B; font-weight: 700; }
+
+  .legend {
+    max-width: 1480px; margin: 30px auto 0; font-size: 12px; color: var(--muted);
+    line-height: 1.6;
+  }
+  .legend b { color: var(--plum); }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <h1>Sloe — secondary colour exploration</h1>
+    <p class="sub">Each direction applied to the same five Sloe surfaces — CTA pill, calorie ring, recipe card, section heading, and a warm encouragement pill — so the accent can be judged in context, not as an isolated swatch. The <b>Today (current clay)</b> column on the left is the live reference. Plum&nbsp;#3B2A4D stays the hero chrome in every direction; only the secondary accent moves.</p>
+    <p class="meta">Proposed — pending Grace + brand-manager sign-off <span class="proposed-pill">no live tokens changed</span></p>
+  </div>
+
+  <div class="board">
+
+    <!-- ============ TODAY (CLAY) ============ -->
+    <div class="col today">
+      <div class="col-head">
+        <span class="tag">Today · live reference</span>
+        <h2 class="col-name">Clay (current)</h2>
+        <span class="accent-hex"><span class="accent-dot" style="background:#C8794E"></span>#C8794E</span>
+      </div>
+
+      <div>
+        <div class="block-label">CTA</div>
+        <button class="cta" style="background:#C8794E;color:#ffffff;">Get the app</button>
+      </div>
+
+      <div>
+        <div class="block-label">Calorie ring</div>
+        <div class="ring-wrap">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#EDEAF1" stroke-width="9"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#C8794E" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="201" stroke-dashoffset="58" transform="rotate(-90 39 39)"/>
+          </svg>
+          <div class="ring-meta"><span class="big">1,480</span><span class="small">of 2,050 kcal</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-label">Recipe card</div>
+        <div class="recipe">
+          <div class="photo" style="background:linear-gradient(135deg,#E9D2BE,#D8B393);">
+            <span class="cat-tag" style="background:#C8794E;color:#fff;">Dinner</span>
+            <span class="bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="#C8794E"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="title">Harissa roast squash</p>
+            <p class="sub">520 kcal · 32g protein</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="heading-sample">
+        <div class="block-label">Section heading</div>
+        <h3>Room for dinner</h3>
+        <div class="rule" style="background:#C8794E;"></div>
+        <p>Accent rule + plum heading ink.</p>
+      </div>
+
+      <div>
+        <div class="block-label">Encouragement pill</div>
+        <span class="encourage" style="background:rgba(200,121,78,0.12);color:#A0552E;">★ Best day this week</span>
+      </div>
+
+      <div>
+        <div class="block-label">Swatches</div>
+        <div class="swatches">
+          <div class="swatch"><span class="chip" style="background:#C8794E"></span><span class="info"><span class="nm">Clay</span><span class="hx">#C8794E</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#A0552E"></span><span class="info"><span class="nm">Clay Solid</span><span class="hx">#A0552E</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#6A4B7A"></span><span class="info"><span class="nm">Damson</span><span class="hx">#6A4B7A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#D6A24A"></span><span class="info"><span class="nm">Honey</span><span class="hx">#D6A24A</span></span></div>
+        </div>
+      </div>
+
+      <div class="contrast">
+        <b>CTA contrast:</b> white-on-clay <span class="fail">3.37:1</span> — AA-Large only. The accessibility floor the alternatives are measured against.
+      </div>
+    </div>
+
+    <!-- ============ A — SLOE BERRY ============ -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">Direction A · recommended</span>
+        <h2 class="col-name">Sloe Berry</h2>
+        <span class="accent-hex"><span class="accent-dot" style="background:#8E3B5E"></span>#8E3B5E</span>
+      </div>
+
+      <div>
+        <div class="block-label">CTA</div>
+        <button class="cta" style="background:#8E3B5E;color:#ffffff;">Get the app</button>
+      </div>
+
+      <div>
+        <div class="block-label">Calorie ring</div>
+        <div class="ring-wrap">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#EDEAF1" stroke-width="9"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#8E3B5E" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="201" stroke-dashoffset="58" transform="rotate(-90 39 39)"/>
+          </svg>
+          <div class="ring-meta"><span class="big">1,480</span><span class="small">of 2,050 kcal</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-label">Recipe card</div>
+        <div class="recipe">
+          <div class="photo" style="background:linear-gradient(135deg,#E9D2BE,#D8B393);">
+            <span class="cat-tag" style="background:#8E3B5E;color:#fff;">Dinner</span>
+            <span class="bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="#8E3B5E"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="title">Harissa roast squash</p>
+            <p class="sub">520 kcal · 32g protein</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="heading-sample">
+        <div class="block-label">Section heading</div>
+        <h3>Room for dinner</h3>
+        <div class="rule" style="background:#8E3B5E;"></div>
+        <p>Berry accent rule, plum heading ink retained.</p>
+      </div>
+
+      <div>
+        <div class="block-label">Encouragement pill <span style="color:#C8941F;">· honey retained</span></div>
+        <span class="encourage" style="background:rgba(214,162,74,0.18);color:#8A5A14;">★ Best day this week</span>
+      </div>
+
+      <div>
+        <div class="block-label">Swatches</div>
+        <div class="swatches">
+          <div class="swatch"><span class="chip" style="background:#8E3B5E"></span><span class="info"><span class="nm">Mulberry (accent)</span><span class="hx">#8E3B5E</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#5B2E4A"></span><span class="info"><span class="nm">Mulberry Deep (pressed)</span><span class="hx">#5B2E4A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#6A4B7A"></span><span class="info"><span class="nm">Damson (active)</span><span class="hx">#6A4B7A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#F1E0E8"></span><span class="info"><span class="nm">Bloom Pink (tint)</span><span class="hx">#F1E0E8</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#D6A24A"></span><span class="info"><span class="nm">Honey (food-warm)</span><span class="hx">#D6A24A</span></span></div>
+        </div>
+      </div>
+
+      <div class="contrast">
+        <b>CTA contrast:</b> white-on-mulberry <span class="pass">4.9:1</span> — AA PASS, upgrade over clay. Pressed #5B2E4A <span class="pass">7.5:1</span>. Carbs/sugar stay warm (not berry).
+      </div>
+    </div>
+
+    <!-- ============ B — CAMEL ============ -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">Direction B · safe fallback</span>
+        <h2 class="col-name">Camel warm-neutral</h2>
+        <span class="accent-hex"><span class="accent-dot" style="background:#B98A4E"></span>#B98A4E</span>
+      </div>
+
+      <div>
+        <div class="block-label">CTA <span style="color:#9A93A2;">· plum text (white fails)</span></div>
+        <button class="cta" style="background:#B98A4E;color:#3B2A4D;">Get the app</button>
+      </div>
+
+      <div>
+        <div class="block-label">Calorie ring</div>
+        <div class="ring-wrap">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#EDEAF1" stroke-width="9"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#B98A4E" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="201" stroke-dashoffset="58" transform="rotate(-90 39 39)"/>
+          </svg>
+          <div class="ring-meta"><span class="big">1,480</span><span class="small">of 2,050 kcal</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-label">Recipe card</div>
+        <div class="recipe">
+          <div class="photo" style="background:linear-gradient(135deg,#E9D2BE,#D8B393);">
+            <span class="cat-tag" style="background:#A8742E;color:#fff;">Dinner</span>
+            <span class="bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="#A8742E"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="title">Harissa roast squash</p>
+            <p class="sub">520 kcal · 32g protein</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="heading-sample">
+        <div class="block-label">Section heading</div>
+        <h3>Room for dinner</h3>
+        <div class="rule" style="background:#B98A4E;"></div>
+        <p>De-saturated tan rule, plum heading ink.</p>
+      </div>
+
+      <div>
+        <div class="block-label">Encouragement pill</div>
+        <span class="encourage" style="background:#F2E7D6;color:#8A5A14;">★ Best day this week</span>
+      </div>
+
+      <div>
+        <div class="block-label">Swatches</div>
+        <div class="swatches">
+          <div class="swatch"><span class="chip" style="background:#B98A4E"></span><span class="info"><span class="nm">Camel (accent/fill)</span><span class="hx">#B98A4E</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#A8742E"></span><span class="info"><span class="nm">Ochre Deep (text/icon)</span><span class="hx">#A8742E</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#6A4B7A"></span><span class="info"><span class="nm">Damson (active)</span><span class="hx">#6A4B7A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#F2E7D6"></span><span class="info"><span class="nm">Camel Soft (tint)</span><span class="hx">#F2E7D6</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#8A5A14"></span><span class="info"><span class="nm">Deep Ochre (AA text)</span><span class="hx">#8A5A14</span></span></div>
+        </div>
+      </div>
+
+      <div class="contrast">
+        <b>CTA contrast:</b> white-on-camel <span class="fail">2.4:1</span> FAIL → forces <b>plum-on-camel</b> <span class="pass">4.7:1</span> PASS. Distinctive editorial button, but a real build change.
+      </div>
+    </div>
+
+    <!-- ============ C — RUST ============ -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">Direction C · low-disruption</span>
+        <h2 class="col-name">Burnt sienna / rust</h2>
+        <span class="accent-hex"><span class="accent-dot" style="background:#9E4624"></span>#9E4624</span>
+      </div>
+
+      <div>
+        <div class="block-label">CTA</div>
+        <button class="cta" style="background:#9E4624;color:#ffffff;">Get the app</button>
+      </div>
+
+      <div>
+        <div class="block-label">Calorie ring</div>
+        <div class="ring-wrap">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#EDEAF1" stroke-width="9"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#9E4624" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="201" stroke-dashoffset="58" transform="rotate(-90 39 39)"/>
+          </svg>
+          <div class="ring-meta"><span class="big">1,480</span><span class="small">of 2,050 kcal</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-label">Recipe card</div>
+        <div class="recipe">
+          <div class="photo" style="background:linear-gradient(135deg,#E9D2BE,#D8B393);">
+            <span class="cat-tag" style="background:#9E4624;color:#fff;">Dinner</span>
+            <span class="bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="#9E4624"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="title">Harissa roast squash</p>
+            <p class="sub">520 kcal · 32g protein</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="heading-sample">
+        <div class="block-label">Section heading</div>
+        <h3>Room for dinner</h3>
+        <div class="rule" style="background:#9E4624;"></div>
+        <p>Brick-rust rule, plum heading ink.</p>
+      </div>
+
+      <div>
+        <div class="block-label">Encouragement pill</div>
+        <span class="encourage" style="background:#F3E0D5;color:#7A3318;">★ Best day this week</span>
+      </div>
+
+      <div>
+        <div class="block-label">Swatches</div>
+        <div class="swatches">
+          <div class="swatch"><span class="chip" style="background:#9E4624"></span><span class="info"><span class="nm">Rust (accent)</span><span class="hx">#9E4624</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#B5532A"></span><span class="info"><span class="nm">Sienna (fill/arc)</span><span class="hx">#B5532A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#7A3318"></span><span class="info"><span class="nm">Rust Deep (pressed)</span><span class="hx">#7A3318</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#6A4B7A"></span><span class="info"><span class="nm">Damson (active)</span><span class="hx">#6A4B7A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#F3E0D5"></span><span class="info"><span class="nm">Rust Soft (tint)</span><span class="hx">#F3E0D5</span></span></div>
+        </div>
+      </div>
+
+      <div class="contrast">
+        <b>CTA contrast:</b> white-on-rust <span class="pass">4.8:1</span> PASS, upgrade over clay. Smallest token migration — but stays in the warm-orange lane next to Julienne.
+      </div>
+    </div>
+
+    <!-- ============ D — FROST ============ -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">Direction D · most ownable</span>
+        <h2 class="col-name">Frost (the bloom)</h2>
+        <span class="accent-hex"><span class="accent-dot" style="background:#9B8FB0"></span>#9B8FB0</span>
+      </div>
+
+      <div>
+        <div class="block-label">CTA <span style="color:#9A93A2;">· damson fill (frost too light)</span></div>
+        <button class="cta" style="background:#6A4B7A;color:#ffffff;">Get the app</button>
+      </div>
+
+      <div>
+        <div class="block-label">Calorie ring</div>
+        <div class="ring-wrap">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#EDEAF1" stroke-width="9"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#6A4B7A" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="201" stroke-dashoffset="58" transform="rotate(-90 39 39)"/>
+          </svg>
+          <div class="ring-meta"><span class="big">1,480</span><span class="small">of 2,050 kcal</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-label">Recipe card</div>
+        <div class="recipe">
+          <div class="photo" style="background:linear-gradient(135deg,#E9D2BE,#D8B393);">
+            <span class="cat-tag" style="background:#9B8FB0;color:#fff;">Dinner</span>
+            <span class="bookmark"><svg width="12" height="12" viewBox="0 0 24 24" fill="#6A4B7A"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="title">Harissa roast squash</p>
+            <p class="sub">520 kcal · 32g protein</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="heading-sample">
+        <div class="block-label">Section heading</div>
+        <h3>Room for dinner</h3>
+        <div class="rule" style="background:#9B8FB0;"></div>
+        <p>Frosted-lilac rule, plum heading ink.</p>
+      </div>
+
+      <div>
+        <div class="block-label">Encouragement pill <span style="color:#C8941F;">· honey carries warmth</span></div>
+        <span class="encourage" style="background:rgba(214,162,74,0.18);color:#8A5A14;">★ Best day this week</span>
+      </div>
+
+      <div>
+        <div class="block-label">Swatches</div>
+        <div class="swatches">
+          <div class="swatch"><span class="chip" style="background:#9B8FB0"></span><span class="info"><span class="nm">Bloom Deep (accent)</span><span class="hx">#9B8FB0</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#C9C2D6"></span><span class="info"><span class="nm">Frost (chrome/divider)</span><span class="hx">#C9C2D6</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#6A4B7A"></span><span class="info"><span class="nm">Damson (CTA fill)</span><span class="hx">#6A4B7A</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#EDEAF1"></span><span class="info"><span class="nm">Frost Mist (tint)</span><span class="hx">#EDEAF1</span></span></div>
+          <div class="swatch"><span class="chip" style="background:#D6A24A"></span><span class="info"><span class="nm">Honey (food-warm)</span><span class="hx">#D6A24A</span></span></div>
+        </div>
+      </div>
+
+      <div class="contrast">
+        <b>CTA contrast:</b> frost too light for white text → <b>damson fill</b> white-on-damson <span class="pass">6.9:1</span> PASS. Plum-on-frost chip <span class="pass">6.8:1</span> PASS. Mostly reuse of existing tokens.
+      </div>
+    </div>
+
+  </div>
+
+  <p class="legend">
+    <b>Reading the board.</b> Plum #3B2A4D is the constant hero across all columns — only the secondary accent changes. Recipe photo is a warm gradient stand-in for real food imagery (which keeps its own #C8794E warmth via the canonical meal-image prompt). Contrast ratios are CTA white-text vs accent unless noted. <b>Honey #D6A24A</b> is retained in A and D as the warm food-adjacent micro-moment so plates never read cold. Status colours (sage = goal met, brick = over budget, amber = warning) are unchanged in every direction. <b>Proposed only — no live theme tokens were modified.</b>
+  </p>
+</body>
+</html>

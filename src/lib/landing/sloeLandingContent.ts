@@ -12,15 +12,25 @@ export type TrendingRecipe = {
   title: string;
   author: string;
   image: string;
+  /**
+   * Where the card links. The public recipe page (`app/recipe/[id]/page.tsx`)
+   * renders unauthed for `published = true` recipes, so ideally each card
+   * would deep-link to a real `/recipe/{id}`. As of 2026-06-07 there are 0
+   * published recipes in the DB, so the cards route to `/discover` (the
+   * Recipes browse surface) as a real, working interim. When seed/published
+   * recipes land, swap these to `/recipe/{id}`. Tracked: landing trending
+   * cards → real public recipe deep-links.
+   */
+  href: string;
 };
 
 /** Trending rail — Figma LP1 cards 345:75–345:120. */
 export const TRENDING_RECIPES: TrendingRecipe[] = [
-  { title: "Warm Tahini Grain Bowl", author: "@kalejunkie", image: "/landing/trending-1.png" },
-  { title: "Three Cheese Fusilli", author: "@cookwithchay", image: "/landing/trending-2.png" },
-  { title: "Chicken Kale Salad", author: "@madewithmel", image: "/landing/trending-3.png" },
-  { title: "Blueberry Baked Oats", author: "@ellies.fav.eats", image: "/landing/trending-4.png" },
-  { title: "Crispy Gnocchi Traybake", author: "@grilledcheesesocial", image: "/landing/trending-5.png" },
+  { title: "Warm Tahini Grain Bowl", author: "@kalejunkie", image: "/landing/trending-1.png", href: "/discover" },
+  { title: "Three Cheese Fusilli", author: "@cookwithchay", image: "/landing/trending-2.png", href: "/discover" },
+  { title: "Chicken Kale Salad", author: "@madewithmel", image: "/landing/trending-3.png", href: "/discover" },
+  { title: "Blueberry Baked Oats", author: "@ellies.fav.eats", image: "/landing/trending-4.png", href: "/discover" },
+  { title: "Crispy Gnocchi Traybake", author: "@grilledcheesesocial", image: "/landing/trending-5.png", href: "/discover" },
 ];
 
 export const SLOE_DIFFERENCE_BULLETS = [

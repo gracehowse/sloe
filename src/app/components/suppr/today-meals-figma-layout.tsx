@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Utensils } from "lucide-react";
 import { SupprCard } from "../ui/suppr-card.tsx";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import {
@@ -120,7 +121,7 @@ export function TodayMealsFigmaLayout({
             <SupprCard
               key={slotName}
               elevation="slab-flat"
-              radius="xl"
+              radius="lg"
               padding="none"
               className="overflow-hidden"
               data-testid={`today-meals-figma-card-${slotName}`}
@@ -141,9 +142,11 @@ export function TodayMealsFigmaLayout({
                   />
                 ) : (
                   <div
-                    className="h-16 w-16 shrink-0 rounded-lg bg-muted"
+                    className="h-16 w-16 shrink-0 rounded-lg bg-card flex items-center justify-center"
                     aria-hidden
-                  />
+                  >
+                    <Utensils className="h-6 w-6 text-foreground-tertiary" />
+                  </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center justify-between gap-2">
@@ -174,13 +177,13 @@ export function TodayMealsFigmaLayout({
             type="button"
             data-testid={`today-log-slot-cta-${nextSlot}`}
             onClick={() => onOpenAddForSlot(nextSlot)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-4 transition-colors hover:bg-muted/30"
+            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card-lg)] bg-card p-4 min-h-[58px] transition-colors hover:bg-muted/30"
             aria-label={`Log ${nextSlot}`}
           >
             <span className="text-[var(--clay,#C8794E)]">
               <SloePlusIcon className="h-5 w-5" />
             </span>
-            <span className="font-medium text-foreground-secondary">
+            <span className="font-medium text-[#6a6072]">
               Log {nextSlot}
             </span>
           </button>

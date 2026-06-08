@@ -63,8 +63,8 @@
 .lp-wordmark {
   font-family: var(--font-headline);
   font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--lp-ink);
 }
 
@@ -91,7 +91,8 @@
   line-height: 1.04;
   text-align: center;
   margin: 24px 0 0;
-  font-weight: 400;
+  font-weight: 300;
+  letter-spacing: -0.01em;
 }
 
 .lp-h-hero-muted {
@@ -105,8 +106,8 @@
 .lp-h-section {
   font-family: var(--font-headline);
   font-size: clamp(1.875rem, 4vw, 2.25rem);
-  font-weight: 400;
-  line-height: 1.12;
+  font-weight: 300;
+  line-height: 1.14;
   margin: 0;
   color: var(--lp-ink);
 }
@@ -118,7 +119,9 @@
 .lp-h-final {
   font-family: var(--font-headline);
   font-size: clamp(2.25rem, 6vw, 3.75rem);
-  line-height: 1.05;
+  font-weight: 300;
+  line-height: 1.07;
+  letter-spacing: -0.01em;
   margin: 0;
   text-align: center;
 }
@@ -164,7 +167,10 @@
   white-space: nowrap;
 }
 
-.lp-btn-primary {
+/* `.lp-root a { color: inherit }` (0,1,1) was out-specifying the button
+   colour (0,1,0), so clay `<a>` buttons inherited plum ink → plum-on-clay.
+   Scope under .lp-root so the white foreground wins. */
+.lp-root .lp-btn-primary {
   background: var(--lp-clay);
   color: var(--primary-foreground);
 }
@@ -382,6 +388,24 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
+  color: inherit;
+  border: 1px solid transparent;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.lp-recipe-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--lp-line) 80%, transparent);
+  box-shadow: 0 14px 32px rgba(34, 27, 38, 0.1);
+}
+
+.lp-recipe-card:hover .lp-recipe-bookmark {
+  color: var(--lp-clay);
+}
+
+.lp-recipe-card:focus-visible {
+  outline: 2px solid var(--lp-clay);
+  outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
@@ -408,6 +432,7 @@
 .lp-recipe-bookmark {
   color: var(--lp-ink-faint);
   flex-shrink: 0;
+  transition: color 0.18s ease;
 }
 
 .lp-recipe-img {
@@ -510,6 +535,13 @@
   justify-content: center;
 }
 
+.lp-difference-phone {
+  display: block;
+  width: min(264px, 76vw);
+  height: auto;
+  filter: drop-shadow(0 26px 44px rgba(34, 27, 38, 0.26));
+}
+
 /* How it works */
 .lp-steps-grid {
   display: grid;
@@ -567,120 +599,94 @@
   margin-bottom: 12px;
 }
 
-.lp-devices-desktop {
-  display: none;
-  align-items: flex-end;
-  justify-content: center;
-  margin-top: 64px;
-  gap: 0;
+/* ---- Real-device family (composited PNG hardware: MacBook + iPad + iPhone) ----
+   The device frames are pre-rendered PNGs in /public/landing/devices/ with the
+   app screenshots already composited into the screens and soft contact shadows
+   baked in. We only position + scale them here. */
+.lp-dev {
+  display: block;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
 }
 
-.lp-devices-mobile {
-  display: flex;
-  justify-content: center;
-  margin-top: 48px;
+/* ---- Desktop breakpoint: 3-device family ---- */
+.lp-devices-stage {
+  display: none;
 }
 
 @media (min-width: 768px) {
-  .lp-devices-desktop {
-    display: flex;
+  .lp-devices-stage {
+    position: relative;
+    display: block;
+    margin: 56px auto 12px;
+    /* the iPhone + iPad extend below the MacBook — reserve room so nothing clips */
+    max-width: 760px;
+    padding: 0 clamp(8px, 4vw, 56px) 72px;
   }
   .lp-devices-mobile {
     display: none;
   }
 }
 
-.lp-devices-tablet {
+/* MacBook — the centred hero. drop shadow under the laptop deck. */
+.lp-dev-macbook {
   position: relative;
   z-index: 1;
-  margin-right: -40px;
-  margin-bottom: 12px;
-}
-
-.lp-devices-phone {
-  position: relative;
-  z-index: 2;
-  margin-left: -56px;
-  margin-bottom: 4px;
-}
-
-/* Device chrome */
-.lp-device-bezel {
-  border-radius: 2.8rem;
-  background: linear-gradient(140deg, #46414e 0%, #211d28 34%, #0b0910 100%);
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.18) inset,
-    0 2px 8px rgba(0, 0, 0, 0.22),
-    0 34px 70px -22px rgba(34, 27, 38, 0.55);
-}
-
-.lp-device-bezel-laptop {
-  border-radius: 0.9rem;
-  padding: 11px;
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.16) inset,
-    0 30px 60px -24px rgba(34, 27, 38, 0.5);
-}
-
-.lp-device-screen {
-  position: relative;
-  border-radius: 2.25rem;
-  overflow: hidden;
-  background: #0a0810;
-}
-
-.lp-device-screen-tablet {
-  border-radius: 1.25rem;
-  height: 281px;
-  width: 210px;
-}
-
-.lp-device-img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
+  margin: 0 auto;
+  filter: drop-shadow(0 38px 60px rgba(34, 27, 38, 0.26));
 }
 
-.lp-device-gloss {
+/* iPad — front-left, overlapping the MacBook's lower-left, standing taller */
+.lp-dev-ipad {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 34%);
+  z-index: 2;
+  left: clamp(-18px, -1.5vw, 4px);
+  bottom: -14px;
+  width: 29%;
+  filter: drop-shadow(-16px 28px 44px rgba(34, 27, 38, 0.33));
 }
 
-.lp-device-notch {
+/* iPhone — front-right, overlapping the MacBook's lower-right */
+.lp-dev-iphone {
   position: absolute;
-  top: 9px;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 15px;
-  border-radius: 9999px;
-  background: #050409;
+  z-index: 3;
+  right: clamp(-14px, -0.5vw, 10px);
+  bottom: -26px;
+  width: 17%;
+  filter: drop-shadow(14px 26px 38px rgba(34, 27, 38, 0.35));
 }
 
-.lp-device-laptop {
-  width: min(614px, 100%);
+/* ---- Mobile / narrow breakpoint: MacBook + iPhone, cleanly stacked ---- */
+.lp-devices-mobile {
+  position: relative;
+  display: block;
+  margin-top: 36px;
+  padding-bottom: 28px;
 }
 
-.lp-device-laptop-compact {
-  width: 354px;
+.lp-dev-macbook-m {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 88%);
+  margin: 0 auto;
+  filter: drop-shadow(0 28px 44px rgba(34, 27, 38, 0.24));
 }
 
-.lp-device-laptop-base {
-  margin-top: 0;
+.lp-dev-iphone-m {
+  position: absolute;
+  z-index: 2;
+  right: clamp(0px, 3vw, 22px);
+  bottom: -4px;
+  width: clamp(78px, 22vw, 104px);
+  filter: drop-shadow(8px 18px 28px rgba(34, 27, 38, 0.32));
 }
 
-.lp-device-laptop-hinge {
-  height: 2px;
-  background: linear-gradient(to bottom, #f2eff4, #cfc9d6);
-}
-
-.lp-device-laptop-foot {
-  height: 11px;
-  border-radius: 0 0 0.5rem 0.5rem;
-  background: linear-gradient(to bottom, #dcd7e0 0%, #b8b1c0 55%, #988fa4 100%);
-  box-shadow: 0 16px 26px -16px rgba(34, 27, 38, 0.45);
+@media (min-width: 768px) {
+  .lp-devices-mobile {
+    display: none;
+  }
 }
 
 /* Pricing */

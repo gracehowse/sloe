@@ -1,12 +1,10 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   View,
   Text,
   FlatList,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -18,14 +16,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   Bookmark,
-  ChevronLeft,
   ArrowUpDown,
+  Clock,
   Plus,
   Search as SearchIcon,
-  BookOpen,
-  MoreHorizontal,
+  Star,
 } from "lucide-react-native";
-import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
@@ -34,13 +30,13 @@ import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
-  LIBRARY_FILTER_PILLS,
-  matchesNutritionPill,
-  type LibraryFilterPillId,
-} from "@suppr/shared/recipes/libraryFilters";
+  LIBRARY_CATEGORY_PILLS,
+  matchesRecipeCategory,
+  type RecipeCategoryId,
+} from "@suppr/shared/recipes/recipeCategoryFilters";
 import {
   matchesPlanImportPill,
   planImportFilterLabels,
@@ -54,6 +50,18 @@ import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionS
 // by each card body for the rationale.
 
 type SortKey = "recent" | "calories" | "protein";
+
+/**
+ * Sloe seamless recipe-card corner. The Figma recipe cards (`527:2`
+ * Cookbook / `528:2` Discover) sit at 20–24px; we use 24 to match the
+ * canonical Sloe warm-slab corner already shared by the Today tiles
+ * (`var(--radius-card-lg)` on web, `CARD_RADIUS`/`TILE_RADIUS = 24` on
+ * mobile) so every cream slab in the app reads with one corner language.
+ * The DS `Radius` ladder tops out at 12 (`xl`), hence this local const.
+ * Web parity: `radius="lg"` (24px) on the `SupprCard` in `Library.tsx` /
+ * `DiscoverFeed.tsx`.
+ */
+const RECIPE_CARD_RADIUS = 24;
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
@@ -96,7 +104,14 @@ export default function LibraryScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Discover/Library recipe cards are the Sloe Figma `527:2`/`528:2`
+  // "seamless slab" cards: a `#F6F5F2` cream card lifted off the `#FFFFFF`
+  // page by a SOFT drop shadow (NOT the flat Today slab, which blends),
+  // 24px radius (RECIPE_CARD_RADIUS), image full-bleed to the top corners.
+  // The `soft` variant supplies the lift; the radius + cream slab unify
+  // image + body into one piece (kills the "floating photo box /
+  // double-frame" — Grace 2026-06-07).
+  const cardElevation = useCardElevation({ variant: "soft" });
   // Library is a tab root — `useSafeBack` falls back to Today when the
   // stack is cold (e.g. hitting Library first from a deep link). The
   // back chevron in the prototype is presentational parity with the
@@ -138,12 +153,19 @@ export default function LibraryScreen() {
   // (search / setSearch) to leave all 100+ downstream usages alone.
   const { query: search, setQuery: setSearch } = useLibrarySearchStore();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
-  // Web parity (Pass 6, 2026-04-18) + prototype port (2026-04-20):
-  // single filter pill row covering entry-kind (All / Saved / Created
-  // / Imported) and nutrition / time / diet (High-Protein / Quick /
-  // Vegetarian). See `src/lib/recipes/libraryFilters.ts` for the
-  // canonical ordering + predicate shape.
-  const [pill, setPill] = useState<LibraryFilterPillId | string>("all");
+  // ENG-921 (2026-06-07, Grace) — CATEGORY filters per Figma `527:2`
+  // (All · Breakfast · Lunch · Dinner · Dessert · Quick 30 · Under 500
+  // cal · High protein · Soup · Pasta · Chicken · Salad), shared with
+  // web via `recipeCategoryFilters.ts`. The entry-kind buckets
+  // (Saved / Imported) are preserved — ENG-921 polish (2026-06-07) folds
+  // them into a single quiet segmented control in the header (above the
+  // category row) instead of a competing second pill row. Plan-import
+  // sources reveal contextually under the category row only when the
+  // Imported segment is active, so the default surface is one filter row.
+  const [category, setCategory] = useState<RecipeCategoryId>("all");
+  // Secondary filter — entry-kind ("saved"/"imported") or a plan-import
+  // id ("plan-import:<source>"); null = no secondary narrowing.
+  const [secondary, setSecondary] = useState<string | null>(null);
   // 2026-05-12 (premium-bar audit #8): tapping "+ Create" opens a
   // multi-source action sheet instead of hard-routing to manual entry.
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -155,10 +177,29 @@ export default function LibraryScreen() {
     });
   }, []);
 
-  const savedCount = useMemo(
-    () => savedRecipes.filter((r) => r.isSaved).length,
-    [savedRecipes],
-  );
+  // Entry-kind narrowing (preserved per ENG-921): the quiet control on the
+  // count line cycles All → Saved → Imported → All. It writes the same
+  // `secondary` state the old segmented control did, so the filter logic in
+  // `filtered` is unchanged — just re-presented as a calm control instead
+  // of a competing second pill row. Plan-import sub-filters still resolve
+  // through `secondary` (they're a refinement of Imported).
+  const cycleEntryKind = useCallback(() => {
+    setSecondary((prev) => {
+      // Any plan-import refinement counts as "Imported" for the cycle.
+      const atImported = prev === "imported" || prev?.startsWith("plan-import:") === true;
+      if (prev === null) return "saved";
+      if (prev === "saved") return "imported";
+      if (atImported) return null;
+      return null;
+    });
+  }, []);
+  const entryFilterIsSaved = secondary === "saved";
+  const entryKindLabel =
+    secondary === "saved"
+      ? "Saved"
+      : secondary === "imported" || secondary?.startsWith("plan-import:")
+        ? "Imported"
+        : "All";
 
   const importPlanPills = useMemo(
     () => planImportFilterLabels(savedRecipes.map((r) => r.sourceName)),
@@ -171,12 +212,18 @@ export default function LibraryScreen() {
       const q = search.toLowerCase();
       list = list.filter((r) => r.title.toLowerCase().includes(q));
     }
-    if (typeof pill === "string" && pill.startsWith("plan-import:")) {
-      list = list.filter((r) => matchesPlanImportPill(pill, r.sourceName));
-    } else if (pill === "saved" || pill === "created" || pill === "imported") {
-      list = list.filter((r) => entryKindForCard(r, userId) === pill);
-    } else if (pill !== "all") {
-      list = list.filter((r) => matchesNutritionPill(pill as LibraryFilterPillId, r));
+    // Primary: category (Figma `527:2`). Shared predicate → web parity.
+    if (category !== "all") {
+      list = list.filter((r) => matchesRecipeCategory(category, r));
+    }
+    // Secondary: entry-kind (Saved/Imported) or plan-import source —
+    // preserved per ENG-921.
+    if (secondary) {
+      if (secondary.startsWith("plan-import:")) {
+        list = list.filter((r) => matchesPlanImportPill(secondary, r.sourceName));
+      } else if (secondary === "saved" || secondary === "created" || secondary === "imported") {
+        list = list.filter((r) => entryKindForCard(r, userId) === secondary);
+      }
     }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
@@ -184,7 +231,7 @@ export default function LibraryScreen() {
       list = [...list].sort((a, b) => b.protein - a.protein);
     }
     return list;
-  }, [savedRecipes, search, sortKey, pill, userId]);
+  }, [savedRecipes, search, sortKey, category, secondary, userId]);
 
   const handleGoPublic = useCallback(
     async (item: RecipeCard) => {
@@ -227,109 +274,30 @@ export default function LibraryScreen() {
   );
 
   /**
-   * 2026-05-06 (Grace) — the `…` overflow icon used to open the
-   * `confirmRemove` Alert directly, which violated the convention
-   * that `…` means "more options" not "delete". Now opens an
-   * iOS-native action sheet (or RN Alert on Android) with three
-   * choices: View recipe (primary), Remove from library
-   * (destructive), Cancel. The destructive path still chains into
-   * `confirmRemove` so the user gets the existing two-step delete
-   * confirmation — no silent one-tap delete.
+   * Bookmark-overlay tap (Figma `527:2`). Removing a saved card is
+   * destructive (it leaves your library), so SAVED → not-saved routes
+   * through the existing two-step `confirmRemove` prompt — never a silent
+   * one-tap removal. not-saved → saved is additive, so it persists
+   * directly. The bookmark fill updates from the refreshed list, keeping
+   * the icon honest (`composeLibraryEntries` F-7). Card long-press still
+   * opens `confirmRemove` for power users.
    */
-  const openCardActions = useCallback(
+  const toggleCardSave = useCallback(
     (item: RecipeCard) => {
-      const labels = ["View recipe", "Remove from library", "Cancel"] as const;
-      const viewRecipe = () => router.push(`/recipe/${item.id}`);
-      if (Platform.OS === "ios") {
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            title: item.title,
-            options: [...labels],
-            destructiveButtonIndex: 1,
-            cancelButtonIndex: 2,
-          },
-          (idx) => {
-            if (idx === 0) viewRecipe();
-            else if (idx === 1) confirmRemove(item);
-          },
-        );
+      if (item.isSaved) {
+        confirmRemove(item);
         return;
       }
-      // Android (and any non-iOS platform) — RN Alert serves as a
-      // simple action-sheet equivalent. Order intentionally matches
-      // the iOS sheet so muscle memory carries.
-      Alert.alert(item.title, undefined, [
-        { text: "View recipe", onPress: viewRecipe },
-        { text: "Remove from library", style: "destructive", onPress: () => confirmRemove(item) },
-        { text: "Cancel", style: "cancel" },
-      ]);
+      void (async () => {
+        await persistSaveToggle(item.id);
+        await refresh();
+      })();
     },
-    [router, confirmRemove],
+    [confirmRemove, persistSaveToggle, refresh],
   );
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    // 2026-05-06 (Grace) — header geometry now mirrors Discover:
-    // small uppercase overline + 28pt bold title in a vertical
-    // block, with sort/create controls + count moved to a
-    // secondary row below.
-    headerActionsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.sm,
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.md,
-      paddingBottom: 14,
-    },
-    // Legacy topBar / backHit / titleBlock kept for any other
-    // surface that imports library.tsx's styles indirectly. Marked
-    // unused by the new header layout.
-    topBar: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.sm,
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.sm,
-      paddingBottom: Spacing.xs,
-    },
-    backHit: { padding: 6, marginLeft: -6 },
-    titleBlock: { flex: 1 },
-    headerSub: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      flex: 1,
-      fontVariant: ["tabular-nums"],
-    },
-    sortBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.sm,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
-      borderColor: colors.border,
-      ...(cardElevation.shadowStyle ?? {}),
-    },
-    sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
-    // 2026-04-30 audit (customer-lens): Library was the obvious spot
-    // for "+ Create" but had no entry — the only way to reach the
-    // create flow was More → Settings → Create Recipe. Pill placed
-    // next to Sort so the two header controls feel like peers (Sort
-    // affects what's shown, Create adds a new row to the list).
-    createBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.sm,
-      backgroundColor: Accent.primary,
-      borderWidth: 1,
-      borderColor: Accent.primary,
-    },
-    createBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     filterScroll: {
       // 2026-05-06 (Grace) — "Quick" pill was clipping at the right
@@ -401,6 +369,16 @@ export default function LibraryScreen() {
       backgroundColor: colors.backgroundSecondary,
       borderColor: colors.text,
     },
+    // ENG-921 — category pill active state per Figma `527:2`: clay fill
+    // + white label (not the cream-card entry-kind active treatment).
+    categoryPillActive: {
+      backgroundColor: Accent.primary,
+      borderColor: Accent.primary,
+    },
+    categoryPillTextActive: {
+      color: "#fff",
+      fontWeight: "700",
+    },
     filterPillText: {
       // 12/18 — matches Discover's text scale (fontSize 12) but
       // with a bumped lineHeight 16 → 18 so descenders sit fully
@@ -411,6 +389,91 @@ export default function LibraryScreen() {
       color: colors.text,
     },
     filterPillTextActive: {
+      color: colors.text,
+      fontWeight: "700",
+    },
+    // ENG-921 polish (2026-06-07) / Figma `527:2` — the entry-kind buckets
+    // (All / Saved / Imported) no longer occupy a second filter row. They
+    // ride as a quiet text control on the count line, alongside sort +
+    // create, so the surface reads as the calm Figma count ("N saved
+    // recipes") with light trailing controls — never a competing pill row.
+    countRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      paddingTop: 2,
+      paddingBottom: Spacing.md,
+    },
+    countText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontVariant: ["tabular-nums"],
+      flexShrink: 1,
+    },
+    countControls: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    quietControl: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    quietControlText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    quietCreate: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: Accent.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // Contextual plan-import source pills — revealed only when the
+    // "Imported" segment is active (most users never import a plan, so
+    // hiding them by default keeps the surface to ONE filter row). When
+    // shown, they sit as a quiet tonal row directly under the category
+    // row. Preserved per ENG-921 ("keep plan-import filtering reachable").
+    planImportRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingLeft: Spacing.xl,
+      paddingRight: Spacing.xl * 2,
+      paddingBottom: Spacing.sm,
+    },
+    planImportPill: {
+      paddingHorizontal: 11,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: "transparent",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    planImportPillActive: {
+      borderColor: colors.text,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    planImportPillText: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    planImportPillTextActive: {
       color: colors.text,
       fontWeight: "700",
     },
@@ -440,24 +503,39 @@ export default function LibraryScreen() {
       paddingBottom: 100,
       gap: Spacing.md,
     },
+    // 2-column row gap (Figma `527:2`). `numColumns={2}` lays the cards
+    // in rows; this spaces the two columns apart. Vertical gap between
+    // rows comes from `list.gap`.
+    columnWrap: {
+      gap: Spacing.md,
+    },
     // Soft elevation rides on `cardShadowWrap` (outer) because the card
     // clips its top image (`overflow: 'hidden'`), which would clip an iOS
     // shadow. Border/lift react to the flag via `useCardElevation()`.
     cardShadowWrap: {
-      borderRadius: Radius.lg,
+      borderRadius: RECIPE_CARD_RADIUS,
       ...(cardElevation.shadowStyle ?? {}),
     },
     card: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: RECIPE_CARD_RADIUS,
       borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       overflow: "hidden",
     },
-    // Prototype: "big recipe cards (120-ish tall image gradient)".
+    // 2-column grid (Figma `527:2`): each card fills half the row. The
+    // FlatList sets `numColumns={2}` + a `columnWrapperStyle` gap; the
+    // wrapper takes `flex: 1` so the two columns split evenly with the
+    // gap between them.
+    cardColumn: {
+      flex: 1,
+      borderRadius: RECIPE_CARD_RADIUS,
+      ...(cardElevation.shadowStyle ?? {}),
+    },
+    // Figma `527:2`: full-bleed square-ish photo to the card's top corners.
     cardImageWrap: {
       width: "100%",
-      height: 128,
+      aspectRatio: 1,
       backgroundColor: colors.border,
       position: "relative",
     },
@@ -476,68 +554,64 @@ export default function LibraryScreen() {
       bottom: 0,
       height: 0,
     },
-    // P3 dark-mode fix (2026-04-28): was hard-coded white pill that
-    // ignored the active scheme. Now uses `colors.card` so the
-    // bookmark sits in the same surface tier as other elevated chips.
+    // Bookmark overlay (Figma `527:2`) — circular translucent-white pill
+    // top-right of the photo, NOT the card-surface tier. White-on-photo
+    // so it reads over any image; the only card overlay now (the `…`
+    // overflow was removed).
     bookmarkDot: {
       position: "absolute",
       top: Spacing.sm,
       right: Spacing.sm,
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
-      borderColor: colors.cardBorder,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "rgba(255,255,255,0.9)",
       alignItems: "center",
       justifyContent: "center",
-      ...(cardElevation.shadowStyle ?? {}),
-    },
-    // Audit 2026-04-30: reinstate a discoverable delete affordance.
-    // P2-32 hid trash behind long-press, but customer-lens flagged this
-    // as undiscoverable on iOS where long-press is not a learned
-    // gesture for "delete". `MoreHorizontal` is the universal neutral
-    // overflow glyph; tap opens an Alert sheet with Remove + Cancel
-    // (which is what `confirmRemove` already does).
-    cardOverflowBtn: {
-      position: "absolute",
-      top: Spacing.sm,
-      // Sit immediately to the LEFT of the bookmarkDot (which lives at
-      // `right: Spacing.sm` and is 30wide). 30 + Spacing.sm gap.
-      right: Spacing.sm + 30 + 6,
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
-      borderColor: colors.cardBorder,
-      alignItems: "center",
-      justifyContent: "center",
-      ...(cardElevation.shadowStyle ?? {}),
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
     },
     cardBody: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.sm,
       gap: 4,
     },
-    cardTitle: { fontSize: 15, fontWeight: "700", color: colors.text, letterSpacing: -0.1 },
-    cardSource: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+    // Title — Newsreader serif (Figma `527:2`), parity with web
+    // `var(--font-headline)`.
+    cardTitle: {
+      fontFamily: "Newsreader_500Medium",
+      fontSize: 15,
+      fontWeight: "500",
+      color: colors.text,
+      letterSpacing: -0.1,
+      lineHeight: 19,
+    },
     metaRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: Spacing.md,
-      marginTop: 8,
+      marginTop: 4,
       flexWrap: "wrap",
     },
+    metaChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
     metaChunk: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.textSecondary,
       fontVariant: ["tabular-nums"],
     },
+    // Draft badge sits top-left of the photo. The old `+ 52` offset
+    // cleared the kind badge that used to share the corner; that badge is
+    // gone (Figma `527:2`), so the draft chip returns to the normal inset.
     draftBadge: {
       position: "absolute",
       top: Spacing.sm,
-      left: Spacing.sm + 52,
+      left: Spacing.sm,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: Radius.sm,
@@ -574,43 +648,79 @@ export default function LibraryScreen() {
       gap: Spacing.sm,
       paddingHorizontal: Spacing.xl,
     },
-    emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
-    emptySubtext: { fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 280 },
-    emptyActions: { marginTop: Spacing.lg, gap: Spacing.sm, width: "100%", maxWidth: 280 },
+    // Figma S7 (`529:2`) — dashed cream slab.
+    emptySlab: {
+      marginTop: Spacing.lg,
+      marginHorizontal: Spacing.lg,
+      paddingVertical: 48,
+      paddingHorizontal: 32,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: "center",
+    },
+    emptyBadge: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.ringTrack, // frost-mist #EDEAF1
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: Spacing.md,
+    },
+    emptyTitle: {
+      fontFamily: "Newsreader_500Medium",
+      fontSize: 20,
+      fontWeight: "500",
+      color: colors.text,
+      textAlign: "center",
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 260,
+      marginTop: 8,
+      lineHeight: 21,
+    },
+    emptyActions: { marginTop: 24, gap: 10, width: "100%", maxWidth: 280 },
     ctaBtn: {
       paddingHorizontal: 24,
       paddingVertical: 12,
       backgroundColor: Accent.primary,
-      borderRadius: Radius.md,
+      borderRadius: Radius.full,
       alignItems: "center",
     },
-    ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+    ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
     ctaBtnSecondary: {
       paddingHorizontal: 24,
       paddingVertical: 12,
-      borderRadius: Radius.md,
+      borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: Accent.primary + "80",
+      borderColor: colors.border,
+      backgroundColor: colors.background,
       alignItems: "center",
     },
-    ctaBtnSecondaryText: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
+    ctaBtnSecondaryText: { color: colors.text, fontWeight: "600", fontSize: 14 },
   }), [colors, cardElevation]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
       const totalTime = formatTotalTime(item);
+      const savesCount = typeof item.savedCount === "number" ? item.savedCount : 0;
       const kind = entryKindForCard(item, userId);
       const showDraft = kind !== "saved" && item.isPublished === false;
       const showGoPublic = kind === "created" && item.isPublished === false;
       return (
-        <View style={styles.cardShadowWrap}>
+        <View style={styles.cardColumn}>
         <Pressable
           style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
-          // P2-32 (2026-04-25): long-press → confirm-remove flow now
-          // owns deletion (replacing the always-visible trash button).
-          // Audit 2026-04-30: long-press kept as a power-user shortcut
-          // but is no longer the only path — see overflow button below.
+          // Long-press → confirm-remove flow (power-user shortcut). The
+          // bookmark overlay is the primary save/remove affordance now
+          // (the `…` overflow was removed per Figma `527:2`).
           onLongPress={() => confirmRemove(item)}
           accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories.`}
         >
@@ -642,50 +752,55 @@ export default function LibraryScreen() {
                 <Text style={styles.draftBadgeText}>Draft</Text>
               </View>
             ) : null}
-            {item.isSaved ? (
-              <View style={styles.bookmarkDot} accessibilityLabel="Saved">
-                <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
-              </View>
-            ) : null}
-            {/* 2026-05-06 (Grace) — `…` is "more options", not
-                "delete one-tap". Tapping now opens an action sheet
-                (iOS) or RN Alert menu (Android) with View / Remove /
-                Cancel. The Remove path still chains into the existing
-                `confirmRemove` two-step prompt so destructive actions
-                stay confirmed. */}
+            {/* Bookmark overlay — Figma `527:2`: the ONLY card overlay
+                (the `…` overflow was removed; long-press still opens the
+                remove/actions sheet for power users). Tapping toggles the
+                save without opening the recipe; filled clay when saved,
+                outline when not (e.g. an imported recipe you authored but
+                un-saved — bookmark stays honest per composeLibraryEntries). */}
             <Pressable
-              style={styles.cardOverflowBtn}
-              onPress={() => openCardActions(item)}
+              style={styles.bookmarkDot}
+              onPress={() => toggleCardSave(item)}
               accessibilityRole="button"
-              accessibilityLabel={`More options for ${item.title}`}
+              accessibilityState={{ selected: item.isSaved }}
+              accessibilityLabel={item.isSaved ? `Saved: ${item.title}. Tap to remove` : `Save ${item.title}`}
               hitSlop={8}
             >
-              <MoreHorizontal size={16} color={colors.textSecondary} strokeWidth={2.25} />
+              <Bookmark
+                size={15}
+                color={item.isSaved ? Accent.primary : colors.textSecondary}
+                fill={item.isSaved ? Accent.primary : "transparent"}
+              />
             </Pressable>
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-            {item.creatorName ? (
-              <Text style={styles.cardSource} numberOfLines={1}>{item.creatorName}</Text>
-            ) : null}
-            {/* Canonical 2026-05-22 v4: macro row consolidated into the
-                shared MacroIconRow component. Was duplicated inline at
-                Library + Discover; now sourced from one place so any
-                hue / icon / layout change cascades. See
-                `components/nutrition/MacroIconRow.tsx`. */}
-            <MacroIconRow
-              kcal={item.calories}
-              protein={item.protein}
-              carbs={item.carbs}
-              fat={item.fat}
-              fiber={item.fiberG}
-              cookTime={totalTime ?? undefined}
-              textColor={colors.textSecondary}
-              textTertiaryColor={colors.textTertiary}
-              showMacroLetters={false}
-              style={[styles.metaRow, { flexWrap: "wrap", gap: 10 }]}
-              textStyle={styles.metaChunk}
-            />
+            {/* Meta row — Figma `527:2` shape `★ N · M min`. Every chip is
+                REAL + degrades gracefully: `★` uses the honest saves count
+                (savedCount — there is NO rating field, so we never
+                fabricate a 4.8-style score); time uses prep+cook minutes;
+                if neither exists, fall back to the serving count so the row
+                never reads empty. */}
+            <View style={[styles.metaRow, { gap: 6 }]}>
+              {savesCount > 0 ? (
+                <View style={styles.metaChip}>
+                  <Star size={13} color={Accent.primary} fill={Accent.primary} />
+                  <Text style={styles.metaChunk}>{savesCount}</Text>
+                </View>
+              ) : null}
+              {savesCount > 0 && totalTime ? <Text style={styles.metaChunk}>·</Text> : null}
+              {totalTime ? (
+                <View style={styles.metaChip}>
+                  <Clock size={12} color={colors.textSecondary} />
+                  <Text style={styles.metaChunk}>{totalTime}</Text>
+                </View>
+              ) : null}
+              {savesCount === 0 && !totalTime ? (
+                <Text style={styles.metaChunk}>
+                  {item.servings} {item.servings === 1 ? "serving" : "servings"}
+                </Text>
+              ) : null}
+            </View>
             {showGoPublic ? (
               <Pressable
                 style={styles.goPublicBtn}
@@ -709,7 +824,7 @@ export default function LibraryScreen() {
         </View>
       );
     },
-    [router, confirmRemove, handleGoPublic, userId, styles],
+    [router, confirmRemove, toggleCardSave, handleGoPublic, userId, colors, styles],
   );
 
   const isLoading = loading;
@@ -730,36 +845,20 @@ export default function LibraryScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
+          // 2-column photo grid — Figma `527:2`. `key` is required so RN
+          // re-mounts the list when numColumns is constant (defensive).
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrap}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Accent.primary} />
           }
           ListHeaderComponent={
             <>
-              <View style={styles.headerActionsRow}>
-                <Text style={styles.headerSub}>
-                  {loading && savedRecipes.length === 0
-                    ? "Loading…"
-                    : `${savedRecipes.length} ${savedRecipes.length === 1 ? "recipe" : "recipes"} · ${savedCount} saved`}
-                </Text>
-                <Pressable
-                  style={styles.sortBtn}
-                  onPress={cycleSort}
-                  accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}
-                >
-                  <ArrowUpDown size={14} color={colors.textSecondary} />
-                  <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.createBtn}
-                  onPress={() => setCreateSheetOpen(true)}
-                  accessibilityLabel="Create a new recipe"
-                  accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
-                >
-                  <Plus size={14} color="#fff" />
-                  <Text style={styles.createBtnText}>Create</Text>
-                </Pressable>
-              </View>
+              {/* Search row — Figma `527:2` order: search sits above the
+                  category pills. Create moved off this strip (the global
+                  `+` FAB in the tab bar owns creation) so the header reads
+                  as a calm search + filter, not a heavy actions strip. */}
               <View style={styles.searchRow}>
                 <View style={styles.searchInputWrap}>
                   <SearchIcon size={16} color={colors.textTertiary} />
@@ -773,66 +872,124 @@ export default function LibraryScreen() {
                   />
                 </View>
               </View>
+              {/* Category filter pills — ENG-921 / Figma `527:2`.
+                  Clay-fill active, line-border inactive. Web parity:
+                  `src/app/components/Library.tsx`. */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.filterScrollStyle}
                 contentContainerStyle={styles.filterScroll}
               >
-                {LIBRARY_FILTER_PILLS.map((f) => {
-                  const active = pill === f.id;
-                  const isInitialLoad = loading && savedRecipes.length === 0;
-                  const count =
-                    isInitialLoad
-                      ? null
-                      : f.id === "all"
-                        ? savedRecipes.length
-                        : f.id === "saved"
-                          ? savedCount
-                          : null;
-                  const label = count != null ? `${f.label} · ${count}` : f.label;
+                {LIBRARY_CATEGORY_PILLS.map((f) => {
+                  const active = category === f.id;
                   return (
                     <Pressable
                       key={f.id}
-                      testID={`library-filter-${f.id}`}
-                      onPress={() => setPill(f.id)}
-                      style={[styles.filterPill, active && styles.filterPillActive]}
+                      testID={`library-category-${f.id}`}
+                      onPress={() => setCategory(f.id)}
+                      style={[styles.filterPill, active && styles.categoryPillActive]}
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
-                      accessibilityLabel={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
+                      accessibilityLabel={`Category: ${f.label}`}
                     >
                       <Text
-                        style={[styles.filterPillText, active && styles.filterPillTextActive]}
+                        style={[styles.filterPillText, active && styles.categoryPillTextActive]}
                         maxFontSizeMultiplier={1.2}
                       >
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                {importPlanPills.map((label) => {
-                  const id = planImportPillId(label);
-                  const active = pill === id;
-                  const short = label.replace(/^Imported · /, "");
-                  return (
-                    <Pressable
-                      key={id}
-                      onPress={() => setPill(id)}
-                      style={[styles.filterPill, active && styles.filterPillActive]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={`Filter imported plan: ${short}`}
-                    >
-                      <Text
-                        style={[styles.filterPillText, active && styles.filterPillTextActive]}
-                        maxFontSizeMultiplier={1.2}
-                      >
-                        {short}
+                        {f.label}
                       </Text>
                     </Pressable>
                   );
                 })}
               </ScrollView>
+              {/* Contextual plan-import source pills — ENG-921 polish
+                  (2026-06-07). Plan imports are a refinement of
+                  "Imported", so they only reveal when the Imported
+                  segment is active AND the user actually has plan
+                  imports. This keeps the default Library at a single
+                  filter row (categories) while preserving plan-import
+                  filtering reachability. */}
+              {importPlanPills.length > 0 &&
+              (secondary === "imported" || secondary?.startsWith("plan-import:")) ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filterScrollStyle}
+                  contentContainerStyle={styles.planImportRow}
+                >
+                  {importPlanPills.map((label) => {
+                    const id = planImportPillId(label);
+                    const active = secondary === id;
+                    const short = label.replace(/^Imported · /, "");
+                    return (
+                      <Pressable
+                        key={id}
+                        onPress={() => setSecondary(active ? "imported" : id)}
+                        style={[styles.planImportPill, active && styles.planImportPillActive]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`Filter imported plan: ${short}`}
+                      >
+                        <Text
+                          style={[styles.planImportPillText, active && styles.planImportPillTextActive]}
+                          maxFontSizeMultiplier={1.2}
+                        >
+                          {short}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
+              {/* Count line + quiet controls — Figma `527:2` ("24 saved
+                  recipes"). The calm count sits left; the saved-vs-imported
+                  narrowing (entry-kind cycle), sort cycle, and Create ride
+                  as quiet trailing controls so the distinction stays
+                  reachable WITHOUT a second pill row. Web parity:
+                  `src/app/components/Library.tsx`. */}
+              {!(loading && savedRecipes.length === 0) ? (
+                <View style={styles.countRow}>
+                  <Text style={styles.countText}>
+                    {entryFilterIsSaved
+                      ? `${filtered.length} saved ${filtered.length === 1 ? "recipe" : "recipes"}`
+                      : `${filtered.length} ${filtered.length === 1 ? "recipe" : "recipes"}`}
+                  </Text>
+                  <View style={styles.countControls}>
+                    <Pressable
+                      testID="library-entrykind-cycle"
+                      onPress={cycleEntryKind}
+                      style={styles.quietControl}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Showing ${entryKindLabel.toLowerCase()} recipes, tap to change`}
+                    >
+                      <Text style={styles.quietControlText} maxFontSizeMultiplier={1.2}>
+                        {entryKindLabel}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={cycleSort}
+                      style={styles.quietControl}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}, tap to change`}
+                    >
+                      <ArrowUpDown size={13} color={colors.textSecondary} />
+                      <Text style={styles.quietControlText} maxFontSizeMultiplier={1.2}>
+                        {SORT_LABELS[sortKey]}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setCreateSheetOpen(true)}
+                      style={styles.quietCreate}
+                      accessibilityRole="button"
+                      accessibilityLabel="Create a new recipe"
+                      accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
+                    >
+                      <Plus size={14} color="#fff" />
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
             </>
           }
           ListEmptyComponent={
@@ -842,21 +999,23 @@ export default function LibraryScreen() {
                 <Text style={styles.emptyTitle}>No results for &ldquo;{search.trim()}&rdquo;</Text>
               </View>
             ) : (
-              <View style={styles.emptyContainer}>
-                <BookOpen size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
-                <Text style={styles.emptyTitle}>No saved recipes</Text>
+              // Figma S7 (`529:2`) — dashed cream slab, frost-mist icon
+              // badge with plum bookmark, serif heading, stacked clay +
+              // outline pill CTAs. Web parity: Library.tsx empty state.
+              <View style={styles.emptySlab}>
+                <View style={styles.emptyBadge}>
+                  <Bookmark size={24} color={Accent.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No saved recipes yet</Text>
                 <Text style={styles.emptySubtext}>
-                  Save recipes from Discover, import one you found, or write your own from scratch — everything shows up here for meal plans.
+                  Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
                 </Text>
                 <View style={styles.emptyActions}>
-                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/recipe/create")}>
-                    <Text style={styles.ctaBtnText}>Create a recipe</Text>
+                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/import-shared")}>
+                    <Text style={styles.ctaBtnText}>Import a recipe</Text>
                   </Pressable>
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/(tabs)/discover")}>
-                    <Text style={styles.ctaBtnSecondaryText}>Go to Discover</Text>
-                  </Pressable>
-                  <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
-                    <Text style={styles.ctaBtnSecondaryText}>Import a recipe</Text>
+                    <Text style={styles.ctaBtnSecondaryText}>Explore Discover</Text>
                   </Pressable>
                 </View>
               </View>

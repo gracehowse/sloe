@@ -265,14 +265,27 @@ visually identical without copying SVG markup around.
 | Mobile | `apps/mobile/components/SupprMark.tsx` |
 
 **Rules:**
-- Background is always brand `--primary` blue. Letter is always white.
-  The dark-mode lift to the brighter blue happens automatically via
-  the `--primary` token — never override the colours per surface.
-- Wordmark composes Mark + the "Suppr" label with proportional spacing
-  (`gap-2.5` web, `gap: 10` mobile). Pass the same `size` prop to both
-  surfaces if you need them to match in side-by-side comparisons.
-- Use the **mark alone** for tab bar / nav / favicon contexts. Use the
-  **wordmark** for sign-in headers, paywall heroes, and marketing.
+> **Superseded — Sloe wordmark (2026-06-04, casing fixed 2026-06-08).**
+> The blue-square "S" mark + "Suppr" label lockup described below is
+> retired. The brand is now the **"Sloe" wordmark** (capital S, Newsreader
+> semibold, plum `--foreground-brand`) — no glyph, no plate ring, no lockup.
+> Casing + weight match the canonical Figma `654:2` Today frame. Components
+> keep the historical `Suppr*` export names for call-site stability
+> (`src/app/components/ui/suppr-mark.tsx`, `apps/mobile/components/SupprMark.tsx`,
+> `apps/mobile/components/SloeHeaderWordmark.tsx`). See
+> `docs/decisions/2026-06-08-today-654-conformance-wordmark-weekstrip-tdee.md`.
+
+- ~~Background is always brand `--primary` blue. Letter is always white.~~
+  ~~The dark-mode lift to the brighter blue happens automatically via~~
+  ~~the `--primary` token — never override the colours per surface.~~
+- ~~Wordmark composes Mark + the "Suppr" label with proportional spacing~~
+  ~~(`gap-2.5` web, `gap: 10` mobile).~~ The wordmark is now the single
+  "Sloe" word; pass the same `size` prop to both surfaces to match in
+  side-by-side comparisons.
+- Use the **wordmark** for sign-in headers, paywall heroes, Today's brand
+  bar, the sidebar, and marketing. (The standalone-glyph "mark alone"
+  context is moot — there is no glyph; favicon/nav use the wordmark or an
+  app icon, not a letter-mark.)
 
 ### Selection card — `OptionCard`
 

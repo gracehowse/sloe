@@ -16,7 +16,6 @@ import {
 import { CookMode } from "./CookMode.tsx";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
-import { ConfidenceDot } from "./suppr/confidence-dot";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
@@ -313,27 +312,32 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // ENG-818/819 (Redesign — Design Direction 2026) — flag-gated web mirrors of
   // the mobile recipe-detail redesign.
   //   - `redesignColours`  → the "Fits your day" payoff chip (win-amber when it
-  //     fits well) + the elevated detail cards both ride the colour/elevation
-  //     spine. Flag-off keeps the flat coloured-text line + bordered cards.
-  //   - `redesignElevation` → soft `--elev-card-soft` shadow + no border on the
-  //     resting detail cards (mobile parity via `useCardElevation`).
+  //     fits well). Flag-off keeps the flat coloured-text line.
   //   - `winFeedback` → the web analog of the mobile confirm haptic: a brief
   //     press payoff (scale + ring) on the commit CTAs (web has no Haptics API).
+  // (The resting-card elevation is now UNCONDITIONAL — Figma 332:2 white slabs
+  // on cream — so the old `design_system_elevation` read is dropped here, in
+  // lockstep with mobile's unconditional `useCardElevation` soft lift.)
   const redesignColours = isFeatureEnabled("design_system_colours");
-  const redesignElevation = isFeatureEnabled("design_system_elevation");
   const winFeedback = isFeatureEnabled("redesign_winmoment");
-  // Soft-elevation card classes, mirroring mobile `useCardElevation`: flag-on →
-  // drop the hairline border, ride `--elev-card-soft`; flag-off → today's
-  // `border border-border`. Spread where the resting detail cards are built.
-  const cardElevationClass = redesignElevation
-    ? "border-0 shadow-[var(--elev-card-soft)]"
-    : "border border-border";
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
   // active-state scale + a brief brightness lift on press, gated on
   // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
   const commitCtaPayoffClass = winFeedback
     ? "transition-all duration-200 active:scale-[0.97] active:brightness-110"
     : "";
+
+  // Figma 332:2 — the in-app detail page is now warm cream
+  // (`background-secondary`), so resting detail cards become clean WHITE
+  // slabs that lift off the cream with the soft `--elev-card-soft` shadow
+  // (was cream `bg-card` on a white page → blended; inverting page↔card is
+  // what makes the slabs read as distinct editorial blocks, matching the
+  // mobile detail + the public-share frame). `--background` is white in
+  // light, the elevated tier in dark.
+  const whiteSlabStyle: React.CSSProperties = {
+    backgroundColor: "var(--background)",
+    boxShadow: "var(--elev-card-soft)",
+  };
 
   // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no
   // Supabase backing row; treat them like a catalogue entry so the
@@ -1334,150 +1338,115 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      {/* Audit 2026-04-30 visual-qa P0 #3 + P2 #17 — on a 375px
-          viewport with all 7 header items rendered the title shrunk
-          to 0-2 chars. Fix: every button is now `shrink-0`, and below
-          `md` the secondary actions (Edit, Unpublish, Go public)
-          collapse into a meatball menu so the always-visible row is
-          Back · Title · Cook · Save · Share · ⋮ . z-index bumped to
-          z-20 to win against the hero `shadow-2xl` stacking context. */}
-      <div className="sticky top-0 backdrop-blur-xl bg-card/80 border-b border-border/50 px-6 py-4 flex items-center gap-4 z-20 shadow-sm">
-        <button
-          onClick={onBack}
-          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all shrink-0"
-        >
-          <Icons.back className="w-5 h-5" />
-        </button>
-        {/* 2026-04-20 prototype port — centred bold title in the
-            sticky top bar (was a gradient left-aligned headline).
-            Truncated with ellipsis if overflowing. */}
-        {/* F-85 (2026-04-25) — web parity for de-CAPS recipe title. */}
-        <h2 className="flex-1 min-w-0 text-center font-semibold text-foreground truncate">{normaliseRecipeDisplayTitle(recipe.title)}</h2>
-        {isMyRecipe && !isCatalogRecipe ? (
-          <button
-            type="button"
-            onClick={() => setRecipeEditOpen(true)}
-            className="hidden md:inline-flex px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold shrink-0"
-          >
-            Edit
-          </button>
-        ) : null}
-        {isMyRecipe && isPublished === false ? (
-          <div className="hidden md:inline-flex shrink-0">
-            <GoPublicDialog
-              recipeTitle={recipe.title}
-              disabled={dbLoading}
-              onConfirmPublish={() => void setPublished(true)}
-              triggerLabel="Go public"
-            />
+    // Figma 332:2 — warm cream editorial page (`#F6F5F2`
+    // `background-secondary`); the white slab cards below lift off it.
+    // Mirrors the public-share page + mobile detail (cream page, white cards).
+    <div className="max-w-4xl mx-auto bg-background-secondary min-h-screen pb-24">
+      {/* 1. Full-bleed hero with overlaid controls (Figma 332:2 §1). The photo
+          (or the deterministic cream/plum fallback) runs edge-to-edge; a top
+          scrim darkens the controls; back (left) + bookmark / share / more
+          (right) float as 40px frosted circles. Replaces the old cream sticky
+          nav bar + rounded hero. */}
+      {(() => {
+        const hasRealImage =
+          typeof recipe.image === "string" &&
+          recipe.image !== "" &&
+          recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+        const ladderSrc = pickHeroImageUrl({
+          image_url: hasRealImage ? recipe.image : null,
+          source_url: recipe.sourceUrl ?? null,
+        });
+        const heroSrc = ladderSrc ?? (hasRealImage ? recipe.image : null);
+        const heroCircle =
+          "w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-all";
+        return (
+          <div className="relative w-full" style={{ height: 375 }} data-testid="recipe-detail-hero">
+            {heroSrc ? (
+              <RecipeHeroImage
+                src={heroSrc}
+                alt={recipe.title}
+                recipeId={recipe.id}
+                recipeTitle={recipe.title}
+                className="w-full h-full object-cover"
+                style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+              />
+            ) : (
+              <div
+                className="w-full h-full"
+                style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                data-testid="recipe-detail-hero-fallback"
+              >
+                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={56} />
+              </div>
+            )}
+            {/* Top scrim — rgba(0,0,0,0.4) → transparent. */}
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
+            {/* Overlaid controls. */}
+            <div className="absolute inset-x-0 top-0 px-4 h-14 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={onBack}
+                className={`${heroCircle} text-white shrink-0`}
+                aria-label="Go back"
+              >
+                <Icons.back className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => toggleSaveRecipe(recipe.id, userTier)}
+                  className={`${heroCircle} ${saved ? "text-success" : "text-white"}`}
+                  aria-label={saved ? "Remove from library" : "Save to library"}
+                >
+                  <Icons.save className="w-5 h-5" fill={saved ? "currentColor" : "none"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void shareRecipeDeepLink(recipe.id)}
+                  className={`${heroCircle} text-white`}
+                  aria-label="Share recipe link"
+                >
+                  <Icons.share className="w-5 h-5" />
+                </button>
+                {isMyRecipe ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="More actions"
+                        className={`${heroCircle} text-white`}
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {!isCatalogRecipe ? (
+                        <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
+                      ) : null}
+                      {isPublished === false ? (
+                        <DropdownMenuItem
+                          disabled={dbLoading}
+                          onSelect={() => setGoPublicMobileOpen(true)}
+                        >
+                          Go public
+                        </DropdownMenuItem>
+                      ) : null}
+                      {isPublished === true ? (
+                        <DropdownMenuItem
+                          disabled={dbLoading}
+                          onSelect={() => setUnpublishOpen(true)}
+                        >
+                          Unpublish
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
+            </div>
           </div>
-        ) : null}
-        {isMyRecipe && isPublished === true ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                disabled={dbLoading}
-                className="hidden md:inline-flex px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-              >
-                Unpublish
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-card border border-border rounded-2xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Unpublish this recipe?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This removes it from public discovery. It will stay in your library as a private draft.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                <AlertDialogAction className="rounded-xl" onClick={() => void setPublished(false)}>
-                  Unpublish
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : null}
-        {instructionSteps.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setCookModeOpen(true)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0 ${commitCtaPayoffClass}`}
-          >
-            <Icons.cook className="w-4 h-4" />
-            Cook
-          </button>
-        )}
-        {/* Prototype port (2026-04-20, mobile parity commit 26a63bf):
-            save (bookmark) sits left of share in the header — web was
-            already in that order so no reorder. Buttons now carry a
-            1pt border, small drop-shadow, and foreground icon colour
-            so they remain legible if the header is rendered against a
-            pale hero photo on mobile-web (<md). The saved state keeps
-            a primary tint so it's still scannable. */}
-        <button
-          type="button"
-          onClick={() => toggleSaveRecipe(recipe.id, userTier)}
-          className={`p-2.5 rounded-xl border transition-all shadow-sm shrink-0 ${
-            saved
-              ? "text-primary bg-primary/10 border-primary/40 shadow-primary/20"
-              : "text-foreground border-border/70 bg-card hover:bg-muted/60"
-          }`}
-          aria-label={saved ? "Remove from library" : "Save to library"}
-        >
-          <Icons.save className="w-5 h-5" fill={saved ? "currentColor" : "none"} />
-        </button>
-        <button
-          type="button"
-          onClick={() => void shareRecipeDeepLink(recipe.id)}
-          className="p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm shrink-0"
-          aria-label="Share recipe link"
-        >
-          <Icons.share className="w-5 h-5" />
-        </button>
-        {/* Audit 2026-04-30 visual-qa P0 #3 — mobile-only meatball
-            menu collapses Edit / Unpublish / Go public so the title
-            keeps room to breathe on narrow viewports. The desktop
-            inline buttons above are `hidden md:inline-flex`; this
-            menu is `md:hidden`. Renders only when there's at least
-            one secondary action to surface (i.e. it's the user's
-            own recipe). */}
-        {isMyRecipe ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="More actions"
-                className="md:hidden p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm shrink-0"
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
-              {isPublished === false ? (
-                <DropdownMenuItem
-                  disabled={dbLoading}
-                  onSelect={() => setGoPublicMobileOpen(true)}
-                >
-                  Go public
-                </DropdownMenuItem>
-              ) : null}
-              {isPublished === true ? (
-                <DropdownMenuItem
-                  disabled={dbLoading}
-                  onSelect={() => setUnpublishOpen(true)}
-                >
-                  Unpublish
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-      </div>
+        );
+      })()}
       {/* Audit 2026-04-30 visual-qa P0 #3 — controlled mobile-menu
           dialogs. They're rendered outside the sticky header so the
           dropdown can close cleanly before the dialog opens. */}
@@ -1543,70 +1512,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           the hero stack reads as one composed unit instead of five
           separate cards. Mobile parity in `apps/mobile/app/recipe/
           [id].tsx` body StyleSheet (Spacing.md = 12). */}
-      <div className="px-6 py-8 space-y-5">
-        <div className="rounded-xl border border-border/80 bg-muted/90 px-4 py-3 text-sm text-foreground">
-          {isCatalogRecipe ? (
-            <p>
-              <span className="font-semibold text-foreground">Verified curated recipe.</span> Macros and
-              ingredients are checked against structured sources in our catalog.
-            </p>
-          ) : (
-            <p>
-              <span className="font-semibold text-foreground">Community recipe.</span> Macros are as
-              published by the author; ingredient nutrition may be mixed verified and estimated — review before relying on
-              it for medical goals.
-            </p>
-          )}
-        </div>
-
-        {/* Hero Image */}
-        {/* Phase 5 / B5 (2026-04-27) — matching view-transition-name
-            anchors the card-to-detail morph. Spec §1.1 + Surface H.
-
-            Recime parity (2026-04-30): when the recipe has no real
-            image (hydration defaulted to DEFAULT_UPLOADED_RECIPE_IMAGE
-            in AppDataContext) but the source URL is a YouTube watch /
-            shorts URL, surface the YT thumbnail instead of the stock
-            placeholder. See `src/lib/recipes/heroImageFallback.ts`. */}
-        {(() => {
-          const hasRealImage =
-            typeof recipe.image === "string" &&
-            recipe.image !== "" &&
-            recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE;
-          const ladderSrc = pickHeroImageUrl({
-            image_url: hasRealImage ? recipe.image : null,
-            source_url: recipe.sourceUrl ?? null,
-          });
-          const heroSrc = ladderSrc ?? (hasRealImage ? recipe.image : null);
-          // Recipe-wave (2026-05-10) — when neither the recipe row nor
-          // the source-URL hero ladder produce a real image, render
-          // the deterministic fallback hero instead of a broken `<img>`.
-          // Closes the "Library inconsistency" tester report at the
-          // detail page too.
-          return (
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
-              {heroSrc ? (
-                <RecipeHeroImage
-                  src={heroSrc}
-                  alt={recipe.title}
-                  recipeId={recipe.id}
-                  recipeTitle={recipe.title}
-                  className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
-                  style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                />
-              ) : (
-                <div
-                  className="w-full aspect-video"
-                  style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                >
-                  <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={48} />
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-            </div>
-          );
-        })()}
-
+      {/* Body — single-scroll editorial stack (Figma 332:2 §2–7). The hero
+          above is full-bleed; the body content begins at section 2. */}
+      <div className="px-6 py-6 space-y-5">
         {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
             web parity gap closed. Mobile body has always rendered the
             recipe title + byline subtitle below the hero; the web
@@ -1618,60 +1526,76 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             present, no underline. Mobile parity in
             `apps/mobile/app/recipe/[id].tsx` (subtitleRow). */}
         {(() => {
+          // Figma 332:2 §2 — title, attribution (`via @handle · See original`),
+          // fits-your-day chip. Attribution shows only when a source/creator
+          // exists; "See original" links to the source URL when present.
           const bylineLabel: string | null =
             recipe.creatorName && recipe.creatorName !== "Community"
               ? recipe.creatorName
               : null;
-          const bylineHref =
+          const originalHref =
             typeof recipe.sourceUrl === "string" && recipe.sourceUrl.trim()
               ? recipe.sourceUrl.trim()
               : null;
-          const slots: string[] = Array.isArray(recipe.mealSlots)
-            ? (recipe.mealSlots as readonly string[]).map(String)
-            : [];
-          // 2026-05-02 v4 (recipe-detail-tiles-and-kcal): user feedback
-          // "cals need to be clearer" — kcal got promoted out of the
-          // subtitle row into its own dedicated headline line directly
-          // under the title. The subtitle below stays as the meta line
-          // ("lunch · serves 3 · by author"). composeSubtitleParts is
-          // no longer passed `kcal`, so the helper drops the token
-          // cleanly (the unit-tested "drops kcal when omitted" path).
-          const subtitleParts = composeSubtitleParts({
-            authorLabel: bylineLabel,
-            slots,
-            servings: baseServings,
-          });
-          // PR1 (Paprika parity, 2026-05-02): per-portion kcal stays
-          // invariant under the viewing-servings stepper — per-portion
-          // is per-portion. The secondary "X kcal total for N portions"
-          // line below tracks the multiplier honestly, so the visible
-          // batch number tracks the user's chosen scale without
-          // pretending the per-portion value has changed.
           const kcalForLine = Math.round(perServingBase.calories);
           const hasScaledAway = servings !== baseServings;
           const totalKcalForView = Math.round(perServingBase.calories * servings);
+          const verdict = computeFitsYourDayVerdict({
+            kcal: scaledMacros.calories,
+            targetCals: nutritionTargets.calories,
+          });
+          const verdictChip = verdict
+            ? verdict.tone === "success"
+              ? { fg: "#5E7C5A", bg: "rgba(94,124,90,0.1)" }
+              : verdict.tone === "destructive"
+                ? { fg: "var(--destructive)", bg: "color-mix(in srgb, var(--destructive) 12%, transparent)" }
+                : { fg: "var(--warning)", bg: "color-mix(in srgb, var(--warning) 12%, transparent)" }
+            : null;
           return (
-            <div className="space-y-1">
+            <div className="space-y-3" data-testid="recipe-title-block">
               <h1
-                className="text-2xl font-bold text-foreground leading-tight"
+                className="text-foreground-brand leading-tight"
+                style={{
+                  fontFamily: "var(--font-headline)",
+                  fontSize: "34px",
+                  lineHeight: "42px",
+                  fontWeight: 400,
+                }}
                 data-testid="recipe-body-title"
               >
                 {normaliseRecipeDisplayTitle(recipe.title)}
               </h1>
-              {kcalForLine > 0 ? (
+              {bylineLabel ? (
+                <p className="text-sm text-muted-foreground" data-testid="recipe-attribution">
+                  via{" "}
+                  <span className="font-medium text-foreground">{bylineLabel}</span>
+                  {originalHref ? (
+                    <>
+                      {"  ·  "}
+                      <a
+                        href={originalHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-foreground"
+                      >
+                        See original
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
+              {verdict && verdictChip ? (
                 <div
-                  className="mt-1.5 flex items-baseline gap-1.5"
-                  data-testid="recipe-kcal-line"
-                  aria-label={`${kcalForLine} kilocalories per portion`}
+                  data-testid="recipe-fits-your-day"
+                  role="status"
+                  aria-label={verdict.a11y}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 text-xs font-bold"
+                  style={{ color: verdictChip.fg, backgroundColor: verdictChip.bg }}
                 >
-                  <span
-                    className="text-[18px] font-bold text-foreground tabular-nums leading-none"
-                    data-testid="recipe-kcal-number"
-                  >
-                    {kcalForLine} kcal
-                  </span>
-                  <span aria-hidden className="text-muted-foreground/70 text-sm">·</span>
-                  <span className="text-sm text-muted-foreground">per portion</span>
+                  {verdict.fits ? (
+                    <Icons.check className="w-3.5 h-3.5" strokeWidth={3} aria-hidden />
+                  ) : null}
+                  <span>{verdict.label}</span>
                 </div>
               ) : null}
               {kcalForLine > 0 && hasScaledAway && totalKcalForView > 0 ? (
@@ -1683,40 +1607,44 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   {totalKcalForView} kcal total for {servings} portions
                 </div>
               ) : null}
-              {subtitleParts.length > 0 ? (
-                <div
-                  className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground"
-                  data-testid="recipe-subtitle-row"
-                >
-                  {subtitleParts.map((part, idx) => {
-                    const isAuthor = part.key === "by" && Boolean(bylineHref);
-                    return (
-                      <span key={part.key} className="inline-flex items-center">
-                        {idx > 0 ? (
-                          <span aria-hidden className="mr-1 text-muted-foreground/70">
-                            ·
-                          </span>
-                        ) : null}
-                        {isAuthor ? (
-                          <a
-                            href={bylineHref ?? undefined}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground no-underline hover:text-foreground"
-                          >
-                            {part.label}
-                          </a>
-                        ) : (
-                          <span>{part.label}</span>
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : null}
             </div>
           );
         })()}
+
+        {/* 3. Action pills — Start Cooking / Log (web "I Made This") / Edit.
+            Ask omitted: no AI-coach handler exists (net-new Figma 185:2). */}
+        <div className="flex gap-3" data-testid="recipe-action-pills">
+          <button
+            type="button"
+            onClick={() => setCookModeOpen(true)}
+            disabled={instructionSteps.length === 0}
+            data-testid="recipe-action-start-cooking"
+            className={`flex-[1.6] flex items-center justify-center gap-2 h-11 rounded-full bg-primary text-primary-foreground text-sm font-bold hover:shadow-lg hover:shadow-primary/25 transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
+          >
+            <Icons.cook className="w-4 h-4" />
+            Start Cooking
+          </button>
+          <button
+            type="button"
+            onClick={() => toast.success("Marked as made!")}
+            data-testid="recipe-action-log"
+            className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all ${commitCtaPayoffClass}`}
+          >
+            <Icons.check className="w-4 h-4" />
+            Log
+          </button>
+          {isMyRecipe && !isCatalogRecipe ? (
+            <button
+              type="button"
+              onClick={() => setRecipeEditOpen(true)}
+              data-testid="recipe-action-edit"
+              className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all"
+            >
+              <Icons.edit className="w-4 h-4" />
+              Edit
+            </button>
+          ) : null}
+        </div>
 
         {/* 2026-04-20 prototype port — tag pill row directly under
             the hero. Mobile parity (2026-04-30 ui-product-designer
@@ -1785,8 +1713,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           return (
             <SupprCard
               padding="md"
-              radius="md"
+              radius="xl"
               className="text-xs"
+              style={whiteSlabStyle}
               role="note"
               aria-label="Regulated-allergen information"
               data-testid="recipe-allergen-callout"
@@ -1804,7 +1733,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         })()}
 
         {/* Creator Info */}
-        <div className="flex items-center gap-4 p-6 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-lg">
+        {/* Figma 332:2 — white slab on cream (was translucent cream-on-white). */}
+        <div className="flex items-center gap-4 p-6 rounded-2xl" style={whiteSlabStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
           <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
           <div className="flex-1">
@@ -1834,37 +1764,18 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           ) : null}
         </div>
 
-        {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 2 —
-            the 4-tile info row (Prep / Cook / Portions / Confidence)
-            consumed a third of the screen on every recipe regardless
-            of whether the timings were known. Replaced with a compact
-            single-line form. Hidden entirely when both prep and cook
-            are unknown (servings already lives in the subtitle and the
-            "Servings to view" stepper below covers per-serving sizing).
-            Confidence tile removed — backstage signal, no actionable
-            interpretation for a user. Mobile parity in
-            `apps/mobile/app/recipe/[id].tsx` (timeStatsRow). */}
+        {/* Owner inline yield-edit — authored "recipe makes N portions". The
+            time display moved to the meta row above (Figma 332:2 §5); this row
+            now carries only the owner's inline yield editor (also reachable via
+            the Edit action pill → RecipeEditDialog). Owner-only, non-catalog. */}
         {(() => {
-          const hasPrep = dbPrepMin != null && dbPrepMin > 0;
-          const hasCook = dbCookMin != null && dbCookMin > 0;
-          const showRow = shouldRenderTimeStats(dbPrepMin, dbCookMin);
-          const showOwnerEdit =
-            isMyRecipe && !isCatalogRecipe && (showRow || true);
-          if (!showRow && !showOwnerEdit) return null;
-          const segments: string[] = [];
-          if (hasPrep) segments.push(`${prepDisplay} prep`);
-          if (hasCook) segments.push(`${cookDisplay} cook`);
+          const showOwnerEdit = isMyRecipe && !isCatalogRecipe;
+          if (!showOwnerEdit) return null;
           return (
             <div
               className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
               data-testid="recipe-time-stats"
             >
-              {showRow ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Icons.timer className="w-3.5 h-3.5 text-muted-foreground/80" />
-                  <span>{segments.join(" · ")}</span>
-                </span>
-              ) : null}
               {showOwnerEdit ? (
                 recipeYieldEditing ? (
                   <span className="inline-flex items-center gap-1">
@@ -1926,6 +1837,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           padding="lg"
           radius="xl"
           className="flex items-center justify-between"
+          style={whiteSlabStyle}
           data-testid="recipe-view-servings-stepper"
         >
           <span className="font-semibold text-foreground text-sm">Servings to view</span>
@@ -1991,175 +1903,148 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             </div>
           );
         })()}
-        {/* v3 macro tiles — visual hero. 2026-05-02 v4 user feedback
-            "the widgets should be the same size and fit on one row" —
-            switched the wrap layout (which let fiber stand alone on
-            row 2 at 48% width while p/c/f shared row 1) to a
-            `grid grid-cols-4` layout. All tiles share width and read
-            as one coherent grid. Users with extra tracked macros
-            (sugar/sodium) spill onto row 2 at the same per-tile
-            width, not at a different size. */}
-        <div
-          data-testid="recipe-macros-grid"
-          className="mb-2 grid grid-cols-4 gap-2"
-        >
-          {recipeMacrosToShow.map((macro) => {
-            const REF_SUGAR_G = 50;
-            const REF_SODIUM_MG = 2300;
-            const macroMap: Record<string, { label: string; cur: number; tgt: number; color: string; unit: string }> = {
-              protein: {
-                label: "Protein",
-                cur: scaledMacros.protein,
-                tgt: nutritionTargets.protein,
-                color: "var(--macro-protein)",
-                unit: "g",
-              },
-              carbs: {
-                // P3-30 (2026-04-25): apply net-carbs lens. Refuses
-                // "Net carbs" label when fibre is unknown.
-                label: carbsLabel(scaledMicros.fiberG, netCarbsLensEnabled),
-                cur: netCarbsForRow(scaledMacros.carbs, scaledMicros.fiberG, netCarbsLensEnabled),
-                tgt: netCarbsForRow(nutritionTargets.carbs, nutritionTargets.fiber, netCarbsLensEnabled),
-                color: "var(--macro-carbs)",
-                unit: "g",
-              },
-              fat: {
-                label: "Fat",
-                cur: scaledMacros.fat,
-                tgt: nutritionTargets.fat,
-                color: "var(--macro-fat)",
-                unit: "g",
-              },
-              fiber: {
-                label: "Fiber",
-                cur: scaledMicros.fiberG,
-                tgt: nutritionTargets.fiber,
-                color: "var(--macro-calories)",
-                unit: "g",
-              },
-              sugar: {
-                label: "Sugar",
-                cur: scaledMicros.sugarG,
-                tgt: REF_SUGAR_G,
-                color: "var(--primary)",
-                unit: "g",
-              },
-              sodium: {
-                label: "Sodium",
-                cur: scaledMicros.sodiumMg,
-                tgt: REF_SODIUM_MG,
-                color: "#F78A32",
-                unit: "mg",
-              },
-            };
-            const m = macroMap[macro];
-            if (!m) return null;
-            // Polish (2026-04-25) — route per-macro rounding through the
-            // shared helper. protein/carbs/fat now keep 1-decimal precision
-            // (no more "105.80000000000001g"), calories+sodium stay integer.
-            const displayAmount = formatMacroValue(m.cur, macro);
-            return (
-              // Design Direction 2026 — macro tile routed through SupprCard.
-              <SupprCard
-                key={macro}
-                data-testid={`recipe-macro-tile-${macro}`}
-                padding="md"
-                radius="xl"
-              >
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-sm" style={{ background: m.color }} />
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{m.label}</span>
-                </div>
-                <div className="text-lg font-extrabold tabular-nums text-foreground leading-tight">
-                  {displayAmount}
-                  {m.unit}
-                </div>
-                <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-                  of {m.tgt}
-                  {m.unit}
-                </div>
-                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-sm bg-muted">
-                  <div
-                    className="h-full rounded-sm transition-all"
-                    style={{
-                      width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
-                      backgroundColor: m.color,
-                    }}
-                  />
-                </div>
-              </SupprCard>
-            );
-          })}
-        </div>
-        {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
-            single text line below the macro tiles. No card, no pill
-            background — just a coloured glyph + label. Logic
-            delegated to `computeFitsYourDayVerdict` so web and mobile
-            share the percent / tone / copy rules. */}
+        {/* Macro summary — Figma 332:2 (ENG-920, resolved 2026-06-07):
+            FLAT NUMBER STRIP, not progress-bar tiles. ONE white slab on the
+            cream page, four equal columns, each = a serif Newsreader VALUE +
+            a small-caps label (CAL / PRO / CARB / FAT, calories first), no
+            per-macro target bar/ring. Mirrors the verified public-share strip
+            in `app/recipe/[id]/page.tsx` and the mobile detail so all three
+            recipe-detail surfaces read identically.
+
+            The four columns are Figma-fixed at CAL/PRO/CARB/FAT. Tracked
+            micros (fiber/sugar/sodium) that the user follows are NOT dropped —
+            they continue below the strip as a secondary chip row so no
+            tracked nutrition value disappears with the layout change.
+
+            Net-carbs lens preserved: the CARB column swaps to "NET" + the
+            net-carbs value via the same `carbsLabel` / `netCarbsForRow`
+            helpers when the lens is on and fibre is known. */}
         {(() => {
-          const verdict = computeFitsYourDayVerdict({
-            kcal: scaledMacros.calories,
-            targetCals: nutritionTargets.calories,
-          });
-          if (!verdict) return null;
-
-          // ENG-818 — promote the fit verdict from flat metadata to a real
-          // tinted payoff chip. When it fits well (`verdict.fits`, ≤50% of the
-          // day) it earns the dedicated landmark WIN amber (`--accent-win` /
-          // `--accent-win-soft`) — the reserved "genuine win" colour, not
-          // generic success-green. Over-half → warning amber; over a day →
-          // destructive red. Flag-off keeps the flat coloured-text line.
-          if (redesignColours) {
-            const chip =
-              verdict.tone === "success"
-                ? {
-                    fg: "var(--accent-win)",
-                    bg: "var(--accent-win-soft)",
-                  }
-                : verdict.tone === "destructive"
-                  ? {
-                      fg: "var(--destructive)",
-                      bg: "color-mix(in srgb, var(--destructive) 12%, transparent)",
-                    }
-                  : {
-                      fg: "var(--warning)",
-                      bg: "color-mix(in srgb, var(--warning) 12%, transparent)",
-                    };
-            return (
-              <div
-                data-testid="recipe-fits-your-day"
-                role="status"
-                aria-label={verdict.a11y}
-                className="mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-150"
-                style={{ color: chip.fg, backgroundColor: chip.bg }}
-              >
-                {verdict.fits ? (
-                  <Icons.check className="w-3 h-3" strokeWidth={3} aria-hidden />
-                ) : null}
-                <span>{verdict.label}</span>
-              </div>
-            );
-          }
-
-          // Flag-off legacy path — flat coloured glyph + text line.
-          const toneVar =
-            verdict.tone === "success"
-              ? "var(--success)"
-              : verdict.tone === "destructive"
-                ? "var(--destructive)"
-                : "var(--warning)";
+          // P3-30 (2026-04-25) net-carbs lens carried into the flat strip:
+          // the CARB column label + value swap to net carbs from settings.
+          const carbColLabel = carbsLabel(scaledMicros.fiberG, netCarbsLensEnabled);
+          const carbColValue = netCarbsForRow(
+            scaledMacros.carbs,
+            scaledMicros.fiberG,
+            netCarbsLensEnabled,
+          );
+          // Figma strip shows integer glance values (matches the verified
+          // public-share strip `${Math.round(...)}`). Per-decimal precision
+          // lives on the Nutrition tab; the hero strip is the at-a-glance read.
+          // Figma 332:2 §4 — VALUES coloured per macro: Cal plum / Pro sage /
+          // Carb clay / Fat amber. Net-carbs follows the carb (clay) hue.
+          const macroStrip: Array<{ key: string; label: string; value: string; unit: string; color: string }> = [
+            { key: "calories", label: "CAL", value: `${Math.round(scaledMacros.calories)}`, unit: "", color: "var(--foreground-brand)" },
+            { key: "protein", label: "PRO", value: `${Math.round(scaledMacros.protein)}`, unit: "g", color: "var(--macro-protein)" },
+            // Net-carbs lens: label reads "NET" small-caps when the lens is on
+            // (carbsLabel returns "Net carbs"); strip uses the compact 3-letter
+            // forms so we map it explicitly rather than uppercasing the long copy.
+            {
+              key: "carbs",
+              label: carbColLabel.toLowerCase().startsWith("net") ? "NET" : "CARB",
+              value: `${Math.round(carbColValue)}`,
+              unit: "g",
+              color: "var(--macro-carbs)",
+            },
+            { key: "fat", label: "FAT", value: `${Math.round(scaledMacros.fat)}`, unit: "g", color: "var(--macro-fat)" },
+          ];
           return (
             <div
-              data-testid="recipe-fits-your-day"
-              role="status"
-              aria-label={verdict.a11y}
-              className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold"
-              style={{ color: toneVar }}
+              data-testid="recipe-macros-grid"
+              role="list"
+              aria-label="Nutrition per serving"
+              className="grid grid-cols-4 rounded-2xl"
+              style={whiteSlabStyle}
             >
-              {verdict.fits ? (
-                <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
-              ) : null}
-              <span>{verdict.label}</span>
+              {macroStrip.map((m, idx) => (
+                <div
+                  key={m.key}
+                  role="listitem"
+                  data-testid={`recipe-macro-tile-${m.key}`}
+                  className={`flex flex-col items-center justify-center py-5 ${
+                    idx > 0 ? "border-l border-border" : ""
+                  }`}
+                >
+                  <p
+                    className="tabular-nums"
+                    style={{ fontFamily: "var(--font-headline)", fontSize: "24px", fontWeight: 400, color: m.color }}
+                  >
+                    {m.value}
+                    {m.unit ? (
+                      <span className="text-base font-normal text-foreground-secondary">{m.unit}</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground-secondary">
+                    {m.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {/* Tracked-micro overflow chips — fiber / sugar / sodium when the user
+            tracks them AND the recipe has a value. Kept below the Figma-fixed
+            four-column strip so the layout change drops no tracked value. */}
+        {(() => {
+          const microChips: Array<{ key: string; label: string; value: string }> = [];
+          if (recipeMacrosToShow.includes("fiber") && scaledMicros.fiberG > 0) {
+            microChips.push({ key: "fiber", label: "Fiber", value: `${formatMacroValue(scaledMicros.fiberG, "fiber")}g` });
+          }
+          if (recipeMacrosToShow.includes("sugar") && scaledMicros.sugarG > 0) {
+            microChips.push({ key: "sugar", label: "Sugar", value: `${scaledMicros.sugarG}g` });
+          }
+          if (recipeMacrosToShow.includes("sodium") && scaledMicros.sodiumMg > 0) {
+            microChips.push({ key: "sodium", label: "Sodium", value: `${scaledMicros.sodiumMg}mg` });
+          }
+          if (microChips.length === 0) return null;
+          return (
+            <div
+              data-testid="recipe-macro-micro-chips"
+              className="mb-2 flex flex-wrap gap-2"
+              aria-label="Additional nutrition per serving"
+            >
+              {microChips.map((m) => (
+                <span
+                  key={m.key}
+                  data-testid={`recipe-macro-chip-${m.key}`}
+                  className="inline-flex items-baseline gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-foreground"
+                  style={whiteSlabStyle}
+                >
+                  <span className="text-muted-foreground">{m.label}</span>
+                  <span className="font-semibold tabular-nums">{m.value}</span>
+                </span>
+              ))}
+            </div>
+          );
+        })()}
+        {/* 5. Meta row (Figma 332:2 §5) — time · item count. Rating +
+            difficulty are intentionally hidden: the recipes table has no
+            aggregate rating or difficulty column, and we never invent recipe
+            metadata. Shared `composeRecipeMeta` keeps web == mobile. */}
+        {(() => {
+          const metaStats = composeRecipeMeta({
+            prepMin: dbPrepMin,
+            cookMin: dbCookMin,
+            ingredientCount: ingredients.length,
+          });
+          if (metaStats.length === 0) return null;
+          return (
+            <div
+              className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+              data-testid="recipe-meta-row"
+              aria-label={metaStats.map((s) => s.label).join(", ")}
+            >
+              {metaStats.map((stat, idx) => (
+                <span key={stat.key} className="inline-flex items-center gap-2">
+                  {idx > 0 ? <span aria-hidden className="text-muted-foreground/60">·</span> : null}
+                  {stat.key === "time" ? (
+                    <Icons.timer className="w-4 h-4" aria-hidden />
+                  ) : (
+                    <Icons.recipe className="w-4 h-4" aria-hidden />
+                  )}
+                  <span>{stat.label}</span>
+                </span>
+              ))}
             </div>
           );
         })()}
@@ -2206,36 +2091,33 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when configured)…
             </p>
           ) : null}
-          {/* ENG-818/819 — resting detail card. Soft `--elev-card-soft` shadow,
-              no border, when `design_system_elevation` is on; today's
-              `border border-border` when off (`cardElevationClass`). */}
-          <div className={`bg-card rounded-2xl overflow-hidden ${cardElevationClass}`}>
+          {/* Figma 332:2 — ingredient photo-card grid (mirrors the
+              public-share + mobile detail). Each card is a white slab with a
+              deterministic RecipeHeroFallback glyph image area (recipe rows
+              carry NO per-ingredient image — never an empty box, no new
+              imagery wired), then name + amount + kcal + confidence. The
+              owner Fix/Override + Verify affordances are preserved per card. */}
+          <div>
             {ingredients.length === 0 ? (
-              <div className="px-6 py-8 text-center text-muted-foreground text-sm">No ingredients listed yet.</div>
+              <div
+                className="rounded-2xl px-6 py-8 text-center text-muted-foreground text-sm"
+                style={whiteSlabStyle}
+              >
+                No ingredients listed yet.
+              </div>
             ) : (
-              <div className="divide-y divide-border">
+              <ul className="grid grid-cols-3 sm:grid-cols-4 gap-3" aria-label="Ingredients">
                 {ingredients.map((ingredient, index) => {
                   // Use effective macros so per-row overrides take precedence (Batch 2.7).
                   const eff = effectiveMacros(ingredient);
                   const ingCal = Math.round((eff.calories * servings) / baseServings);
-                  const ingP = Math.round((eff.protein * servings) / baseServings);
-                  const ingC = Math.round((eff.carbs * servings) / baseServings);
-                  const ingF = Math.round((eff.fat * servings) / baseServings);
-                  const macroTotal = ingP + ingC + ingF || 1;
                   const rowHasOverride = hasOverride(ingredient);
                   const rowAddedByUser = Boolean(ingredient.addedByUser);
                   /**
-                   * 2026-05-02 fix — derive verification tier from
-                   * the persisted `{is_verified, confidence, source}`
-                   * triple so the dot, badge, and Verify CTA agree
-                   * with what the row actually represents. Pre-fix,
-                   * the dot used `isVerified` but the recipe-row
-                   * "Verify →" CTA only suppressed when `isVerified`
-                   * was true — which is correct for web today, but
-                   * we route through the shared helper so web/mobile
-                   * stay in sync if the rule shifts (e.g. trusting a
-                   * USDA `source` even on legacy rows where
-                   * `is_verified` was missed).
+                   * 2026-05-02 fix — derive verification tier from the
+                   * persisted `{is_verified, confidence, source}` triple so the
+                   * dot, badge, and Verify CTA agree with the row. Shared helper
+                   * keeps web/mobile in sync.
                    */
                   const verificationTier = deriveIngredientVerificationTier({
                     isVerified: ingredient.isVerified ?? null,
@@ -2243,117 +2125,132 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                     source: ingredient.source ?? null,
                   });
                   const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
+                  const tierColorVar =
+                    verificationTier === "verified"
+                      ? "var(--success)"
+                      : verificationTier === "partial"
+                        ? "var(--warning)"
+                        : verificationTier === "estimated"
+                          ? "var(--destructive)"
+                          : "var(--foreground-tertiary)";
+                  const tierLabel =
+                    verificationTier === "verified"
+                      ? "Verified"
+                      : verificationTier === "partial"
+                        ? "Partial match"
+                        : verificationTier === "estimated"
+                          ? "Estimated"
+                          : "Unverified";
+                  const amountLine = ingredient.amount
+                    ? formatIngredientAmountUnit(
+                        formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
+                        ingredient.unit,
+                      )
+                    : ingredient.unit;
                   return (
-                    <div key={index} className="px-4 py-3 flex items-center gap-3 group">
-                      <ConfidenceDot level={verificationTier === "verified" ? "high" : "medium"} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
+                    <li
+                      key={index}
+                      className="group overflow-hidden rounded-3xl border border-border/70"
+                      style={whiteSlabStyle}
+                      data-testid={`recipe-ingredient-card-${index}`}
+                    >
+                      {/* Image area — deterministic RecipeHeroFallback glyph
+                          keyed per ingredient (no per-ingredient photo exists;
+                          never an empty box, no new imagery). Confidence dot +
+                          kcal pill ride the image corners. */}
+                      <div className="relative h-[86px] w-full">
+                        <RecipeHeroFallback
+                          id={`${recipe.id}-ing-${index}`}
+                          title={ingredient.name}
+                          iconSize={28}
+                        />
+                        <span
+                          className="absolute left-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-white"
+                          style={{ backgroundColor: tierColorVar }}
+                          aria-hidden
+                        />
+                        {/* P2-30: kcal pill suppressed at 0. */}
+                        {ingCal > 0 ? (
+                          <span className="absolute bottom-2 right-2 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                            {ingCal} kcal
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-semibold leading-snug text-foreground line-clamp-2">
+                            {ingredient.name}
+                          </p>
                           {rowHasOverride ? (
-                            <Badge
-                              variant="override"
-                              title="Manual macro override is pinned on this row."
-                            >
+                            <Badge variant="override" title="Manual macro override is pinned on this row.">
                               Override
                             </Badge>
                           ) : null}
                           {rowAddedByUser ? (
-                            <Badge
-                              variant="added"
-                              title="Added by you after import."
-                            >
+                            <Badge variant="added" title="Added by you after import.">
                               Added
                             </Badge>
                           ) : null}
                         </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {/* 2026-05-02 fix — defensive amount/unit
-                              formatter dedupes "1 1 breast" when
-                              USDA/FatSecret persists a count-prefixed
-                              portion label like "1 breast" into the
-                              unit column. Mirrors the mobile fix in
-                              `apps/mobile/app/recipe/[id].tsx`. */}
-                          {ingredient.amount
-                            ? formatIngredientAmountUnit(
-                                formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
-                                ingredient.unit,
-                              )
-                            : ingredient.unit}
-                        </p>
-                      </div>
-                      {/* P2-30 web parity (2026-04-25 ui-critic):
-                          suppress the "0 kcal" right column when the
-                          ingredient has no resolved nutrition. */}
-                      {ingCal > 0 ? (
-                        <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ingCal} kcal</span>
-                      ) : null}
-                      {/* Stacked P/C/F bar */}
-                      <div className="w-12 h-2 rounded-full overflow-hidden flex shrink-0">
-                        <div style={{ width: `${(ingP / macroTotal) * 100}%`, backgroundColor: "var(--macro-protein)" }} />
-                        <div style={{ width: `${(ingC / macroTotal) * 100}%`, backgroundColor: "var(--macro-carbs)" }} />
-                        <div style={{ width: `${(ingF / macroTotal) * 100}%`, backgroundColor: "var(--macro-fat)" }} />
-                      </div>
-                      {/* Phase 4 / B3.X — per-ingredient SourceDot.
-                          The ConfidenceDot above stays for the
-                          high/medium-confidence visual; the SourceDot
-                          here completes the trust posture (provenance
-                          colour at row right edge, spec §1.6). */}
-                      <SourceDot
-                        source={mapMealSourceToDot(ingredient.source)}
-                        size={6}
-                        className="shrink-0"
-                        data-testid={`recipe-ingredient-source-${index}`}
-                      />
-                      {/* Phase 4 / B3.X — explicit "Verify →" inline
-                          when the row is estimated. Sits above the
-                          existing Fix/Override hover affordances and
-                          is always visible for unverified rows so
-                          users don't have to discover it through
-                          hover (mobile parity).
-
-                          2026-05-02 — visibility now follows the
-                          shared verification tier (is_verified ||
-                          trusted source) so the CTA disappears as
-                          soon as the user has resolved the row,
-                          mirroring the mobile fix. */}
-                      {dbIngredientIds[index] && showVerifyCta ? (
-                        <button
-                          type="button"
-                          onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
-                          className="text-[11px] font-semibold text-primary hover:underline shrink-0"
-                          aria-label={`Verify ${ingredient.name}`}
-                          data-testid={`recipe-ingredient-verify-${index}`}
-                        >
-                          Verify →
-                        </button>
-                      ) : null}
-                      {dbIngredientIds[index] && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {amountLine ? (
+                          <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{amountLine}</p>
+                        ) : null}
+                        <div className="mt-1 flex items-center gap-1.5">
+                          {/* F-120: categorical tier label only (no opaque %). */}
+                          <span className="text-[10px] font-semibold" style={{ color: tierColorVar }}>
+                            {tierLabel}
+                          </span>
+                          {/* Phase 4 / B3.X — provenance SourceDot. */}
+                          <SourceDot
+                            source={mapMealSourceToDot(ingredient.source)}
+                            size={6}
+                            data-testid={`recipe-ingredient-source-${index}`}
+                          />
+                        </div>
+                        {/* Phase 4 / B3.X — "Verify →" on estimated rows
+                            (visibility follows the shared tier). */}
+                        {dbIngredientIds[index] && showVerifyCta ? (
                           <button
                             type="button"
                             onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
-                            className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full"
-                            aria-label={`Fix match for ${ingredient.name}`}
+                            className="mt-1 text-[10px] font-bold text-primary-solid hover:underline"
+                            aria-label={`Verify ${ingredient.name}`}
+                            data-testid={`recipe-ingredient-verify-${index}`}
                           >
-                            Fix
+                            Verify →
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setOverrideIndex(index)}
-                            className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full"
-                            aria-label={`Override nutrition for ${ingredient.name}`}
-                          >
-                            Override
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        ) : null}
+                        {/* Owner Fix / Override — surfaced on card hover/focus
+                            (preserves the existing per-ingredient owner edit
+                            affordances inside the new card layout). */}
+                        {dbIngredientIds[index] && (
+                          <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                              className="rounded-full px-1.5 py-0.5 text-[10px] text-primary-solid hover:bg-primary/10"
+                              aria-label={`Fix match for ${ingredient.name}`}
+                            >
+                              Fix
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOverrideIndex(index)}
+                              className="rounded-full px-1.5 py-0.5 text-[10px] text-primary-solid hover:bg-primary/10"
+                              aria-label={`Override nutrition for ${ingredient.name}`}
+                            >
+                              Override
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
             {isMyRecipe && !isCatalogRecipe && (
-              <div className="border-t border-border bg-muted/30 px-4 py-3">
+              <div className="mt-3 rounded-2xl px-4 py-3" style={whiteSlabStyle}>
                 <button
                   type="button"
                   onClick={() => setAddIngOpen(true)}
@@ -2384,7 +2281,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Steps Tab */}
         {activeTab === "steps" && (
-          <div className={`bg-card rounded-2xl p-5 space-y-4 ${cardElevationClass}`}>
+          <div className="rounded-2xl p-5 space-y-4" style={whiteSlabStyle}>
             {instructionSteps.length === 0 ? (
               <p className="text-muted-foreground text-sm">No instructions yet.</p>
             ) : (
@@ -2416,8 +2313,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 },
                 { label: "Fat", value: `${Math.round(scaledMacros.fat)}`, unit: "g" },
               ].map((stat) => (
-                // Design Direction 2026 — nutrition stat tile routed through SupprCard.
-                <SupprCard key={stat.label} padding="md" radius="md" className="text-center">
+                // Figma 332:2 — nutrition stat tile is a white slab on cream.
+                <SupprCard key={stat.label} padding="md" radius="xl" className="text-center" style={whiteSlabStyle}>
                   <span className="text-lg font-bold text-foreground tabular-nums">{stat.value}</span>
                   <span className="text-xs text-muted-foreground ml-0.5">{stat.unit}</span>
                   <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
@@ -2438,7 +2335,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               ].filter((row) => row.raw > 0);
               if (microRows.length === 0) return null;
               return (
-                <div className={`bg-card rounded-2xl p-4 space-y-3 ${cardElevationClass}`}>
+                <div className="rounded-2xl p-4 space-y-3" style={whiteSlabStyle}>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
                   {microRows.map((micro) => (
                     <div key={micro.name} className="flex items-center gap-3">
@@ -2464,12 +2361,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             `commitCtaPayoffClass`, gated on `redesign_winmoment`. Web has no
             Haptics API, so the press motion is the tactile substitute. Start
             Cooking stays the blue `bg-primary` commit colour. */}
+        {/* Figma 332:2 reskin — action pills are radius-full (mirrors the
+            mobile Start Cooking pill + the web public-share CTA). */}
         <div className="flex gap-3">
           {instructionSteps.length > 0 && (
             <button
               type="button"
               onClick={() => setCookModeOpen(true)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all ${commitCtaPayoffClass}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all ${commitCtaPayoffClass}`}
             >
               <Icons.cook className="w-4 h-4" />
               Start Cooking
@@ -2478,7 +2377,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => toast.success("Marked as made!")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all ${commitCtaPayoffClass}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all ${commitCtaPayoffClass}`}
           >
             <Icons.check className="w-4 h-4" />
             I Made This

@@ -1205,7 +1205,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 <Icons.chef className="w-5 h-5 text-white" />
               )}
             </div>
-            <h1 className="text-foreground">
+            <h1 className="font-[family-name:var(--font-headline)] text-3xl text-foreground-brand">
               {mode === "import" ? "Import recipe" : "Create recipe"}
             </h1>
           </div>
@@ -1279,7 +1279,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Paste ingredient list</DialogTitle>
+            <DialogTitle className="font-[family-name:var(--font-headline)] text-foreground-brand">Paste ingredient list</DialogTitle>
             <DialogDescription>
               One line per ingredient. We run the same database match as the mobile create screen (USDA, Open Food Facts,
               FatSecret, Edamam, then estimation only if needed).
@@ -1313,11 +1313,17 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         </DialogContent>
       </Dialog>
 
-      {/* Import from URL (import flow only — matches mobile prototype) */}
+      {/* Import from URL (import flow only — matches mobile prototype).
+          Sloe DS reskin (2026-06-07): cream slabs (`bg-card`), 24px radii
+          (`rounded-[var(--radius-card-lg)]`), plum serif headings
+          (`font-[family-name:var(--font-headline)] text-foreground-brand`).
+          Presentation only — paste-link / URL-parse logic unchanged. */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
-          {/* Source Grid — matches mobile "Import from" 2x2 grid */}
-          <div className="bg-card border border-border rounded-2xl p-4">
+          {/* Source tiles — 3-method input grid (the app's canonical input
+              methods, reskinned to the Sloe language; NOT restructured to
+              the old Figma source-platform layout). */}
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Import from</p>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -1329,7 +1335,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 <button
                   key={source.label}
                   type="button"
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-muted/60 transition-colors"
+                  className="flex flex-col items-center gap-2 p-3 rounded-[var(--radius-card)] hover:bg-muted/40 transition-colors"
                 >
                   <IconBox tone="primary" size="md">
                     <source.icon className="w-4 h-4" />
@@ -1340,38 +1346,42 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
           </div>
 
-          {/* URL input */}
-          <div className="bg-card border border-border rounded-2xl p-5">
+          {/* Paste-link pill — the import CTA panel. */}
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
             {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
-            <SupprMark size={44} className="mx-auto mb-3" />
-            <div className="flex items-center gap-2 mb-3">
-              <Icons.web className="w-5 h-5 text-primary" />
-              <h3 className="text-foreground text-sm font-semibold">Paste a recipe link</h3>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <SupprMark size={48} className="mx-auto mb-4" />
+            <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-1">
+              Paste a recipe link
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+              From Instagram, TikTok, YouTube, or any recipe site — we&apos;ll save it to your library.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 text-left">
               <input
                 type="url"
                 value={importUrl}
                 onChange={(e) => setImportUrl(e.target.value)}
-                placeholder="https://example.com/recipe"
-                className="flex-1 px-4 py-3 rounded-xl border border-border bg-muted/40 text-foreground text-sm"
+                placeholder="https://…"
+                className="flex-1 px-4 py-3 rounded-[var(--radius-card)] border border-border bg-muted/30 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
                 type="button"
                 disabled={importBusy}
                 onClick={() => void runImportFromUrl()}
-                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                className="px-6 py-3 rounded-[var(--radius-card)] bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
               >
                 {importBusy ? "Importing…" : "Import"}
               </button>
             </div>
-            {importHint ? <p className="text-xs text-destructive mt-2">{importHint}</p> : null}
+            {importHint ? (
+              <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+            ) : null}
 
             {importBusy ? <ImportLoadingSkeleton phase="importing" className="mt-4" /> : null}
           </div>
 
           {/* Recent Imports placeholder */}
-          <div className="bg-card border border-border rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
             <p className="text-xs text-muted-foreground">No recent imports</p>
           </div>
@@ -1379,7 +1389,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
         <label className="block mb-3 text-sm font-medium text-foreground">Recipe photo</label>
         <p className="text-xs text-muted-foreground mb-3">
           {mode === "import"
@@ -1440,8 +1450,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Basic Info */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-foreground mb-6">Basic Information</h3>
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+        <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
           <div>
             <label className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
@@ -1533,9 +1543,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Ingredients */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
-          <h3 className="text-foreground">Ingredients</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -2126,8 +2136,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Instructions */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-foreground mb-4">Cooking Instructions</h3>
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+        <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-4">Cooking instructions</h3>
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
@@ -2148,7 +2158,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             type="button"
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-[var(--radius-card)] hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-shadow"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
           </button>

@@ -222,7 +222,14 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, marginLeft: 2 })}
           >
-            <GradientAvatar size={32} initial={avatarLetter} fontSize={12} gradientIdSuffix="today-header" />
+            <GradientAvatar
+              size={36}
+              initial={avatarLetter}
+              fontSize={13}
+              gradientIdSuffix="today-header"
+              fill="#6a4b7a"
+              textColor={primaryForegroundColor}
+            />
           </Pressable>
         </View>
 
@@ -345,7 +352,14 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <GradientAvatar size={36} initial={avatarLetter} fontSize={13} gradientIdSuffix="today-header" />
+            <GradientAvatar
+              size={36}
+              initial={avatarLetter}
+              fontSize={13}
+              gradientIdSuffix="today-header"
+              fill="#6a4b7a"
+              textColor={primaryForegroundColor}
+            />
           </Pressable>
         </View>
       </View>

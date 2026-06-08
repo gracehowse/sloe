@@ -387,7 +387,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
     } catch {
       set({ notifGranted: false });
       setError(
-        "System notifications need a full Suppr install (not Expo Go).",
+        "System notifications need a full Sloe install (not Expo Go).",
       );
     } finally {
       setBusy(false);
@@ -450,7 +450,7 @@ function RecipeUrlCard() {
       icon="link-outline"
       iconColor={Accent.successLight}
       title="Recipe import"
-      body="Suppr parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
+      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
       grantedBadge={null}
     >
       <Text
@@ -462,7 +462,7 @@ function RecipeUrlCard() {
         }}
       >
         Try it after setup — open the Library tab and tap the share icon to
-        paste a link, or share any recipe to Suppr from inside Instagram /
+        paste a link, or share any recipe to Sloe from inside Instagram /
         TikTok / Safari.
       </Text>
     </BridgeCard>

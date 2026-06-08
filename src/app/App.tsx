@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Sun, BookOpen, CalendarDays, LineChart } from "lucide-react";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
@@ -666,11 +666,17 @@ export default function App() {
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           <div className="flex" role="tablist">
+            {/* SLOE (2026-06-07) — tab glyphs are pinned to the mobile
+                `<SupprTabBar>` set (Sun / BookOpen / CalendarDays /
+                LineChart, stroke 2) so the mobile-web bottom nav and the
+                native iOS tab bar read as the same surface. Previously this
+                used the generic `Icons.home` (Home) + `Icons.progress`
+                (BarChart3) which drifted from the Figma Sloe glyph set. */}
             {([
-              { primary: "today" as const, defaultLeaf: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
-              { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Icons.recipe className="w-5 h-5" />, label: "Recipes" },
-              { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
-              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.progress className="w-5 h-5" />, label: "Progress" },
+              { primary: "today" as const, defaultLeaf: "today" as const, icon: <Sun className="w-5 h-5" strokeWidth={2} />, label: "Today" },
+              { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <BookOpen className="w-5 h-5" strokeWidth={2} />, label: "Recipes" },
+              { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <CalendarDays className="w-5 h-5" strokeWidth={2} />, label: "Plan" },
+              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <LineChart className="w-5 h-5" strokeWidth={2} />, label: "Progress" },
             ] as const).map((tab, tabIndex) => {
               const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
               const isActive = activePrimary === tab.primary;
@@ -700,8 +706,15 @@ export default function App() {
                        around it on equal-width terms. The inner
                        `<button>` is positioned with `relative` +
                        `-top-4` so it visually projects 16px above the
-                       bar fill line. `bg-primary` + drop-shadow
-                       matches the mobile `<LogTabBarButton>`. */
+                       bar fill line. SLOE (2026-06-07): the fill is plum
+                       (`--sidebar-primary`, the Sloe nav/brand-chrome token —
+                       #3B2A4D light / #815E91 dark) so the FAB reads as nav
+                       chrome, not "just another clay content CTA" — matching
+                       the mobile `<LogTabBarButton>` (`colors.navPrimary`,
+                       same plum). The drop-shadow is re-tinted to the same
+                       plum; the previous `bg-primary` clay fill + a stale
+                       retired-brand-blue glow had drifted off the Sloe
+                       palette. */
                     <div
                       className="flex-1 flex items-center justify-center"
                       role="presentation"
@@ -715,11 +728,11 @@ export default function App() {
                         className={[
                           "relative -top-4",
                           "w-14 h-14 rounded-full",
-                          "bg-primary text-primary-foreground",
+                          "bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]",
                           "grid place-items-center",
-                          "shadow-[0_4px_16px_rgba(76,108,224,0.4)]",
+                          "shadow-[0_4px_16px_rgba(59,42,77,0.32)]",
                           "transition-transform duration-150 active:scale-[0.94]",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sidebar-primary)] focus-visible:ring-offset-2",
                         ].join(" ")}
                       >
                         <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden />

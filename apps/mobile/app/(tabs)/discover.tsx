@@ -16,13 +16,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, Elevation, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
@@ -30,6 +31,11 @@ import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "@suppr/shared/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
+import {
+  DISCOVER_CATEGORY_PILLS,
+  matchesRecipeCategory,
+  type RecipeCategoryId,
+} from "@suppr/shared/recipes/recipeCategoryFilters";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
@@ -39,10 +45,21 @@ import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 
-// B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
-// to recipes whose creator_id is in the set the user follows. Empty
-// when the user follows nobody yet — copy points them at the next step.
-const FILTERS = ["For You", "Following", "Popular", "Quick", "High Protein", "Low Carb"];
+// ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
+// "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
+// secondary feed-scope toggle that LEADS the row, then the shared
+// category set follows. Web parity: `src/app/components/DiscoverFeed.tsx`.
+
+/**
+ * Sloe seamless recipe-card corner. The Figma recipe cards (`528:2`
+ * Discover) sit at 20–24px; we use 24 to match the canonical Sloe
+ * warm-slab corner already shared by the Today tiles (`CARD_RADIUS`/
+ * `TILE_RADIUS = 24` on mobile, `var(--radius-card-lg)` on web) so every
+ * cream slab reads with one corner language. The DS `Radius` ladder tops
+ * out at 12 (`xl`), hence this local const. Web parity: `radius="lg"`
+ * (24px) on the `SupprCard` in `DiscoverFeed.tsx` / `Library.tsx`.
+ */
+const RECIPE_CARD_RADIUS = 24;
 
 /* ── Icon Box (local helper matching prototype) ── */
 function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -131,6 +148,10 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Seamless recipe slab: soft plum lift off the page in light, tonal lift +
+  // hairline in dark (RN renders shadows poorly on dark). Mirrors the Library
+  // card so the two recipe surfaces stay in lockstep across schemes.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -148,7 +169,9 @@ export default function DiscoverScreen() {
   // survives tab switches (ENG-53, 2026-05-16). Variable names kept
   // so all downstream filter/search-debounce logic stays untouched.
   const { query: search, setQuery: setSearch } = useLibrarySearchStore();
-  const [filter, setFilter] = useState("For You");
+  // ENG-921 — category (Figma `528:2`) + Following feed-scope toggle.
+  const [category, setCategory] = useState<RecipeCategoryId | "trending" | "from-reels">("all");
+  const [following, setFollowing] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // V10 (2026-05-11 visual sweep): the cold-load spinner could spin
@@ -336,39 +359,27 @@ export default function DiscoverScreen() {
     ) {
       return false;
     }
-    // Pill filter
-    if (filter === "For You") return true;
-    // B5 Phase 2c (2026-04-27) — Following filters to recipes whose
-    // creator_id is in the user's follow set. Recipes without a
-    // curated creator_id (imports, user-created) never match this
-    // filter, which is correct — Following is creator-scoped.
-    if (filter === "Following") {
-      // D1 (2026-04-28): mirror web — match creatorId OR authorId.
+    // Following feed scope (B5 Phase 2c follow-graph) — match creatorId
+    // OR authorId against the user's follow set. Mirrors web.
+    if (following) {
       const cid = r.creatorId ?? null;
       const aid = (r as { authorId?: string | null }).authorId ?? null;
       if (cid && followedCreatorIds.has(cid)) return true;
       if (aid && followedAuthorIds.has(aid)) return true;
       return false;
     }
-    // Popular — real filter (was `|| true`, which silently disabled
-    // the gate; ui-critic flagged 2026-04-20).
-    if (filter === "Popular") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
-    if (filter === "Quick") {
-      // GW-06 (audit 2026-04-28): pre-fix any recipe with
-      // `cookTimeMin == null` passed through as "Quick" — most legacy
-      // imports don't carry cook time, so the pill silently behaved
-      // like "All". Now requires a real cook-time signal to qualify.
-      const cm = r.cookTimeMin;
-      const pm = (r as { prepTimeMin?: number | null }).prepTimeMin;
-      const cookOk = typeof cm === "number" && cm > 0;
-      const prepOk = typeof pm === "number" && pm > 0;
-      if (!cookOk && !prepOk) return false;
-      const total = (cookOk ? cm : 0) + (prepOk ? pm : 0);
-      return total <= 30;
+    // Category filter (Figma `528:2`). Trending / From Reels are
+    // Discover-only signals; everything else routes through the shared
+    // predicate (web ↔ mobile parity).
+    if (category === "all") return true;
+    if (category === "trending") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
+    if (category === "from-reels") {
+      const sp = (r as { sourcePlatform?: string | null; source?: string | null }).sourcePlatform
+        ?? (r as { source?: string | null }).source ?? null;
+      const s = String(sp ?? "").toLowerCase();
+      return s.includes("instagram") || s.includes("tiktok") || s.includes("youtube");
     }
-    if (filter === "High Protein") return r.protein >= 25;
-    if (filter === "Low Carb") return r.carbs <= 30;
-    return true;
+    return matchesRecipeCategory(category, r);
   });
 
   const t = {
@@ -401,13 +412,21 @@ export default function DiscoverScreen() {
       void computeRecipeFitPercent;
       void targets;
       return (
+        // Sloe Figma `528:2` seamless recipe slab: a `#F6F5F2` cream card
+        // lifted off the `#FFFFFF` page by a SOFT plum drop shadow (NOT a
+        // 1pt border — that read as the "double-frame" box; Grace 2026-06-07),
+        // 24px radius, image full-bleed to the top corners. The shadow rides
+        // an OUTER wrapper because the inner Pressable clips the image with
+        // `overflow: 'hidden'`, and RN clips iOS shadows on clipping views.
+        // Light → soft shadow, no border; dark → tonal lift + hairline (via
+        // `cardElevation`) so the card never blends in either scheme.
+        <View key={item.id} style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
         <Pressable
-          key={item.id}
           onPress={() => router.push(`/recipe/${item.id}`)}
           style={{
-            borderRadius: 14,
-            backgroundColor: colors.card,
-            borderWidth: 1,
+            borderRadius: RECIPE_CARD_RADIUS,
+            backgroundColor: cardElevation.liftBg ?? colors.card,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: colors.cardBorder,
             overflow: "hidden",
           }}
@@ -492,9 +511,10 @@ export default function DiscoverScreen() {
                 column (P1/P2 work in the GW-08 audit). */}
           </View>
         </Pressable>
+        </View>
       );
     },
-    [router, colors, heroColor, t.accent, targets],
+    [router, colors, heroColor, t.accent, targets, cardElevation],
   );
 
   // 2026-05-03 — mobile Discover uses one layout for every filter:
@@ -623,37 +643,86 @@ export default function DiscoverScreen() {
             instead of clipping at the bottom border. paddingRight:32
             on the contentContainer keeps the trailing pill from
             sitting flush against the screen edge. */}
+        {/* Category filter pills — ENG-921 / Figma `528:2`. Clay-fill
+            active (solid), line-border inactive. "Following" leads as a
+            secondary feed-scope toggle. Web parity: DiscoverFeed.tsx. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: 12 }}
           contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
         >
-          {FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setFilter(f)}
-              style={{
-                paddingHorizontal: 13,
-                paddingVertical: 8,
-                minHeight: 36,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: filter === f ? t.accent : colors.cardBorder,
-                backgroundColor: filter === f ? t.accent + "10" : "transparent",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+          <Pressable
+            key="following"
+            testID="discover-category-following"
+            onPress={() => {
+              setFollowing(true);
+              setCategory("all");
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: following }}
+            style={{
+              paddingHorizontal: 13,
+              paddingVertical: 8,
+              minHeight: 36,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: following ? t.accent : colors.cardBorder,
+              backgroundColor: following ? t.accent : "transparent",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{ ...Type.caption, fontWeight: "600", lineHeight: 18, color: following ? "#fff" : colors.textSecondary }}
             >
-              <Text
-                numberOfLines={1}
-                style={{ ...Type.caption, fontWeight: '600', lineHeight: 18, color: filter === f ? t.accent : colors.textSecondary }}
+              Following
+            </Text>
+          </Pressable>
+          {DISCOVER_CATEGORY_PILLS.map((f) => {
+            const active = !following && category === f.id;
+            return (
+              <Pressable
+                key={f.id}
+                testID={`discover-category-${f.id}`}
+                onPress={() => {
+                  setFollowing(false);
+                  setCategory(f.id);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Category: ${f.label}`}
+                style={{
+                  paddingHorizontal: 13,
+                  paddingVertical: 8,
+                  minHeight: 36,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: active ? t.accent : colors.cardBorder,
+                  backgroundColor: active ? t.accent : "transparent",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
               >
-                {f}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  numberOfLines={1}
+                  style={{ ...Type.caption, fontWeight: "600", lineHeight: 18, color: active ? "#fff" : colors.textSecondary }}
+                >
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
+
+        {/* DEFERRED — Figma-only builds (not built this pass, per the
+            Recipes Figma-parity brief):
+              · "Popular collections" carousel (Figma `528:61`) — ENG-907
+              · "Recipes in action" Reels rail (Figma `528:105`) — ENG-908
+            No wired data source yet (curated collections + short-form
+            video); tracked as net-new builds. See
+            `docs/ux/redesign/figma-migration-tracker.md`. */}
 
         {/* Eating out — Edamam restaurant + branded meals. Only renders
             when the user has typed at least 3 characters; collapsed
@@ -865,16 +934,23 @@ export default function DiscoverScreen() {
                 >
                   More ideas
                 </Text>
-                <View
-                  style={{
-                    borderRadius: Radius.lg,
-                    backgroundColor: colors.card,
-                    borderWidth: 1,
-                    borderColor: colors.cardBorder,
-                    overflow: "hidden",
-                  }}
-                >
-                  {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                {/* "More ideas" list slab — same seamless cream card as the
+                    hero cards (24px radius, soft plum lift in light, tonal
+                    lift + hairline in dark, no light-mode border). The shadow
+                    rides an outer wrapper because the inner View clips its row
+                    dividers with `overflow: 'hidden'`. */}
+                <View style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
+                  <View
+                    style={{
+                      borderRadius: RECIPE_CARD_RADIUS,
+                      backgroundColor: cardElevation.liftBg ?? colors.card,
+                      borderWidth: cardElevation.useBorder ? 1 : 0,
+                      borderColor: colors.cardBorder,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                  </View>
                 </View>
               </>
             ) : null}

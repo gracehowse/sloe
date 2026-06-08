@@ -5,7 +5,7 @@ import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import {
   MACRO_RING_TOGGLE,
-  TODAY_STAT_LABELS,
+  TODAY_HERO_STAT_LABELS,
   todayStatusChip,
 } from "../../../lib/copy/today";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
@@ -14,8 +14,8 @@ import { calorieRingGeometryFromSize } from "../../../lib/nutrition/calorieRingG
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
- * TodayHeroStats — Today-screen hero block with the calorie ring + 4
- * stat figures (Logged / Target / Burned / Net).
+ * TodayHeroStats — Today-screen hero block with the calorie ring +
+ * Figma `654:2` stat row (Goal / Eaten / Bonus) on every breakpoint.
  *
  * Layout is **one vertical stack on every breakpoint** so Today and
  * previous days share the same geometry (no desktop-only side-by-side
@@ -40,8 +40,11 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   /** ENG-753 — true when the user has logged today and calories are
    *  within ±10% of the daily target. Drives the "On track" pill. */
   isOnTrack?: boolean;
-  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
-   *  the "Adaptive TDEE learning · N of 7 days" pill. */
+  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Retained for call-site
+   *  stability but no longer rendered on Today (the "Adaptive TDEE learning ·
+   *  N of 7 days" line was removed 2026-06-08 to match Figma `654:2`; the
+   *  learning state lives on Progress). The underlying TDEE logic is
+   *  unchanged. */
   tdeeLearnDays?: number;
   /** ENG-798 — win-moment ring pulse. True for ~200ms after a Today
    *  landmark fires; forwarded to the calorie ring on both breakpoints.
@@ -94,9 +97,10 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
 function DesktopHeroStats({
   loggedKcal,
   targetKcal,
-  burnedKcal,
+  burnedKcal: _burnedKcal,
   consumed,
   target,
+  baseGoal,
   proteinPct,
   carbsPct,
   fatPct,
@@ -105,14 +109,16 @@ function DesktopHeroStats({
   displayMode,
   onToggleDisplayMode,
   isOnTrack,
-  tdeeLearnDays,
+  // `tdeeLearnDays` is retained on the props interface for call-site stability
+  // but no longer rendered on Today — the Adaptive-TDEE line was removed to
+  // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
   pulse,
 }: TodayHeroStatsProps) {
-  const net = loggedKcal - targetKcal;
-  const netStr = loggedKcal === 0 ? "—" : formatNet(net);
-  const showStatRow = loggedKcal > 0;
+  const showStatRow = consumed > 0 && target > 0;
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
+  const bonusKcal =
+    baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
   const chipState: "empty" | "under" | "over" = isEmpty
     ? "empty"
     : isOver
@@ -182,59 +188,64 @@ function DesktopHeroStats({
 
         {showStatRow ? (
           <div
-            className="grid w-full max-w-lg grid-cols-4 gap-2"
+            className="grid w-full max-w-lg grid-cols-3 gap-2 border-t border-border pt-3"
             data-testid="today-hero-stat-row"
           >
-            <StatCell label={TODAY_STAT_LABELS.logged} value={loggedKcal.toLocaleString()} />
-            <StatCell label={TODAY_STAT_LABELS.target} value={targetKcal.toLocaleString()} />
             <StatCell
-              label={TODAY_STAT_LABELS.burned}
-              value={burnedKcal > 0 ? burnedKcal.toLocaleString() : "—"}
+              label={TODAY_HERO_STAT_LABELS.goal}
+              value={targetKcal.toLocaleString()}
             />
             <StatCell
-              label={TODAY_STAT_LABELS.net}
-              value={netStr}
-              valueTone={net < 0 ? "positive" : net > 0 ? "over" : "neutral"}
+              label={TODAY_HERO_STAT_LABELS.eaten}
+              value={loggedKcal.toLocaleString()}
             />
+            {isOver ? (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.over}
+                value={`−${Math.round(consumed - target).toLocaleString()}`}
+                valueTone="over"
+              />
+            ) : (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.bonus}
+                value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+                valueTone={bonusKcal > 0 ? "positive" : "neutral"}
+              />
+            )}
           </div>
         ) : null}
 
-        {/* ENG-753 — status pills below the stat grid (prototype
+        {/* ENG-753 — "On track" pill below the stat grid (prototype
             screens-web.jsx:173-177). Flag-gated; only render when the
-            day has been logged (showStatRow) and at least one pill is
-            applicable. */}
-        {isFeatureEnabled("today-status-pills") &&
-        showStatRow &&
-        (isOnTrack || (tdeeLearnDays != null && tdeeLearnDays > 0)) ? (
+            day has been logged (showStatRow) and the user is on track.
+
+            Sloe redesign (2026-06-08): the "Adaptive TDEE learning · N of 7
+            days" pill was removed — the canonical Figma `654:2` Today hero
+            shows nothing between the Goal/Eaten/Bonus stats and the "Room for
+            dinner" coach line. The learning state lives on Progress; surfacing
+            it on Today added clutter. The underlying adaptive-TDEE logic is
+            unchanged — only this presentational line is gone. The
+            `tdeeLearnDays` prop is retained for call-site stability. */}
+        {isFeatureEnabled("today-status-pills") && showStatRow && isOnTrack ? (
           <div className="flex gap-2" data-testid="today-status-pills">
-            {isOnTrack ? (
-              <span
-                data-testid="today-pill-on-track"
-                className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+            <span
+              data-testid="today-pill-on-track"
+              className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+            >
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden
               >
-                <svg
-                  className="h-3 w-3"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                On track
-              </span>
-            ) : null}
-            {tdeeLearnDays != null && tdeeLearnDays > 0 ? (
-              <span
-                data-testid="today-pill-tdee-learning"
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary"
-              >
-                Adaptive TDEE learning · {tdeeLearnDays} of 7 days
-              </span>
-            ) : null}
+                <path
+                  fillRule="evenodd"
+                  d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              On track
+            </span>
           </div>
         ) : null}
 
@@ -311,8 +322,3 @@ function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
   );
 }
 
-function formatNet(net: number): string {
-  if (net === 0) return "0";
-  if (net < 0) return `\u2212${Math.abs(net).toLocaleString()}`;
-  return `+${net.toLocaleString()}`;
-}

@@ -49,7 +49,7 @@ function InlineBrandMark({ size = 40, ring }: { size?: number; ring: string }) {
     <View
       style={{ width: size, height: size }}
       accessibilityRole="image"
-      accessibilityLabel="Suppr"
+      accessibilityLabel="Sloe"
     >
       <Svg width={size} height={size} viewBox="0 0 32 32">
         <Rect width="32" height="32" rx="8" fill="transparent" />
@@ -113,7 +113,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
             maxWidth: 320,
           }}
         >
-          Suppr hit an unexpected error. The team has been notified. Tap Try
+          Sloe hit an unexpected error. The team has been notified. Tap Try
           again to recover, or restart the app if it keeps happening.
         </Text>
         <Pressable
@@ -139,7 +139,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
               marginTop: Spacing.sm,
             }}
           >
-            Still not working? Force-quit Suppr from the app switcher and
+            Still not working? Force-quit Sloe from the app switcher and
             reopen.
           </Text>
         ) : null}
@@ -180,7 +180,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
             maxWidth: 320,
           }}
         >
-          Suppr hit an unexpected error. The team has been notified. Tap
+          Sloe hit an unexpected error. The team has been notified. Tap
           Try again to recover, or restart the app if it keeps happening.
         </Text>
         <Pressable
@@ -208,7 +208,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
               marginTop: Spacing.sm,
             }}
           >
-            Still not working? Force-quit Suppr from the app switcher and
+            Still not working? Force-quit Sloe from the app switcher and
             reopen.
           </Text>
         ) : null}

@@ -2763,6 +2763,9 @@ export default function TrackerScreen() {
         fat: r.fat ?? 0,
         thumbnail: r.image,
         mealType: r.mealSlots,
+        // Figma `654:2` hero meta — optional cook-time chip. Mirror of
+        // web. Absent for recipes with no recorded time (chip degrades).
+        cookTimeMin: r.cookTimeMin ?? undefined,
       })),
     [savedLibraryRecipes],
   );
@@ -4722,7 +4725,7 @@ export default function TrackerScreen() {
               }
             : todayPastDayGreetingLines(selectedDate);
           return (
-          <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.md }}>
+          <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.lg }}>
             <Text
               testID="today-hero-greeting"
               style={{ ...Type.title, fontWeight: "500", color: MacroColors.calories, textAlign: "center" }}
@@ -4755,7 +4758,12 @@ export default function TrackerScreen() {
             reachable only via the strip + calendar, which is intended.
             The header still owns the supportive streak-reset copy
             (rendered under the strip in `stripOnly` mode). */}
-        <View>
+        {/* Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
+            (`mb-7` ≈ 28px between the week strip and the ring hero). The
+            parent scroll `gap` (8) was leaving the strip cramped against the
+            hero card; the extra bottom margin restores the frame's breathing
+            room. */}
+        <View style={{ marginBottom: Spacing.lg }}>
           <TodayDateHeader
           stripOnly
           viewMode={viewMode}

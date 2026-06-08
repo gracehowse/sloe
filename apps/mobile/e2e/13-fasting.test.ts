@@ -14,41 +14,50 @@ describe('Fasting', () => {
     await element(by.text('Fasting')).tap();
   });
 
-  it('shows Intermittent Fasting header', async () => {
-    await waitFor(element(by.text('Intermittent Fasting')))
+  it('shows Fasting header (Sloe 305:2)', async () => {
+    await waitFor(element(by.text('Fasting')))
       .toBeVisible()
       .withTimeout(5000);
   });
 
-  it('shows fasting window label', async () => {
+  it('shows a fasting window preset (idle state)', async () => {
+    // Presets only render when idle. If a fast is already active they
+    // are hidden — accept either the preset row or the active state.
     try {
       await expect(element(by.text('16:8'))).toBeVisible();
     } catch {
-      // Other windows: 18:6 or 20:4
       try {
-        await expect(element(by.text('18:6'))).toBeVisible();
+        await expect(element(by.text('OMAD'))).toBeVisible();
       } catch {
-        await expect(element(by.text('20:4'))).toBeVisible();
+        // Active fast — presets hidden; the End-fast control is shown.
+        await expect(element(by.text('Hold to end fast'))).toBeVisible();
       }
     }
   });
 
-  it('shows start or end fast button', async () => {
+  it('shows start or end fast control (Sloe copy)', async () => {
     try {
-      await expect(element(by.text('Start Fast'))).toBeVisible();
+      await expect(element(by.text('Start fast'))).toBeVisible();
     } catch {
-      await expect(element(by.text('End Fast'))).toBeVisible();
+      try {
+        await expect(element(by.text('Hold to end fast'))).toBeVisible();
+      } catch {
+        await expect(element(by.text('Complete fast'))).toBeVisible();
+      }
     }
   });
 
   it('can start and immediately end a fast', async () => {
     try {
-      await element(by.text('Start Fast')).tap();
-      await waitFor(element(by.text('FASTING')))
+      await element(by.text('Start fast')).tap();
+      // Active state renders the long-press End-fast control.
+      await waitFor(element(by.text('Hold to end fast')))
         .toBeVisible()
         .withTimeout(5000);
-      await element(by.text('End Fast')).tap();
-      await waitFor(element(by.text('Start Fast')))
+      // End fast is long-press-to-confirm so a stray tap can't kill a
+      // long run.
+      await element(by.text('Hold to end fast')).longPress();
+      await waitFor(element(by.text('Start fast')))
         .toBeVisible()
         .withTimeout(5000);
     } catch {

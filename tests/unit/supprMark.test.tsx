@@ -12,8 +12,9 @@ void React;
 
 /**
  * Sloe wordmark primitives (`suppr-mark.tsx`) — historical `Suppr*` export
- * names kept for call-site stability. Logo is lowercase "sloe" in Newsreader
- * + plum (`--foreground-brand`), no plate glyph.
+ * names kept for call-site stability. Logo is "Sloe" (capital S) in Newsreader
+ * semibold + plum (`--foreground-brand`), no plate glyph — casing + weight
+ * match the canonical Figma `654:2` Today frame (updated 2026-06-08).
  */
 
 describe("SupprMark (Sloe wordmark)", () => {
@@ -21,7 +22,13 @@ describe("SupprMark (Sloe wordmark)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
     expect(mark).toHaveAttribute("data-slot", "sloe-mark");
-    expect(mark.textContent).toBe("sloe");
+    expect(mark.textContent).toBe("Sloe");
+  });
+
+  it("renders the wordmark in semibold (Figma 654:2)", () => {
+    render(<SupprMark />);
+    const mark = screen.getByRole("img", { name: "Sloe" });
+    expect(mark.className).toContain("font-semibold");
   });
 
   it("scales font size at the 0.72 ratio (ENG-797 mobile parity)", () => {
@@ -48,7 +55,7 @@ describe("SupprPlateMark (deprecated alias)", () => {
 describe("SupprPlateWordmark (deprecated alias)", () => {
   it("composes the Sloe wordmark lockup", () => {
     render(<SupprPlateWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
+    expect(screen.getByText("Sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 });
@@ -56,7 +63,7 @@ describe("SupprPlateWordmark (deprecated alias)", () => {
 describe("SupprWordmark", () => {
   it("composes the Sloe wordmark in a wrapper", () => {
     render(<SupprWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
+    expect(screen.getByText("Sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 

@@ -16,7 +16,7 @@ import { OnboardingProvider } from "@/app/components/onboarding/context";
 import { WebFlow } from "@/app/components/onboarding/web-flow";
 
 export const metadata: Metadata = {
-  title: "Suppr — Onboarding",
+  title: "Sloe — Onboarding",
   // Don't index the onboarding route — it's a logged-in funnel, not
   // a marketing surface. /pricing and / are the canonical indexable
   // pages.

@@ -74,6 +74,7 @@ import {
   detectSlotForHour,
   ctaForSlot,
   bandLabel,
+  slotSuggestionEyebrow,
   whyLineForSuggestion,
   isLibraryEligibleForNorthStar,
   type NorthStarRecipe,
@@ -435,6 +436,7 @@ function NorthStarBlockHost({
     <NorthStarBlock
       kind="default"
       ctaLabel={ctaForSlot(slot)}
+      slotEyebrow={slotSuggestionEyebrow(slot)}
       suggestion={{
         recipeId: suggestion.recipe.id,
         title: suggestion.recipe.title,
@@ -445,6 +447,10 @@ function NorthStarBlockHost({
         predictedFat: suggestion.predictedFat,
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
+        // Figma `654:2` hero meta — optional cook-time chip. Source
+        // from whatever the recipe exposes; `null`/absent degrades to
+        // no chip. Mirror of mobile NorthStarBlockHost.
+        cookTimeMin: suggestion.recipe.cookTimeMin ?? undefined,
         // Activation hook (audit 2026-04-30 — leak fix #5): expose
         // the strongest WHY (which macro the suggestion fits) so the
         // card stops reading as black-box. Mirror of mobile
@@ -2244,11 +2250,18 @@ export const NutritionTracker = memo(function NutritionTracker({
       ) : null}
 
       {!isOnline ? (
+        // SLOE (2026-06-07): offline is a neutral SYNC state, not a
+        // warning — so this reads in the calm clay nav-tint, parity with
+        // the mobile Today offline pill (`Accent.primary` + `colors.card`).
+        // Previously this used the amber `warning` family, which read as
+        // "something is wrong". Clay-soft border + neutral ink matches the
+        // mobile treatment and the Sloe trust posture (amber is reserved
+        // for genuine over-budget / caution signals).
         <div
           role="alert"
-          className="mb-4 flex items-start gap-3 rounded-card border border-warning/30 bg-warning-soft px-4 py-3"
+          className="mb-4 flex items-start gap-3 rounded-card border border-primary/20 bg-primary/[0.06] px-4 py-3"
         >
-          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
           <p className="text-sm font-semibold text-foreground">
             {"You're offline. Changes will sync when you reconnect."}
           </p>

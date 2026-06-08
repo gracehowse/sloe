@@ -196,9 +196,16 @@ export function weeklyInsightCoachLine(
   return `${onTargetDays} of ${loggedDays} days on target so far.`;
 }
 
-/** The four stat tiles that sit beside the calorie ring on Today.
- *  Order matters — matches the visual 2x2 reading order used on web +
- *  landing (Logged / Target / Burned / Net). */
+/** Figma `654:2` hero stat row under the ring (Goal / Eaten / Bonus). */
+export const TODAY_HERO_STAT_LABELS = {
+  goal: "Goal",
+  eaten: "Eaten",
+  bonus: "Bonus",
+  over: "Over",
+} as const;
+
+/** Legacy four-tile row (Logged / Target / Burned / Net) — landing +
+ *  detail panels only; Today hero uses {@link TODAY_HERO_STAT_LABELS}. */
 export const TODAY_STAT_LABELS = {
   logged: "Logged",
   target: "Target",

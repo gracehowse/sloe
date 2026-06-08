@@ -1,15 +1,17 @@
 /**
- * Progress Phase 2 cards — source-grep pins (2026-04-20 prototype port).
+ * Progress — Sloe Figma 492:2 frame conformance (source-grep pins).
  *
- * Two new cards sit directly below the range picker on both platforms:
- *   1. WEIGHT card — uppercase overline, on-track green pill, big
- *      weight number, weekly delta with trend icon, sparkline,
- *      projection caption.
- *   2. Calories card — overline inside the card; card shows
- *      big `avg/day`, `vs target` pill top-right, adherence subtitle.
+ * Supersedes the 2026-04-20 "Phase 2 cards" pins. The 492:2 reskin
+ * replaced the dense Weight/Calories/Protein/Trend range-card grid with
+ * a calm single-column frame:
+ *   range toggle → THIS WEEK insight (lilac) → AVERAGE ADHERENCE
+ *   → weight card (Trend/Scale) → AVG/TDEE/DEFICIT triad
+ *   → DAILY CALORIES (sage/amber + goal dots) → on-target ribbon.
  *
- * Both cards read from the shared `progressRangeStats` helpers so web
- * + mobile can't drift. The range state drives the window.
+ * Every figure reads from the shared `progressRangeStats` /
+ * `progressWeekReport` helpers so web + mobile can't drift. The range
+ * state drives the window. Preserved-below-the-fold features (maintenance,
+ * journey, digest, steps, body fat) are guarded so nothing was dropped.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -20,93 +22,90 @@ const MOBILE = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/progress.tsx")
 const WEB = readFileSync(resolve(ROOT, "src/app/components/ProgressDashboard.tsx"), "utf8");
 const HELPER = readFileSync(resolve(ROOT, "src/lib/nutrition/progressRangeStats.ts"), "utf8");
 
-describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
-  it("shared helper exports the range-stats functions", () => {
+describe("Progress — Sloe Figma 492:2 frame", () => {
+  it("shared helper exports the range-stats functions (incl. macro adherence)", () => {
     expect(HELPER).toMatch(/export function buildWeightRangeStats\(/);
     expect(HELPER).toMatch(/export function buildCaloriesRangeStats\(/);
+    expect(HELPER).toMatch(/export function buildMacroAdherenceRangeStats\(/);
     expect(HELPER).toMatch(/export type RangeKey\b/);
   });
 
-  it("mobile imports the shared helper and passes the current rangeKey", () => {
+  it("both platforms import the shared range helpers and pass the active range", () => {
     expect(MOBILE).toMatch(/from\s+["'][^"']*progressRangeStats["']/);
-    expect(MOBILE).toMatch(/buildWeightRangeStats\(weightKgByDay, rangeKey as RangeKey/);
     expect(MOBILE).toMatch(/buildCaloriesRangeStats\(byDay as any, targets\.calories, rangeKey as RangeKey/);
-  });
-
-  it("web imports the shared helper and passes the current range", () => {
+    expect(MOBILE).toMatch(/buildMacroAdherenceRangeStats\(/);
     expect(WEB).toMatch(/from\s+["'][^"']*progressRangeStats(?:\.ts)?["']/);
-    expect(WEB).toMatch(/buildWeightRangeStats\(weightKgByDay, range as RangeKey/);
     expect(WEB).toMatch(/buildCaloriesRangeStats\(nutritionByDay, nutritionTargets\.calories, range as RangeKey/);
+    expect(WEB).toMatch(/buildMacroAdherenceRangeStats\(/);
   });
 
-  it("mobile mounts the Calories range card below the range picker (Weight card was consolidated 2026-05-11)", () => {
-    // 2026-05-11 (Grace TF feedback — "this is duplicative"):
-    // WeightRangeCard was rendering above the bigger Weight chart card
-    // lower on the screen. Killed in `show` surface mode; the big
-    // chart card is now the single weight surface. The function
-    // definition is kept around in case `trends_only`/`hide` modes
-    // ever need it back, but no JSX render happens in show mode.
-    expect(MOBILE).toMatch(/function WeightRangeCard\(/);
-    expect(MOBILE).toMatch(/function CaloriesRangeCard\(/);
-    expect(MOBILE).toMatch(/<CaloriesRangeCard\b/);
-    expect(MOBILE).toMatch(/testID="progress-calories-range-card"/);
-    expect(MOBILE).toMatch(/testID="progress-calories-range-header"/);
-    // CaloriesRangeCard (flag-OFF path) still strictly precedes ITS empty-state
-    // branch. The v2 redesign (design_system_elevation ON) added an earlier
-    // `{!hasData}` gate for the insight/hero section higher up the file, so we
-    // scope the search to the first empty-state branch at/after the card rather
-    // than the first one in the whole file.
-    const calIdx = MOBILE.indexOf("<CaloriesRangeCard");
-    const hasDataIdx = MOBILE.indexOf("{!hasData ? (", calIdx);
-    expect(calIdx).toBeGreaterThan(-1);
-    expect(hasDataIdx).toBeGreaterThan(calIdx);
+  it("both platforms render the THIS WEEK insight + AVERAGE ADHERENCE cards", () => {
+    // THIS WEEK insight (lilac) — the engine headline / story-gate slot.
+    for (const src of [MOBILE, WEB]) {
+      expect(src).toMatch(/ProgressHeadline/);
+      expect(src).toMatch(/ProgressStoryGate/);
+    }
+    // AVERAGE ADHERENCE card with the four macro bars.
+    expect(WEB).toMatch(/<ProgressAverageAdherence\b/);
+    expect(WEB).toMatch(/data-testid="progress-average-adherence-card"/);
+    expect(MOBILE).toMatch(/<ProgressAverageAdherence\b/);
+    expect(MOBILE).toMatch(/testID="progress-average-adherence-card"/);
   });
 
-  it("web mounts the Calories range card below the range picker (Weight card was consolidated 2026-05-11)", () => {
-    // Same parity consolidation on the web ProgressDashboard.
-    expect(WEB).toMatch(/function WeightRangeCardWeb\(/);
-    expect(WEB).toMatch(/function CaloriesRangeCardWeb\(/);
-    expect(WEB).toMatch(/<CaloriesRangeCardWeb\b/);
-    expect(WEB).toMatch(/data-testid="progress-calories-range-card"/);
-    expect(WEB).toMatch(/data-testid="progress-calories-range-header"/);
-    const calIdx = WEB.indexOf("<CaloriesRangeCardWeb");
-    const digestIdx = WEB.indexOf("WEEK DIGEST");
-    expect(calIdx).toBeGreaterThan(-1);
-    expect(digestIdx).toBeGreaterThan(calIdx);
+  it("AVERAGE ADHERENCE wires all four macro bars (Protein/Carbs/Fat/Fibre)", () => {
+    for (const src of [MOBILE, WEB]) {
+      expect(src).toMatch(/macro-protein/);
+      expect(src).toMatch(/macro-carbs/);
+      expect(src).toMatch(/macro-fat/);
+      expect(src).toMatch(/macro-fiber/);
+      // The Fibre bar must read a real fibre figure, not be hidden.
+      expect(src).toMatch(/fiberPct|fiberAdherence/);
+    }
   });
 
-  it("the WeightRangeCard JSX is no longer rendered in show mode (consolidated 2026-05-11)", () => {
-    // Regression guard: the duplication this commit removed must not
-    // come back. We allow the function definition to live in the
-    // file (still referenced by `WeightTrendOnlyCard` siblings via
-    // shared types), and the explanatory comments may quote
-    // `<WeightRangeCard>` as text — so we look for a JSX-shaped
-    // pattern (open angle, name, then either space-attr or
-    // open-tag-close) which never appears in comments.
-    expect(MOBILE).not.toMatch(/<WeightRangeCard[\s\n][^>]*\//);
-    expect(WEB).not.toMatch(/<WeightRangeCardWeb[\s\n][^>]*\//);
+  it("both platforms render the AVG/TDEE/DEFICIT triad + on-target ribbon", () => {
+    expect(WEB).toMatch(/<ProgressEnergyTriad\b/);
+    expect(WEB).toMatch(/<ProgressOnTargetRibbon\b/);
+    expect(MOBILE).toMatch(/<ProgressEnergyTriad\b/);
+    expect(MOBILE).toMatch(/<ProgressOnTargetRibbon\b/);
   });
 
-  it("both platforms preserve existing cards below the new ones", () => {
-    // Sanity that we did NOT delete anything required.
+  it("weight card exposes the Trend/Scale toggle + Log weight (frame position 4)", () => {
+    expect(WEB).toMatch(/data-testid="progress-weight-view-toggle"/);
+    expect(WEB).toMatch(/data-testid="progress-weight-view-trend"/);
+    expect(WEB).toMatch(/data-testid="progress-weight-view-scale"/);
+    expect(WEB).toMatch(/data-testid="progress-log-weight"/);
+    expect(MOBILE).toMatch(/testID="progress-weight-view-toggle"/);
+    expect(MOBILE).toMatch(/testID="progress-weight-view-trend"/);
+    expect(MOBILE).toMatch(/testID="progress-weight-view-scale"/);
+  });
+
+  it("DAILY CALORIES uses sage on-target / amber over (never red bars)", () => {
+    // Sage = on target; warning amber = over. The destructive-red rule is
+    // the calorie-RING carve-out only — never the bars.
+    for (const src of [MOBILE, WEB]) {
+      expect(src).toMatch(/Daily Calories/);
+      expect(src).not.toMatch(/data-testid="progress-week-charts-grid"/);
+    }
+    expect(WEB).toMatch(/data-testid="progress-daily-calories-card"/);
+  });
+
+  it("removed the dense Phase-2 range grid (no duplicate competing surfaces)", () => {
+    // The old Weight/Calories/Protein/Trend grid + its testIDs are gone.
+    expect(WEB).not.toMatch(/data-testid="progress-calories-range-card"/);
+    expect(WEB).not.toMatch(/data-testid="progress-phase2-grid"/);
+    expect(WEB).not.toMatch(/function CaloriesRangeCardWeb\(/);
+    expect(WEB).not.toMatch(/function ProteinRangeCardWeb\(/);
+    expect(WEB).not.toMatch(/function TrendSummaryCardWeb\(/);
+    expect(WEB).not.toMatch(/function WeightRangeCardWeb\(/);
+  });
+
+  it("both platforms preserve the wired features below the frame", () => {
+    // Nothing required was deleted — only re-presented / relocated.
     for (const src of [MOBILE, WEB]) {
       expect(src).toMatch(/Maintenance/);
-      expect(src).toMatch(/Macro Adherence/);
-      // D3 — Digest replaced WeeklyRecapCard 2026-04-21.
       expect(src).toMatch(/\bDigest\b/);
+      expect(src).toMatch(/Journey/);
     }
-    // Mobile keeps journey + daily calories bar.
-    expect(MOBILE).toMatch(/Daily Calories/);
-    expect(MOBILE).toMatch(/Journey/);
-    // Web keeps daily calories chart + journey.
-    expect(WEB).toMatch(/Daily Calories/);
-    expect(WEB).toMatch(/JOURNEY \/ WEIGHT PROJECTION/);
-  });
-
-  it("each new card has an 'On track' pill branch + delta pill", () => {
-    expect(MOBILE).toMatch(/progress-weight-on-track-pill/);
-    expect(MOBILE).toMatch(/progress-calories-range-delta-pill/);
-    expect(WEB).toMatch(/progress-weight-on-track-pill/);
-    expect(WEB).toMatch(/progress-calories-range-delta-pill/);
   });
 });

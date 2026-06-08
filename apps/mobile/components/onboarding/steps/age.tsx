@@ -91,7 +91,7 @@ export function MobileAgeStep() {
               marginBottom: 8,
             }}
           >
-            What Suppr does with this
+            What Sloe does with this
           </Text>
           <Text
             style={{
@@ -113,7 +113,7 @@ export function MobileAgeStep() {
               marginBottom: 10,
             }}
           >
-            This is an estimate, not a verdict on your metabolism. Suppr
+            This is an estimate, not a verdict on your metabolism. Sloe
             adaptive-TDEE will re-calibrate from your actual logged
             intake + weight changes after ~2 weeks, replacing the formula
             with your real maintenance.

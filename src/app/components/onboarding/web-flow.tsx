@@ -410,13 +410,17 @@ export function WebFlow() {
         >
           {narrative && (
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary mb-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground-tertiary mb-4">
                 {narrative.eyebrow}
               </div>
+              {/* Sloe reskin (Figma onboarding parity 2026-06-07): the
+                  narrative headline reads in plum Newsreader serif to
+                  match the editorial warm-coaching direction. Eyebrow
+                  drops the clay tint to muted ink (clay = CTA only). */}
               <h1
-                className="text-[44px] font-extrabold tracking-tight text-foreground m-0 mb-4 leading-[1.05] max-w-[520px]"
+                className="font-[family-name:var(--font-headline)] text-[44px] font-normal tracking-tight text-foreground-brand m-0 mb-4 leading-[1.08] max-w-[520px]"
                 style={{
-                  letterSpacing: "-0.035em",
+                  letterSpacing: "-0.02em",
                   textWrap: "balance",
                   whiteSpace: "pre-line",
                 } as React.CSSProperties}

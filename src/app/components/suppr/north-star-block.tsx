@@ -25,8 +25,9 @@
  */
 
 import * as React from "react";
-import { Sparkles, X } from "lucide-react";
+import { Check, Clock, Flame, Sparkles, X } from "lucide-react";
 
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import {
@@ -73,6 +74,13 @@ export interface NorthStarBlockSuggestion {
    * `northStarSuggestion.ts` and passed in by the host.
    */
   whyLine?: string;
+  /**
+   * Figma `654:2` hero meta row — optional cook time in minutes. When
+   * present a "· {n} min" chip with a Clock glyph renders after the
+   * kcal span. Sourced from the recipe (`cookTimeMin`) by the host;
+   * absent for recipes with no recorded time — the chip degrades away.
+   */
+  cookTimeMin?: number;
 }
 
 export interface NorthStarBlockProps {
@@ -90,6 +98,8 @@ export interface NorthStarBlockProps {
   onBrowse?: () => void;
   /** Open Library — used on `library-empty`. */
   onOpenLibrary?: () => void;
+  /** Figma `654:2` slot overline — "Dinner suggestion", etc. */
+  slotEyebrow?: string;
   /** Test override for skipping rendering (used in tests). */
   testID?: string;
 }
@@ -102,6 +112,7 @@ export function NorthStarBlock({
   onSkip,
   onBrowse,
   onOpenLibrary,
+  slotEyebrow = "Meal suggestion",
   testID,
 }: NorthStarBlockProps) {
   if (kind === "over-budget") {
@@ -195,6 +206,18 @@ export function NorthStarBlock({
     return null;
   }
 
+  if (isFeatureEnabled("today_meals_figma_654")) {
+    return (
+      <NorthStarFigmaHeroBlock
+        suggestion={suggestion}
+        slotEyebrow={slotEyebrow}
+        onPrimaryCta={onPrimaryCta}
+        onSkip={onSkip}
+        testID={testID}
+      />
+    );
+  }
+
   return (
     <NorthStarDefaultBlock
       suggestion={suggestion}
@@ -203,6 +226,120 @@ export function NorthStarBlock({
       onSkip={onSkip}
       testID={testID}
     />
+  );
+}
+
+function NorthStarFigmaHeroBlock({
+  suggestion,
+  slotEyebrow,
+  onPrimaryCta,
+  onSkip,
+  testID,
+}: {
+  suggestion: NorthStarBlockSuggestion;
+  slotEyebrow: string;
+  onPrimaryCta?: () => void;
+  onSkip?: () => void;
+  testID?: string;
+}) {
+  const showFitsBadge = suggestion.bandTight || suggestion.bandLabel.toLowerCase().includes("close");
+  const cookMin =
+    typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
+      ? suggestion.cookTimeMin
+      : null;
+
+  return (
+    <section className="mb-10" data-testid={testID ?? "north-star-figma-hero"}>
+      <h3 className="font-[family-name:var(--font-headline)] text-2xl text-foreground-brand mb-4">
+        What to eat next
+      </h3>
+      <button
+        type="button"
+        onClick={onPrimaryCta}
+        className={cn(
+          "relative block w-full h-80 rounded-2xl overflow-hidden text-left",
+          "shadow-[0_4px_14px_rgba(34,27,38,0.10)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )}
+        aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+      >
+        <div className="absolute inset-0 z-0">
+          {suggestion.thumbnail ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={suggestion.thumbnail}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <RecipeHeroFallback
+              id={suggestion.recipeId}
+              title={suggestion.title}
+              iconSize={48}
+              className="h-full w-full"
+            />
+          )}
+        </div>
+        {/* Two-layer scrim per Figma 654:165-166: a flat base overlay
+            (z-5) under the bottom-up gradient (z-10) so the footer text
+            keeps contrast even where the photo is light at the bottom. */}
+        <div className="absolute inset-0 z-[5] bg-[rgba(34,27,38,0.2)]" aria-hidden />
+        <div
+          className="absolute inset-0 z-10 bg-gradient-to-t from-[#221B26]/90 via-[#221B26]/20 to-transparent"
+          aria-hidden
+        />
+        {showFitsBadge ? (
+          <span className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-success/90 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+            <Check width={14} height={14} aria-hidden />
+            Fits your day
+          </span>
+        ) : null}
+        {onSkip ? (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Skip this suggestion"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSkip();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onSkip();
+              }
+            }}
+            className="absolute right-3 top-3 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 hover:bg-black/45"
+          >
+            <X width={14} height={14} aria-hidden />
+          </span>
+        ) : null}
+        <div className="absolute bottom-0 left-0 z-20 w-full p-5 text-white">
+          <p className="text-[10px] uppercase tracking-[1px] text-[rgba(201,194,214,0.9)] mb-1 font-medium">
+            {slotEyebrow}
+          </p>
+          <h4 className="font-[family-name:var(--font-headline)] text-2xl mb-1 text-white line-clamp-2">
+            {suggestion.title}
+          </h4>
+          <div className="flex items-center gap-2 text-sm text-white/80">
+            <span className="inline-flex items-center gap-1">
+              <Flame width={14} height={14} aria-hidden />
+              {suggestion.predictedCalories} kcal
+            </span>
+            {cookMin !== null ? (
+              <>
+                <span className="inline-block h-1 w-1 rounded-full bg-white/40" aria-hidden />
+                <span className="inline-flex items-center gap-1">
+                  <Clock width={14} height={14} aria-hidden />
+                  {cookMin} min
+                </span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </button>
+    </section>
   );
 }
 

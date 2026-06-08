@@ -220,3 +220,88 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toMatch(/context === "more" \?[\s\S]*?Palette/);
   });
 });
+
+/**
+ * Figma frame `335:2` reskin (2026-06-08) — the Settings ROOT was rebuilt
+ * to the canonical Sloe design: centred serif title, plum-avatar profile
+ * row + plan label, peach "Sloe Pro" banner, ALL-CAPS grey section
+ * eyebrows, circle-outline row icons, a REMINDERS section split out of
+ * Connections, and a centred clay "Delete account" at the bottom. These
+ * pins fail if a future edit drops a frame element.
+ */
+describe("Settings — Figma `335:2` frame reskin", () => {
+  it("renders the profile row as a tap-to-edit plum avatar (no card chrome)", () => {
+    expect(bundle).toContain('testID="settings-profile-row"');
+    // Plum (navPrimary) filled circle avatar — the frame's identity header.
+    expect(bundle).toMatch(
+      /settings-profile-row[\s\S]*?backgroundColor: colors\.navPrimary/,
+    );
+    // Plan label reads "Free plan" / "Pro plan" (not a bare tier pill).
+    expect(bundle).toMatch(/"Pro plan"\s*:\s*"Free plan"/);
+  });
+
+  it("renders the peach Sloe Pro upsell banner with a Manage affordance", () => {
+    expect(bundle).toContain('testID="settings-sloe-pro-banner"');
+    expect(bundle).toMatch(/>\s*Sloe Pro\s*</);
+    expect(bundle).toMatch(/>\s*Manage\s*</);
+  });
+
+  it("groups reminder rows under a dedicated REMINDERS section", () => {
+    // Notifications + Weekly recap moved out of Connections into their own
+    // card to match the frame's REMINDERS group.
+    expect(bundle).toContain('<SettingsCard testID="settings-card-reminders"');
+    expect(bundle).toMatch(
+      /settings-card-reminders[\s\S]*?settings-bundle-notifications-row[\s\S]*?settings-bundle-weekly-recap-row/,
+    );
+    // Apple Health stays the lone wired Connections row.
+    expect(bundle).toMatch(
+      /settings-card-connections[\s\S]*?settings-bundle-apple-health-row/,
+    );
+  });
+
+  it("section eyebrows are ALL-CAPS Inter grey, not serif plum", () => {
+    // Isolate the SectionHeading function body (up to the next top-level
+    // `function`) so the assertions don't bleed into later components that
+    // legitimately use the serif face (e.g. the profile name).
+    const headingBody =
+      bundle.slice(bundle.indexOf("function SectionHeading")).split(
+        "\nfunction ",
+      )[0] ?? "";
+    // Now uses the sans family + uppercase transform + muted colour (was
+    // FontFamily.serifSemibold + navPrimary).
+    expect(headingBody).toMatch(/textTransform: "uppercase"/);
+    expect(headingBody).toMatch(/color: colors\.textSecondary/);
+    expect(headingBody).toMatch(/fontFamily: FontFamily\.sansSemibold/);
+    expect(headingBody).not.toMatch(/fontFamily: FontFamily\.serifSemibold/);
+    expect(headingBody).not.toMatch(/color: colors\.navPrimary/);
+  });
+
+  it("row icon plates are white circles with a hairline ring (circle-outline)", () => {
+    // Isolate the IconBox function body so the assertions don't bleed.
+    const iconBoxBody =
+      bundle.slice(bundle.indexOf("function IconBox")).split("\nfunction ")[0] ??
+      "";
+    // IconBox swapped the colour-tinted rounded square (color + "18") for a
+    // white circle (background + cardBorder ring) per the frame.
+    expect(iconBoxBody).toMatch(/borderRadius: size \/ 2/);
+    expect(iconBoxBody).toMatch(/borderColor: colors\.cardBorder/);
+    expect(iconBoxBody).not.toMatch(/backgroundColor: color \+ "18"/);
+  });
+
+  it("delete account is a centred clay text affordance, not a destructive card row", () => {
+    // The delete-account row moved below the Danger-zone card as a centred
+    // clay Pressable; the flow is unchanged (handleDeleteAccount).
+    expect(bundle).toMatch(/>\s*Delete account\s*</);
+    expect(bundle).toContain("handleDeleteAccount");
+    expect(bundle).toMatch(
+      /settings-bundle-delete-account-row[\s\S]{0,200}?onPress=\{handleDeleteAccount\}/,
+    );
+  });
+
+  it("the screen title is centred in the top bar (shell)", () => {
+    expect(settings).toMatch(/textAlign: "center"/);
+    expect(settings).toMatch(/<Text style=\{\[styles\.title[\s\S]*?>\s*Settings\s*<\/Text>/);
+    // The cold subtitle was removed.
+    expect(settings).not.toContain("Plan, targets, and how the app shows up.");
+  });
+});

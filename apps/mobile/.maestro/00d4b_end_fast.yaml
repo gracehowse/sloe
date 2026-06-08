@@ -14,6 +14,7 @@ name: "Interactive — End the fast started by 00d4 (cleanup)"
 - openLink: suppr:///fasting
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- tapOn: "End Fast"
+# Sloe: End fast is long-press-to-confirm; long-press ends it directly
+# (no Alert "End" button on the long-press path).
+- longPressOn: "Hold to end fast"
 - waitForAnimationToEnd
-- tapOn: "End"

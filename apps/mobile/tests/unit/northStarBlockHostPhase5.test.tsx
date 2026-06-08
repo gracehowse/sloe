@@ -11,11 +11,24 @@
  */
 
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { NorthStarBlockHost } from "../../components/today/NorthStarBlockHost";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { NorthStarRecipe } from "@suppr/shared/nutrition/northStarSuggestion";
+
+// The NorthStar render path reads ONE flag — `today_meals_figma_654` (in
+// `NorthStarBlock`). Default it ON (the production default: Figma 654:2 hero),
+// matching how these tests ran against the real module; the why-line test
+// flips it OFF to reach the legacy hero where the detailed why-line lives.
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn((flag: string) => flag === "today_meals_figma_654"),
+  isFeatureDisabled: vi.fn(() => false),
+}));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
@@ -66,6 +79,13 @@ const lib6: readonly NorthStarRecipe[] = Array.from({ length: 6 }, (_, i) => ({
 }));
 
 describe("NorthStarBlockHost branching", () => {
+  beforeEach(() => {
+    // Reset to the production default (Figma 654:2 hero) before each test.
+    vi.mocked(isFeatureEnabled).mockImplementation(
+      (flag: string) => flag === "today_meals_figma_654",
+    );
+  });
+
   it("renders nothing when viewMode='week'", () => {
     const tree = render(
       <NorthStarBlockHost
@@ -224,6 +244,9 @@ describe("NorthStarBlockHost branching", () => {
     // the protein variants) below the title so the user sees WHICH
     // macro the algorithm is fitting. Pre-fix, only the band chip
     // ("Close fit") rendered, which read as black-box.
+    // The detailed why-line lives in the LEGACY hero — the Figma 654:2 hero
+    // uses a generic "Fits your day" badge — so force the legacy branch.
+    vi.mocked(isFeatureEnabled).mockReturnValue(false);
     const tree = render(
       <NorthStarBlockHost
         viewMode="day"

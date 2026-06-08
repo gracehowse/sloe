@@ -5,42 +5,51 @@ import { supabase } from "../../lib/supabase/browserClient";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { Icons } from "./ui/icons";
 import {
-  FASTING_MILESTONES,
+  FASTING_WINDOW_PRESETS,
+  fastingWindowLabel,
   formatProjectedEndTime,
-  selectUpcomingMilestones,
 } from "../../lib/fasting/milestones";
+import {
+  FASTING_STAGES,
+  fastingStageAtHours,
+  fastingStageBarFraction,
+} from "../../lib/fasting/stages";
+import { fastingStageNarrative } from "../../lib/nutrition/fastingStageNarrative";
 
 type FastingSession = { start: string; end: string | null };
 
 /**
- * Suppr web Fasting — Zero / Apple-Health-bar expansion (2026-05-14).
+ * Suppr web Fasting — SLOE DS migration (2026-06-07, Figma 305:2).
  *
- * Premium-bar audit (`docs/planning/premium-bar-systematic-followups-2026-05-12.md`
- * line 456) flagged the web fasting surface as a thin MVP next to the
- * mobile screen. This rewrite brings web up to the same trust posture:
+ * Reskins the legacy indigo fasting timer onto the Sloe design system to
+ * match Figma frame `305:2` (D5 fasting timer) and the Stitch-Sloe
+ * prototype (`docs/prototypes/stitch-sloe/fasting.html`):
  *
- *   1. SVG progress ring (0→2π sweep, same geometry as mobile).
- *   2. Body-state milestone chips (8h Glycogen, 12h Ketosis,
- *      16h Deep fast), only showing milestones the user hasn't hit yet,
- *      capped by their chosen fast window. Logic lives in
- *      `src/lib/fasting/milestones.ts` so it's unit-testable without
- *      RTL, and re-usable from mobile if/when we port the chips there.
- *   3. Projected end time below the ring (start + fast window).
- *   4. History of the last 5 completed fasts (was already present;
- *      kept and visually polished to the new card geometry).
- *   5. Not-fasting landing — Timer glyph, "Fast when you're ready"
- *      headline, quick-start chips (16:8 / 18:6 / Custom) matching the
- *      mobile landing card.
+ *   1. Plum serif heading + preset pills (frost-mist track / plum-filled
+ *      selected). Presets are all five windows incl. OMAD (ENG-922).
+ *   2. 248px clay progress ring on a frost-mist (`--ring-bg`) track, with
+ *      a flame "Fat burning" stage chip + serif elapsed numeral +
+ *      "elapsed · X left" sub-line inside.
+ *   3. "Fasting stages" cream slab — a horizontal Fed → Fat burning →
+ *      Ketosis → Deep stage bar (shared `src/lib/fasting/stages.ts`).
+ *   4. Started / Goal cream slab.
+ *   5. Clay "End fast" pill.
+ *   6. Italic serif stage-narrative quote below the button.
+ *   7. Not-fasting landing — moon glyph + "Fast when you're ready" +
+ *      one-tap quick-start chips.
+ *   8. History of recent completed fasts (kept; reskinned to the Sloe
+ *      slab geometry).
  *
- * Trust posture (per `_project-context.md`):
- *   - Milestones are descriptive ("Glycogen", "Ketosis"), never
- *     prescriptive. No "you must fast longer to lose weight" copy.
- *   - Past days = past tense; the live timer renders in present tense.
+ * Colour: every value sources a Sloe token (`--accent-primary` = clay,
+ * `--foreground-brand` = plum, `--ring-bg` = frost-mist, `--card` =
+ * surface-card, `--success` = sage). No hardcoded indigo. The data
+ * contract is unchanged — `profiles.fasting_window` + `fasting_sessions`,
+ * read + written by mobile (`apps/mobile/app/fasting.tsx`) too, so a fast
+ * started on either platform shows live on the other.
  *
- * Data contract is unchanged: `profiles.fasting_window` (e.g. "16:8")
- * + `profiles.fasting_sessions` (array of `{start, end}`). Mobile
- * (`apps/mobile/app/fasting.tsx`) reads and writes the same fields,
- * so a fast started on either platform shows up live on the other.
+ * Trust posture (`_project-context.md`): stages + narrative are
+ * descriptive, never prescriptive. Past = past tense; live timer =
+ * present tense.
  */
 
 function parseFastingWindow(window: string): { fastHours: number; eatHours: number } {
@@ -62,20 +71,19 @@ function formatDuration(ms: number): { hours: number; minutes: number; display: 
   return { hours: h, minutes: m, display: `${pad(h)}:${pad(m)}:${pad(s)}` };
 }
 
-/** Window presets — kept in sync with mobile (`apps/mobile/app/fasting.tsx`). */
-const WINDOW_PRESETS = ["16:8", "18:6", "20:4", "14:10"] as const;
+/** Window presets — shared with mobile via `FASTING_WINDOW_PRESETS`. */
 const MAX_SESSIONS = 90;
 
-// Ring geometry — same proportions as the mobile SVG ring so the two
-// surfaces feel like the same product. 220px outer / 14px stroke
-// matches mobile's RING_SIZE + STROKE constants.
-const RING_SIZE = 220;
+// Ring geometry — Sloe 305:2 (248px outer / 14px stroke). Matches the
+// mobile SVG ring so the two surfaces feel like the same product.
+const RING_SIZE = 248;
 const STROKE = 14;
 const RADIUS = (RING_SIZE - STROKE) / 2;
 const CIRC = 2 * Math.PI * RADIUS;
 
 export function FastingTimer() {
-  const TimerIcon = Icons.timer;
+  const FlameIcon = Icons.calories;
+  const MoonIcon = Icons.darkMode;
   const { authedUserId } = useAuthSession();
   const [fastingWindow, setFastingWindow] = useState("16:8");
   const [sessions, setSessions] = useState<FastingSession[]>([]);
@@ -91,6 +99,7 @@ export function FastingTimer() {
   const fastMs = fastHours * 3600_000;
 
   const elapsed = activeFast ? now - new Date(activeFast.start).getTime() : 0;
+  const elapsedHours = elapsed / 3600_000;
   const pct = activeFast && fastMs > 0 ? Math.min(1, elapsed / fastMs) : 0;
   const remaining = Math.max(0, fastMs - elapsed);
   const isFasting = !!activeFast;
@@ -184,10 +193,9 @@ export function FastingTimer() {
 
   /**
    * Quick-start a fast with a specific preset in one tap. Sets the
-   * fasting window AND starts a fast immediately — mirrors the
-   * mobile `quickStartFast` helper. Used by the landing card chips
-   * so the most common journey (16:8 / 18:6) is a single click
-   * rather than the two-step "pick window then tap Start Fast".
+   * fasting window AND starts a fast immediately — mirrors the mobile
+   * `quickStartFast` helper. Used by the landing card chips so the most
+   * common journey is a single click.
    */
   const quickStartFast = useCallback(
     (w: string) => {
@@ -198,27 +206,6 @@ export function FastingTimer() {
     },
     [sessions, persist],
   );
-
-  /** Pick a custom preset via a window.prompt fallback — keeps the
-   *  landing chip simple while still letting users reach 20:4 / 14:10
-   *  without scrolling to the preset row below. */
-  const openCustomWindowPicker = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const choice = window.prompt(
-      "Pick a fasting window — enter one of: 20:4, 14:10",
-      "20:4",
-    );
-    if (!choice) return;
-    const normalised = choice.trim();
-    if (
-      normalised === "20:4" ||
-      normalised === "14:10" ||
-      normalised === "16:8" ||
-      normalised === "18:6"
-    ) {
-      quickStartFast(normalised);
-    }
-  }, [quickStartFast]);
 
   const recentCompleted = useMemo(
     () =>
@@ -232,10 +219,14 @@ export function FastingTimer() {
   const dur = formatDuration(elapsed);
   const remainingDur = formatDuration(remaining);
 
-  // Upcoming milestones chip list — empty list collapses the row.
-  const milestones = useMemo(
-    () => (isFasting ? selectUpcomingMilestones(elapsed, fastHours) : FASTING_MILESTONES.filter((m) => m.hours <= fastHours)),
-    [isFasting, elapsed, fastHours],
+  // Current fasting stage + bar fraction (Sloe stages bar, 305:2).
+  const { index: stageIndex } = useMemo(
+    () => fastingStageAtHours(elapsedHours),
+    [elapsedHours],
+  );
+  const stageBarFraction = useMemo(
+    () => fastingStageBarFraction(elapsedHours, fastHours),
+    [elapsedHours, fastHours],
   );
 
   const projectedEnd = useMemo(
@@ -246,7 +237,7 @@ export function FastingTimer() {
   if (loading) {
     return (
       <div
-        className="rounded-xl border border-border bg-card p-5 animate-pulse"
+        className="rounded-2xl border border-border bg-card p-5 animate-pulse"
         aria-busy="true"
       >
         <div className="h-4 w-24 bg-muted rounded mb-3" />
@@ -255,240 +246,262 @@ export function FastingTimer() {
     );
   }
 
-  const ringColor = isComplete ? "var(--success)" : "var(--primary)";
+  const ringColor = isComplete ? "var(--success)" : "var(--accent-primary)";
   const trackColor = "var(--ring-bg)";
   const strokeDashoffset = CIRC * (1 - pct);
 
   return (
-    <div
-      className="rounded-xl border border-border bg-card p-5 space-y-5"
-      data-testid="fasting-timer"
-    >
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Intermittent Fasting</h3>
-        <div className="flex gap-1" data-testid="fasting-window-picker">
-          {WINDOW_PRESETS.map((w) => (
+    <div className="space-y-7" data-testid="fasting-timer">
+      {/* Preset pills — frost-mist track, plum-filled selected. Disabled
+          while a fast is active (changing the window mid-fast would
+          silently rebase the goal). All five windows incl. OMAD. */}
+      <div className="flex justify-center gap-2 flex-wrap" data-testid="fasting-window-picker">
+        {FASTING_WINDOW_PRESETS.map((w) => {
+          const selected = fastingWindow === w;
+          return (
             <button
               key={w}
               type="button"
               onClick={() => changeWindow(w)}
               disabled={isFasting}
-              aria-pressed={fastingWindow === w}
-              aria-label={`Set fasting window to ${w}`}
-              className={`px-2 py-1 text-xs rounded-md font-medium transition-colors tabular-nums ${
-                fastingWindow === w
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent"
+              aria-pressed={selected}
+              aria-label={`Set fasting window to ${fastingWindowLabel(w)}`}
+              className={`font-[family-name:var(--font-label)] text-[13px] font-semibold px-4 py-2 rounded-full transition-colors tabular-nums ${
+                selected
+                  ? "bg-[var(--foreground-brand)] text-white"
+                  : "bg-card border border-border text-muted-foreground hover:bg-muted/40"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {w}
+              {fastingWindowLabel(w)}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {isFasting ? (
-        <div className="flex flex-col items-center gap-4">
-          {/* SVG progress ring — same 0→2π sweep as the mobile ring,
-              starting at 12 o'clock (rotated -90°). Track behind the
-              progress arc uses the shared `--ring-bg` token so dark
-              mode picks up the correct contrast. */}
-          <div
-            className="relative"
-            style={{ width: RING_SIZE, height: RING_SIZE }}
-            role="img"
-            aria-label={
-              isComplete
-                ? `Fast complete after ${dur.hours} hours ${dur.minutes} minutes`
-                : `Fasting for ${dur.hours} hours ${dur.minutes} minutes, ${remainingDur.hours} hours ${remainingDur.minutes} minutes remaining`
-            }
-            data-testid="fasting-ring"
-          >
-            <svg
-              width={RING_SIZE}
-              height={RING_SIZE}
-              viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-              aria-hidden="true"
+        <>
+          {/* SVG progress ring — clay arc on frost-mist track, 0→2π sweep
+              from 12 o'clock. */}
+          <section className="flex flex-col items-center">
+            <div
+              className="relative"
+              style={{ width: RING_SIZE, height: RING_SIZE }}
+              role="img"
+              aria-label={
+                isComplete
+                  ? `Fast complete after ${dur.hours} hours ${dur.minutes} minutes`
+                  : `Fasting for ${dur.hours} hours ${dur.minutes} minutes, ${remainingDur.hours} hours ${remainingDur.minutes} minutes remaining`
+              }
+              data-testid="fasting-ring"
             >
-              <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RADIUS}
-                stroke={trackColor}
-                strokeWidth={STROKE}
-                fill="none"
-              />
-              <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RADIUS}
-                stroke={ringColor}
-                strokeWidth={STROKE}
-                fill="none"
-                strokeDasharray={CIRC}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap={pct < 0.02 ? "butt" : "round"}
-                transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-                style={{ transition: "stroke-dashoffset 600ms cubic-bezier(0.16, 1, 0.3, 1)" }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p
-                className="text-4xl font-extrabold tabular-nums text-foreground"
-                data-testid="fasting-elapsed"
+              <svg
+                width={RING_SIZE}
+                height={RING_SIZE}
+                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+                aria-hidden="true"
               >
-                {dur.hours}:{String(dur.minutes).padStart(2, "0")}
-              </p>
-              <p
-                className="text-xs font-semibold uppercase tracking-wider mt-1"
-                style={{ color: isComplete ? "var(--success)" : "var(--primary)" }}
-              >
-                {isComplete ? "Fast complete" : "Fasting"}
-              </p>
+                <circle
+                  cx={RING_SIZE / 2}
+                  cy={RING_SIZE / 2}
+                  r={RADIUS}
+                  stroke={trackColor}
+                  strokeWidth={STROKE}
+                  fill="none"
+                />
+                <circle
+                  cx={RING_SIZE / 2}
+                  cy={RING_SIZE / 2}
+                  r={RADIUS}
+                  stroke={ringColor}
+                  strokeWidth={STROKE}
+                  fill="none"
+                  strokeDasharray={CIRC}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap={pct < 0.02 ? "butt" : "round"}
+                  transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+                  style={{ transition: "stroke-dashoffset 600ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {/* Current-stage chip — clay flame for the active body
+                    state (descriptive, not prescriptive). */}
+                <span
+                  className="inline-flex items-center gap-1.5 bg-primary/10 text-primary font-[family-name:var(--font-label)] text-[11px] font-semibold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full mb-2"
+                  data-testid="fasting-stage-chip"
+                >
+                  <FlameIcon className="w-3.5 h-3.5" aria-hidden />
+                  {FASTING_STAGES[stageIndex].label}
+                </span>
+                <span
+                  className="font-[family-name:var(--font-headline)] text-5xl leading-none tabular-nums text-foreground"
+                  data-testid="fasting-elapsed"
+                >
+                  {dur.hours}:{String(dur.minutes).padStart(2, "0")}
+                </span>
+                <span className="font-[family-name:var(--font-body)] text-[13px] text-muted-foreground mt-1 tabular-nums">
+                  {isComplete
+                    ? "elapsed · goal reached"
+                    : `elapsed · ${remainingDur.hours}:${String(remainingDur.minutes).padStart(2, "0")} left`}
+                </span>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Start / Goal — Goal is the projected end time. Mirrors the
-              mobile screen's Started/Goal pair. */}
-          <div className="flex items-center justify-around w-full max-w-xs">
-            <div className="text-center">
-              <p className="text-base font-bold tabular-nums text-foreground">
+          {/* Fasting stages bar — Fed → Fat burning → Ketosis → Deep. */}
+          <section
+            className="bg-card border border-border rounded-2xl p-5"
+            data-testid="fasting-stages"
+          >
+            <p className="font-[family-name:var(--font-label)] text-[11px] uppercase tracking-[0.08em] text-muted-foreground mb-4">
+              Fasting stages
+            </p>
+            <div className="relative h-1.5 rounded-full bg-border mb-1">
+              <div
+                className="absolute left-0 top-0 h-1.5 rounded-full bg-primary"
+                style={{ width: `${stageBarFraction * 100}%` }}
+              />
+              {FASTING_STAGES.map((stage, i) => {
+                const pos = (i / (FASTING_STAGES.length - 1)) * 100;
+                const reached = i <= stageIndex;
+                return (
+                  <span
+                    key={stage.id}
+                    className={`absolute -top-0.5 w-2.5 h-2.5 rounded-full border-2 border-card ${
+                      reached ? "bg-primary" : "bg-border"
+                    }`}
+                    style={{ left: `calc(${pos}% - 5px)` }}
+                  />
+                );
+              })}
+              {/* Current-position marker. */}
+              <span
+                className="absolute -top-1 w-4 h-4 rounded-full bg-primary border-2 border-card shadow-sm"
+                style={{ left: `calc(${stageBarFraction * 100}% - 8px)` }}
+              />
+            </div>
+            <div className="flex justify-between font-[family-name:var(--font-label)] text-[10px] text-muted-foreground mt-2">
+              {FASTING_STAGES.map((stage, i) => (
+                <span
+                  key={stage.id}
+                  className={i === stageIndex ? "text-primary font-semibold" : ""}
+                >
+                  {stage.label}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          {/* Started / Goal slab. */}
+          <section className="bg-card border border-border rounded-2xl p-5 flex">
+            <div className="flex-1 text-center">
+              <p className="font-[family-name:var(--font-label)] text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+                Started
+              </p>
+              <p className="font-[family-name:var(--font-headline)] text-lg text-foreground mt-1 tabular-nums">
                 {new Date(activeFast.start).toLocaleTimeString(undefined, {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">
-                Started
-              </p>
             </div>
-            <div className="text-center" data-testid="fasting-projected-end">
-              <p
-                className="text-base font-bold tabular-nums"
-                style={{ color: "var(--success)" }}
-              >
+            <div className="w-px bg-border" />
+            <div className="flex-1 text-center" data-testid="fasting-projected-end">
+              <p className="font-[family-name:var(--font-label)] text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+                Goal
+              </p>
+              <p className="font-[family-name:var(--font-headline)] text-lg text-foreground mt-1 tabular-nums">
                 {projectedEnd || "—"}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">
-                Ends at
-              </p>
             </div>
-          </div>
+          </section>
 
-          {/* Upcoming milestones — chips render only milestones still
-              ahead of the current elapsed time, capped by the user's
-              fast window. Empty list collapses the row entirely. */}
-          {milestones.length > 0 && (
-            <div
-              className="flex flex-wrap gap-2 justify-center"
-              data-testid="fasting-milestones"
-              aria-label="Upcoming fasting milestones"
-            >
-              {milestones.map((m) => (
-                <span
-                  key={m.hours}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground tabular-nums"
-                  data-testid={`fasting-milestone-${m.hours}h`}
-                >
-                  <span className="text-foreground">{m.hours}h</span>
-                  <span className="opacity-70">·</span>
-                  <span>{m.label}</span>
-                </span>
-              ))}
-            </div>
-          )}
-
+          {/* End fast — clay pill (Complete keeps sage when goal met). */}
           <button
             type="button"
             onClick={endFast}
             aria-label={isComplete ? "Complete fast" : "End fast early"}
-            className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+            data-testid="fasting-end-button"
+            className={`w-full font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 transition-opacity hover:opacity-90 ${
               isComplete
-                ? "bg-[var(--success)] text-white hover:opacity-90"
-                : "border border-border bg-transparent text-muted-foreground hover:bg-muted"
+                ? "bg-[var(--success)] text-white"
+                : "bg-primary text-primary-foreground"
             }`}
           >
-            {isComplete ? "Complete Fast" : "End Fast Early"}
+            {isComplete ? "Complete fast" : "End fast"}
           </button>
-        </div>
+
+          {/* Stage narrative — italic serif quote. Descriptive, hedged. */}
+          {!isComplete && (
+            <p
+              className="font-[family-name:var(--font-headline)] italic text-base text-foreground text-center px-6"
+              data-testid="fasting-stage-narrative"
+            >
+              {fastingStageNarrative(elapsed)}
+            </p>
+          )}
+        </>
       ) : (
-        // Not-fasting landing — Timer glyph + headline + quick-start
-        // chips. Mirrors `apps/mobile/app/fasting.tsx` fasting-landing.
-        <div
-          className="flex flex-col items-center text-center py-2"
+        // Not-fasting landing — moon glyph + headline + quick-start chips.
+        // Mirrors `apps/mobile/app/fasting.tsx` fasting-landing.
+        <section
+          className="flex flex-col items-center text-center"
           data-testid="fasting-landing"
         >
           <div
-            className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
+            className="w-24 h-24 rounded-full flex items-center justify-center mb-4 bg-[var(--ring-bg)]"
             aria-hidden="true"
           >
-            <TimerIcon
-              className="w-14 h-14"
-              style={{ color: "var(--primary)" }}
-              strokeWidth={1.5}
-            />
+            <MoonIcon className="w-12 h-12 text-[var(--foreground-brand)]" strokeWidth={1.5} />
           </div>
-          <h4 className="text-xl font-extrabold text-foreground mb-2">
+          <h4 className="font-[family-name:var(--font-headline)] text-2xl text-foreground-brand mb-2">
             Fast when you&apos;re ready
           </h4>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-sm">
+          <p className="font-[family-name:var(--font-body)] text-sm text-muted-foreground leading-relaxed mb-4 max-w-sm">
             A fasting window is just a way to structure when you eat. Start one
             whenever you like.
           </p>
-          <p className="text-xs text-muted-foreground mb-4 tabular-nums">
-            {fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat
+          <p className="font-[family-name:var(--font-body)] text-xs text-muted-foreground mb-5 tabular-nums">
+            {fastingWindowLabel(fastingWindow)} — {fastHours}h fast, {eatHours}h eat
           </p>
 
           <button
             type="button"
             onClick={startFast}
-            className="w-full max-w-xs py-2.5 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            data-testid="fasting-landing-start"
+            className="w-full max-w-xs font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
-            Start {fastingWindow} Fast
+            Start {fastingWindowLabel(fastingWindow)} fast
           </button>
 
-          {/* Quick-start chips — one tap = set window + start fast.
-              16:8 + 18:6 cover the two most-common presets; Custom
-              prompts for the remaining 20:4 / 14:10 options so users
-              don't have to dig into the preset row. */}
+          {/* Quick-start chips — one tap = set window + start fast. */}
           <div
-            className="flex gap-2 mt-4 justify-center"
+            className="flex gap-2 mt-4 justify-center flex-wrap"
             data-testid="fasting-landing-chips"
           >
-            {[
-              { label: "16:8", onClick: () => quickStartFast("16:8") },
-              { label: "18:6", onClick: () => quickStartFast("18:6") },
-              { label: "Custom", onClick: openCustomWindowPicker },
-            ].map((chip) => (
+            {(["16:8", "18:6", "23:1"] as const).map((w) => (
               <button
-                key={chip.label}
+                key={w}
                 type="button"
-                onClick={chip.onClick}
-                aria-label={
-                  chip.label === "Custom"
-                    ? "Pick a custom fasting window"
-                    : `Start a ${chip.label} fast`
-                }
-                data-testid={`fasting-landing-chip-${chip.label}`}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-card text-muted-foreground hover:bg-muted transition-colors tabular-nums"
+                onClick={() => quickStartFast(w)}
+                aria-label={`Start a ${fastingWindowLabel(w)} fast`}
+                data-testid={`fasting-landing-chip-${fastingWindowLabel(w)}`}
+                className="font-[family-name:var(--font-label)] px-4 py-2 rounded-full text-[13px] font-semibold border border-border bg-card text-muted-foreground hover:bg-muted/40 transition-colors tabular-nums"
               >
-                {chip.label}
+                {fastingWindowLabel(w)}
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Recent fasts — last 5 completed. Empty state collapses the
-          section entirely (a brand-new fasting user shouldn't see a
-          empty history block). */}
+          section entirely. */}
       {recentCompleted.length > 0 && (
-        <div
-          className="space-y-2 pt-4 border-t border-border"
+        <section
+          className="bg-card border border-border rounded-2xl p-5 space-y-2"
           data-testid="fasting-history"
         >
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="font-[family-name:var(--font-label)] text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
             Recent fasts
           </p>
           <ul className="space-y-1">
@@ -503,13 +516,13 @@ export function FastingTimer() {
                   key={s.start}
                   className="flex items-center justify-between text-xs py-1"
                 >
-                  <span className="text-muted-foreground">
+                  <span className="font-[family-name:var(--font-body)] text-muted-foreground">
                     {start.toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
                     })}
                   </span>
-                  <span className="font-semibold text-foreground tabular-nums">
+                  <span className="font-[family-name:var(--font-body)] font-semibold text-foreground tabular-nums">
                     {fd.hours}h {String(fd.minutes).padStart(2, "0")}m
                     <span className="font-normal text-muted-foreground ml-2">
                       / {rowGoalHours}h
@@ -519,7 +532,7 @@ export function FastingTimer() {
               );
             })}
           </ul>
-        </div>
+        </section>
       )}
     </div>
   );

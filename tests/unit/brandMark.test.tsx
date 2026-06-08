@@ -1,9 +1,11 @@
 /**
- * Brand-mark canonical contract (ENG-797 superseded, 2026-06-04 Sloe wordmark).
+ * Brand-mark canonical contract (ENG-797 superseded, 2026-06-04 Sloe wordmark;
+ * casing updated 2026-06-08 to match Figma `654:2`).
  *
- * `SupprMark` / `SupprPlateMark` always render the lowercase Sloe wordmark in
- * Newsreader + plum. The `design_system_brandmark` flag and plate-ring motif
- * are retired; historical `Suppr*` export names remain for call-site stability.
+ * `SupprMark` / `SupprPlateMark` always render the "Sloe" wordmark (capital S)
+ * in Newsreader semibold + plum. The `design_system_brandmark` flag and
+ * plate-ring motif are retired; historical `Suppr*` export names remain for
+ * call-site stability.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
@@ -22,7 +24,7 @@ describe("SupprMark — Sloe wordmark (ENG-797 retired)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
     expect(mark).toHaveAttribute("data-slot", "sloe-mark");
-    expect(mark.textContent).toBe("sloe");
+    expect(mark.textContent).toBe("Sloe");
     expect(mark.querySelector("svg")).toBeNull();
   });
 
@@ -44,7 +46,7 @@ describe("SupprPlateMark — deprecated alias", () => {
 describe("SupprPlateWordmark — deprecated alias", () => {
   it("composes the Sloe wordmark lockup", () => {
     render(<SupprPlateWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
+    expect(screen.getByText("Sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 });

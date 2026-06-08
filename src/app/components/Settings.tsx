@@ -519,7 +519,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       }
       toast.success("Targets reset to defaults", {
         description:
-          "Your calorie and macro goals are back to Suppr defaults.",
+          "Your calorie and macro goals are back to Sloe defaults.",
         action: {
           label: "Edit targets",
           onClick: () => {
@@ -714,8 +714,21 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           rest of the section headings use. */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-muted rounded-xl">
-            <Icons.settings className="w-5 h-5 text-muted-foreground" />
+          {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
+              a plum-tinted plate (`--foreground-brand` at 10%), not the
+              neutral grey `bg-muted` box, so the icon reads in step with
+              the plum serif title rather than as orphaned grey chrome. */}
+          <div
+            className="p-2 rounded-xl"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
+            }}
+          >
+            <Icons.settings
+              className="w-5 h-5"
+              style={{ color: "var(--foreground-brand)" }}
+            />
           </div>
           <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
         </div>
@@ -743,24 +756,28 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           {profileAvatarInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-foreground leading-tight truncate">
+          {/* Sloe DS (Figma 09 Settings `335:2`): the user's name is an
+              editorial identity header — it reads in the Newsreader serif
+              display face (plum-ink), not sans. */}
+          <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
             {profileDisplayLabel}
           </p>
-          {/* Audit 2026-04-30 visual-qa P1 #9 — when "Free tier · email"
-              shared a single truncated line, the tier label got chopped
-              before the email did, leaving "Free t…". Split into two
-              lines: tier label is short and never needs truncating;
-              email gets its own line with `truncate` so the dot-and-tld
-              doesn't run under the avatar. */}
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase mt-1 ${
+          {/* Plan label — Sloe DS (Figma `335:2`) shows "Free plan" /
+              "Pro plan" under the name. Pro keeps the clay-tint pill (a
+              reward signal); Free reads as a quiet grey label. The
+              `profileTierLabel` source ("Pro" / "Free") is pinned by
+              settingsProfileHeaderCardParity.test.ts. Email gets its own
+              line with `truncate` so the dot-and-tld doesn't run under
+              the avatar (audit 2026-04-30 visual-qa P1 #9). */}
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
             userTier === "pro"
               ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
           }`}>
-            {profileTierLabel}
+            {profileTierLabel} plan
           </span>
           {authEmail ? (
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate mt-1">
               {authEmail}
             </p>
           ) : null}
@@ -775,6 +792,35 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <Icons.forward className="w-4 h-4" aria-hidden />
         </Link>
       </SupprCard>
+
+      {/* Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2` /
+          `335:23`). Full-width soft peach/clay-tint rounded card: sparkle
+          + "Sloe Pro" (clay) on the left, "Manage" (clay) on the right.
+          Mirrors the mobile banner in
+          `apps/mobile/components/settings/SettingsBundleContent.tsx`. Free
+          users route to /pricing (web upgrade); Pro users route to
+          /account/billing (the Stripe portal shell). The detailed plan
+          state + manage/cancel flow still live in the "Your plan" card +
+          SubscriptionCard below — this banner is the at-a-glance entry. */}
+      <Link
+        href={userTier === "pro" ? "/account/billing" : "/pricing"}
+        data-testid="settings-sloe-pro-banner"
+        aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}
+        className="mb-6 flex items-center justify-between rounded-[var(--radius-card-lg)] px-4 py-4 transition-colors"
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--primary) 16%, transparent)",
+        }}
+      >
+        <span className="flex items-center gap-2.5">
+          <Icons.sparkles className="w-[18px] h-[18px]" style={{ color: "var(--accent-primary-solid)" }} aria-hidden />
+          <span className="text-[15px] font-semibold" style={{ color: "var(--accent-primary-solid)" }}>
+            Sloe Pro
+          </span>
+        </span>
+        <span className="text-sm font-semibold" style={{ color: "var(--accent-primary-solid)" }}>
+          Manage
+        </span>
+      </Link>
 
       {/* Current plan */}
       <SupprCard padding="lg" radius="xl" className="mb-6">
@@ -1366,7 +1412,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               different (no bundle, no search) so the lightest-touch
               parity is a single Link inside the existing Preferences
               card. /fasting renders the FastingTimer with the
-              16:8 / 18:6 / 20:4 / 14:10 preset chips already. */}
+              16:8 / 18:6 / 20:4 / 14:10 / OMAD preset chips already. */}
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Intermittent fasting</label>
             <Link
@@ -1376,7 +1422,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             >
               <p className="font-medium">Fasting timer & window</p>
               <p className="text-xs mt-0.5 text-muted-foreground">
-                Pick your fast / eat window (16:8, 18:6, 20:4, 14:10), start a fast, see history.
+                Pick your fast / eat window (16:8, 18:6, 20:4, 14:10, OMAD), start a fast, see history.
               </p>
             </Link>
           </div>
@@ -1514,7 +1560,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             data-testid="settings-whats-new-link"
             className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
-            What&rsquo;s new in Suppr
+            What&rsquo;s new in Sloe
           </Link>
         </div>
       </SupprCard>
@@ -1902,7 +1948,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         open={clearLocalOpen}
         onOpenChange={setClearLocalOpen}
         title="Delete local data & sign out?"
-        description="This will sign you out and remove Suppr data stored on this device."
+        description="This will sign you out and remove Sloe data stored on this device."
         confirmLabel="Delete & sign out"
         onConfirm={async () => {
           for (const k of LOCAL_CLEAR_KEYS) {

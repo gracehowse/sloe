@@ -31,7 +31,10 @@ describe("Today hero layout parity", () => {
     expect(WEB_STATS).toMatch(/data-testid="today-hero-desktop"/);
     expect(WEB_STATS).toMatch(/flex flex-col items-center/);
     expect(WEB_STATS).toMatch(/data-testid="today-hero-stat-row"/);
-    expect(WEB_STATS).toMatch(/grid-cols-4/);
+    // Sloe redesign (`654:2`): the stat row is the 3-up Goal / Eaten / Bonus
+    // legend (was a 4-up Logged/Target/Burned/Net grid pre-Sloe). The frame
+    // shows exactly three stats under the ring.
+    expect(WEB_STATS).toMatch(/grid-cols-3/);
     expect(WEB_STATS).not.toMatch(/grid-cols-\[auto_1fr\]/);
   });
 

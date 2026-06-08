@@ -42,7 +42,7 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
     it("uses px-3.5 (14px) horizontal padding — meets the 14pt brief floor", () => {
       // The pill className must include `px-3.5`; the prior `px-3`
       // (12px) is what the tester saw squished.
-      expect(WEB_SRC).toMatch(/shrink-0 inline-flex items-center px-3\.5 py-1\.5 min-h-8/);
+      expect(WEB_SRC).toMatch(/shrink-0 inline-flex items-center px-3\.5 py-2 min-h-8/);
     });
 
     it("pins min-h-8 (32px) — matches mobile minHeight floor for parity", () => {
@@ -56,17 +56,18 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
       // Without `items-center`, `min-h-8` would just enlarge the box
       // and leave the text top-aligned. The combination is the actual
       // fix for the squish.
-      expect(WEB_SRC).toMatch(/inline-flex items-center px-3\.5 py-1\.5 min-h-8/);
+      expect(WEB_SRC).toMatch(/inline-flex items-center px-3\.5 py-2 min-h-8/);
     });
 
     it("does NOT regress to the squished px-3 py-1.5 (no min-h) baseline", () => {
       // Defensive: if a future refactor collapses the className, this
       // assertion catches it. We look specifically inside the pill
       // map to keep the check tight.
-      const pillRegion = WEB_SRC.match(/LIBRARY_FILTER_PILLS\.map[\s\S]+?\}\)\}/);
+      const pillRegion = WEB_SRC.match(/LIBRARY_CATEGORY_PILLS\.map[\s\S]+?\}\)\}/);
       expect(pillRegion).not.toBeNull();
       // The squished baseline was `px-3 py-1.5` with no min-h. The
-      // new floor is `px-3.5 py-1.5 min-h-8`. Reject the old shape.
+      // new floor is `px-3.5 py-2 min-h-8` (ENG-921 category pills bumped
+      // py-1.5 → py-2). Reject the old shape.
       expect(pillRegion?.[0]).not.toMatch(/\bpx-3 py-1\.5 rounded-full/);
     });
   });

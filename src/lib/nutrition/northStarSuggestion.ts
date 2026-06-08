@@ -45,6 +45,13 @@ export interface NorthStarRecipe {
   thumbnail?: string;
   /** Optional slot tags ("breakfast" | "lunch" | "dinner" | "snack"). */
   mealType?: string | readonly string[] | null;
+  /**
+   * Optional cook time in minutes — surfaced on the Figma `654:2`
+   * hero meta row ("· {n} min"). Additive + optional so existing
+   * callers stay source-compatible; absent for recipes with no
+   * recorded time.
+   */
+  cookTimeMin?: number | null;
 }
 
 export interface NorthStarRemaining {
@@ -175,6 +182,24 @@ export function ctaForSlot(slot: NorthStarSlot["slot"] | null): string {
       return "Cook it →";
     default:
       return "Log it";
+  }
+}
+
+/** Figma `654:2` recipe-hero overline — "Dinner suggestion", etc. */
+export function slotSuggestionEyebrow(
+  slot: NorthStarSlot["slot"] | null,
+): string {
+  switch (slot) {
+    case "breakfast":
+      return "Breakfast suggestion";
+    case "lunch":
+      return "Lunch suggestion";
+    case "snack":
+      return "Snack suggestion";
+    case "dinner":
+      return "Dinner suggestion";
+    default:
+      return "Meal suggestion";
   }
 }
 

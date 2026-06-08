@@ -36,6 +36,26 @@ implementation.
   web in the existing day-totals row, so web isn't behind on the
   user-meaningful information.
 
+## Update — Sloe day-row macro polish (2026-06-07)
+
+The mobile per-day macro line (the vertical-stacked equivalent of the
+web grid's P/C/F delta chips) was re-skinned to the Sloe calm rhythm.
+The old inline run `P 0g ⁻¹⁰¹  C 0g ⁻⁶⁸  F 0g ⁻²⁵  Fi 0g ⁻¹⁵` jammed
+four coloured letter+value+gap tokens into one wrapping line — it read
+as clutter and was hard to scan across a 7-day stack.
+
+It now renders as `apps/mobile/components/plan/PlanDayMacroSummary.tsx`:
+four evenly-spread cream cells (one per macro), each with the macro
+letter + grams on top (coloured to the macro hue) and a quieter status
+caption below — a sage "On track" check inside the ±15% close band, else
+a signed amber gap (`+N g` over / `−N g` under, never red). The weekday
+label moved to Newsreader serif to match the "Meal plan" header.
+
+This stays an intentional divergence from web: web still renders the
+same signal as P/C/F chips inside its 7-column grid (the calm web
+treatment already in place). The two layouts differ by platform, not by
+information — same per-decision rationale as the strip itself.
+
 ## sync-enforcer note
 
 This is an intentional divergence. Sibling carve-outs:

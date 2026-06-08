@@ -54,7 +54,8 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ArrowRight, Camera, Images, Plus, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   averageConfidence,
   type AiLoggedItem,
@@ -139,6 +140,10 @@ export default function PhotoLogSheet({
   userTier = "pro",
   onUpgradeRequired,
 }: Props) {
+  // `colors` prop carries the host's Theme; the Sloe brand plum
+  // (`navPrimary`) for the serif sheet title isn't in that contract, so
+  // read it from the shared theme hook here.
+  const themeColors = useThemeColors();
   const [stage, setStage] = useState<Stage>("pick");
   const [asset, setAsset] = useState<PickedAsset | null>(null);
   const [items, setItems] = useState<PhotoLogItemRanged[]>([]);
@@ -461,8 +466,9 @@ export default function PhotoLogSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
               padding: Spacing.lg,
               paddingBottom: Spacing.xxl,
               maxHeight: "90%",
@@ -481,8 +487,11 @@ export default function PhotoLogSheet({
               }}
             >
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Camera size={IconSize.xl} color={Accent.primary} strokeWidth={2.25} />
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Photo log</Text>
+                {/* Sloe DS — photo is a Pro feature; the camera carries the
+                    damson Pro accent and the title reads in the Newsreader
+                    serif plum (`navPrimary`), matching the LogSheet header. */}
+                <Camera size={IconSize.xl} color={Accent.purple} strokeWidth={2.25} />
+                <Text style={[Type.title, { color: themeColors.navPrimary }]}>Photo log</Text>
               </View>
               <Pressable
                 onPress={onClose}

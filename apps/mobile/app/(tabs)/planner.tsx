@@ -140,6 +140,7 @@ import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
+import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -796,7 +797,7 @@ export default function PlannerScreen() {
         if (error) {
           const friendly =
             String(error).match(/network|fetch|offline/i)
-              ? "Couldn't reach Suppr. Check your connection and try again."
+              ? "Couldn't reach Sloe. Check your connection and try again."
               : `Could not load templates: ${error}`;
           Alert.alert(
             "Templates",
@@ -1326,57 +1327,83 @@ export default function PlannerScreen() {
         // installed; switching to a true gradient only requires wrapping
         // the inner content in <LinearGradient> with the same two colours
         // the prototype uses (primary 12% → fat 8%).
+        // Sloe DS — calm cream slab: warm card fill, soft xl radius, roomy
+        // padding. The state-aware serif headline + diagnosis subtitle sit
+        // on the cream with breathing room above the action row.
         summaryCard: {
-          backgroundColor: colors.backgroundSecondary,
-          borderRadius: Radius.lg,
+          backgroundColor: colors.card,
+          borderRadius: Radius.xl,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.md,
+          padding: Spacing.lg,
           marginBottom: Spacing.xs,
         },
         summaryOverline: {
           ...Type.label,
           color: colors.textTertiary,
           letterSpacing: 1.2,
-          marginBottom: 4,
+          marginBottom: Spacing.xs,
         },
         summaryTitle: {
           ...Type.headline,
+          fontSize: 20,
           // colour is applied at the call-site via `summaryTitleColor`
           // (ENG-820 state-aware tone behind `redesign_winmoment`; flag-off
           // resolves back to `colors.text`).
-          marginBottom: 4,
+          marginBottom: Spacing.xs,
         },
         summarySubtitle: {
           ...Type.caption,
           fontSize: 12,
           color: colors.textSecondary,
           lineHeight: 18,
-          marginBottom: 14,
+          marginBottom: Spacing.lg,
         },
-        summaryActions: { flexDirection: "row", gap: 8 },
+        summaryActions: { flexDirection: "row", gap: Spacing.sm },
         summaryPrimaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
           backgroundColor: Accent.primary,
-          paddingHorizontal: 14,
-          paddingVertical: 9,
-          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: 10,
+          borderRadius: Radius.lg,
         },
         summaryPrimaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
-          backgroundColor: colors.card,
+          backgroundColor: colors.background,
           borderWidth: 1,
           borderColor: colors.border,
-          paddingHorizontal: 14,
-          paddingVertical: 9,
-          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: 10,
+          borderRadius: Radius.lg,
         },
         summarySecondaryText: { color: colors.text, fontSize: 13, fontWeight: "600" },
+
+        // Sloe DS — filter chip row (plan length+start / meals). Calm cream
+        // chips with a hairline border + soft radius replace the flat grey
+        // `colors.border` fill so the row reads as quiet, tappable settings.
+        filterRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          marginBottom: Spacing.md,
+        },
+        filterChip: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+        },
+        filterChipText: { fontSize: 12.5, fontWeight: "600", color: colors.text },
 
         dayCardsScroll: {
           marginHorizontal: -Spacing.xl,
@@ -1439,7 +1466,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 10,
+          marginBottom: Spacing.sm,
           paddingHorizontal: 2,
         },
         // 2026-05-22 evening (Grace 3-C): strip per-day card chrome
@@ -1460,15 +1487,38 @@ export default function PlannerScreen() {
           paddingBottom: 6,
         },
 
+        // Sloe DS — calm per-day empty slate. Two-line hierarchy (a quiet
+        // statement + a soft next-step hint) with breathing room replaces the
+        // single dense "No slots yet — add one or regenerate." line.
+        dayEmptyState: {
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.xs,
+          paddingHorizontal: Spacing.sm,
+          gap: 2,
+        },
+        dayEmptyText: {
+          ...Type.body,
+          fontSize: 13,
+          color: colors.textSecondary,
+        },
+        dayEmptyHint: {
+          ...Type.caption,
+          fontSize: 12,
+          color: colors.textTertiary,
+          lineHeight: 16,
+        },
+
+        // Sloe DS — empty/setup cream slab. Soft xl radius + roomy padding so
+        // the "Plan your week" form reads as a calm card, not a dense panel.
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.lg,
+          borderRadius: Radius.xl,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.md,
+          padding: Spacing.lg,
           gap: Spacing.md,
         },
-        cardTitle: { ...Type.headline, fontSize: 18, color: colors.text },
+        cardTitle: { ...Type.headline, fontSize: 20, color: colors.text },
         cardDesc: { ...Type.body, color: colors.textSecondary, lineHeight: 20 },
 
         // ENG-790 — "My library is empty" sub-case + disabled-source hint.
@@ -1533,7 +1583,10 @@ export default function PlannerScreen() {
         },
         generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
-        dayTitle: { ...Type.body, fontSize: 15, fontWeight: "700", color: colors.text },
+        // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
+        // week scans as a calm editorial list of days, not a stack of bold
+        // sans labels. Matches the "Meal plan" serif tab header.
+        dayTitle: { ...Type.headline, fontSize: 18, color: colors.text },
         // Prototype port (2026-04-20) — small uppercase "TODAY" pill
         // next to the weekday label. Primary-color text, no pill
         // background — matches prototype `screens-mobile.jsx:482`.
@@ -1596,12 +1649,12 @@ export default function PlannerScreen() {
           alignItems: "center",
           justifyContent: "center",
           gap: 3,
-          paddingVertical: 6,
+          paddingVertical: 8,
           paddingHorizontal: 4,
-          borderRadius: Radius.sm,
+          borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
-          backgroundColor: colors.backgroundSecondary,
+          backgroundColor: colors.card,
         },
         addSlotChipText: {
           fontSize: 11,
@@ -2683,30 +2736,15 @@ export default function PlannerScreen() {
               ? "No meals"
               : enabledList.map((s) => SHORT[s] ?? s).join(" · ");
           return (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: Spacing.md,
-              }}
-            >
+            <View style={styles.filterRow}>
               <Pressable
                 testID="plan-chip-length-start"
                 accessibilityRole="button"
                 accessibilityLabel={`Plan length and start: ${lengthStartLabel}`}
                 onPress={() => setChipSheet("lengthStart")}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  backgroundColor: colors.border,
-                }}
+                style={styles.filterChip}
               >
-                <Text style={{ fontSize: 12.5, fontWeight: "500", color: colors.text }}>
+                <Text style={styles.filterChipText}>
                   {lengthStartLabel}
                 </Text>
                 <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
@@ -2716,17 +2754,9 @@ export default function PlannerScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Meals: ${mealsLabel}`}
                 onPress={() => setChipSheet("meals")}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  backgroundColor: colors.border,
-                }}
+                style={styles.filterChip}
               >
-                <Text style={{ fontSize: 12.5, fontWeight: "500", color: colors.text }}>
+                <Text style={styles.filterChipText}>
                   {mealsLabel}
                 </Text>
                 <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
@@ -2792,7 +2822,7 @@ export default function PlannerScreen() {
                 <>Pick where your recipes come from, then generate a balanced week.</>
               ) : planEmptyStateV2 ? (
                 <>
-                  {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library — Suppr balances them to your targets.
+                  {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library — Sloe balances them to your targets.
                 </>
               ) : (
                 <>
@@ -2836,7 +2866,7 @@ export default function PlannerScreen() {
               <View style={styles.libraryEmptyHint}>
                 <Text style={styles.libraryEmptyHintText}>
                   Your library is empty. Save a recipe to plan from it — or pick
-                  {" "}<Text style={{ fontWeight: "700", color: colors.tint }}>Library &amp; discovery</Text> above to generate from Suppr&apos;s picks now.
+                  {" "}<Text style={{ fontWeight: "700", color: colors.tint }}>Library &amp; discovery</Text> above to generate from Sloe&apos;s picks now.
                 </Text>
                 <Pressable
                   onPress={() => router.push("/(tabs)/library" as Href)}
@@ -3143,46 +3173,26 @@ export default function PlannerScreen() {
                 <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
               )}
             </View>
-            {planTargets ? (
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 6,
-                marginBottom: 6,
-                paddingHorizontal: 2,
-              }}
-            >
-              {(() => {
-                const dayFiber =
-                  Math.round(
-                    dp.meals.reduce((s, m) => s + planMealFiberG(m, recipeFiberPool), 0) * 10,
-                  ) / 10;
-                return ([
-                  { label: "P", val: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
-                  { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
-                  { label: "F", val: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                  { label: "Fi", val: dayFiber, target: planTargets.fiber, color: Accent.success },
-                ] as const).map(({ label, val, target, color }) => {
-                  const diff = val - target;
-                  const pct = target > 0 ? Math.abs(diff) / target : 0;
-                  const isClose = pct < 0.15;
-                  return (
-                    <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label} {val}g</Text>
-                      {isClose ? (
-                        <Check size={11} color={Accent.success} strokeWidth={3} />
-                      ) : (
-                        <Text style={{ fontSize: 10, color: Accent.warning }}>
-                          {diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                });
-              })()}
-            </View>
-            ) : null}
+            {/* Calm Sloe macro summary — four evenly-spread cells with a
+                clear two-line hierarchy (macro grams over an "On track" /
+                ±gap caption) replace the old jammed inline run. Computed
+                here, rendered by `PlanDayMacroSummary`. */}
+            {planTargets ? (() => {
+              const dayFiber =
+                Math.round(
+                  dp.meals.reduce((s, m) => s + planMealFiberG(m, recipeFiberPool), 0) * 10,
+                ) / 10;
+              return (
+                <PlanDayMacroSummary
+                  cells={[
+                    { label: "P", value: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
+                    { label: "C", value: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
+                    { label: "F", value: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
+                    { label: "Fi", value: dayFiber, target: planTargets.fiber, color: MacroColors.fiber },
+                  ]}
+                />
+              );
+            })() : null}
             {/* F-15 — residual protein gap hint (web/mobile parity). Only
                 rendered when the joint-fit scaler left this day more than
                 10g under the protein target. Points at the lowest-protein
@@ -3209,18 +3219,14 @@ export default function PlannerScreen() {
 
             <View style={styles.planDayCard}>
             {dp.meals.length === 0 ? (
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  paddingTop: 10,
-                  paddingBottom: 4,
-                  paddingHorizontal: 12,
-                  lineHeight: 16,
-                }}
-              >
-                No slots yet — add one or regenerate.
-              </Text>
+              <View style={styles.dayEmptyState}>
+                <Text style={styles.dayEmptyText}>
+                  No meals planned for this day yet.
+                </Text>
+                <Text style={styles.dayEmptyHint}>
+                  Add a slot below, or regenerate the week.
+                </Text>
+              </View>
             ) : null}
             {(() => {
               const sortedMeals = sortMealsBySlotOrder(dp.meals);
@@ -3995,7 +4001,7 @@ export default function PlannerScreen() {
               Which meals?
             </Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
-              Pick which slots Suppr fills when you regenerate.
+              Pick which slots Sloe fills when you regenerate.
             </Text>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>

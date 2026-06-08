@@ -20,13 +20,18 @@ describe("Progress desktop layout", () => {
     expect(WEB).not.toMatch(/max-w-2xl/);
   });
 
-  it("Daily Calories chart mirrors mobile bar scale (1.15 headroom, 78% barMax)", () => {
+  it("Daily Calories frame chart keeps the 1.15 headroom bar scale (492:2)", () => {
+    // The 492:2 frame Daily Calories card keeps the shared 1.15 headroom so
+    // over-target bars tower above the goal dots; barMax is 72% of the taller
+    // 96px frame chart. The old side-by-side detail grid is removed.
     expect(WEB).toMatch(/const scaleMax = maxCal \* 1\.15/);
-    expect(WEB).toMatch(/const barMax = chartHeight \* 0\.78/);
-    expect(WEB).toMatch(/data-testid="progress-week-charts-grid"/);
+    expect(WEB).toMatch(/const barMax = chartHeight \* 0\.72/);
+    expect(WEB).toMatch(/data-testid="progress-daily-calories-card"/);
+    expect(WEB).not.toMatch(/data-testid="progress-week-charts-grid"/);
   });
 
-  it("weight line chart uses mobile chart height", () => {
-    expect(WEB).toMatch(/ResponsiveContainer width="100%" height=\{170\}/);
+  it("weight line chart uses the frame chart height (150)", () => {
+    // Relocated frame weight card (492:2) renders the clay line at 150px.
+    expect(WEB).toMatch(/ResponsiveContainer width="100%" height=\{150\}/);
   });
 });

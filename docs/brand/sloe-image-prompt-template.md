@@ -11,7 +11,7 @@
 > and this file must be corrected.
 > **Supersedes:** the prompt fragment in
 > [`docs/decisions/2026-05-11-hero-fallback-auto-gen.md`](../decisions/2026-05-11-hero-fallback-auto-gen.md)
-> ("Overhead shot of {title}…"). That fragment predates the warm-coaching / Sloe direction and is no
+> ("Overhead shot of {title}..."). That fragment predates the warm-coaching / Sloe direction and is no
 > longer the prompt of record. The hero auto-gen feature, when built, uses Template A below.
 
 ---
@@ -47,7 +47,7 @@ watercolour, never cartoon, never 3D render.
 
 **Inputs from the parsed recipe:**
 - `{RECIPE_TITLE}` — the dish name, lightly cleaned (drop emoji, drop "EASY!!!", drop @handles).
-- `{KEY_INGREDIENTS}` — 3–6 of the most visually defining ingredients, comma-separated, in plain words
+- `{KEY_INGREDIENTS}` — 3-6 of the most visually defining ingredients, comma-separated, in plain words
   (e.g. "charred broccoli, lemon, almonds, chilli"). Pull from the parsed ingredient list; prefer the
   hero/visible components, drop pantry invisibles (salt, oil, water, baking powder).
 - `{PLATING_NOUN}` — how it's served, inferred from the dish or defaulted: `bowl` (default for
@@ -132,6 +132,194 @@ Then append the **style anchor block** (§4, object variant — same overrides a
 
 ---
 
+## 3b. Template D — Lifestyle / in-context (PROPOSED — pending brand-manager review)
+
+> **Status:** ADDITION proposed 2026-06-07, not yet ratified. Templates A/B/C above are LOCKED and
+> unchanged. Template D is a **new imagery class** for social/marketing surfaces (not the in-app
+> recipe/ingredient/object slots A/B/C serve). It reuses the shared style anchor (§4) and never-list
+> (§5) verbatim, so it stays one brand; the only new thing is the **scene** (a real kitchen with the app
+> resting in it) and the **social aspect ratios** (§6). Sign-off goes through `brand-manager` per §9
+> before this is treated as locked.
+
+**Class:** the app shown *in context* — a phone or iPad displaying Sloe, resting in a beautiful, real
+kitchen scene. The register is the same `@thelittleplantation` / `@_foodstories_` / **@jadewilson.f**
+editorial light and palette as Template A, but the **subject is the lifestyle moment**, not a plated dish.
+This is the "aesthetic kitchen, calm use of the app" vibe — the visual cousin of Julienne's signup hero
+(an iPhone on a sunlit marble counter, herbs in a jar, ceramic, linen, soft natural light, no people).
+**@jadewilson.f** is the pinned interior/world reference for Template D's kitchen set, architecture, and
+lifestyle props (see house-style §10b).
+
+**Surfaces:** social posts (IG grid + portrait, TikTok stills), landing/marketing hero + banners, App
+Store lifestyle frames. **Not** an in-app slot — A/B/C still own everything inside the product.
+
+**Rule (derived from §11.2, extended to lifestyle):** moody-to-soft natural window light, a real kitchen
+surface (honed marble or warm wood counter / island), a few *considered* props (herbs in a glass, a
+ceramic mug, linen, olive oil, a wedge of parmesan, a wooden board), shallow depth of field, warm muted
+earthy palette. The device is clean and modern, screen softly lit, **never** a cold tech-product render.
+**No people, no hands** (same §5 guard — and the calm comes from the empty, considered scene).
+
+**Lifestyle prop kit (Tier 1 only, locked 2026-06-07):** the expanded set of props sanctioned for
+Template D lifestyle frames in the locked test kitchen. These enrich the *lifestyle* set (app resting in a
+warm kitchen), **not** the per-dish plating prop list (§4 of the house-style stays "2-4 functional props,
+garnish = the dish's own ingredients").
+
+- Rush/rattan counter stools (with linen cushions + tie-bows)
+- White linen empire/cone pendant shades on brass chains
+- Gold-framed pastoral landscape oils or still-life floral oils (leaned against backsplash or hung over
+  sideboards) — thin frames, moody/warm tones
+- Ceramic urns with fresh stems (tulips, hydrangea, dried or fresh)
+- A worn wooden dough bowl
+- Glass storage canisters (clear, simple, functional)
+- Beadboard or shiplap ceiling + classic millwork (architecture, not a prop — but sanctioned as a
+  background detail in lifestyle frames)
+
+Source: @jadewilson.f kitchen/pantry/dining reels (see house-style §10b and the world reference board).
+
+**Inputs:**
+- `{DEVICE}` — `an iPhone` (default) or `an iPad`, plain words.
+- `{DEVICE_PLACEMENT}` — where it rests, e.g. "lying flat on the counter", "propped upright against a
+  tiled backsplash", "leaning on a wooden board".
+- `{SURFACE}` — the kitchen surface, e.g. "a sunlit honed-marble counter", "a warm oak kitchen island",
+  "a weathered wooden worktop".
+- `{PROPS}` — 2-4 considered props from the lifestyle prop kit above, comma-separated, e.g. "a glass jar
+  of fresh herbs, a ceramic mug, a folded linen cloth". Keep it sparse — restraint is the brand.
+- `{ON_SCREEN}` — what the phone shows, kept deliberately soft/suggested so the model doesn't invent
+  fake UI text: default **"a calm warm-toned app interface with soft plum and cream tones, no legible
+  text"**. (If compositing the real screenshot afterwards, the AI screen is a placeholder — see §3 of the
+  social-set doc.)
+
+**Positive prompt:**
+
+```
+Editorial lifestyle photograph of {DEVICE} {DEVICE_PLACEMENT} on {SURFACE} in a calm, beautiful home
+kitchen. The phone screen softly shows {ON_SCREEN}. Nearby, a few considered props — {PROPS} — arranged
+with restraint. Soft moody natural window light from the side, gentle shadows, slightly under-exposed for
+an editorial mood. Shallow depth of field, the device sharp and the kitchen softly blurred behind. Warm,
+muted, earthy colour palette — creams, oat, warm wood, sage green, soft plum, ochre. Unhurried, premium,
+considered composition, an empty quiet scene with no people. Magazine-quality lifestyle photography in the
+style of @thelittleplantation and @_foodstories_.
+```
+
+Then append the **style anchor block** (§4) and append the **never-list** as a trailing `Avoid: ...`
+clause (§5) — because `fal-ai/flux-2-pro` has no separate `negative_prompt` field (see §6). Add to the
+trailing avoid-clause, on top of §5: `cold glossy tech-product render, fake legible UI text on the
+screen, app store screenshot mockup, floating phone, two phones`.
+
+**Aspect ratios (social-first):**
+
+| Ratio | `image_size` | Use |
+|---|---|---|
+| **4:5** | `{ width: 1080, height: 1350 }` | Social portrait (IG/TikTok feed) |
+| **1:1** | `{ width: 1080, height: 1080 }` | IG grid square |
+| **16:9** | `{ width: 1920, height: 1080 }` | Landing / marketing banner |
+
+> Template D shares Template A's surface + mood + light — it does **not** take B/C's white-background
+> override. The device is a clean modern phone/iPad; the scene does the warmth. Because the screen is the
+> weakest point for AI (it invents UI), keep `{ON_SCREEN}` vague and prefer compositing the real
+> screenshot in post for any frame where the screen is hero-prominent.
+
+**Worked example (D — lifestyle hero, the Julienne-style shot):**
+
+> Editorial lifestyle photograph of an iPhone lying flat on a sunlit honed-marble counter in a calm,
+> beautiful home kitchen. The phone screen softly shows a calm warm-toned app interface with soft plum and
+> cream tones, no legible text. Nearby, a few considered props — a glass jar of fresh herbs, a ceramic
+> mug, a folded linen cloth — arranged with restraint. Soft moody natural window light from the side,
+> gentle shadows, slightly under-exposed for an editorial mood. Shallow depth of field, the device sharp
+> and the kitchen softly blurred behind. Warm, muted, earthy colour palette — creams, oat, warm wood,
+> sage green, soft plum, ochre. Unhurried, premium, considered composition, an empty quiet scene with no
+> people. Magazine-quality lifestyle photography in the style of @thelittleplantation and @_foodstories_.
+> Sloe brand imagery. Warm, calm, editorial, premium, honest. Natural light only. Earthy muted palette.
+> Real food, real materials, real kitchen. Considered restraint, never busy, never gimmicky. Photographic,
+> not illustrated, not rendered. High detail, professional quality. Avoid: [§5 never-list] cold glossy
+> tech-product render, fake legible UI text on the screen, app store screenshot mockup, floating phone,
+> two phones.
+> _aspect: 4:5 / 1:1 / 16:9 · negative appended as trailing Avoid (no negative_prompt field)_
+
+---
+
+## 3c. "Modern Clean" aesthetic variant — ADOPTED (Grace approved 2026-06-07)
+
+> **Status:** **ADOPTED 2026-06-07 (Grace approved).** Modern Clean is the **active direction for
+> marketing / social / landing / Discover imagery** — the surface/lighting/palette override applied to the
+> locked A/B/C/D base templates on those surfaces. The base templates (A/B/C/D) and the shared anchor (§4)
+> / never-list (§5) are **unchanged**; Modern Clean overrides only the **surface, lighting, and
+> palette-weight** lines for the marketing/social/landing/Discover surfaces. **`brand-manager` still to
+> formally ratify** (record the ratification in `docs/decisions/`); until then this entry is the operating
+> direction Grace signed off, and it has already been applied to the live landing "Trending" set
+> (`public/landing/trending-1..5.png`, regenerated on Nano Banana Pro on 2026-06-07; the prior FLUX set is
+> archived under `public/landing/_backup-flux/`).
+>
+> Grace approved Nano Banana Pro's *quality* and asked to shift the imagery *aesthetic* away from the
+> moody / rustic register (weathered dark wood, under-exposed, earthy shadow) toward **"editorial modern
+> clean"** — bright, airy, marble/tile, modern — while keeping warm/calm/premium/food-hero/no-people/
+> no-text. Grace's reference: a Julienne marketing shot — iPhone on honed **white marble**, a sage-green
+> glazed **zellige tile** backsplash, fresh herbs in a clear glass jar, a clean speckled ceramic mug,
+> linen, **bright natural daylight**. ("Not sure about the wooden table.")
+
+**What it changes (vs the moody Template A/D register):** only the **surface**, **lighting**, and
+**palette-weight** lines. Subject, composition discipline, restraint, the no-people / no-text / no-render
+guards, and the "real food, real materials, photographic not illustrated" anchor are all **unchanged** —
+this is a brightness/material shift, not a new brand.
+
+| Axis | Current (moody / rustic — A & D as locked) | **Modern Clean (proposed)** |
+|---|---|---|
+| **Surface** | Weathered / dark wood, cream plaster, linen | Honed **white/grey marble** (Carrara/Calacatta), light stone, soft glazed **zellige / subway tile** (sage-green or warm-neutral), pale-washed light wood, light linen — modern, considered. **Not** weathered/rustic dark wood. |
+| **Lighting** | Soft moody side-light, **slightly under-exposed** for editorial mood | **Bright, clean, airy natural daylight** — well-lit, gentle *soft* shadows. **Not** under-exposed, not heavy-moody. |
+| **Palette weight** | Warm earthy — browns, ochre, deep sage, shadow | Warm-but-**LIGHT** — creams, soft whites, marble grey-greens; **warm ceramic / pale-wood accents** carry the warmth so it stays calm + premium, never clinical or cold. |
+| **Props** | ceramic, linen, wood, stone | Fresh herbs in **clear glass**, clean **matte / speckled** ceramics, linen — same restraint. |
+| **Keep (unchanged)** | editorial, premium, calm, shallow DoF, real food/materials; **no people, hands, faces, text, logos, watermarks** | identical — all of it holds. |
+
+**Two-tone variant option (sanctioned 2026-06-07):** when generating frames in the locked test kitchen
+(Tier 1), the island may optionally be rendered in **dark stained oak** instead of all-cream cabinetry,
+with the same **white quartz top** and **unlacquered/aged brass hardware**. The cream Shaker perimeter
+cabinets stay unchanged. This gives the social set visual variety without departing from the locked
+kitchen DNA. See house-style §3.1b for the full spec. All other Modern Clean rules (lighting, palette,
+grade, restraint) apply identically to the two-tone variant.
+
+**Surface/lighting/palette override lines** — substitute these for the corresponding lines in Template A
+(food) or Template D (lifestyle); leave the rest of each template's positive prompt as written:
+
+```
+Styled on bright honed white marble (or soft sage-green glazed zellige tile / pale light wood),
+light linen nearby. Bright, clean, airy natural daylight, well-lit with gentle soft shadows.
+Warm-but-light editorial palette — creams, soft whites, marble grey-greens, with warm ceramic and
+pale-wood accents for warmth. Fresh, modern, considered — editorial modern clean, not moody or rustic.
+```
+
+Then append the **shared style anchor block** (§4) verbatim and the **never-list** (§5). On
+`fal-ai/nano-banana-pro` there is **no `negative_prompt` field**, so the never-list is appended as a
+trailing `Avoid: ...` clause (same handling as Template D). For Modern Clean, add to that avoid-clause, on
+top of §5: `weathered rustic dark wood, under-exposed, heavy moody shadow, dim, dark, gloomy, cold
+clinical lighting, washed-out flat lighting`.
+
+**Worked example (Modern Clean — Template A food, the marble re-shoot):** Recipe "Warm Tahini Grain Bowl";
+key ingredients chickpeas, roasted squash, tahini, parsley, lemon; plating bowl.
+
+> Hyperreal editorial food photography of Warm Tahini Grain Bowl, a finished plated dish featuring
+> chickpeas, roasted squash, tahini, parsley, lemon, served in a matte speckled ceramic bowl. Styled on
+> bright honed white marble, a soft sage-green glazed zellige tile backsplash behind, light linen nearby.
+> Bright, clean, airy natural daylight, well-lit with gentle soft shadows. Shallow depth of field, the
+> dish sharp and the background softly blurred. Warm-but-light editorial palette — creams, soft whites,
+> marble grey-greens, with warm ceramic and pale-wood accents for warmth. Fresh, modern, considered —
+> editorial modern clean, not moody or rustic. Artful, unhurried composition. Magazine-quality food
+> photography in the style of @thelittleplantation and @_foodstories_. Sloe brand imagery. Warm, calm,
+> editorial, premium, honest. Natural light only. Real food, real materials, real kitchen. Considered
+> restraint, never busy, never gimmicky. Photographic, not illustrated, not rendered. High detail,
+> professional quality. Avoid: [§5 never-list] weathered rustic dark wood, under-exposed, heavy moody
+> shadow, dim, dark, gloomy, cold clinical lighting, washed-out flat lighting.
+> _engine: nano-banana-pro · resolution 2K · aspect 4:3 (food) / 4:5·1:1·16:9 (lifestyle) · negative appended as trailing Avoid_
+
+> **Open question for sign-off (food shots) — RESOLVED 2026-06-07 (Grace approved):** finished-dish shots
+> (Template A) on **marketing/social/landing/Discover** surfaces **do move to bright marble/stone** under
+> Modern Clean — confirmed by the 2026-06-07 landing "Trending" re-shoot (all 5 dishes regenerated on Nano
+> Banana Pro on honed white marble, bright airy daylight; live at `public/landing/trending-1..5.png`, prior
+> FLUX set archived under `public/landing/_backup-flux/`). The in-app per-recipe runtime hero (Template A at
+> generation time) is **out of scope** for this adoption and still uses Template A as locked until separately
+> revisited. `brand-manager` to formally ratify the adoption in `docs/decisions/`. See also
+> [`docs/brand/sloe-social-image-set-2026-06-07.md`](sloe-social-image-set-2026-06-07.md).
+
+---
+
 ## 4. Shared style anchor block
 
 Append verbatim to **every** positive prompt (A, B, and C). This is the brand fingerprint. The two
@@ -197,10 +385,11 @@ Constant across the brand. Per-surface, only `aspect_ratio` varies.
 
 | Param | Value | Why |
 |---|---|---|
-| **Model** | `fal-ai/flux-2-pro` (FLUX 2 Pro) | Locked default per strategy doc; price/quality winner for food. Budget tier FLUX 2 Flex / GPT Image fallback may be swapped at the engine layer — prompt unchanged. |
+| **Model** | `fal-ai/flux-2-pro` (FLUX 2 Pro) — runtime; `fal-ai/nano-banana-pro` (Nano Banana Pro) — marketing/hero | **Dual-engine split (2026-06-07 head-to-head, see strategy doc):** Nano Banana Pro = default for hero/marketing/social/Discover-feature/recipe-hero imagery (won on editorial quality — window light, depth, kitchen context; $0.15/img, low-volume); FLUX 2 Pro = default for runtime per-user recipe-gen (cost-critical, high-volume, cached; $0.01-0.04/img). **The prompt templates are model-swappable and do not change** — same assembled string drives either engine. Budget tier FLUX 2 Flex / GPT Image fallback may be swapped at the engine layer — prompt unchanged. **Engine caveat:** the fal `fal-ai/flux-2-pro` endpoint exposes only `prompt`, `image_size`, `seed`, `output_format`, `safety_tolerance` — **no separate `negative_prompt` field**. The §5 never-list is therefore appended to the positive prompt as a trailing `Avoid: ...` clause. If a future batch shows the model summoning negated nouns from the avoid-clause, move to an engine that honours a true negative prompt. (First recorded in `docs/decisions/2026-06-07-universal-food-imagery.md`.) |
 | **`aspect_ratio` — dish (A)** | `4:3` hero, `1:1` square card, `16:9` paywall/landing strip | Recipe heroes are landscape-ish; the runtime import card hero is 4:3. Pick per surface, never stretch. |
 | **`aspect_ratio` — ingredient (B) / object (C)** | `1:1` | Locked in §11.1. |
-| **`num_images`** | `1` runtime; `1–4` design-time batch | Runtime is one-image, user-previews-then-approves. Cost guard. |
+| **`aspect_ratio` — lifestyle (D, proposed)** | `4:5` social portrait, `1:1` IG grid, `16:9` landing/banner | Social-first formats; pass as an explicit `image_size: { width, height }` object (1080x1350 / 1080x1080 / 1920x1080). |
+| **`num_images`** | `1` runtime; `1-4` design-time batch | Runtime is one-image, user-previews-then-approves. Cost guard. |
 | **`output_format`** | `webp` (store), generate `png`/`jpeg` then transcode | Matches `recipe-${id}-hero.webp` storage convention. |
 | **`seed`** | random runtime; **pin a seed** for design-time when you need a reproducible set | Pinned seed = a coherent batch (e.g. all six diet-card tiles in one light). |
 | **`safety_tolerance`** | provider default (do not loosen) | Food is low-risk; no reason to relax safety. |

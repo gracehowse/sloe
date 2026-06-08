@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import {
-  Apple,
   ArrowRight,
   Bookmark,
   Check,
@@ -156,7 +155,6 @@ function Hero() {
         </p>
         <div className="lp-hero-ctas">
           <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
-            <Apple width={18} height={18} aria-hidden />
             Get the app
           </Link>
           <Link className="lp-btn lp-btn-outline lp-btn-lg" href={DISCOVER_HREF}>
@@ -202,7 +200,12 @@ function Trending() {
         </div>
         <div className="lp-trending-rail" ref={railRef} tabIndex={0} role="region" aria-label="Trending recipes">
           {TRENDING_RECIPES.map((recipe) => (
-            <article className="lp-recipe-card" key={recipe.title}>
+            <Link
+              className="lp-recipe-card"
+              key={recipe.title}
+              href={recipe.href}
+              aria-label={`${recipe.title} by ${recipe.author}`}
+            >
               <div className="lp-recipe-card-top">
                 <h3>{recipe.title}</h3>
                 <Bookmark width={17} height={17} aria-hidden className="lp-recipe-bookmark" />
@@ -213,7 +216,7 @@ function Trending() {
               <p className="lp-recipe-author">
                 By <span>{recipe.author}</span>
               </p>
-            </article>
+            </Link>
           ))}
         </div>
       </div>
@@ -254,7 +257,13 @@ function Difference() {
             </ul>
           </div>
           <div className="lp-difference-visual" aria-hidden>
-            <DevicePhone src="/landing/mock-recipe.png" width={286} height={590} />
+            <Image
+              className="lp-difference-phone"
+              src="/landing/devices/iphone-recipe.png"
+              alt=""
+              width={470}
+              height={980}
+            />
           </div>
         </div>
       </div>
@@ -299,68 +308,51 @@ function CrossDevice() {
           <p className="lp-lead-center">
             Your recipes, targets and plan stay in sync across desktop, tablet and your phone.
           </p>
-          <div className="lp-devices-desktop" aria-hidden>
-            <div className="lp-devices-tablet">
-              <DeviceTablet src="/landing/mock-web-tablet.png" />
-            </div>
-            <DeviceLaptop src="/landing/mock-web-desktop.png" />
-            <div className="lp-devices-phone">
-              <DevicePhone src="/landing/mock-today.png" width={168} height={348} />
-            </div>
+          {/* Desktop: MacBook hero centred, iPad front-left, iPhone front-right */}
+          <div className="lp-devices-stage" aria-hidden>
+            <Image
+              className="lp-dev lp-dev-macbook"
+              src="/landing/devices/macbook.png"
+              alt=""
+              width={1480}
+              height={980}
+              priority={false}
+            />
+            <Image
+              className="lp-dev lp-dev-ipad"
+              src="/landing/devices/ipad.png"
+              alt=""
+              width={760}
+              height={1000}
+            />
+            <Image
+              className="lp-dev lp-dev-iphone"
+              src="/landing/devices/iphone.png"
+              alt=""
+              width={470}
+              height={980}
+            />
           </div>
+          {/* Mobile: MacBook + iPhone, cleanly stacked */}
           <div className="lp-devices-mobile" aria-hidden>
-            <DeviceLaptop src="/landing/mock-web-desktop.png" compact />
+            <Image
+              className="lp-dev lp-dev-macbook-m"
+              src="/landing/devices/macbook.png"
+              alt=""
+              width={1480}
+              height={980}
+            />
+            <Image
+              className="lp-dev lp-dev-iphone-m"
+              src="/landing/devices/iphone.png"
+              alt=""
+              width={470}
+              height={980}
+            />
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function DevicePhone({ src, width, height }: { src: string; width: number; height: number }) {
-  const pad = Math.max(8, Math.round(width * 0.036));
-  return (
-    <div className="lp-device-phone" style={{ width }}>
-      <div className="lp-device-bezel" style={{ padding: pad }}>
-        <div className="lp-device-screen" style={{ height }}>
-          <Image src={src} alt="" width={width} height={height} className="lp-device-img" />
-          <div className="lp-device-gloss" />
-          <div className="lp-device-notch" style={{ width: Math.round(width * 0.26) }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeviceTablet({ src }: { src: string }) {
-  return (
-    <div className="lp-device-tablet">
-      <div className="lp-device-bezel">
-        <div className="lp-device-screen lp-device-screen-tablet">
-          <Image src={src} alt="" width={210} height={281} className="lp-device-img" />
-          <div className="lp-device-gloss" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeviceLaptop({ src, compact = false }: { src: string; compact?: boolean }) {
-  const screenW = compact ? 300 : 520;
-  const screenH = compact ? 188 : 325;
-  return (
-    <div className={`lp-device-laptop${compact ? " lp-device-laptop-compact" : ""}`}>
-      <div className="lp-device-bezel lp-device-bezel-laptop">
-        <div className="lp-device-screen" style={{ height: screenH }}>
-          <Image src={src} alt="" width={screenW} height={screenH} className="lp-device-img" />
-          <div className="lp-device-gloss" />
-        </div>
-      </div>
-      <div className="lp-device-laptop-base" aria-hidden>
-        <div className="lp-device-laptop-hinge" />
-        <div className="lp-device-laptop-foot" />
-      </div>
-    </div>
   );
 }
 
@@ -440,7 +432,6 @@ function FinalCta() {
           Join the people fitting the food they love into the life they want.
         </p>
         <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
-          <Apple width={18} height={18} aria-hidden />
           Get the app — it&apos;s free
         </Link>
       </div>

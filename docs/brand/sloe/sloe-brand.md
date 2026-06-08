@@ -43,7 +43,7 @@ tracking; it says *calm, considered, a little premium, a little British* — and
 do the positioning. It also ships a far more distinctive palette (jewel indigo + frost) than any
 herb-green.
 
-**Pronunciation:** /sləʊ/ — exactly "slow." One syllable, zero ambiguity once heard, and the
+**Pronunciation:** /sloe/ — exactly "slow." One syllable, zero ambiguity once heard, and the
 "oh that's *slow*" penny-drop is a gift for word-of-mouth (it is its own explainer).
 
 **Risk to clear:** the homophone means voice-search and verbal sharing can land on "slow" — a
@@ -127,8 +127,8 @@ so the rebrand is a re-skin, not a re-architecture.
 
 - **Display / wordmark / recipe titles / coaching lines → Fraunces.**
   A warm, "old-style" optical serif with soft ink-traps and a gorgeous italic. Variable optical
-  size; set the wordmark at a low weight (~340–400) for an editorial, unhurried, slightly literary
-  feel — *slow* made visible. Google Fonts, variable. (`Fraunces`, opsz 9–144, wght 300–700.)
+  size; set the wordmark at a low weight (~340-400) for an editorial, unhurried, slightly literary
+  feel — *slow* made visible. Google Fonts, variable. (`Fraunces`, opsz 9-144, wght 300-700.)
   - Fallback stack: `'Fraunces', 'Georgia', 'Times New Roman', serif`.
 
 - **Body / UI / data → Inter.**
@@ -173,20 +173,20 @@ for packaging/marketing moments, not the primary lockup.
 Calm/Zoe-like. Risk: loses the ownable berry/colour symbol and leans entirely on the typeface —
 weaker as an app icon. Keep as the minimal wordmark for tight horizontal spaces (nav bars, footers).
 
-**App icon:** Concept A's bloomed berry-o, centred on the brand gradient (Damson→Sloe) with the
+**App icon:** Concept A's bloomed berry-o, centred on the brand gradient (Damson->Sloe) with the
 Frost bloom catching the light — a single, premium, instantly-spellable jewel. Recognisable at
-60×60.
+60x60.
 
 **Shipped icon + splash (2026-06-04).** The icon currently on the phone is the **full lowercase
 "sloe" wordmark** (Fraunces) on the plum gradient — Grace's chosen mark — not the single-glyph
 Concept A above (Concept A stays a future option for the smallest sizes). The home-screen label is
 now **Sloe** (`CFBundleDisplayName`); the bundle id / scheme stay `suppr` until TM clearance.
 
-- **Icon source:** `assets/gen/wordmark-final/icon-fraunces-1024.png` → flattened opaque (iOS needs
-  no alpha) → `apps/mobile/assets/images/icon.png` → `ios/.../AppIcon.appiconset`.
+- **Icon source:** `assets/gen/wordmark-final/icon-fraunces-1024.png` -> flattened opaque (iOS needs
+  no alpha) -> `apps/mobile/assets/images/icon.png` -> `ios/.../AppIcon.appiconset`.
 - **Splash:** plum "sloe" wordmark on cream **Oat `#FBF8F3`** (light) / white "sloe" on plum
-  **`#3B2A4D`** (dark), from `sloe-fraunces-base.svg` / `…-base-white.svg`. The launch screen
-  (`AppLaunchScreen.tsx`) uses the same cream/plum field so the native→JS handoff is seamless.
+  **`#3B2A4D`** (dark), from `sloe-fraunces-base.svg` / `...base-white.svg`. The launch screen
+  (`AppLaunchScreen.tsx`) uses the same cream/plum field so the native->JS handoff is seamless.
 - **Regenerate:** `node scripts/render-sloe-brand-png.mjs && npm run sync-ios-brand --prefix apps/mobile`
   (or `npm run build:brand-icons`), then rebuild the dev client. The iOS project is bare — do **not**
   `expo prebuild`. See `docs/decisions/2026-06-04-ios-app-icon-splash-sloe.md`.
@@ -204,27 +204,50 @@ The "slow" is in the *cadence* as much as the words: short, unhurried sentences.
 confetti. Encouragement is grounded in real data (Fitbit-credible), never empty hype.
 
 **Permission language — the core move:**
-- Reframe restriction → permission. "There's room for this." beats "You have 320 kcal left."
-- Reframe failure → information. "You went over yesterday — today's a fresh plate." not "You blew it."
-- Reframe the grind → the pace. "No rush. You're trending right." not "3-day streak! Keep it up!"
+- Reframe restriction -> permission. "There's room for this." beats "You have 320 kcal left."
+- Reframe failure -> information. "You went over yesterday — today's a fresh plate." not "You blew it."
+- Reframe the grind -> the pace. "No rush. You're trending right." not "3-day streak! Keep it up!"
 
 **Example microcopy:**
 
 | Moment | Sloe says | Never |
 |---|---|---|
 | Today, room to spare | "Room for dinner — about 620 kcal to play with." | "620 calories remaining!" |
-| Logged a treat | "Logged. It fits." | "Cheat meal logged 😬" |
+| Logged a treat | "Logged. It fits." | "Cheat meal logged" |
 | Over budget | "A bit over today. Tomorrow's a fresh plate." | "You're over your goal!" |
 | Empty Today | "Nothing logged yet. No rush." | "Let's get started — log your first meal!" |
-| Best day | "Your closest day this week. Nicely judged." | "You crushed it! 🔥" |
+| Best day | "Your closest day this week. Nicely judged." | "You crushed it!" |
 | Recipe imported | "Saved. Estimated nutrition shown — we'll keep it honest." | "AI-powered analysis complete!" |
 | Onboarding open | "Let's set the pace that suits you." | "Start your transformation today!" |
-| Paywall | "Everything in Sloe, unhurried." | "Unlock Premium™ NOW!" |
+| Paywall | "Everything in Sloe, unhurried." | "Unlock Premium NOW!" |
 
 **Carries over from the existing voice (non-negotiable):** nutrition is always *estimated*; no
 health claims; numbers feel engineered (`tabular-nums`); past = past tense, present = present;
 no diet-culture shaming, no toxic gamification. Sloe *softens the warmth dial* on the existing
 calm voice — it does not abandon the calm.
+
+### 5b. Voice-swipe file — marketing / landing / social (added 2026-06-07)
+
+Lines collected from lifestyle creators whose tone rhymes with the Sloe positioning. These are
+**swipe, not copy** — they set the register for social captions, landing hero lines, and onboarding
+warmth. **Never used verbatim; never in in-app chrome.**
+
+**Route:** social posts, onboarding welcome/permission screens, landing page hero/sub-hero, email
+subject lines, App Store description body. **Not** product UI, not microcopy, not push
+notifications.
+
+| Line | Throughline | Source |
+|---|---|---|
+| "things in my home I'll never regret investing in" | Permanence, patience, no-regret slow choices | @jadewilson.f |
+| "a slow Sunday morning" | Unhurried sanctuary — almost verbatim the brand | @jadewilson.f |
+| "the older I get the more I romanticize staying home" | Home as refuge, maturity, calm > novelty | @jadewilson.f |
+| "making my home feel softer one little detail at a time" | Incremental care, softness, detail | @jadewilson.f |
+| "created the home I kept saving on Pinterest" | Aspiration realised, making the dream tangible | @jadewilson.f |
+
+**The throughline across all five:** *home as unhurried sanctuary, softness, permanence, slowness.*
+This is the Sloe positioning rendered in a lifestyle-creator register — the "slow" pun made felt in
+someone else's words. Mine the register for tone, cadence, and warmth; the specific lines are
+directional, not for reproduction.
 
 ---
 

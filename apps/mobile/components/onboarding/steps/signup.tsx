@@ -222,7 +222,7 @@ export function MobileSignupStep() {
           lineHeight: 17,
         }}
       >
-        By signing in with Apple you agree to Suppr&apos;s Terms and Privacy
+        By signing in with Apple you agree to Sloe&apos;s Terms and Privacy
         Policy. Email sign-up is coming soon.
       </Text>
     </MobileStepBody>

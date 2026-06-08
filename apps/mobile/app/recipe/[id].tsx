@@ -4,7 +4,6 @@ import Constants from "expo-constants";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Linking,
   Modal,
   Platform,
@@ -13,27 +12,11 @@ import {
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
-import {
-  Bookmark,
-  Check,
-  ChevronLeft,
-  Clock,
-  Minus,
-  MoreHorizontal,
-  Pencil,
-  Play,
-  Plus,
-  PlusCircle,
-  Share2,
-  UtensilsCrossed,
-  X,
-} from "lucide-react-native";
+import { Play, X } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
@@ -53,11 +36,10 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { PressableScale } from "@/components/ui/PressableScale";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -70,7 +52,6 @@ import {
   pickHeroImageUrl,
   extractVideoHost,
 } from "@suppr/shared/recipes/heroImageFallback";
-import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { formatMacroValue } from "@suppr/shared/nutrition/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
@@ -94,7 +75,6 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
 import { scaleStepText } from "@suppr/shared/nutrition/scaleStepText";
-import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
@@ -115,21 +95,27 @@ import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 import { TrustChip } from "../../components/ui/TrustChip";
-import { SourceDot } from "../../components/ui/SourceDot";
 import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
 // GW-08 (audit 2026-04-28): `aggregateRecipeTrust` import dropped
 // when the source TrustChip was removed from this screen. The gluten
 // classifier is still load-bearing — it's a real ingredient-keyword
 // scan, not a fabricated source claim.
 import { classifyRecipeGluten } from "@/lib/recipeTrust";
-import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import {
-  composeSubtitleParts,
+  composeRecipeMeta,
   computeFitsYourDayVerdict,
-  shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout";
-
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+import { RecipeDetailHero } from "../../components/recipe/RecipeDetailHero";
+import { RecipeTitleBlock } from "../../components/recipe/RecipeTitleBlock";
+import { RecipeActionPills } from "../../components/recipe/RecipeActionPills";
+import { RecipeMacroStrip } from "../../components/recipe/RecipeMacroStrip";
+import { RecipeMetaRow } from "../../components/recipe/RecipeMetaRow";
+import {
+  RecipeIngredientGrid,
+  type RecipeGridIngredient,
+} from "../../components/recipe/RecipeIngredientGrid";
+import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
+import { RecipeServingsFooter } from "../../components/recipe/RecipeServingsFooter";
 
 function verifyJsonNeedsReviewNudge(json: Record<string, unknown>): boolean {
   const avg = json.avgIngredientConfidence;
@@ -140,18 +126,9 @@ function verifyJsonNeedsReviewNudge(json: Record<string, unknown>): boolean {
   );
 }
 
-function formatMinutes(min: number): string {
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
 const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
 /** Matches Today dashboard widgets except water (not derived from recipe nutrition). */
 const RECIPE_TRACKABLE_MACRO_KEYS = new Set<string>(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
-const REF_SUGAR_G = 50;
-const REF_SODIUM_MG = 2300;
 
 type FullRecipe = {
   id: string;
@@ -219,39 +196,6 @@ type Ingredient = {
   fatsecret_food_id?: string | null;
 };
 
-function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelColor }: { value: number; goal: number; color: string; label: string; size?: number; ringBgColor: string; labelColor: string }) {
-  const r = (size - 6) / 2;
-  const circ = 2 * Math.PI * r;
-  const pct = goal > 0 ? Math.min(1, value / goal) : 0;
-  return (
-    <View style={{ alignItems: "center", gap: 4 }}>
-      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-        <Svg width={size} height={size} style={{ position: "absolute" }}>
-          <Circle cx={size/2} cy={size/2} r={r} stroke={ringBgColor} strokeWidth={5} fill="none" />
-          <Circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={5} fill="none"
-            strokeDasharray={`${circ}`} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
-            rotation="-90" origin={`${size/2},${size/2}`} />
-        </Svg>
-        {/* Debug audit 2026-05-04 (visual-qa P1): for recipes with
-            high-protein values like 128g, the 4-character + unit
-            string overflowed the 56pt ring's ~44pt usable inner
-            diameter and wrapped to two lines, breaking the unit
-            display ("128" + "g"). `numberOfLines={1}` plus
-            `adjustsFontSizeToFit` keeps the value on one line. */}
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-          style={{ color, fontSize: 12, fontWeight: "700" }}
-        >
-          {Math.round(value)}g
-        </Text>
-      </View>
-      <Text style={{ color: labelColor, fontSize: 10, fontWeight: "600" }}>{label}</Text>
-    </View>
-  );
-}
-
 export default function RecipeDetailScreen() {
   const { id, portion, autoLog } = useLocalSearchParams<{ id: string; portion?: string; autoLog?: string }>();
   // PR1 (Paprika parity, 2026-05-02): the deep-link `?portion=N` value
@@ -269,19 +213,12 @@ export default function RecipeDetailScreen() {
 
   const colors = useThemeColors();
   // ENG-818/819 (Redesign — Design Direction 2026). Soft-elevation token for
-  // the resting detail cards, replacing the hand-rolled hairline border, behind
-  // `design_system_elevation` (flag-off keeps today's flat/hairline card).
-  const cardElevation = useCardElevation();
-  // ENG-819 — blue commit CTAs behind `design_system_colours`; flag-off keeps
-  // whatever the legacy fill was (the in-body Log / sticky Log-all are already
-  // blue, so this is an explicit-parity gate, not a colour change for them).
-  const commitColours = isFeatureEnabled("design_system_colours");
-  // ENG-818 — the "Fits your day" payoff chip rides the same colour-system flag
-  // (it introduces `Accent.win` as a real chip fill). Flag-off keeps the flat
-  // coloured-text line.
-  const winFitsChip = commitColours;
-  // ENG-819 — quiet confirm haptic + web-equivalent press payoff on the
-  // recipe-detail commit CTAs, behind `redesign_winmoment`.
+  // the resting detail cards. Figma 332:2 — the white slab cards lift off the
+  // cream page with the soft ambient shadow (`variant: "soft"`); the default
+  // `flat` variant left them indistinguishable on the inverted page↔card.
+  const cardElevation = useCardElevation({ variant: "soft" });
+  // ENG-819 — quiet confirm haptic on the recipe-detail commit CTAs, behind
+  // `redesign_winmoment` (haptic-only; the frame layout is the one prod path).
   const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
@@ -337,7 +274,6 @@ export default function RecipeDetailScreen() {
   useEffect(() => {
     setHeroImageBroken(false);
   }, [id]);
-  const [reverifying, setReverifying] = useState(false);
   /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
   const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
   const autoVerifySucceededForRecipeId = useRef<string | null>(null);
@@ -347,13 +283,12 @@ export default function RecipeDetailScreen() {
   const [cookStep, setCookStep] = useState(0);
   const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
-  const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [logPortion, setLogPortion] = useState(1);
   const [loggingJournal, setLoggingJournal] = useState(false);
-  const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
-  const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
-  const [yieldEditOpen, setYieldEditOpen] = useState(false);
   const [recipeEditOpen, setRecipeEditOpen] = useState(false);
+  // Figma 332:2 §6 — the ingredient grid shows a preview then expands via the
+  // "View all N ingredients" pill.
+  const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
   // PR1 (Paprika parity, 2026-05-02): viewing-servings stepper. Defaults
   // to the recipe's authored yield. The multiplier
   // (`viewServings / recipe.servings`) drives ingredient amount
@@ -369,10 +304,6 @@ export default function RecipeDetailScreen() {
     const p = portion ? parseFloat(String(portion)) : NaN;
     if (Number.isFinite(p) && p > 0) setLogPortion(p);
   }, [portion]);
-
-  useEffect(() => {
-    if (recipe) setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
-  }, [recipe?.id, recipe?.servings]);
 
   // PR1 (Paprika parity, 2026-05-02): seed the viewing-servings stepper
   // once the recipe loads. If the screen was deep-linked with
@@ -627,66 +558,9 @@ export default function RecipeDetailScreen() {
     [recipeId],
   );
 
-  const reverifyNutrition = async () => {
-    if (!recipe || ingredients.length === 0 || !session?.access_token) return;
-    setReverifying(true);
-    try {
-      const apiBase = getSupprApiBase();
-      if (!apiBase) {
-        Alert.alert("API not configured", "Set supprApiUrl in app config or EXPO_PUBLIC_API_URL.");
-        return;
-      }
-      const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          ingredients: structuredIngredientsForVerify(ingredients),
-          servings: recipe.servings ?? 1,
-        }),
-      });
-      const json = (await res.json()) as Record<string, unknown>;
-      const rows = flatMacroRowsFromVerifyJson(json);
-      if (!json.ok || !rows?.length) {
-        Alert.alert("Verification failed", (json.message as string) ?? "Could not verify ingredients.");
-        return;
-      }
-      const canPersist = Boolean(userId && recipe.author_id === userId);
-      const applied = await applyVerifyJsonToStateAndDb(json, ingredients, {
-        persist: canPersist,
-        reloadAfter: canPersist,
-        verifiedSource: "re-verified",
-        servingsForPerServing: recipe.servings ?? 1,
-      });
-      if (!applied.ok) {
-        Alert.alert("Verification incomplete", "The server response could not be applied. Try again.");
-        return;
-      }
-      const needsReview = verifyJsonNeedsReviewNudge(json);
-      if (needsReview) {
-        const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
-        track(AnalyticsEvents.recipe_verify_needs_review, {
-          recipe_id: recipeId,
-          source: "re_verified",
-          platform: plat,
-          avgIngredientConfidence: json.avgIngredientConfidence,
-          minIngredientConfidence: json.minIngredientConfidence,
-        });
-      }
-      Alert.alert(
-        "Re-verified",
-        needsReview
-          ? `Nutrition updated for ${ingredients.length} ingredients. Some matches are uncertain — review each line on the Ingredients tab.`
-          : `Nutrition updated for ${ingredients.length} ingredients.`,
-      );
-    } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Verification failed");
-    } finally {
-      setReverifying(false);
-    }
-  };
+  // Re-verification of the whole recipe is reached from each ingredient card's
+  // "Verify →" affordance, which routes to the dedicated `/recipe/verify`
+  // screen. The auto-verify pipeline below still hydrates macros on load.
 
   useEffect(() => {
     if (!recipeId) { setLoading(false); return; }
@@ -932,95 +806,9 @@ export default function RecipeDetailScreen() {
     [userId, recipe?.id, isRecipeOwner],
   );
 
-  const saveRecipeYield = useCallback(async () => {
-    if (!recipe || !userId || !isRecipeOwner) return;
-    const newS = Math.max(1, Math.min(48, parseInt(recipeYieldDraft.replace(/[^0-9]/g, ""), 10) || 1));
-    const oldS = Math.max(1, recipe.servings || 1);
-    if (newS === oldS) {
-      setYieldEditOpen(false);
-      return;
-    }
-    setRecipeYieldSaving(true);
-    try {
-      let calories: number;
-      let protein: number;
-      let carbs: number;
-      let fat: number;
-      let fiber_g: number;
-      let sugar_g: number;
-      let sodium_mg: number;
-
-      if (ingredients.length > 0) {
-        const sum = ingredients.reduce(
-          (acc, i) => ({
-            calories: acc.calories + (i.calories ?? 0),
-            protein: acc.protein + (i.protein ?? 0),
-            carbs: acc.carbs + (i.carbs ?? 0),
-            fat: acc.fat + (i.fat ?? 0),
-            fiber_g: acc.fiber_g + (i.fiber_g ?? 0),
-            sugar_g: acc.sugar_g + (i.sugar_g ?? 0),
-            sodium_mg: acc.sodium_mg + (i.sodium_mg ?? 0),
-          }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0, fiber_g: 0, sugar_g: 0, sodium_mg: 0 },
-        );
-        calories = Math.max(0, Math.round(sum.calories / newS));
-        protein = Math.max(0, Math.round(sum.protein / newS));
-        carbs = Math.max(0, Math.round(sum.carbs / newS));
-        fat = Math.max(0, Math.round(sum.fat / newS));
-        fiber_g = Math.max(0, Math.round((sum.fiber_g / newS) * 10) / 10);
-        sugar_g = Math.max(0, Math.round((sum.sugar_g / newS) * 10) / 10);
-        sodium_mg = Math.max(0, Math.round(sum.sodium_mg / newS));
-      } else {
-        calories = Math.max(0, Math.round((recipe.calories * oldS) / newS));
-        protein = Math.max(0, Math.round((recipe.protein * oldS) / newS));
-        carbs = Math.max(0, Math.round((recipe.carbs * oldS) / newS));
-        fat = Math.max(0, Math.round((recipe.fat * oldS) / newS));
-        fiber_g = Math.max(0, Math.round((((recipe.fiber_g ?? 0) * oldS) / newS) * 10) / 10);
-        sugar_g = Math.max(0, Math.round((((recipe.sugar_g ?? 0) * oldS) / newS) * 10) / 10);
-        sodium_mg = Math.max(0, Math.round(((recipe.sodium_mg ?? 0) * oldS) / newS));
-      }
-
-      const { error } = await supabase
-        .from("recipes")
-        .update({
-          servings: newS,
-          calories: Math.round(calories),
-          protein: Math.round(protein),
-          carbs: Math.round(carbs),
-          fat: Math.round(fat),
-          fiber_g,
-          sugar_g,
-          sodium_mg: Math.round(sodium_mg),
-        })
-        .eq("id", recipeId)
-        .eq("author_id", userId);
-
-      if (error) {
-        Alert.alert("Could not save", error.message);
-        return;
-      }
-
-      setRecipe((prev) =>
-        prev
-          ? {
-              ...prev,
-              servings: newS,
-              calories: Math.round(calories),
-              protein: Math.round(protein),
-              carbs: Math.round(carbs),
-              fat: Math.round(fat),
-              fiber_g,
-              sugar_g,
-              sodium_mg: Math.round(sodium_mg),
-            }
-          : prev,
-      );
-      setYieldEditOpen(false);
-      Alert.alert("Updated", `This recipe now yields ${newS} portions. Per-serving nutrition was recalculated.`);
-    } finally {
-      setRecipeYieldSaving(false);
-    }
-  }, [recipe, userId, isRecipeOwner, recipeYieldDraft, ingredients, recipeId]);
+  // Authored-yield editing (recipes.servings + per-serving aggregate recompute)
+  // is now owned by `RecipeEditSheet`, opened from the Edit action pill / owner
+  // overflow. The footer stepper handles the orthogonal "servings to view".
 
   const ingredientsHaveNutrition = useMemo(
     () =>
@@ -1197,7 +985,10 @@ export default function RecipeDetailScreen() {
   // still has calories. Ingredient rows keep their stored values (usually 0);
   // we do **not** split recipe totals across rows — that implied every line had
   // a fake share (e.g. 600 kcal ÷ 24 → 25 kcal each).
-  const { macros, totalMacros } = useMemo(() => {
+  // `totalMacros` (whole-recipe sum) is computed by the same memo but no longer
+  // surfaced on this screen — the footer batch-total line derives from
+  // per-portion × servings. Only `macros` (per-serving) is consumed here.
+  const { macros } = useMemo(() => {
     if (!ingredientsHaveNutrition && recipe) {
       const perServing = {
         calories: recipe.calories,
@@ -1468,223 +1259,44 @@ export default function RecipeDetailScreen() {
     .filter(Boolean);
 
   const styles = useMemo(() => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    // Figma 332:2 — warm cream editorial page (`#F6F5F2`). White slab cards lift
+    // off this cream base. Mirrors the public-share page.
+    container: { flex: 1, backgroundColor: colors.backgroundSecondary },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
     errorText: { color: colors.text, fontSize: 16 },
     backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
     backBtnText: { color: colors.text, fontWeight: "600" },
 
-    // 2026-04-20 prototype port — sticky top bar (light bg, dark
-    // text, full-width). Replaces the floating overlay buttons
-    // that previously sat over the hero image.
-    topBar: {
-      backgroundColor: colors.background,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-      zIndex: 10,
-    },
-    topBarRow: {
-      height: 56,
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: Spacing.sm,
-      gap: Spacing.xs,
-    },
-    topBarIconBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    topBarTitle: {
-      flex: 1,
-      textAlign: "center",
-      fontSize: 16,
-      fontWeight: "600",
-      color: colors.text,
-    },
-    topBarActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+    // Page body — single-scroll editorial stack (Figma 332:2 §2–7).
+    body: { padding: Spacing.xl, gap: Spacing.xl },
 
-    // Tag pill row under the hero.
-    // 2026-05-06 (Grace) — paddingVertical:5 + fontSize:12 with no
-    // minHeight let descenders touch the pill border (same squish
-    // pattern Library + Discover already had). Bumped to
-    // paddingVertical:8 + minHeight:32 + justifyContent:center so
-    // the text sits in the optical centre of the pill, matching the
-    // canonical filter-pill geometry across the app.
-    tagRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6,
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.md,
-    },
-    tagPill: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      minHeight: 32,
-      borderRadius: 999,
-      backgroundColor: colors.border,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    tagPillText: { fontSize: 12, lineHeight: 16, fontWeight: "600", color: colors.textSecondary },
-    tagPillPrimary: { backgroundColor: Accent.primary + "22" },
-    tagPillTextPrimary: { color: Accent.primary },
-
-    hero: { width: "100%", height: 280, backgroundColor: colors.border },
-    // Audit C1 (2026-05-05): half-height fallback so the no-photo
-    // case doesn't dominate the screen the way 280pt of stock photo did.
-    heroFallback: { width: "100%", height: 140, overflow: "hidden" },
-    // Header buttons — circular icon buttons that sit over the hero
-    // image. P3 dark-mode fix (2026-04-28): the previous hard-coded
-    // `rgba(255,255,255,0.94)` left them as bright white pills on
-    // every dark-mode hero, the only light element on the screen.
-    // Now uses `colors.card` so the pill picks up the surface tier
-    // for the active scheme (white in light, dark surface in dark).
-    headerBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      justifyContent: "center",
-      alignItems: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.22,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-    },
-    headerBtnText: { color: colors.text, fontSize: 22, fontWeight: "600" },
-
-    // 2026-04-30 ui-product-designer recipe-detail audit: tightened
-    // page rhythm from Spacing.lg (16) to Spacing.md (12) so the hero
-    // stack (title, subtitle, time stats, kcal hero, macro tiles)
-    // reads as one composed unit instead of five separate cards.
-    body: { padding: Spacing.xl, gap: Spacing.md },
-
-    title: { ...Type.title, color: colors.text },
-    authorName: { fontSize: 14, color: colors.textSecondary },
-    // 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): kcal got
-    // promoted out of the subtitle into its own dedicated headline
-    // line below the title. The subtitle row now reads as the meta
-    // line only ("lunch · serves 3 · by author"). The `kcalLine`
-    // style below pins kcal as a 17-pt headline, tabular-nums, with
-    // a softer "per portion" qualifier separated by `·`.
-    kcalLine: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      gap: 6,
-      marginTop: 6,
-    },
-    kcalNumber: {
-      fontSize: 17,
-      fontWeight: "700" as const,
-      color: colors.text,
-      fontVariant: ["tabular-nums"] as ["tabular-nums"],
-    },
-    kcalQualifier: { fontSize: 13, color: colors.textSecondary },
-    // ENG-748: persistent gluten-chip disclaimer caption — muted,
-    // 11pt, sits directly beneath the chip (marginTop 4).
+    // ENG-748 — persistent gluten-chip disclaimer caption.
     glutenDisclaimer: {
       fontSize: 11,
       lineHeight: 15,
       color: colors.textSecondary,
-      marginTop: 4,
     },
-    // 2026-04-30 ui-product-designer recipe-detail audit: subtitle is
-    // a single flex-wrap row joined by `·` separators ("by author ·
-    // lunch · serves 3"). The standalone `mealTypeBadge` pill +
-    // separate `authorName` row are gone — this row replaces both.
-    // 2026-05-02 v4: kcal removed from this row (moved to its own
-    // headline). This row is the meta line again.
-    subtitleRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: 4,
-      marginTop: 4,
-    },
-    subtitleText: { fontSize: 13, color: colors.textSecondary },
-    // 2026-05-02 v4 (recipe-detail-tiles-and-kcal): kept for any
-    // remaining bold inline tokens; kcal no longer uses this style
-    // because it lives on its own dedicated line above the meta row.
-    subtitleTextStrong: { fontWeight: "700" as const, color: colors.text, fontVariant: ["tabular-nums"] as ["tabular-nums"] },
-    subtitleSeparator: { fontSize: 13, color: colors.textTertiary },
-    timeStatsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 2,
-    },
-    timeStatsText: { fontSize: 13, color: colors.textTertiary },
 
-    // F-23 (2026-04-21): calories hero was consuming ~a third of the screen
-    // on the recipe detail (TestFlight AIf4Z6q1KL2j). Shrink the numeral and
-    // trim the surrounding card padding so the macro tiles below get their
-    // breathing room back. 2026-04-30 audit Fix 3: hero container styles
-    // moved inline alongside the verdict pill so the two render as one
-    // composite block (`recipe-calorie-hero` testID).
-    calorieNumber: { fontSize: 26, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
-
-    // ENG-818/819 — resting detail card. Soft ambient shadow + no border when
-    // `design_system_elevation` is on (light), tonal lift + hairline on dark,
-    // and today's flat/hairline card when the flag is off. These cards don't
-    // clip their children (`overflow` unset), so the iOS shadow can ride on the
-    // card itself — no outer wrapper needed (unlike the image-clipping library
-    // cards). Branching all lives in `useCardElevation()`.
+    // White slab card on the cream page (description / allergen / notes).
     card: {
-      backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderRadius: Radius.lg,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
-      borderColor: colors.border,
+      backgroundColor: cardElevation.liftBg ?? colors.background,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
       padding: Spacing.xl,
       gap: Spacing.md,
       ...(cardElevation.shadowStyle ?? {}),
     },
-    cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-
-    macroRingsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.sm },
-    servings: { fontSize: 12, color: colors.textTertiary, textAlign: "center" },
-    totalLine: { fontSize: 11, color: colors.textTertiary, textAlign: "center", marginTop: 4, fontStyle: "italic" },
-
     descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
-    ingredientRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      paddingVertical: Spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      gap: Spacing.sm,
-    },
-    ingredientDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.primary, marginTop: 6 },
-    ingredientText: { fontSize: 14, color: colors.text },
-    ingredientAmount: { fontWeight: "600" },
-    ingMacroRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
-    ingMacro: { fontSize: 11, color: colors.textTertiary, fontWeight: "600", fontVariant: ["tabular-nums"] as any },
-
-    stepRow: { flexDirection: "row", gap: Spacing.md, paddingVertical: Spacing.sm },
-    stepNumber: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: Accent.primary,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    stepNumberText: { color: colors.primaryForeground, fontSize: 13, fontWeight: "700" },
-    stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
-
     sourceCard: {
-      backgroundColor: colors.card,
-      borderRadius: Radius.lg,
+      backgroundColor: cardElevation.liftBg ?? colors.background,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.cardBorder,
       padding: Spacing.xl,
       gap: Spacing.sm,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
@@ -1699,89 +1311,7 @@ export default function RecipeDetailScreen() {
       borderColor: Accent.primary + "55",
     },
     sourceLinkText: { color: Accent.primary, fontSize: 14, fontWeight: "600" },
-
-    actionsRow: { gap: Spacing.sm, paddingBottom: 20 },
-
-    // Sticky footer (premium-bar audit, Group F line 385) — pins the
-    // primary log CTA to the bottom of the screen so it's reachable
-    // without scrolling to the in-page "Log to journal" card. Mirrors
-    // the pattern from household-settings.tsx ("Save changes" sticky
-    // footer) and recipe-mode cook overlay buttons. The footer is
-    // safe-area-aware via insets.bottom inline below.
-    stickyFooter: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.background,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.md,
-    },
-    stickyFooterBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingVertical: 14,
-      borderRadius: Radius.md,
-      backgroundColor: Accent.primary,
-    },
-    stickyFooterBtnText: {
-      color: colors.primaryForeground,
-      fontWeight: "700",
-      fontSize: 15,
-      letterSpacing: 0.2,
-    },
-    actionBtn: {
-      flexDirection: "row",
-      borderRadius: Radius.md,
-      paddingVertical: 12,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    actionBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
-
-    // 2026-04-30 ui-product-designer audit: the three big icon-circle
-    // stat tiles (Prep / Cook / Servings) are gone — replaced by a
-    // compact single-line `timeStatsRow` above. Servings moved into
-    // the subtitle. Confidence tile removed (backstage signal).
-    tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: Spacing.lg, gap: 0 },
-    tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
-    tabText: { fontSize: 14, fontWeight: "600", color: colors.textTertiary },
-    tabTextActive: { fontSize: 14, fontWeight: "600", color: Accent.primary },
-
-    ingredientRowNew: { flexDirection: "row", alignItems: "flex-start", paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: Spacing.sm },
-    confidenceDot: { width: 6, height: 6, borderRadius: 3, marginTop: 6, flexShrink: 0 },
-    ingredientNameAndCal: { flex: 1 },
-    // F-63e (2026-04-22): tester AAtwbwVx flagged the kcal column as
-    // clipped to "0 kc" on long ingredient lines (e.g. "1 medium-to-
-    // large yellow squash (or another zucchini), diced"). The name
-    // Text had no flex cap, so it grew past the row and pushed the
-    // kcal off-screen. Cap name with `flex: 1, flexShrink: 1` and
-    // give it a gap from the kcal; let the name wrap to 2 lines.
-    ingredientNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
-    ingredientName: { fontSize: 14, color: colors.text, fontWeight: "500", flex: 1, flexShrink: 1 },
-    ingredientCalories: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", flexShrink: 0 },
-    ingredientQty: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-    macroBar: { height: 3, borderRadius: 2, flexDirection: "row", marginTop: 6, overflow: "hidden" },
-
-    nutritionGrid: { gap: Spacing.md, marginBottom: Spacing.lg },
-    nutritionGridRow: { flexDirection: "row", gap: Spacing.md },
-    nutritionCard: { flex: 1, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border, padding: Spacing.lg, alignItems: "center" },
-    nutritionValue: { fontSize: 28, fontWeight: "700", marginBottom: 4 },
-    nutritionLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600" },
-
-    micronutrientsSection: { marginTop: Spacing.lg },
-    microLabel: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, marginBottom: Spacing.md, letterSpacing: 0.5 },
-    microRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-    microName: { fontSize: 14, color: colors.text, fontWeight: "500", flex: 1 },
-    microBarContainer: { flex: 1.5 },
-    progressBar: { height: 4, borderRadius: 2, overflow: "hidden", backgroundColor: colors.border },
-    progressBarFill: { height: "100%", backgroundColor: Accent.primary },
-    microValue: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, width: 50, textAlign: "right" },
-  }), [colors, insets.top, cardElevation]);
+  }), [colors, cardElevation]);
 
   if (loading) {
     return (
@@ -1806,13 +1336,6 @@ export default function RecipeDetailScreen() {
     );
   }
 
-  /*
-   * 2026-04-20 prototype port — top bar refactor.
-   * Previously the back / save / share pills floated absolutely over
-   * the hero image. The prototype puts them in a proper sticky top
-   * bar above the hero with a centred bold title. Rendering outside
-   * the ScrollView so the bar stays put on scroll.
-   */
   const handleShare = () => {
     const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
     const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
@@ -1823,489 +1346,301 @@ export default function RecipeDetailScreen() {
     });
   };
 
-  // Tag-row source: `meal_type` is the closest existing per-recipe
-  // array of category strings (prod data has no `tags` column). We
-  // render what's actually on the recipe — no invented tags.
-  const pillTags: string[] = Array.isArray(recipe.meal_type) ? recipe.meal_type.filter(Boolean) : [];
-  // GW-08 (audit 2026-04-28): the per-recipe fit-percent pill was
-  // removed from this screen — see the comment above the hero in
-  // the JSX. The helper call is gone; the `computeRecipeFitPercent`
-  // import is also no longer needed.
+  const displayTitle = normaliseRecipeDisplayTitle(decodeEntities(recipe.title));
+
+  // Owner-only overflow menu (edit / publish-unpublish / delete). Surfaced via
+  // the hero's `more` control. Preserves every wired owner action.
+  const openOwnerMenu = () => {
+    const menu: {
+      text: string;
+      style?: "default" | "cancel" | "destructive";
+      onPress?: () => void;
+    }[] = [];
+    if (canEditRecipe(recipe.author_id, userId)) {
+      menu.push({ text: "Edit recipe", onPress: () => setRecipeEditOpen(true) });
+    }
+    if (!isPublished) {
+      menu.push({ text: "Go public", onPress: () => void handleSetPublished(true) });
+    } else {
+      menu.push({ text: "Unpublish", onPress: () => void handleSetPublished(false) });
+    }
+    menu.push(
+      {
+        text: "Delete recipe",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            "Delete recipe?",
+            `Deleting "${recipe.title}" will remove it from your library and any meal plan that references it. This can't be undone.`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                  if (!recipe?.id) return;
+                  try {
+                    const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
+                    if (error) {
+                      Alert.alert("Couldn't delete", error.message);
+                      return;
+                    }
+                    void supabase.from("meal_plans").update({ recipe_id: null }).eq("recipe_id", recipe.id);
+                    void supabase.from("saves").delete().eq("recipe_id", recipe.id);
+                    goBack();
+                  } catch (e) {
+                    Alert.alert("Couldn't delete", e instanceof Error ? e.message : "Unknown error");
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    );
+    Alert.alert("Recipe options", undefined, menu);
+  };
+
+  // Per-ingredient tap → status / source / macros Alert (preserves the wired
+  // 4-tier verification info + Verify routing). Mirrors the prior grid card tap.
+  const onIngredientPress = (index: number) => {
+    const ing = ingredientsForIngredientsTab[index];
+    if (!ing) return;
+    const conf = ing.confidence != null ? Number(ing.confidence) : null;
+    const confPct = conf != null && Number.isFinite(conf) ? Math.round(conf * 100) : null;
+    const tier = deriveIngredientVerificationTier({
+      isVerified: ing.is_verified ?? null,
+      confidence: conf,
+      source: ing.source ?? null,
+    });
+    const tierLabel =
+      tier === "verified"
+        ? "Verified"
+        : tier === "partial"
+          ? "Partial match"
+          : tier === "estimated"
+            ? "Estimated"
+            : "Unverified";
+    const sourceLabel = ing.source ?? "Local estimate";
+    const body =
+      `Status: ${tierLabel}${confPct != null ? ` (${confPct}%)` : ""}\n` +
+      `Source: ${sourceLabel}\n\n` +
+      `${Math.round(ing.calories ?? 0)} kcal · P ${Math.round(ing.protein ?? 0)}g · C ${Math.round(ing.carbs ?? 0)}g · F ${Math.round(ing.fat ?? 0)}g`;
+    const buttons: { text: string; style?: "cancel" | "default"; onPress?: () => void }[] = [
+      { text: "Close", style: "cancel" },
+    ];
+    if (ingredientShouldShowVerifyCta(tier) && recipeId && !isSeedRecipeId(recipeId)) {
+      buttons.unshift({
+        text: "Verify →",
+        onPress: () => router.push(`/recipe/verify?id=${recipeId}` as never),
+      });
+    }
+    Alert.alert(decodeEntities(ing.name), body, buttons);
+  };
+
+  // Attribution row (Figma §2). Reuse the existing byline resolution — it
+  // already prefers handle → host → author and carries the right href.
+  const attribution =
+    recipeByline.label && recipeByline.label.length > 0
+      ? {
+          label: recipeByline.label,
+          handleHref: recipeByline.href,
+          originalHref: recipe.source_url?.trim() ?? null,
+        }
+      : null;
+
+  const fitVerdict = computeFitsYourDayVerdict({
+    kcal: macros.calories,
+    targetCals: userTargets.calories,
+  });
+
+  const metaStats = composeRecipeMeta({
+    prepMin: recipe.prep_time_min,
+    cookMin: recipe.cook_time_min,
+    ingredientCount: ingredientsForIngredientsTab.length,
+  });
+
+  // Macro strip cells (Figma §4) — CAL / PRO / CARB(/NET) / FAT, per-macro
+  // coloured downstream. Net-carbs lens swaps the carb column.
+  const fiberG = macros.fiber_g ?? 0;
+  const carbColLabel = carbsLabel(fiberG, netCarbsLensEnabled);
+  const carbColValue = netCarbsForRow(macros.carbs, fiberG, netCarbsLensEnabled);
+  const macroCells = [
+    { key: "calories" as const, label: "CAL", value: `${Math.round(macros.calories)}`, unit: "" },
+    { key: "protein" as const, label: "PRO", value: `${Math.round(macros.protein)}`, unit: "g" },
+    {
+      key: "carbs" as const,
+      label: carbColLabel.toLowerCase().startsWith("net") ? "NET" : "CARB",
+      value: `${Math.round(carbColValue)}`,
+      unit: "g",
+    },
+    { key: "fat" as const, label: "FAT", value: `${Math.round(macros.fat)}`, unit: "g" },
+  ];
+
+  // Tracked-micro overflow chips (fibre/sugar/sodium) — kept so the four-column
+  // Figma strip drops no tracked value.
+  const microChips: { key: string; label: string; value: string }[] = [];
+  if (recipeMacrosToShow.includes("fiber") && fiberG > 0) {
+    microChips.push({ key: "fiber", label: "Fiber", value: `${formatMacroValue(fiberG, "fiber")}g` });
+  }
+  if (recipeMacrosToShow.includes("sugar") && (macros.sugar_g ?? 0) > 0) {
+    microChips.push({ key: "sugar", label: "Sugar", value: `${macros.sugar_g}g` });
+  }
+  if (recipeMacrosToShow.includes("sodium") && (macros.sodium_mg ?? 0) > 0) {
+    microChips.push({ key: "sodium", label: "Sodium", value: `${macros.sodium_mg}mg` });
+  }
+
+  const gridIngredients: RecipeGridIngredient[] = ingredientsForIngredientsTab.map((ing) => ({
+    name: ing.name,
+    amount: ing.amount,
+    unit: ing.unit,
+    calories: ing.calories ?? 0,
+    protein: ing.protein ?? 0,
+    carbs: ing.carbs ?? 0,
+    fat: ing.fat ?? 0,
+    confidence: ing.confidence ?? null,
+    source: ing.source ?? null,
+    is_verified: ing.is_verified ?? null,
+  }));
+
+  const openCookMode = () => {
+    setCookStep(0);
+    setCookMode(true);
+  };
+
+  const cleanDescription = sanitizeRecipeDescription(recipe.description);
+  const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
 
   return (
     <View style={styles.container}>
-      {/* Sticky top bar — replaces the floating-over-hero pattern. */}
-      <View style={[styles.topBar, { paddingTop: insets.top }]}>
-        <View style={styles.topBarRow}>
-          <Pressable onPress={goBack} style={styles.topBarIconBtn} accessibilityRole="button" accessibilityLabel="Go back">
-            <ChevronLeft size={24} color={colors.text} />
-          </Pressable>
-          <Text style={styles.topBarTitle} numberOfLines={1} ellipsizeMode="tail">
-            {/* F-85 (2026-04-25) — de-CAPS shouty imported titles
-                ("HEALTHY 3 INGREDIENT WHIPPED PISTACHIO TIRAMISU" →
-                "Healthy 3 Ingredient Whipped Pistachio Tiramisu").
-                Display-only normalisation; the stored title is untouched. */}
-            {normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}
-          </Text>
-          <View style={styles.topBarActions}>
-            <Pressable
-              onPress={() => toggleSave(recipeId)}
-              style={styles.topBarIconBtn}
-              accessibilityRole="button"
-              accessibilityLabel={saved ? "Remove from library" : "Save to library"}
-            >
-              <Bookmark
-                size={22}
-                color={saved ? Accent.success : colors.text}
-                fill={saved ? Accent.success : "transparent"}
-              />
-            </Pressable>
-            <Pressable
-              onPress={handleShare}
-              style={styles.topBarIconBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Share recipe"
-            >
-              <Share2 size={22} color={colors.text} />
-            </Pressable>
-            {/* CR-01/CR-02 + ENG-759: owner overflow — edit, publish, delete. */}
-            {isRecipeOwner && !isSeedRecipeId(recipeId) ? (
-              <Pressable
-                onPress={() => {
-                  const menu: {
-                    text: string;
-                    style?: "default" | "cancel" | "destructive";
-                    onPress?: () => void;
-                  }[] = [];
-                  if (canEditRecipe(recipe.author_id, userId)) {
-                    menu.push({
-                      text: "Edit recipe",
-                      onPress: () => setRecipeEditOpen(true),
-                    });
-                  }
-                  if (!isPublished) {
-                    menu.push({
-                      text: "Go public",
-                      onPress: () => {
-                        void handleSetPublished(true);
-                      },
-                    });
-                  } else {
-                    menu.push({
-                      text: "Unpublish",
-                      onPress: () => {
-                        void handleSetPublished(false);
-                      },
-                    });
-                  }
-                  menu.push(
-                    {
-                      text: "Delete recipe",
-                      style: "destructive",
-                      onPress: () => {
-                          Alert.alert(
-                            "Delete recipe?",
-                            `Deleting "${recipe.title}" will remove it from your library and any meal plan that references it. This can't be undone.`,
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              {
-                                text: "Delete",
-                                style: "destructive",
-                                onPress: async () => {
-                                  if (!recipe?.id) return;
-                                  try {
-                                    const { error } = await supabase
-                                      .from("recipes")
-                                      .delete()
-                                      .eq("id", recipe.id);
-                                    if (error) {
-                                      Alert.alert("Couldn't delete", error.message);
-                                      return;
-                                    }
-                                    // Best-effort orphan cleanup —
-                                    // detach from any meal_plans rows
-                                    // that referenced this recipe so
-                                    // the planner doesn't show stale
-                                    // titles. Failures are silent
-                                    // (the tracker tolerates orphan
-                                    // refs by falling back to the
-                                    // snapshotted recipe_title).
-                                    void supabase
-                                      .from("meal_plans")
-                                      .update({ recipe_id: null })
-                                      .eq("recipe_id", recipe.id);
-                                    void supabase
-                                      .from("saves")
-                                      .delete()
-                                      .eq("recipe_id", recipe.id);
-                                    goBack();
-                                  } catch (e) {
-                                    Alert.alert(
-                                      "Couldn't delete",
-                                      e instanceof Error ? e.message : "Unknown error",
-                                    );
-                                  }
-                                },
-                              },
-                            ],
-                          );
-                      },
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  );
-                  Alert.alert("Recipe options", undefined, menu);
-                }}
-                style={styles.topBarIconBtn}
-                accessibilityRole="button"
-                accessibilityLabel="More recipe actions"
-              >
-                <MoreHorizontal size={22} color={colors.text} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
-        // Sticky footer below (premium-bar audit Group F line 385)
-        // overlays ~64pt + safe-area; pad the scroll content so the
-        // last items (source attribution / notes card) aren't hidden
-        // behind the CTA.
-        contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
       >
-        {/* Hero image — now sits below the top bar (no overlap).
-            Audit C1 (2026-05-05): when no real image is available the
-            screen previously rendered an Unsplash stock photo at 280pt
-            (DEFAULT_IMAGE) — read as "empty hero" because it was
-            stranger food. Now: 280pt photo when present, 140pt
-            deterministic gradient via RecipeHeroFallback when not. */}
-        {heroImageUrl && !heroImageBroken ? (
-          <Image
-            source={{ uri: heroImageUrl }}
-            style={styles.hero}
-            onError={() => setHeroImageBroken(true)}
-          />
-        ) : (
-          <View style={styles.heroFallback}>
-            <RecipeHeroFallback
-              id={recipe?.id ?? "unknown"}
-              title={recipe?.title ?? ""}
-              tags={recipe?.meal_type ?? []}
-            />
-          </View>
-        )}
-
-        {/* GW-08 (audit 2026-04-28): pre-fix this row rendered a primary-
-            tinted "{fitPercent}% match" pill, but the mobile fit-percent
-            helper is invoked with `targets = null` and falls back to
-            its hard-coded NEUTRAL_FALLBACK = 85, so every recipe
-            rendered "85% match" — pure decoration. F-45 already killed
-            the same pill on Discover hero in 2026-04-22 with the
-            explicit reason "Score means nothing — remove"; this
-            straggler now follows. The proper-case meal-type pill
-            below the title remains the canonical surface. */}
+        {/* 1. Full-bleed hero with overlaid controls (Figma 332:2 §1). */}
+        <RecipeDetailHero
+          recipeId={recipe.id}
+          title={displayTitle}
+          tags={recipe.meal_type ?? []}
+          imageUrl={heroImageUrl}
+          imageBroken={heroImageBroken}
+          onImageError={() => setHeroImageBroken(true)}
+          topInset={insets.top}
+          saved={saved}
+          onBack={goBack}
+          onToggleSave={() => toggleSave(recipeId)}
+          onShare={handleShare}
+          onMore={isRecipeOwner && !isSeedRecipeId(recipeId) ? openOwnerMenu : undefined}
+        />
 
         <View style={styles.body}>
-          {/* Title + meta */}
-          <Text style={styles.title}>{normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}</Text>
-          {/* GW-08 (audit 2026-04-28): the source TrustChip that lived
-              under the title was sourced from a circular signal —
-              `ing.confidence` is synthesised at load via
-              `r.is_verified ? 0.9 : 0.3`, so the chip variant
-              ultimately reflected `recipe_ingredients.is_verified`,
-              which is itself written by the importer as
-              `(m?.calories ?? 0) > 0` (every successful LLM extract).
-              The chip therefore claimed "USDA verified" / "OFF
-              adjusted" on recipes whose macros came from the LLM.
-              Removed until per-ingredient confidence is hydrated
-              end-to-end (P2 work in the GW-08 audit). The gluten
-              classifier chip stays — it walks the ingredient list
-              against a real keyword set and is honest. */}
+          {/* 2. Title block — title, attribution, fits-your-day chip. */}
+          <RecipeTitleBlock
+            title={displayTitle}
+            attribution={attribution}
+            verdict={fitVerdict}
+            onNavigate={(route) => router.push(route as never)}
+          />
+
+          {/* Gluten estimate chip + persistent disclaimer (ENG-748). */}
           {(() => {
-            const gluten = classifyRecipeGluten(
-              ingredients.map((ing) => String(ing.name ?? "")),
-            );
+            const gluten = classifyRecipeGluten(ingredients.map((ing) => String(ing.name ?? "")));
             if (!gluten.variant) return null;
-            // ENG-748 (legal-reviewer P0): a PERSISTENT disclaimer caption
-            // sits directly beneath the chip — not a tooltip/tap/global
-            // ToS — whenever EITHER gluten chip renders. The chip is an
-            // estimate from ingredient names on a coeliac-sensitive
-            // surface; the caption must always be visible so the chip is
-            // never read as a safety guarantee. The regulated term
-            // "Gluten-free" is never rendered as a label (EU/UK Reg
-            // 828/2014). Mirror: src/app/components/RecipeDetail.tsx.
             return (
-              <View style={{ marginTop: 6 }}>
+              <View style={{ gap: 4 }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  <TrustChip
-                    variant={gluten.variant}
-                    testID="recipe-detail-gluten-chip"
-                  />
+                  <TrustChip variant={gluten.variant} testID="recipe-detail-gluten-chip" />
                 </View>
-                <Text
-                  style={styles.glutenDisclaimer}
-                  testID="recipe-detail-gluten-disclaimer"
+                <Text style={styles.glutenDisclaimer} testID="recipe-detail-gluten-disclaimer">
+                  Estimated from ingredient names — not a guarantee. Always check labels and packaging
+                  if you avoid gluten for medical reasons.
+                </Text>
+              </View>
+            );
+          })()}
+
+          {/* 3. Action pills — Start Cooking / Log / Edit (Ask omitted: no
+              coach handler exists — net-new Figma 185:2). */}
+          <RecipeActionPills
+            onStartCooking={openCookMode}
+            onLog={() => void addRecipeToTodayJournal()}
+            logging={loggingJournal}
+            onEdit={
+              isRecipeOwner && canEditRecipe(recipe.author_id, userId) && !isSeedRecipeId(recipeId)
+                ? () => setRecipeEditOpen(true)
+                : undefined
+            }
+            haptic={winMomentFeedback ? "confirm" : "none"}
+          />
+
+          {/* 4. Macro card — per-macro coloured values. */}
+          {(() => {
+            const hasNutrition =
+              Math.round(macros.calories) > 0 ||
+              macros.protein > 0 ||
+              macros.carbs > 0 ||
+              macros.fat > 0;
+            if (!hasNutrition) {
+              return (
+                <View
+                  testID="recipe-nutrition-pending"
+                  style={{
+                    paddingVertical: Spacing.sm,
+                    paddingHorizontal: Spacing.lg,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    opacity: 0.75,
+                  }}
+                  accessibilityLabel="Calories not yet computed for this recipe"
                 >
-                  Estimated from ingredient names — not a guarantee. Always
-                  check labels and packaging if you avoid gluten for medical
-                  reasons.
-                </Text>
-              </View>
-            );
-          })()}
-          {/* 2026-05-02 v4 (recipe-detail-tiles-and-kcal): user feedback
-              "cals need to be clearer" — kcal got promoted out of the
-              subtitle row (where it was buried at 13-pt grey-with-bold
-              alongside slot / serves / by) into its own dedicated
-              headline line directly under the title. Reads as
-              "329 kcal · per portion" at 17-pt headline, tabular-nums,
-              foreground colour. The subtitle below stays as the meta
-              line ("lunch · serves 3 · by author"). */}
-          {(() => {
-            const kcalForLine = Math.round(macros.calories);
-            if (kcalForLine <= 0) return null;
-            return (
-              <View
-                style={styles.kcalLine}
-                testID="recipe-kcal-line"
-                accessibilityLabel={`${kcalForLine} kilocalories per portion`}
-              >
-                <Text style={styles.kcalNumber} testID="recipe-kcal-number">
-                  {kcalForLine} kcal
-                </Text>
-                <Text style={styles.subtitleSeparator}>·</Text>
-                <Text style={styles.kcalQualifier}>per portion</Text>
-              </View>
-            );
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                    Calories not yet computed — open the ingredients to verify
+                  </Text>
+                </View>
+              );
+            }
+            return <RecipeMacroStrip cells={macroCells} />;
           })()}
 
-          {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
-              collapsed attribution + slot into one flex-wrap subtitle
-              joined by `·` separators. Author is tappable (no
-              underline) when `recipeByline.href` is present.
-
-              2026-05-02 v4: kcal moved out of this row to its own
-              dedicated headline line above.
-              C5 (audit 2026-05-05): "serves N" dropped — the stepper
-              card directly below is the canonical source of truth for
-              servings. Saying it twice was noise. The composeSubtitleParts
-              helper drops the token cleanly when servings is null. */}
-          {(() => {
-            const subtitleParts = composeSubtitleParts({
-              authorLabel: recipeByline.label || null,
-              slots: recipe.meal_type ?? null,
-              servings: null,
-            });
-            if (subtitleParts.length === 0) return null;
-            return (
-              <View
-                style={styles.subtitleRow}
-                testID="recipe-subtitle-row"
-                accessibilityLabel={subtitleParts.map((p) => p.label).join(", ")}
-              >
-                {subtitleParts.map((part, idx) => {
-                  const isAuthor =
-                    part.key === "by" && Boolean(recipeByline.href);
-                  return (
-                    <View
-                      key={part.key}
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                      {idx > 0 ? (
-                        <Text style={[styles.subtitleSeparator, { marginRight: 4 }]}>·</Text>
-                      ) : null}
-                      {isAuthor ? (
-                        <Pressable
-                          onPress={() => {
-                            if (!recipeByline.href) return;
-                            if (recipeByline.href.startsWith("/")) {
-                              router.push(recipeByline.href as never);
-                            } else {
-                              void Linking.openURL(recipeByline.href);
-                            }
-                          }}
-                          accessibilityRole="link"
-                          accessibilityLabel={`Open source: ${recipeByline.label}`}
-                        >
-                          <Text style={styles.subtitleText}>{part.label}</Text>
-                        </Pressable>
-                      ) : (
-                        <Text style={styles.subtitleText}>{part.label}</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })()}
-
-          {/* 2026-04-30 ui-product-designer audit Fix 2 — compact
-              one-line stats. C3 (audit 2026-05-05): the old "Edit
-              servings" text link that trailed this row was redundant
-              with the stepper directly below. Cut here; the owner-only
-              ✏ pencil button now sits on the stepper card itself
-              (stronger spatial association with what it edits). The
-              row hides entirely when both prep and cook are unknown
-              and the user is not the owner — preserving the original
-              empty-row hide rule. */}
-          {(() => {
-            const prepMin = recipe.prep_time_min;
-            const cookMin = recipe.cook_time_min;
-            const showRow = shouldRenderTimeStats(prepMin, cookMin);
-            if (!showRow) return null;
-            const parts: string[] = [];
-            if (prepMin != null && prepMin > 0)
-              parts.push(`${formatMinutes(prepMin)} prep`);
-            if (cookMin != null && cookMin > 0)
-              parts.push(`${formatMinutes(cookMin)} cook`);
-            return (
-              <View style={styles.timeStatsRow} testID="recipe-time-stats">
-                <Clock size={13} color={colors.textTertiary} />
-                <Text style={styles.timeStatsText}>{parts.join(" · ")}</Text>
-              </View>
-            );
-          })()}
-
-          {/* PR1 (Paprika parity, 2026-05-02 customer-lens audit) —
-              viewing-servings stepper. Lets the viewer dial the number
-              of portions the screen represents up / down without
-              touching the recipe's authored yield (which the recipe
-              owner edits via "Edit servings" on the time-stats row
-              above). Ingredient grams + the secondary "X kcal total
-              for N portions" line rescale in real time. Bounds
-              (1..99) and 200ms debounce live in `recipeViewScale.ts`
-              so web + mobile share the same contract. The stepper
-              sits between the info row (time-stats) and the calorie /
-              macro hero, where Paprika and Recime put theirs. */}
-          {recipe ? (
+          {/* Tracked-micro overflow chips (fibre / sugar / sodium). */}
+          {microChips.length > 0 ? (
             <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingHorizontal: Spacing.lg,
-                paddingVertical: Spacing.md,
-                borderRadius: Radius.lg,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-                marginTop: Spacing.sm,
-              }}
-              testID="recipe-view-servings-stepper"
+              testID="recipe-macro-micro-chips"
+              accessibilityLabel="Additional nutrition per serving"
+              style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}
             >
-              {/* C4 (audit 2026-05-05): "Servings to view" → "Servings".
-                  Stepper context already implies "to view"; the pencil
-                  trailing the stepper (owner-only) disambiguates the
-                  authored-yield edit path. */}
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
-                Servings
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
-                <Pressable
-                  onPress={() => handleViewServingsStep(-1)}
-                  disabled={viewServings <= RECIPE_VIEW_SERVINGS_MIN}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Decrease servings to view"
-                  accessibilityState={{ disabled: viewServings <= RECIPE_VIEW_SERVINGS_MIN }}
-                  testID="recipe-view-servings-minus"
+              {microChips.map((m) => (
+                <View
+                  key={m.key}
+                  testID={`recipe-macro-chip-${m.key}`}
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    backgroundColor: colors.background,
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: Radius.full,
+                    backgroundColor: colors.backgroundSecondary,
                     borderWidth: 1,
-                    borderColor: colors.border,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    opacity: viewServings <= RECIPE_VIEW_SERVINGS_MIN ? 0.4 : 1,
+                    borderColor: colors.cardBorder,
                   }}
                 >
-                  <Minus size={18} color={colors.text} />
-                </Pressable>
-                <Text
-                  style={{
-                    minWidth: 32,
-                    textAlign: "center",
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: colors.text,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                  testID="recipe-view-servings-value"
-                  accessibilityLiveRegion="polite"
-                  accessibilityLabel={`${viewServings} servings to view`}
-                >
-                  {viewServings}
-                </Text>
-                <Pressable
-                  onPress={() => handleViewServingsStep(1)}
-                  disabled={viewServings >= RECIPE_VIEW_SERVINGS_MAX}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Increase servings to view"
-                  accessibilityState={{ disabled: viewServings >= RECIPE_VIEW_SERVINGS_MAX }}
-                  testID="recipe-view-servings-plus"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    backgroundColor: colors.background,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    opacity: viewServings >= RECIPE_VIEW_SERVINGS_MAX ? 0.4 : 1,
-                  }}
-                >
-                  <Plus size={18} color={colors.text} />
-                </Pressable>
-                {/* C3 (audit 2026-05-05): owner-only pencil to edit
-                    the recipe's authored yield (replaces the "Edit
-                    servings" text link that used to live above the
-                    time-stats row). Spatial association with the
-                    stepper makes the relationship between view-scaling
-                    and yield-editing immediate. */}
-                {isRecipeOwner ? (
-                  <Pressable
-                    onPress={() => {
-                      setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
-                      setYieldEditOpen(true);
-                    }}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit recipe yield"
-                    accessibilityHint="Opens editor to change how many portions the full recipe makes"
-                    testID="recipe-edit-yield-pencil"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginLeft: Spacing.sm,
-                    }}
-                  >
-                    <Pencil size={14} color={colors.textSecondary} />
-                  </Pressable>
-                ) : null}
-              </View>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{m.label}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                    {m.value}
+                  </Text>
+                </View>
+              ))}
             </View>
           ) : null}
 
-          {/* PR1 (Paprika parity, 2026-05-02): secondary "X kcal total
-              for N portions" line. Per-portion kcal stays invariant
-              under the stepper (per-portion is per-portion), so we
-              surface the batch total as a small secondary line when
-              the user has dialled away from the authored yield. The
-              visible number then tracks the multiplier honestly
-              without pretending per-portion has changed. Hidden at
-              the base yield (no second line when nothing is being
-              scaled) and when nutrition is unknown. */}
+          {/* 5. Meta row — time · item count (rating + difficulty hidden: no
+              backing data). */}
+          <RecipeMetaRow stats={metaStats} />
+
+          {/* Batch-total kcal line when the viewer has scaled away from yield. */}
           {(() => {
             const perPortionKcal = Math.round(macros.calories);
             const totalKcal = Math.round(perPortionKcal * viewServings);
@@ -2315,814 +1650,70 @@ export default function RecipeDetailScreen() {
               <Text
                 testID="recipe-kcal-total-line"
                 accessibilityLabel={`${totalKcal} kilocalories total for ${viewServings} portions`}
-                style={{
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  fontVariant: ["tabular-nums"],
-                  marginTop: -Spacing.xs,
-                }}
+                style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}
               >
                 {totalKcal} kcal total for {viewServings} portions
               </Text>
             );
           })()}
 
-          {/* 2026-05-01 v3 redesign — the bordered "329 kcal per
-              portion" hero card is gone. kcal now lives inline in
-              the subtitle row above (key `kcal`, bold + foreground).
-              The macro tiles below ARE the visual hero now — bigger
-              numbers, more breathing room, the only coloured surface
-              above the fold.
-
-              When nutrition is not yet computed (kcal=0 + all macros
-              zero) we still render a single dimmed line so the user
-              can tell the difference between "this recipe is 0 kcal"
-              and "we haven't computed it yet". P1-16 behaviour
-              preserved. */}
-          {(() => {
-            const kcalNum = Math.round(macros.calories);
-            const hasNutrition =
-              kcalNum > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fat > 0;
-            if (hasNutrition) return null;
-            return (
-              <View
-                testID="recipe-nutrition-pending"
-                style={{
-                  paddingVertical: Spacing.sm,
-                  paddingHorizontal: Spacing.lg,
-                  borderRadius: Radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: "transparent",
-                  opacity: 0.7,
-                }}
-                accessibilityLabel="Calories not yet computed for this recipe"
-              >
-                <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
-                  Calories not yet computed — open the Ingredients tab to verify
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* Audit C2 (2026-05-05): the "≈ X% of your day" pill that
-              previously rendered here was a duplicate of the
-              "Fits your day · ≈ X%" footer below the macro tiles.
-              Two surfaces saying the same percentage was visual noise.
-              Footer line is now the single source of truth for the
-              percentage. */}
-
-          {/* v3 macro tiles — visual hero of the screen. 2026-05-02 v4
-              user feedback "the widgets should be the same size and
-              fit on one row" — switched the wrap layout (which let
-              fiber stand alone on row 2 at 48% width while p/c/f
-              shared row 1) to a flex-1 4-up row at 8-pt gap. All
-              tiles now share width and read as one coherent grid.
-              `flexWrap: "wrap"` is preserved so users with 5–6
-              tracked macros (e.g. + sugar/sodium) still spill onto a
-              second row at the same per-tile width, and so narrow
-              widths (<360pt) wrap naturally below the minWidth floor
-              instead of clipping. */}
-          <View
-            style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md }}
-            testID="recipe-macros-grid"
-          >
-            {recipeMacrosToShow.map((macro) => {
-              const fiberG = macros.fiber_g ?? 0;
-              const sugarG = macros.sugar_g ?? 0;
-              const sodiumMg = macros.sodium_mg ?? 0;
-              const macroMap: Record<
-                string,
-                { label: string; cur: number; tgt: number; color: string; unit: string }
-              > = {
-                protein: { label: "Protein", cur: macros.protein, tgt: userTargets.protein, color: MacroColors.protein, unit: "g" },
-                // P3-30 (2026-04-25): apply net-carbs lens. Helpers
-                // refuse the "Net carbs" label when fibre is unknown.
-                carbs: {
-                  label: carbsLabel(fiberG, netCarbsLensEnabled),
-                  cur: netCarbsForRow(macros.carbs, fiberG, netCarbsLensEnabled),
-                  tgt: netCarbsForRow(userTargets.carbs, userTargets.fiber, netCarbsLensEnabled),
-                  color: MacroColors.carbs,
-                  unit: "g",
-                },
-                fat: { label: "Fat", cur: macros.fat, tgt: userTargets.fat, color: MacroColors.fat, unit: "g" },
-                // 2026-04-26 polish (round 2): use the canonical
-                // `MacroColors.fiber` token (resolves to Accent.success but
-                // routing through the shared token means a future fiber
-                // colour change ripples consistently). The other macros
-                // here already use MacroColors; fiber was the lone Accent
-                // direct reference.
-                fiber: { label: "Fiber", cur: fiberG, tgt: userTargets.fiber, color: MacroColors.fiber, unit: "g" },
-                sugar: { label: "Sugar", cur: sugarG, tgt: REF_SUGAR_G, color: MacroColors.sugar, unit: "g" },
-                sodium: { label: "Sodium", cur: sodiumMg, tgt: REF_SODIUM_MG, color: MacroColors.sodium, unit: "mg" },
-              };
-              const m = macroMap[macro];
-              if (!m) return null;
-              // Polish (2026-04-25): protein/carbs/fat now keep 1-decimal
-              // precision via formatMacroValue (no more "C 105.80000000000001g"
-              // float leakage). calories+sodium stay integer.
-              const displayAmount = formatMacroValue(m.cur, macro);
-              return (
-                <View
-                  key={macro}
-                  testID={`recipe-macro-tile-${macro}`}
-                  style={{
-                    flex: 1,
-                    minWidth: 70,
-                    padding: 12,
-                    borderRadius: 14,
-                    backgroundColor: colors.card,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.5 }}>{m.label}</Text>
-                  </View>
-                  <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"], lineHeight: 22 }}>
-                    {displayAmount}
-                    {m.unit}
-                  </Text>
-                  {/* C6 (audit 2026-05-05): caption demoted from
-                      11pt at full opacity to 9pt at 0.6 — the value
-                      line above already shows the unit, so the cap
-                      line dropping the redundant unit suffix removes
-                      visual noise across all 4 (or 6) tiles without
-                      losing the target reference. */}
-                  <Text style={{ fontSize: 9, color: colors.textTertiary, opacity: 0.6, marginTop: 4, fontVariant: ["tabular-nums"] }}>
-                    of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
-                  </Text>
-                  <View style={{ marginTop: 6, height: 3, borderRadius: 2, backgroundColor: colors.border }}>
-                    <View
-                      style={{
-                        width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        backgroundColor: m.color,
-                      }}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
-              single text line below the macro tiles. No card, no pill
-              background — just a coloured glyph + label. The audit
-              note that the previous treatment "competed with the
-              macros below" stops being true when the verdict reads
-              like a footnote of the macro grid, not a separate band.
-              Logic delegated to `computeFitsYourDayVerdict` so web
-              and mobile share the percent / tone / copy rules. */}
-          {(() => {
-            const verdict = computeFitsYourDayVerdict({
-              kcal: macros.calories,
-              targetCals: userTargets.calories,
-            });
-            if (!verdict) return null;
-
-            // ENG-818 (Redesign — Design Direction 2026). The fit verdict is
-            // the single moment a user learns whether a recipe works for their
-            // day — the design-director review flagged it rendering as flat
-            // grey footnote metadata. Behind `design_system_colours` we promote
-            // it to a real tinted payoff CHIP:
-            //   - fits well (≤50% of day) → the dedicated landmark WIN amber
-            //     (`Accent.win` / `winSoft`). This is exactly the reserved
-            //     "genuine win" use the win-colour exists for — not a generic
-            //     success-green state.
-            //   - over-half (51–99%) → warning amber tint.
-            //   - over a full day (≥100%) → destructive red tint.
-            // Flag OFF keeps the old flat coloured-glyph + text line alive.
-            if (winFitsChip) {
-              const chipPalette = {
-                success: { fg: Accent.win, bg: Accent.winSoft },
-                warning: { fg: Accent.warning, bg: "rgba(247, 138, 50, 0.12)" },
-                destructive: {
-                  fg: Accent.destructive,
-                  bg: "rgba(241, 98, 100, 0.12)",
-                },
-              } as const;
-              const { fg, bg } = chipPalette[verdict.tone];
-              return (
-                <View
-                  testID="recipe-fits-your-day"
-                  accessibilityRole="text"
-                  accessibilityLabel={verdict.a11y}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    alignSelf: "flex-start",
-                    gap: 5,
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: Radius.full,
-                    backgroundColor: bg,
-                    marginBottom: Spacing.lg,
-                  }}
-                >
-                  {verdict.fits ? (
-                    <Check size={13} color={fg} strokeWidth={3} />
-                  ) : null}
-                  <Text
-                    style={{ fontSize: 12.5, fontWeight: "700", color: fg }}
-                    numberOfLines={1}
-                  >
-                    {verdict.label}
-                  </Text>
-                </View>
-              );
-            }
-
-            // Flag-off legacy path — flat coloured glyph + text line.
-            const tonePalette = {
-              success: Accent.success,
-              warning: Accent.warning,
-              destructive: Accent.destructive,
-            } as const;
-            const fg = tonePalette[verdict.tone];
-            return (
-              <View
-                testID="recipe-fits-your-day"
-                accessibilityLabel={verdict.a11y}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  alignSelf: "flex-start",
-                  gap: 6,
-                  marginBottom: Spacing.lg,
-                }}
-              >
-                {verdict.fits ? (
-                  <Check size={14} color={fg} strokeWidth={2.5} />
-                ) : null}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: fg }}>
-                  {verdict.label}
-                </Text>
-              </View>
-            );
-          })()}
-
-
-          {/* Description */}
-          {(() => {
-            // Polish (2026-04-25): the legacy "[TEMP SEED] " seeder prefix
-            // shipped to prod on a few rows; sanitizeRecipeDescription strips
-            // it defensively. Empty after strip → don't render the card.
-            const cleanDescription = sanitizeRecipeDescription(recipe.description);
-            if (!cleanDescription) return null;
-            return (
-              <View style={styles.card}>
-                <Text style={styles.descText}>{decodeEntities(cleanDescription)}</Text>
-              </View>
-            );
-          })()}
-
-          {/*
-            T12 (2026-04-24) — regulated-allergen callout on every
-            recipe. Closes DI-P0-01. Empty array still surfaces the
-            caveat so silence is never read as safety. Never paywalled.
-          */}
-          {(() => {
-            const normalised = normaliseAllergenIds(recipe.allergens ?? []);
-            const containsLine = formatContainsLine(normalised);
-            return (
-              <View
-                style={styles.card}
-                accessibilityRole="text"
-                accessibilityLabel="Regulated-allergen information"
-                testID="recipe-allergen-callout"
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "700",
-                    color: colors.text,
-                    marginBottom: 4,
-                  }}
-                >
-                  {containsLine ?? "Not tagged for allergens"}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    lineHeight: 17,
-                  }}
-                >
-                  We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* PR1 (Paprika parity, 2026-05-02): the old "Planned
-              portion: Nx — quantities below are adjusted" banner is
-              gone. The visible "Servings to view" stepper above is now
-              the canonical surface for that signal — when the viewer
-              has dialled away from the recipe's authored yield they
-              can see both the chosen portion count and the resulting
-              ingredient grams without an extra explanatory band. */}
-
-          {/* Tab Bar */}
-          <View style={styles.tabBar}>
-            <Pressable
-              style={[styles.tab, activeTab === "ingredients" && { borderBottomColor: Accent.primary }]}
-              onPress={() => setActiveTab("ingredients")}
-            >
-              <Text style={activeTab === "ingredients" ? styles.tabTextActive : styles.tabText}>Ingredients</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, activeTab === "steps" && { borderBottomColor: Accent.primary }]}
-              onPress={() => setActiveTab("steps")}
-            >
-              <Text style={activeTab === "steps" ? styles.tabTextActive : styles.tabText}>Steps</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, activeTab === "nutrition" && { borderBottomColor: Accent.primary }]}
-              onPress={() => setActiveTab("nutrition")}
-            >
-              <Text style={activeTab === "nutrition" ? styles.tabTextActive : styles.tabText}>Nutrition</Text>
-            </Pressable>
-          </View>
-
-          {/* Ingredients Tab */}
-          {activeTab === "ingredients" && ingredients.length > 0 && (
-              <View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
-                <Text style={styles.cardTitle}>Ingredients</Text>
-                <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
-                  <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>Edit</Text>
-                </Pressable>
-              </View>
-              {autoVerifyingIngredients && (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: Spacing.md,
-                    lineHeight: 17,
-                  }}
-                >
-                  Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when
-                  configured)…
-                </Text>
-              )}
-              {!autoVerifyingIngredients &&
-                !ingredientsHaveNutrition &&
-                recipe != null &&
-                (recipe.calories > 0 || recipe.protein > 0 || recipe.carbs > 0 || recipe.fat > 0) && (
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                      marginBottom: Spacing.md,
-                      lineHeight: 17,
-                    }}
-                  >
-                    Per-line calories below are a local fallback (staples + scaling) when the database lookup could not
-                    run — open this screen signed in with the API reachable, or use the{" "}
-                    <Text style={{ fontWeight: "700" }}>Nutrition</Text> tab for totals.
-                  </Text>
-                )}
-              {ingredientsForIngredientsTab.map((ing, i) => {
-                const rowCal = Math.round(ing.calories ?? 0);
-                const rowPro = ing.protein ?? 0;
-                const rowCarbs = ing.carbs ?? 0;
-                const rowFat = ing.fat ?? 0;
-                const totalMacros = rowPro + rowCarbs + rowFat;
-                const proteinPct = totalMacros > 0 ? (rowPro / totalMacros) * 100 : 0;
-                const carbsPct = totalMacros > 0 ? (rowCarbs / totalMacros) * 100 : 0;
-                const fatPct = totalMacros > 0 ? (rowFat / totalMacros) * 100 : 0;
-
-                const conf = ing.confidence != null ? Number(ing.confidence) : null;
-                const confPct = conf != null && Number.isFinite(conf) ? Math.round(conf * 100) : null;
-                /**
-                 * 2026-05-02 fix — derive label/dot from `is_verified`
-                 * + source first, falling back to confidence buckets.
-                 * Pre-fix, the row trusted only the numeric `confidence`
-                 * column; once a user manually verified a row through
-                 * the verify flow we wrote `is_verified=true` but did
-                 * NOT update `confidence`, so a row at the original AI
-                 * 0.69 score kept rendering "Partial match" + Verify
-                 * CTA forever. Shared helper keeps web in sync.
-                 */
-                const verificationTier = deriveIngredientVerificationTier({
-                  isVerified: ing.is_verified ?? null,
-                  confidence: conf,
-                  source: ing.source ?? null,
-                });
-                const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
-                const tierColor =
-                  verificationTier === "verified"
-                    ? Accent.success
-                    : verificationTier === "partial"
-                      ? Accent.warning
-                      : verificationTier === "estimated"
-                        ? Accent.destructive
-                        : colors.textTertiary;
-                const tierLabel =
-                  verificationTier === "verified"
-                    ? "Verified"
-                    : verificationTier === "partial"
-                      ? "Partial match"
-                      : verificationTier === "estimated"
-                        ? "Estimated"
-                        : "Unverified";
-                /** 2026-05-02 fix — render the inline "%·label" only
-                    when the row hasn't been verified yet. A verified
-                    row should display "Verified" without contradicting
-                    the user with the original AI confidence number. */
-                const showInlineConfidence =
-                  verificationTier !== "verified" && confPct != null;
-                const sourceLabel = ing.source ?? "Local estimate";
-
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => {
-                      Alert.alert(
-                        `${decodeEntities(ing.name)}`,
-                        `Status: ${tierLabel}${confPct != null ? ` (${confPct}%)` : ""}\n` +
-                        `Source: ${sourceLabel}\n\n` +
-                        `${Math.round(rowCal)} kcal · P ${Math.round(rowPro)}g · C ${Math.round(rowCarbs)}g · F ${Math.round(rowFat)}g\n\n` +
-                        (!ingredientsHaveNutrition
-                          ? recipe != null && (recipe.calories ?? 0) > 0
-                            ? "These per-line macros are locally estimated from the ingredient text and scaled to the recipe’s calorie total. Use the Nutrition tab for full-dish aggregates."
-                            : "This recipe doesn't have per-ingredient nutrition in the database — use the Nutrition tab for recipe-level totals."
-                          : verificationTier === "verified"
-                          ? "This ingredient was matched to a verified food database entry."
-                          : verificationTier === "partial" || verificationTier === "estimated"
-                            ? "This ingredient had a weaker match. The macros may be approximate. Tap Verify → to refine it."
-                            : "This ingredient was estimated from our staples database and hasn't been verified against external sources."),
-                      );
-                    }}
-                    style={styles.ingredientRowNew}
-                  >
-                    {/* Confidence dot */}
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tierColor, marginTop: 6, marginRight: 8 }} />
-                    <View style={styles.ingredientNameAndCal}>
-                      <View style={styles.ingredientNameRow}>
-                        <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
-                        {/* P2-30 (2026-04-25 ui-critic): suppress the
-                            "0 kcal" right-column when the ingredient
-                            has no resolved nutrition. The "0" reads as
-                            a confident value when it really means
-                            "didn't compute"; blank space lets the
-                            ingredient text breathe. */}
-                        {rowCal > 0 ? (
-                          <Text style={styles.ingredientCalories}>{Math.round(rowCal)} kcal</Text>
-                        ) : null}
-                      </View>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        {/* P2-30: also suppress the "as needed" parser
-                            fallback when no amount was extracted —
-                            it's not a real instruction, it's a parser
-                            shrug.
-
-                            2026-05-02 fix — defensive amount/unit
-                            formatter dedupes the "1 1 breast" double-
-                            count when USDA/FatSecret persists a
-                            count-prefixed portion label like
-                            "1 breast" into the unit column. */}
-                        {ing.amount != null ? (
-                          <Text style={styles.ingredientQty}>
-                            {formatIngredientAmountUnit(
-                              Math.round(ing.amount * viewMultiplier * 100) / 100,
-                              ing.unit,
-                            )}
-                          </Text>
-                        ) : null}
-                        {/* 2026-04-26 polish (round 2): pre-fix the
-                            row showed bare "35%" / "98%" with no
-                            indication of what the percentage meant.
-                            Tapping opens a full explanation but the
-                            inline label is the at-a-glance signal.
-
-                            2026-05-02 — verified rows render the bare
-                            "Verified" tier label so we never expose
-                            the stale original AI confidence number
-                            after the user has resolved the row. Non-
-                            verified rows keep the "%·label" form so
-                            the user can see why the row needs
-                            attention. */}
-                        {/* 2026-05-06 audit (F-120): drop the
-                            opaque "88% · Partial match" rendering.
-                            Tester quote: "Don't really understand
-                            what 88% verified means it sounds made
-                            up." Categorical label alone reads
-                            cleaner ("Verified" / "Partial match" /
-                            "Estimated" / "Unverified") and the
-                            color carries the same semantic. The
-                            numeric confidence is still surfaced via
-                            the long-press accessibility hint
-                            ("Status: Partial match (88%)") so power
-                            users + screen-readers retain it. */}
-                        {verificationTier === "verified" || showInlineConfidence ? (
-                          <Text style={{ fontSize: 10, color: tierColor, fontWeight: "600" }}>
-                            {tierLabel}
-                          </Text>
-                        ) : null}
-                        {/* Phase 4 / B3.X — SourceDot per ingredient row
-                            (D-2026-04-27-16). Sized 6pt to match the
-                            spec §1.6 row treatment. */}
-                        <SourceDot
-                          source={mapMealSourceToDot(ing.source ?? null)}
-                          size={6}
-                        />
-                        {/* Phase 5 / B3.M — inline "Verify →" text-button
-                            on estimated ingredient rows. V-5 parity gap
-                            with web closed: the Pressable wrapping the
-                            row still opens the explainer Alert; this
-                            secondary text-button takes the user straight
-                            to /recipe/verify so they can resolve the
-                            row without going through the explainer
-                            first. Production design spec §1.6 +
-                            Surface H §Ingredients.
-
-                            2026-05-02 — visibility now follows the
-                            shared verification tier rather than a raw
-                            confidence threshold so once a row is
-                            verified (via `is_verified` or trusted
-                            `source`) the CTA disappears for good. */}
-                        {showVerifyCta && recipeId ? (
-                          <Pressable
-                            accessibilityRole="link"
-                            accessibilityLabel={`Verify ${ing.name}`}
-                            onPress={(e) => {
-                              // Stop the parent Pressable's Alert from firing
-                              // — the user has indicated they want the
-                              // verify route, not the explainer.
-                              e.stopPropagation();
-                              router.push(
-                                `/recipe/verify?id=${recipeId}` as never,
-                              );
-                            }}
-                            hitSlop={6}
-                            testID={`ingredient-verify-cta-${i}`}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                fontWeight: "700",
-                                color: Accent.primary,
-                              }}
-                            >
-                              Verify →
-                            </Text>
-                          </Pressable>
-                        ) : null}
-                      </View>
-                      {/* F-85 (2026-04-25) — per-ingredient macro split bar
-                          removed. Per ui-critic: a user cooking pancakes
-                          does not need to see "egg is mostly fat" at a
-                          glance. The recipe-level macro split in the
-                          Nutrition tab is the source of truth; per-row
-                          bars added visual noise that competed with the
-                          ingredient name and gram count for the eye. */}
-                    </View>
-                  </Pressable>
-                );
-              })}
+          {/* Description. */}
+          {cleanDescription ? (
+            <View style={styles.card}>
+              <Text style={styles.descText}>{decodeEntities(cleanDescription)}</Text>
             </View>
-          )}
-          {/* FatSecret attribution — ToS requires the badge wherever
-              FatSecret-sourced content is displayed. Rendered at the
-              foot of the ingredient list when FatSecret ingredients
-              are present. */}
-          {hasFatSecretIngredients ? (
-            <FatSecretBadge
-              variant="text"
-              style={{ marginTop: 8, marginLeft: 4 }}
-              testID="fatsecret-badge-ingredients"
-            />
           ) : null}
 
-          {/* Steps Tab */}
-          {activeTab === "steps" && instructionSteps.length > 0 && (
-            <View>
-              {instructionSteps.map((step, i) => (
-                <View key={i} style={styles.stepRow}>
-                  <View style={styles.stepNumber}>
-                    <Text style={styles.stepNumberText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.stepText}>{step.replace(/^\d+[\.\)\-]\s*/, "")}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Nutrition Tab */}
-          {activeTab === "nutrition" && (
-            <>
-            <View>
-              {/* 2x2 Grid (polish 2026-04-25 — formatMacroValue centralises
-                  rounding so protein/carbs/fat keep 1-decimal precision and
-                  calories stays integer). */}
-              <View style={styles.nutritionGrid}>
-                <View style={styles.nutritionGridRow}>
-                  <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: Accent.primary }]}>{formatMacroValue(macros.calories, "calories")}</Text>
-                    <Text style={styles.nutritionLabel}>Calories</Text>
-                  </View>
-                  <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.protein }]}>{formatMacroValue(macros.protein, "protein")}</Text>
-                    <Text style={styles.nutritionLabel}>Protein (g)</Text>
-                  </View>
-                </View>
-                <View style={styles.nutritionGridRow}>
-                  <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.carbs }]}>{formatMacroValue(macros.carbs, "carbs")}</Text>
-                    <Text style={styles.nutritionLabel}>Carbs (g)</Text>
-                  </View>
-                  <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.fat }]}>{formatMacroValue(macros.fat, "fat")}</Text>
-                    <Text style={styles.nutritionLabel}>Fat (g)</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Micronutrients Section — real data from ingredients.
-                  2026-05-07 ui-critic F4: hide rows for missing values
-                  rather than rendering bare `0g` / `0mg`. The recipes
-                  table doesn't always carry these from third-party
-                  imports; a confident zero reads as "this recipe has
-                  zero fiber" instead of "we don't know yet". */}
-              {(() => {
-                const showFiber = (macros.fiber_g ?? 0) > 0;
-                const showSugar = (macros.sugar_g ?? 0) > 0;
-                const showSodium = (macros.sodium_mg ?? 0) > 0;
-                if (!showFiber && !showSugar && !showSodium) return null;
-                const visible = [showFiber, showSugar, showSodium].filter(Boolean).length;
-                let rendered = 0;
-                const isLast = () => ++rendered === visible;
-                return (
-                  <View style={styles.micronutrientsSection}>
-                    <Text style={styles.microLabel}>MICRONUTRIENTS</Text>
-                    {showFiber && (
-                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
-                        <Text style={styles.microName}>Fiber</Text>
-                        <View style={styles.microBarContainer}>
-                          <View style={styles.progressBar}>
-                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.fiber_g / (userTargets?.fiber ?? 28)) * 100))}%` }]} />
-                          </View>
-                        </View>
-                        <Text style={styles.microValue}>{macros.fiber_g}g</Text>
-                      </View>
-                    )}
-                    {showSugar && (
-                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
-                        <Text style={styles.microName}>Sugar</Text>
-                        <View style={styles.microBarContainer}>
-                          <View style={styles.progressBar}>
-                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sugar_g / 50) * 100))}%` }]} />
-                          </View>
-                        </View>
-                        <Text style={styles.microValue}>{macros.sugar_g}g</Text>
-                      </View>
-                    )}
-                    {showSodium && (
-                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
-                        <Text style={styles.microName}>Sodium</Text>
-                        <View style={styles.microBarContainer}>
-                          <View style={styles.progressBar}>
-                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sodium_mg / 2300) * 100))}%` }]} />
-                          </View>
-                        </View>
-                        <Text style={styles.microValue}>{macros.sodium_mg}mg</Text>
-                      </View>
-                    )}
-                  </View>
-                );
-              })()}
-            </View>
-            {/* FatSecret attribution on the Nutrition tab. */}
-            {hasFatSecretIngredients ? (
-              <FatSecretBadge
-                variant="text"
-                style={{ marginTop: 8, marginLeft: 4 }}
-                testID="fatsecret-badge-nutrition"
-              />
-            ) : null}
-            </>
-          )}
-
-          {/* Log to journal — portion vs one recipe serving */}
-          {userId && (
-            <View style={[styles.card, { gap: Spacing.sm }]}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Log to journal</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Pressable
-                  onPress={() => setLogPortion((p) => Math.max(0.125, Math.round((p - 0.25) * 1000) / 1000))}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
-                >
-                  <Minus size={16} color={colors.text} />
-                </Pressable>
-                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, minWidth: 40, textAlign: "center", fontVariant: ["tabular-nums"] }}>
-                  {(Math.round(logPortion * 1000) / 1000).toString()}×
-                </Text>
-                <Pressable
-                  onPress={() => setLogPortion((p) => Math.min(24, Math.round((p + 0.25) * 1000) / 1000))}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
-                >
-                  <Plus size={16} color={colors.text} />
-                </Pressable>
-                <View style={{ flex: 1 }} />
-                <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-                  {scaledForLog.calories} kcal
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
-                {/* 2026-04-26 polish: dropped the asymmetric 0.75× preset.
-                    The planner clamp is now {0.5, 1, 1.5, 2}; matching the
-                    log presets to the same set keeps "1× by default, half
-                    when smaller / 1.5×–2× when larger" as the only mental
-                    model the user has to learn. The +/– stepper still
-                    allows finer increments for users who really need them. */}
-                {([0.5, 1, 1.5, 2] as const).map((p) => {
-                  const active = Math.abs(logPortion - p) < 1e-6;
-                  return (
-                    <Pressable
-                      key={p}
-                      onPress={() => setLogPortion(p)}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                        borderRadius: Radius.sm,
-                        backgroundColor: active ? Accent.primary : colors.inputBg,
-                        borderWidth: 1,
-                        borderColor: active ? Accent.primary : colors.border,
-                      }}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? colors.primaryForeground : colors.text }}>{p}×</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {/* ENG-819 — commit CTA. `PressableScale haptic='confirm'` adds
-                  the quiet <100ms tactile confirm (flag-off = no haptic, old
-                  silent commit). This CTA is already the blue `Accent.primary`
-                  commit colour — `design_system_colours` introduces no change
-                  here, so it is intentionally NOT gated on it. */}
-              <PressableScale
-                haptic={winMomentFeedback ? "confirm" : "none"}
-                disabled={loggingJournal}
-                onPress={() => void addRecipeToTodayJournal()}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  paddingVertical: 10,
-                  borderRadius: Radius.md,
-                  backgroundColor: Accent.primary,
-                  opacity: loggingJournal ? 0.6 : 1,
-                }}
-              >
-                {loggingJournal ? (
-                  <ActivityIndicator color={colors.primaryForeground} />
-                ) : (
-                  <>
-                    <PlusCircle size={16} color={colors.primaryForeground} />
-                    <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Log</Text>
-                  </>
-                )}
-              </PressableScale>
-            </View>
-          )}
-
-          {/* Action button */}
-          {/* ENG-819 — Start Cooking commit CTA. Quiet confirm haptic on press
-              (flag-off = silent, old behaviour). Already blue `Accent.primary`. */}
-          <View style={styles.actionsRow}>
-            <PressableScale
-              haptic={winMomentFeedback ? "confirm" : "none"}
-              style={[styles.actionBtn, { backgroundColor: Accent.primary, flex: 1 }]}
-              onPress={() => { setCookStep(0); setCookMode(true); }}
-            >
-              <UtensilsCrossed size={18} color={colors.primaryForeground} style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>Start Cooking</Text>
-            </PressableScale>
+          {/* Regulated-allergen callout — always present (silence ≠ safety). */}
+          <View
+            style={styles.card}
+            accessibilityRole="text"
+            accessibilityLabel="Regulated-allergen information"
+            testID="recipe-allergen-callout"
+          >
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+              {allergenLine ?? "Not tagged for allergens"}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+              We tag recipes from matched ingredients at import and verify time. Always verify
+              ingredients against the original source if an allergen is a safety concern.
+            </Text>
           </View>
 
-          {/* Batch 3.8 — Personal notes + rating */}
+          {/* Auto-verify progress note. */}
+          {autoVerifyingIngredients ? (
+            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+              Matching each line against the food database (USDA / Open Food Facts / FatSecret /
+              Edamam when configured)…
+            </Text>
+          ) : null}
+
+          {/* 6. Ingredients thumbnail grid. */}
+          <RecipeIngredientGrid
+            recipeId={recipeId}
+            ingredients={gridIngredients}
+            forServings={viewServings}
+            viewMultiplier={viewMultiplier}
+            onIngredientPress={onIngredientPress}
+            onViewAll={() => setIngredientsExpanded((v) => !v)}
+            expanded={ingredientsExpanded}
+          />
+
+          {/* FatSecret attribution (ToS) when any line is FatSecret-sourced. */}
+          {hasFatSecretIngredients ? (
+            <FatSecretBadge variant="text" style={{ marginLeft: 4 }} testID="fatsecret-badge-ingredients" />
+          ) : null}
+
+          {/* 7. Method — numbered serif steps. */}
+          <RecipeMethodSteps
+            steps={instructionSteps.map((s) => s.replace(/^\d+[\.\)\-]\s*/, ""))}
+          />
+
+          {/* Personal notes + rating. */}
           <RecipeNotesCard recipeId={recipeId} userId={userId} colors={colors} />
 
-          {/* Source attribution — kept at the very bottom so it's the last
-              thing a user sees after scrolling through a full recipe. The
-              top-of-page byline link is the primary entry point; this is
-              the secondary entry + provenance label. TestFlight build 7
-              feedback `AMAxKVVxPZtUvGz8I6Yqo3w` (2026-04-18) — the bottom
-              source section had previously been lost in a refactor.
-              Build 10 / TestFlight `ACEH_Ilshzp` (2026-04-19) — widen the
-              gate so social-caption imports with `source_name` but no
-              `source_url` still show attribution. Three render modes:
-                - both set       → `source_name` as link text, opens URL
-                - url only       → URL as link text (legacy)
-                - name only      → plain "Source · {name}", no href
-              Never synthesise a URL — a missing source_url stays missing. */}
-          {(recipe.source_url || recipe.source_name) && (
+          {/* Source attribution (provenance label) at the foot. */}
+          {recipe.source_url || recipe.source_name ? (
             <View style={styles.sourceCard}>
               <Text style={styles.sourceLabel}>SOURCE</Text>
               {recipe.source_url ? (
@@ -3142,83 +1733,14 @@ export default function RecipeDetailScreen() {
                 <Text style={styles.sourceName}>{`Source · ${recipe.source_name}`}</Text>
               )}
             </View>
-          )}
+          ) : null}
         </View>
       </ScrollView>
 
-      <Modal
-        visible={yieldEditOpen}
-        animationType="fade"
-        transparent
-        onRequestClose={() => !recipeYieldSaving && setYieldEditOpen(false)}
-      >
-        <View
-          style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "center", paddingHorizontal: Spacing.xl }}
-        >
-          <View
-            style={{
-              borderRadius: Radius.lg,
-              paddingVertical: Spacing.lg,
-              paddingHorizontal: Spacing.lg,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              gap: Spacing.sm,
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>Servings</Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-              Portions the full dish makes (1–48). Macros per portion update automatically.
-            </Text>
-            <TextInput
-              value={recipeYieldDraft}
-              onChangeText={setRecipeYieldDraft}
-              keyboardType="number-pad"
-              editable={!recipeYieldSaving}
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: Radius.md,
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                fontSize: 17,
-                fontWeight: "700",
-                color: colors.text,
-                backgroundColor: colors.background,
-              }}
-            />
-            <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.xs }}>
-              <Pressable
-                onPress={() => !recipeYieldSaving && setYieldEditOpen(false)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 11,
-                  borderRadius: Radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 15 }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => void saveRecipeYield()}
-                disabled={recipeYieldSaving}
-                style={{
-                  flex: 1,
-                  paddingVertical: 11,
-                  borderRadius: Radius.md,
-                  backgroundColor: Accent.primary,
-                  alignItems: "center",
-                  opacity: recipeYieldSaving ? 0.65 : 1,
-                }}
-              >
-                <Text style={{ fontWeight: "800", color: colors.primaryForeground, fontSize: 15 }}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Authored-yield editing (recipe makes N portions) is owned by the Edit
+          sheet below (`RecipeEditSheet`), reached from the Edit action pill /
+          owner overflow — it recalculates per-serving aggregates on save. The
+          footer stepper handles the orthogonal "servings to view" scaling. */}
 
       {recipeEditOpen && recipe && canEditRecipe(recipe.author_id, userId) ? (
         <RecipeEditSheet
@@ -3383,44 +1905,22 @@ export default function RecipeDetailScreen() {
         );
       })()}
 
-      {/* Sticky footer — premium-bar audit Group F line 385. The
-          existing in-page "Log to journal" card stays (it owns the
-          portion stepper + presets); the footer is a thumb-zone
-          shortcut that fires the same `addRecipeToTodayJournal`
-          handler at whatever logPortion the user has dialled in.
-          Hidden during cook mode (the cook overlay owns the bottom
-          third of the screen). */}
-      {userId && recipe && !cookMode ? (
-        <View
-          style={[styles.stickyFooter, { paddingBottom: insets.bottom + Spacing.md }]}
-          pointerEvents="box-none"
-          testID="recipe-detail-sticky-footer"
-        >
-          {/* ENG-819 — whole-recipe commit. This is the landmark commit on this
-              screen, so it earns the heavier `success` notification haptic (vs
-              the lighter `confirm` on the in-body Log / Start Cooking). Flag-off
-              = silent, the old behaviour. Already blue `Accent.primary`. */}
-          <PressableScale
-            haptic={winMomentFeedback ? "success" : "none"}
-            onPress={() => void addRecipeToTodayJournal()}
-            disabled={loggingJournal}
-            style={[styles.stickyFooterBtn, { opacity: loggingJournal ? 0.6 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Log ${recipe.title} to today at ${(Math.round(logPortion * 1000) / 1000).toString()} portion`}
-            testID="recipe-detail-sticky-log-cta"
-          >
-            {loggingJournal ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : (
-              <>
-                <PlusCircle size={18} color={colors.primaryForeground} />
-                <Text style={styles.stickyFooterBtnText}>
-                  Log all · {scaledForLog.calories} kcal
-                </Text>
-              </>
-            )}
-          </PressableScale>
-        </View>
+      {/* 8. Sticky footer — yield + servings stepper (left) + Cook Mode (right).
+          (Figma 332:2 §8.) Replaces the old "Log all · kcal" footer: Log moved
+          up into the action-pill row. The stepper here is the canonical
+          servings control (ingredient amounts + batch totals scale off it).
+          Hidden during cook mode (the overlay owns the bottom of the screen). */}
+      {recipe && !cookMode ? (
+        <RecipeServingsFooter
+          servings={viewServings}
+          canDecrease={viewServings > RECIPE_VIEW_SERVINGS_MIN}
+          canIncrease={viewServings < RECIPE_VIEW_SERVINGS_MAX}
+          onDecrease={() => handleViewServingsStep(-1)}
+          onIncrease={() => handleViewServingsStep(1)}
+          onCookMode={openCookMode}
+          bottomInset={insets.bottom}
+          haptic={winMomentFeedback ? "confirm" : "none"}
+        />
       ) : null}
     </View>
   );

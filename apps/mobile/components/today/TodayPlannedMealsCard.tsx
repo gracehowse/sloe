@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { MacroColors, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { formatPlannedMealMacroParts } from "@suppr/shared/nutrition/plannedMealDisplay";
@@ -80,6 +81,8 @@ export function TodayPlannedMealsCard({
   onLogPlannedMealWithPortion,
 }: TodayPlannedMealsCardProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Log today" CTA.
+  const accent = useAccent();
   const [picker, setPicker] = useState<{ meal: TodayPlannedMealEntry } | null>(null);
 
   return (
@@ -120,7 +123,7 @@ export function TodayPlannedMealsCard({
                 hitSlop={8}
                 style={{ paddingHorizontal: 8, paddingVertical: 12 }}
               >
-                <Text style={{ ...Type.label, color: Accent.primarySolid }}>Log today</Text>
+                <Text style={{ ...Type.label, color: accent.primarySolid }}>Log today</Text>
               </Pressable>
             </View>
           );

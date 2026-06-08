@@ -153,9 +153,12 @@ export function PaceStep() {
           </span>
         </div>
         <div className="flex items-baseline gap-1.5 mb-2.5">
+          {/* Sloe reskin (Figma pace 191:2): the rate hero numeral reads
+              in the Newsreader serif display face + plum heading ink,
+              matching the warm-coaching numeral treatment. */}
           <span
-            className="text-[36px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
-            style={{ letterSpacing: "-0.02em" }}
+            className="font-[family-name:var(--font-display)] text-[36px] font-normal tracking-tight tabular-nums leading-none text-foreground-brand"
+            style={{ letterSpacing: "-0.01em" }}
           >
             {pace.toFixed(pace < 0.1 ? 3 : 2)}
           </span>

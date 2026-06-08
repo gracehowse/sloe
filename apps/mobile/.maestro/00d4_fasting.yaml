@@ -18,7 +18,7 @@ name: "Interactive — Fasting active state (then end the fast)"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/state-20-fasting-idle
-- tapOn: "Start Fast"
+- tapOn: "Start fast"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/state-21-fasting-active

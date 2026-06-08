@@ -9,11 +9,48 @@
 import { describe, expect, it } from "vitest";
 import {
   FASTING_MILESTONES,
+  FASTING_WINDOW_PRESETS,
+  fastingWindowLabel,
   formatProjectedEndTime,
   selectUpcomingMilestones,
 } from "../../src/lib/fasting/milestones";
 
 const HOUR = 3_600_000;
+
+describe("FASTING_WINDOW_PRESETS (ENG-922 — all five windows incl. OMAD)", () => {
+  it("is the canonical 5-preset list, 16:8 first then ascending fast hours, OMAD last", () => {
+    expect(FASTING_WINDOW_PRESETS).toEqual([
+      "16:8",
+      "18:6",
+      "20:4",
+      "14:10",
+      "23:1",
+    ]);
+  });
+
+  it("every preset is a valid FF:EE string summing to 24h", () => {
+    for (const preset of FASTING_WINDOW_PRESETS) {
+      const [fast, eat] = preset.split(":").map((n) => parseInt(n, 10));
+      expect(Number.isFinite(fast)).toBe(true);
+      expect(Number.isFinite(eat)).toBe(true);
+      expect(fast + eat).toBe(24);
+    }
+  });
+});
+
+describe("fastingWindowLabel", () => {
+  it("renders 23:1 as OMAD and every other preset as its raw string", () => {
+    expect(fastingWindowLabel("23:1")).toBe("OMAD");
+    expect(fastingWindowLabel("16:8")).toBe("16:8");
+    expect(fastingWindowLabel("18:6")).toBe("18:6");
+    expect(fastingWindowLabel("20:4")).toBe("20:4");
+    expect(fastingWindowLabel("14:10")).toBe("14:10");
+  });
+
+  it("falls back to the raw value for an unknown / custom window", () => {
+    expect(fastingWindowLabel("12:12")).toBe("12:12");
+  });
+});
 
 describe("FASTING_MILESTONES", () => {
   it("is the canonical ordered list (8h Glycogen, 12h Ketosis, 16h Deep fast)", () => {
@@ -62,6 +99,10 @@ describe("selectUpcomingMilestones", () => {
     ]);
     // 20:4 user sees all three.
     expect(selectUpcomingMilestones(0, 20).map((m) => m.hours)).toEqual([
+      8, 12, 16,
+    ]);
+    // OMAD (23h fast) clears all three milestone marks.
+    expect(selectUpcomingMilestones(0, 23).map((m) => m.hours)).toEqual([
       8, 12, 16,
     ]);
   });

@@ -134,12 +134,65 @@ export const Accent = {
  * ordered stop list. Mirrors web `--accent-win-gradient`
  * (`linear-gradient(120deg, #3B2A4D 0%, #C8794E 50%, #C9892C 100%)`).
  */
-export const AccentWinGradient = {
+/** Shared shape for the win-moment gradient (clay default + Frost variant).
+ *  Widened from each object's `as const` literal tuples so the two gradients
+ *  are assignable to one another (the theme context exposes whichever is
+ *  active). 3 ordered stops + matching offsets. */
+export type WinGradient = {
+  readonly stops: readonly [string, string, string];
+  readonly offsets: readonly [number, number, number];
+};
+
+export const AccentWinGradient: WinGradient = {
   /** Sloe brand gradient — plum → clay → amber, in paint order. */
   stops: ['#3B2A4D', '#C8794E', '#C9892C'] as const,
   /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
   offsets: [0, 0.5, 1] as const,
+};
+
+/**
+ * FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`).
+ * Exploration only (decision doc:
+ * `docs/brand/2026-06-07-secondary-colour-exploration.md`). A copy of `Accent`
+ * with ONLY the secondary-accent keys moved from clay → Damson; everything else
+ * (carbs, sugar, activity/honey, status, fiber, win) is identical so a
+ * flag-OFF build is byte-identical to today's clay path. Surfaced through the
+ * theme context's `accent` (see `context/theme.tsx` → `useAccent()`); NOT in
+ * `REDESIGN_DEFAULT_ON`, so the clay `Accent` stays the default and ramps later
+ * via PostHog. Web mirror: `.flag-frost` overrides in `src/styles/theme.css`.
+ *
+ * Carbs/sugar STAY clay here (`carbs`/`carbsLight` unchanged) — the macro
+ * identity colour must not move in either flag state.
+ */
+export const AccentFrost = {
+  ...Accent,
+  /** UI chrome / CTA — Damson (was clay). White on damson clears AA-large. */
+  primary: '#6A4B7A',
+  /** Lifted damson — dark-mode primary, selected tabs (was clay light). */
+  primaryLight: '#9A7BAA',
+  /** Deep damson — text/icon/link on light (was clay solid). */
+  primarySolid: '#54356A',
+  /** Lifted damson for text on dark (was clay solid dark). */
+  primarySolidDark: '#B6ACC6',
+  /** Soft damson fill for selected pills / segmented active. */
+  primarySoft: 'rgba(106, 75, 122, 0.10)',
+  primarySoftDark: 'rgba(154, 123, 170, 0.16)',
+  /** Legacy alias — now damson (mirrors `primary`). */
+  brandBlue: '#6A4B7A',
+  brandBlueLight: '#9A7BAA',
 } as const;
+
+/**
+ * FROST win/celebration gradient — FLAG-GATED (`brand_frost_secondary`). The
+ * mid clay stop shifts to damson; plum + honey ends hold. Surfaced through the
+ * theme context's `winGradient`. Web mirror: `.flag-frost --accent-win-gradient`.
+ */
+export const AccentWinGradientFrost: WinGradient = {
+  /** Frost gradient — plum → damson → amber-honey, in paint order. */
+  stops: ['#3B2A4D', '#6A4B7A', '#D6A24A'] as const,
+  /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
+  offsets: [0, 0.5, 1] as const,
+};
 
 /**
  * Stimulant tracker colours (Batch 2.5 hydration & stimulants).
@@ -552,7 +605,7 @@ export const Elevation = {
   // wide and the colour stays the Sloe ink, so it reads as ambient lift). The
   // wider radius keeps the penumbra gradient long (premium), the higher opacity
   // makes the slab unmistakably raised on-device. Re-verified by re-sampling
-  // the edge pixels after the bump (see cardElevationSoftLiftDefault.test.tsx +
+  // the edge pixels after the bump (see cardElevationVariants.test.tsx +
   // the agent capture). Both levers move in lockstep with web. The flat `card`
   // above stays as the explicit flat fallback for any direct consumer.
   cardSoft: {

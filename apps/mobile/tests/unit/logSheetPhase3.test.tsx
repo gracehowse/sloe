@@ -555,6 +555,73 @@ describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
   });
 });
 
+describe("LogSheet (mobile) — S13 logged-confirmation (Figma 202:2)", () => {
+  // Presentation-only success state shown AFTER the host commits a log.
+  // The LogSheet never persists anything; it confirms what the host
+  // already logged and offers Done / Undo.
+  const confirmation = {
+    title: "Greek yogurt",
+    kcal: 130,
+    slot: "Breakfast",
+    source: "off" as const,
+  };
+
+  it("renders the confirmation card with slot-aware headline + estimated kcal", () => {
+    const { getByTestId, getByText } = open({
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    expect(getByTestId("log-sheet-confirmation")).toBeTruthy();
+    expect(getByText("Logged to Breakfast")).toBeTruthy();
+    expect(getByText("Greek yogurt")).toBeTruthy();
+    // Trust posture — nutrition is always an estimate, never absolute.
+    expect(getByText("Est. 130 kcal")).toBeTruthy();
+  });
+
+  it("falls back to a bare 'Logged' headline when no slot is supplied", () => {
+    const { getByText } = open({
+      confirmation: { title: "Greek yogurt", kcal: 130, onDone: () => {} },
+    });
+    expect(getByText("Logged")).toBeTruthy();
+  });
+
+  it("suppresses the search + browse composition while confirming", () => {
+    const { queryByLabelText, queryByText } = open({
+      recent: { entries: [], onPick: () => {} },
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    // The normal search-first content is hidden by the confirmation.
+    expect(queryByLabelText("Search foods")).toBeNull();
+    expect(queryByText("Your recent foods will appear here")).toBeNull();
+  });
+
+  it("Done fires onDone", () => {
+    const onDone = vi.fn();
+    const { getByLabelText } = open({
+      confirmation: { ...confirmation, onDone },
+    });
+    fireEvent.press(getByLabelText("Done"));
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders Undo only when onUndo is wired, and tapping it fires onUndo", () => {
+    const onUndo = vi.fn();
+    const { getByLabelText, queryByLabelText, rerender } = open({
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    // No onUndo → no Undo affordance.
+    expect(queryByLabelText("Undo log")).toBeNull();
+    rerender(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        confirmation={{ ...confirmation, onDone: () => {}, onUndo }}
+      />,
+    );
+    fireEvent.press(getByLabelText("Undo log"));
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("LogSheet (mobile) — 'Or add manually' footer", () => {
   it("renders the footer link when onAddManually is provided", () => {
     const { getByLabelText } = open({ onAddManually: () => {} });

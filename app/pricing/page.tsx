@@ -9,6 +9,8 @@ import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detec
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
+import { PaywallValueGrid } from "./PaywallValueGrid.tsx";
+import { PaywallComparison } from "./PaywallComparison.tsx";
 import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
@@ -193,11 +195,24 @@ export default async function PricingPage({
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-16">
-        {/* Gradient hero — D13 (2026-04-21 design-system sweep). Extracted
-            into `PricingHero` so the page body stays focused on tier +
-            trust-signal + FAQ composition. Mirrors the prototype paywall
-            banner in `flows.jsx:555-564`. */}
+        {/* Photo hero — Sloe Pro paywall (Figma `284:2`, 2026-06-08).
+            Full-bleed finished-dish photograph + soft fade + "SLOE PRO"
+            eyebrow + "Cook what you love. / *Still* reach your goals."
+            positioning headline. Extracted into `PricingHero` so the
+            page body stays focused on the value grid + comparison +
+            tier + FAQ composition. Same hero copy as the mobile paywall. */}
         <PricingHero />
+
+        {/* 2×2 value-prop grid (Figma `284:2`) — Unlimited imports /
+            Macro fitting / AI coach / Cloud sync. Copy from the shared
+            `PAYWALL_VALUE_PROPS` SSOT (web == mobile). */}
+        <PaywallValueGrid />
+
+        {/* FREE / PRO comparison matrix (Figma `284:2`) — PRO column
+            lilac-highlighted. Rows from the shared
+            `PAYWALL_COMPARISON_ROWS` SSOT. Free's ✓s stay visible
+            (permission-not-restriction framing). */}
+        <PaywallComparison />
 
         {/* Trust strip — three chips (cancel anytime / 7-day refund /
             price never changes mid-trial) rendered above the tier
@@ -262,7 +277,8 @@ export default async function PricingPage({
 
         {/* FAQ */}
         <div className="mt-14 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-foreground text-center mb-6">
+          {/* SLOE DS: plum serif section heading (brand display voice). */}
+          <h2 className="text-2xl font-medium font-[family-name:var(--font-newsreader)] tracking-tight text-foreground-brand text-center mb-6">
             Frequently asked questions
           </h2>
           <div className="rounded-2xl border border-border bg-card px-5">

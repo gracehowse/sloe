@@ -201,9 +201,12 @@ export const ShoppingList = memo(function ShoppingList({
       ) : null}
 
       <div className="hidden md:block">
+      {/* Sloe DS (Figma 289:2 D8 — Shopping list) — page title reads in
+          Newsreader serif plum (`text-foreground-brand`), matching the
+          Plan / Today / Progress landmark headings. */}
       <h1
-        className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
+        className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
+        style={{ margin: "0 0 4px" }}
       >
         Shopping list
       </h1>
@@ -262,7 +265,8 @@ export const ShoppingList = memo(function ShoppingList({
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
             <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
           </div>
-          <p className="text-[18px] font-semibold text-foreground mb-1.5">
+          {/* Sloe DS (289:2) — empty-state headline in Newsreader serif plum. */}
+          <p className="font-[family-name:var(--font-headline)] text-[20px] font-medium text-foreground-brand mb-1.5">
             Your shopping list builds itself
           </p>
           <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">

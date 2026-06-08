@@ -134,19 +134,20 @@ describe("web recipe-detail v3 — Fix 3 (kcal hero card removed)", () => {
   });
 });
 
-describe("web recipe-detail v4 — Fix 4 (4-up macro grid, equal-width tiles)", () => {
+describe("web recipe-detail — macro summary is the ENG-920 flat Figma 332:2 strip", () => {
+  // ENG-920 (resolved 2026-06-07): the macro summary is a FLAT NUMBER STRIP
+  // (CAL / PRO / CARB / FAT — calories first), serif value + small-caps label,
+  // four equal columns in one card, NO per-macro progress bar. Replaces the v4
+  // progress-bar tiles. Net-carbs lens + all tracked values are preserved.
   it("the macros grid carries `recipe-macros-grid` testID", () => {
     expect(SRC).toMatch(/data-testid="recipe-macros-grid"/);
   });
 
-  it("the macros grid uses `grid grid-cols-4` so all tiles share width", () => {
-    // v3 used `flex flex-wrap` with per-tile `max-w-[48%]`, which
-    // made fiber stand alone on row 2 at half-width while p/c/f
-    // shared row 1. v4 spec: 4-up, same widths.
+  it("the strip uses `grid grid-cols-4` so all four columns share width", () => {
     expect(SRC).toMatch(
       /data-testid="recipe-macros-grid"[\s\S]{0,200}className="[^"]*grid\s+grid-cols-4[^"]*"/,
     );
-    // The legacy flex-wrap layout must NOT come back.
+    // The legacy flex-wrap tile layout must NOT come back.
     expect(SRC).not.toMatch(
       /data-testid="recipe-macros-grid"[\s\S]{0,200}className="[^"]*flex\s+flex-wrap[^"]*"/,
     );
@@ -156,18 +157,27 @@ describe("web recipe-detail v4 — Fix 4 (4-up macro grid, equal-width tiles)", 
     expect(SRC).not.toMatch(/max-w-\[48%\]/);
   });
 
-  it("tiles carry stable per-macro testIDs so renders can target them individually", () => {
-    expect(SRC).toMatch(/data-testid=\{`recipe-macro-tile-\$\{macro\}`\}/);
+  it("columns carry stable per-macro testIDs (calories/protein/carbs/fat)", () => {
+    // The strip keys are the macro keys; calories leads.
+    expect(SRC).toMatch(/data-testid=\{`recipe-macro-tile-\$\{m\.key\}`\}/);
+    expect(SRC).toContain('label: "CAL"');
   });
 
-  it("macro tiles still use a bold tabular-nums value treatment", () => {
-    // v4 dropped `text-xl` to `text-lg` to fit the 4-up grid at
-    // narrow desktop widths without truncation. Weight + tabular
-    // alignment preserved.
-    expect(SRC).toMatch(/text-lg\s+font-extrabold\s+tabular-nums/);
+  it("strip values render in the Newsreader serif at 24px (not the old sans bold tile)", () => {
+    // Flat Figma value treatment. The old `text-lg font-extrabold tabular-nums`
+    // progress-bar tile value is gone from the strip.
+    const strip = SRC.slice(
+      SRC.indexOf('data-testid="recipe-macros-grid"'),
+      SRC.indexOf("recipe-macro-micro-chips"),
+    );
+    expect(strip).toContain("var(--font-headline)");
+    expect(strip).toContain('fontSize: "24px"');
+    expect(strip).toMatch(/uppercase tracking-\[0\.1em\]/);
+    // No per-macro progress-bar fill div in the strip.
+    expect(strip).not.toMatch(/width:\s*`?\$\{Math\.min\(/);
   });
 
-  it("the redundant 'MACROS' overline is gone (the tiles self-label)", () => {
+  it("the redundant 'MACROS' overline is gone (the strip self-labels)", () => {
     expect(SRC).not.toMatch(
       /<p\s+className="mb-2\s+text-\[11px\]\s+font-bold\s+uppercase\s+tracking-wide\s+text-muted-foreground">Macros<\/p>/,
     );
@@ -246,14 +256,19 @@ describe("web recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
  * press payoff (web analog of the mobile confirm haptic). Both flag-gated.
  */
 describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () => {
-  it("resting detail cards ride `cardElevationClass` (soft shadow flag-on, border flag-off)", () => {
-    expect(SRC).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
-    // The class derivation: flag-on → no border + --elev-card-soft shadow.
-    expect(SRC).toMatch(/shadow-\[var\(--elev-card-soft\)\]/);
-    expect(SRC).toMatch(/const cardElevationClass = redesignElevation/);
-    // Applied to the resting section cards (ingredients / steps / micronutrients).
-    expect(SRC).toMatch(/bg-card rounded-2xl overflow-hidden \$\{cardElevationClass\}/);
-    expect(SRC).toMatch(/bg-card rounded-2xl p-5 space-y-4 \$\{cardElevationClass\}/);
+  it("resting detail cards are UNCONDITIONAL white slabs lifting off cream (Figma 332:2)", () => {
+    // Superseded 2026-06-07 (Figma 332:2): the page is now cream, so resting
+    // cards are unconditional WHITE slabs with the soft elevation — the old
+    // `design_system_elevation`-gated `cardElevationClass` is gone, in lockstep
+    // with mobile's unconditional `useCardElevation` soft lift. The slab style
+    // (white bg + `--elev-card-soft`) is shared via `whiteSlabStyle`.
+    expect(SRC).not.toMatch(/const cardElevationClass = redesignElevation/);
+    expect(SRC).toMatch(/const whiteSlabStyle: React\.CSSProperties/);
+    expect(SRC).toMatch(/boxShadow: "var\(--elev-card-soft\)"/);
+    // Applied to the resting section cards (steps / micronutrients) via the
+    // shared white-slab style, not the old `bg-card ... cardElevationClass`.
+    expect(SRC).not.toMatch(/bg-card rounded-2xl overflow-hidden \$\{cardElevationClass\}/);
+    expect(SRC).toMatch(/rounded-2xl p-5 space-y-4" style=\{whiteSlabStyle\}/);
   });
 
   it("commit CTAs carry the `redesign_winmoment`-gated press payoff class", () => {
@@ -319,7 +334,12 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
       targetCals: args.targetCals,
     });
     const hasNutrition = args.kcal > 0;
-    const macros = args.macrosToShow ?? ["protein", "carbs", "fat", "fiber"];
+    // ENG-920 (resolved 2026-06-07): the strip is Figma-fixed at four columns
+    // (CAL / PRO / CARB / FAT — calories first). Tracked micros fall to a chip
+    // row. `macrosToShow` drives which micro chips render, NOT the strip.
+    const tracked = args.macrosToShow ?? ["protein", "carbs", "fat", "fiber"];
+    const STRIP_KEYS = ["calories", "protein", "carbs", "fat"] as const;
+    const microChips = ["fiber", "sugar", "sodium"].filter((k) => tracked.includes(k));
     return (
       <div>
         {hasNutrition ? (
@@ -356,13 +376,26 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
             Calories not yet computed
           </div>
         ) : null}
-        <div data-testid="recipe-macros-grid" className="grid grid-cols-4 gap-2">
-          {macros.map((macro) => (
-            <div key={macro} data-testid={`recipe-macro-tile-${macro}`}>
-              {macro}
+        <div data-testid="recipe-macros-grid" className="grid grid-cols-4 rounded-2xl">
+          {STRIP_KEYS.map((key, idx) => (
+            <div
+              key={key}
+              data-testid={`recipe-macro-tile-${key}`}
+              className={idx > 0 ? "border-l border-border" : ""}
+            >
+              {key}
             </div>
           ))}
         </div>
+        {microChips.length > 0 ? (
+          <div data-testid="recipe-macro-micro-chips">
+            {microChips.map((k) => (
+              <span key={k} data-testid={`recipe-macro-chip-${k}`}>
+                {k}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {verdict ? (
           <div data-testid="recipe-fits-your-day">{verdict.label}</div>
         ) : null}
@@ -475,7 +508,7 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
     );
   });
 
-  it("v4: macros grid renders 4 tiles in a single grid-cols-4 row", () => {
+  it("ENG-920: strip renders the Figma-fixed CAL/PRO/CARB/FAT columns (calories first)", () => {
     const { getByTestId } = render(
       <HeroHarness
         prepMin={null}
@@ -492,16 +525,18 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
     );
     const grid = getByTestId("recipe-macros-grid");
     expect(grid.className).toMatch(/grid\s+grid-cols-4/);
-    // All four tiles render.
+    // Calories leads the strip, then protein/carbs/fat — exactly four columns.
+    expect(within(grid).getByTestId("recipe-macro-tile-calories")).toBeTruthy();
     expect(within(grid).getByTestId("recipe-macro-tile-protein")).toBeTruthy();
     expect(within(grid).getByTestId("recipe-macro-tile-carbs")).toBeTruthy();
     expect(within(grid).getByTestId("recipe-macro-tile-fat")).toBeTruthy();
-    expect(within(grid).getByTestId("recipe-macro-tile-fiber")).toBeTruthy();
-    // Direct children count = 4 (one per tile, in one row).
+    // Calories is the first column (the Figma frame leads with CAL).
+    expect(grid.children[0]).toBe(getByTestId("recipe-macro-tile-calories"));
+    // The strip is always four columns — no per-macro tracked spill into it.
     expect(grid.children.length).toBe(4);
   });
 
-  it("v4: extra tracked macros (sugar/sodium) spill onto row 2 at the same width via grid-cols-4", () => {
+  it("ENG-920: tracked micros (fiber/sugar/sodium) fall to the chip row, not the strip", () => {
     const { getByTestId } = render(
       <HeroHarness
         prepMin={null}
@@ -517,9 +552,14 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
       />,
     );
     const grid = getByTestId("recipe-macros-grid");
-    // Same grid class (so each tile is the same width as row 1).
+    // Strip stays at four columns regardless of how many micros are tracked.
     expect(grid.className).toMatch(/grid\s+grid-cols-4/);
-    expect(grid.children.length).toBe(6);
+    expect(grid.children.length).toBe(4);
+    // The tracked micros render as a separate chip row so no value is dropped.
+    const chips = getByTestId("recipe-macro-micro-chips");
+    expect(within(chips).getByTestId("recipe-macro-chip-fiber")).toBeTruthy();
+    expect(within(chips).getByTestId("recipe-macro-chip-sugar")).toBeTruthy();
+    expect(within(chips).getByTestId("recipe-macro-chip-sodium")).toBeTruthy();
   });
 
   it("Fits your day verdict renders as a SIBLING of the macros grid (not a child of a kcal hero)", () => {

@@ -76,7 +76,9 @@ describe("Discover cluster carousels (Wave 4 — 2026-05-02)", () => {
       // legacy flat layout. Pin the gate.
       expect(WEB_SRC).toMatch(/showClusterCarousels/);
       expect(WEB_SRC).toMatch(/!searchQuery\.trim\(\)/);
-      expect(WEB_SRC).toMatch(/quickFilter === "For You"/);
+      // Sloe redesign renamed the "For You" quick-filter to the `feedScope`
+      // model — carousels still gate on the unfiltered default view.
+      expect(WEB_SRC).toMatch(/feedScope === "forYou"/);
     });
   });
 

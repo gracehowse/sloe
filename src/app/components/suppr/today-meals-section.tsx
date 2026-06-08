@@ -954,7 +954,7 @@ export function TodayMealsSection({
       </div>
       )}
 
-      {mealsForSelectedDate.length === 0 ? (
+      {!mealsFigmaLayout && mealsForSelectedDate.length === 0 ? (
         <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">
           <div
             data-testid="today-meals-empty-state"

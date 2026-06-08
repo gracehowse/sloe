@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
+import { useAccent, useTheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { LogTabBarButton } from "./LogTabBarButton";
@@ -47,6 +48,14 @@ export function SupprTabBar({
   insets: _insets,
 }: BottomTabBarProps) {
   const colors = useThemeColors();
+  // Active-tab tint follows the secondary accent (Frost flag → damson, else
+  // clay). `colors.tabIconSelected` is pinned to the clay `Accent` in the theme
+  // const, so read the live accent here instead so the flag flips the active tab
+  // in lockstep. Dark mode uses the lifted accent (`primaryLight`) to match the
+  // `tabIconSelected = Accent.primaryLight` it replaces.
+  const accent = useAccent();
+  const { resolved } = useTheme();
+  const activeTint = resolved === "dark" ? accent.primaryLight : accent.primary;
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -117,7 +126,7 @@ export function SupprTabBar({
           navigation.emit({ type: "tabLongPress", target: route.key });
         };
 
-        const tintColor = isFocused ? colors.tabIconSelected : colors.tabIconDefault;
+        const tintColor = isFocused ? activeTint : colors.tabIconDefault;
         const label =
           typeof options.tabBarLabel === "string"
             ? options.tabBarLabel

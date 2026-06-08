@@ -31,7 +31,10 @@ const SRC = readFileSync(
 describe("MealPlanner prototype rewrite (2026-04-21)", () => {
   it("renders the 'Meal plan' title at prototype scale", () => {
     expect(SRC).toMatch(/Meal plan/);
-    expect(SRC).toMatch(/fontSize: 28/);
+    // Sloe redesign: the title moved from an inline `fontSize: 28` to the
+    // shared Tailwind headline scale (`text-3xl` serif plum), matching
+    // Today / Progress / Recipes.
+    expect(SRC).toMatch(/text-3xl font-medium tracking-tight text-foreground-brand/);
   });
 
   it("subtitle carries the 'hits targets N of M day(s)' pattern", () => {

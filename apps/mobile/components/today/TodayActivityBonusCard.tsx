@@ -345,7 +345,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
 
       {!hasBurnData && isToday ? (
         <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}>
-          No resting or active energy for this day in Suppr yet. Open{" "}
+          No resting or active energy for this day in Sloe yet. Open{" "}
           <Text style={{ fontWeight: "700", color: textColor }}>{TODAY_HEALTH_CONNECT_ROUTE}</Text>
           , enable Apple Health, then pull to refresh or revisit this tab to sync.
         </Text>

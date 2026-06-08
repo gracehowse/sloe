@@ -4,8 +4,16 @@
  */
 
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
+
+let figmaMealsLayout = true;
+
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: (flag: string) =>
+    flag === "today_meals_figma_654" ? figmaMealsLayout : false,
+  track: vi.fn(),
+}));
 
 import {
   NorthStarBlock,
@@ -58,7 +66,33 @@ const baseSuggestion: NorthStarBlockSuggestion = {
   bandTight: true,
 };
 
-describe("NorthStarBlock (mobile) — default kind", () => {
+describe("NorthStarBlock (mobile) — Figma 654 hero", () => {
+  beforeEach(() => {
+    figmaMealsLayout = true;
+  });
+
+  it("renders section title, hero card, slot eyebrow, and kcal", () => {
+    const { getByText, getByTestId } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={baseSuggestion}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(getByText("What to eat next")).toBeTruthy();
+    expect(getByText("Tofu poke bowl")).toBeTruthy();
+    expect(getByText("Dinner suggestion")).toBeTruthy();
+    expect(getByText("Fits your day")).toBeTruthy();
+    expect(getByText(/520 kcal/)).toBeTruthy();
+    expect(getByTestId("north-star-figma-hero")).toBeTruthy();
+  });
+});
+
+describe("NorthStarBlock (mobile) — compact default kind", () => {
+  beforeEach(() => {
+    figmaMealsLayout = false;
+  });
+
   it("renders the eyebrow, title, band chip and macro caption", () => {
     const { getByText } = render(
       <NorthStarBlock kind="default" suggestion={baseSuggestion} ctaLabel="Log it" />,
@@ -66,8 +100,6 @@ describe("NorthStarBlock (mobile) — default kind", () => {
     expect(getByText("What to eat next")).toBeTruthy();
     expect(getByText("Tofu poke bowl")).toBeTruthy();
     expect(getByText("Hits within 3%")).toBeTruthy();
-    // 2026-05-12 (premium-bar audit cross-cutting): macro format
-    // unified to `520 kcal · 38g P · 42g C · 18g F`.
     expect(getByText(/520 kcal · 38g P · 42g C · 18g F/)).toBeTruthy();
   });
 

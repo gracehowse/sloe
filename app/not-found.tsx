@@ -6,7 +6,7 @@ import { Button } from "@/app/components/ui/button";
  * default 404 page (bare "404 | This page could not be found.") with
  * no Suppr branding, no nav, and no recovery CTA. A user hitting
  * `/recipe/zzzzzzz` or any other invalid route saw a generic page that
- * didn't even look like Suppr — trust hit.
+ * didn't even look like Sloe — trust hit.
  *
  * Mirrors `app/error.tsx` styling so the recovery surfaces feel like
  * a single product instead of two ad-hoc pages.

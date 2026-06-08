@@ -578,7 +578,7 @@ export default function BarcodeScreen() {
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <Camera size={48} color={colors.textSecondary} style={styles.permIcon} strokeWidth={1.75} />
         <Text style={styles.permText}>
-          Suppr needs your camera to scan product barcodes and look up nutrition info.
+          Sloe needs your camera to scan product barcodes and look up nutrition info.
         </Text>
         <Pressable style={styles.permBtn} onPress={() => void requestPermission()} accessibilityLabel="Grant camera permission">
           <Text style={styles.permBtnText}>Grant Permission</Text>

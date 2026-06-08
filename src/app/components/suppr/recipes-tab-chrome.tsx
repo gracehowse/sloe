@@ -5,11 +5,6 @@ import { cn } from "../ui/utils";
 
 export type RecipesTab = "library" | "discover";
 
-const SECTION_TITLE: Record<RecipesTab, string> = {
-  library: "Library",
-  discover: "Discover",
-};
-
 export interface RecipesTabChromeProps {
   activeId: RecipesTab;
   onSelect: (id: RecipesTab) => void;
@@ -17,9 +12,12 @@ export interface RecipesTabChromeProps {
 }
 
 /**
- * Sticky Recipes header for mobile-web — brand, RECIPES overline,
- * section title, then Library / Discover tabs. Hidden at `md+` where
- * the sidebar owns navigation.
+ * Sticky Recipes header for mobile-web — Figma `527:2`/`528:2`: a
+ * constant serif "Recipes" title (NOT the section name), then Library /
+ * Discover underline tabs. The active SECTION is shown by the underline
+ * tab, so the overline + section-name-as-title are dropped. Hidden at
+ * `md+` where the sidebar owns navigation. Mobile parity:
+ * `apps/mobile/components/tabs/RecipesTabChrome.tsx`.
  */
 export function RecipesTabChrome({
   activeId,
@@ -34,12 +32,9 @@ export function RecipesTabChrome({
       )}
       data-testid="recipes-tab-chrome"
     >
-      <div className="px-6 pt-2 pb-1 space-y-0.5">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+      <div className="px-6 pt-3 pb-1">
+        <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">
           Recipes
-        </p>
-        <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand">
-          {SECTION_TITLE[activeId]}
         </h1>
       </div>
       <SubTabPill

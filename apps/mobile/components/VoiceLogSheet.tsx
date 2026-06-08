@@ -25,7 +25,8 @@ import {
 } from "react-native";
 import { Mic, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   averageConfidence,
   isLowConfidence,
@@ -77,6 +78,10 @@ export default function VoiceLogSheet({
   onCommit,
   colors,
 }: Props) {
+  // `colors` prop carries the host's Theme (text/card/border/etc.); the
+  // Sloe brand plum (`navPrimary`) used for the serif sheet title isn't in
+  // that contract, so read it from the shared theme hook here.
+  const themeColors = useThemeColors();
   const [stage, setStage] = useState<Stage>("input");
   const [transcript, setTranscript] = useState("");
   const [items, setItems] = useState<AiLoggedItem[]>([]);
@@ -216,8 +221,9 @@ export default function VoiceLogSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
               padding: Spacing.lg,
               paddingBottom: Spacing.xxl,
               maxHeight: "85%",
@@ -237,8 +243,11 @@ export default function VoiceLogSheet({
               }}
             >
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Mic size={IconSize.xl} color={Accent.success} strokeWidth={2.25} />
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Voice log</Text>
+                {/* Sloe DS — voice is a Pro feature; the mic carries the damson
+                    Pro accent and the title reads in the Newsreader serif plum
+                    (`navPrimary`), matching the LogSheet header grammar. */}
+                <Mic size={IconSize.xl} color={Accent.purple} strokeWidth={2.25} />
+                <Text style={[Type.title, { color: themeColors.navPrimary }]}>Voice log</Text>
               </View>
               <Pressable
                 onPress={onClose}

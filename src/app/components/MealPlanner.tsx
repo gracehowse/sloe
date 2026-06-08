@@ -646,9 +646,13 @@ export const MealPlanner = memo(function MealPlanner({
   return (
     <div className="product-shell py-pm-6 space-y-5">
       <div className="hidden md:block">
+      {/* Sloe DS (Figma 523:2 / ENG-919) — page title reads in Newsreader
+          serif plum (`text-foreground-brand`), matching the Today / Progress /
+          Settings landmark headings. Replaces the prior Inter-bold ink H1 so
+          the Plan tab speaks the same warm-editorial language. */}
       <h1
-        className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
+        className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
+        style={{ margin: "0 0 4px" }}
       >
         Meal plan
       </h1>
@@ -710,15 +714,21 @@ export const MealPlanner = memo(function MealPlanner({
                   the tone eases rather than snaps. The `planner-win-pulse` class
                   is applied only on the rising edge into a 7/7 win (the web
                   analog of the mobile scale spring + success haptic). */}
+              {/* Sloe DS (523:2) — the win-moment headline is a card-title
+                  landmark, so it reads in Newsreader serif. Flag-OFF resolves
+                  to plum (`text-foreground-brand`, the card-title ink);
+                  flag-ON the ENG-820 state-aware `summaryHeadlineColor`
+                  (win gold / progress amber / calm muted) still wins via the
+                  inline `color`, and the rising-edge pulse is untouched. */}
               <p
                 data-testid="planner-week-summary-headline"
                 data-tone={winMomentsEnabled ? summaryTone : "off"}
                 data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}
-                className={`text-foreground font-bold -tracking-[0.01em] transition-colors${
+                className={`font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand transition-colors${
                   winMomentsEnabled && winPulse ? " planner-win-pulse" : ""
                 }`}
                 style={{
-                  fontSize: 15,
+                  fontSize: 17,
                   ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
                 }}
               >
@@ -983,7 +993,13 @@ export const MealPlanner = memo(function MealPlanner({
           >
             <CalendarRange size={28} className="text-primary" strokeWidth={1.5} />
           </div>
-          <p className="text-foreground text-center" style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          {/* Sloe DS (Figma 321:2 S8 — Plan empty) — empty-state headline
+              reads in Newsreader serif plum, matching the Recipes / Shopping
+              empty states. */}
+          <p
+            className="font-[family-name:var(--font-headline)] font-medium text-foreground-brand text-center"
+            style={{ fontSize: 20, marginBottom: 8 }}
+          >
             Ready to plan your week?
           </p>
           <p
@@ -1527,8 +1543,8 @@ export const MealPlanner = memo(function MealPlanner({
               Swap
             </p>
             <DialogTitle
-              className="text-foreground capitalize"
-              style={{ margin: "4px 0 0", fontSize: 16 }}
+              className="font-[family-name:var(--font-headline)] font-medium text-foreground-brand capitalize"
+              style={{ margin: "4px 0 0", fontSize: 18 }}
             >
               {swapFor
                 ? `${shortWeekdayLabel(

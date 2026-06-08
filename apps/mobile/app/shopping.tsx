@@ -478,9 +478,10 @@ export default function ShoppingListScreen() {
       color: colors.text,
     },
 
+    // Sloe DS — cream slab; soft xl radius to match the Plan-tab cards.
     card: {
       backgroundColor: colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       padding: Spacing.xl,
@@ -521,7 +522,7 @@ export default function ShoppingListScreen() {
 
     emptyCard: {
       backgroundColor: colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       padding: Spacing.xxxl,

@@ -11,17 +11,21 @@
  * shadows. (Design Direction 2026, 2026-06-01.)
  *
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
- * same variants, same UN-GATED soft-lift behaviour as mobile).
+ * same variants, same UN-GATED elevation behaviour as mobile).
  *
  * ── Elevation model (Design Direction 2026) ──
- * Resting tier (`elevation="card"`, default) uses `.card-slab`: soft shadow
- * in light, no hairline; dark uses tonal lift + hairline (no shadow).
- * Matches `apps/mobile/hooks/useCardElevation.ts`. `sheet` / `float` /
- * `none` tiers keep their prior shadow tokens.
+ * Resting tier (`elevation="slab-flat"`, default) is a FLAT warm slab — no
+ * shadow, no hairline; the `bg-card` fill on the page is the separation (the
+ * Sloe Figma `654:2` look). The `card` tier is the SOFT opt-in for the elevated
+ * recipe-card surfaces: `.card-slab` soft shadow in light, no hairline; dark
+ * uses a tonal lift + hairline (no shadow). Matches
+ * `apps/mobile/hooks/useCardElevation.ts` (mobile `lift="flat"` default /
+ * `lift="soft"` opt-in). `sheet` / `float` / `none` keep their prior shadows.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
- *  - `elevation`: `none` / `card` (default) / `sheet` / `float`
+ *  - `elevation`: `none` / `slab-flat` (default — flat warm slab) / `card`
+ *                 (soft-lift opt-in) / `sheet` / `float`
  *  - `gradient`: bool — applies the north-star gradient when `tone='primary'`
  *  - `border`: bool (default true)
  *  - `padding`: token key — `sm` (8px) / `md` (12px) / `lg` (16px) /

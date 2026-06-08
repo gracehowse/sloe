@@ -84,7 +84,7 @@ export function MobilePermissionsStep() {
       } else {
         set({ notifGranted: false });
         setNotifError(
-          "Notifications are off. You can enable them later in Settings → Suppr → Notifications.",
+          "Notifications are off. You can enable them later in Settings → Sloe → Notifications.",
         );
         // The user has answered the OS prompt — even with "Don't Allow"
         // we should not re-ask via /notifications-prompt; honour their
@@ -94,7 +94,7 @@ export function MobilePermissionsStep() {
     } catch {
       set({ notifGranted: false });
       setNotifError(
-        "System notifications need a full Suppr install (not Expo Go).",
+        "System notifications need a full Sloe install (not Expo Go).",
       );
     } finally {
       setNotifBusy(false);
@@ -112,7 +112,7 @@ export function MobilePermissionsStep() {
         icon="heart-outline"
         iconColor={MacroColors.fat}
         title="Apple Health"
-        body="Read your active energy and steps to refine your adaptive TDEE. Suppr does not write to Health."
+        body="Read your active energy and steps to refine your adaptive TDEE. Sloe does not write to Health."
         granted={state.healthGranted}
         busy={healthBusy}
         errorMessage={healthError}

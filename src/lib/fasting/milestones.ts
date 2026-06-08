@@ -35,6 +35,41 @@ export type FastingMilestone = {
 };
 
 /**
+ * Canonical fasting window presets — shared web + mobile so the user sees
+ * the same options on both platforms and the stored `profiles.fasting_window`
+ * value round-trips across clients.
+ *
+ * Stored as the literal `"FF:EE"` string (`fast hours`:`eat hours`).
+ * Per Grace's decision ENG-922 (2026-06-07) Suppr supports all five
+ * windows. Order: ascending fast hours, with 16:8 (the most common) first.
+ *   - 16:8  — lean gains / popular default
+ *   - 18:6
+ *   - 20:4  — "warrior"
+ *   - 14:10 — gentle
+ *   - 23:1  — OMAD (one meal a day)
+ */
+export const FASTING_WINDOW_PRESETS = [
+  "16:8",
+  "18:6",
+  "20:4",
+  "14:10",
+  "23:1",
+] as const;
+
+export type FastingWindowPreset = (typeof FASTING_WINDOW_PRESETS)[number];
+
+/**
+ * Display label for a fasting window string. `23:1` reads as "OMAD"
+ * (one meal a day) per the Sloe Figma frames (305:2 preset pills);
+ * every other preset shows its raw `FF:EE` string. Falls back to the
+ * raw value for any custom / unknown window so the pill always renders
+ * something meaningful.
+ */
+export function fastingWindowLabel(window: string): string {
+  return window === "23:1" ? "OMAD" : window;
+}
+
+/**
  * Canonical milestone list. Order matters — `selectUpcomingMilestones`
  * relies on ascending `hours`. If you add a new milestone, keep them
  * ordered ascending.

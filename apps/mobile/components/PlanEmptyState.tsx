@@ -46,7 +46,7 @@ export function PlanEmptyState({
       <EmptyState
         illustration={<BookOpen size={30} color={Accent.primary} strokeWidth={1.75} />}
         title="Add a few recipes first"
-        description="Save recipes you like and Suppr builds a balanced plan from them in seconds."
+        description="Save recipes you like and Sloe builds a balanced plan from them in seconds."
         cta={
           <View style={styles.ctaWrap}>
             <Pressable

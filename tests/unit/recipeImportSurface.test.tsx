@@ -150,29 +150,33 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Website")).toBeInTheDocument();
     // Paste-a-link card + URL input + Import button.
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("https://example.com/recipe")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
   });
 
   it("leads the 'Paste a recipe link' card with the Sloe wordmark (mobile parity)", () => {
     render(<RecipeUpload userTier="free" mode="import" />);
     const heading = screen.getByText("Paste a recipe link");
-    const card = heading.closest("div.rounded-2xl");
+    // Sloe DS slab radius (2026-06-07): the paste-link card moved from
+    // `rounded-2xl` to the 24px Sloe slab `rounded-[var(--radius-card-lg)]`.
+    // Match on the radius-card-lg class substring so the test tracks the
+    // card regardless of the exact arbitrary-value class spelling.
+    const card = heading.closest('div[class*="radius-card-lg"]');
     expect(card).not.toBeNull();
     const mark = card?.querySelector('[data-slot="sloe-mark"]');
     expect(mark).not.toBeNull();
     expect(mark).toHaveAttribute("aria-label", "Sloe");
-    expect(mark?.textContent).toBe("sloe");
+    expect(mark?.textContent).toBe("Sloe");
   });
 
   it("does not gate the import-card mark behind design_system_brandmark", () => {
     isFeatureEnabledSpy.mockReturnValue(false);
     render(<RecipeUpload userTier="free" mode="import" />);
-    const card = screen.getByText("Paste a recipe link").closest("div.rounded-2xl");
+    const card = screen.getByText("Paste a recipe link").closest('div[class*="radius-card-lg"]');
     expect(card?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
     isFeatureEnabledSpy.mockReturnValue(true);
     render(<RecipeUpload userTier="free" mode="import" />);
-    const cardOn = screen.getAllByText("Paste a recipe link")[1].closest("div.rounded-2xl");
+    const cardOn = screen.getAllByText("Paste a recipe link")[1].closest('div[class*="radius-card-lg"]');
     expect(cardOn?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
     isFeatureEnabledSpy.mockReturnValue(false);
   });
@@ -214,7 +218,7 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
 
     render(<RecipeUpload userTier="free" mode="import" />);
 
-    const urlInput = screen.getByPlaceholderText("https://example.com/recipe");
+    const urlInput = screen.getByPlaceholderText("https://…");
     fireEvent.change(urlInput, { target: { value: "https://example.com/fajitas" } });
     fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
 
@@ -249,7 +253,7 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<RecipeUpload userTier="free" mode="import" />);
-    fireEvent.change(screen.getByPlaceholderText("https://example.com/recipe"), {
+    fireEvent.change(screen.getByPlaceholderText("https://…"), {
       target: { value: "https://example.com/not-a-recipe" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));

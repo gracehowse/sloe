@@ -207,7 +207,7 @@ export async function writeMealToHealthKitIfEnabled(
   try {
     bridgeWroteCount = await writeNutritionToHealth([
       {
-        name: input.name || "Suppr meal",
+        name: input.name || "Sloe meal",
         calories: Math.max(0, Math.round(input.calories)),
         protein: input.protein ?? undefined,
         carbs: input.carbs ?? undefined,

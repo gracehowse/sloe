@@ -7,8 +7,8 @@ import { Sun, BookOpen, CalendarDays, LineChart } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { SupprTabBar } from '@/components/tabs/SupprTabBar';
-import { Accent } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { useAccent } from '@/context/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 
@@ -45,6 +45,10 @@ import { supabase } from '@/lib/supabase';
 export default function TabLayout() {
   const { session, loading } = useAuth();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay). The custom
+  // `SupprTabBar` owns the rendered active tint; this `tabBarActiveTintColor`
+  // is the defensive fallback for any stock-bar fallback path — kept in sync.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname() ?? '';
@@ -108,7 +112,7 @@ export default function TabLayout() {
       // Today consumes the param to open the canonical `<LogSheet>`.
       tabBar={(props) => <SupprTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Accent.primary,
+        tabBarActiveTintColor: accent.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
         // The custom tab bar reads its own height/padding from
         // `useSafeAreaInsets`, but we keep these here as defensive

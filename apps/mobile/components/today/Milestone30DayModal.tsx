@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, FontFamily } from "@/constants/theme";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
@@ -101,30 +101,35 @@ export function Milestone30DayModal({
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: Spacing.sm }}
           >
+            {/* SLOE DS: landmark celebration glyph uses the win DAMSON
+                (three-role colour law — win = celebration, not the clay
+                CTA). Soft damson halo behind the Sparkles. */}
             <View
               style={{
                 alignSelf: "center",
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: Accent.primary + "18",
+                backgroundColor: Accent.winSoft,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 14,
               }}
             >
-              <Sparkles size={30} color={Accent.primary} strokeWidth={2.25} />
+              <Sparkles size={30} color={Accent.win} strokeWidth={2.25} />
             </View>
 
+            {/* Plum serif headline — the Sloe display voice. */}
             <Text
               accessibilityRole="header"
               style={[
                 {
-                  fontSize: 22,
-                  fontWeight: "800",
+                  fontFamily: FontFamily.serifSemibold,
+                  fontSize: 24,
                   color: textColor,
                   textAlign: "center",
                   marginBottom: 4,
+                  letterSpacing: -0.3,
                 },
                 tabularStyle,
               ]}
@@ -194,7 +199,7 @@ export function Milestone30DayModal({
                 style={{
                   borderWidth: 1,
                   borderColor,
-                  borderRadius: Radius.md,
+                  borderRadius: Radius.xl,
                   paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.md,
                   marginBottom: Spacing.md,
@@ -265,7 +270,7 @@ export function Milestone30DayModal({
                 style={{
                   borderWidth: 1,
                   borderColor,
-                  borderRadius: Radius.md,
+                  borderRadius: Radius.xl,
                   paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.md,
                   marginBottom: Spacing.md,
@@ -304,7 +309,7 @@ export function Milestone30DayModal({
             style={{
               width: "100%",
               paddingVertical: 16,
-              borderRadius: Radius.md,
+              borderRadius: Radius.full,
               backgroundColor: Accent.primary,
               alignItems: "center",
               marginTop: Spacing.sm,
@@ -344,7 +349,7 @@ function StatTile({
         flex: 1,
         borderWidth: 1,
         borderColor,
-        borderRadius: Radius.md,
+        borderRadius: Radius.xl,
         paddingVertical: Spacing.md,
         paddingHorizontal: Spacing.md,
       }}

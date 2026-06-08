@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import { DevFlagOverrides } from "@/components/settings/DevFlagOverrides";
@@ -88,8 +88,12 @@ export default function SettingsScreen() {
           paddingBottom: 120,
           gap: Spacing.md,
         },
-        title: { ...Type.title, color: colors.text },
-        sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+        // Sloe DS (Figma 09 Settings `335:2`): the screen title reads in
+        // Newsreader serif (`Type.title`) + plum (`navPrimary`),
+        // centered in the top bar. Was `text` ink, left-aligned in the
+        // scroll body with a cold subtitle — part of the Settings IA +
+        // palette drift the reskin closes.
+        title: { ...Type.title, color: colors.navPrimary, textAlign: "center" },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
       }),
     [colors],
@@ -105,6 +109,11 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* Top bar — Sloe DS (Figma 09 Settings `335:2`): back chevron on
+          the left, "Settings" centered in Newsreader serif plum, with a
+          balancing spacer on the right so the title sits dead-centre. No
+          subtitle (the profile row below makes context immediately
+          visible — the cold subtitle is removed). */}
       <View
         style={{
           flexDirection: "row",
@@ -125,19 +134,21 @@ export default function SettingsScreen() {
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          style={{ padding: 4, marginRight: Spacing.sm }}
+          style={{ padding: 4, width: 30 }}
         >
           <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
         </Pressable>
+        <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
+          Settings
+        </Text>
+        {/* Spacer matching the back-chevron hit area so the title centres. */}
+        <View style={{ width: 30 }} />
       </View>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.title}>Settings</Text>
-        <Text style={styles.sub}>Plan, targets, and how the app shows up.</Text>
-
         {/* Search — sticks at the top of the ScrollView. The bundle
             owns its own section structure and is hidden when the
             query is non-empty so the filter result stays honest. */}
@@ -146,9 +157,11 @@ export default function SettingsScreen() {
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: 14,
-            paddingVertical: 10,
+            paddingVertical: 12,
             backgroundColor: colors.card,
-            borderRadius: Radius.md,
+            // Sloe reskin: pill search field (was Radius.md 6px) so it
+            // reads as a soft Sloe input, not a boxy form field.
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: colors.border,
             gap: 8,
@@ -214,7 +227,9 @@ export default function SettingsScreen() {
                 paddingVertical: 16,
                 paddingHorizontal: 16,
                 marginTop: 22,
-                borderRadius: 14,
+                // Sloe warm-slab corner (was 14) — matches the section
+                // cards so the lone Sign Out row reads as one of them.
+                borderRadius: 24,
                 borderWidth: 1,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
@@ -246,7 +261,8 @@ export default function SettingsScreen() {
             testID="settings-search-results"
             style={{
               backgroundColor: colors.card,
-              borderRadius: 14,
+              // Sloe warm-slab corner (was 14) — matches the section cards.
+              borderRadius: 24,
               borderWidth: 1,
               borderColor: colors.border,
               overflow: "hidden",

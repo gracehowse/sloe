@@ -65,8 +65,11 @@ export interface TodayHeroProps {
    *  within ±10% of the daily target. Drives the "On track" pill.
    *  Gated behind `today-status-pills`. */
   isOnTrack?: boolean;
-  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
-   *  the "Adaptive TDEE learning · N of 7 days" pill. */
+  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Retained for call-site
+   *  stability but no longer rendered on Today (the "Adaptive TDEE learning ·
+   *  N of 7 days" line was removed 2026-06-08 to match Figma `654:2`; the
+   *  learning state lives on Progress). The underlying TDEE logic is
+   *  unchanged. */
   tdeeLearnDays?: number;
 }
 
@@ -90,15 +93,23 @@ export function TodayHero(props: TodayHeroProps) {
     trackColor,
     onPressWhy,
     isOnTrack,
-    tdeeLearnDays,
+    // `tdeeLearnDays` is retained on the props interface for call-site
+    // stability but no longer rendered on Today — the Adaptive-TDEE line was
+    // removed to match Figma `654:2` (2026-06-08). The learning state lives
+    // on Progress.
   } = props;
 
-  // ENG-753 — status pills below the ring (prototype screens-web.jsx
-  // :173-177). Flag-gated; render only when at least one pill applies.
+  // ENG-753 — "On track" pill below the ring (prototype screens-web.jsx
+  // :173-177). Flag-gated.
+  //
+  // Sloe redesign (2026-06-08): the "Adaptive TDEE learning · N of 7 days"
+  // line was removed — the canonical Figma `654:2` Today hero shows nothing
+  // between the Goal/Eaten/Bonus stats and the "Room for dinner" coach line.
+  // The learning state lives on Progress. The `tdeeLearnDays` prop is retained
+  // for call-site stability and the underlying adaptive-TDEE logic is
+  // unchanged — only this presentational line is gone.
   const showOnTrack = isOnTrack === true;
-  const showTdeeLearning = tdeeLearnDays != null && tdeeLearnDays > 0;
-  const showPills =
-    isFeatureEnabled("today-status-pills") && (showOnTrack || showTdeeLearning);
+  const showPills = isFeatureEnabled("today-status-pills") && showOnTrack;
 
   return (
     <View>
@@ -124,31 +135,14 @@ export function TodayHero(props: TodayHeroProps) {
 
       {showPills ? (
         <View style={styles.pillRow} testID="today-status-pills">
-          {showOnTrack ? (
-            <View
-              style={[styles.pill, { backgroundColor: SUCCESS_SOFT }]}
-              testID="today-pill-on-track"
-            >
-              <Text style={[styles.pillText, { color: Accent.success }]}>
-                ✓ On track
-              </Text>
-            </View>
-          ) : null}
-          {showTdeeLearning ? (
-            // SLOE redesign (2026-06-04, Grace "tone down the TDEE chip"):
-            // de-emphasised from a clay-filled pill to a quiet muted-grey
-            // line so the zone under the ring stays clean like the Figma 01
-            // frame. It's a transient (7-day) calibration note, not a
-            // status the user acts on.
-            <View
-              style={[styles.pill, { backgroundColor: "transparent", paddingHorizontal: 0 }]}
-              testID="today-pill-tdee-learning"
-            >
-              <Text style={[styles.pillText, { color: textSecondaryColor, fontWeight: "500" }]}>
-                Adaptive TDEE learning · {tdeeLearnDays} of 7 days
-              </Text>
-            </View>
-          ) : null}
+          <View
+            style={[styles.pill, { backgroundColor: SUCCESS_SOFT }]}
+            testID="today-pill-on-track"
+          >
+            <Text style={[styles.pillText, { color: Accent.success }]}>
+              ✓ On track
+            </Text>
+          </View>
         </View>
       ) : null}
     </View>
