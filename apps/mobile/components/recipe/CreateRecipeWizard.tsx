@@ -66,6 +66,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import { authedFetch } from "@/lib/authedFetch";
+import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import FoodSearchModal, {
@@ -597,6 +599,28 @@ export default function CreateRecipeWizard() {
         await supabase
           .from("saves")
           .insert({ user_id: userId, recipe_id: recipeId });
+
+        // Sloe image system (2026-06-08) — when no cover image was
+        // uploaded, fire an on-brand hero generation in the BACKGROUND.
+        // Strictly fire-and-forget: never awaited, never blocks the save,
+        // and the route no-ops cleanly (200 `skipped`) while fal.ai is
+        // unconfigured or out of balance.
+        if (!imgUrl) {
+          const heroBase = getSupprApiBase();
+          if (heroBase) {
+            void authedFetch(`${heroBase}/api/recipe-import/image-hero`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                recipeId,
+                title: normalizeRecipeTitle(title.trim()),
+                ingredients: ingredients.map((ing) => ing.name).slice(0, 6),
+              }),
+            }).catch(() => {
+              // Best-effort — a failed/locked generation is expected.
+            });
+          }
+        }
 
         track(AnalyticsEvents.recipe_create_wizard_saved, {
           recipe_id: recipeId,

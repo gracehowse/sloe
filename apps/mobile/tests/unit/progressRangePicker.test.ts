@@ -34,14 +34,15 @@ describe("Progress prototype port — header + range picker", () => {
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
 
-  it("mobile header omits the duplicate range overline (pills carry time context)", () => {
-    // New state drives the overline label: `LAST 7 DAYS` / `LAST 30
-    // DAYS` / `LAST 90 DAYS` / `ALL TIME`. Default range is `30d`.
+  it("mobile header omits the range overline (pills + subtitle carry time context)", () => {
+    // Sloe Figma 492:2 retired the `LAST N DAYS` overline entirely — the
+    // 7d/30d/90d/All pills + the calm subtitle carry the range. Default
+    // range is `30d`.
     expect(mobileSrc).toMatch(/const \[rangeKey, setRangeKey\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    expect(mobileSrc).toContain("LAST 30 DAYS");
-    expect(mobileSrc).toContain("LAST 7 DAYS");
-    expect(mobileSrc).toContain("LAST 90 DAYS");
-    expect(mobileSrc).toContain("ALL TIME");
+    // The retired overline labels must be gone from the rendered source.
+    expect(mobileSrc).not.toContain("LAST 30 DAYS");
+    expect(mobileSrc).not.toContain("LAST 7 DAYS");
+    expect(mobileSrc).not.toContain("ALL TIME");
     // The old static "Weekly report" subtitle must be gone.
     expect(mobileSrc).not.toContain("Weekly report");
     // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
@@ -85,18 +86,21 @@ describe("Progress prototype port — header + range picker", () => {
     expect(happyPathIdx).toBeLessThan(deferredIdx);
   });
 
-  it("web header carries an uppercase range overline (not 'Weekly report')", () => {
+  it("web header shows the calm subtitle, not the retired range overline", () => {
     expect(webSrc).toMatch(/const \[range, setRange\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    expect(webSrc).toContain("LAST 30 DAYS");
-    expect(webSrc).toContain("LAST 7 DAYS");
-    expect(webSrc).toContain("LAST 90 DAYS");
-    expect(webSrc).toContain("ALL TIME");
+    // Sloe Figma 492:2 retired the `LAST N DAYS` overline — only a stray
+    // mention may survive in a code comment, never the rendered labels.
+    expect(webSrc).not.toContain("LAST 7 DAYS");
+    expect(webSrc).not.toContain("LAST 90 DAYS");
+    expect(webSrc).not.toContain("ALL TIME");
     expect(webSrc).not.toContain("Weekly report");
-    expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
+    // The chrome renders the calm subtitle slot (`progress-subtitle`).
+    expect(webChromeSrc).toContain('data-testid="progress-subtitle"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
-    // 24pt per the prototype mirrors mobile title size — uses Tailwind `text-2xl`
-    // (1.5rem = 24px) with the Sloe headline font.
-    expect(webChromeSrc).toMatch(/text-2xl/);
+    // Sloe Figma 492:2 redesign sized the serif "Progress" title at 28px
+    // (the calm subtitle replaced the uppercase range overline). Web/mobile
+    // Progress header-size + subtitle parity tracked in ENG-985.
+    expect(webChromeSrc).toMatch(/text-\[28px\]/);
     expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
   });
 
@@ -146,25 +150,32 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).toMatch(/\[0, 1, 2, 3\]\.map/);
   });
 
-  it("mobile range picker is a segmented control (muted container, inset chip)", () => {
-    // 2026-04-21 D5 port — prototype `screens-mobile.jsx:581-591`.
-    // Container wraps the pills in a muted bg + padding + 10px radius.
-    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?backgroundColor: t\.border[\s\S]*?borderRadius: 10[\s\S]*?padding: 4/);
-    // Active chip uses `t.elevated` (card) not the accent; individual
-    // pill rows no longer set a `borderWidth`/`borderColor`.
-    expect(mobileSrc).toMatch(/active \? t\.elevated : "transparent"/);
-    expect(mobileSrc).not.toMatch(/borderColor: active \? t\.accent : t\.border/);
-    // Subtle shadow marks the active chip (prototype's `0 1px 2px rgba(0,0,0,0.1)`).
-    expect(mobileSrc).toMatch(/shadowOpacity: active \? 0\.1 : 0/);
+  it("mobile range picker is the Sloe plum-fill pill rail (web parity, Figma 492:2)", () => {
+    // 2026-06-07 DS-tightening: the mobile picker moved from the old inset
+    // segmented control (muted `colors.backgroundSecondary` container + 10px
+    // radius + `t.elevated` active chip) to the Sloe Figma 492:2 pill rail —
+    // active range = solid plum (`t.plum`) with white text; the rest are
+    // bordered cream pills. This closes the web↔mobile parity gap (web already
+    // used plum-fill pills). The old segmented-control container is gone.
+    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: 6 \}\}/);
+    expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
+    // Active pill = plum fill + white label; inactive = bordered cream pill.
+    expect(mobileSrc).toMatch(/backgroundColor: active \? t\.plum : t\.elevated/);
+    expect(mobileSrc).toMatch(/borderWidth: active \? 0 : 1/);
+    expect(mobileSrc).toMatch(/color: active \? "#FFFFFF" : t\.sub/);
+    // `t.plum` is the nav-brand plum, mirroring web `bg-foreground-brand`.
+    expect(mobileSrc).toMatch(/plum: colors\.navPrimary/);
   });
 
-  it("web range picker is a segmented control (muted container, inset chip)", () => {
-    // 2026-04-21 D5 — mirrors mobile. `bg-muted` wraps the pills with
-    // `p-1` + `rounded-[10px]`, and the active chip swaps to
-    // `bg-card text-foreground shadow-sm` (no primary fill).
-    expect(webSrc).toMatch(/data-testid="progress-range-picker"[\s\S]*?bg-muted/);
-    expect(webSrc).toMatch(/p-1 rounded-\[10px\] bg-muted/);
-    expect(webSrc).toMatch(/"bg-card text-foreground shadow-sm"/);
+  it("web range picker uses plum-fill active pills (Sloe Figma 492:2 — now at mobile parity)", () => {
+    // Sloe Figma 492:2: the web picker uses plum-fill active pills
+    // (`bg-foreground-brand text-white`) with bordered inactive pills. As of
+    // the 2026-06-07 DS-tightening the MOBILE picker matches this exactly
+    // (asserted above) — the ENG-985 web↔mobile picker parity gap is closed.
+    expect(webSrc).toMatch(/data-testid="progress-range-picker"/);
+    expect(webSrc).toContain("bg-foreground-brand text-white");
+    expect(webSrc).toMatch(/bg-card border border-border text-muted-foreground/);
+    // Not the old primary-fill chip styling.
     expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);
   });
 

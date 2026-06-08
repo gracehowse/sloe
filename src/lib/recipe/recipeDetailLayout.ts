@@ -127,6 +127,123 @@ export type FitsYourDayVerdict = {
   fits: boolean;
 };
 
+/**
+ * Compose the recipe meta row (`recipes.md` frame §5):
+ * `★ rating · time · difficulty · N items`.
+ *
+ * REAL DATA ONLY — every part is gated on a known value and dropped
+ * when unknown (no "0 items", no "— min", no fabricated rating). The
+ * caller renders the returned parts joined by " · " so unknown stats
+ * leave no orphan separator.
+ *
+ *   - rating:     shown as "★ 4.6" only when a finite rating in (0, 5]
+ *                 is passed. `recipes.rating` is frequently null, so it
+ *                 simply doesn't render until a real value exists.
+ *   - time:       total prep+cook minutes, formatted "25 min" / "1h 10m"
+ *                 via the same `formatRecipeMinutes` rules. Dropped when
+ *                 neither time is known.
+ *   - difficulty: a TRANSPARENT heuristic from step count (an observable
+ *                 property, not a fabricated rating): 1–4 steps = Easy,
+ *                 5–8 = Medium, 9+ = Involved. Dropped when step count is
+ *                 unknown/zero. Not a nutrition value — a UX nicety.
+ *   - items:      ingredient count, "8 items" / "1 item". Dropped at 0.
+ */
+export type RecipeMetaPartKey = "rating" | "time" | "difficulty" | "items";
+
+export function recipeDifficultyFromSteps(
+  stepCount: number | null | undefined,
+): "Easy" | "Medium" | "Involved" | null {
+  if (stepCount == null || !Number.isFinite(stepCount) || stepCount <= 0) return null;
+  if (stepCount <= 4) return "Easy";
+  if (stepCount <= 8) return "Medium";
+  return "Involved";
+}
+
+function formatTotalMinutes(totalMin: number | null | undefined): string | null {
+  if (totalMin == null || !Number.isFinite(totalMin) || totalMin <= 0) return null;
+  const m = Math.round(totalMin);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+}
+
+export function composeRecipeMetaParts(args: {
+  /** Community average rating in (0, 5], or null/undefined when unknown. */
+  rating?: number | null;
+  /** Total prep+cook minutes; pass the sum (or null). */
+  totalMinutes?: number | null;
+  /** Step count — drives the difficulty heuristic. */
+  stepCount?: number | null;
+  /** Number of ingredient rows. */
+  itemCount?: number | null;
+}): { key: RecipeMetaPartKey; label: string }[] {
+  const out: { key: RecipeMetaPartKey; label: string }[] = [];
+
+  if (
+    args.rating != null &&
+    Number.isFinite(args.rating) &&
+    args.rating > 0 &&
+    args.rating <= 5
+  ) {
+    // One decimal, trimmed (4.0 → "4", 4.55 → "4.6").
+    const r = Math.round(args.rating * 10) / 10;
+    out.push({ key: "rating", label: `★ ${r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)}` });
+  }
+
+  const time = formatTotalMinutes(args.totalMinutes);
+  if (time) out.push({ key: "time", label: time });
+
+  const difficulty = recipeDifficultyFromSteps(args.stepCount);
+  if (difficulty) out.push({ key: "difficulty", label: difficulty });
+
+  if (args.itemCount != null && Number.isFinite(args.itemCount) && args.itemCount > 0) {
+    const n = Math.round(args.itemCount);
+    out.push({ key: "items", label: `${n} ${n === 1 ? "item" : "items"}` });
+  }
+
+  return out;
+}
+
+/**
+ * Frame palette for the "Fits your day" payoff chip
+ * (`docs/ux/redesign/recipes.md` §315 "Fits-your-day verdict chip").
+ *
+ * The redesign frame (recipe-detail) specifies a SAGE success chip —
+ * `#5E7C5A` text on a 10% sage fill — for the permission moment, with
+ * amber tints for over-half / over-a-day. This supersedes the earlier
+ * ENG-818 "win amber for the fit chip" treatment for THIS surface: the
+ * recipe-detail frame is the source of truth for the chip's colour, and
+ * the brand-manager frame chose sage so "this fits your day" reads as a
+ * calm green permission signal, not a celebration.
+ *
+ * Returned as raw hex/rgba so both web (inline style) and mobile
+ * (RN style object) consume one source — no per-platform palette drift.
+ * `fg` is the text + icon colour; `bg` is the chip fill.
+ *
+ *   success (≤50% of day)    → sage text on sage-10% fill
+ *   warning (51–99%)         → amber text on amber-10% fill
+ *   destructive (≥100%)      → amber text on amber-20% fill (frame §325:
+ *                              "over" stays amber, deeper fill — NOT
+ *                              destructive red; only the calorie ring
+ *                              uses red for over-budget)
+ */
+export type FitsYourDayChipStyle = { fg: string; bg: string };
+
+export function fitsYourDayChipStyle(tone: FitsYourDayTone): FitsYourDayChipStyle {
+  switch (tone) {
+    case "success":
+      // Sage `#5E7C5A` text on a 10% sage fill (frame §315/§323).
+      return { fg: "#5E7C5A", bg: "rgba(94, 124, 90, 0.1)" };
+    case "warning":
+      // Amber `#C9892C` text on a 10% amber fill (frame §324).
+      return { fg: "#C9892C", bg: "rgba(201, 137, 44, 0.1)" };
+    case "destructive":
+      // Frame §325 — "over" stays amber (deeper 20% fill), never red.
+      return { fg: "#C9892C", bg: "rgba(201, 137, 44, 0.2)" };
+  }
+}
+
 export function computeFitsYourDayVerdict(args: {
   kcal: number | null | undefined;
   targetCals: number | null | undefined;
@@ -143,15 +260,18 @@ export function computeFitsYourDayVerdict(args: {
     : overDay
       ? "destructive"
       : "warning";
+  // Copy aligned to the recipe-detail frame (`recipes.md` §323–325).
+  // Success leads with the permission signal ("Fits your day"); the
+  // over-budget tones state the cost honestly without diet-shaming.
   const label = fits
-    ? `Fits your day · ≈ ${pct}%`
+    ? `Fits your day · ${pct}% of today`
     : overDay
-      ? `≈ ${pct}% of your day · over a full day`
-      : `≈ ${pct}% of your day`;
+      ? `Over your day · ${pct}% of today`
+      : `${pct}% of your day`;
   const a11y = fits
-    ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+    ? `Fits your day. About ${pct} percent of your daily calorie target.`
     : overDay
-      ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
-      : `Approximately ${pct} percent of your daily calorie target.`;
+      ? `This recipe is about ${pct} percent of your daily calorie target — over a full day.`
+      : `This recipe takes about ${pct} percent of your daily calorie target.`;
   return { label, tone, pct, a11y, fits };
 }

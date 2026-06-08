@@ -21,6 +21,9 @@ import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
+import { cleanIngredientDisplayName } from "../../lib/recipe/cleanIngredientDisplayName";
+import { fetchIngredientImageMap } from "../../lib/recipe/ingredientImages.ts";
+import { IngredientImageTile } from "./suppr/IngredientImageTile";
 import {
   findSeedRecipeById,
   isSeedRecipeId,
@@ -76,8 +79,10 @@ import {
 import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
+  composeRecipeMetaParts,
   composeSubtitleParts,
   computeFitsYourDayVerdict,
+  fitsYourDayChipStyle,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
@@ -371,6 +376,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const recipeYieldEscapeBlurRef = useRef(false);
   const [dbIngredients, setDbIngredients] = useState<IngredientRow[]>([]);
   const [dbIngredientIds, setDbIngredientIds] = useState<string[]>([]);
+  // Sloe image system (2026-06-08) — `name_key → on-brand tile URL`,
+  // hydrated from `ingredient_images` after ingredients load. Empty until
+  // the backfill runs; the row then renders the calm placeholder tile.
+  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
@@ -685,11 +696,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
       if (cancelled) return;
       if (!ingError && ingRows?.length) {
-        setDbIngredients(ingRows.map((r) => mapDbIngredientToRow(r as DbIngredientRow)));
+        const mapped = ingRows.map((r) => mapDbIngredientToRow(r as DbIngredientRow));
+        setDbIngredients(mapped);
         setDbIngredientIds(ingRows.map((r: any) => r.id));
+        // Sloe image system — hydrate on-brand ingredient tiles by
+        // name_key. Fire-and-forget + graceful: a missing/empty table
+        // resolves to an empty map and the rows show the calm placeholder.
+        void fetchIngredientImageMap(supabase, mapped.map((m) => m.name)).then((imgMap) => {
+          if (!cancelled) setIngredientImageMap(imgMap);
+        });
       } else {
         setDbIngredients([]);
         setDbIngredientIds([]);
+        setIngredientImageMap(new Map());
       }
       setDbLoading(false);
     })();
@@ -2091,6 +2110,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             );
           })}
         </div>
+        {/* Meta row (frame §5) — `★ rating · time · difficulty · N items`,
+            below the macro card. Real data only: each part is dropped when
+            unknown (no fabricated rating, no "0 items"). Difficulty is a
+            transparent step-count heuristic, not a nutrition value. Shared
+            `composeRecipeMetaParts` keeps web + mobile identical. */}
+        {(() => {
+          const totalMin =
+            (dbPrepMin != null && dbPrepMin > 0 ? dbPrepMin : 0) +
+            (dbCookMin != null && dbCookMin > 0 ? dbCookMin : 0);
+          const metaParts = composeRecipeMetaParts({
+            // `RecipeCard` carries no community rating today — passing
+            // `null` means the ★ part stays hidden until one exists.
+            rating: (recipe as { rating?: number | null }).rating ?? null,
+            totalMinutes: totalMin > 0 ? totalMin : null,
+            stepCount: instructionSteps.length,
+            itemCount: ingredients.length,
+          });
+          if (metaParts.length === 0) return null;
+          return (
+            <div
+              data-testid="recipe-meta-row"
+              className="-mt-1 mb-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
+            >
+              {metaParts.map((part, i) => (
+                <span key={part.key} className="inline-flex items-center">
+                  {i > 0 ? <span className="mr-1.5 opacity-60" aria-hidden>·</span> : null}
+                  <span>{part.label}</span>
+                </span>
+              ))}
+            </div>
+          );
+        })()}
         {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
             single text line below the macro tiles. No card, no pill
             background — just a coloured glyph + label. Logic
@@ -2103,28 +2154,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           });
           if (!verdict) return null;
 
-          // ENG-818 — promote the fit verdict from flat metadata to a real
-          // tinted payoff chip. When it fits well (`verdict.fits`, ≤50% of the
-          // day) it earns the dedicated landmark WIN amber (`--accent-win` /
-          // `--accent-win-soft`) — the reserved "genuine win" colour, not
-          // generic success-green. Over-half → warning amber; over a day →
-          // destructive red. Flag-off keeps the flat coloured-text line.
+          // Redesign frame (`recipes.md` §315) — promote the fit verdict from
+          // flat metadata to a real tinted payoff chip. The recipe-detail
+          // frame is the source of truth for the chip colour and chose SAGE
+          // for the "fits your day" permission moment (`#5E7C5A` text on a
+          // 10% sage fill), with amber tints for over-half / over-a-day.
+          // This supersedes the earlier ENG-818 win-amber treatment for THIS
+          // chip — the palette now comes from the shared `fitsYourDayChipStyle`
+          // helper so web + mobile render the same frame colours. Flag-off
+          // keeps the flat coloured-text line.
           if (redesignColours) {
-            const chip =
-              verdict.tone === "success"
-                ? {
-                    fg: "var(--accent-win)",
-                    bg: "var(--accent-win-soft)",
-                  }
-                : verdict.tone === "destructive"
-                  ? {
-                      fg: "var(--destructive)",
-                      bg: "color-mix(in srgb, var(--destructive) 12%, transparent)",
-                    }
-                  : {
-                      fg: "var(--warning)",
-                      bg: "color-mix(in srgb, var(--warning) 12%, transparent)",
-                    };
+            const chip = fitsYourDayChipStyle(verdict.tone);
             return (
               <div
                 data-testid="recipe-fits-your-day"
@@ -2245,10 +2285,32 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
                   return (
                     <div key={index} className="px-4 py-3 flex items-center gap-3 group">
+                      {/* Sloe image system — on-brand ingredient tile
+                          (photo when `ingredient_images` has one, else the
+                          calm cream + sage-initial placeholder). Keyed off
+                          the RAW name so the lookup matches the table. */}
+                      <IngredientImageTile
+                        name={ingredient.name}
+                        imageMap={ingredientImageMap}
+                        size={32}
+                        testId={`recipe-ingredient-tile-${index}`}
+                      />
                       <ConfidenceDot level={verificationTier === "verified" ? "high" : "medium"} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
+                          {/* Display the tidied label (brand/quantity/parenthetical
+                              stripped) — `cleanIngredientDisplayName` is DISPLAY
+                              ONLY. The raw `ingredient.name` is untouched and
+                              still drives nutrition matching + the Verify / Fix /
+                              Override aria-labels below, so tapping through always
+                              shows the real stored name. `title` exposes the raw
+                              on hover so nothing is hidden. */}
+                          <p
+                            className="text-sm font-medium text-foreground truncate"
+                            title={ingredient.name}
+                          >
+                            {cleanIngredientDisplayName(ingredient.name) || ingredient.name}
+                          </p>
                           {rowHasOverride ? (
                             <Badge
                               variant="override"

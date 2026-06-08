@@ -155,6 +155,82 @@ export function buildCaloriesRangeStats(
   };
 }
 
+/** Meal shape carrying the four macros + optional fibre, for range macro
+ *  adherence. Both web `LoggedMeal` and mobile `JournalMeal` satisfy it
+ *  (they expose `fiberG`); absent fields count as 0 — never fabricated. */
+export interface RangeMacroMeal {
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG?: number;
+}
+
+export interface MacroAdherenceRangeStats {
+  /** Average adherence % over the range's logged days, per macro. */
+  proteinPct: number;
+  carbsPct: number;
+  fatPct: number;
+  fiberPct: number;
+  /** Days with ≥1 logged meal in the range (the averaging denominator). */
+  daysLogged: number;
+}
+
+/**
+ * Sloe Figma 492:2 — range-scoped macro adherence for the AVERAGE
+ * ADHERENCE card. Mirrors `buildCaloriesRangeStats` so the card's four
+ * macro bars describe the SAME window as the headline calorie adherence
+ * (coherent with the time-range toggle), not just the current week.
+ *
+ * Each macro % is `(avg over logged days / target) * 100`, rounded.
+ * `0` when the target is missing / no logged days. Shared so web + mobile
+ * read identical figures.
+ */
+export function buildMacroAdherenceRangeStats(
+  byDay: Record<string, RangeMacroMeal[]>,
+  targets: { protein: number; carbs: number; fat: number; fiber?: number },
+  rangeKey: RangeKey,
+  now: Date = new Date(),
+): MacroAdherenceRangeStats {
+  const entries = filterByRange(byDay, rangeKey, now);
+  let pSum = 0;
+  let cSum = 0;
+  let fSum = 0;
+  let fibSum = 0;
+  let daysLogged = 0;
+  for (const [, meals] of entries) {
+    const arr = Array.isArray(meals) ? meals : [];
+    if (arr.length === 0) continue;
+    let p = 0;
+    let c = 0;
+    let f = 0;
+    let fib = 0;
+    for (const m of arr) {
+      p += Math.max(0, Number.isFinite(m.protein) ? m.protein : 0);
+      c += Math.max(0, Number.isFinite(m.carbs) ? m.carbs : 0);
+      f += Math.max(0, Number.isFinite(m.fat) ? m.fat : 0);
+      fib += Math.max(0, typeof m.fiberG === "number" && Number.isFinite(m.fiberG) ? m.fiberG : 0);
+    }
+    // A day counts toward the average when it carried any logged macro
+    // (calories-only rows still count — `arr.length > 0` is the gate).
+    pSum += p;
+    cSum += c;
+    fSum += f;
+    fibSum += fib;
+    daysLogged += 1;
+  }
+  const pct = (sum: number, target: number | undefined) =>
+    target != null && target > 0 && daysLogged > 0
+      ? Math.round((sum / daysLogged / target) * 100)
+      : 0;
+  return {
+    proteinPct: pct(pSum, targets.protein),
+    carbsPct: pct(cSum, targets.carbs),
+    fatPct: pct(fSum, targets.fat),
+    fiberPct: pct(fibSum, targets.fiber),
+    daysLogged,
+  };
+}
+
 /**
  * Localised label for the range, matching the header overline used by
  * `ProgressDashboard` + mobile progress screen.

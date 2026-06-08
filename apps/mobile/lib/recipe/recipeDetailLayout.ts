@@ -8,8 +8,13 @@ export {
   shouldRenderTimeStats,
   composeSubtitleParts,
   computeFitsYourDayVerdict,
+  fitsYourDayChipStyle,
+  composeRecipeMetaParts,
+  recipeDifficultyFromSteps,
 } from "@suppr/shared/recipe/recipeDetailLayout";
 export type {
   FitsYourDayTone,
   FitsYourDayVerdict,
+  FitsYourDayChipStyle,
+  RecipeMetaPartKey,
 } from "@suppr/shared/recipe/recipeDetailLayout";

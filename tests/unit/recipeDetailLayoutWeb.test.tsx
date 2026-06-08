@@ -30,6 +30,7 @@ import { render, within } from "@testing-library/react";
 import {
   composeSubtitleParts,
   computeFitsYourDayVerdict,
+  fitsYourDayChipStyle,
   shouldRenderTimeStats,
 } from "../../src/lib/recipe/recipeDetailLayout";
 
@@ -208,27 +209,35 @@ describe("web recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
     expect(SRC).toMatch(/Flag-off legacy path — flat coloured glyph \+ text line/);
   });
 
-  it("the fits-well chip uses the dedicated WIN amber token, not success-green", () => {
-    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
+  it("the chip palette comes from the shared frame helper (sage/amber), not inline win-amber", () => {
+    // 2026-06-08 — the recipe-detail FRAME (`recipes.md` §315) supersedes
+    // the earlier ENG-818 win-amber chip. The chip palette now flows from
+    // the shared `fitsYourDayChipStyle` helper so web + mobile render the
+    // same frame colours.
+    const fitsIdx = SRC.indexOf("Redesign frame (`recipes.md` §315)");
     expect(fitsIdx).toBeGreaterThan(0);
     const block = SRC.slice(fitsIdx, fitsIdx + 900);
-    // success tone → win amber (the reserved landmark colour).
-    expect(block).toMatch(/var\(--accent-win\)/);
-    expect(block).toMatch(/var\(--accent-win-soft\)/);
-    // It must NOT reach for success-green for the fit-well chip fill.
-    expect(block).not.toMatch(/var\(--success\)/);
+    expect(block).toMatch(/const chip = fitsYourDayChipStyle\(verdict\.tone\)/);
+    // The chip must NOT reach back for the old inline win-amber token.
+    expect(block).not.toMatch(/var\(--accent-win\)/);
   });
 
-  it("over-half → warning tint; over-a-day → destructive tint (semantic tones preserved)", () => {
-    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
-    const block = SRC.slice(fitsIdx, fitsIdx + 1800);
-    expect(block).toMatch(/var\(--destructive\)/);
-    expect(block).toMatch(/var\(--warning\)/);
+  it("the shared helper returns sage for fits-well and amber for over-budget (frame §323–325)", () => {
+    // Source of truth for the palette is unit-tested directly here so a
+    // colour regression in the frame chip breaks this test.
+    expect(fitsYourDayChipStyle("success")).toEqual({
+      fg: "#5E7C5A",
+      bg: "rgba(94, 124, 90, 0.1)",
+    });
+    expect(fitsYourDayChipStyle("warning").fg).toBe("#C9892C");
+    // "over a day" stays amber (deeper fill), never destructive red.
+    expect(fitsYourDayChipStyle("destructive").fg).toBe("#C9892C");
+    expect(fitsYourDayChipStyle("destructive").bg).toBe("rgba(201, 137, 44, 0.2)");
   });
 
   it("the chip is a rounded-full pill with a real background fill (vs the flat line)", () => {
-    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
-    const block = SRC.slice(fitsIdx, fitsIdx + 1800);
+    const fitsIdx = SRC.indexOf("Redesign frame (`recipes.md` §315)");
+    const block = SRC.slice(fitsIdx, fitsIdx + 1200);
     expect(block).toMatch(/rounded-full/);
     expect(block).toMatch(/backgroundColor:\s*chip\.bg/);
   });

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Dimensions,
   Linking,
   Platform,
   Pressable,
@@ -17,13 +18,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ENG-528 (2026-05-16): CloudOff dropped — the "Subscriptions
 // unavailable" card it iconified was removed per Grace decision
 // ("remove entirely; just show the Pro tier value ladder").
-import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Badge } from "@/components/Badge";
 import {
   ensurePurchasesUser,
   getCustomerInfo,
@@ -39,10 +39,15 @@ import { classifyPaywallReadiness } from "@/lib/paywallReadiness";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
+import { PaywallHero } from "@/components/paywall/PaywallHero";
+import { PaywallValueGrid } from "@/components/paywall/PaywallValueGrid";
+import { PaywallComparison } from "@/components/paywall/PaywallComparison";
+import { PaywallPlanSelector } from "@/components/paywall/PaywallPlanSelector";
+import { PaywallCta } from "@/components/paywall/PaywallCta";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
-import { getPaywallTrustChips, buildReceiptTrustCopy, type PaywallTrustChip } from "@suppr/shared/landing/paywallTrust";
+import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landing/paywallTrust";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -71,22 +76,23 @@ function findTier(name: "Pro"): PricingTier {
   return tier;
 }
 
+// PRO_TIER is the source for the fallback price strings below (used
+// only when RevenueCat offerings fail to load — see FALLBACK_PRICES).
+//
+// PR-01 (audit 2026-04-28) — pricing collapses to Free + Pro per
+// D-2026-04-27-05. Internal `UserTier` enum keeps `"base"` for safety:
+// any pre-existing RevenueCat entitlement on the Base SKU is treated by
+// `resolvedTier` as a fallback Free state, and the paywall pitches Pro
+// normally.
+//
+// Frame `284:2` rebuild (2026-06-08): the Pro feature bullet list +
+// per-tier savings badge that the old TierCard rendered now live in the
+// 2×2 value grid + the FREE/PRO comparison matrix (both from the shared
+// `paywallValueProps` SSOT); the savings badge is computed inline in the
+// plan selector from the resolved prices. The `PRO_FEATURE_HEAD` /
+// `PRO_FEATURES` / `PRO_ANNUAL_SAVINGS_BADGE` constants the TierCard
+// consumed were removed with it.
 const PRO_TIER = findTier("Pro");
-
-const PRO_ANNUAL_SAVINGS_BADGE = computeAnnualSavingsBadge(PRO_TIER);
-
-/**
- * PR-01 (audit 2026-04-28) — pricing collapses to Free + Pro per
- * D-2026-04-27-05. The Base tier was removed from the SSOT in
- * batch 19; this paywall now renders Pro-only. Internal `UserTier`
- * enum keeps `"base"` for safety: any pre-existing RevenueCat
- * entitlement on the Base SKU is treated by `resolvedTier` as a
- * fallback Free state for this user, and the paywall pitches Pro
- * normally.
- */
-
-const PRO_FEATURE_HEAD = PRO_TIER.featHead ?? "Everything in Free, plus";
-const PRO_FEATURES = PRO_TIER.features;
 
 /** Fallback prices shown only when RC offerings failed to load. In
  *  normal operation the rendered price is always `priceString` from
@@ -171,30 +177,43 @@ function isProFlavouredContext(from: PaywallViewedFrom): boolean {
  *  frequency) and fall back to identifier substring matching so the
  *  paywall works even if the offering is provisioned with custom
  *  identifiers like `suppr_pro_annual_v1`. */
+
 /**
- * L1 (2026-04-21): substantiate the "Save 37%" badge with a visible
- * reference price. Returns e.g. "£2.50/mo · save 37% vs £3.99/mo" from
- * an annual priceString ("£29.99") + monthly priceString ("£3.99").
- * Returns `null` if either string can't be parsed — the card falls
- * back to showing just the badge (acceptable; the landing page and
- * app-store already carry the annual/monthly breakdown).
+ * Frame `284:2` plan selector — the annual row's per-month line ("just
+ * £5.00/mo"), computed from the RESOLVED annual price string (RC
+ * `priceString` or fallback). Returns `null` if unparseable so the row
+ * simply omits the line. Keeps the currency symbol from the resolved
+ * string — never re-introduces a hardcoded "£".
  */
-function computeAnnualReferenceLine(
+function computeAnnualPerMonthLine(annualPriceString: string): string | null {
+  const a = annualPriceString.match(/^([^\d\-.,]+)\s*([\d.,]+)/);
+  if (!a) return null;
+  const sym = a[1].trim();
+  const annual = Number(a[2].replace(/,/g, ""));
+  if (!Number.isFinite(annual) || annual <= 0) return null;
+  return `just ${sym}${(annual / 12).toFixed(2)}/mo`;
+}
+
+/**
+ * Frame `284:2` plan selector — the "Save N%" badge computed from the
+ * RESOLVED annual + monthly price strings (so it reflects the live
+ * storefront price, not the SSOT fallback). Returns `null` when the
+ * strings can't be parsed or the saving is non-positive; the screen
+ * then falls back to the PRICING_TIERS-derived badge.
+ */
+function computeSavingsBadgeFromStrings(
   annualPriceString: string,
-  monthlyRefPriceString: string,
+  monthlyPriceString: string,
 ): string | null {
   const m = /^([^\d\-.,]+)\s*([\d.,]+)/;
   const a = annualPriceString.match(m);
-  const r = monthlyRefPriceString.match(m);
+  const r = monthlyPriceString.match(m);
   if (!a || !r) return null;
-  const sym = a[1].trim();
   const annual = Number(a[2].replace(/,/g, ""));
   const monthly = Number(r[2].replace(/,/g, ""));
   if (!Number.isFinite(annual) || !Number.isFinite(monthly) || monthly <= 0) return null;
-  const effective = annual / 12;
-  const savingsPct = Math.round((1 - annual / (monthly * 12)) * 100);
-  const fmt = (n: number) => `${sym}${n.toFixed(2)}`;
-  return `${fmt(effective)}/mo · save ${savingsPct}% vs ${fmt(monthly)}/mo`;
+  const pct = Math.round((1 - annual / (monthly * 12)) * 100);
+  return pct > 0 ? `Save ${pct}%` : null;
 }
 
 function classifyPackage(pkg: PurchasesPackage): {
@@ -224,6 +243,15 @@ export default function PaywallScreen() {
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id;
+
+  // Photo-hero height (Figma `284:2`) — ~44% of the screen before
+  // scroll, clamped so very tall/short devices stay balanced. The hero
+  // includes the safe-area top inset so the close button + eyebrow sit
+  // clear of the notch.
+  const heroHeight = useMemo(() => {
+    const h = Dimensions.get("window").height;
+    return Math.max(280, Math.min(Math.round(h * 0.44), 380)) + insets.top;
+  }, [insets.top]);
 
   // PR-01 (audit 2026-04-28): `purchasing` was `"base" | "pro" | null`
   // before the Base TierCard was removed. Pro is the only tier left.
@@ -676,7 +704,12 @@ export default function PaywallScreen() {
   // ─── Header copy ────────────────────────────────────────────────
 
   const proFlavoured = isProFlavouredContext(paywallFrom);
-  const headerKicker = proFlavoured ? "SUPPR PRO" : "CHOOSE YOUR PLAN";
+  // Frame `284:2` rebuild (2026-06-08): the GENERIC entry shows the
+  // positioning headline ("Cook what you love. / Still reach your
+  // goals.") under a "SLOE PRO" eyebrow. Every context-adaptive title
+  // (trial / voice-photo / trial-end) is PRESERVED VERBATIM and renders
+  // plain — only the generic "Pick the plan that fits" fallback is
+  // replaced by the editorial positioning headline.
   const headerTitle = (() => {
     if (paywallFrom === "trial_end") return "Your trial ended — pick a plan";
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
@@ -689,6 +722,12 @@ export default function PaywallScreen() {
     if (trialApplies) return "Try Pro free for 7 days";
     return "Pick the plan that fits";
   })();
+  // True only in the generic fallback — drives the frame's positioning
+  // headline + "SLOE PRO" eyebrow. Pro-flavoured entries keep their
+  // existing kicker ("SLOE PRO") and adaptive title.
+  const showPositioningHeadline = headerTitle === "Pick the plan that fits";
+  const headerKicker =
+    proFlavoured || showPositioningHeadline ? "SLOE PRO" : "CHOOSE YOUR PLAN";
   // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
   // referenced "Base" — a tier removed in PR-01. Now references the
   // current product structure (Free + Pro).
@@ -756,27 +795,14 @@ export default function PaywallScreen() {
       zIndex: 10,
     },
 
-    header: {
-      paddingTop: insets.top + Spacing.xl,
-      paddingHorizontal: Spacing.xl,
-      paddingBottom: Spacing.xl,
-      backgroundColor: colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    headerKicker: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: colors.textSecondary,
-      letterSpacing: 2,
-      marginBottom: Spacing.sm,
-    },
-    headerTitle: { ...Type.title, color: colors.text, lineHeight: 32 },
-    headerSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginTop: Spacing.xs,
+    // Frame `284:2` (2026-06-08): full-bleed photo hero. The hero is
+    // rendered inside the (horizontally padded) ScrollView, so a
+    // negative horizontal margin equal to the content padding lets the
+    // photograph bleed edge-to-edge. The hero sits flush at the scroll
+    // top (no scrollContent paddingTop) under the floating close button.
+    heroBleed: {
+      marginHorizontal: -Spacing.xl,
+      marginBottom: Spacing.lg,
     },
 
     // 2026-05-14 (premium-bar audit Group I #7): extra bottom padding
@@ -786,26 +812,18 @@ export default function PaywallScreen() {
     // padding on top of that.
     scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl + 40 },
 
-    trustStripWrap: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      gap: Spacing.sm,
-      marginTop: Spacing.lg,
-      marginBottom: Spacing.xs,
-    },
-    /** DC4 (premium-bar audit 2026-05-14): in-card trust strip — sits
-     *  ~8px under the price/reference-line so the guarantee reads as
-     *  the price's caption (Stripe Checkout precedent). Smaller gap
-     *  + left-aligned (vs. centred standalone strip) because it
-     *  shares horizontal axis with the price digit above. */
-    trustChipsInCard: {
+    // Frame `284:2` (2026-06-08): trust chips as a compact, centred row
+    // directly above the CTA (the frame's trust-row position). Chip copy
+    // is preserved verbatim; only the placement moved out of the old
+    // TierCard onto the flat CTA cluster.
+    trustRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       alignItems: "center",
+      justifyContent: "center",
       gap: 6,
-      marginTop: 8,
-      marginBottom: Spacing.sm,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
     },
     trustChip: {
       // Canonical 2026-05-22: chips use --background-secondary, NOT
@@ -827,100 +845,18 @@ export default function PaywallScreen() {
       color: colors.textSecondary,
     },
 
-    // 2026-05-14 (premium-bar audit Group I #6): toggle is now the
-    // first control after the gradient header — pad the top so it
-    // breathes off the header edge (was relying on the trust strip's
-    // marginTop above it). marginBottom shrunk slightly because the
-    // trust strip below adds its own gap.
-    toggleWrap: { alignItems: "center", marginTop: Spacing.xl, marginBottom: Spacing.md, gap: 8 },
-    toggleEyebrow: {
-      fontSize: 10,
-      fontWeight: "700",
-      letterSpacing: 1.2,
-      color: colors.textSecondary,
-    },
-    toggleRow: {
-      flexDirection: "row",
-      padding: 4,
-      backgroundColor: colors.inputBg,
-      borderRadius: Radius.full,
-      maxWidth: 360,
-    },
-    toggleBtn: {
-      flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: Spacing.lg,
-      borderRadius: Radius.full - 2,
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: Spacing.xs,
-    },
-    toggleBtnActive: {
-      backgroundColor: colors.card,
-      ...Platform.select({
-        ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-        android: { elevation: 1 },
-      }),
-    },
-    toggleLabel: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
-    toggleLabelActive: { color: colors.text },
-
-    card: {
-      borderRadius: Radius.lg,
-      padding: Spacing.xl,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: Spacing.lg,
-    },
-    cardPro: {
-      borderWidth: 1.5,
-      borderColor: Accent.primary,
-    },
-
-    cardHeaderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    cardTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
-
-    cardPriceRow: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      marginTop: Spacing.xs,
-    },
-    cardPrice: { fontSize: 32, fontWeight: "800", color: colors.text },
-    cardPricePeriod: { fontSize: 14, color: colors.textSecondary, marginLeft: Spacing.xs },
-
-    cardTag: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginTop: Spacing.sm,
-    },
-
-    divider: { height: 1, backgroundColor: colors.border, marginVertical: Spacing.md },
-
-    featHead: { fontSize: 13, fontWeight: "600", color: colors.text },
-    featureRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm, marginTop: Spacing.sm },
-    featureText: { fontSize: 14, color: colors.text, flex: 1, lineHeight: 20 },
-
-    cardCta: {
-      marginTop: Spacing.lg,
-      borderRadius: Radius.md,
-      paddingVertical: 15,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    cardCtaText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-    cardCtaDisabled: { backgroundColor: colors.inputBg },
-    cardCtaDisabledText: { color: colors.textSecondary },
+    // Frame `284:2` rebuild (2026-06-08): the billing toggle + tier-card
+    // styles (toggle*, card*, cardCta*, divider, feat*, savingsBadgeRight,
+    // skeletonCard, offeringsFootnote) were removed with the TierCard —
+    // the price now lives in the plan selector, the features in the value
+    // grid + comparison matrix, and the CTA in the standalone PaywallCta.
 
     freeBtn: { paddingVertical: Spacing.md, alignItems: "center" },
     freeBtnText: { color: colors.textSecondary, fontWeight: "600", fontSize: 15 },
 
+    // SLOE DS: the auto-renew disclosure sits in a cream slab matching the
+    // tier-card radius (Radius.xl = 12) so it reads as part of the same
+    // surface family. Copy is UNCHANGED (legal-sensitive).
     disclosure: {
       fontSize: 13,
       color: colors.textSecondary,
@@ -928,17 +864,17 @@ export default function PaywallScreen() {
       padding: Spacing.md,
       marginTop: Spacing.md,
       marginBottom: Spacing.sm,
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.inputBg,
+      backgroundColor: colors.backgroundSecondary,
     },
 
     timelineWrap: { marginTop: Spacing.xl },
+    // Plum serif section heading — the Sloe headline voice.
     timelineHeader: {
-      fontSize: 15,
-      fontWeight: "700",
-      color: colors.text,
+      ...Type.headline,
+      color: colors.navPrimary,
       marginBottom: Spacing.md,
     },
     timelineItem: { flexDirection: "row", gap: Spacing.md },
@@ -1005,7 +941,7 @@ export default function PaywallScreen() {
     promoApplyBtn: {
       paddingHorizontal: 20,
       paddingVertical: 12,
-      borderRadius: Radius.md,
+      borderRadius: Radius.full,
       backgroundColor: Accent.primary,
       justifyContent: "center",
       alignItems: "center",
@@ -1043,26 +979,6 @@ export default function PaywallScreen() {
       paddingHorizontal: Spacing.md,
     },
 
-    skeletonCard: {
-      height: 280,
-      borderRadius: Radius.lg,
-      backgroundColor: colors.inputBg,
-      marginBottom: Spacing.lg,
-    },
-
-    // ENG-528 / ENG-588: inline footnote when StoreKit offerings are
-    // empty — no full-width "unavailable" card (premium-sweep RTP-3).
-    offeringsFootnote: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      textAlign: "center",
-      lineHeight: 17,
-      marginTop: Spacing.sm,
-      marginBottom: Spacing.md,
-      paddingHorizontal: Spacing.md,
-    },
-
-    savingsBadgeRight: { marginLeft: "auto" },
   }), [colors, insets]);
 
   // ─── Render guards ──────────────────────────────────────────────
@@ -1083,16 +999,35 @@ export default function PaywallScreen() {
         <X size={20} color={colors.text} strokeWidth={1.75} />
       </Pressable>
 
-      <View style={styles.header}>
-        <Text style={styles.headerKicker}>{headerKicker}</Text>
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Photo hero — Sloe Pro paywall (Figma `284:2`, 2026-06-08).
+            Full-bleed finished-dish photograph + soft fade + "SLOE PRO"
+            eyebrow + positioning headline. Replaces the flat cream
+            header slab. Full-width: negative horizontal margin cancels
+            the scroll content's `Spacing.xl` padding so the photo
+            bleeds edge-to-edge. The context-adaptive header copy is
+            preserved — only the GENERIC entry shows the editorial
+            "Cook what you love. / Still reach your goals." headline. */}
+        <View style={styles.heroBleed}>
+          <PaywallHero
+            kicker={headerKicker}
+            title={showPositioningHeadline ? null : headerTitle}
+            subtitle={headerSubtitle}
+            heroHeight={heroHeight}
+            topInset={insets.top}
+          />
+        </View>
+
+        {/* 2×2 value-prop grid + FREE/PRO comparison matrix (Figma
+            `284:2`). Copy from the shared SSOT (web == mobile). Sit
+            between the hero and the plan selector, matching the frame
+            top-to-bottom order. */}
+        <PaywallValueGrid />
+        <PaywallComparison />
+
         {/* 2026-05-14 (premium-bar audit Group I #6): period toggle
             promoted to the first prominent control after the headline.
             Previous order placed the trust strip first; testers
@@ -1101,216 +1036,114 @@ export default function PaywallScreen() {
             billing periods. Toggle now reads as the headline's "pick
             your cadence" beat; trust strip follows so trust copy still
             sits above the tier card. */}
-        {showToggle ? (
-          <View style={styles.toggleWrap}>
-            {/* 2026-05-13 (premium-bar audit Group I #4): the period
-                toggle floated with no label. Testers in TF feedback
-                said they didn't realise the row was switching pricing
-                until after they'd tapped — they thought the badge was
-                advertising "Save 37%" generically. Tiny BILLING eyebrow
-                above the row anchors the toggle's purpose. */}
-            <Text style={styles.toggleEyebrow}>BILLING</Text>
-            <View
-              style={styles.toggleRow}
-              accessibilityRole="tablist"
-              accessibilityLabel="Billing period"
-            >
-              <Pressable
-                style={[styles.toggleBtn, billing === "monthly" && styles.toggleBtnActive]}
-                onPress={() => onToggleBilling("monthly")}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: billing === "monthly" }}
-                accessibilityLabel="Monthly billing"
-              >
-                <Text
-                  style={[
-                    styles.toggleLabel,
-                    billing === "monthly" && styles.toggleLabelActive,
-                  ]}
-                >
-                  Monthly
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toggleBtn, billing === "annual" && styles.toggleBtnActive]}
-                onPress={() => onToggleBilling("annual")}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: billing === "annual" }}
-                accessibilityLabel="Annual billing, save 37 percent"
-              >
-                <Text
-                  style={[
-                    styles.toggleLabel,
-                    billing === "annual" && styles.toggleLabelActive,
-                  ]}
-                >
-                  Annual
-                </Text>
-                {(() => {
-                  // Audit P04 (2026-05-05) — derive from PRICING_TIERS
-                  // instead of a hardcoded "Save 37%" string. The
-                  // headline tier is the first one with annual pricing
-                  // (Pro). Falls through to no badge if pricing changes
-                  // make the savings <= 0%.
-                  const headline = PRICING_TIERS.find((t) => Boolean(t.annualPrice));
-                  const badge = headline ? computeAnnualSavingsBadge(headline) : null;
-                  if (!badge) return null;
-                  // Strip the "Save " prefix for the a11y label so it
-                  // reads "Save 37 percent on annual" — same shape as
-                  // before, generated from the derived value.
-                  const pctMatch = badge.match(/(\d+)/);
-                  const pctText = pctMatch ? pctMatch[1] : "";
-                  return (
-                    <Badge variant="added" accessibilityLabel={`Save ${pctText} percent on annual`}>
-                      {badge}
-                    </Badge>
-                  );
-                })()}
-              </Pressable>
-            </View>
+        {/* Plan selector (Figma `284:2`) — Annual (BEST VALUE, computed
+            savings, per-month math, selected clay border) / Monthly. The
+            two-row selector replaces the segmented toggle but drives the
+            SAME `billing` state via `onToggleBilling`, so every
+            downstream behaviour (trial-applies, current package, CTA,
+            `paywall_period_changed` emit) is unchanged. Prices are the
+            RESOLVED RC `priceString` (or FALLBACK_PRICES during load) —
+            never hardcoded, so Apple's currency + VAT-inclusive display
+            is preserved. The savings badge + per-month line are computed
+            from those same resolved strings. The screen's lock-to-
+            single-period logic hides the missing row when only one
+            period is provisioned (`hasAnyAnnual` / `hasAnyMonthly`). */}
+        {offeringsReady && !subscriptionsUnavailable && (hasAnyAnnual || hasAnyMonthly) ? (() => {
+          const annualStr = proAnnual?.product.priceString ?? FALLBACK_PRICES.proAnnual;
+          const monthlyStr = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
+          // Savings badge: prefer the live resolved-price computation;
+          // fall back to the PRICING_TIERS-derived badge when the
+          // resolved strings can't be parsed.
+          const headlineTier = PRICING_TIERS.find((t) => Boolean(t.annualPrice));
+          const fallbackBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
+          const savingsBadge = computeSavingsBadgeFromStrings(annualStr, monthlyStr) ?? fallbackBadge;
+          const annualPerMonthLine = computeAnnualPerMonthLine(annualStr);
+          return (
+            <PaywallPlanSelector
+              billing={billing}
+              onSelect={onToggleBilling}
+              annualPriceString={annualStr}
+              monthlyPriceString={monthlyStr}
+              savingsBadge={savingsBadge}
+              annualPerMonthLine={annualPerMonthLine}
+              showAnnual={hasAnyAnnual}
+              showMonthly={hasAnyMonthly}
+            />
+          );
+        })() : null}
+
+        {/* Trust row (Figma `284:2`) — the three CMA/trust chips
+            ("Cancel anytime in App Store" / "7-day refund, no email
+            needed" / "Price never changes mid-trial") rendered as a
+            compact centred row directly above the CTA, where the frame
+            places its "Secure checkout · Cancel anytime" row. The chip
+            COPY is preserved verbatim from `getPaywallTrustChips`
+            (PRESERVED per the spec §12) — only the placement is the
+            frame's. Renders in every state (loading / empty / normal)
+            so the guarantee always sits with the CTA. */}
+        {trustChips && trustChips.length > 0 ? (
+          <View
+            testID="paywall-trust-strip"
+            style={styles.trustRow}
+            accessibilityRole="summary"
+            accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
+          >
+            {trustChips.map((chip) => (
+              <View key={chip.label} style={styles.trustChip} accessibilityLabel={chip.a11yLabel}>
+                <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
+                <Text style={styles.trustChipText}>{chip.label}</Text>
+              </View>
+            ))}
           </View>
         ) : null}
 
-        {/* Trust strip — DC4 (premium-bar audit 2026-05-14): chips
-            moved INTO each TierCard adjacent to the price digit so
-            the guarantee reads as the price's caption, not a banner
-            sitting two cards above it. The cancellation chip now
-            names the platform-correct surface (App Store on mobile,
-            Stripe Portal on web — see `getPaywallTrustChips`). The
-            previous strip-above-the-card placement put a 16-24px
-            gap between the trust copy and the price; per Stripe
-            Checkout's precedent, guarantees sit within ~8px of the
-            price element so they read as a single unit. The web
-            /pricing surface keeps a shared strip above the grid
-            (one strip covers both tiers there); mobile renders
-            one paid card so the chips slot directly under the
-            price. */}
-
+        {/* Primary CTA (Figma `284:2`) — "Start free 7-day trial →" clay
+            pill. ALL state logic preserved verbatim from the prior
+            in-card CTA:
+              - Loading  → disabled, clay, "Loading plans…"
+              - Empty    → enabled, clay, "Open App Store to subscribe"
+                           → `itms-apps://…/subscriptions` (StoreKit
+                           failure escape hatch, ENG-528)
+              - Trial    → success-green, "Start free 7-day trial →",
+                           fires `onSelectTier("pro")`
+              - Subscribe→ clay, "Subscribe — {priceString}{suffix}",
+                           fires `onSelectTier("pro")`
+            CTA colour semantics (success-green for trial, clay
+            otherwise) + disabled/loading wiring unchanged. */}
         {!offeringsReady ? (
-          // Audit 2026-05-22: previously rendered a pair of grey
-          // skeleton cards while RevenueCat resolved. The skeleton
-          // flash was the user's first impression on every paywall
-          // mount — sometimes the only impression, when offerings
-          // never returned packages. Replace with an optimistic Pro
-          // card backed by FALLBACK_PRICES so the price + features +
-          // trust chips render on first paint. CTA stays disabled
-          // with explicit "Loading plans…" copy until offerings
-          // resolve; price string updates to the live RC priceString
-          // in the normal render branch once ready.
-          <TierCard
-            tier="pro"
-            title="Pro"
-            tag="Log by photo and voice, faster."
-            priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
-            periodSuffix={periodSuffix}
-            showSavings={billing === "annual"}
-            savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
-            referenceLine={
-              billing === "annual"
-                ? computeAnnualReferenceLine(
-                    FALLBACK_PRICES.proAnnual,
-                    FALLBACK_PRICES.proMonthly,
-                  )
-                : null
-            }
-            featHead={PRO_FEATURE_HEAD}
-            features={PRO_FEATURES}
-            isHero
-            ctaLabel="Loading plans…"
-            ctaColor={Accent.primary}
-            ctaDisabled
-            ctaLoading={false}
+          <PaywallCta
+            label="Loading plans…"
+            color={Accent.primary}
+            disabled
+            loading={false}
             onPress={() => undefined}
-            trustChips={trustChips}
-            colors={colors}
-            styles={styles}
           />
         ) : subscriptionsUnavailable ? (
-          // ENG-528 (2026-05-16) + audit 2026-05-22: when RevenueCat
-          // returns 0 packages (dev/TF builds without provisioned IAPs,
-          // or App Store unreachable), render the Pro value ladder
-          // with fallback prices and offer a real escape hatch via
-          // the App Store subscriptions URL. Previously the CTA was
-          // disabled and showed "Loading plans…" forever — the audit
-          // flagged this as the entire conversion surface being dead.
-          // Subtractive: dropped the "Plans are loading from the App
-          // Store…" footnote that contradicted the loaded-but-empty
-          // state.
-          <TierCard
-            tier="pro"
-            title="Pro"
-            tag="Log by photo and voice, faster."
-            priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
-            periodSuffix={periodSuffix}
-            showSavings={billing === "annual"}
-            savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
-            referenceLine={
-              billing === "annual"
-                ? computeAnnualReferenceLine(
-                    FALLBACK_PRICES.proAnnual,
-                    FALLBACK_PRICES.proMonthly,
-                  )
-                : null
-            }
-            featHead={PRO_FEATURE_HEAD}
-            features={PRO_FEATURES}
-            isHero
-            ctaLabel="Open App Store to subscribe"
-            ctaColor={Accent.primary}
-            ctaDisabled={false}
-            ctaLoading={false}
+          <PaywallCta
+            label="Open App Store to subscribe"
+            color={Accent.primary}
+            disabled={false}
+            loading={false}
             onPress={() => {
               void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
             }}
-            trustChips={trustChips}
-            colors={colors}
-            styles={styles}
           />
-        ) : (
-          <>
-            {hasPro ? (
-              <TierCard
-                tier="pro"
-                title="Pro"
-                tag="Log by photo and voice, faster."
-                priceString={currentProPkg?.product.priceString ?? fallbackProPrice}
-                periodSuffix={periodSuffix}
-                showSavings={billing === "annual"}
-                savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
-                referenceLine={
-                  billing === "annual"
-                    ? computeAnnualReferenceLine(
-                        proAnnual?.product.priceString ?? FALLBACK_PRICES.proAnnual,
-                        proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly,
-                      )
-                    : null
-                }
-                featHead={PRO_FEATURE_HEAD}
-                features={PRO_FEATURES}
-                // 2026-05-12 (premium-bar audit #1.7): see note above.
-                isHero
-                ctaLabel={
-                  !currentProPkg
-                    ? "Loading plans…"
-                    : trialApplies
-                      ? "Start 7-Day Free Trial"
-                      : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
-                }
-                ctaColor={trialApplies ? Accent.success : Accent.primary}
-                ctaDisabled={!currentProPkg || purchasing !== null}
-                ctaLoading={purchasing === "pro"}
-                onPress={() => void onSelectTier("pro")}
-                trustChips={trustChips}
-                colors={colors}
-                styles={styles}
-              />
-            ) : null}
-
-            {/* PR-01 (audit 2026-04-28): the Base TierCard block was
-                removed when the tier was excised from the SSOT. The
-                paywall now renders Pro as the single paid card. */}
-          </>
-        )}
+        ) : hasPro ? (
+          <PaywallCta
+            label={
+              !currentProPkg
+                ? "Loading plans…"
+                : trialApplies
+                  ? "Start free 7-day trial"
+                  : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
+            }
+            color={trialApplies ? Accent.success : Accent.primary}
+            disabled={!currentProPkg || purchasing !== null}
+            loading={purchasing === "pro"}
+            arrow={trialApplies && Boolean(currentProPkg)}
+            onPress={() => void onSelectTier("pro")}
+          />
+        ) : null}
 
         {offeringsReady && !subscriptionsUnavailable ? (
           <Text
@@ -1496,170 +1329,6 @@ export default function PaywallScreen() {
           )}
         </Pressable>
       </View>
-    </View>
-  );
-}
-
-// ─── TierCard subcomponent ────────────────────────────────────────
-
-type TierCardProps = {
-  tier: "base" | "pro";
-  title: string;
-  tag: string;
-  priceString: string;
-  periodSuffix: string;
-  showSavings: boolean;
-  /** Derived from computeAnnualSavingsBadge — e.g. "Save 37%". Null suppresses the badge. */
-  savingsBadge?: string | null;
-  /** L1 (2026-04-21): reference-price line shown beneath the annual
-   *  price so the savings badge is substantiated. Example:
-   *  "£2.50/mo · save 37% vs £3.99/mo". `null` suppresses the line. */
-  referenceLine?: string | null;
-  featHead: string;
-  features: readonly string[];
-  badgeLabel?: string;
-  isHero?: boolean;
-  ctaLabel: string;
-  ctaColor: string;
-  ctaDisabled: boolean;
-  ctaLoading: boolean;
-  onPress: () => void;
-  /** DC4 (premium-bar audit 2026-05-14): trust chips rendered
-   *  directly under the price digit so the guarantee reads as the
-   *  price's caption (~8px gap). Pass `null` to suppress, e.g. on
-   *  surfaces that already carry the strip externally. */
-  trustChips?: ReadonlyArray<PaywallTrustChip> | null;
-  colors: ReturnType<typeof useThemeColors>;
-
-  styles: any;
-};
-
-function TierCard({
-  tier,
-  title,
-  tag,
-  priceString,
-  periodSuffix,
-  showSavings,
-  savingsBadge,
-  referenceLine,
-  featHead,
-  features,
-  badgeLabel,
-  isHero = false,
-  ctaLabel,
-  ctaColor,
-  ctaDisabled,
-  ctaLoading,
-  onPress,
-  trustChips,
-  colors,
-  styles,
-}: TierCardProps) {
-  const a11yLabel = `${title} plan. ${priceString} per ${periodSuffix.replace("/", "")}.${
-    isHero ? " Most popular." : ""
-  } ${featHead} ${features.slice(0, 3).join(", ")}.`;
-
-  return (
-    <View
-      style={[styles.card, isHero && styles.cardPro]}
-      accessibilityRole="summary"
-      accessibilityLabel={a11yLabel}
-    >
-      <View style={styles.cardHeaderRow}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        {badgeLabel ? <Badge variant="pro">{badgeLabel}</Badge> : null}
-      </View>
-
-      <View style={styles.cardPriceRow}>
-        <Text style={styles.cardPrice}>{priceString}</Text>
-        <Text style={styles.cardPricePeriod}>{periodSuffix}</Text>
-        {showSavings && savingsBadge ? (
-          <View style={styles.savingsBadgeRight}>
-            <Badge variant="added">{savingsBadge}</Badge>
-          </View>
-        ) : null}
-      </View>
-
-      {showSavings && referenceLine ? (
-        <Text
-          testID={`paywall-annual-reference-${tier}`}
-          style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
-        >
-          {referenceLine}
-        </Text>
-      ) : null}
-
-      {/* DC4 (premium-bar audit 2026-05-14): trust chips adjacent to
-          price (~8px below). Reads as the price's caption. The
-          cancellation chip is platform-correct via
-          `getPaywallTrustChips("mobile")` ("Cancel anytime in App
-          Store" rather than the generic "in-app"). */}
-      {trustChips && trustChips.length > 0 ? (
-        <View
-          testID="paywall-trust-strip"
-          style={styles.trustChipsInCard}
-          accessibilityRole="summary"
-          accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
-        >
-          {trustChips.map((chip) => (
-            <View
-              key={chip.label}
-              style={styles.trustChip}
-              accessibilityLabel={chip.a11yLabel}
-            >
-              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
-              <Text style={styles.trustChipText}>{chip.label}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      <Text style={styles.cardTag}>{tag}</Text>
-
-      <View style={styles.divider} />
-
-      <Text style={styles.featHead}>{featHead}</Text>
-      {features.map((f) => (
-        <View key={f} style={styles.featureRow}>
-          <Check
-            size={16}
-            color={isHero ? Accent.primary : colors.textSecondary}
-            strokeWidth={1.75}
-          />
-          <Text style={styles.featureText}>{f}</Text>
-        </View>
-      ))}
-
-      <Pressable
-        style={[
-          styles.cardCta,
-          ctaDisabled ? styles.cardCtaDisabled : { backgroundColor: ctaColor },
-          ctaLoading && { opacity: 0.7 },
-        ]}
-        onPress={onPress}
-        disabled={ctaDisabled || ctaLoading}
-        accessibilityRole="button"
-        accessibilityLabel={ctaLabel}
-        accessibilityState={{ disabled: ctaDisabled }}
-      >
-        {ctaLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={[styles.cardCtaText, ctaDisabled && styles.cardCtaDisabledText]}>
-            {/* ctaLabel is now the source of truth — callers pass the
-                right copy per state ("Loading plans…" while offerings
-                resolve, "Open App Store to subscribe" when offerings
-                resolved empty, normal CTA otherwise). Previously the
-                renderer overwrote ctaLabel with "Loading plans…"
-                whenever ctaDisabled was true, which made an
-                offerings-empty state read identically to a still-loading
-                one — confusingly stuck "Loading…" forever on TF and dev
-                builds where IAP products aren't provisioned. */}
-            {ctaLabel}
-          </Text>
-        )}
-      </Pressable>
     </View>
   );
 }

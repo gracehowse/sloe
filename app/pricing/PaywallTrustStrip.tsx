@@ -49,8 +49,10 @@ export function PaywallTrustStrip() {
           className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground"
           style={{ background: "var(--background-secondary)" }}
         >
+          {/* SLOE DS: shield-check in the sage "on-track / secure" hue. */}
           <ShieldCheck
-            className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+            className="h-3.5 w-3.5 shrink-0"
+            style={{ color: "var(--accent-success-solid)" }}
             aria-hidden="true"
           />
           {chip.label}

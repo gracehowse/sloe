@@ -55,23 +55,22 @@ describe("mobile paywall — trust strip render", () => {
     expect(src).toMatch(/trustChips\.map\(/);
   });
 
-  it("trust strip exists + billing toggle declared above the tier cards", () => {
-    // 2026-05-14 (premium-bar audit Group I #6): trust strip moved
-    // INTO the tier cards rather than above them — the chips now
-    // render inside the highlighted Pro card for tighter adjacency
-    // (Stripe Checkout allowed-borrow per DC4). Source-order check
-    // no longer matches render order since the strip testID lives
-    // inside a sub-component definition that mounts inside the card.
-    // What we DO want to pin: (a) the testID still exists, (b) the
-    // billing toggle is declared before the tier card JSX in source
-    // order (so the toggle is visible above the Pro card at render).
+  it("trust strip + plan selector sit above the CTA (Figma 284:2)", () => {
+    // Figma `284:2` rebuild (2026-06-08): the segmented billing toggle
+    // + the big Pro TierCard were replaced by a two-row plan selector
+    // (`PaywallPlanSelector`) and a standalone CTA (`PaywallCta`). The
+    // trust chips moved to a compact centred row directly ABOVE the CTA
+    // (the frame's trust-row position). Source order to pin:
+    //   plan selector → trust strip → CTA.
+    const planSelectorIdx = src.indexOf("<PaywallPlanSelector");
     const stripIdx = src.indexOf('testID="paywall-trust-strip"');
-    const toggleJsxIdx = src.indexOf("style={styles.toggleWrap}");
-    const tierIdx = src.indexOf('tier="pro"');
+    const ctaIdx = src.indexOf("<PaywallCta");
+    expect(planSelectorIdx).toBeGreaterThan(0);
     expect(stripIdx).toBeGreaterThan(0);
-    expect(toggleJsxIdx).toBeGreaterThan(0);
-    expect(tierIdx).toBeGreaterThan(0);
-    expect(toggleJsxIdx).toBeLessThan(tierIdx);
+    expect(ctaIdx).toBeGreaterThan(0);
+    // Plan selector first, then the trust strip, then the CTA.
+    expect(planSelectorIdx).toBeLessThan(stripIdx);
+    expect(stripIdx).toBeLessThan(ctaIdx);
   });
 });
 

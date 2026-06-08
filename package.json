@@ -107,6 +107,7 @@
     "chromatic:storybook": "chromatic --exit-zero-on-changes"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.10.1",
     "@lottiefiles/dotlottie-react": "^0.19.4",
     "@popperjs/core": "2.11.8",
     "@radix-ui/react-accordion": "1.2.12",

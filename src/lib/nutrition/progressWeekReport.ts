@@ -70,11 +70,21 @@ export type WeekStatsBundle = {
   avgProtein: number;
   avgCarbs: number;
   avgFat: number;
+  /**
+   * Sloe Figma 492:2 — average fibre (grams) across days with logged food.
+   * Closes the documented fibre data gap so the AVERAGE ADHERENCE card's
+   * 4th macro bar (Fibre/teal) reads a REAL value rather than being hidden.
+   * Sourced from each meal's optional `fiberG` — `0` when no entry carries
+   * fibre, so existing callers see no behavioural change to the other macros.
+   */
+  avgFiber: number;
   proteinOnTarget: number;
   daysWithFood: number;
   proteinAdherence: number;
   carbsAdherence: number;
   fatAdherence: number;
+  /** `avgFiber / targets.fiber * 100`, rounded. `0` when no fibre target. */
+  fiberAdherence: number;
 };
 
 /**
@@ -87,6 +97,13 @@ export type MealMacros = {
   protein: number;
   carbs: number;
   fat: number;
+  /**
+   * Optional fibre (grams) logged with the entry. Both web `LoggedMeal`
+   * and mobile `JournalMeal` carry this as `fiberG`, so callers on either
+   * platform satisfy the shape. Absent on legacy / non-fibre rows → counted
+   * as 0 (never fabricated).
+   */
+  fiberG?: number;
 };
 
 export type ByDayOf<M extends MealMacros> = Record<string, M[]>;
@@ -98,8 +115,10 @@ function sumDay<M extends MealMacros>(meals: M[]) {
       protein: acc.protein + Math.max(0, m.protein),
       carbs: acc.carbs + Math.max(0, m.carbs),
       fat: acc.fat + Math.max(0, m.fat),
+      // Sloe Figma 492:2 — fibre rollup (real data, never fabricated).
+      fiber: acc.fiber + Math.max(0, typeof m.fiberG === "number" ? m.fiberG : 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
   );
 }
 
@@ -121,13 +140,16 @@ export type DayTargetOverride = {
 /** Current calendar week (based on profile week start) with per-day macro totals. */
 export function buildWeekStats<M extends MealMacros>(
   byDay: ByDayOf<M>,
-  targets: { calories: number; protein: number; carbs: number; fat: number },
+  targets: { calories: number; protein: number; carbs: number; fat: number; fiber?: number },
   weekStartDay: "monday" | "sunday",
   now: Date = new Date(),
   targetsByDay?: Record<string, DayTargetOverride | null | undefined>,
   activity?: WeekActivityAdjustment,
 ): WeekStatsBundle {
   const days: WeekDayTotals[] = [];
+  // Sloe Figma 492:2 — per-day fibre kept parallel to `days` (WeekDayTotals
+  // doesn't carry fibre per-day; only the weekly average + adherence surface).
+  const fiberByDay: number[] = [];
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dow = now.getDay();
   const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
@@ -163,10 +185,12 @@ export function buildWeekStats<M extends MealMacros>(
           now,
         })
       : 0;
+    const { fiber: dayFiber, ...macroTotals } = totals;
+    fiberByDay.push(dayFiber);
     days.push({
       key,
       label: dayLabels[d.getDay()]!,
-      ...totals,
+      ...macroTotals,
       targetCalories,
       targetProtein: snap?.targetProtein ?? targets.protein,
       targetCarbs: snap?.targetCarbs ?? targets.carbs,
@@ -181,12 +205,14 @@ export function buildWeekStats<M extends MealMacros>(
   const avgProtein = Math.round(days.reduce((s, d) => s + d.protein, 0) / daysWithFoodCount);
   const avgCarbs = Math.round(days.reduce((s, d) => s + d.carbs, 0) / daysWithFoodCount);
   const avgFat = Math.round(days.reduce((s, d) => s + d.fat, 0) / daysWithFoodCount);
+  const avgFiber = Math.round(fiberByDay.reduce((s, f) => s + f, 0) / daysWithFoodCount);
 
   // Guard against zero targets — otherwise adherence becomes Infinity and
   // `proteinOnTarget` becomes "every day with ≥0 protein" (i.e. all 7).
   const safePro = targets.protein > 0 ? targets.protein : 0;
   const safeCarb = targets.carbs > 0 ? targets.carbs : 0;
   const safeFat = targets.fat > 0 ? targets.fat : 0;
+  const safeFiber = targets.fiber != null && targets.fiber > 0 ? targets.fiber : 0;
   // F-2 — use each day's own target when judging "on target". A past
   // day hit its snapshot goal, not the current one.
   const proteinOnTarget = safePro > 0
@@ -204,6 +230,9 @@ export function buildWeekStats<M extends MealMacros>(
   const fatAdherence = safeFat > 0 && daysWithFoodCount > 0
     ? Math.round((avgFat / safeFat) * 100)
     : 0;
+  const fiberAdherence = safeFiber > 0 && daysWithFoodCount > 0
+    ? Math.round((avgFiber / safeFiber) * 100)
+    : 0;
 
   return {
     days,
@@ -211,11 +240,13 @@ export function buildWeekStats<M extends MealMacros>(
     avgProtein,
     avgCarbs,
     avgFat,
+    avgFiber,
     proteinOnTarget,
     daysWithFood: days.filter((d) => d.calories > 0).length,
     proteinAdherence,
     carbsAdherence,
     fatAdherence,
+    fiberAdherence,
   };
 }
 

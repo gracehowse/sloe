@@ -22,6 +22,8 @@ import {
   STORY_DATA_FLOOR_DAYS,
 } from "../../../lib/nutrition/progressStoryGate";
 import { SupprCard } from "../ui/suppr-card";
+import { Icons } from "../ui/icons";
+import { PROGRESS_INSIGHT_LILAC_STYLE } from "./progress-headline";
 
 export interface ProgressStoryGateProps {
   /** Days with ≥1 logged meal in the rolling window. */
@@ -52,9 +54,13 @@ export function ProgressStoryGate({
       padding="xl"
       radius="xl"
       className={className}
+      style={PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+      {/* Sloe Figma 492:2 — sparkle glyph by the clay eyebrow, matching the
+          live THIS WEEK headline so the slot reads identically pre/post-unlock. */}
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <Icons.sparkles className="h-3.5 w-3.5" aria-hidden />
         {placeholder.eyebrow}
       </p>
       <div className="mt-1.5 flex items-center justify-between gap-3">

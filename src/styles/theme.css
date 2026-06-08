@@ -144,6 +144,10 @@
   --accent-destructive-solid: #9E3F2E;
   --accent-destructive-soft: rgba(192, 83, 63, 0.12);
   --accent-info: #6A4B7A;
+  /** Damson-lilac wash — the PRO column highlight on the paywall
+   *  comparison matrix (Figma `284:2`). Soft enough to read as a
+   *  recommended-column band, not a fill. */
+  --accent-info-soft: rgba(106, 75, 122, 0.08);
 
   /** Win / celebration — Sloe (Phase 0, dossier D-3). The persistent
    *  achievement bits (streak chip, milestone badge) use damson
@@ -401,6 +405,8 @@
   --accent-destructive-solid: #DC6B55;
   --accent-destructive-soft: rgba(220, 107, 85, 0.18);
   --accent-info: #9A7BAA;
+  /** Damson-lilac wash (dark) — PRO column highlight, lifted for OLED. */
+  --accent-info-soft: rgba(154, 123, 170, 0.16);
 
   /** Win / celebration — Sloe dark (dossier D-3). Persistent damson lifts to
    *  #9A7BAA (OLED-readable); the celebration gradient lifts its stops
@@ -552,6 +558,51 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/** ── FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`) ──
+ *  Exploration only (decision doc:
+ *  `docs/brand/2026-06-07-secondary-colour-exploration.md`). The `.flag-frost`
+ *  class is toggled on `<html>` by `FrostFlagToggle` (web) AFTER PostHog flags
+ *  resolve; mobile parity lives in `apps/mobile/constants/theme.ts`
+ *  (`AccentFrost`) + `context/theme.tsx` (`useAccent`). NOT in
+ *  `REDESIGN_DEFAULT_ON` — the clay path below the class stays the default and
+ *  ramps later via PostHog.
+ *
+ *  Principle (matches mobile): plum `#3B2A4D` stays hero / nav / wordmark; the
+ *  clay ACCENT (white-text CTA / active / focus-ring) moves to Damson
+ *  `#6A4B7A`. This block redefines ONLY the secondary-accent tokens; every
+ *  other token cascades unchanged via `var()`. Deliberately ABSENT (must stay
+ *  clay in BOTH flag states — regression guard):
+ *    - `--macro-carbs` / `--macro-carbs-soft`
+ *    - `--macro-sugar` / `--macro-sugar-soft`
+ *    - `--chart-3`
+ *  Status (success / warning / destructive / over-budget), honey
+ *  (`--activity*`), nav / brand-mark, and the meal-slot / source / confidence
+ *  hues are likewise untouched. */
+.flag-frost {
+  --accent-primary: #6A4B7A;
+  --accent-primary-solid: #54356A;
+  --accent-primary-soft: rgba(106, 75, 122, 0.10);
+  --accent-primary-ring: rgba(106, 75, 122, 0.22);
+  --accent-muted: rgba(106, 75, 122, 0.12);
+  --sidebar-ring: #6A4B7A;
+  --north-star-bg-to: rgba(106, 75, 122, 0.05);
+  --elev-float-primary: 0 4px 16px rgba(106, 75, 122, 0.40);
+  --accent-win-gradient: linear-gradient(120deg, #3B2A4D 0%, #6A4B7A 50%, #D6A24A 100%);
+}
+
+.dark.flag-frost,
+.flag-frost.dark {
+  --accent-primary: #9A7BAA;
+  --accent-primary-solid: #B6ACC6;
+  --accent-primary-soft: rgba(154, 123, 170, 0.16);
+  --accent-primary-ring: rgba(154, 123, 170, 0.30);
+  --accent-muted: rgba(154, 123, 170, 0.15);
+  --sidebar-ring: #9A7BAA;
+  --north-star-bg-to: rgba(154, 123, 170, 0.06);
+  --elev-float-primary: 0 4px 16px rgba(154, 123, 170, 0.45);
+  --accent-win-gradient: linear-gradient(120deg, #815E91 0%, #9A7BAA 50%, #E0B25E 100%);
 }
 
 @theme inline {

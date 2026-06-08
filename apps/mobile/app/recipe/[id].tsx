@@ -51,6 +51,9 @@ import {
 } from "@suppr/shared/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
+import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName";
+import { fetchIngredientImageMap } from "@suppr/shared/recipe/ingredientImages";
+import { IngredientImageTile } from "@/components/IngredientImageTile";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
@@ -124,8 +127,10 @@ import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
 import { classifyRecipeGluten } from "@/lib/recipeTrust";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import {
+  composeRecipeMetaParts,
   composeSubtitleParts,
   computeFitsYourDayVerdict,
+  fitsYourDayChipStyle,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout";
 
@@ -326,6 +331,13 @@ export default function RecipeDetailScreen() {
     }, [refreshNetCarbsLens]),
   );
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  // Sloe image system (2026-06-08) — `name_key → on-brand tile URL`,
+  // hydrated from `ingredient_images` whenever the ingredient list
+  // changes (a dedicated effect below covers all the load paths). Empty
+  // until the backfill runs; rows then show the calm placeholder tile.
+  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   // Audit C1 (2026-05-05): Instagram / TikTok CDN URLs use signed
   // tokens that expire and broken-image URLs come back as a 280pt
   // grey rectangle from <Image> — visually indistinguishable from
@@ -451,6 +463,31 @@ export default function RecipeDetailScreen() {
     if (!viewServingsInitialized) return;
     setLogPortion(viewMultiplier);
   }, [viewServingsInitialized, viewMultiplier]);
+
+  // Sloe image system — hydrate on-brand ingredient tiles by name_key
+  // whenever the ingredient list changes. Covers every load path (the
+  // screen sets `ingredients` from several places). Fire-and-forget +
+  // graceful: a missing/empty `ingredient_images` table resolves to an
+  // empty map and rows show the calm placeholder. Keyed on the joined
+  // names so the effect only refetches when the set actually changes.
+  const ingredientNames = useMemo(() => ingredients.map((i) => i.name), [ingredients]);
+  const ingredientNamesKey = ingredientNames.join("\n");
+  useEffect(() => {
+    let cancelled = false;
+    if (ingredientNames.length === 0) {
+      setIngredientImageMap(new Map());
+      return;
+    }
+    void fetchIngredientImageMap(supabase, ingredientNames).then((imgMap) => {
+      if (!cancelled) setIngredientImageMap(imgMap);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the
+    // joined-names string so array identity churn does not retrigger; the
+    // string only changes when the actual names change.
+  }, [ingredientNamesKey]);
 
   const loadProfileMacroPrefs = useCallback(async () => {
     if (!userId) {
@@ -2468,6 +2505,47 @@ export default function RecipeDetailScreen() {
             })}
           </View>
 
+          {/* Meta row (frame §5) — `★ rating · time · difficulty · N items`,
+              below the macro card. Real data only: each part is dropped when
+              unknown (no fabricated rating, no "0 items"). Difficulty is a
+              transparent step-count heuristic, not a nutrition value. Shared
+              `composeRecipeMetaParts` keeps web + mobile identical. */}
+          {(() => {
+            const totalMin =
+              (recipe?.prep_time_min != null && recipe.prep_time_min > 0 ? recipe.prep_time_min : 0) +
+              (recipe?.cook_time_min != null && recipe.cook_time_min > 0 ? recipe.cook_time_min : 0);
+            const metaParts = composeRecipeMetaParts({
+              // The mobile recipe fetch carries no community rating today
+              // — passing null keeps the ★ part hidden until one exists.
+              rating: (recipe as { rating?: number | null } | null)?.rating ?? null,
+              totalMinutes: totalMin > 0 ? totalMin : null,
+              stepCount: instructionSteps.length,
+              itemCount: ingredients.length,
+            });
+            if (metaParts.length === 0) return null;
+            return (
+              <View
+                testID="recipe-meta-row"
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  marginTop: -2,
+                  marginBottom: Spacing.md,
+                }}
+              >
+                {metaParts.map((part, i) => (
+                  <View key={part.key} style={{ flexDirection: "row", alignItems: "center" }}>
+                    {i > 0 ? (
+                      <Text style={{ fontSize: 12, color: colors.textTertiary, marginHorizontal: 6 }}>·</Text>
+                    ) : null}
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{part.label}</Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
+
           {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
               single text line below the macro tiles. No card, no pill
               background — just a coloured glyph + label. The audit
@@ -2483,28 +2561,19 @@ export default function RecipeDetailScreen() {
             });
             if (!verdict) return null;
 
-            // ENG-818 (Redesign — Design Direction 2026). The fit verdict is
-            // the single moment a user learns whether a recipe works for their
-            // day — the design-director review flagged it rendering as flat
-            // grey footnote metadata. Behind `design_system_colours` we promote
-            // it to a real tinted payoff CHIP:
-            //   - fits well (≤50% of day) → the dedicated landmark WIN amber
-            //     (`Accent.win` / `winSoft`). This is exactly the reserved
-            //     "genuine win" use the win-colour exists for — not a generic
-            //     success-green state.
-            //   - over-half (51–99%) → warning amber tint.
-            //   - over a full day (≥100%) → destructive red tint.
-            // Flag OFF keeps the old flat coloured-glyph + text line alive.
+            // Redesign frame (`recipes.md` §315) — the fit verdict is the
+            // single moment a user learns whether a recipe works for their
+            // day. Behind `design_system_colours` we promote it from flat grey
+            // footnote metadata to a real tinted payoff CHIP. The recipe-detail
+            // frame is the source of truth for the chip colour and chose SAGE
+            // for the "fits your day" permission moment (`#5E7C5A` text on a
+            // 10% sage fill), with amber tints for over-half / over-a-day. The
+            // palette comes from the shared `fitsYourDayChipStyle` helper so
+            // web + mobile render the same frame colours (supersedes the
+            // earlier ENG-818 win-amber treatment for this chip). Flag OFF
+            // keeps the old flat coloured-glyph + text line alive.
             if (winFitsChip) {
-              const chipPalette = {
-                success: { fg: Accent.win, bg: Accent.winSoft },
-                warning: { fg: Accent.warning, bg: "rgba(247, 138, 50, 0.12)" },
-                destructive: {
-                  fg: Accent.destructive,
-                  bg: "rgba(241, 98, 100, 0.12)",
-                },
-              } as const;
-              const { fg, bg } = chipPalette[verdict.tone];
+              const { fg, bg } = fitsYourDayChipStyle(verdict.tone);
               return (
                 <View
                   testID="recipe-fits-your-day"
@@ -2760,11 +2829,29 @@ export default function RecipeDetailScreen() {
                     }}
                     style={styles.ingredientRowNew}
                   >
+                    {/* Sloe image system — on-brand ingredient tile (photo
+                        when `ingredient_images` has one, else the calm cream +
+                        sage-initial placeholder). Keyed off the RAW name so the
+                        lookup matches the table. */}
+                    <IngredientImageTile
+                      name={ing.name}
+                      imageMap={ingredientImageMap}
+                      size={32}
+                      testID={`ingredient-tile-${i}`}
+                    />
                     {/* Confidence dot */}
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tierColor, marginTop: 6, marginRight: 8 }} />
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tierColor, marginTop: 6, marginRight: 8, marginLeft: 8 }} />
                     <View style={styles.ingredientNameAndCal}>
                       <View style={styles.ingredientNameRow}>
-                        <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
+                        {/* Display the tidied label — `cleanIngredientDisplayName`
+                            is DISPLAY ONLY. The raw `ing.name` is untouched and
+                            still drives nutrition matching, the long-press
+                            explainer Alert above, and the Verify aria-label
+                            below, so the real stored name is always one tap away. */}
+                        <Text style={styles.ingredientName}>
+                          {cleanIngredientDisplayName(decodeEntities(ing.name)) ||
+                            decodeEntities(ing.name)}
+                        </Text>
                         {/* P2-30 (2026-04-25 ui-critic): suppress the
                             "0 kcal" right-column when the ingredient
                             has no resolved nutrition. The "0" reads as

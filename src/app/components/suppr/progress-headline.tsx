@@ -29,6 +29,16 @@ import {
   type ProgressCommentaryResult,
 } from "../../../lib/nutrition/progressCommentary";
 import { SupprCard } from "../ui/suppr-card";
+import { Icons } from "../ui/icons";
+
+// Sloe Figma 492:2 — the THIS WEEK insight card sits on a soft LILAC
+// (damson-soft) wash with a hairline damson border. Exported so the
+// story-gate placeholder shares the exact same tone (the card never
+// changes wash when the user crosses the data floor).
+export const PROGRESS_INSIGHT_LILAC_STYLE: React.CSSProperties = {
+  background: "var(--slot-dinner-soft)",
+  borderColor: "rgba(106, 75, 122, 0.16)",
+};
 
 export interface ProgressHeadlineProps {
   commentary: ProgressCommentaryResult;
@@ -48,9 +58,12 @@ export function ProgressHeadline({
       padding="xl"
       radius="xl"
       className={className}
+      style={PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label="This week"
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+      {/* Sloe Figma 492:2 — sparkle glyph by the clay THIS WEEK eyebrow. */}
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <Icons.sparkles className="h-3.5 w-3.5" aria-hidden />
         THIS WEEK
       </p>
       <h2

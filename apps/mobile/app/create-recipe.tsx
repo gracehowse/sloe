@@ -726,6 +726,29 @@ export default function CreateRecipeScreen() {
       await supabase.from("recipe_ingredients").insert(ingRows);
       await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
 
+      // Sloe image system (2026-06-08) — when no cover image was uploaded,
+      // fire an on-brand hero generation in the BACKGROUND. Strictly
+      // fire-and-forget: never awaited, never blocks navigation, and the
+      // route no-ops cleanly (200 `skipped`) while fal.ai is unconfigured
+      // or out of balance. The recipe shows the calm placeholder until/if
+      // a real hero lands.
+      if (!imgUrl) {
+        const heroBase = getSupprApiBase();
+        if (heroBase) {
+          void authedFetch(`${heroBase}/api/recipe-import/image-hero`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipeId,
+              title: normalizeRecipeTitle(title.trim()),
+              ingredients: ingredients.map((ing) => ing.name).slice(0, 6),
+            }),
+          }).catch(() => {
+            // Best-effort only — a failed/locked generation is expected.
+          });
+        }
+      }
+
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/recipe/${recipeId}`);
     } catch {

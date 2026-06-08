@@ -5,6 +5,10 @@ import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
+  PROGRESS_INSIGHT_LILAC_BG,
+  PROGRESS_INSIGHT_LILAC_BORDER,
+} from "@/components/today/ProgressHeadline";
+import {
   buildProgressStoryPlaceholder,
   STORY_DATA_FLOOR_DAYS,
 } from "@/lib/progressStoryGate";
@@ -57,10 +61,11 @@ export function ProgressStoryGate({
         styles.card,
         cardElevation.shadowStyle,
         {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
-          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+          // Sloe Figma 492:2 — same lilac insight wash as <ProgressHeadline>
+          // so the slot doesn't change tone when the live story unlocks.
+          backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
+          borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
+          borderWidth: StyleSheet.hairlineWidth,
         },
         style,
       ]}
