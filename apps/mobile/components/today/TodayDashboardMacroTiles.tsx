@@ -4,10 +4,9 @@ import {
   Candy,
   ChevronRight,
   Droplet,
-  Flame,
+  Dumbbell,
   Gauge,
-  Leaf,
-  Link2,
+  Sprout,
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
@@ -115,9 +114,10 @@ export function TodayDashboardMacroTiles({
     { sugarG: 0, sodiumMg: 0 },
   );
 
-  // Figma `654:2` — protein=Link2, fat=Flame (not Beef/Droplet).
+  // Figma `654:2` macro glyphs (rendered-verified): protein=Dumbbell,
+  // carbs=Wheat, fat=Droplet, fibre=Sprout.
   const macroMap: Record<string, MacroDef> = {
-    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroColorFor("protein"), unit: "g", Icon: Link2 },
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroColorFor("protein"), unit: "g", Icon: Dumbbell },
     carbs: {
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
@@ -138,8 +138,8 @@ export function TodayDashboardMacroTiles({
       unit: "g",
       Icon: Wheat,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Flame },
-    fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Leaf },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplet },
+    fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Sprout },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: macroColorFor("sugar"), unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: macroColorFor("sodium"), unit: "mg", Icon: Gauge, referenceOnly: true },
     water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroColorFor("water"), unit: "ml", Icon: Droplet },

@@ -1,11 +1,11 @@
 import React from "react";
 import { Text, View, type StyleProp, type ViewStyle, type TextStyle } from "react-native";
 import {
-  Beef,
   Clock,
-  Droplets,
+  Droplet,
+  Dumbbell,
   Flame,
-  Leaf,
+  Sprout,
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
@@ -21,11 +21,11 @@ import { Accent, MacroColors } from "@/constants/theme";
  * calories). Compact, no card chrome — designed to drop into any row.
  *
  * Icon set (matches `feedback_prototype_icons_exact.md`):
- *   - Flame  → calories (`MacroColors.calories`)
- *   - Beef   → protein  (`MacroColors.protein`)
- *   - Wheat  → carbs    (`MacroColors.carbs`)
- *   - Droplets → fat    (`MacroColors.fat`)
- *   - Leaf   → fiber    (`MacroColors.fiber`)
+ *   - Flame    → calories (`MacroColors.calories`)
+ *   - Dumbbell → protein  (`MacroColors.protein`) — Figma `654:101`
+ *   - Wheat    → carbs    (`MacroColors.carbs`)
+ *   - Droplet  → fat      (`MacroColors.fat`)
+ *   - Sprout   → fibre    (`MacroColors.fiber`)
  *   - Clock  → cook time (optional, `Accent.primary`)
  *
  * Macro letter labels ("P", "C", "F") render at tertiary opacity so
@@ -121,7 +121,7 @@ export function MacroIconRow({
       ) : null}
       {typeof protein === "number" && Number.isFinite(protein) ? (
         <Chunk
-          Icon={Beef}
+          Icon={Dumbbell}
           iconColor={MacroColors.protein}
           value={`${Math.round(protein)}g`}
           letter={showMacroLetters ? "P" : undefined}
@@ -145,7 +145,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fat === "number" && Number.isFinite(fat) ? (
         <Chunk
-          Icon={Droplets}
+          Icon={Droplet}
           iconColor={MacroColors.fat}
           value={`${Math.round(fat)}g`}
           letter={showMacroLetters ? "F" : undefined}
@@ -157,7 +157,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fiber === "number" && Number.isFinite(fiber) && fiber > 0 ? (
         <Chunk
-          Icon={Leaf}
+          Icon={Sprout}
           iconColor={MacroColors.fiber}
           value={`${Math.round(fiber * 10) / 10}g`}
           textColor={textColor}

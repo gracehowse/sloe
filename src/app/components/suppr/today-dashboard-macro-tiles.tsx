@@ -4,10 +4,9 @@ import * as React from "react";
 import {
   Candy,
   Droplet,
-  Flame,
+  Dumbbell,
   Gauge,
-  Leaf,
-  Link2,
+  Sprout,
   Wheat,
   type LucideIcon,
 } from "lucide-react";
@@ -131,7 +130,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Protein",
-      Icon: Link2,
+      Icon: Dumbbell,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -175,7 +174,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Fat",
-      Icon: Flame,
+      Icon: Droplet,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -190,7 +189,7 @@ function buildMacroTile(
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
       label: "Fibre",
-      Icon: Leaf,
+      Icon: Sprout,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
