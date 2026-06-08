@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { AppLaunchScreen } from '@/components/AppLaunchScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Sun, BookOpen, CalendarDays, LineChart } from 'lucide-react-native';
+// Tab glyphs match Figma `654:228`: Today=Calendar, Plan=BookOpen, Recipes=Utensils, Progress=BarChart3.
+import { Calendar, BookOpen, Utensils, BarChart3 } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { SupprTabBar } from '@/components/tabs/SupprTabBar';
@@ -143,7 +144,7 @@ export default function TabLayout() {
           // SLOE (2026-06-04): soften 2.25 → 2 so the active Today icon
           // matches the calmer line weight of the other tab glyphs (the
           // Figma tab bar uses one uniform light stroke across all tabs).
-          tabBarIcon: ({ color }) => <Sun size={22} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color }) => <Calendar size={22} color={color} strokeWidth={2} />,
           tabBarButtonTestID: 'tab-today',
         }}
       />
@@ -158,7 +159,7 @@ export default function TabLayout() {
         name="planner"
         options={{
           title: 'Plan',
-          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={2} />,
           tabBarButtonTestID: 'tab-plan',
         }}
       />
@@ -171,7 +172,7 @@ export default function TabLayout() {
         name="library"
         options={{
           title: 'Recipes',
-          tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color }) => <Utensils size={22} color={color} strokeWidth={2} />,
           tabBarAccessibilityLabel: 'Recipes',
           tabBarButtonTestID: 'tab-recipes',
         }}
@@ -194,7 +195,7 @@ export default function TabLayout() {
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <LineChart size={22} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color }) => <BarChart3 size={22} color={color} strokeWidth={2} />,
           tabBarAccessibilityLabel: 'Progress',
           tabBarButtonTestID: 'tab-you',
         }}

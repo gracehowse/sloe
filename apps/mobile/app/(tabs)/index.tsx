@@ -4705,6 +4705,9 @@ export default function TrackerScreen() {
               initial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
               fontSize={13}
               gradientIdSuffix="today-wordmark-header"
+              // Figma `654:6` — damson fill + white initial (not the grey ink default).
+              fill="#6a4b7a"
+              textColor="#ffffff"
             />
           </Pressable>
         </View>
