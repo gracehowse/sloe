@@ -35,7 +35,6 @@ export function ProgressEnergyTriad({
   isAdaptive,
 }: ProgressEnergyTriadProps) {
   const colors = useThemeColors();
-  const sub = colors.textSecondary;
   const dim = colors.textTertiary;
   const text = colors.text;
   // Sage (protein/olive) for TDEE + a real deficit; amber for a surplus.

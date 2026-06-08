@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Dimensions, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
+import { ActivityIndicator, Dimensions, ScrollView, Text, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -33,7 +33,6 @@ import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
-import { computeLoggingStreak } from "@/lib/trackerStats";
 import {
   calcGoalTimeline,
   computeWeightJourneyProgressPct,
@@ -66,8 +65,6 @@ import {
 } from "@suppr/shared/nutrition/progressRangeStats";
 import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
 import {
-  availableFreezes,
-  computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
 } from "@/lib/streakFreeze";
@@ -167,7 +164,6 @@ export default function ProgressScreen() {
   const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null);
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
   // Plan pace is read from `profiles.plan_pace` alongside goal. Used by
@@ -211,7 +207,6 @@ export default function ProgressScreen() {
   });
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   const [recapLastSeenWeekKey, setRecapLastSeenWeekKey] = useState<string | null>(null);
-  const [recapPushEnabled, setRecapPushEnabled] = useState<boolean>(true);
 
   // Adaptive TDEE
   const [staticTdee, setStaticTdee] = useState<number | null>(null);
@@ -237,7 +232,10 @@ export default function ProgressScreen() {
   // preserve legacy behaviour.
   const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
 
-  const [weightChartRange, setWeightChartRange] = useState<WeightRange>("1m");
+  // Weight sparkline window is fixed at 1 month (the frame's weight card
+  // shows a recent trend, not a switchable range — the time-range pills at
+  // the top drive the stat-row + adherence figures, not the mini chart).
+  const weightChartRange: WeightRange = "1m";
 
   // Weight chart consolidation Phase 1 (2026-05-11, B6). Inline
   // log-weight sheet replaces the prior `/weight-tracker` push for the
@@ -496,8 +494,6 @@ export default function ProgressScreen() {
         ((profile as any).workouts_by_day ?? {}) as Record<string, { calories?: number }[]>,
       );
       setPreferActivityAdjusted(Boolean((profile as any).prefer_activity_adjusted_calories));
-      const sg = profile.daily_steps_goal != null ? Number(profile.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
-      setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
       if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
         setWeekStartDay(profile.week_start_day);
       }
@@ -518,8 +514,6 @@ export default function ProgressScreen() {
       setFreezeBudgetMax(Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3);
       const rawLastSeen = (profile as any).weekly_recap_last_seen_week_key;
       setRecapLastSeenWeekKey(typeof rawLastSeen === "string" ? rawLastSeen : null);
-      const rawPushEnabled = (profile as any).weekly_recap_push_enabled;
-      setRecapPushEnabled(rawPushEnabled !== false);
       setMilestone30ShownAt(
         typeof (profile as { milestone_30_shown_at?: unknown }).milestone_30_shown_at === "string"
           ? (profile as { milestone_30_shown_at: string }).milestone_30_shown_at
