@@ -1181,6 +1181,30 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
       ensureRecipeInLibraryWithKind(id, mode === "create" ? "created" : "imported");
+
+      // Sloe image system (2026-06-08) — when the recipe saved with the
+      // default cover (no user upload, no imported/YouTube thumbnail),
+      // fire an on-brand hero generation in the BACKGROUND. Strictly
+      // fire-and-forget: never awaited, never blocks the save, and the
+      // route no-ops cleanly (200 `skipped`) while fal.ai is unconfigured
+      // or out of balance. The recipe already shows the calm placeholder
+      // until/if a real hero lands; a later detail-view load picks up the
+      // generated `image_url`.
+      if ((finalImageUrl || DEFAULT_COVER_IMAGE) === DEFAULT_COVER_IMAGE) {
+        void fetch("/api/recipe-import/image-hero", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipeId: id,
+            title: trimmedTitle,
+            ingredients: cleanedIngredients.map((i) => i.name).slice(0, 6),
+          }),
+        }).catch(() => {
+          // Best-effort only — a failed/locked generation is expected and
+          // must never surface to the user mid-save.
+        });
+      }
+
       toast.success(
         effectivePublished ? "Recipe published" : mode === "import" ? "Saved to your library" : "Draft saved",
         {

@@ -1,17 +1,30 @@
 /**
- * Discover / Library recipe hero fallback.
+ * Discover / Library recipe + ingredient image fallback.
  *
- * When a recipe has no image we render a deterministic
- * cuisine-aware gradient + pattern + glyph fallback instead of a
+ * When a recipe (or ingredient tile) has no image we render a
+ * deterministic cuisine-aware tile instead of a broken image or a
  * flat tint. Implementation of D8 (see
- * `docs/design/discover-hero-fallback.md`).
+ * `docs/design/discover-hero-fallback.md`), reskinned 2026-06-08 to
+ * the Sloe calm palette per `docs/ux/redesign/_design-system.md` §11.4.
+ *
+ * ── Sloe calm reskin (2026-06-08) ──────────────────────────────────
+ * The old fallback used loud saturated gradients (the default bucket
+ * was a blue→pink `#4C6CE0 → #E04888`). §11.4 of the design system
+ * mandates a WARM fallback: a sage-to-cream gradient (`#7C8466` →
+ * `#F6F5F2`) with a sage food glyph centred — calm and on-brand, never
+ * a grey neutral placeholder and never a broken-image icon. Each
+ * cuisine bucket now resolves to a soft cuisine-tinted cream that
+ * settles into the card cream, with the glyph + pattern in sage. The
+ * deterministic id-hash → pattern mapping and the cuisine → glyph
+ * mapping are UNCHANGED, so the same recipe id renders the same stable
+ * tile it always did — only the colours calmed down.
+ * ────────────────────────────────────────────────────────────────────
  *
  * The function is platform-agnostic on purpose: it returns the
- * gradient stops, glyph name, pattern name, and the alpha colour
- * for the pattern/glyph (white-alpha on dark buckets, black-alpha
- * on the two light buckets). Mobile (`react-native-svg`) and web
- * (inline SVG) both consume the same output so the same recipe id
- * renders identically on both platforms.
+ * gradient stops, glyph name, pattern name, and the sage colour for
+ * the pattern/glyph. Mobile (`react-native-svg`) and web (inline SVG)
+ * both consume the same output so the same recipe id renders
+ * identically on both platforms.
  *
  * Do NOT network-fetch, do NOT cache by ref — this is pure and
  * sync.
@@ -47,15 +60,15 @@ export interface RecipeHeroFallback {
   pattern: RecipeHeroPattern;
   /**
    * Colour used for both the pattern strokes/fills and the centre
-   * glyph. `rgba(255,255,255,...)` on the dark buckets,
-   * `rgba(0,0,0,...)` on ambers + neutrals (where a dark mark
-   * reads better against the warm light gradient).
+   * glyph. Sage `rgba(124, 132, 102, …)` on every bucket since the
+   * 2026-06-08 calm reskin (§11.4) — the cream gradients all read with
+   * a single sage mark, so there's no more dark-vs-light branch.
    */
   patternColor: string;
   glyphColor: string;
-  /** Alpha 0–1 used for the pattern shapes. 0.06 everywhere. */
+  /** Alpha 0–1 used for the pattern shapes. 0.07 (faint sage texture). */
   patternAlpha: number;
-  /** Alpha 0–1 used for the centre glyph. 0.55 everywhere. */
+  /** Alpha 0–1 used for the centre glyph. 0.7 (clear sage on cream). */
   glyphAlpha: number;
 }
 
@@ -69,74 +82,81 @@ interface BucketSpec {
 }
 
 /**
- * Ordered list — first match wins. The `default` bucket sits at
- * the end with no triggers and acts as the catch-all so no recipe
- * ever falls through to a blank card.
+ * Sloe calm palette (`_design-system.md` §11.4). Every bucket starts
+ * from a soft cuisine-tinted cream and settles into the card cream
+ * `#F6F5F2`. The cuisine tint is gentle — a hint of the food's family
+ * (sage for greens, clay for reds/mediterranean, slate-sage for fish,
+ * warm oat for baked/grains) — never a saturated hero colour. The
+ * glyph + pattern render in sage `#7C8466` on top, per §11.4. `light`
+ * is retained on the type for back-compat but no longer drives the
+ * mark colour (sage reads on every cream tint).
  */
+const CARD_CREAM = "#F6F5F2";
+
 const BUCKETS: readonly BucketSpec[] = [
   {
     key: "greens",
     triggers: ["vegan", "vegetarian", "salad", "bowl", "green", "kale", "spinach"],
-    start: "#5A8A60",
-    end: "#2F5A3A",
+    start: "#DCE3D4", // soft sage cream
+    end: CARD_CREAM,
     glyph: "Salad",
-    light: false,
+    light: true,
   },
   {
     key: "reds",
     triggers: ["beef", "steak", "bbq", "grill", "burger", "chilli", "pepperoni"],
-    start: "#A24A3E",
-    end: "#5C2321",
+    start: "#EBDAD0", // warm clay cream
+    end: CARD_CREAM,
     glyph: "Beef",
-    light: false,
+    light: true,
   },
   {
     key: "blues",
     triggers: ["fish", "seafood", "tuna", "salmon", "prawn", "pescatarian"],
-    start: "#3C6A8F",
-    end: "#1E3A58",
+    start: "#D7E0DD", // cool slate-sage cream
+    end: CARD_CREAM,
     glyph: "Fish",
-    light: false,
+    light: true,
   },
   {
     key: "warms",
     triggers: ["pasta", "pizza", "italian", "tomato", "mediterranean"],
-    start: "#B8693A",
-    end: "#6A2F18",
+    start: "#EEDFCE", // terracotta-leaning oat cream
+    end: CARD_CREAM,
     glyph: "Pizza",
-    light: false,
+    light: true,
   },
   {
     key: "ambers",
     triggers: ["baked", "dessert", "cookie", "cake", "sweet", "breakfast"],
-    start: "#B08848",
-    end: "#6A4820",
+    start: "#EFE4CE", // amber oat cream
+    end: CARD_CREAM,
     glyph: "Cookie",
     light: true,
   },
   {
     key: "earths",
     triggers: ["soup", "stew", "curry", "broth", "asian", "noodle"],
-    start: "#7A5A3A",
-    end: "#3A2A18",
+    start: "#E7DECF", // warm earth cream
+    end: CARD_CREAM,
     glyph: "Soup",
-    light: false,
+    light: true,
   },
   {
     key: "neutrals",
     triggers: ["bread", "grain", "rice", "oats", "cereal", "wheat"],
-    start: "#7A6A4A",
-    end: "#3E342A",
+    start: "#EAE3D3", // pale grain cream
+    end: CARD_CREAM,
     glyph: "Wheat",
     light: true,
   },
   {
     key: "default",
     triggers: [],
-    start: "#4C6CE0",
-    end: "#E04888",
+    start: "#E4E1D8", // neutral warm cream (was the loud blue→pink)
+    end: CARD_CREAM,
     glyph: "Utensils",
-    light: false,
+    light: true,
   },
 ];
 
@@ -177,21 +197,31 @@ function resolveBucket(input: RecipeHeroInput): BucketSpec {
   return BUCKETS[BUCKETS.length - 1];
 }
 
+/**
+ * Sage `#7C8466` (= rgb 124, 132, 102) — the §11.4 glyph/pattern
+ * colour. Rendered on the warm cream gradient on every bucket. The
+ * glyph sits at a clearly-visible alpha (cream needs more than the old
+ * dark-bucket 0.55); the pattern stays a whisper so it textures
+ * without competing with the glyph.
+ */
+const SAGE_RGB = "124, 132, 102";
+
 export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
   const bucket = resolveBucket(input);
   const patternIdx = djb2(input.id) % PATTERNS.length;
   const pattern = PATTERNS[patternIdx];
-  const rgba = bucket.light ? "0, 0, 0" : "255, 255, 255";
-  const patternAlpha = 0.06;
-  const glyphAlpha = 0.55;
+  // Calm reskin (§11.4): sage mark on cream. The glyph reads at ~0.7
+  // alpha on the pale tints; the pattern is a faint 0.07 sage texture.
+  const patternAlpha = 0.07;
+  const glyphAlpha = 0.7;
   return {
     bucket: bucket.key,
     gradientStart: bucket.start,
     gradientEnd: bucket.end,
     glyph: bucket.glyph,
     pattern,
-    patternColor: `rgba(${rgba}, ${patternAlpha})`,
-    glyphColor: `rgba(${rgba}, ${glyphAlpha})`,
+    patternColor: `rgba(${SAGE_RGB}, ${patternAlpha})`,
+    glyphColor: `rgba(${SAGE_RGB}, ${glyphAlpha})`,
     patternAlpha,
     glyphAlpha,
   };

@@ -3,12 +3,10 @@ import React, { type ReactNode } from "react";
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 
 export interface ProgressTabChromeProps {
-  /** Kept on the props for back-compat — callers still pass the range
-   *  label ("LAST 30 DAYS"). Header ignores it because the
-   *  7d/30d/90d/All pills already on the page carry the same info,
-   *  so the overline read as duplicated shouting (Grace 2026-05-22
-   *  continuity sweep). Remove the prop in a later cleanup. */
-  overline: string;
+  /** Optional, ignored — the header renders the calm subtitle (Sloe Figma
+   *  492:2) and the 7d/30d/90d/All pills carry the range. Kept optional for
+   *  back-compat; the old `LAST N DAYS` overline was retired in the redesign. */
+  overline?: string;
   trailing?: ReactNode;
 }
 

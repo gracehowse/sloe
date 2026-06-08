@@ -34,14 +34,15 @@ describe("Progress prototype port — header + range picker", () => {
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
 
-  it("mobile header omits the duplicate range overline (pills carry time context)", () => {
-    // New state drives the overline label: `LAST 7 DAYS` / `LAST 30
-    // DAYS` / `LAST 90 DAYS` / `ALL TIME`. Default range is `30d`.
+  it("mobile header omits the range overline (pills + subtitle carry time context)", () => {
+    // Sloe Figma 492:2 retired the `LAST N DAYS` overline entirely — the
+    // 7d/30d/90d/All pills + the calm subtitle carry the range. Default
+    // range is `30d`.
     expect(mobileSrc).toMatch(/const \[rangeKey, setRangeKey\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    expect(mobileSrc).toContain("LAST 30 DAYS");
-    expect(mobileSrc).toContain("LAST 7 DAYS");
-    expect(mobileSrc).toContain("LAST 90 DAYS");
-    expect(mobileSrc).toContain("ALL TIME");
+    // The retired overline labels must be gone from the rendered source.
+    expect(mobileSrc).not.toContain("LAST 30 DAYS");
+    expect(mobileSrc).not.toContain("LAST 7 DAYS");
+    expect(mobileSrc).not.toContain("ALL TIME");
     // The old static "Weekly report" subtitle must be gone.
     expect(mobileSrc).not.toContain("Weekly report");
     // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
@@ -85,14 +86,16 @@ describe("Progress prototype port — header + range picker", () => {
     expect(happyPathIdx).toBeLessThan(deferredIdx);
   });
 
-  it("web header carries an uppercase range overline (not 'Weekly report')", () => {
+  it("web header shows the calm subtitle, not the retired range overline", () => {
     expect(webSrc).toMatch(/const \[range, setRange\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    expect(webSrc).toContain("LAST 30 DAYS");
-    expect(webSrc).toContain("LAST 7 DAYS");
-    expect(webSrc).toContain("LAST 90 DAYS");
-    expect(webSrc).toContain("ALL TIME");
+    // Sloe Figma 492:2 retired the `LAST N DAYS` overline — only a stray
+    // mention may survive in a code comment, never the rendered labels.
+    expect(webSrc).not.toContain("LAST 7 DAYS");
+    expect(webSrc).not.toContain("LAST 90 DAYS");
+    expect(webSrc).not.toContain("ALL TIME");
     expect(webSrc).not.toContain("Weekly report");
-    expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
+    // The chrome renders the calm subtitle slot (`progress-subtitle`).
+    expect(webChromeSrc).toContain('data-testid="progress-subtitle"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
     // Sloe Figma 492:2 redesign sized the serif "Progress" title at 28px
     // (the calm subtitle replaced the uppercase range overline). Web/mobile

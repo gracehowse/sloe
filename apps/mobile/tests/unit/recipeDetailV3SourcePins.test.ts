@@ -187,37 +187,32 @@ describe("mobile recipe-detail v3 — Fix 5 (Fits your day softened)", () => {
 });
 
 /**
- * ENG-818 (Redesign — Design Direction 2026) — the "Fits your day" verdict is
- * promoted to a tinted payoff CHIP behind `design_system_colours`. When it fits
- * well it uses the dedicated landmark WIN amber (`Accent.win` / `Accent.winSoft`)
- * — the reserved "genuine win" colour, NOT generic success-green. The legacy
+ * 2026-06-08 — the recipe-detail FRAME (`recipes.md` §315) supersedes the
+ * earlier ENG-818 win-amber chip. The "Fits your day" verdict is still a
+ * tinted payoff CHIP behind `design_system_colours`, but the palette now flows
+ * from the shared `fitsYourDayChipStyle` helper (SAGE for the fits moment, amber
+ * for over-budget) so web + mobile render the same frame colours. The legacy
  * flat line stays alive in the `else` (the flag-off path).
  */
-describe("mobile recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
+describe("mobile recipe-detail — 'Fits your day' payoff chip (frame §315)", () => {
   it("gates the chip on the colour-system flag (old flat line in the else)", () => {
     expect(SRC).toMatch(/isFeatureEnabled\("design_system_colours"\)/);
     expect(SRC).toMatch(/const winFitsChip = commitColours/);
     expect(SRC).toMatch(/if \(winFitsChip\) \{/);
-    expect(SRC).toMatch(/Flag-off legacy path — flat coloured glyph \+ text line/);
+    expect(SRC).toMatch(/Flag OFF keeps the old flat coloured-glyph \+ text line/);
   });
 
-  it("the fits-well chip uses the WIN amber token, not success-green", () => {
-    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
+  it("the chip palette comes from the shared frame helper, not inline win-amber", () => {
+    const chipIdx = SRC.indexOf("Redesign frame (`recipes.md` §315)");
     expect(chipIdx).toBeGreaterThan(0);
-    const block = SRC.slice(chipIdx, chipIdx + 1400);
-    // success tone → win amber + winSoft tint (the landmark colour).
-    expect(block).toMatch(/success:\s*\{\s*fg:\s*Accent\.win,\s*bg:\s*Accent\.winSoft\s*\}/);
-  });
-
-  it("over-half → warning tint; over-a-day → destructive tint (semantic tones)", () => {
-    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
-    const block = SRC.slice(chipIdx, chipIdx + 1400);
-    expect(block).toMatch(/warning:\s*\{\s*fg:\s*Accent\.warning/);
-    expect(block).toMatch(/destructive:\s*\{[\s\S]{0,80}fg:\s*Accent\.destructive/);
+    const block = SRC.slice(chipIdx, chipIdx + 900);
+    expect(block).toMatch(/const \{ fg, bg \} = fitsYourDayChipStyle\(verdict\.tone\)/);
+    // No more inline win-amber lookup for the fit chip.
+    expect(block).not.toMatch(/Accent\.win,\s*bg:\s*Accent\.winSoft/);
   });
 
   it("the chip is a Radius.full pill with a real background fill", () => {
-    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
+    const chipIdx = SRC.indexOf("Redesign frame (`recipes.md` §315)");
     const block = SRC.slice(chipIdx, chipIdx + 2200);
     expect(block).toMatch(/borderRadius:\s*Radius\.full,\s*\n\s*backgroundColor:\s*bg/);
   });

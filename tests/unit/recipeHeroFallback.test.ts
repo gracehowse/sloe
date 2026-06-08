@@ -74,14 +74,31 @@ describe("getRecipeFallback — bucket resolution", () => {
     expect(a).toEqual(b);
   });
 
-  it("ambers + neutrals use black-alpha overlay (light gradient readability)", () => {
-    const amber = getRecipeFallback({ id: "a", title: "Birthday Cake" });
-    const neutral = getRecipeFallback({ id: "a", title: "Brown Rice" });
-    expect(amber.patternColor).toMatch(/^rgba\(0, 0, 0,/);
-    expect(neutral.patternColor).toMatch(/^rgba\(0, 0, 0,/);
-    // All dark buckets use white-alpha.
-    const green = getRecipeFallback({ id: "a", title: "Kale Bowl" });
-    expect(green.patternColor).toMatch(/^rgba\(255, 255, 255,/);
+  it("calm reskin (§11.4) — every bucket uses a SAGE mark on a cream gradient", () => {
+    // Post-2026-06-08 the loud dark/light buckets are gone. Every bucket
+    // resolves to a warm cream gradient that ends at the card cream, with
+    // the glyph + pattern in sage `rgb(124, 132, 102)`. No bucket reaches
+    // for the old saturated blue→pink or the black/white-alpha overlay.
+    for (const title of ["Birthday Cake", "Brown Rice", "Kale Bowl", "Mystery Dish", "Salmon"]) {
+      const fb = getRecipeFallback({ id: "a", title });
+      expect(fb.patternColor).toMatch(/^rgba\(124, 132, 102,/);
+      expect(fb.glyphColor).toMatch(/^rgba\(124, 132, 102,/);
+      // Gradient settles into the card cream — calm, never a hero colour.
+      expect(fb.gradientEnd.toUpperCase()).toBe("#F6F5F2");
+    }
+    // The default (tagless) bucket is the neutral warm cream, NOT the old
+    // loud blue→pink (`#4C6CE0 → #E04888`).
+    const def = getRecipeFallback({ id: "x", title: "Untitled" });
+    expect(def.bucket).toBe("default");
+    expect(def.gradientStart.toLowerCase()).not.toBe("#4c6ce0");
+    expect(def.gradientStart.toUpperCase()).toBe("#E4E1D8");
+  });
+
+  it("glyph alpha reads clearly on cream; pattern stays a faint texture", () => {
+    const fb = getRecipeFallback({ id: "a", title: "Kale Bowl" });
+    expect(fb.glyphAlpha).toBeGreaterThan(fb.patternAlpha);
+    expect(fb.glyphAlpha).toBeGreaterThanOrEqual(0.6);
+    expect(fb.patternAlpha).toBeLessThanOrEqual(0.1);
   });
 });
 

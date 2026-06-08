@@ -21,6 +21,18 @@ const ROOT = resolve(__dirname, "../..");
 const MOBILE = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/progress.tsx"), "utf8");
 const WEB = readFileSync(resolve(ROOT, "src/app/components/ProgressDashboard.tsx"), "utf8");
 const HELPER = readFileSync(resolve(ROOT, "src/lib/nutrition/progressRangeStats.ts"), "utf8");
+// The AVERAGE ADHERENCE card lives in its own component on each platform
+// (the dashboards render `<ProgressAverageAdherence>` and pass the four
+// macro rows). Card-internal testIDs + the macro tokens are pinned against
+// the component sources, not the dashboard host.
+const WEB_ADHERENCE = readFileSync(
+  resolve(ROOT, "src/app/components/suppr/progress-average-adherence.tsx"),
+  "utf8",
+);
+const MOBILE_ADHERENCE = readFileSync(
+  resolve(ROOT, "apps/mobile/components/progress/ProgressAverageAdherence.tsx"),
+  "utf8",
+);
 
 describe("Progress — Sloe Figma 492:2 frame", () => {
   it("shared helper exports the range-stats functions (incl. macro adherence)", () => {
@@ -45,22 +57,34 @@ describe("Progress — Sloe Figma 492:2 frame", () => {
       expect(src).toMatch(/ProgressHeadline/);
       expect(src).toMatch(/ProgressStoryGate/);
     }
-    // AVERAGE ADHERENCE card with the four macro bars.
+    // The dashboards render the AVERAGE ADHERENCE card component...
     expect(WEB).toMatch(/<ProgressAverageAdherence\b/);
-    expect(WEB).toMatch(/data-testid="progress-average-adherence-card"/);
     expect(MOBILE).toMatch(/<ProgressAverageAdherence\b/);
-    expect(MOBILE).toMatch(/testID="progress-average-adherence-card"/);
+    // ...and the card itself carries the testID (web + mobile mirror).
+    expect(WEB_ADHERENCE).toMatch(/data-testid="progress-average-adherence-card"/);
+    expect(MOBILE_ADHERENCE).toMatch(/testID="progress-average-adherence-card"/);
   });
 
   it("AVERAGE ADHERENCE wires all four macro bars (Protein/Carbs/Fat/Fibre)", () => {
+    // The dashboards pass the four macro rows (with the platform's macro
+    // colour token); the card renders a bar per row keyed by name.
     for (const src of [MOBILE, WEB]) {
-      expect(src).toMatch(/macro-protein/);
-      expect(src).toMatch(/macro-carbs/);
-      expect(src).toMatch(/macro-fat/);
-      expect(src).toMatch(/macro-fiber/);
+      expect(src).toMatch(/name:\s*["']Protein["']/);
+      expect(src).toMatch(/name:\s*["']Carbs["']/);
+      expect(src).toMatch(/name:\s*["']Fat["']/);
+      expect(src).toMatch(/name:\s*["']Fibre["']/);
       // The Fibre bar must read a real fibre figure, not be hidden.
       expect(src).toMatch(/fiberPct|fiberAdherence/);
     }
+    // Web uses the CSS macro tokens inline; mobile uses the `MacroColors`
+    // / theme tokens — both feed the same four-bar component.
+    expect(WEB).toMatch(/var\(--macro-protein\)/);
+    expect(WEB).toMatch(/var\(--macro-fiber\)/);
+    expect(MOBILE).toMatch(/MacroColors\.fiber|t\.protein/);
+    // The shared card renders one bar per macro (data-testid / testID
+    // suffixed by the lowercased name).
+    expect(WEB_ADHERENCE).toMatch(/progress-adherence-bar-/);
+    expect(MOBILE_ADHERENCE).toMatch(/progress-adherence-bar-/);
   });
 
   it("both platforms render the AVG/TDEE/DEFICIT triad + on-target ribbon", () => {
@@ -71,13 +95,17 @@ describe("Progress — Sloe Figma 492:2 frame", () => {
   });
 
   it("weight card exposes the Trend/Scale toggle + Log weight (frame position 4)", () => {
+    // The two view buttons render from a `["trend", "scale"]` map with a
+    // template testID, so the toggle wrapper + the per-view template + the
+    // `weightView` state together guarantee both `trend` and `scale` tabs.
     expect(WEB).toMatch(/data-testid="progress-weight-view-toggle"/);
-    expect(WEB).toMatch(/data-testid="progress-weight-view-trend"/);
-    expect(WEB).toMatch(/data-testid="progress-weight-view-scale"/);
+    expect(WEB).toMatch(/data-testid=\{`progress-weight-view-\$\{v\}`\}/);
+    expect(WEB).toMatch(/\(\["trend", "scale"\] as const\)/);
     expect(WEB).toMatch(/data-testid="progress-log-weight"/);
     expect(MOBILE).toMatch(/testID="progress-weight-view-toggle"/);
-    expect(MOBILE).toMatch(/testID="progress-weight-view-trend"/);
-    expect(MOBILE).toMatch(/testID="progress-weight-view-scale"/);
+    expect(MOBILE).toMatch(/testID=\{`progress-weight-view-\$\{v\}`\}/);
+    expect(MOBILE).toMatch(/\(\["trend", "scale"\] as const\)/);
+    expect(MOBILE).toMatch(/testID="progress-log-weight"/);
   });
 
   it("DAILY CALORIES uses sage on-target / amber over (never red bars)", () => {

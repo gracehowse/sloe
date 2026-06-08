@@ -298,14 +298,11 @@ export default function ProgressScreen() {
   // Mirrors the `[7d, 30d, 90d, All]` chips in the prototype's
   // `ProgressScreen`. Default `30d` matches the prototype's most
   // common anchor state for a user who's been logging for a few weeks;
-  // sparse-logger users still see something useful (single-day bars
-  // are still plotted). Selected range drives both the overline text
-  // in the header (`LAST 30 DAYS`) and — in a follow-up pass — the
-  // downstream chart windows. Below-the-fold cards currently still
-  // use their own scoped windows (weekly recap = week, maintenance =
-  // configurable); the deeper card restructure is deferred.
+  // sparse-logger users still see something useful (single-day bars are
+  // still plotted). Selected range drives the range-scoped stats + the
+  // weight/calorie windows. Sloe Figma 492:2 retired the `LAST N DAYS`
+  // overline — the calm header subtitle + the pills carry the context.
   const [rangeKey, setRangeKey] = useState<"7d" | "30d" | "90d" | "all">("30d");
-  const rangeLabel = rangeKey === "7d" ? "LAST 7 DAYS" : rangeKey === "30d" ? "LAST 30 DAYS" : rangeKey === "90d" ? "LAST 90 DAYS" : "ALL TIME";
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
@@ -1005,7 +1002,7 @@ export default function ProgressScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
-      <ProgressTabChrome overline={rangeLabel} trailing={progressLogWeightButton} />
+      <ProgressTabChrome trailing={progressLogWeightButton} />
       <ScrollView
         style={{ flex: 1, backgroundColor: t.bg }}
         contentContainerStyle={progressScrollStyle}
@@ -1077,7 +1074,7 @@ export default function ProgressScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
-    <ProgressTabChrome overline={rangeLabel} trailing={progressLogWeightButton} />
+    <ProgressTabChrome trailing={progressLogWeightButton} />
     <ScrollView
       style={{ flex: 1, backgroundColor: t.bg }}
       contentContainerStyle={progressScrollStyle}

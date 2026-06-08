@@ -96,6 +96,7 @@ import {
 
   // Progress & data
   Trophy,
+  Award,
   Flame as Streak,
   CalendarCheck,
   PieChart,
