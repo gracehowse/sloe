@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Flame, Footprints, Moon } from "lucide-react-native";
 
 import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -44,6 +45,10 @@ export default function BurnDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the loading spinner,
+  // the workout/barbell glyph, and the Apple-Health-source switch track. The
+  // burn/activity identity (rings, honey) keeps `Accent.activity*` (held).
+  const accent = useAccent();
   // Theme-aware honey TEXT (base honey is fill-only — 2.3:1 even on white):
   // deep honey on light, lifted honey on dark; both clear AA. Mirrors web
   // `--activity-solid`.
@@ -243,7 +248,7 @@ export default function BurnDetailScreen() {
           </View>
         ) : !data ? (
           <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
-            <ActivityIndicator size="small" color={Accent.primary} />
+            <ActivityIndicator size="small" color={accent.primary} />
             <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading…</Text>
           </View>
         ) : (
@@ -344,7 +349,7 @@ export default function BurnDetailScreen() {
                       borderTopColor: colors.border,
                     }}
                   >
-                    <Ionicons name="barbell-outline" size={14} color={Accent.primary} />
+                    <Ionicons name="barbell-outline" size={14} color={accent.primary} />
                     <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
                     {w.minutes > 0 ? (
                       <Text style={{ fontSize: 12, color: colors.textSecondary }}>{w.minutes} min</Text>
@@ -448,7 +453,7 @@ export default function BurnDetailScreen() {
                       setSavingPreference(false);
                     }
                   }}
-                  trackColor={{ true: Accent.primary, false: colors.border }}
+                  trackColor={{ true: accent.primary, false: colors.border }}
                 />
               </SupprCard>
             ) : null}

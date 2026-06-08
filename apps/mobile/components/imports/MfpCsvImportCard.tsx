@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { Check, FileSpreadsheet, RotateCcw } from "lucide-react-native";
 import { Accent, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -82,6 +83,10 @@ export function MobileMfpCsvImportCard({
   highlightApp?: string | null;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the highlighted-card
+  // border + the spreadsheet-icon tile/spinner. Success rows keep
+  // `Accent.success`; the size-cap note keeps `Accent.warning`.
+  const accent = useAccent();
   const [phase, setPhase] = React.useState<Phase>({ kind: "idle" });
 
   const uploadFile = React.useCallback(
@@ -223,7 +228,7 @@ export function MobileMfpCsvImportCard({
           phase.kind === "success"
             ? Accent.success + "66"
             : highlighted && phase.kind === "idle"
-              ? Accent.primary + "66"
+              ? accent.primary + "66"
               : colors.border,
       }}
     >
@@ -235,12 +240,12 @@ export function MobileMfpCsvImportCard({
             borderRadius: 10,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: Accent.primaryLight + "26",
+            backgroundColor: accent.primaryLight + "26",
           }}
         >
           <FileSpreadsheet
             size={18}
-            color={Accent.primaryLight}
+            color={accent.primaryLight}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -333,7 +338,7 @@ export function MobileMfpCsvImportCard({
                 gap: 8,
               }}
             >
-              <ActivityIndicator size="small" color={Accent.primaryLight} />
+              <ActivityIndicator size="small" color={accent.primaryLight} />
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 Importing {phase.fileName}&hellip;
               </Text>

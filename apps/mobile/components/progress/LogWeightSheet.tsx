@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
@@ -117,6 +118,8 @@ export function LogWeightSheet({
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Save CTA.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [input, setInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
@@ -293,7 +296,7 @@ export function LogWeightSheet({
             style={[
               styles.cta,
               {
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 opacity: saving || !input.trim() ? 0.5 : 1,
               },
             ]}

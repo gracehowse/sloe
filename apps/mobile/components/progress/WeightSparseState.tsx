@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightPoint } from "@/lib/progress/weightTrend";
 import Svg, { Circle, Line } from "react-native-svg";
@@ -12,6 +13,9 @@ type Props = {
 
 export function WeightSparseState({ points, onLogWeight }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Log-weight CTAs
+  // and the sparse data-point stroke.
+  const accent = useAccent();
 
   if (points.length === 0) {
     return (
@@ -21,7 +25,7 @@ export function WeightSparseState({ points, onLogWeight }: Props) {
         <Text style={[styles.body, { color: colors.textSecondary }]}>
           Log your first weight to start a trend.
         </Text>
-        <Pressable style={[styles.btn, { backgroundColor: Accent.primary }]} onPress={onLogWeight}>
+        <Pressable style={[styles.btn, { backgroundColor: accent.primary }]} onPress={onLogWeight}>
           <Text style={styles.btnText}>Log weight</Text>
         </Pressable>
       </View>
@@ -38,7 +42,7 @@ export function WeightSparseState({ points, onLogWeight }: Props) {
         <Text style={[styles.body, { color: colors.textSecondary }]}>
           Add two more to see a trend line.
         </Text>
-        <Pressable style={[styles.btn, { backgroundColor: Accent.primary }]} onPress={onLogWeight}>
+        <Pressable style={[styles.btn, { backgroundColor: accent.primary }]} onPress={onLogWeight}>
           <Text style={styles.btnText}>Log weight</Text>
         </Pressable>
       </View>
@@ -73,12 +77,12 @@ export function WeightSparseState({ points, onLogWeight }: Props) {
           strokeWidth={1.5}
         />
         <Circle cx={x0} cy={y0} r={4} fill={colors.card} stroke={colors.textSecondary} strokeWidth={1.5} />
-        <Circle cx={x1} cy={y1} r={4} fill={colors.card} stroke={Accent.primary} strokeWidth={1.5} />
+        <Circle cx={x1} cy={y1} r={4} fill={colors.card} stroke={accent.primary} strokeWidth={1.5} />
       </Svg>
       <Text style={[styles.sparseCaption, { color: colors.textTertiary }]}>
         Trend appears after 3 weigh-ins.
       </Text>
-      <Pressable style={[styles.btn, { backgroundColor: Accent.primary, marginTop: Spacing.sm }]} onPress={onLogWeight}>
+      <Pressable style={[styles.btn, { backgroundColor: accent.primary, marginTop: Spacing.sm }]} onPress={onLogWeight}>
         <Text style={styles.btnText}>Log weight</Text>
       </Pressable>
     </View>

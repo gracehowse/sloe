@@ -22,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { supabase } from "@/lib/supabase";
 import {
   getUserRecipeNotes,
@@ -69,6 +70,9 @@ export type RecipeNotesCardProps = {
 };
 
 export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardProps) {
+  // Secondary accent (Frost flag → damson, else clay) for the active star glyph
+  // and the loading spinner. Saved/error labels keep success/destructive.
+  const accent = useAccent();
   const [loading, setLoading] = useState(true);
   const [notesRow, setNotesRow] = useState<UserRecipeNotes | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
@@ -305,7 +309,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
                 <Ionicons
                   name={active ? "star" : "star-outline"}
                   size={22}
-                  color={active ? Accent.primary : colors.textTertiary}
+                  color={active ? accent.primary : colors.textTertiary}
                 />
               </Pressable>
             );
@@ -327,7 +331,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
       {/* Notes */}
       <Text style={styles.notesLabel}>Personal notes</Text>
       {loading ? (
-        <ActivityIndicator color={Accent.primary} />
+        <ActivityIndicator color={accent.primary} />
       ) : (
         <TextInput
           value={notesDraft}

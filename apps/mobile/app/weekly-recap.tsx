@@ -64,7 +64,8 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import {
   dateKeyFromDate,
@@ -111,6 +112,9 @@ const DEFAULT_TARGETS = {
 export default function WeeklyRecapScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active week-dot
+  // selection and the recap CTAs/links.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -781,7 +785,7 @@ export default function WeeklyRecapScreen() {
                     paddingHorizontal: Spacing.md,
                     borderRadius: Radius.md,
                     borderWidth: 1.5,
-                    borderColor: Accent.primary,
+                    borderColor: accent.primary,
                     alignSelf: "flex-start",
                   }}
                 >
@@ -789,7 +793,7 @@ export default function WeeklyRecapScreen() {
                     style={{
                       fontSize: 13,
                       fontWeight: "700",
-                      color: Accent.primary,
+                      color: accent.primary,
                       letterSpacing: 0.2,
                     }}
                   >
@@ -876,10 +880,10 @@ export default function WeeklyRecapScreen() {
                           height: 14,
                           borderRadius: 7,
                           backgroundColor: filled
-                            ? Accent.primary
+                            ? accent.primary
                             : "transparent",
                           borderWidth: 1.5,
-                          borderColor: filled ? Accent.primary : colors.cardBorder,
+                          borderColor: filled ? accent.primary : colors.cardBorder,
                         }}
                       />
                       <Text

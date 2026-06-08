@@ -48,6 +48,7 @@ import {
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -91,6 +92,11 @@ async function raceShoppingQuery<T>(
 
 export default function ShoppingListScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the progress count +
+  // fill, checked checkboxes, primary CTAs, household icon, and empty-state
+  // cart glyph. Threaded into the memoised StyleSheet via the dep array below.
+  // Destructive actions keep `Accent.destructive`.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/planner");
@@ -490,9 +496,9 @@ export default function ShoppingListScreen() {
 
     progressRow: { flexDirection: "row", justifyContent: "space-between" },
     progressLabel: { ...Type.body, fontWeight: "600", color: colors.text },
-    progressCount: { color: Accent.primary, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
+    progressCount: { color: accent.primary, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
-    progressFill: { height: 6, backgroundColor: Accent.primary, borderRadius: 3 },
+    progressFill: { height: 6, backgroundColor: accent.primary, borderRadius: 3 },
 
     categoryTitle: {
       ...Type.headline,
@@ -515,7 +521,7 @@ export default function ShoppingListScreen() {
       justifyContent: "center",
       alignItems: "center",
     },
-    checkboxChecked: { backgroundColor: Accent.primary, borderColor: Accent.primary },
+    checkboxChecked: { backgroundColor: accent.primary, borderColor: accent.primary },
     itemName: { ...Type.body, color: colors.text },
     itemChecked: { ...Type.bodyMuted, textDecorationLine: "line-through", color: colors.tabIconDefault },
     itemFrom: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
@@ -533,7 +539,7 @@ export default function ShoppingListScreen() {
     emptyTitle: { ...Type.headline, fontSize: 18, color: colors.text },
     emptyDesc: { ...Type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
     ctaBtn: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.md,
       paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.xxxl,
@@ -548,7 +554,7 @@ export default function ShoppingListScreen() {
       gap: Spacing.sm,
       paddingVertical: Spacing.sm,
       paddingHorizontal: Spacing.md,
-      backgroundColor: Accent.primary + "12",
+      backgroundColor: accent.primary + "12",
       borderRadius: Radius.md,
     },
     syncBannerText: {
@@ -587,7 +593,7 @@ export default function ShoppingListScreen() {
       fontWeight: "600",
       color: colors.textSecondary,
     },
-  }), [colors]);
+  }), [colors, accent]);
 
   // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
   // match on-screen groups (web parity).
@@ -679,7 +685,7 @@ export default function ShoppingListScreen() {
             onPress={() => router.push("/household-settings" as never)}
             style={styles.syncBanner}
           >
-            <Users size={14} color={Accent.primary} aria-hidden />
+            <Users size={14} color={accent.primary} aria-hidden />
             <View style={{ flex: 1 }}>
               <Text style={styles.syncBannerText}>{sharedWithLabel}</Text>
               <Text style={styles.syncBannerSub}>Synced live across your household</Text>
@@ -694,7 +700,7 @@ export default function ShoppingListScreen() {
           // caption so the user knows something's happening, matching
           // the Discover + Library load-state pattern.
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Accent.primary} />
+            <ActivityIndicator size="large" color={accent.primary} />
             <Text
               style={{
                 marginTop: Spacing.md,
@@ -718,12 +724,12 @@ export default function ShoppingListScreen() {
               width: 44,
               height: 44,
               borderRadius: 12,
-              backgroundColor: Accent.primary + "14",
+              backgroundColor: accent.primary + "14",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: Spacing.md,
             }}>
-              <ShoppingCart size={22} color={Accent.primary} strokeWidth={1.75} />
+              <ShoppingCart size={22} color={accent.primary} strokeWidth={1.75} />
             </View>
             <Text style={{ ...Type.headline, color: colors.text, textAlign: "center" }}>
               No items yet
@@ -747,7 +753,7 @@ export default function ShoppingListScreen() {
               hitSlop={8}
               style={{ marginTop: Spacing.md, paddingVertical: 6, paddingHorizontal: 8 }}
             >
-              <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
+              <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
                 Go to plan →
               </Text>
             </Pressable>
@@ -770,7 +776,7 @@ export default function ShoppingListScreen() {
                 onPress={clearChecked}
                 style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
               >
-                <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
+                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
                   Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
                 </Text>
               </Pressable>

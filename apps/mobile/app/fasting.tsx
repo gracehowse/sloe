@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -88,6 +89,11 @@ export default function FastingScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the fasting ring
+  // (primary/soft/solid), the stage rail, and the end-fast CTA. Threaded into
+  // the memoised StyleSheet via the dep array below. The COMPLETE ring keeps
+  // `Accent.success` (sage); the eating-window caution keeps warning/warningSolid.
+  const accent = useAccent();
 
   const [fastingWindow, setFastingWindow] = useState("16:8");
   const [sessions, setSessions] = useState<FastingSession[]>([]);
@@ -233,7 +239,7 @@ export default function FastingScreen() {
   const dur = formatDuration(elapsed);
   const remainingDur = formatDuration(remaining);
 
-  const ringColor = isComplete ? Accent.success : Accent.primary;
+  const ringColor = isComplete ? Accent.success : accent.primary;
 
   const styles = useMemo(
     () =>
@@ -259,7 +265,7 @@ export default function FastingScreen() {
           flexDirection: "row",
           alignItems: "center",
           gap: 5,
-          backgroundColor: Accent.primarySoft,
+          backgroundColor: accent.primarySoft,
           paddingHorizontal: 10,
           paddingVertical: 4,
           borderRadius: Radius.full,
@@ -267,7 +273,7 @@ export default function FastingScreen() {
         },
         stageChipText: {
           ...Type.label,
-          color: Accent.primarySolid,
+          color: accent.primarySolid,
         },
         ringValue: {
           ...Type.ringValue,
@@ -403,7 +409,7 @@ export default function FastingScreen() {
         histDate: { fontFamily: FontFamily.sansRegular, fontSize: 13, color: colors.textSecondary },
         histDuration: { fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.text },
       }),
-    [colors],
+    [colors, accent],
   );
 
   if (loading) return <View style={[styles.screen, { paddingTop: insets.top }]} />;
@@ -497,12 +503,12 @@ export default function FastingScreen() {
               paddingVertical: 14,
               paddingHorizontal: 28,
               borderRadius: Radius.full,
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               alignItems: "center",
               alignSelf: "stretch",
             }}
           >
-            <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600", color: Accent.primaryForeground }}>
+            <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600", color: accent.primaryForeground }}>
               Start fast
             </Text>
           </Pressable>
@@ -553,7 +559,7 @@ export default function FastingScreen() {
             </Svg>
             {/* Current-stage chip — clay flame, descriptive body state. */}
             <View style={styles.stageChip}>
-              <Flame size={14} color={Accent.primarySolid} strokeWidth={2} />
+              <Flame size={14} color={accent.primarySolid} strokeWidth={2} />
               <Text style={styles.stageChipText}>{FASTING_STAGES[stageIndex].label}</Text>
             </View>
             <Text style={styles.ringValue}>{dur.hours}:{String(dur.minutes).padStart(2, "0")}</Text>
@@ -578,7 +584,7 @@ export default function FastingScreen() {
                 top: 0,
                 height: 6,
                 borderRadius: 3,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 width: `${stageBarFraction * 100}%`,
               }}
             />
@@ -596,7 +602,7 @@ export default function FastingScreen() {
                     borderRadius: 5,
                     borderWidth: 2,
                     borderColor: colors.card,
-                    backgroundColor: reached ? Accent.primary : colors.border,
+                    backgroundColor: reached ? accent.primary : colors.border,
                     left: `${pos}%`,
                     marginLeft: -5,
                   }}
@@ -612,7 +618,7 @@ export default function FastingScreen() {
                 borderRadius: 8,
                 borderWidth: 2,
                 borderColor: colors.card,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 left: `${stageBarFraction * 100}%`,
                 marginLeft: -8,
               }}
@@ -625,7 +631,7 @@ export default function FastingScreen() {
                 style={{
                   fontFamily: FontFamily.sansSemibold,
                   fontSize: 10,
-                  color: i === stageIndex ? Accent.primarySolid : colors.textTertiary,
+                  color: i === stageIndex ? accent.primarySolid : colors.textTertiary,
                   fontWeight: i === stageIndex ? "600" : "400",
                 }}
               >
@@ -663,7 +669,7 @@ export default function FastingScreen() {
           precision makes a stray hit unlikely there). */}
       {isFasting && !isComplete ? (
         <Pressable
-          style={[styles.endBtn, { backgroundColor: Accent.primary }]}
+          style={[styles.endBtn, { backgroundColor: accent.primary }]}
           accessibilityRole="button"
           accessibilityLabel="End fast — long-press to confirm"
           accessibilityHint="Long-press for one second to end your fast"
@@ -684,7 +690,7 @@ export default function FastingScreen() {
           }}
           delayLongPress={650}
         >
-          <Text style={[styles.endBtnText, { color: Accent.primaryForeground }]}>Hold to end fast</Text>
+          <Text style={[styles.endBtnText, { color: accent.primaryForeground }]}>Hold to end fast</Text>
         </Pressable>
       ) : isFasting && isComplete ? (
         <Pressable

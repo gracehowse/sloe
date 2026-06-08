@@ -6,6 +6,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
 import { Footprints, Flame, HeartPulse, Dumbbell, Scale } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -66,6 +67,11 @@ export default function HealthSyncScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the source-toggle
+  // switch tracks, settings-row glyphs, and connect/manage CTAs. Threaded into
+  // the memoised StyleSheet via the dep array below. Disconnect actions keep
+  // `Accent.destructive`; connected state keeps `Accent.success`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the Apple
   // Health card) the first time a connect succeeds. Gated behind
@@ -715,14 +721,14 @@ export default function HealthSyncScreen() {
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="download-outline" size={20} color={Accent.primary} />
+              <Ionicons name="download-outline" size={20} color={accent.primary} />
               <Text style={styles.featureText}>Import meals from Health</Text>
             </View>
             <Switch
               value={importEnabled}
               onValueChange={toggleImport}
               disabled={!available || !connected}
-              trackColor={{ true: Accent.primary }}
+              trackColor={{ true: accent.primary }}
             />
           </View>
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
@@ -743,12 +749,12 @@ export default function HealthSyncScreen() {
                 paddingVertical: 8,
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.primary + "55",
-                backgroundColor: Accent.primary + "10",
+                borderColor: accent.primary + "55",
+                backgroundColor: accent.primary + "10",
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
                 Check meal import
               </Text>
             </Pressable>
@@ -756,14 +762,14 @@ export default function HealthSyncScreen() {
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", opacity: importEnabled ? 1 : 0.45 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="eye-off-outline" size={20} color={Accent.primary} />
+              <Ionicons name="eye-off-outline" size={20} color={accent.primary} />
               <Text style={styles.featureText}>Simple labels only (no food names)</Text>
             </View>
             <Switch
               value={genericImportLabels}
               onValueChange={toggleGenericImportLabels}
               disabled={!available || !connected || !importEnabled}
-              trackColor={{ true: Accent.primary }}
+              trackColor={{ true: accent.primary }}
             />
           </View>
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
@@ -772,14 +778,14 @@ export default function HealthSyncScreen() {
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="share-outline" size={20} color={Accent.primary} />
+              <Ionicons name="share-outline" size={20} color={accent.primary} />
               <Text style={styles.featureText}>Share meals to Health</Text>
             </View>
             <Switch
               value={exportEnabled}
               onValueChange={toggleExport}
               disabled={!available || !connected}
-              trackColor={{ true: Accent.primary }}
+              trackColor={{ true: accent.primary }}
             />
           </View>
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
@@ -809,12 +815,12 @@ export default function HealthSyncScreen() {
                 paddingVertical: 8,
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.primary + "55",
-                backgroundColor: Accent.primary + "10",
+                borderColor: accent.primary + "55",
+                backgroundColor: accent.primary + "10",
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>
                 Send a test meal to Health →
               </Text>
             </Pressable>
@@ -888,7 +894,7 @@ export default function HealthSyncScreen() {
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
                 opacity: pressed ? 0.85 : 1,
               })}
@@ -907,12 +913,12 @@ export default function HealthSyncScreen() {
                 paddingVertical: 12,
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.primary,
+                borderColor: accent.primary,
                 alignItems: "center",
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
                 Open iOS Settings
               </Text>
             </Pressable>
@@ -926,7 +932,7 @@ export default function HealthSyncScreen() {
 
       {!connected ? (
         <Pressable
-          style={[styles.btn, { backgroundColor: available && !connecting ? Accent.primary : colors.textTertiary }]}
+          style={[styles.btn, { backgroundColor: available && !connecting ? accent.primary : colors.textTertiary }]}
           onPress={handleConnect}
           disabled={!available || connecting}
         >
@@ -938,7 +944,7 @@ export default function HealthSyncScreen() {
         </Pressable>
       ) : (
         <Pressable
-          style={[styles.btn, { backgroundColor: Accent.primary }]}
+          style={[styles.btn, { backgroundColor: accent.primary }]}
           onPress={handleSync}
           disabled={syncing}
         >
@@ -960,9 +966,11 @@ export default function HealthSyncScreen() {
 }
 
 function CardTitle({ styles, icon, text }: { styles: any; icon: string; text: string }) {
+  // Secondary accent (Frost flag → damson, else clay) for the card-title glyph.
+  const accent = useAccent();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-      <Ionicons name={icon as any} size={20} color={Accent.primary} />
+      <Ionicons name={icon as any} size={20} color={accent.primary} />
       <Text style={styles.cardTitle}>{text}</Text>
     </View>
   );
@@ -989,9 +997,11 @@ function HealthCategoryRow({
   colors: ReturnType<typeof useThemeColors>;
   styles: any;
 }) {
+  // Secondary accent (Frost flag → damson, else clay) for the category glyph.
+  const accent = useAccent();
   return (
     <View style={styles.feature}>
-      <Icon size={20} color={Accent.primary} strokeWidth={1.75} />
+      <Icon size={20} color={accent.primary} strokeWidth={1.75} />
       <View style={{ flex: 1 }}>
         <Text style={styles.featureText}>{label}</Text>
         <Text

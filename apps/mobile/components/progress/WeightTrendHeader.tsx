@@ -2,7 +2,8 @@ import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react-native";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
 import { kgToLb } from "@suppr/shared/units/imperial";
@@ -55,6 +56,9 @@ export interface WeightTrendHeaderProps {
 
 export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTrendHeaderProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active trend
+  // delta tint. A flat/no-data trend keeps the muted theme text.
+  const accent = useAccent();
 
   const status = trend.trendStatus;
   const StatusIcon =
@@ -62,7 +66,7 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
   // Stable arrow is neutral grey; down/up arrow is accent blue so the
   // direction is glanceable. Withings does the same.
   const statusIconColor =
-    status === "stable" || status === "no_data" ? colors.textSecondary : Accent.primary;
+    status === "stable" || status === "no_data" ? colors.textSecondary : accent.primary;
 
   const deltaLabel =
     trend.trendDeltaKg != null && status !== "no_data"

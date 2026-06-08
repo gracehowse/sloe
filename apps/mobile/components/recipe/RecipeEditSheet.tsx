@@ -33,7 +33,8 @@ import {
 } from "react-native";
 import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
-import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
+import { Elevation, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
@@ -120,7 +121,11 @@ export default function RecipeEditSheet({
   // keeps today's flat/hairline panel alive (`useCardElevation`'s default
   // branch). Mirrors `SavedMealPortionSheet`.
   const card = useCardElevation();
-  const styles = useMemo(() => makeStyles(colors, card), [colors, card]);
+  // Secondary accent (Frost flag → damson, else clay) for the meal-type chips,
+  // the add-ingredient affordance, the ingredient-load spinner, and the Save
+  // CTA. Threaded into the module-level StyleSheet factory.
+  const accent = useAccent();
+  const styles = useMemo(() => makeStyles(colors, card, accent), [colors, card, accent]);
   const isOwner = canEditRecipe(recipe.author_id, userId);
 
   const [title, setTitle] = useState(recipe.title ?? "");
@@ -449,7 +454,7 @@ export default function RecipeEditSheet({
 
             <Field label="Ingredients">
               {loadingIngredients ? (
-                <ActivityIndicator color={Accent.primary} />
+                <ActivityIndicator color={accent.primary} />
               ) : (
                 <View style={{ gap: Spacing.xs }}>
                   {ingredients.map((ing) => (
@@ -466,7 +471,7 @@ export default function RecipeEditSheet({
                     accessibilityRole="button"
                     accessibilityLabel="Add ingredient"
                   >
-                    <PlusCircle size={18} color={Accent.primary} />
+                    <PlusCircle size={18} color={accent.primary} />
                     <Text style={styles.addBtnText}>Add ingredient</Text>
                   </Pressable>
                   <Text style={styles.hint}>
@@ -519,7 +524,8 @@ export default function RecipeEditSheet({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   const colors = useThemeColors();
   const ce = useCardElevation();
-  const styles = makeStyles(colors, ce);
+  const accent = useAccent();
+  const styles = makeStyles(colors, ce, accent);
   return (
     <View style={{ gap: Spacing.xs }}>
       <Text style={styles.label}>{label}</Text>
@@ -528,7 +534,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation) =>
+const makeStyles = (
+  colors: ReturnType<typeof useThemeColors>,
+  ce: CardElevation,
+  accent: ReturnType<typeof useAccent>,
+) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
@@ -599,9 +609,9 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation
       backgroundColor: ce.liftBg ?? colors.card,
       ...(ce.shadowStyle ?? {}),
     },
-    chipActive: { backgroundColor: Accent.primarySoft, borderColor: Accent.primary },
+    chipActive: { backgroundColor: accent.primarySoft, borderColor: accent.primary },
     chipText: { fontSize: 14, fontWeight: "600", color: colors.text },
-    chipTextActive: { color: Accent.primary },
+    chipTextActive: { color: accent.primary },
     timeRow: { flexDirection: "row", gap: Spacing.md },
     timeCol: { flex: 1 },
     addBtn: {
@@ -612,15 +622,15 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation
       paddingVertical: 12,
       borderRadius: Radius.md,
       // ENG-821: soft-tinted primary affordance — same chip language as the
-      // meal-type chips above (Accent.primarySoft fill + Accent.primary edge),
-      // replacing the off-token dashed `Accent.primary + "50"` outline so the
+      // meal-type chips above (accent.primarySoft fill + accent.primary edge),
+      // replacing the off-token dashed `accent.primary + "50"` outline so the
       // editor stops looking like a different design system.
       borderWidth: 1,
-      borderColor: Accent.primary,
-      backgroundColor: Accent.primarySoft,
+      borderColor: accent.primary,
+      backgroundColor: accent.primarySoft,
       marginTop: Spacing.xs,
     },
-    addBtnText: { color: Accent.primary, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: accent.primary, fontWeight: "600", fontSize: 14 },
     hint: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: Spacing.xs },
     footer: {
       flexDirection: "row",
@@ -638,6 +648,6 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation
     },
     cancelBtn: { borderWidth: 1, borderColor: colors.border },
     cancelText: { fontWeight: "700", color: colors.text, fontSize: 15 },
-    saveBtn: { backgroundColor: Accent.primary },
+    saveBtn: { backgroundColor: accent.primary },
     saveText: { fontWeight: "800", color: colors.primaryForeground, fontSize: 15 },
   });

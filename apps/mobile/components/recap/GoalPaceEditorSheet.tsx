@@ -45,6 +45,7 @@ import { useRouter } from "expo-router";
 import { ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { useGoalPaceEditor } from "./useGoalPaceEditor";
@@ -63,6 +64,9 @@ export interface GoalPaceEditorSheetProps {
 
 export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the loading spinner.
+  // Pace cautions keep `Accent.warning`.
+  const accent = useAccent();
   const router = useRouter();
   const { visible, onClose, userId, onSaved } = props;
 
@@ -147,7 +151,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
 
           {editor.loading ? (
             <View style={{ paddingVertical: Spacing.xxxl, alignItems: "center" }}>
-              <ActivityIndicator color={Accent.primary} />
+              <ActivityIndicator color={accent.primary} />
             </View>
           ) : (
             <ScrollView

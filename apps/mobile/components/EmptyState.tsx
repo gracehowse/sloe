@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from "react-native";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -70,6 +71,9 @@ export function EmptyState({
   descriptionStyle,
 }: EmptyStateProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the illustration
+  // disc's tinted backing.
+  const accent = useAccent();
   const isStringTitle = typeof title === "string";
   const isStringDescription = typeof description === "string";
   // `cta` wins when both are passed — keeps the API forward-looking
@@ -86,7 +90,7 @@ export function EmptyState({
             // `bg-primary/10` which is the Tailwind 10% alpha). Visual
             // parity is close enough that any drift is captured by
             // visual-qa, not numeric tests.
-            { backgroundColor: Accent.primary + "10" },
+            { backgroundColor: accent.primary + "10" },
           ]}
         >
           {illustration}

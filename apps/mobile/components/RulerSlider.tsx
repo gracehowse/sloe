@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import Svg, { Line, Text as SvgText } from "react-native-svg";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Accent, Radius } from "@/constants/theme";
+import { Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -68,11 +69,15 @@ export function RulerSlider({
   format,
   parseInput,
   width,
-  accent = Accent.primary,
+  accent: accentProp,
   style,
   accessibilityLabel = "Value",
 }: RulerSliderProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay). Callers may override via
+  // the `accent` prop; otherwise default to the flag-aware secondary accent.
+  const themeAccent = useAccent();
+  const accent = accentProp ?? themeAccent.primary;
 
   const [measuredWidth, setMeasuredWidth] = React.useState(width ?? 320);
   const [editing, setEditing] = React.useState(false);

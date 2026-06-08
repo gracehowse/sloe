@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "../../../src/types/recipe";
 
@@ -80,6 +81,10 @@ export function MoveMealSheet({
   onMove,
 }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Cancel link and
+  // the source-meal active highlight (the row being moved). Slot glyph tints
+  // stay warm via `resolveSlotTint`/`SlotColors` (held guardrail).
+  const accent = useAccent();
 
   // Every destination cell across the current week, flattened for a
   // top-to-bottom list. We keep it as a list rather than a 2D grid so the
@@ -150,7 +155,7 @@ export function MoveMealSheet({
             </Text>
           </View>
           <Pressable onPress={onClose} accessibilityLabel="Cancel" hitSlop={8}>
-            <Text style={{ color: Accent.primary, fontWeight: "600" }}>Cancel</Text>
+            <Text style={{ color: accent.primary, fontWeight: "600" }}>Cancel</Text>
           </Pressable>
         </View>
 
@@ -193,9 +198,9 @@ export function MoveMealSheet({
                     styles.row,
                     {
                       backgroundColor: r.isSource
-                        ? Accent.primary + "12"
+                        ? accent.primary + "12"
                         : colors.background,
-                      borderColor: r.isSource ? Accent.primary : colors.cardBorder,
+                      borderColor: r.isSource ? accent.primary : colors.cardBorder,
                       opacity: r.isSource ? 0.8 : 1,
                     },
                   ]}
@@ -220,7 +225,7 @@ export function MoveMealSheet({
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        color: r.isSource ? Accent.primary : colors.text,
+                        color: r.isSource ? accent.primary : colors.text,
                         fontWeight: "700",
                         fontSize: 13,
                       }}
@@ -244,7 +249,7 @@ export function MoveMealSheet({
                   {r.isSource ? (
                     <Text
                       style={{
-                        color: Accent.primary,
+                        color: accent.primary,
                         fontSize: 11,
                         fontWeight: "700",
                         letterSpacing: 0.5,

@@ -29,6 +29,7 @@ import Svg, {
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -58,6 +59,11 @@ import { isFeatureEnabled } from "@/lib/analytics";
  */
 export default function TargetsScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the calorie target
+  // ring's SVG gradient stops (primaryLight → primary), the loading spinners,
+  // and the help affordance. Threaded into the memoised StyleSheet via the dep
+  // array below. Macros keep `MacroColors`; status keeps success/warning/destructive.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -566,7 +572,7 @@ export default function TargetsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       </View>
     );
@@ -624,8 +630,8 @@ export default function TargetsScreen() {
             >
               <Defs>
                 <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor={Accent.primaryLight} />
-                  <Stop offset="1" stopColor={Accent.primary} />
+                  <Stop offset="0" stopColor={accent.primaryLight} />
+                  <Stop offset="1" stopColor={accent.primary} />
                 </SvgLinearGradient>
               </Defs>
               <Circle
@@ -732,7 +738,7 @@ export default function TargetsScreen() {
             })}
           >
             {recalculating ? (
-              <ActivityIndicator size="small" color={Accent.primary} />
+              <ActivityIndicator size="small" color={accent.primary} />
             ) : null}
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
               {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
@@ -868,12 +874,12 @@ export default function TargetsScreen() {
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: Accent.primary + "1A",
+              backgroundColor: accent.primary + "1A",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <HelpCircle size={14} color={Accent.primary} strokeWidth={2} />
+            <HelpCircle size={14} color={accent.primary} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>

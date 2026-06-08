@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -55,7 +56,11 @@ export function PaywallPlanSelector({
   showMonthly: boolean;
 }) {
   const colors = useThemeColors();
-  const styles = makeStyles(colors);
+  // Secondary accent (Frost flag → damson, else clay) for the selected plan
+  // (edge, fill, radio). Threaded into the module-level StyleSheet factory. The
+  // recommended-plan badge keeps `Accent.success`.
+  const accent = useAccent();
+  const styles = makeStyles(colors, accent);
 
   return (
     <View style={styles.wrap} testID="paywall-plan-selector">
@@ -150,7 +155,10 @@ function PlanRow({
   );
 }
 
-function makeStyles(colors: ReturnType<typeof useThemeColors>) {
+function makeStyles(
+  colors: ReturnType<typeof useThemeColors>,
+  accent: ReturnType<typeof useAccent>,
+) {
   return StyleSheet.create({
     wrap: { gap: Spacing.md, marginBottom: Spacing.lg },
     row: {
@@ -167,13 +175,13 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     // Selected — 2px clay ring (the frame's selected-plan treatment).
     rowSelected: {
       borderWidth: 2,
-      borderColor: Accent.primary,
+      borderColor: accent.primary,
     },
     bestValue: {
       position: "absolute",
       top: -10,
       left: Spacing.lg,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.full,
       paddingHorizontal: 10,
       paddingVertical: 3,
@@ -182,7 +190,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       fontFamily: FontFamily.sansBold,
       fontSize: 10,
       letterSpacing: 0.8,
-      color: Accent.primaryForeground,
+      color: accent.primaryForeground,
     },
     radio: {
       width: 22,
@@ -193,12 +201,12 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       alignItems: "center",
       justifyContent: "center",
     },
-    radioSelected: { borderColor: Accent.primary },
+    radioSelected: { borderColor: accent.primary },
     radioDot: {
       width: 11,
       height: 11,
       borderRadius: 6,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     rowText: { flex: 1 },
     rowTitle: { fontFamily: FontFamily.sansSemibold, fontSize: 16, color: colors.text },

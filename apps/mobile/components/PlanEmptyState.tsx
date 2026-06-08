@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BookOpen } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -39,18 +40,22 @@ export function PlanEmptyState({
   onImport,
 }: PlanEmptyStateProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the BookOpen glyph,
+  // the primary "Browse library" CTA fill, and the import text-link. Overrides
+  // the module-level StyleSheet inline since it can't read the hook.
+  const accent = useAccent();
   return (
     <View
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
       <EmptyState
-        illustration={<BookOpen size={30} color={Accent.primary} strokeWidth={1.75} />}
+        illustration={<BookOpen size={30} color={accent.primary} strokeWidth={1.75} />}
         title="Add a few recipes first"
         description="Save recipes you like and Sloe builds a balanced plan from them in seconds."
         cta={
           <View style={styles.ctaWrap}>
             <Pressable
-              style={styles.primaryBtn}
+              style={[styles.primaryBtn, { backgroundColor: accent.primary }]}
               onPress={onBrowseLibrary}
               accessibilityRole="button"
               accessibilityLabel="Browse recipe library"
@@ -64,7 +69,7 @@ export function PlanEmptyState({
                 accessibilityLabel="Import existing meal plan"
                 style={styles.importBtn}
               >
-                <Text style={styles.importText}>Or import a plan you already have</Text>
+                <Text style={[styles.importText, { color: accent.primary }]}>Or import a plan you already have</Text>
               </Pressable>
             ) : null}
           </View>
@@ -82,7 +87,7 @@ const styles = StyleSheet.create({
   },
   ctaWrap: { alignItems: "center", gap: Spacing.sm },
   primaryBtn: {
-    backgroundColor: Accent.primary,
+    // backgroundColor applied inline (accent.primary — Frost-flag aware).
     borderRadius: Radius.md,
     paddingVertical: 16,
     paddingHorizontal: 28,
@@ -90,7 +95,8 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   importBtn: { paddingVertical: Spacing.xs },
-  importText: { fontSize: 14, fontWeight: "600", color: Accent.primary },
+  // color applied inline (accent.primary — Frost-flag aware).
+  importText: { fontSize: 14, fontWeight: "600" },
 });
 
 export default PlanEmptyState;

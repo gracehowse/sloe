@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, Text } from "react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * 2026-04-26 polish (round 2): trimmed to 4 visible ranges. Pre-fix this
@@ -65,6 +66,8 @@ export default function TimeRangeSelector({
   textColor,
   secondaryColor,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the active range pill.
+  const accent = useAccent();
   return (
     <ScrollView
       horizontal
@@ -87,7 +90,7 @@ export default function TimeRangeSelector({
             paddingHorizontal: 10,
             borderRadius: Radius.sm - 2,
             alignItems: "center",
-            backgroundColor: selected === r ? Accent.primary : "transparent",
+            backgroundColor: selected === r ? accent.primary : "transparent",
           }}
         >
           <Text

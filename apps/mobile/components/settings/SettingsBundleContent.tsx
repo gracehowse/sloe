@@ -59,6 +59,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
@@ -481,6 +482,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const router = useRouter();
   const { session } = useAuth();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Pro/upgrade
+  // affordances, settings-toggle switch tracks, section accents, and primary
+  // CTAs. Destructive actions (sign out / delete) keep `Accent.destructive`;
+  // status keeps success/warning; macros keep `MacroColors`.
+  const accent = useAccent();
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1464,12 +1470,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
   const t = useMemo(
     () => ({
-      accent: Accent.primary,
+      accent: accent.primary,
       green: Accent.success,
       amber: Accent.warning,
       red: Accent.destructive,
     }),
-    [],
+    [accent],
   );
 
   const avatarInitial = (
@@ -1587,19 +1593,19 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Sparkles size={18} color={Accent.primarySolid} strokeWidth={1.75} />
+          <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
           <Text
             style={{
               fontSize: 15,
               fontWeight: "600",
-              color: Accent.primarySolid,
+              color: accent.primarySolid,
             }}
           >
             Sloe Pro
           </Text>
         </View>
         <Text
-          style={{ fontSize: 14, fontWeight: "600", color: Accent.primarySolid }}
+          style={{ fontSize: 14, fontWeight: "600", color: accent.primarySolid }}
         >
           Manage
         </Text>
@@ -1726,7 +1732,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               paddingHorizontal: 18,
               paddingVertical: 12,
               borderRadius: 12,
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               opacity:
                 nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
               justifyContent: "center",
@@ -1764,12 +1770,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: 12,
-                backgroundColor: Accent.primary + "22",
+                backgroundColor: accent.primary + "22",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+              <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -1824,12 +1830,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: 12,
-                backgroundColor: Accent.primary + "18",
+                backgroundColor: accent.primary + "18",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+              <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
             <Text
               style={{
@@ -1918,7 +1924,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 paddingHorizontal: 20,
                 paddingVertical: 12,
                 borderRadius: 12,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
                 justifyContent: "center",
               }}
@@ -2119,7 +2125,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackCaffeine: v,
               })
             }
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
         <View
@@ -2167,7 +2173,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackAlcohol: v,
               })
             }
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
         {/* P3-30 (2026-04-25) — Show net carbs toggle. Migrated
@@ -2225,7 +2231,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   .eq("id", userId);
               }
             }}
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
 
@@ -3054,7 +3060,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   {isActive ? (
                     <CheckSquare
                       size={22}
-                      color={Accent.primary}
+                      color={accent.primary}
                       strokeWidth={1.75}
                     />
                   ) : (
@@ -3073,7 +3079,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
               }}
             >
@@ -3198,7 +3204,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
               }}
             >
@@ -3314,7 +3320,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
               }}
             >
@@ -3466,7 +3472,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     );
                   })();
                 }}
-                trackColor={{ false: colors.border, true: Accent.primary }}
+                trackColor={{ false: colors.border, true: accent.primary }}
               />
             </View>
             <Pressable
@@ -3475,7 +3481,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
               }}
             >
@@ -3590,7 +3596,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 {weekStartDay === day && (
                   <CheckCircle2
                     size={22}
-                    color={Accent.primary}
+                    color={accent.primary}
                     strokeWidth={1.75}
                   />
                 )}
@@ -3704,7 +3710,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 {weekSummaryMode === opt.value && (
                   <CheckCircle2
                     size={22}
-                    color={Accent.primary}
+                    color={accent.primary}
                     strokeWidth={1.75}
                   />
                 )}

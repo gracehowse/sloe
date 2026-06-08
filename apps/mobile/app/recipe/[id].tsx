@@ -39,6 +39,7 @@ import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientI
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -215,6 +216,11 @@ export default function RecipeDetailScreen() {
   const { savedIds, toggleSave } = useSavedRecipes(userId);
 
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the source link,
+  // Cook Mode label/launch chips/CTAs, and the resume-cook banner. Threaded
+  // into the memoised StyleSheet via the dep array below. The "Cooked it"
+  // action keeps `Accent.success` (sage).
+  const accent = useAccent();
   // ENG-818/819 (Redesign — Design Direction 2026). Soft-elevation token for
   // the resting detail cards. Figma 332:2 — the white slab cards lift off the
   // cream page with the soft ambient shadow (`variant: "soft"`); the default
@@ -1347,7 +1353,7 @@ export default function RecipeDetailScreen() {
     },
     sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
-    sourceNameLink: { color: Accent.primary, textDecorationLine: "underline" },
+    sourceNameLink: { color: accent.primary, textDecorationLine: "underline" },
     sourceLinkBtn: {
       marginTop: Spacing.xs,
       alignSelf: "flex-start",
@@ -1355,16 +1361,16 @@ export default function RecipeDetailScreen() {
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
     },
-    sourceLinkText: { color: Accent.primary, fontSize: 14, fontWeight: "600" },
-  }), [colors, cardElevation]);
+    sourceLinkText: { color: accent.primary, fontSize: 14, fontWeight: "600" },
+  }), [colors, cardElevation, accent]);
 
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       </View>
     );
@@ -1850,7 +1856,7 @@ export default function RecipeDetailScreen() {
             <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
               <View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     {/* Recime parity (2026-04-30): "Watch original" pill —
                         only renders when `recipe.source_url` is set so the
@@ -1872,12 +1878,12 @@ export default function RecipeDetailScreen() {
                           paddingVertical: 6,
                           borderRadius: 999,
                           borderWidth: 1,
-                          borderColor: Accent.primary,
-                          backgroundColor: Accent.primary + "14",
+                          borderColor: accent.primary,
+                          backgroundColor: accent.primary + "14",
                         }}
                       >
-                        <Play size={14} color={Accent.primary} />
-                        <Text style={{ color: Accent.primary, fontSize: 12, fontWeight: "700" }}>
+                        <Play size={14} color={accent.primary} />
+                        <Text style={{ color: accent.primary, fontSize: 12, fontWeight: "700" }}>
                           Watch original
                         </Text>
                       </Pressable>
@@ -1900,16 +1906,16 @@ export default function RecipeDetailScreen() {
                     accessibilityRole="text"
                     accessibilityLabel={`Recipe scaled for ${cookViewServings} servings`}
                     style={{
-                      backgroundColor: Accent.primary + "15",
+                      backgroundColor: accent.primary + "15",
                       borderRadius: Radius.md,
                       borderWidth: 1,
-                      borderColor: Accent.primary + "30",
+                      borderColor: accent.primary + "30",
                       paddingVertical: 8,
                       paddingHorizontal: 12,
                       marginBottom: Spacing.md,
                     }}
                   >
-                    <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
+                    <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
                       Scaled for {cookViewServings} serving{cookViewServings !== 1 ? "s" : ""}
                     </Text>
                   </View>
@@ -1931,7 +1937,7 @@ export default function RecipeDetailScreen() {
                 </Pressable>
                 {cookStep < instructionSteps.length - 1 ? (
                   <Pressable
-                    style={{ flex: 1, backgroundColor: Accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                    style={{ flex: 1, backgroundColor: accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
                     onPress={() => setCookStep((s) => s + 1)}
                   >
                     <Text style={{ fontWeight: "700", color: colors.primaryForeground }}>Next</Text>

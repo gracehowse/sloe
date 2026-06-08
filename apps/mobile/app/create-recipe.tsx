@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import { decode } from "base64-arraybuffer";
 
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -181,6 +182,11 @@ export default function CreateRecipeScreen() {
   const router = useRouter();
   const goBackOrCancel = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the header title,
+  // add-row affordance, and primary submit CTA. Threaded into the memoised
+  // StyleSheet via the dep array below. Macros keep `MacroColors`; errors keep
+  // `Accent.destructive`; success states keep `Accent.success`.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id;
   // 2026-05-12 (premium-bar audit #8): CreateRecipeActionSheet routes
@@ -765,7 +771,7 @@ export default function CreateRecipeScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+    topTitle: { color: accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 120 },
     label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
     input: {
@@ -790,14 +796,14 @@ export default function CreateRecipeScreen() {
     addBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, paddingVertical: 14, borderRadius: Radius.md,
-      borderWidth: 1.5, borderColor: Accent.primary + "50", borderStyle: "dashed" as const,
+      borderWidth: 1.5, borderColor: accent.primary + "50", borderStyle: "dashed" as const,
     },
-    addBtnText: { color: Accent.primary, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: accent.primary, fontWeight: "600", fontSize: 14 },
 
     // Totals
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Accent.primary + "30",
+      borderWidth: 1, borderColor: accent.primary + "30",
       padding: Spacing.lg,
     },
     totalsRow: { flexDirection: "row", justifyContent: "space-around" },
@@ -813,11 +819,11 @@ export default function CreateRecipeScreen() {
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
     // 2026-04-26 polish: was Accent.success (green) — every other primary
-    // submit action in the app uses Accent.primary (purple/blue). The green
+    // submit action in the app uses accent.primary (purple/blue). The green
     // save was a visual orphan; aligning to the canonical primary colour.
     saveBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Accent.primary,
+      gap: Spacing.sm, backgroundColor: accent.primary,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
@@ -867,7 +873,7 @@ export default function CreateRecipeScreen() {
       backgroundColor: colors.card, borderRadius: Radius.md,
       padding: Spacing.lg, borderWidth: 1, borderColor: colors.border,
     },
-  }), [colors]);
+  }), [colors, accent]);
 
   return (
     <KeyboardAvoidingView
@@ -942,7 +948,7 @@ export default function CreateRecipeScreen() {
               onPress={() => setPasteModalOpen(true)}
               disabled={bulkMatching || !session}
             >
-              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+              <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
               <Text style={styles.quickBtnText}>Paste list</Text>
             </Pressable>
             <Pressable
@@ -950,7 +956,7 @@ export default function CreateRecipeScreen() {
               onPress={() => void importRecipeFromPhoto()}
               disabled={imageExtracting || !session}
             >
-              <Ionicons name="scan-outline" size={18} color={Accent.primary} />
+              <Ionicons name="scan-outline" size={18} color={accent.primary} />
               <Text style={styles.quickBtnText}>Scan photo</Text>
             </Pressable>
             <Pressable
@@ -960,13 +966,13 @@ export default function CreateRecipeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Scan barcode to add ingredient"
             >
-              <Ionicons name="barcode-outline" size={18} color={Accent.primary} />
+              <Ionicons name="barcode-outline" size={18} color={accent.primary} />
               <Text style={styles.quickBtnText}>Scan barcode</Text>
             </Pressable>
           </View>
           {(bulkMatching || imageExtracting) && (
             <View style={styles.row}>
-              <ActivityIndicator color={Accent.primary} />
+              <ActivityIndicator color={accent.primary} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {imageExtracting ? "Reading recipe from photo…" : "Matching ingredients to database…"}
               </Text>
@@ -987,7 +993,7 @@ export default function CreateRecipeScreen() {
                 accessibilityLabel="Search or change ingredient"
                 hitSlop={8}
               >
-                <Ionicons name="search-outline" size={22} color={Accent.primary} />
+                <Ionicons name="search-outline" size={22} color={accent.primary} />
               </Pressable>
               <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)} accessibilityLabel="Remove ingredient">
                 <Ionicons name="close-circle" size={22} color={Accent.destructive + "80"} />
@@ -995,7 +1001,7 @@ export default function CreateRecipeScreen() {
             </View>
           ))}
           <Pressable style={styles.addBtn} onPress={openAddIngredientSearch}>
-            <Ionicons name="add" size={18} color={Accent.primary} />
+            <Ionicons name="add" size={18} color={accent.primary} />
             <Text style={styles.addBtnText}>Add ingredient</Text>
           </Pressable>
         </View>
@@ -1102,7 +1108,7 @@ export default function CreateRecipeScreen() {
                 <Text style={{ fontWeight: "600", color: colors.text }}>Close</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, { backgroundColor: Accent.primary }]}
+                style={[styles.modalBtn, { backgroundColor: accent.primary }]}
                 onPress={() => void matchPastedIngredients()}
                 disabled={bulkMatching}
               >

@@ -16,6 +16,7 @@ import { PostHogMaskView } from "posthog-react-native";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -93,6 +94,11 @@ export default function ProgressScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the weight chart
+  // line/dots, active lookback-range chips, primary CTAs, and link actions.
+  // Threaded into the memoised StyleSheet via the dep array below. A reached
+  // goal keeps `Accent.success` (sage); cautions keep `Accent.warning`.
+  const accent = useAccent();
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -597,7 +603,7 @@ export default function ProgressScreen() {
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
         btn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 12,
           alignItems: "center",
@@ -612,10 +618,10 @@ export default function ProgressScreen() {
         journeyFill: {
           height: 12,
           borderRadius: 6,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         },
       }),
-    [colors],
+    [colors, accent],
   );
 
   if (!userId) {
@@ -698,9 +704,9 @@ export default function ProgressScreen() {
                     borderRadius: Radius.md,
                     borderWidth: 1,
                     borderColor:
-                      healthLookbackDays === p.days ? Accent.primary : colors.border,
+                      healthLookbackDays === p.days ? accent.primary : colors.border,
                     backgroundColor:
-                      healthLookbackDays === p.days ? Accent.primary + "18" : colors.card,
+                      healthLookbackDays === p.days ? accent.primary + "18" : colors.card,
                     opacity: healthRefreshing ? 0.55 : 1,
                   }}
                 >
@@ -709,7 +715,7 @@ export default function ProgressScreen() {
                       fontWeight: "700",
                       fontSize: 13,
                       color:
-                        healthLookbackDays === p.days ? Accent.primary : colors.text,
+                        healthLookbackDays === p.days ? accent.primary : colors.text,
                     }}
                   >
                     {p.label}
@@ -905,7 +911,7 @@ export default function ProgressScreen() {
                       <Ionicons
                         name={journey.pct >= 1 ? "trophy-outline" : "flag"}
                         size={20}
-                        color={journey.pct >= 1 ? Accent.success : Accent.primary}
+                        color={journey.pct >= 1 ? Accent.success : accent.primary}
                       />
                       <View
                         style={{
@@ -985,7 +991,7 @@ export default function ProgressScreen() {
                       style={{
                         fontSize: 14,
                         fontWeight: "700",
-                        color: Accent.primary,
+                        color: accent.primary,
                         textAlign: "center",
                         marginTop: Spacing.sm,
                       }}

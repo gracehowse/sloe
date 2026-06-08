@@ -45,6 +45,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
   setHouseholdMemberShareTargets,
@@ -143,6 +144,11 @@ export default function HouseholdSettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the loading spinner,
+  // Open-Plan/Invite links, add-member affordance, active selection radios +
+  // dots, member-scope chips, and the primary CTAs/toggles. Destructive actions
+  // (leave/remove) keep `Accent.destructive`.
+  const accent = useAccent();
   const userId = session?.user?.id ?? null;
 
   const [data, setData] = useState<HouseholdData | null>(null);
@@ -378,7 +384,7 @@ export default function HouseholdSettingsScreen() {
           </Pressable>
         </View>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
           <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Loading household…</Text>
         </View>
       </View>
@@ -463,7 +469,7 @@ export default function HouseholdSettingsScreen() {
               you&apos;re part of one.
             </Text>
             <Pressable onPress={() => router.replace("/(tabs)/planner" as any)}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>Open Plan</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>Open Plan</Text>
             </Pressable>
           </View>
         ) : (
@@ -482,8 +488,8 @@ export default function HouseholdSettingsScreen() {
                 style={{
                   borderRadius: Radius.lg,
                   borderWidth: 1,
-                  borderColor: Accent.primary + "33",
-                  backgroundColor: Accent.primary + "0d",
+                  borderColor: accent.primary + "33",
+                  backgroundColor: accent.primary + "0d",
                   padding: 18,
                   marginBottom: 18,
                   alignItems: "center",
@@ -494,13 +500,13 @@ export default function HouseholdSettingsScreen() {
                     width: 48,
                     height: 48,
                     borderRadius: 24,
-                    backgroundColor: Accent.primary + "1f",
+                    backgroundColor: accent.primary + "1f",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: 12,
                   }}
                 >
-                  <Plus size={22} color={Accent.primary} strokeWidth={2.25} />
+                  <Plus size={22} color={accent.primary} strokeWidth={2.25} />
                 </View>
                 <Text
                   style={{
@@ -538,7 +544,7 @@ export default function HouseholdSettingsScreen() {
                     paddingHorizontal: 18,
                     paddingVertical: 10,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary,
+                    backgroundColor: accent.primary,
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
@@ -579,8 +585,8 @@ export default function HouseholdSettingsScreen() {
                   hitSlop={6}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
-                  <Plus size={14} color={Accent.primary} strokeWidth={2} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>Invite</Text>
+                  <Plus size={14} color={accent.primary} strokeWidth={2} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>Invite</Text>
                 </Pressable>
               </View>
               <View
@@ -772,7 +778,7 @@ export default function HouseholdSettingsScreen() {
                         paddingVertical: 12,
                         borderBottomWidth: isLast ? 0 : 1,
                         borderBottomColor: colors.cardBorder,
-                        backgroundColor: active ? Accent.primary + "10" : "transparent",
+                        backgroundColor: active ? accent.primary + "10" : "transparent",
                       }}
                     >
                       <View
@@ -781,14 +787,14 @@ export default function HouseholdSettingsScreen() {
                           height: 22,
                           borderRadius: 11,
                           borderWidth: 2,
-                          borderColor: active ? Accent.primary : colors.cardBorder,
+                          borderColor: active ? accent.primary : colors.cardBorder,
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
                         {active ? (
                           <View
-                            style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: Accent.primary }}
+                            style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: accent.primary }}
                           />
                         ) : null}
                       </View>
@@ -878,12 +884,12 @@ export default function HouseholdSettingsScreen() {
                       const isAll = count === all && all > 0;
                       const isSome = count > 1 && count < all;
                       const bg = isAll
-                        ? Accent.primary + "33"
+                        ? accent.primary + "33"
                         : isSome
-                          ? Accent.primary + "1a"
+                          ? accent.primary + "1a"
                           : colors.inputBg;
-                      const fg = isAll || isSome ? Accent.primary : colors.textTertiary;
-                      const border = isAll || isSome ? Accent.primary + "4d" : "transparent";
+                      const fg = isAll || isSome ? accent.primary : colors.textTertiary;
+                      const border = isAll || isSome ? accent.primary + "4d" : "transparent";
                       return (
                         <Pressable
                           key={`${d}-${s}`}
@@ -1009,7 +1015,7 @@ export default function HouseholdSettingsScreen() {
             style={{
               paddingVertical: 14,
               borderRadius: Radius.lg,
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               alignItems: "center",
               opacity: saving || !household.isOwner ? 0.5 : 1,
             }}
@@ -1111,8 +1117,8 @@ export default function HouseholdSettingsScreen() {
                           height: 22,
                           borderRadius: 6,
                           borderWidth: 2,
-                          borderColor: on ? Accent.primary : colors.cardBorder,
-                          backgroundColor: on ? Accent.primary : "transparent",
+                          borderColor: on ? accent.primary : colors.cardBorder,
+                          backgroundColor: on ? accent.primary : "transparent",
                           alignItems: "center",
                           justifyContent: "center",
                         }}

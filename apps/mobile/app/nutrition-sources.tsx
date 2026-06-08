@@ -4,7 +4,8 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
@@ -63,6 +64,10 @@ export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for source links, the
+  // confidence/coverage accents, and CTAs. Threaded into the memoised
+  // StyleSheet via the dep array below.
+  const accent = useAccent();
 
   const styles = useMemo(
     () =>
@@ -78,7 +83,7 @@ export default function NutritionSourcesScreen() {
           borderBottomColor: colors.border,
         },
         backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-        topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+        topTitle: { color: accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
         scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
         heading: { ...Type.title, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
@@ -95,7 +100,7 @@ export default function NutritionSourcesScreen() {
           width: 40,
           height: 40,
           borderRadius: Radius.md,
-          backgroundColor: Accent.primary + "14",
+          backgroundColor: accent.primary + "14",
           alignItems: "center",
           justifyContent: "center",
           marginTop: 2,
@@ -119,7 +124,7 @@ export default function NutritionSourcesScreen() {
         },
         sourceLink: {
           fontSize: 13,
-          color: Accent.primary,
+          color: accent.primary,
           fontWeight: "600",
           marginTop: Spacing.xs,
         },
@@ -130,7 +135,7 @@ export default function NutritionSourcesScreen() {
           marginTop: Spacing.md,
         },
       }),
-    [colors],
+    [colors, accent],
   );
 
   return (
@@ -163,7 +168,7 @@ export default function NutritionSourcesScreen() {
             return (
               <View key={name} style={styles.card}>
                 <View style={styles.iconBox}>
-                  <FALLBACK_ICON size={20} color={Accent.primary} strokeWidth={1.75} />
+                  <FALLBACK_ICON size={20} color={accent.primary} strokeWidth={1.75} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.sourceName}>{name}</Text>
@@ -175,7 +180,7 @@ export default function NutritionSourcesScreen() {
           return (
             <View key={name} style={styles.card} testID={`nutrition-source-${name}`}>
               <View style={styles.iconBox}>
-                <Icon size={20} color={Accent.primary} strokeWidth={1.75} />
+                <Icon size={20} color={accent.primary} strokeWidth={1.75} />
               </View>
               <View style={styles.cardBody}>
                 <Text style={styles.sourceName}>{name}</Text>
@@ -184,7 +189,7 @@ export default function NutritionSourcesScreen() {
                 <Pressable onPress={() => Linking.openURL(detail.url)}>
                   <Text style={styles.sourceLink}>
                     {detail.url.replace("https://", "")}{" "}
-                    <Ionicons name="open-outline" size={12} color={Accent.primary} />
+                    <Ionicons name="open-outline" size={12} color={accent.primary} />
                   </Text>
                 </Pressable>
               </View>

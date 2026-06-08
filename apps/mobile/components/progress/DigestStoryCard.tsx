@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Accent, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { buildDigestStory, type DigestStoryInput } from "@/lib/digestStory";
@@ -35,6 +36,9 @@ export interface DigestStoryCardProps extends DigestStoryInput {
 export function DigestStoryCard(props: DigestStoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the story-link tint.
+  // Win/positive beats keep `Accent.success`; misses keep `Accent.destructive`.
+  const accent = useAccent();
   const story = buildDigestStory(input);
 
   // Empty state: zero days logged. Render the card but with a calm,
@@ -59,7 +63,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           style={[
             Type.label,
             {
-              color: Accent.primary,
+              color: accent.primary,
             },
           ]}
         >

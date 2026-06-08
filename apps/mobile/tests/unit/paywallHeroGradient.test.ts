@@ -58,8 +58,14 @@ describe("mobile paywall — Sloe Pro photo hero (no brand-gradient hero)", () =
     expect(hero).toContain("reach your goals.");
   });
 
-  it("renders the SLOE PRO eyebrow in clay", () => {
-    // The eyebrow is the clay "Pro" voice (Accent.primarySolid) per `284:2`.
-    expect(hero).toContain("Accent.primarySolid");
+  it("renders the SLOE PRO eyebrow in the secondary accent (Frost-flag aware)", () => {
+    // The eyebrow is the "Pro" voice in the secondary accent per `284:2`.
+    // ENG-997 (Frost): the eyebrow now reads the flag-aware secondary accent
+    // via `useAccent()` (clay flag-OFF → damson flag-ON), not the static
+    // `Accent.primarySolid`. The hero must bind the hook and paint the eyebrow
+    // with `accent.primarySolid`.
+    expect(hero).toContain('from "@/context/theme"');
+    expect(hero).toMatch(/const\s+accent\s*=\s*useAccent\(\)/);
+    expect(hero).toContain("accent.primarySolid");
   });
 });

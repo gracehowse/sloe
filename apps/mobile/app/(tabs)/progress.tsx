@@ -29,6 +29,7 @@ import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
 import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -152,6 +153,11 @@ export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the local accent
+  // token + the "Daily Calories" section-header tint. The calorie data series
+  // itself (goal dot / chart) keeps clay via `t.carbs`; status keeps
+  // success/warning/destructive; macros keep `MacroColors`.
+  const accent = useAccent();
   const haptics = useHaptics();
   const cardElevation = useCardElevation();
   const { session } = useAuth();
@@ -943,7 +949,7 @@ export default function ProgressScreen() {
     bg: colors.background,
     elevated: colors.card,
     border: colors.cardBorder,
-    accent: Accent.primary,
+    accent: accent.primary,
     // Sloe plum (nav/brand primary) — fills the active range pill per
     // Figma 492:2. Mirrors web `bg-foreground-brand`.
     plum: colors.navPrimary,
@@ -1422,7 +1428,7 @@ export default function ProgressScreen() {
         <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]} testID="progress-daily-calories-card">
           <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
             <View>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>Daily Calories</Text>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>Daily Calories</Text>
               <Text style={{ ...Type.display, fontSize: 24, lineHeight: 28, color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.avgCalories.toLocaleString()}<Text style={{ fontSize: 14, color: t.sub }}> avg</Text>
               </Text>

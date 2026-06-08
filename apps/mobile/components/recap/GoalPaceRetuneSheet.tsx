@@ -34,6 +34,7 @@ import {
 import { Check, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -104,6 +105,10 @@ function planPaceForKgPerWeek(paceKgPerWeek: RetunePace): string | null {
 
 export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the selected pace
+  // option (edge, tint, check) and the Save CTA. Pace cautions keep
+  // `Accent.warning`.
+  const accent = useAccent();
   const {
     visible,
     onClose,
@@ -404,9 +409,9 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                       paddingHorizontal: Spacing.md,
                       borderRadius: Radius.md,
                       borderWidth: 1.5,
-                      borderColor: selected ? Accent.primary : colors.cardBorder,
+                      borderColor: selected ? accent.primary : colors.cardBorder,
                       backgroundColor: selected
-                        ? `${Accent.primary}10`
+                        ? `${accent.primary}10`
                         : colors.card,
                       flexDirection: "row",
                       alignItems: "center",
@@ -423,7 +428,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                       {label}
                     </Text>
                     {selected ? (
-                      <Check size={18} color={Accent.primary} />
+                      <Check size={18} color={accent.primary} />
                     ) : null}
                   </Pressable>
                 );
@@ -569,7 +574,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                   flex: 2,
                   paddingVertical: Spacing.md,
                   borderRadius: Radius.md,
-                  backgroundColor: Accent.primary,
+                  backgroundColor: accent.primary,
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: saving || !preview ? 0.5 : 1,

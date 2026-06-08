@@ -1,7 +1,8 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 
-import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -50,6 +51,8 @@ export function PaywallHero({
   topInset: number;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the hero eyebrow.
+  const accent = useAccent();
   // Convert the page background hex to rgb() stops for the SVG fade
   // (svg `stop-color` doesn't take the page token directly). Bottom of
   // the image dissolves fully into the page so the eyebrow/headline sit
@@ -98,7 +101,7 @@ export function PaywallHero({
         <Text
           style={[
             Type.label,
-            { color: Accent.primarySolid, marginBottom: Spacing.sm },
+            { color: accent.primarySolid, marginBottom: Spacing.sm },
           ]}
         >
           {kicker}

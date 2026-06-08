@@ -25,6 +25,7 @@ import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -141,6 +142,9 @@ function DigestLegacy(props: DigestProps) {
     weightSurfaceMode = "show",
   } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the digest CTA tint +
+  // fill. Positive/win beats keep `Accent.success`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   // `weekly_digest_shown` — fire once per visible weekKey. Legacy name
@@ -442,9 +446,9 @@ function DigestLegacy(props: DigestProps) {
             padding: 12,
             marginBottom: 10,
             borderRadius: Radius.md,
-            backgroundColor: Accent.primary + "0D",
+            backgroundColor: accent.primary + "0D",
             borderWidth: 1,
-            borderColor: Accent.primary + "40",
+            borderColor: accent.primary + "40",
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -469,7 +473,7 @@ function DigestLegacy(props: DigestProps) {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
               }}
             >
               <Ionicons name="bookmark-outline" size={12} color="#fff" />

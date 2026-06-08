@@ -17,7 +17,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
@@ -65,6 +66,10 @@ export default function CookbookImportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the primary import
+  // CTA, active segmented control, parse spinner, Save action, and review pager
+  // links. Threaded into the memoised StyleSheet via the dep array below.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -335,7 +340,7 @@ export default function CookbookImportScreen() {
         uploadTitle: { ...Type.headline, color: colors.text },
         uploadHint: { fontSize: 13, color: colors.textSecondary, marginTop: 6, lineHeight: 18 },
         primaryBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: 16,
           paddingVertical: 16,
           alignItems: "center",
@@ -362,10 +367,10 @@ export default function CookbookImportScreen() {
           borderColor: colors.border,
           alignItems: "center",
         },
-        segBtnActive: { borderColor: Accent.primary, backgroundColor: `${Accent.primary}14` },
+        segBtnActive: { borderColor: accent.primary, backgroundColor: `${accent.primary}14` },
         pager: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: Spacing.sm },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, accent],
   );
 
   if (step === "parsing") {
@@ -373,7 +378,7 @@ export default function CookbookImportScreen() {
       <View style={styles.root} testID="screen-cookbook-import-parsing">
         <PushScreenHeader title="Import cookbook" onBack={() => setStep("pick")} />
         <View style={styles.parseCenter}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
           <Text style={{ ...Type.title, marginTop: Spacing.lg, color: colors.navPrimary, textAlign: "center" }}>
             {parsingMessage}
           </Text>
@@ -393,7 +398,7 @@ export default function CookbookImportScreen() {
           onBack={() => setStep("pick")}
           rightSlot={
             <Pressable onPress={() => void finishSave()} disabled={committing} hitSlop={8}>
-              <Text style={{ color: Accent.primary, fontWeight: "700" }}>
+              <Text style={{ color: accent.primary, fontWeight: "700" }}>
                 {committing ? "…" : "Save"}
               </Text>
             </Pressable>
@@ -428,7 +433,7 @@ export default function CookbookImportScreen() {
               disabled={reviewPage === 0}
               onPress={() => setReviewPage((p) => Math.max(0, p - 1))}
             >
-              <Text style={{ color: reviewPage === 0 ? colors.textSecondary : Accent.primary }}>
+              <Text style={{ color: reviewPage === 0 ? colors.textSecondary : accent.primary }}>
                 Previous
               </Text>
             </Pressable>
@@ -442,7 +447,7 @@ export default function CookbookImportScreen() {
               <Text
                 style={{
                   color:
-                    reviewPage >= totalReviewPages - 1 ? colors.textSecondary : Accent.primary,
+                    reviewPage >= totalReviewPages - 1 ? colors.textSecondary : accent.primary,
                 }}
               >
                 Next

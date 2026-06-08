@@ -1,7 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -51,6 +52,9 @@ export interface TrajectoryCardProps {
 export function TrajectoryCard(props: TrajectoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the projection line,
+  // its label, and the projection marker.
+  const accent = useAccent();
   const state: TrajectoryState | null = computeTrajectory(input);
 
   if (!state) return null;
@@ -72,7 +76,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
             styles.dot,
             {
               backgroundColor:
-                state.kind === "projection" ? Accent.primary : colors.textTertiary,
+                state.kind === "projection" ? accent.primary : colors.textTertiary,
             },
           ]}
         />
@@ -90,7 +94,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
                 fontSize: 30,
                 fontWeight: "800",
                 letterSpacing: -0.5,
-                color: Accent.primary,
+                color: accent.primary,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -152,7 +156,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
               style={[
                 styles.barFill,
                 {
-                  backgroundColor: Accent.primary,
+                  backgroundColor: accent.primary,
                   width: `${progressPct(state)}%`,
                 },
               ]}

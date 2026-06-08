@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { Check, CheckCheck, RefreshCw, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { IMPORT_ERROR_COPY } from "@suppr/shared/recipes/importErrorCopy";
 import {
@@ -40,6 +41,8 @@ function railIndex(stage: ImportStage): number {
 
 export function ImportProgressDrawer({ queue, onOpenRecipe }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the in-flight spinner.
+  const accent = useAccent();
   const { inFlight, recent, summary, hasActivity, activeCount, queuedCount } = queue;
 
   if (!hasActivity && recent.length === 0) return null;
@@ -70,7 +73,7 @@ export function ImportProgressDrawer({ queue, onOpenRecipe }: Props) {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
           {hasActivity ? (
-            <ActivityIndicator size="small" color={Accent.primary} />
+            <ActivityIndicator size="small" color={accent.primary} />
           ) : (
             <CheckCheck size={18} color={colors.textSecondary} />
           )}
@@ -248,6 +251,9 @@ function ImportJobRow({
 /** Compact 2-segment rail: confirming → extracting → organizing. */
 function StageRail({ stage }: { stage: ImportStage }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active/reached
+  // rail segments.
+  const accent = useAccent();
   const current = railIndex(stage);
   const segments = DISPLAY_STAGES.filter((s) => s !== "done");
   return (
@@ -264,9 +270,9 @@ function StageRail({ stage }: { stage: ImportStage }) {
               flex: 1,
               borderRadius: 2,
               backgroundColor: active
-                ? Accent.primary
+                ? accent.primary
                 : reached
-                  ? Accent.primaryLight
+                  ? accent.primaryLight
                   : colors.border,
             }}
           />

@@ -20,7 +20,8 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius } from "@/constants/theme";
+import { Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
   type HouseholdData,
@@ -42,6 +43,9 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active household
+  // chip + the manage link.
+  const accent = useAccent();
   const router = useRouter();
   const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,8 +105,8 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
 
   const currentSel = selected ?? localSelected;
   const chipColors = (active: boolean) => ({
-    bg: active ? Accent.primary + "26" : colors.inputBg,
-    fg: active ? Accent.primary : colors.textSecondary,
+    bg: active ? accent.primary + "26" : colors.inputBg,
+    fg: active ? accent.primary : colors.textSecondary,
   });
   const allChip = chipColors(currentSel === "all");
 
@@ -144,7 +148,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
           testID="household-bar-manage"
           hitSlop={8}
         >
-          <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>
+          <Text style={{ fontSize: 11, fontWeight: "600", color: accent.primary }}>
             Manage
           </Text>
         </Pressable>

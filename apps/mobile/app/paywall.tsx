@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   ensurePurchasesUser,
@@ -56,7 +57,7 @@ import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landi
  *   - RC `pkg.product.priceString` is the only money text (Apple
  *     handles UK/EU VAT-inclusive display per storefront). No GBP
  *     literals in rendered copy except the offline fallback.
- *   - Pro card first (hero via `Accent.primary` border, not a
+ *   - Pro card first (hero via `accent.primary` border, not a
  *     second dark paint over dark mode). Base second, same width.
  *   - Each card carries its own CTA. Single "Continue for free"
  *     below both. Single composite disclosure below that.
@@ -241,6 +242,11 @@ export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Pro hero border,
+  // the primary upgrade CTA, and the value-prop check glyphs. Threaded into the
+  // memoised StyleSheet via the dep array below. The trial-applies state keeps
+  // `Accent.success`; trust chips keep `Accent.info`; cautions keep warning.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id;
 
@@ -942,7 +948,7 @@ export default function PaywallScreen() {
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: Radius.full,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -979,7 +985,7 @@ export default function PaywallScreen() {
       paddingHorizontal: Spacing.md,
     },
 
-  }), [colors, insets]);
+  }), [colors, insets, accent]);
 
   // ─── Render guards ──────────────────────────────────────────────
 
@@ -1113,7 +1119,7 @@ export default function PaywallScreen() {
         {!offeringsReady ? (
           <PaywallCta
             label="Loading plans…"
-            color={Accent.primary}
+            color={accent.primary}
             disabled
             loading={false}
             onPress={() => undefined}
@@ -1121,7 +1127,7 @@ export default function PaywallScreen() {
         ) : subscriptionsUnavailable ? (
           <PaywallCta
             label="Open App Store to subscribe"
-            color={Accent.primary}
+            color={accent.primary}
             disabled={false}
             loading={false}
             onPress={() => {
@@ -1137,7 +1143,7 @@ export default function PaywallScreen() {
                   ? "Start free 7-day trial"
                   : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
             }
-            color={trialApplies ? Accent.success : Accent.primary}
+            color={trialApplies ? Accent.success : accent.primary}
             disabled={!currentProPkg || purchasing !== null}
             loading={purchasing === "pro"}
             arrow={trialApplies && Boolean(currentProPkg)}

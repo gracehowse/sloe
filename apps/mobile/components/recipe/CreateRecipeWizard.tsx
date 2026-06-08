@@ -62,6 +62,7 @@ import {
 } from "lucide-react-native";
 
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAuth } from "@/context/auth";
@@ -128,6 +129,11 @@ export default function CreateRecipeWizard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the wizard header,
+  // add-ingredient affordance, step controls, and primary CTAs. Threaded into
+  // the memoised StyleSheet via the dep array below. Macros keep `MacroColors`;
+  // destructive states keep `Accent.destructive`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id;
@@ -672,7 +678,7 @@ export default function CreateRecipeWizard() {
         backHit: { padding: 6, marginLeft: -6 },
         topMeta: { flex: 1, alignItems: "center" },
         topTitle: {
-          color: Accent.primary,
+          color: accent.primary,
           fontSize: 11,
           fontWeight: "800",
           letterSpacing: 2,
@@ -695,7 +701,7 @@ export default function CreateRecipeWizard() {
           borderRadius: 2,
           backgroundColor: colors.border,
         },
-        progressDotActive: { backgroundColor: Accent.primary },
+        progressDotActive: { backgroundColor: accent.primary },
         scroll: {
           padding: Spacing.xl,
           gap: Spacing.lg,
@@ -805,12 +811,12 @@ export default function CreateRecipeWizard() {
           paddingVertical: 14,
           borderRadius: Radius.md,
           borderWidth: cardElevation.useBorder ? 1.5 : 0,
-          borderColor: Accent.primary + "50",
+          borderColor: accent.primary + "50",
           borderStyle: "dashed",
           ...(cardElevation.shadowStyle ?? {}),
         },
         addBtnText: {
-          color: Accent.primary,
+          color: accent.primary,
           fontWeight: "600",
           fontSize: 14,
         },
@@ -832,7 +838,7 @@ export default function CreateRecipeWizard() {
         stepIndex: {
           fontSize: 12,
           fontWeight: "700",
-          color: Accent.primary,
+          color: accent.primary,
           letterSpacing: 1,
           flex: 1,
         },
@@ -853,7 +859,7 @@ export default function CreateRecipeWizard() {
           backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: Accent.primary + "30",
+          borderColor: accent.primary + "30",
           padding: Spacing.lg,
           ...(cardElevation.shadowStyle ?? {}),
         },
@@ -910,7 +916,7 @@ export default function CreateRecipeWizard() {
           alignItems: "center",
           justifyContent: "center",
           gap: Spacing.sm,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 16,
         },
@@ -928,16 +934,16 @@ export default function CreateRecipeWizard() {
           borderRadius: Radius.md,
           paddingVertical: 14,
           borderWidth: cardElevation.useBorder ? 1.5 : 0,
-          borderColor: Accent.primary,
+          borderColor: accent.primary,
           ...(cardElevation.shadowStyle ?? {}),
         },
         secondaryBtnText: {
-          color: Accent.primary,
+          color: accent.primary,
           fontWeight: "700",
           fontSize: 15,
         },
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, accent],
   );
 
   // ---- Render ----------------------------------------------------------
@@ -1099,7 +1105,7 @@ export default function CreateRecipeWizard() {
               }}
               accessibilityLabel="Add ingredient"
             >
-              <Plus size={18} color={Accent.primary} />
+              <Plus size={18} color={accent.primary} />
               <Text style={styles.addBtnText}>Add ingredient</Text>
             </Pressable>
           </View>
@@ -1167,7 +1173,7 @@ export default function CreateRecipeWizard() {
               </View>
             ))}
             <Pressable style={styles.addBtn} onPress={addStep} accessibilityLabel="Add step">
-              <Plus size={18} color={Accent.primary} />
+              <Plus size={18} color={accent.primary} />
               <Text style={styles.addBtnText}>Add step</Text>
             </Pressable>
           </View>
@@ -1274,7 +1280,7 @@ export default function CreateRecipeWizard() {
             </View>
             <View style={styles.saveCard}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <ImageIcon size={18} color={Accent.primary} />
+                <ImageIcon size={18} color={accent.primary} />
                 <Text
                   style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text }}
                 >
@@ -1324,7 +1330,7 @@ export default function CreateRecipeWizard() {
               accessibilityLabel="Publish recipe to community"
             >
               {saving && publish ? (
-                <ActivityIndicator color={Accent.primary} />
+                <ActivityIndicator color={accent.primary} />
               ) : (
                 <Text style={styles.secondaryBtnText}>Publish to community</Text>
               )}

@@ -11,6 +11,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildWeekStats, getStreakContributingDays } from "@/lib/progressWeekReport";
@@ -42,6 +43,9 @@ export default function ProgressMetricDetailScreen() {
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/progress");
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the local accent
+  // token. Status keeps success/warning/destructive; macros keep `MacroColors`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   // ENG-822 (2026-05-31 design-director review) — this screen only renders the
@@ -209,13 +213,13 @@ export default function ProgressMetricDetailScreen() {
       bg: colors.background,
       elevated: colors.card,
       border: colors.cardBorder,
-      accent: Accent.primary,
+      accent: accent.primary,
       green: Accent.success,
       amber: Accent.warning,
       red: Accent.destructive,
       protein: MacroColors.protein,
     }),
-    [colors],
+    [colors, accent],
   );
 
   // ENG-822 — soft resting-card elevation (or the flag-off flat/hairline

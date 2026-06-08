@@ -28,7 +28,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "expo-router";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   changelogKindLabel,
   getLatestChangelog,
@@ -61,6 +62,9 @@ export default function WhatsNewScreen() {
   const navigation = useNavigation();
   const goBack = useSafeBack("/(tabs)");
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the changelog accents
+  // and CTAs. Threaded into the memoised StyleSheet via the dep array below.
+  const accent = useAccent();
 
   const entry = useMemo(() => getLatestChangelog(), []);
   const groups = useMemo(() => groupChangelogItems(entry), [entry]);
@@ -88,13 +92,13 @@ export default function WhatsNewScreen() {
           accessibilityLabel="Done"
           style={{ paddingHorizontal: Spacing.md }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>
             Done
           </Text>
         </Pressable>
       ),
     });
-  }, [navigation, goBack]);
+  }, [navigation, goBack, accent]);
 
   const styles = useMemo(
     () =>
@@ -147,7 +151,7 @@ export default function WhatsNewScreen() {
           height: 6,
           borderRadius: 3,
           marginTop: 7,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         },
         itemText: {
           flex: 1,
@@ -171,7 +175,7 @@ export default function WhatsNewScreen() {
           paddingBottom: Spacing.lg,
         },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, accent],
   );
 
   return (

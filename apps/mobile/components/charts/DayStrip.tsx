@@ -3,6 +3,7 @@ import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native
 import { Calendar, Snowflake } from "lucide-react-native";
 
 import { Accent, IconSize, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   addDaysLocal,
   clampJournalDate,
@@ -53,6 +54,10 @@ export default function DayStrip({
   textColor,
   secondaryColor,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the selected/today
+  // day pip + the "Today" jump label + calendar glyph. The "sage" logged-day
+  // marker stays `Accent.success` (held).
+  const accent = useAccent();
   const flatRef = useRef<FlatList<Date>>(null);
   const [pagerW, setPagerW] = useState(0);
   const { min, max } = useMemo(() => journalRangeBounds(), []);
@@ -128,7 +133,7 @@ export default function DayStrip({
           // component and its unit test share one source of truth.
           const { dotKind, dotColor, numberColor, isActive } = dayStripIndicatorStyle(
             { isSelected, isToday, hasLogs },
-            { clay: Accent.primary, sage: Accent.success, text: textColor },
+            { clay: accent.primary, sage: Accent.success, text: textColor },
           );
           return (
             <Pressable
@@ -201,7 +206,7 @@ export default function DayStrip({
         })}
       </View>
     ),
-    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate],
+    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate, accent],
   );
 
   // 2026-05-12 (premium-bar audit, Today header upgrade): only render
@@ -220,7 +225,7 @@ export default function DayStrip({
             hitSlop={8}
             style={{ paddingVertical: 8, paddingHorizontal: 4 }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>Today</Text>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>Today</Text>
           </Pressable>
         ) : null}
         <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
@@ -258,7 +263,7 @@ export default function DayStrip({
           hitSlop={10}
           style={{ padding: 8 }}
         >
-          <Calendar size={IconSize.lg} color={Accent.primary} strokeWidth={1.75} />
+          <Calendar size={IconSize.lg} color={accent.primary} strokeWidth={1.75} />
         </Pressable>
       </View>
     </View>

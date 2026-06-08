@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
@@ -56,6 +57,11 @@ export default function PlanImportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the primary CTA,
+  // active segmented + source tabs, parse spinner, and Save action. Threaded
+  // into the memoised StyleSheet via the dep array below. The success callout
+  // keeps `Accent.success` (sage).
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -357,7 +363,7 @@ export default function PlanImportScreen() {
           color: colors.text,
         },
         primaryBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: 16,
           paddingVertical: 16,
           alignItems: "center",
@@ -373,7 +379,7 @@ export default function PlanImportScreen() {
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
-        segBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        segBtnActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
         sourceTabs: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
         sourceTab: {
           flex: 1,
@@ -384,7 +390,7 @@ export default function PlanImportScreen() {
           alignItems: "center",
           backgroundColor: colors.card,
         },
-        sourceTabActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        sourceTabActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
         uploadZone: {
           backgroundColor: colors.card,
           borderRadius: Radius.xl * 2,
@@ -419,7 +425,7 @@ export default function PlanImportScreen() {
         toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 },
         parseCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, accent],
   );
 
   if (step === "parsing") {
@@ -427,7 +433,7 @@ export default function PlanImportScreen() {
       <View style={styles.root} testID="screen-plan-import-parsing">
         <PushScreenHeader title="Import" onBack={() => setStep("paste")} />
         <View style={styles.parseCenter}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
           <Text style={{ ...Type.title, marginTop: Spacing.lg, color: colors.navPrimary, textAlign: "center" }}>
             {parsingMessage}
           </Text>
@@ -447,7 +453,7 @@ export default function PlanImportScreen() {
           onBack={() => setStep("paste")}
           rightSlot={
             <Pressable onPress={() => setActivateOpen(true)} disabled={committing} hitSlop={8}>
-              <Text style={{ color: Accent.primary, fontWeight: "700" }}>Save</Text>
+              <Text style={{ color: accent.primary, fontWeight: "700" }}>Save</Text>
             </Pressable>
           }
         />

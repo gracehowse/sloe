@@ -32,6 +32,7 @@ import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -66,6 +67,9 @@ export function DigestBlended(props: DigestProps) {
     blendedExtras,
   } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Adjust pace"
+  // link. Positive/win beats keep `Accent.success`; misses keep destructive.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   const shownRef = useRef<string | null>(null);
@@ -404,7 +408,7 @@ export function DigestBlended(props: DigestProps) {
             </Text>
             {onAdjustPace ? (
               <Pressable onPress={onAdjustPace} testID="digest-adjust-pace" hitSlop={8}>
-                <Text style={{ fontSize: 11.5, fontWeight: "600", color: Accent.primary }}>Adjust pace →</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: "600", color: accent.primary }}>Adjust pace →</Text>
               </Pressable>
             ) : null}
           </View>
@@ -496,12 +500,14 @@ function PatternBar({
   value: string;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the pattern-bar fill.
+  const accent = useAccent();
   const clamped = Math.min(100, Math.max(0, widthPct));
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 5 }}>
       <Text style={{ fontSize: 11, color: colors.textSecondary, width: 30 }}>{label}</Text>
       <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.cardBorder, overflow: "hidden" }}>
-        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: Accent.primary + "3D" }} />
+        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: accent.primary + "3D" }} />
       </View>
       <Text style={{ fontSize: 11, color: colors.textTertiary, width: 46, textAlign: "right", fontVariant: ["tabular-nums"] }}>
         {value}

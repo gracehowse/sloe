@@ -22,7 +22,8 @@ import {
   View,
   StyleSheet,
 } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { PlanTemplate } from "@suppr/shared/nutrition/planTemplates";
 
@@ -54,6 +55,10 @@ export function PlanTemplatesSheet({
   onDelete,
 }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Close/Apply
+  // links, the active Save/List mode tabs, the selected day-count chips, and
+  // the Save CTA.
+  const accent = useAccent();
   const clampedMax = Math.max(1, Math.min(7, Math.floor(maxDayCount || 1)));
   const [mode, setMode] = useState<Mode>(sourceMealCount > 0 ? "save" : "list");
   const [name, setName] = useState("");
@@ -100,7 +105,7 @@ export function PlanTemplatesSheet({
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Plan templates</Text>
           <Pressable onPress={onClose} accessibilityLabel="Close">
-            <Text style={{ color: Accent.primary, fontWeight: "600" }}>Close</Text>
+            <Text style={{ color: accent.primary, fontWeight: "600" }}>Close</Text>
           </Pressable>
         </View>
 
@@ -109,14 +114,14 @@ export function PlanTemplatesSheet({
             onPress={() => setMode("save")}
             style={[
               styles.tab,
-              mode === "save" && { backgroundColor: Accent.primary + "22" },
+              mode === "save" && { backgroundColor: accent.primary + "22" },
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === "save" }}
           >
             <Text
               style={{
-                color: mode === "save" ? Accent.primary : colors.textSecondary,
+                color: mode === "save" ? accent.primary : colors.textSecondary,
                 fontWeight: "600",
                 fontSize: 13,
               }}
@@ -128,14 +133,14 @@ export function PlanTemplatesSheet({
             onPress={() => setMode("list")}
             style={[
               styles.tab,
-              mode === "list" && { backgroundColor: Accent.primary + "22" },
+              mode === "list" && { backgroundColor: accent.primary + "22" },
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === "list" }}
           >
             <Text
               style={{
-                color: mode === "list" ? Accent.primary : colors.textSecondary,
+                color: mode === "list" ? accent.primary : colors.textSecondary,
                 fontWeight: "600",
                 fontSize: 13,
               }}
@@ -176,7 +181,7 @@ export function PlanTemplatesSheet({
                   style={[
                     styles.dayChip,
                     d === dayCount
-                      ? { backgroundColor: Accent.primary, borderColor: Accent.primary }
+                      ? { backgroundColor: accent.primary, borderColor: accent.primary }
                       : { borderColor: colors.cardBorder },
                   ]}
                 >
@@ -211,7 +216,7 @@ export function PlanTemplatesSheet({
               disabled={!canSave}
               style={[
                 styles.primaryBtn,
-                { backgroundColor: canSave ? Accent.primary : colors.cardBorder },
+                { backgroundColor: canSave ? accent.primary : colors.cardBorder },
               ]}
               accessibilityLabel="Save template"
             >
@@ -253,7 +258,7 @@ export function PlanTemplatesSheet({
                     accessibilityLabel={`Apply ${t.name} to this week`}
                     style={styles.rowBtn}
                   >
-                    <Text style={{ color: Accent.primary, fontWeight: "600" }}>Apply</Text>
+                    <Text style={{ color: accent.primary, fontWeight: "600" }}>Apply</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {

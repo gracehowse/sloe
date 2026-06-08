@@ -68,15 +68,23 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
 
   it("RecipeEditSheet add-ingredient affordance uses the shared chip language", () => {
     const src = sheet();
-    expect(src).toMatch(/backgroundColor:\s*Accent\.primarySoft/);
-    expect(src).toMatch(/borderColor:\s*Accent\.primary\b/);
+    // ENG-997 (Frost): the chip fill + edge now read the flag-aware secondary
+    // accent (clay flag-OFF → damson flag-ON) via the `accent` param threaded
+    // into the StyleSheet factory, not the static `Accent.*`. The soft-fill +
+    // edge chip language is unchanged.
+    expect(src).toMatch(/backgroundColor:\s*accent\.primarySoft/);
+    expect(src).toMatch(/borderColor:\s*accent\.primary\b/);
     // the off-token dashed concat outline is gone.
     expect(src).not.toMatch(/borderStyle:\s*"dashed"/);
   });
 
-  it("RecipeEditSheet commit CTA stays blue (Accent.primary)", () => {
+  it("RecipeEditSheet commit CTA uses the secondary accent (Frost-flag aware)", () => {
     const src = sheet();
-    expect(src).toMatch(/saveBtn:\s*\{\s*backgroundColor:\s*Accent\.primary\s*\}/);
+    // ENG-997 (Frost): the Save CTA fill reads the flag-aware secondary accent
+    // via `accent.primary` (clay flag-OFF → damson flag-ON). Threaded into the
+    // StyleSheet factory; the foreground stays the white primary-foreground.
+    expect(src).toContain('from "@/context/theme"');
+    expect(src).toMatch(/saveBtn:\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/);
     expect(src).toMatch(/color:\s*colors\.primaryForeground/);
   });
 

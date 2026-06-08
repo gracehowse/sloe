@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Mic, MicOff, Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -82,6 +83,11 @@ function showToast(message: string): void {
 export default function CookModeScreen() {
   useKeepAwake();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the step-progress
+  // rail, active step, primary "Next/Done" CTAs, and timer chips. Threaded
+  // into the memoised StyleSheet via the dep array below. Completion/"Cooked
+  // it" keeps `Accent.success`; cautions keep warning/destructive.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
@@ -835,7 +841,7 @@ export default function CookModeScreen() {
     errorText: { color: colors.text, fontSize: 16 },
     emptyHeading: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
     emptySub: { color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
-    backBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Accent.primary, marginTop: Spacing.lg },
+    backBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: accent.primary, marginTop: Spacing.lg },
     backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
     header: {
@@ -865,11 +871,11 @@ export default function CookModeScreen() {
       paddingVertical: 6,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: Accent.primary,
-      backgroundColor: Accent.primary + "14",
+      borderColor: accent.primary,
+      backgroundColor: accent.primary + "14",
     },
     watchOriginalText: {
-      color: Accent.primary,
+      color: accent.primary,
       fontSize: 12,
       fontWeight: "700",
     },
@@ -881,7 +887,7 @@ export default function CookModeScreen() {
     },
     progressBarFilled: {
       height: 3,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
 
     stepContainer: {
@@ -925,7 +931,7 @@ export default function CookModeScreen() {
       alignItems: "center",
     },
     scalePillActive: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     scalePillText: {
       fontSize: 13,
@@ -1007,7 +1013,7 @@ export default function CookModeScreen() {
       gap: 6,
       paddingVertical: 12,
       borderRadius: Radius.md,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     saveBtnDisabled: {
       opacity: 0.5,
@@ -1025,7 +1031,7 @@ export default function CookModeScreen() {
     timerDisplay: {
       fontSize: 38,
       fontWeight: "700",
-      color: Accent.primary,
+      color: accent.primary,
       fontVariant: ["tabular-nums"],
       fontFamily: "Menlo",
     },
@@ -1047,12 +1053,12 @@ export default function CookModeScreen() {
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.sm,
       borderRadius: 999,
-      backgroundColor: Accent.primary + "15",
+      backgroundColor: accent.primary + "15",
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
     },
     suggestedTimerText: {
-      color: Accent.primary,
+      color: accent.primary,
       fontWeight: "700",
       fontSize: 14,
     },
@@ -1147,14 +1153,14 @@ export default function CookModeScreen() {
       flex: 1,
       paddingVertical: 16,
       borderRadius: Radius.md,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       alignItems: "center",
     },
     nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
     doneBtn: {
       marginTop: Spacing.lg,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       paddingHorizontal: Spacing.xxxl,
       paddingVertical: 14,
       borderRadius: Radius.md,
@@ -1178,16 +1184,16 @@ export default function CookModeScreen() {
     micToggleOff: { backgroundColor: colors.card },
     // Accent tint when on so the active state is unmistakable
     // even from across the kitchen.
-    micToggleOn: { backgroundColor: Accent.primary + "22" },
+    micToggleOn: { backgroundColor: accent.primary + "22" },
     handsfreeBanner: {
       marginHorizontal: Spacing.xl,
       marginTop: Spacing.sm,
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
       borderRadius: Radius.sm,
-      backgroundColor: Accent.primary + "10",
+      backgroundColor: accent.primary + "10",
       borderWidth: 1,
-      borderColor: Accent.primary + "30",
+      borderColor: accent.primary + "30",
     },
     handsfreeBannerText: {
       color: colors.text,
@@ -1201,7 +1207,7 @@ export default function CookModeScreen() {
       lineHeight: 15,
       marginTop: 2,
     },
-  }), [colors]);
+  }), [colors, accent]);
 
   if (steps.length === 0) {
     // Audit 2026-05-04 #37: previously this state had no top app bar
@@ -1270,7 +1276,7 @@ export default function CookModeScreen() {
               hitSlop={6}
               style={styles.watchOriginalPill}
             >
-              <Play size={14} color={Accent.primary} />
+              <Play size={14} color={accent.primary} />
               <Text style={styles.watchOriginalText}>Watch original</Text>
             </Pressable>
           ) : null}
@@ -1290,7 +1296,7 @@ export default function CookModeScreen() {
               ]}
             >
               {handsfreeOn ? (
-                <Mic size={18} color={Accent.primary} strokeWidth={2} />
+                <Mic size={18} color={accent.primary} strokeWidth={2} />
               ) : (
                 <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
               )}
@@ -1442,7 +1448,7 @@ export default function CookModeScreen() {
                     >
                       <TimerIcon
                         size={16}
-                        color={Accent.primary}
+                        color={accent.primary}
                         strokeWidth={2.25}
                       />
                       <Text style={styles.suggestedTimerText}>

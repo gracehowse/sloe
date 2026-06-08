@@ -12,7 +12,8 @@
 import { Text, View } from "react-native";
 import { Minus, Plus, UtensilsCrossed } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius } from "@/constants/theme";
+import { FontFamily, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -36,6 +37,8 @@ export function RecipeServingsFooter({
   haptic?: "confirm" | "none";
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Cook Mode CTA.
+  const accent = useAccent();
 
   const roundBtn = (enabled: boolean) => ({
     width: 32,
@@ -136,7 +139,7 @@ export function RecipeServingsFooter({
           height: 52,
           paddingHorizontal: 24,
           borderRadius: Radius.full,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         }}
       >
         <UtensilsCrossed size={18} color={colors.primaryForeground} />

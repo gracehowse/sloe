@@ -58,6 +58,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, Elevation, MacroColors, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated, {
   useAnimatedStyle,
@@ -377,6 +378,12 @@ export default function PlannerScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the today-card edge,
+  // generate/regenerate CTAs, refresh affordance, active controls, and link
+  // actions. Threaded into the memoised StyleSheet via the dep array below.
+  // Macros keep `MacroColors`; slots keep `SlotColors`; win keeps `Accent.win`;
+  // status keeps success/warning/destructive.
+  const accent = useAccent();
 
   const { recipes: discoverRecipes, loading: discoverLoading } = useDiscoverRecipes();
   const { recipes: savedRecipes, loading: savedLoading } = useSavedLibraryRecipes(userId);
@@ -1323,7 +1330,7 @@ export default function PlannerScreen() {
           justifyContent: "center",
         },
         // Prototype-ported summary card. Gradient fallback = flat tint
-        // (Accent.primary + "14") because expo-linear-gradient isn't
+        // (accent.primary + "14") because expo-linear-gradient isn't
         // installed; switching to a true gradient only requires wrapping
         // the inner content in <LinearGradient> with the same two colours
         // the prototype uses (primary 12% → fat 8%).
@@ -1364,7 +1371,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           paddingHorizontal: Spacing.md,
           paddingVertical: 10,
           borderRadius: Radius.lg,
@@ -1431,9 +1438,9 @@ export default function PlannerScreen() {
           alignSelf: "stretch",
           minHeight: 132,
         },
-        dayCardToday: { borderColor: Accent.primary, backgroundColor: Accent.primary + "08" },
+        dayCardToday: { borderColor: accent.primary, backgroundColor: accent.primary + "08" },
         dayCardName: { fontSize: 13, fontWeight: "600", color: colors.text },
-        dayCardNameToday: { color: Accent.primary },
+        dayCardNameToday: { color: accent.primary },
         dayCardMeals: { gap: 2 },
         dayCardMeal: { fontSize: 10, color: colors.textTertiary, lineHeight: 12 },
         dayCardProgressBar: { width: "100%", height: 3, backgroundColor: colors.border, borderRadius: 1.5, marginVertical: Spacing.xs },
@@ -1564,7 +1571,7 @@ export default function PlannerScreen() {
         // `plan_empty_state_v2` / `plan_source_selector` config form. Web
         // parity: `MealPlanner.tsx` selected segments use
         // `border-primary bg-primary/10 text-foreground`.
-        // `colors.tint` is the theme-correct primary (Accent.primary light /
+        // `colors.tint` is the theme-correct primary (accent.primary light /
         // primaryLight dark); `+ "1A"` ≈ 10% alpha = web `bg-primary/10`.
         // Label is `colors.text` (foreground), NOT `colors.tint`: tint text on
         // a 10% tint fill measures 2.89:1, below WCAG AA — matches the
@@ -1576,7 +1583,7 @@ export default function PlannerScreen() {
         dayBtnTextActivePrimary: { color: colors.text, fontWeight: "700" },
 
         generateBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 16,
           alignItems: "center",
@@ -1701,7 +1708,7 @@ export default function PlannerScreen() {
           marginTop: 3,
         },
         // Audit 2026-04-29 papercut #11 — bold 700-weight saturated
-        // Accent.primary text screamed for attention with 2-4 of these
+        // accent.primary text screamed for attention with 2-4 of these
         // visible per day card, competing with the rest of the page.
         // Demote to a subtle-fill pill (8% Accent bg, primary text,
         // 600-weight) so the button reads as a tappable affordance
@@ -1774,14 +1781,14 @@ export default function PlannerScreen() {
         actionsRow: { gap: Spacing.md },
         regenBtn: {
           borderWidth: 1,
-          borderColor: Accent.primary + "50",
+          borderColor: accent.primary + "50",
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
         },
-        regenBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
+        regenBtnText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
       }),
-    [colors],
+    [colors, accent],
   );
 
   // Load existing plan from DB — try relational first, fall back to legacy JSONB
@@ -2382,7 +2389,7 @@ export default function PlannerScreen() {
             borderRadius: Radius.md,
             backgroundColor: colors.card,
             borderWidth: 1,
-            borderColor: Accent.primary + "40",
+            borderColor: accent.primary + "40",
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.12,
@@ -2397,10 +2404,10 @@ export default function PlannerScreen() {
               borderRadius: 14,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: Accent.primary + "1A",
+              backgroundColor: accent.primary + "1A",
             }}
           >
-            <RefreshCw size={14} color={Accent.primary} strokeWidth={2.25} />
+            <RefreshCw size={14} color={accent.primary} strokeWidth={2.25} />
           </View>
           <Text
             style={{
@@ -2779,11 +2786,11 @@ export default function PlannerScreen() {
                 }}
               >
                 {generating ? (
-                  <ActivityIndicator size="small" color={Accent.primary} />
+                  <ActivityIndicator size="small" color={accent.primary} />
                 ) : (
-                  <ChevronDown size={13} color={Accent.primary} strokeWidth={2.25} />
+                  <ChevronDown size={13} color={accent.primary} strokeWidth={2.25} />
                 )}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
                   Generate ▾
                 </Text>
               </Pressable>
@@ -3031,7 +3038,7 @@ export default function PlannerScreen() {
                 accessibilityLabel="Import existing meal plan"
                 style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
                   Import existing plan
                 </Text>
               </Pressable>
@@ -3585,7 +3592,7 @@ export default function PlannerScreen() {
                 <View
                   style={{
                     flex: 1,
-                    backgroundColor: Accent.primary + "26",
+                    backgroundColor: accent.primary + "26",
                   }}
                 />
                 <View
@@ -3961,7 +3968,7 @@ export default function PlannerScreen() {
               onPress={() => setChipSheet(null)}
               style={{
                 marginTop: Spacing.lg,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 paddingVertical: 13,
                 borderRadius: Radius.md,
                 alignItems: "center",
@@ -4014,7 +4021,7 @@ export default function PlannerScreen() {
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
-                      <CheckCircle2 size={14} color={primaryPills ? colors.tint : Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
+                      <CheckCircle2 size={14} color={primaryPills ? colors.tint : accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
                     ) : (
                       <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                     )}
@@ -4028,7 +4035,7 @@ export default function PlannerScreen() {
               onPress={() => setChipSheet(null)}
               style={{
                 marginTop: Spacing.lg,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 paddingVertical: 13,
                 borderRadius: Radius.md,
                 alignItems: "center",
@@ -4382,7 +4389,7 @@ export default function PlannerScreen() {
               onPress={() => setPortionModal(null)}
               style={{ paddingVertical: 16, alignItems: "center" }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>Cancel</Text>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>Cancel</Text>
             </Pressable>
           </Pressable>
         </Pressable>

@@ -17,7 +17,8 @@ import {
   type ActivityLevel,
   type Sex,
 } from "@suppr/shared/nutrition/tdee";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type ActivityLevelPreviewProps = {
@@ -59,6 +60,9 @@ export default function ActivityLevelPreview({
   renderOptions = true,
 }: ActivityLevelPreviewProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active activity-
+  // level option (edge, tint, label).
+  const accent = useAccent();
   const preview = activityLevelPreviewKcal(sex, weightKg, heightCm, age);
 
   const handlePress = (lvl: ActivityLevel) => {
@@ -83,9 +87,9 @@ export default function ActivityLevelPreview({
                 style={[
                   styles.option,
                   {
-                    borderColor: active ? Accent.primary : colors.border,
+                    borderColor: active ? accent.primary : colors.border,
                     backgroundColor: active
-                      ? Accent.primary + "15"
+                      ? accent.primary + "15"
                       : colors.inputBg,
                   },
                 ]}
@@ -94,7 +98,7 @@ export default function ActivityLevelPreview({
                   style={[
                     styles.optionTitle,
                     {
-                      color: active ? Accent.primary : colors.text,
+                      color: active ? accent.primary : colors.text,
                     },
                   ]}
                 >

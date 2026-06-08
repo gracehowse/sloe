@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -34,6 +35,10 @@ import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the primary CTA + the
+  // loading spinner. Threaded into the memoised StyleSheet via the dep array
+  // below. Status/streak keeps success/warning; macros keep `MacroColors`.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // /(tabs)/more was collapsed to a redirect → /(tabs)/settings (Group G
@@ -175,7 +180,7 @@ export default function ProfileScreen() {
     },
     saveBtn: {
       flex: 1,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.md,
       paddingVertical: 16,
       alignItems: "center",
@@ -209,7 +214,7 @@ export default function ProfileScreen() {
       backgroundColor: Accent.success + "15",
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-  }), [colors]);
+  }), [colors, accent]);
 
   function TargetStat({
     value,
@@ -459,7 +464,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       </View>
     );

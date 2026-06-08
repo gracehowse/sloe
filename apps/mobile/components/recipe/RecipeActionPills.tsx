@@ -15,7 +15,8 @@
 import { ActivityIndicator, Text, View } from "react-native";
 import { Pencil, PlusCircle, UtensilsCrossed } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius } from "@/constants/theme";
+import { FontFamily, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -36,6 +37,9 @@ export function RecipeActionPills({
   haptic = "none",
 }: RecipeActionPillsProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the primary
+  // "Start Cooking" CTA fill. Cream Log/Edit pills keep theme surfaces.
+  const accent = useAccent();
 
   const creamPill = {
     flex: 1,
@@ -75,7 +79,7 @@ export function RecipeActionPills({
           gap: 6,
           height: 46,
           borderRadius: Radius.full,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         }}
       >
         <UtensilsCrossed size={18} color={colors.primaryForeground} />

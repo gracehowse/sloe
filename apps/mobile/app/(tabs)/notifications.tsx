@@ -15,7 +15,8 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 // Monotonic counter so each realtime subscription gets a UNIQUE channel topic.
 // Without this, a Strict-Mode / Fast-Refresh remount (whose cleanup calls the
@@ -70,6 +71,10 @@ export default function NotificationsScreen() {
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active toggles,
+  // section accents, and CTAs. Threaded into the memoised StyleSheet via the
+  // dep array below.
+  const accent = useAccent();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,9 +100,9 @@ export default function NotificationsScreen() {
           paddingVertical: 12,
           borderRadius: Radius.md,
           borderWidth: 1,
-          borderColor: Accent.primary + "80",
+          borderColor: accent.primary + "80",
         },
-        retryText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
+        retryText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
         btn: {
           backgroundColor: colors.card,
           paddingHorizontal: 12,
@@ -130,10 +135,10 @@ export default function NotificationsScreen() {
         body: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         stamp: { color: colors.textTertiary, marginTop: 8, fontSize: 12 },
         hint: { color: colors.textTertiary, marginTop: 6, fontSize: 12 },
-        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Accent.primary, marginTop: 6 },
+        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: accent.primary, marginTop: 6 },
         dotSpacer: { width: 10, height: 10, marginTop: 6 },
       }),
-    [colors],
+    [colors, accent],
   );
 
   const loadInbox = useCallback(async () => {
@@ -365,7 +370,7 @@ export default function NotificationsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       ) : error ? (
         <View style={styles.center}>
@@ -384,7 +389,7 @@ export default function NotificationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => void onRefresh()}
-              tintColor={Accent.primary}
+              tintColor={accent.primary}
             />
           }
           ListEmptyComponent={

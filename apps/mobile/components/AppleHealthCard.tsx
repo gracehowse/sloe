@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -63,6 +64,9 @@ export function AppleHealthCard({
   onRetry,
 }: AppleHealthCardProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the sync spinner,
+  // Retry, and manage link. The not-authorised caution keeps `Accent.warning`.
+  const accent = useAccent();
   const cardElev = useCardElevation();
   const t = {
     text: colors.text,
@@ -124,7 +128,7 @@ export function AppleHealthCard({
             <View style={{ width: 60, height: 10, borderRadius: 4, backgroundColor: t.border }} />
           </View>
         ))}
-        <ActivityIndicator size="small" color={Accent.primary} style={{ marginTop: 8 }} />
+        <ActivityIndicator size="small" color={accent.primary} style={{ marginTop: 8 }} />
       </View>,
     );
   }
@@ -142,7 +146,7 @@ export function AppleHealthCard({
             onPress={onRetry}
             style={{ alignSelf: "flex-start" }}
           >
-            <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>Retry</Text>
+            <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>Retry</Text>
           </Pressable>
         ) : null}
       </View>,
@@ -254,7 +258,7 @@ export function AppleHealthCard({
                 // still reach Settings manually.
               });
             }}
-            style={{ color: Accent.primary, fontWeight: "600" }}
+            style={{ color: accent.primary, fontWeight: "600" }}
           >
             Open Settings
           </Text>

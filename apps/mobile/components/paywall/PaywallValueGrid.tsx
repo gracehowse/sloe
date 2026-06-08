@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Link2, SlidersHorizontal, Sparkles, Cloud, type LucideIcon } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   PAYWALL_VALUE_PROPS,
@@ -29,6 +30,8 @@ const ICONS: Record<PaywallValueProp["icon"], LucideIcon> = {
 
 export function PaywallValueGrid() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the value-prop glyphs.
+  const accent = useAccent();
   const styles = makeStyles(colors);
   return (
     <View style={styles.grid} testID="paywall-value-grid">
@@ -42,7 +45,7 @@ export function PaywallValueGrid() {
             accessibilityRole="summary"
             accessibilityLabel={`${prop.title}. ${prop.description}`}
           >
-            <Icon size={20} color={Accent.primarySolid} strokeWidth={1.75} />
+            <Icon size={20} color={accent.primarySolid} strokeWidth={1.75} />
             <Text style={styles.title}>{prop.title}</Text>
             <Text style={styles.desc}>{prop.description}</Text>
           </View>

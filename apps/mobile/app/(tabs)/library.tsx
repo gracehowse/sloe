@@ -30,7 +30,8 @@ import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -104,6 +105,11 @@ export default function LibraryScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the category-pill
+  // active fill, create FAB, Go-Public + empty-state CTAs, the saved-bookmark
+  // glyph, rating star, list spinner, and pull-to-refresh tint. Threaded into
+  // the memoised StyleSheet via the dep array below.
+  const accent = useAccent();
   // Discover/Library recipe cards are the Sloe Figma `527:2`/`528:2`
   // "seamless slab" cards: a `#F6F5F2` cream card lifted off the `#FFFFFF`
   // page by a SOFT drop shadow (NOT the flat Today slab, which blends),
@@ -372,8 +378,8 @@ export default function LibraryScreen() {
     // ENG-921 — category pill active state per Figma `527:2`: clay fill
     // + white label (not the cream-card entry-kind active treatment).
     categoryPillActive: {
-      backgroundColor: Accent.primary,
-      borderColor: Accent.primary,
+      backgroundColor: accent.primary,
+      borderColor: accent.primary,
     },
     categoryPillTextActive: {
       color: "#fff",
@@ -436,7 +442,7 @@ export default function LibraryScreen() {
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -628,7 +634,7 @@ export default function LibraryScreen() {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: Radius.md,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     goPublicBtnText: {
       fontSize: 12,
@@ -689,7 +695,7 @@ export default function LibraryScreen() {
     ctaBtn: {
       paddingHorizontal: 24,
       paddingVertical: 12,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: Radius.full,
       alignItems: "center",
     },
@@ -704,7 +710,7 @@ export default function LibraryScreen() {
       alignItems: "center",
     },
     ctaBtnSecondaryText: { color: colors.text, fontWeight: "600", fontSize: 14 },
-  }), [colors, cardElevation]);
+  }), [colors, cardElevation, accent]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
@@ -768,8 +774,8 @@ export default function LibraryScreen() {
             >
               <Bookmark
                 size={15}
-                color={item.isSaved ? Accent.primary : colors.textSecondary}
-                fill={item.isSaved ? Accent.primary : "transparent"}
+                color={item.isSaved ? accent.primary : colors.textSecondary}
+                fill={item.isSaved ? accent.primary : "transparent"}
               />
             </Pressable>
           </View>
@@ -784,7 +790,7 @@ export default function LibraryScreen() {
             <View style={[styles.metaRow, { gap: 6 }]}>
               {savesCount > 0 ? (
                 <View style={styles.metaChip}>
-                  <Star size={13} color={Accent.primary} fill={Accent.primary} />
+                  <Star size={13} color={accent.primary} fill={accent.primary} />
                   <Text style={styles.metaChunk}>{savesCount}</Text>
                 </View>
               ) : null}
@@ -824,7 +830,7 @@ export default function LibraryScreen() {
         </View>
       );
     },
-    [router, confirmRemove, toggleCardSave, handleGoPublic, userId, colors, styles],
+    [router, confirmRemove, toggleCardSave, handleGoPublic, userId, colors, styles, accent],
   );
 
   const isLoading = loading;
@@ -838,7 +844,7 @@ export default function LibraryScreen() {
 
       {isLoading && savedRecipes.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       ) : (
         <FlatList
@@ -851,7 +857,7 @@ export default function LibraryScreen() {
           columnWrapperStyle={styles.columnWrap}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Accent.primary} />
+            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={accent.primary} />
           }
           ListHeaderComponent={
             <>
@@ -1004,7 +1010,7 @@ export default function LibraryScreen() {
               // outline pill CTAs. Web parity: Library.tsx empty state.
               <View style={styles.emptySlab}>
                 <View style={styles.emptyBadge}>
-                  <Bookmark size={24} color={Accent.primary} />
+                  <Bookmark size={24} color={accent.primary} />
                 </View>
                 <Text style={styles.emptyTitle}>No saved recipes yet</Text>
                 <Text style={styles.emptySubtext}>

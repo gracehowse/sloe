@@ -55,7 +55,8 @@ import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Spacing, Radius, Accent } from "@/constants/theme";
+import { Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import {
   mergeRecipePage,
@@ -87,6 +88,10 @@ type CreatorRecipeRow = {
 export default function CreatorProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the verified/follow
+  // affordance + the primary CTAs. Threaded into the module-level StyleSheet
+  // factory.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const creatorId = typeof params.id === "string" ? params.id : null;
@@ -265,7 +270,7 @@ export default function CreatorProfileScreen() {
     }
   }, [creatorId, loadingMore, hasMore, recipes.length]);
 
-  const styles = useMemo(() => buildStyles(colors), [colors]);
+  const styles = useMemo(() => buildStyles(colors, accent), [colors, accent]);
 
   if (loading) {
     return (
@@ -326,7 +331,7 @@ export default function CreatorProfileScreen() {
             <Ionicons
               name="checkmark-circle"
               size={18}
-              color={Accent.primary}
+              color={accent.primary}
               accessibilityLabel="Verified creator"
             />
           ) : null}
@@ -441,7 +446,10 @@ export default function CreatorProfileScreen() {
   );
 }
 
-function buildStyles(colors: ReturnType<typeof useThemeColors>) {
+function buildStyles(
+  colors: ReturnType<typeof useThemeColors>,
+  accent: ReturnType<typeof useAccent>,
+) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -476,7 +484,7 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
     avatarFallback: {
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     avatarFallbackText: {
       color: "#fff",
@@ -532,7 +540,7 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
       alignItems: "center",
     },
     followBtnFollow: {
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
     },
     followBtnFollowing: {
       backgroundColor: "transparent",

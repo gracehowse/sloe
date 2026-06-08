@@ -22,6 +22,7 @@ import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius, FontFamily } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
@@ -158,6 +159,12 @@ type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the import CTAs,
+  // outline/text-link buttons, source/share callouts, and the various entry-
+  // point glyphs (search, restaurant, clipboard, camera, person, bookmark).
+  // Threaded into the memoised StyleSheet via the dep array below. Macros keep
+  // `MacroColors`; success/warning/destructive states keep their own tokens.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/discover");
@@ -1016,7 +1023,7 @@ export default function ImportSharedScreen() {
     backHit: { paddingVertical: 6, paddingHorizontal: 6 },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
     topTitle: {
-      color: Accent.primary,
+      color: accent.primary,
       fontSize: 13,
       fontWeight: "800",
       letterSpacing: 3,
@@ -1065,7 +1072,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Accent.primary + "18",
+      backgroundColor: accent.primary + "18",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1157,7 +1164,7 @@ export default function ImportSharedScreen() {
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      backgroundColor: Accent.primary,
+      backgroundColor: accent.primary,
       borderRadius: 16,
       paddingVertical: 16,
       marginTop: Spacing.xs,
@@ -1172,11 +1179,11 @@ export default function ImportSharedScreen() {
       paddingVertical: 14,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
       marginTop: Spacing.xs,
     },
-    outlineBtnPressed: { backgroundColor: Accent.primary + "12" },
-    outlineBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
+    outlineBtnPressed: { backgroundColor: accent.primary + "12" },
+    outlineBtnText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
       flexDirection: "row",
@@ -1185,7 +1192,7 @@ export default function ImportSharedScreen() {
       gap: 8,
       paddingVertical: Spacing.md,
     },
-    textLinkLabel: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
+    textLinkLabel: { color: accent.primary, fontWeight: "600", fontSize: 15 },
 
     // Import from grid
     importSourcesSection: {
@@ -1229,7 +1236,7 @@ export default function ImportSharedScreen() {
       width: 36,
       height: 36,
       borderRadius: 12,
-      backgroundColor: Accent.primary + "22",
+      backgroundColor: accent.primary + "22",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1428,7 +1435,7 @@ export default function ImportSharedScreen() {
       color: colors.textSecondary,
       marginTop: 2,
     },
-  }), [colors]);
+  }), [colors, accent]);
 
   return (
     <KeyboardAvoidingView
@@ -1491,7 +1498,7 @@ export default function ImportSharedScreen() {
                     : "logo-instagram"
               }
               size={36}
-              color={Accent.primary}
+              color={accent.primary}
             />
             <Text style={styles.panelTitle}>
               Import from {captionPlatform === "tiktok"
@@ -1577,7 +1584,7 @@ export default function ImportSharedScreen() {
 
         {(state === "review" || state === "saving") && pendingRecipe && (
           <View style={styles.panelCard}>
-            <Ionicons name="restaurant-outline" size={36} color={Accent.primary} />
+            <Ionicons name="restaurant-outline" size={36} color={accent.primary} />
             <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
@@ -1614,7 +1621,7 @@ export default function ImportSharedScreen() {
                     Per-serving macros scale when you change portions.
                   </Text>
                 </View>
-                <Ionicons name="create-outline" size={22} color={Accent.primary} />
+                <Ionicons name="create-outline" size={22} color={accent.primary} />
               </Pressable>
             ) : (
               <View style={{ alignSelf: "stretch", marginBottom: Spacing.md, gap: Spacing.sm }}>
@@ -1647,10 +1654,10 @@ export default function ImportSharedScreen() {
                     paddingVertical: 8,
                     paddingHorizontal: 14,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary + "18",
+                    backgroundColor: accent.primary + "18",
                   }}
                 >
-                  <Text style={{ color: Accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
+                  <Text style={{ color: accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
                 </Pressable>
               </View>
             )}
@@ -1837,7 +1844,7 @@ export default function ImportSharedScreen() {
               {decodeEntities(title)}
             </Text>
             <View style={styles.libraryChip}>
-              <Ionicons name="bookmark" size={18} color={Accent.primary} />
+              <Ionicons name="bookmark" size={18} color={accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
             </View>
             <Pressable
@@ -1851,7 +1858,7 @@ export default function ImportSharedScreen() {
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
             >
-              <Ionicons name="nutrition-outline" size={18} color={Accent.primary} style={{ marginRight: 6 }} />
+              <Ionicons name="nutrition-outline" size={18} color={accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
           </View>
@@ -1860,7 +1867,7 @@ export default function ImportSharedScreen() {
         {!authLoading && !userId && state === "idle" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="person-outline" size={40} color={Accent.primary} />
+              <Ionicons name="person-outline" size={40} color={accent.primary} />
             </View>
             <Text style={styles.panelTitle}>Sign in to import</Text>
             <Text style={styles.panelSub}>
@@ -1916,7 +1923,7 @@ export default function ImportSharedScreen() {
               </Text>
             </Pressable>
             <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+              <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
               <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
             </Pressable>
           </View>
@@ -1966,15 +1973,15 @@ export default function ImportSharedScreen() {
                       marginBottom: Spacing.xs,
                       padding: Spacing.sm,
                       borderRadius: Radius.sm,
-                      backgroundColor: Accent.primary + "12",
+                      backgroundColor: accent.primary + "12",
                       borderWidth: 1,
-                      borderColor: Accent.primary + "33",
+                      borderColor: accent.primary + "33",
                       flexDirection: "row",
                       alignItems: "flex-start",
                       gap: 8,
                     }}
                   >
-                    <Ionicons name="share-outline" size={16} color={Accent.primary} style={{ marginTop: 2 }} />
+                    <Ionicons name="share-outline" size={16} color={accent.primary} style={{ marginTop: 2 }} />
                     <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
                       {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Sloe — that captures the caption text directly.
                     </Text>
@@ -1985,12 +1992,12 @@ export default function ImportSharedScreen() {
                 <Text style={styles.primaryBtnText}>Import</Text>
               </Pressable>
               <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-                <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+                <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
                 <Text style={styles.textLinkLabel}>Use clipboard</Text>
               </Pressable>
               {ImagePicker && (
                 <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
-                  <Ionicons name="camera-outline" size={18} color={Accent.primary} />
+                  <Ionicons name="camera-outline" size={18} color={accent.primary} />
                   <Text style={styles.textLinkLabel}>Import from photo</Text>
                 </Pressable>
               )}
@@ -2021,7 +2028,7 @@ export default function ImportSharedScreen() {
                       <Ionicons
                         name={source.icon as any}
                         size={24}
-                        color={Accent.primary}
+                        color={accent.primary}
                       />
                     </View>
                     <Text style={styles.sourceLabel} numberOfLines={1}>
