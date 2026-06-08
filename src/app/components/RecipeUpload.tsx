@@ -20,7 +20,11 @@ import {
 } from "../../lib/nutrition/fatsecretCacheGuard.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useImportQueue } from "../../lib/recipes/useImportQueue.ts";
+import { ImportRunnerError } from "../../lib/recipes/recipeImportScheduler.ts";
+import { importJobIdForUrl } from "../../lib/recipes/importProgressMachine.ts";
+import { RecipeImportQueueDrawer } from "./suppr/recipe-import-queue-drawer.tsx";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
@@ -170,6 +174,11 @@ function amountToNumeric(raw: string): number | null {
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
+  // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
+  // Flag-gated per CLAUDE.md; the legacy inline-skeleton path stays live in
+  // the `else`. Resolved once at mount (PostHog reads are imperative).
+  const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [servings, setServings] = useState(1);
@@ -495,88 +504,154 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     }
   };
 
+  /** Shape returned by the URL importer + applied to the editor form. */
+  type ImportedUrlRecipe = {
+    title: string;
+    description: string | null;
+    ingredients: string[];
+    instructions: string[];
+    servings: number | null;
+    prepTimeMin: number | null;
+    cookTimeMin: number | null;
+    imageUrl: string | null;
+    sourceUrl?: string | null;
+    sourceName?: string | null;
+  };
+
+  /**
+   * Populate the editor form from a parsed imported recipe. Extracted so
+   * BOTH the legacy inline import path and the new queued path
+   * (`import-progress-v2`) apply the result identically — no drift between
+   * "imported inline" and "imported via the queue then reviewed".
+   */
+  const applyImportedRecipeToForm = useCallback((r: ImportedUrlRecipe, sourceUrl: string) => {
+    setTitle(r.title);
+    setDescription(r.description ?? "");
+    if (r.servings && r.servings > 0) setServings(r.servings);
+    if (r.prepTimeMin != null && r.prepTimeMin > 0) setPrepTime(r.prepTimeMin);
+    if (r.cookTimeMin != null && r.cookTimeMin > 0) setCookTime(r.cookTimeMin);
+    if (r.imageUrl) setCoverImageUrl(r.imageUrl);
+    if (r.ingredients.length) {
+      setIngredients(
+        r.ingredients.map((line, idx) => {
+          const p = parseIngredientLine(line);
+          const name = p.name.trim() || line.trim();
+          return { id: `imp-${idx}`, name, amount: p.amount, unit: p.unit };
+        }),
+      );
+    }
+    if (r.instructions.length) {
+      setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
+    }
+    // Persist URL + name at the write boundary via `normaliseSource` so the
+    // imported-state values are cleaned before they reach `saveRecipe`.
+    const attribution = normaliseSource({ url: r.sourceUrl ?? sourceUrl, name: r.sourceName ?? null });
+    setImportedSourceUrl(attribution.source_url);
+    setImportedSourceName(attribution.source_name);
+    let importHost: string;
+    try {
+      importHost = new URL(sourceUrl).hostname;
+    } catch {
+      importHost = "invalid";
+    }
+    track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
+  }, []);
+
+  /**
+   * Fetch + parse one URL import. Shared by inline + queued paths. Accepts an
+   * optional AbortSignal so the queue can cancel an in-flight import. Throws
+   * `ImportRunnerError` with a stable code on failure so the queue can map it
+   * to retry-eligible copy via `importErrorCopy`.
+   */
+  const fetchImportedRecipe = useCallback(
+    async (u: string, signal?: AbortSignal): Promise<ImportedUrlRecipe> => {
+      let res: Response;
+      try {
+        res = await fetch("/api/recipe-import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: u }),
+          signal,
+        });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+        throw new ImportRunnerError("network_error");
+      }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        recipe?: ImportedUrlRecipe;
+        message?: string;
+        error?: string;
+      };
+      if (!data.ok || !data.recipe) {
+        // Prefer the server's stable error code so retry-eligibility is honest.
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return data.recipe;
+    },
+    [],
+  );
+
   const runImportFromUrl = async () => {
     const u = importUrl.trim();
     if (!u) {
       toast.error("Paste a recipe URL first.");
       return;
     }
+
+    // import-progress-v2 — enqueue into the shared scheduler so the import
+    // runs with live per-stage progress + queue position in the persistent
+    // drawer, and multiple URLs can import concurrently. The legacy inline
+    // path below stays alive in the `else` (flag OFF).
+    if (importProgressV2) {
+      // Deterministic id so a duplicate concurrent import of the SAME url is a
+      // scheduler no-op (idempotency dedupe).
+      const id = importJobIdForUrl("url", u);
+      let seedTitle = "Recipe";
+      try {
+        seedTitle = new URL(u).hostname.replace(/^www\./, "");
+      } catch {
+        /* keep default */
+      }
+      const enqueued = importQueue.enqueue({
+        id,
+        kind: "url",
+        title: seedTitle,
+        run: async (controls) => {
+          controls.setStage("extracting");
+          const recipe = await fetchImportedRecipe(u, controls.signal);
+          if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+          controls.setStage("organizing");
+          controls.setTitle(recipe.title);
+          // The most-recently-finished import populates the editor form for
+          // review; all imports are listed in the drawer regardless.
+          applyImportedRecipeToForm(recipe, u);
+          return { title: recipe.title };
+        },
+      });
+      if (enqueued) {
+        setImportUrl("");
+        setImportHint(null);
+      }
+      return;
+    }
+
     setImportBusy(true);
     setImportHint(null);
     try {
-      const res = await fetch("/api/recipe-import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        recipe?: {
-          title: string;
-          description: string | null;
-          ingredients: string[];
-          instructions: string[];
-          servings: number | null;
-          prepTimeMin: number | null;
-          cookTimeMin: number | null;
-          imageUrl: string | null;
-          sourceUrl?: string | null;
-          sourceName?: string | null;
-        };
-        message?: string;
-      };
-      if (!data.ok || !data.recipe) {
-        toast.error(data.message ?? "Could not import this URL");
-        setImportHint(
-          data.message ??
-            "No structured recipe found. Paste a screenshot into the photo area and type ingredients manually.",
-        );
-        return;
-      }
-      const r = data.recipe;
-      setTitle(r.title);
-      setDescription(r.description ?? "");
-      if (r.servings && r.servings > 0) setServings(r.servings);
-      if (r.prepTimeMin != null && r.prepTimeMin > 0) setPrepTime(r.prepTimeMin);
-      if (r.cookTimeMin != null && r.cookTimeMin > 0) setCookTime(r.cookTimeMin);
-      if (r.imageUrl) setCoverImageUrl(r.imageUrl);
-      if (r.ingredients.length) {
-        setIngredients(
-          r.ingredients.map((line, idx) => {
-            const p = parseIngredientLine(line);
-            const name = p.name.trim() || line.trim();
-            return {
-              id: `imp-${idx}`,
-              name,
-              amount: p.amount,
-              unit: p.unit,
-            };
-          }),
-        );
-      }
-      if (r.instructions.length) {
-        setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
-      }
-      // Persist URL + name at the write boundary via `normaliseSource`. We run
-      // the helper here so the imported-state values are already cleaned before
-      // they reach `saveRecipe` (and so a tester inspecting React state sees
-      // exactly what will hit Supabase).
-      const attribution = normaliseSource({ url: r.sourceUrl ?? u, name: r.sourceName ?? null });
-      setImportedSourceUrl(attribution.source_url);
-      setImportedSourceName(attribution.source_name);
+      const r = await fetchImportedRecipe(u);
+      applyImportedRecipeToForm(r, u);
       toast.success("Imported — review amounts and nutrition before publishing");
-      {
-        let importHost: string;
-        try {
-          importHost = new URL(u).hostname;
-        } catch {
-          importHost = "invalid";
-        }
-        track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
-      }
-    } catch {
-      toast.error("Import failed — check the URL or paste a screenshot.");
-      setImportHint("Try another URL, or paste a screenshot into the recipe photo area and fill fields manually.");
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      // Prefer the server's specific message (carried on the thrown
+      // ImportRunnerError) over the generic per-code copy, sanitised via the
+      // central mapper — preserves the actionable "No Recipe JSON-LD found…"
+      // hint the old inline path surfaced.
+      const msg = userFacingImportError(e);
+      toast.error(msg);
+      setImportHint(msg);
     } finally {
       setImportBusy(false);
     }
@@ -1401,7 +1476,12 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
             ) : null}
 
-            {importBusy ? <ImportLoadingSkeleton phase="importing" className="mt-4" /> : null}
+            {/* import-progress-v2 OFF → legacy inline skeleton. ON → the
+                persistent queue drawer (mounted at component root) shows
+                live per-stage progress instead. */}
+            {importBusy && !importProgressV2 ? (
+              <ImportLoadingSkeleton phase="importing" className="mt-4" />
+            ) : null}
           </div>
 
           {/* Recent Imports placeholder */}
@@ -2221,6 +2301,18 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           </div>
         </div>
       )}
+
+      {/* import-progress-v2 — persistent, non-blocking queue drawer. Renders
+          nothing until there's import activity; safe to always mount when the
+          flag is on. */}
+      {importProgressV2 ? (
+        <RecipeImportQueueDrawer
+          queue={importQueue}
+          onOpenRecipe={(id) => {
+            window.location.assign(`/recipe/${id}`);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

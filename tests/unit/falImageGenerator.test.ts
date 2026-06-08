@@ -1,13 +1,16 @@
 /**
  * fal.ai image generator (2026-06-08) — pins the LOCKED prompt assembly
- * (Template A = FLUX 2 Pro dish heroes; Template B = Nano Banana Pro single
- * ingredient, ONE representative subject) and the load-bearing GRACEFUL
- * DEGRADATION: with `FAL_KEY` unset, the generators return a typed error and
- * NEVER throw (so a fire-and-forget caller can't crash and a save can't be
- * blocked). No network is touched in these tests.
+ * (Template A + Template B BOTH on Nano Banana Pro from 2026-06-08: dish heroes
+ * are the dish title + an LLM cooked-dish description with the editorial house
+ * style + cooked-state guards on a FIXED system prompt; ingredient tiles are
+ * ONE representative subject) and the load-bearing GRACEFUL DEGRADATION: with
+ * `FAL_KEY` unset, the generators return a typed error and NEVER throw (so a
+ * fire-and-forget caller can't crash and a save can't be blocked). No network
+ * is touched in these tests.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  DISH_SYSTEM_PROMPT,
   buildDishPrompt,
   buildIngredientPrompt,
   generateDishImage,
@@ -15,7 +18,11 @@ import {
   isFalConfigured,
 } from "../../src/lib/server/falImageGenerator";
 
-describe("buildDishPrompt — Template A (cooked-dish description, NOT a raw ingredient list)", () => {
+describe("buildDishPrompt — Template A (short per-dish line: title + cooked-dish description)", () => {
+  // The editorial house style + cooked-state guards now live in the FIXED
+  // DISH_SYSTEM_PROMPT (Nano honours a true Gemini-3 system instruction), NOT
+  // in this per-dish line — exactly like the ingredient approach. The per-dish
+  // line is just the dish title + the LLM cooked-dish description.
   it("includes the recipe title and the finished-dish description verbatim", () => {
     const desc =
       "A golden set frittata with tender chicken and wilted spinach folded throughout, cut into wedges.";
@@ -24,54 +31,67 @@ describe("buildDishPrompt — Template A (cooked-dish description, NOT a raw ing
     expect(p).toContain(desc);
   });
 
+  it("is the exact `Hyperreal editorial food photography of {TITLE}. {DESCRIPTION}` shape", () => {
+    expect(buildDishPrompt("Chicken Frittata", "A golden set baked egg dish.")).toBe(
+      "Hyperreal editorial food photography of Chicken Frittata. A golden set baked egg dish.",
+    );
+  });
+
   it("does NOT list raw ingredients with a `featuring …` clause (the bug being fixed)", () => {
     // The old prompt did `…a finished plated dish featuring {ingredients}…`,
-    // which made FLUX render raw eggs / loose powder on top. The new prompt
+    // which rendered raw eggs / loose powder on top. The new per-dish line
     // takes a cooked-dish description and must never reintroduce that clause.
     const p = buildDishPrompt("Chicken Frittata", "A golden set baked egg dish.");
     expect(p).not.toContain("featuring");
   });
 
-  it("folds in the cooked-state guards so FLUX renders a cooked dish, nothing raw on top", () => {
-    const p = buildDishPrompt("Protein Overnight Oats", "Creamy oats with the protein dissolved in.");
-    expect(p).toContain("fully cooked and integrated");
-    expect(p).toMatch(/no whole raw eggs/i);
-    expect(p).toMatch(/no runny yolks on top/i);
-    expect(p).toMatch(/no loose or dry powder/i);
-    expect(p).toMatch(/nothing raw piled on the surface/i);
-    expect(p).toMatch(/no people, no hands, no fingers/i);
+  it("does NOT carry the house style in the per-dish line (it rides on the system prompt now)", () => {
+    // These all moved to DISH_SYSTEM_PROMPT — the per-dish line stays short so
+    // the system prompt is the single consistency lever (mirroring ingredients).
+    const p = buildDishPrompt("Lentil Stew", "A rich brothy lentil stew.");
+    expect(p).not.toContain("@thelittleplantation");
+    expect(p).not.toContain("Sloe brand imagery");
+    expect(p).not.toContain("Avoid:");
+    expect(p).not.toContain("matte ceramic");
+    expect(p).not.toMatch(/fully cooked and integrated/i);
   });
 
-  it("carries the Sloe editorial anchor + the folded-in Avoid clause (no negative_prompt field on FLUX-2)", () => {
-    const p = buildDishPrompt("Stew", "");
-    expect(p).toContain("Hyperreal editorial food photography");
-    expect(p).toContain("@thelittleplantation");
-    expect(p).toContain("Sloe brand imagery");
-    // §5 never-list folded into the positive as constraints.
-    expect(p).toContain("Avoid:");
-    expect(p).toMatch(/no people|people, hands/i);
-    expect(p).toMatch(/watercolour/i);
-    expect(p).toMatch(/text, words, letters/i);
-  });
-
-  it("infers a plating noun from the dish (drink → glass, bread → board, default → bowl)", () => {
-    expect(buildDishPrompt("Mango Smoothie", "")).toContain("matte ceramic glass");
-    expect(buildDishPrompt("Seeded Sourdough Loaf", "")).toContain("matte ceramic wooden board");
-    expect(buildDishPrompt("Lentil Stew", "")).toContain("matte ceramic bowl");
-    expect(buildDishPrompt("Pan-Seared Salmon", "")).toContain("matte ceramic plate");
-    expect(buildDishPrompt("Chicken Frittata", "")).toContain("matte ceramic skillet");
-  });
-
-  it("renders a coherent prompt even when the description is empty (generic finished dish)", () => {
+  it("renders a coherent prompt even when the description is empty (title only, no trailing space)", () => {
     const p = buildDishPrompt("Lentil Stew", "");
-    expect(p).toContain("Hyperreal editorial food photography of Lentil Stew.");
-    // No dangling double-space artefact from the empty description clause.
-    expect(p).not.toContain("  The finished dish");
+    expect(p).toBe("Hyperreal editorial food photography of Lentil Stew.");
+    // No dangling trailing space from the empty description clause.
+    expect(p).not.toMatch(/\s$/);
   });
 
   it("handles an empty title gracefully", () => {
     expect(() => buildDishPrompt("", "")).not.toThrow();
     expect(buildDishPrompt("", "")).toContain("a home-cooked dish");
+  });
+});
+
+describe("DISH_SYSTEM_PROMPT — the FIXED Template-A house style + cooked-state guards", () => {
+  // This is where the raw-eggs protection lives now. If anyone strips the
+  // cooked-state guards, these break — the whole point of the migration.
+  it("locks the warm editorial register (the hyper-realism + brand consistency lever)", () => {
+    expect(DISH_SYSTEM_PROMPT).toMatch(/Soft moody natural window light/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/shallow depth of field/i);
+    expect(DISH_SYSTEM_PROMPT).toContain("@thelittleplantation");
+    expect(DISH_SYSTEM_PROMPT).toContain("@_foodstories_");
+    expect(DISH_SYSTEM_PROMPT).toMatch(/Ultra-realistic photograph/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/never 3D-rendered, never glossy CGI/i);
+  });
+
+  it("keeps the cooked-state guards (no raw ingredients / raw eggs / loose powder on top)", () => {
+    expect(DISH_SYSTEM_PROMPT).toMatch(/fully cooked and integrated/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/no raw or uncooked ingredients/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/no whole raw eggs/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/no loose powder/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/nothing raw piled on top/i);
+  });
+
+  it("keeps the no-people / no-text guards", () => {
+    expect(DISH_SYSTEM_PROMPT).toMatch(/no people, no hands, no fingers/i);
+    expect(DISH_SYSTEM_PROMPT).toMatch(/no text, no logo, no watermark/i);
   });
 });
 

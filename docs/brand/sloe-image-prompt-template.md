@@ -1,18 +1,24 @@
 # Sloe — Canonical Image Generation Prompt Template
 
-> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template A §1 below was changed to fix the
-> "raw ingredients rendered on top of a cooked dish" failure mode (whole raw eggs on a frittata, loose
-> protein powder heaped on porridge). The raw `featuring {KEY_INGREDIENTS}` clause was **replaced** by an
-> LLM-written description of the FINISHED, cooked, plated dish, plus explicit cooked-state guards. This is
-> a change to a LOCKED artefact and must be ratified by `brand-manager` (record in `docs/decisions/`).
-> The code change shipped first (proven via fal) to unblock the hero regeneration; the doc reflects the
-> new reality. See §1 "Failure mode + fix" and the implementation in
+> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template A §1 below was changed twice this day,
+> both LOCKED-artefact changes that must be ratified by `brand-manager` (record in `docs/decisions/`):
+> (1) the raw `featuring {KEY_INGREDIENTS}` clause was **replaced** by an LLM-written description of the
+> FINISHED, cooked, plated dish + explicit cooked-state guards (fixing whole raw eggs on a frittata, loose
+> protein powder heaped on porridge); and (2) the **dish-hero ENGINE migrated FLUX 2 Pro → Nano Banana Pro**
+> (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) for hyper-realism — verified markedly more photoreal
+> than FLUX on the meatballs A/B, and it unifies the whole app on ONE model (ingredients were already on
+> Nano). The editorial house style + cooked-state guards now ride on a FIXED `system_prompt` (the
+> consistency lever, mirroring the ingredient path), with NO fixed seed (each dish is unique) and the cache
+> still keyed per-recipe. The code shipped first (proven via fal) to unblock the hero regeneration; the doc
+> reflects the new reality. See §1 "Failure mode + fix", the §6 Model row, and the implementation in
 > [`src/lib/server/llmDishAppearance.ts`](../../src/lib/server/llmDishAppearance.ts) +
 > [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts).
 
 > **Status:** LOCKED brand artefact. Owned by `brand-manager`.
-> **Engine:** FLUX 2 Pro (Black Forest Labs) via fal.ai. Model-swappable per the strategy doc, but
-> these templates are the constant — the prompt does not change when the model does.
+> **Engine:** Nano Banana Pro (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) via fal.ai for ALL
+> classes (Template A dish heroes migrated FLUX 2 Pro → Nano 2026-06-08; Template B + marketing already on
+> Nano). Model-swappable per the strategy doc, but these templates are the constant — the prompt does not
+> change when the model does.
 > **Authority:** This file is the single source of truth for every Sloe-brand generated image, at
 > design-time (the fal/FLUX batch script) and at runtime (the recipe-import "generate an image"
 > feature). It operationalises the imagery rules locked in
@@ -55,18 +61,41 @@ and `@_foodstories_`. Moody natural window light, contextual props (ceramic, lin
 depth of field, warm earthy muted palette. Never flat stock, never overhead studio flash, never
 watercolour, never cartoon, never 3D render.
 
-### Failure mode + fix (2026-06-08) — describe the COOKED dish, never list raw ingredients
+### Engine + technique (Nano Banana Pro — the consistency lever) + the cooked-state fix (2026-06-08)
 
-**The bug.** The original Template A prompt listed the recipe's raw ingredients verbatim
-(`…a finished plated dish featuring {KEY_INGREDIENTS}…`, e.g. "featuring eggs, protein powder, spinach").
-FLUX-2-pro follows the positive prompt **literally**, so it rendered those ingredients in their **raw**
-form, sitting **on top** of the finished dish — whole raw eggs perched on a baked frittata, a heap of dry
-protein powder dumped on porridge. The list told the model *what* was in the dish but never *that it was
-cooked*, so the model defaulted to depicting the ingredients as-bought.
+> **ENGINE migrated FLUX 2 Pro → Nano Banana Pro on 2026-06-08** (`fal-ai/nano-banana-pro`, Google Gemini 3
+> Pro Image) for hyper-realism — verified markedly more photoreal than FLUX on the meatballs A/B, and it
+> unifies the whole app on ONE model (ingredients were already on Nano). PENDING `brand-manager` sign-off
+> (see top banner). The two fixes below — the cooked-state describe-the-dish step and the cooked-state
+> guards — are KEPT across the migration; they simply moved from a FLUX positive-prompt fold-in to the Nano
+> FIXED `system_prompt`.
 
-**The fix (proven via fal 2026-06-08).** Stop listing raw ingredients. Instead:
+- **Model:** `fal-ai/nano-banana-pro` (Google Gemini 3 Pro Image).
+- **Per-image params:** `aspect_ratio: "4:3"` (landscape hero), `resolution: "2K"`, `output_format: "jpeg"`,
+  **NO fixed seed** (each dish is unique — variety is fine, unlike the ingredient set which pins a seed),
+  and the EXACT `system_prompt` below on every call (the consistency lever that locks the editorial house
+  style + the cooked-state guards — **do not edit it per call**). The per-recipe cache (keyed by `recipe_id`)
+  is unchanged.
 
-1. **LLM dish-appearance step.** Before generating, call an LLM
+```
+Warm editorial food photography for a premium recipe app. Soft moody natural window light from the side,
+slightly under-exposed editorial mood, shallow depth of field — the dish sharp, the background softly
+blurred. Warm, muted, earthy palette: browns, creams, sage greens, ochre. Styled on a linen napkin over a
+weathered wooden table, matte ceramic dishware. Magazine-quality, in the register of @thelittleplantation
+and @_foodstories_. Ultra-realistic photograph, fine natural detail and texture, real food. Never
+illustrated, never 3D-rendered, never glossy CGI. No people, no hands, no fingers, no text, no logo, no
+watermark. The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or
+uncooked ingredients, no whole raw eggs, no loose powder, nothing raw piled on top.
+```
+
+**The bug this still guards against.** The original Template A prompt listed the recipe's raw ingredients
+verbatim (`…a finished plated dish featuring {KEY_INGREDIENTS}…`, e.g. "featuring eggs, protein powder,
+spinach"). The model followed the positive prompt **literally** and rendered those ingredients in their
+**raw** form, sitting **on top** of the finished dish — whole raw eggs perched on a baked frittata, a heap
+of dry protein powder dumped on porridge. The list told the model *what* was in the dish but never *that it
+was cooked*. The cure has two KEPT parts:
+
+1. **LLM dish-appearance step (KEPT).** Before generating, call an LLM
    ([`describeDishAppearance`](../../src/lib/server/llmDishAppearance.ts)) with the title + key ingredients
    and ask it to return **one to two sentences describing how the FINISHED, fully cooked, plated dish
    looks when served** — emphasising the cooked/integrated state (eggs set firm in a frittata; powder
@@ -76,55 +105,49 @@ cooked*, so the model defaulted to depicting the ingredients as-bought.
    LLM call fails (unconfigured, timeout, rate-limit, junk reply) it falls back to a generic
    *"fully cooked and plated exactly as it would be served… nothing raw or uncooked on the surface"*
    clause — generation is **never** blocked.
-2. **Cooked-state guards in the positive prompt.** Because FLUX-2-pro has **no `negative_prompt` field**
-   (see §6), the guards are folded into the positive prompt as constraints the model can follow literally:
-   *"The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or uncooked
-   ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw piled on the
-   surface. No people, no hands, no fingers. No text, no logo, no watermark."*
+2. **Cooked-state guards in the FIXED `system_prompt` (KEPT, moved).** Because Nano has **no
+   `negative_prompt` field** (see §6), the guards live in the system prompt above (a true Gemini-3 system
+   instruction, stronger than a positive avoid-clause): *"The dish is fully cooked and integrated, served
+   exactly as it would be eaten — no raw or uncooked ingredients, no whole raw eggs, no loose powder,
+   nothing raw piled on top."* Previously these were folded into the FLUX positive prompt; the migration
+   moves them to the system prompt, which is where the whole editorial register now lives too.
 
 **Inputs from the parsed recipe:**
 - `{RECIPE_TITLE}` — the dish name, lightly cleaned (drop emoji, drop "EASY!!!", drop @handles).
 - `{KEY_INGREDIENTS}` — 3-6 of the most visually defining ingredients (salt/oil/water dropped). **These
-  are passed to the LLM dish-appearance step ONLY — they are no longer listed verbatim in the FLUX
+  are passed to the LLM dish-appearance step ONLY — they are never listed verbatim in the image
   prompt.** They inform the description; they never appear as a raw `featuring …` clause.
 - `{DISH_DESCRIPTION}` — the one-to-two sentence finished-dish description returned by the LLM step (or the
-  generic cooked fallback). This is what tells FLUX the dish is cooked and plated.
-- `{PLATING_NOUN}` — how it's served, inferred from the dish or defaulted: `bowl` (default for
-  stews/grains/salads/pasta/soup), `plate` (mains, fish, roast), `wooden board` (bread, sharing, baked),
-  `glass` (drinks/smoothies), `skillet` (one-pan bakes).
+  generic cooked fallback). This is what tells the model the dish is cooked and plated.
 
-**Positive prompt:**
+**Per-image `prompt`** — just the ONE subject (the dish title + the LLM cooked-dish description). Everything
+else (light, surface, palette, register, cooked-state guards) rides on the FIXED `system_prompt`, mirroring
+the ingredient approach:
 
 ```
-Hyperreal editorial food photography of {RECIPE_TITLE}. {DISH_DESCRIPTION} The finished dish is served
-in a matte ceramic {PLATING_NOUN}, styled on a linen napkin over a weathered wooden table, a few natural
-props nearby. Soft moody natural window light from the side, gentle shadows, slightly under-exposed for an
-editorial mood. Shallow depth of field, the dish sharp and the background softly blurred. Warm, muted,
-earthy colour palette — browns, creams, sage greens, ochre. Artful, considered, unhurried composition.
-Magazine-quality food photography in the style of @thelittleplantation and @_foodstories_. The dish is
-fully cooked and integrated, served exactly as it would be eaten — no raw or uncooked ingredients, no
-whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw piled on the surface. No
-people, no hands, no fingers. No text, no logo, no watermark.
+Hyperreal editorial food photography of {RECIPE_TITLE}. {DISH_DESCRIPTION}
 ```
 
-Then append the **style anchor block** (§4) and the **negative list** (§5) — folded into the positive as a
-trailing `Avoid: …` clause on `fal-ai/flux-2-pro` (no `negative_prompt` field; see §6).
+> The editorial register / surface / palette / cooked-state consistency now lives ENTIRELY in the FIXED
+> `system_prompt` — NOT in the per-image line. That is why a set of heroes reads as one editorial library
+> even though each per-image prompt is a single short sentence. Nano honours a separate `system_prompt`
+> (a Gemini-3 system instruction), so — unlike FLUX — the house style + guards are a true system prompt,
+> not a trailing positive clause. (The §4 anchor / §5 never-list are no longer appended to the per-image
+> line; their content is subsumed by the system prompt.)
 
-> **Worked example (the proven fix).** Chicken Frittata, with the LLM description in place:
+> **Worked example (the proven fix).** Chicken Frittata, with the LLM description in place — the WHOLE
+> per-image prompt is now just:
 >
 > > Hyperreal editorial food photography of Chicken Frittata. A fully-set Italian baked egg dish, golden
 > > and firm all the way through, beaten eggs cooked evenly with tender chicken and wilted spinach folded
-> > throughout, cut into wedges with one wedge tilted on its side to reveal the set custardy interior. The
-> > finished dish is served in a matte ceramic skillet, styled on a linen napkin over a weathered wooden
-> > table… The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or
-> > uncooked ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw
-> > piled on the surface. No people, no hands, no fingers. No text, no logo, no watermark. [§4 anchor] [§5
-> > avoid clause]
+> > throughout, cut into wedges with one wedge tilted on its side to reveal the set custardy interior.
+> >
+> > _system_prompt: the FIXED `DISH_SYSTEM_PROMPT` above (editorial register + cooked-state guards) ·
+> > engine: nano-banana-pro · aspect 4:3 · resolution 2K · output jpeg · no seed_
 >
-> And Protein Overnight Oats: *"…thick, creamy overnight oats, the rolled oats soaked soft and the protein
+> And Protein Overnight Oats: *"Thick, creamy overnight oats, the rolled oats soaked soft and the protein
 > fully stirred and dissolved into the smooth creamy base, topped simply with a few berries and a
-> drizzle… no protein powder piled on top, no loose powder, nothing raw or powdery dumped on the surface.
-> No people, no hands."*
+> drizzle."* — the cooked-state guards (no powder piled on top) come from the system prompt, not this line.
 
 > **Realism honesty note:** Template A produces a *representative* hyperreal image of the kind of dish,
 > not a forensic photograph of the user's exact cook. The product labels it as AI-generated (see the copy
@@ -144,7 +167,7 @@ trailing `Avoid: …` clause on `fal-ai/flux-2-pro` (no `negative_prompt` field;
 > (proven via fal — egg-white verified correct, not a milk bottle) to unblock the library re-shoot; the
 > doc reflects the new reality. See the implementation in
 > [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts) `generateIngredientImage`
-> + the 2026-06-08 decision doc. **Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** Linear: ENG-905.
+> + the 2026-06-08 decision doc. **Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** Linear: ENG-987.
 
 **Rule (locked, §11.1):** studio product photo of a single subject on pure white, soft even daylight, one
 soft natural shadow below, 1:1. Matches the existing eggs/blueberries set exactly. Not watercolour, not
@@ -479,7 +502,7 @@ Constant across the brand. Per-surface, only `aspect_ratio` varies.
 
 | Param | Value | Why |
 |---|---|---|
-| **Model** | **Template A dish heroes:** `fal-ai/flux-2-pro` (FLUX 2 Pro). **Template B ingredients:** `fal-ai/nano-banana-pro` (Nano Banana Pro) from 2026-06-08. **Marketing/hero/social:** `fal-ai/nano-banana-pro`. | **Engine split:** (1) **Ingredient tiles (Template B) → Nano Banana Pro (2026-06-08, ENG-905).** Nano + a FIXED `system_prompt` + FIXED seed (424242) produces a CONSISTENT set — the FLUX ingredient batch drifted (pile-vs-bowl, literal quantity, egg-white-as-milk-bottle). The per-image prompt is just the ONE representative subject; the consistency lives in the system prompt. Verified via fal before the switch. (2) **Dish heroes (Template A) → FLUX 2 Pro**, unchanged (cost-critical, high-volume, cached; cooked-state LLM-description fix in §1). (3) **Marketing/social/landing/Discover → Nano Banana Pro** (won the 2026-06-07 head-to-head on editorial quality). **The prompt templates are model-swappable; the per-image prompt does not change when the model does.** **Negative-prompt caveat:** neither `fal-ai/flux-2-pro` nor `fal-ai/nano-banana-pro` exposes a `negative_prompt` field. For FLUX (Template A) the §5 never-list is a trailing `Avoid: …` clause; for **Nano (Template B)** the consistency + exclusions ("NO props, NO bowl, NO text…") live in the FIXED `system_prompt` (a true Gemini-3 system instruction), which is stronger than a positive avoid-clause. (First recorded in `docs/decisions/2026-06-07-universal-food-imagery.md` + the 2026-06-08 ingredient-image decision.) |
+| **Model** | **UNIFIED on `fal-ai/nano-banana-pro` (Nano Banana Pro, Google Gemini 3 Pro Image) — all classes, from 2026-06-08.** Template A dish heroes (migrated FLUX 2 Pro → Nano 2026-06-08), Template B ingredients (since 2026-06-08), and marketing/hero/social. PENDING `brand-manager` ratification (see top banner + §1). | **Why one model:** Nano won the head-to-head on hyper-realism for dish heroes (the meatballs A/B was markedly more photoreal than FLUX), and the whole app is now on ONE engine (ingredients were already on Nano). The consistency lever for BOTH classes is a FIXED `system_prompt` (a true Gemini-3 system instruction): **dish heroes** lock the editorial register + cooked-state guards in `DISH_SYSTEM_PROMPT` with NO seed (each dish is unique — variety is fine; cache stays per-recipe); **ingredient tiles** lock the white-studio look in `INGREDIENT_SYSTEM_PROMPT` with a FIXED seed (424242) so the set is reproducibly coherent. The per-image prompt is the ONE subject (dish title + LLM cooked-dish description for heroes; the single representative ingredient for tiles). **The prompt templates are model-swappable; the per-image prompt does not change when the model does.** **Negative-prompt caveat:** `fal-ai/nano-banana-pro` exposes **no `negative_prompt` field**, so for BOTH classes the consistency + exclusions (no people/text/raw-on-top; "NO props, NO bowl…" for B) live in the FIXED `system_prompt`, which is stronger than a positive avoid-clause. (Earlier FLUX-era split first recorded in `docs/decisions/2026-06-07-universal-food-imagery.md` + the 2026-06-08 ingredient-image decision; the Template-A Nano migration is recorded in the same 2026-06-08 decision doc.) |
 | **`aspect_ratio` — dish (A)** | `4:3` hero, `1:1` square card, `16:9` paywall/landing strip | Recipe heroes are landscape-ish; the runtime import card hero is 4:3. Pick per surface, never stretch. |
 | **`aspect_ratio` — ingredient (B) / object (C)** | `1:1` | Locked in §11.1. |
 | **`aspect_ratio` — lifestyle (D, proposed)** | `4:5` social portrait, `1:1` IG grid, `16:9` landing/banner | Social-first formats; pass as an explicit `image_size: { width, height }` object (1080x1350 / 1080x1080 / 1920x1080). |
@@ -487,7 +510,7 @@ Constant across the brand. Per-surface, only `aspect_ratio` varies.
 | **`output_format`** | `webp` (store), generate `png`/`jpeg` then transcode | Matches `recipe-${id}-hero.webp` storage convention. |
 | **`seed`** | random runtime; **pin a seed** for design-time when you need a reproducible set | Pinned seed = a coherent batch (e.g. all six diet-card tiles in one light). |
 | **`safety_tolerance`** | provider default (do not loosen) | Food is low-risk; no reason to relax safety. |
-| **`guidance` / steps** | provider default for FLUX 2 Pro | The prompt carries the style; don't over-tune per call. |
+| **`guidance` / steps** | provider default for Nano Banana Pro | The prompt + system prompt carry the style; don't over-tune per call. |
 
 **Runtime cost/cache rules (from the strategy doc — restated so the prompt owner doesn't undercut them):**
 user-initiated only (never silent auto-gen for the runtime feature), **cache by recipe** (never regenerate

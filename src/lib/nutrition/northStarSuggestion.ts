@@ -12,17 +12,41 @@
  * weights its penalties accordingly (×3 over-target, ×1.5 under,
  * within-day duplicate rejection). The north-star block is a
  * single-suggestion question — "of all my saved recipes, which one
- * fits the calories I have left and pushes me toward the macros I'm
- * still under by?" — so we score one recipe at a time, against
- * remaining (not absolute) macros.
+ * fits the calories I have left for THIS meal and pushes me toward the
+ * macros I'm still under by?" — so we score one recipe at a time.
+ *
+ * ── ENG-995 rebuild (2026-06-08) — two correctness fixes ──────────────
+ * Founder feedback: the block "makes no sense" — it suggested a double
+ * portion of one recipe to fill the WHOLE day's calories. Root causes:
+ *
+ *   1. Portion scaling. The old scorer scaled each recipe by a
+ *      {0.5, 1.0, 1.5, 2.0} multiplier and surfaced the scaled number,
+ *      so a 573-kcal/serving recipe could display as 860 kcal (1.5×).
+ *      That number doesn't match the recipe detail and isn't a real
+ *      serving. FIX: actual servings only — `predictedCalories =
+ *      recipe.calories` (one serving). No multiplier. The card now
+ *      shows the recipe's true per-serving number, identical to the
+ *      recipe detail.
+ *
+ *   2. Whole-day calorie target. The old scorer scored every recipe
+ *      against the ENTIRE remaining-calorie envelope, so in the morning
+ *      (a full day left) the "best fit" was whatever recipe was closest
+ *      to the whole day's worth of calories — i.e. it deliberately
+ *      preferred a giant meal. FIX: score against a sensible per-MEAL
+ *      budget, `perMealTarget = min(slotShare[slot] · dailyCalorieTarget,
+ *      remaining.calories)`. Morning with a full day left now targets
+ *      ~25–35% of the day (a normal single meal); late in the day with
+ *      little left, it caps at `remaining`. It never sizes one meal to
+ *      the whole day.
  *
  * Scoring intuition (in order of weight):
- *   1. Calorie fit — Suggestion calories should land within the
- *      remaining-calorie envelope. Heavily over-shooting is worse
- *      than under-shooting (matches whole-day scorer asymmetry).
- *   2. Protein direction — pushing toward the protein remaining is
- *      bonus, going past zero protein remaining is neutral (protein
- *      can't really be "over-target" the same way calories can).
+ *   1. Calorie fit — the recipe's per-serving calories should land
+ *      near `perMealTarget`. Heavily over-shooting the meal budget is
+ *      worse than under-shooting (matches whole-day scorer asymmetry).
+ *   2. Protein direction — pushing toward the protein remaining for the
+ *      DAY is bonus (one meal legitimately contributes to the day's
+ *      protein gap); going past zero protein remaining is neutral
+ *      (protein can't really be "over-target" the same way calories can).
  *   3. Carb / fat — pull-toward-target only.
  *
  * Decision V-6 (sub-decision in strategic-direction.md): library-size
@@ -55,10 +79,23 @@ export interface NorthStarRecipe {
 }
 
 export interface NorthStarRemaining {
+  /** Calories still available today (daily target − logged). */
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  /**
+   * The user's FULL daily calorie target (target, not remaining).
+   * ENG-995: the scorer derives a per-meal budget from this
+   * (`perMealTarget = min(slotShare · dailyCalorieTarget, remaining)`)
+   * so it never sizes one meal to the whole remaining day. Required —
+   * the caller already knows it (`remaining = dailyCalorieTarget −
+   * logged`), so threading it costs nothing and the compiler forces
+   * every call site to supply it (no silent fall-back to whole-day
+   * scoring). Non-finite / non-positive values degrade gracefully:
+   * the scorer then uses `remaining.calories` as the meal budget.
+   */
+  dailyCalorieTarget: number;
 }
 
 export interface NorthStarSlot {
@@ -68,35 +105,46 @@ export interface NorthStarSlot {
 
 export interface NorthStarSuggestion {
   recipe: NorthStarRecipe;
-  /** Best portion multiplier in the clamped range. */
+  /**
+   * Portion multiplier. ENG-995: the scorer no longer scales recipes —
+   * suggestions are always ONE actual serving — so this is always `1`.
+   * The field is retained for source compatibility (older callers /
+   * tests read it); a future cleanup can drop it once no caller does.
+   */
   portionMultiplier: number;
-  /** Predicted calories at this multiplier. */
+  /**
+   * Predicted calories for ONE serving — identical to
+   * `recipe.calories` and to the recipe detail screen. ENG-995: no
+   * portion scaling, so this is the recipe's real per-serving number.
+   */
   predictedCalories: number;
   predictedProtein: number;
   predictedCarbs: number;
   predictedFat: number;
-  /** Calories away from the remaining target (signed). */
+  /** Calories away from the per-meal target (signed). */
   calorieDelta: number;
-  /** Adherence band — tighter is better. "tight" within 5%, "close"
-   *  within 15%, "loose" beyond. */
+  /** Adherence band — tighter is better. Computed on the per-serving
+   *  fit to the per-meal target: "tight" within 5%, "close" within
+   *  15%, "loose" beyond. */
   band: "tight" | "close" | "loose";
   /** Lower is better. */
   score: number;
 }
 
 /**
- * Choose the best single recipe from a library against the remaining
- * macros for a slot. Returns null when no recipe lands in a usable
- * band (`loose` is allowed; only when ALL candidates are wildly off
- * do we return null).
+ * Choose the best single recipe from a library for the next meal.
+ * Returns null when no recipe lands in a usable band (`loose` is
+ * allowed; only when ALL candidates are wildly off do we return null).
  *
- * The portion multiplier is clamped to {0.5, 1.0, 1.5, 2.0} matching
- * the planner clamp — the user expects the Today block to suggest
- * realistic real-world portions.
+ * ENG-995: suggestions are always ONE actual serving (no portion
+ * scaling), scored against a per-MEAL calorie budget
+ * (`perMealTarget`), not the whole remaining day — see the module
+ * header and `bestPortionForRecipe`.
  *
  * Time-of-day filter: when `slot` is provided, recipes whose
  * `mealType` excludes the slot are excluded. Untagged recipes are
- * eligible for any slot (matches existing planner behaviour).
+ * eligible for any slot (matches existing planner behaviour). The slot
+ * also picks the `slotShare` used to size the per-meal budget.
  */
 export function pickNorthStarSuggestion(
   library: readonly NorthStarRecipe[],
@@ -119,10 +167,17 @@ export function pickNorthStarSuggestion(
   const eligible = filtered.filter((r) => !exclude.has(r.id));
   if (eligible.length === 0) return null;
 
+  // Per-meal calorie budget — the single most important fix in the
+  // ENG-995 rebuild. We size the meal to a share of the day, capped at
+  // whatever is actually left, so the morning suggestion is a normal
+  // meal (not the whole day) and the late-night one can't exceed
+  // remaining.
+  const perMealTarget = computePerMealTarget(remaining, options?.slot);
+
   let best: NorthStarSuggestion | null = null;
 
   for (const recipe of eligible) {
-    const candidate = bestPortionForRecipe(recipe, remaining);
+    const candidate = bestPortionForRecipe(recipe, remaining, perMealTarget);
     if (!candidate) continue;
     if (!best || candidate.score < best.score) {
       best = candidate;
@@ -221,7 +276,57 @@ export function bandLabel(band: NorthStarSuggestion["band"]): string {
 
 /* -------------------------- Internals -------------------------- */
 
-const PORTION_OPTIONS = [0.5, 1.0, 1.5, 2.0] as const;
+/**
+ * Share of the daily calorie target a single meal in each slot should
+ * aim for. ENG-995: these size the per-meal budget so a morning
+ * suggestion targets a normal meal (~25–35% of the day), not the whole
+ * remaining day. They sum to 1.05 deliberately — meals overlap day to
+ * day and the cap at `remaining.calories` keeps the total honest; the
+ * point is the relative split, not an exact partition.
+ *
+ * TUNABLE: exported so a future flag / experiment can rebind the split
+ * without a code change. Defaults chosen to match a typical 3-meals +
+ * snack day. When no slot is detected (late night / pre-dawn — the
+ * "Log it" generic CTA case) we fall back to a share of 1.0, i.e. the
+ * whole remaining day is the meal budget, because we genuinely don't
+ * know which meal this is and capping at `remaining` never oversizes.
+ */
+export const NORTH_STAR_SLOT_SHARE: Record<NorthStarSlot["slot"], number> = {
+  breakfast: 0.25,
+  lunch: 0.35,
+  dinner: 0.35,
+  snack: 0.1,
+};
+
+/** Share used when no slot is detected — the whole remaining day. */
+export const NORTH_STAR_NO_SLOT_SHARE = 1.0 as const;
+
+/**
+ * Per-meal calorie budget the scorer aims a single serving at.
+ *
+ *   perMealTarget = min(slotShare · dailyCalorieTarget, remaining.calories)
+ *
+ * - `slotShare` comes from `NORTH_STAR_SLOT_SHARE` (or
+ *   `NORTH_STAR_NO_SLOT_SHARE` when `slot` is absent).
+ * - Capping at `remaining.calories` means late in the day, when little
+ *   is left, the meal budget shrinks to whatever is actually available
+ *   — it can never exceed the remaining day.
+ * - Defensive: if `dailyCalorieTarget` is missing / non-finite /
+ *   non-positive we fall back to `remaining.calories` as the budget,
+ *   which reproduces a sane single-meal target (the caller is expected
+ *   to always supply it; this just degrades gracefully).
+ */
+function computePerMealTarget(
+  remaining: NorthStarRemaining,
+  slot?: NorthStarSlot["slot"],
+): number {
+  const dayTarget = remaining.dailyCalorieTarget;
+  if (!Number.isFinite(dayTarget) || dayTarget <= 0) {
+    return remaining.calories;
+  }
+  const share = slot ? NORTH_STAR_SLOT_SHARE[slot] : NORTH_STAR_NO_SLOT_SHARE;
+  return Math.min(share * dayTarget, remaining.calories);
+}
 
 function isFiniteRemaining(r: NorthStarRemaining): boolean {
   return (
@@ -256,67 +361,74 @@ function normaliseMealType(raw: NorthStarRecipe["mealType"]): string[] {
   return [];
 }
 
+/**
+ * Score ONE recipe at its actual single serving (ENG-995: no portion
+ * scaling) against the per-meal calorie budget.
+ *
+ * `perMealTarget` is `computePerMealTarget(remaining, slot)` — a share
+ * of the day capped at what's left — so the calorie penalty pulls
+ * toward a normal meal size, never the whole remaining day. Protein /
+ * carb / fat pulls still use the DAY's remaining macros (one meal
+ * legitimately closes part of the day's macro gap).
+ */
 function bestPortionForRecipe(
   recipe: NorthStarRecipe,
   remaining: NorthStarRemaining,
+  perMealTarget: number,
 ): NorthStarSuggestion | null {
   if (!Number.isFinite(recipe.calories) || recipe.calories <= 0) return null;
 
-  let best: NorthStarSuggestion | null = null;
+  // One actual serving — the real per-serving numbers, identical to
+  // the recipe detail screen.
+  const c = recipe.calories;
+  const p = recipe.protein;
+  const ca = recipe.carbs;
+  const f = recipe.fat;
 
-  for (const mult of PORTION_OPTIONS) {
-    const c = recipe.calories * mult;
-    const p = recipe.protein * mult;
-    const ca = recipe.carbs * mult;
-    const f = recipe.fat * mult;
+  // Distance from the per-MEAL budget (not the whole remaining day).
+  const calDelta = c - perMealTarget;
 
-    const calDelta = c - remaining.calories;
-
-    // Calorie penalty — asymmetric (over-shooting penalised more,
-    // matches whole-day scorer behaviour).
-    let penalty = 0;
-    if (calDelta > 0) {
-      penalty += calDelta * 3;
-    } else {
-      penalty += Math.abs(calDelta) * 1.5;
-    }
-
-    // Protein direction bonus — pulling toward remaining protein is
-    // good. We don't penalise overshoot (protein can't be "over").
-    const protShortfall = remaining.protein - p;
-    if (protShortfall > 0) {
-      penalty += protShortfall * 0.5;
-    }
-
-    // Carb / fat — penalise distance from remaining (mild).
-    penalty += Math.abs(remaining.carbs - ca) * 0.1;
-    penalty += Math.abs(remaining.fat - f) * 0.1;
-
-    const band = bandFor(calDelta, remaining.calories);
-
-    const candidate: NorthStarSuggestion = {
-      recipe,
-      portionMultiplier: mult,
-      predictedCalories: Math.round(c),
-      predictedProtein: Math.round(p * 10) / 10,
-      predictedCarbs: Math.round(ca * 10) / 10,
-      predictedFat: Math.round(f * 10) / 10,
-      calorieDelta: Math.round(calDelta),
-      band,
-      score: penalty,
-    };
-
-    if (!best || candidate.score < best.score) {
-      best = candidate;
-    }
+  // Calorie penalty — asymmetric (over-shooting the meal budget
+  // penalised more, matches whole-day scorer behaviour).
+  let penalty = 0;
+  if (calDelta > 0) {
+    penalty += calDelta * 3;
+  } else {
+    penalty += Math.abs(calDelta) * 1.5;
   }
 
-  return best;
+  // Protein direction bonus — pulling toward the day's remaining
+  // protein is good. We don't penalise overshoot (protein can't be
+  // "over"). Unchanged from the whole-day intuition: a single meal
+  // genuinely contributes to the day's protein gap.
+  const protShortfall = remaining.protein - p;
+  if (protShortfall > 0) {
+    penalty += protShortfall * 0.5;
+  }
+
+  // Carb / fat — penalise distance from the day's remaining (mild).
+  penalty += Math.abs(remaining.carbs - ca) * 0.1;
+  penalty += Math.abs(remaining.fat - f) * 0.1;
+
+  const band = bandFor(calDelta, perMealTarget);
+
+  return {
+    recipe,
+    // ENG-995: always one serving.
+    portionMultiplier: 1,
+    predictedCalories: Math.round(c),
+    predictedProtein: Math.round(p * 10) / 10,
+    predictedCarbs: Math.round(ca * 10) / 10,
+    predictedFat: Math.round(f * 10) / 10,
+    calorieDelta: Math.round(calDelta),
+    band,
+    score: penalty,
+  };
 }
 
-function bandFor(calDelta: number, calorieRemaining: number): NorthStarSuggestion["band"] {
-  if (calorieRemaining <= 0) return "loose";
-  const pct = Math.abs(calDelta) / calorieRemaining;
+function bandFor(calDelta: number, perMealTarget: number): NorthStarSuggestion["band"] {
+  if (perMealTarget <= 0) return "loose";
+  const pct = Math.abs(calDelta) / perMealTarget;
   if (pct <= 0.05) return "tight";
   if (pct <= 0.15) return "close";
   return "loose";
@@ -335,13 +447,20 @@ function bandFor(calDelta: number, calorieRemaining: number): NorthStarSuggestio
  * Strategy: pick the strongest one of three reasons, in order of
  * trust signal:
  *   1. "Hits both your protein + calorie target" — when the
- *      suggestion lands ≤15% off remaining calories AND fills ≥80%
- *      of the remaining protein gap (with a positive gap).
+ *      suggestion's calorie band is tight/close (within 15% of the
+ *      per-meal budget) AND it fills ≥80% of the remaining protein
+ *      gap (with a positive gap).
  *   2. "Fits your remaining N g protein" — when the protein gap is
  *      meaningful (>= 10g) and the suggestion delivers ≥80% of it.
  *   3. "Fits your remaining N kcal" — fallback. Always available
  *      because the scorer only returns suggestions with positive
  *      remaining calories.
+ *
+ * ENG-995: "calorie fits" now reads off the per-meal `band`
+ * (`tight`/`close`), so the why-line and the band chip on the card
+ * always agree — both describe the same per-meal fit, not a whole-day
+ * fit. The kcal/protein figures still quote the DAY's remaining,
+ * because that's the number the user is tracking against.
  *
  * If the algorithm has multiple why-lines per ranking factor, this
  * helper picks the strongest 1 — never lists all (per the spec).
@@ -361,8 +480,6 @@ export function whyLineForSuggestion(
 
   const calRemaining = Math.round(remaining.calories);
   const protRemaining = Math.round(remaining.protein);
-  const calDeltaPct =
-    Math.abs(suggestion.calorieDelta) / Math.max(1, remaining.calories);
 
   // Protein direction — only meaningful when the user is still under
   // their protein target. The scorer rewards protein toward-target;
@@ -378,7 +495,9 @@ export function whyLineForSuggestion(
     filledProteinFraction >= 0.8 &&
     proteinGap >= -remaining.protein * 0.2; // not wildly over
 
-  const calorieFits = calDeltaPct <= 0.15;
+  // Per-meal calorie fit — the band IS the per-meal fit signal, so the
+  // chip and this line never disagree. "loose" = doesn't fit the meal.
+  const calorieFits = suggestion.band !== "loose";
 
   if (proteinFits && calorieFits) {
     return "Hits both your protein + calorie target";

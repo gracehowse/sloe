@@ -27,6 +27,17 @@ interface NarrativeBlock {
 }
 
 export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
+  // ENG-990 (2026-06-08) — "Coming from another app?" capture. No step
+  // number in the eyebrow: this step is flag-gated (`onboarding-app-choice`)
+  // and auto-skipped when OFF, so a hardcoded "Step 02" would be wrong
+  // on the live (flag-OFF) flow. The numbered eyebrows on the steps
+  // below are decorative desktop-only copy; the real position is the
+  // progress bar. Framing-only label keeps both flag states honest.
+  "app-choice": {
+    eyebrow: "Switching apps",
+    head: "Bring your\nhistory with you.",
+    body: "Moving from another tracker? We'll import your meal history so your trends, streak, and patterns carry over — your numbers stay exactly as you logged them.",
+  },
   signup: {
     eyebrow: "Step 02 · Account",
     head: "One account.\nEvery device.",

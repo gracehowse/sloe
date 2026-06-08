@@ -95,6 +95,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -112,6 +113,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={10}
         remainingCarbs={20}
         remainingFat={5}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -129,6 +131,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={50}
         remainingCarbs={120}
         remainingFat={35}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -146,6 +149,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -168,6 +172,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={onPrimaryCta}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -201,6 +206,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-30"
@@ -230,6 +236,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-30"
@@ -255,6 +262,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"

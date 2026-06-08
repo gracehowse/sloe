@@ -34,6 +34,11 @@ import {
   IMPORT_ERROR_COPY,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
+import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
+import { importJobIdForUrl } from "@suppr/shared/recipes/importProgressMachine";
+import { ImportProgressDrawer } from "@/components/import/ImportProgressDrawer";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
@@ -159,6 +164,13 @@ export default function ImportSharedScreen() {
   const params = useLocalSearchParams();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
+  // Flag-gated per CLAUDE.md; the legacy single-`importing`-state +
+  // ImportLoadingSkeleton path stays live in the `else`. Resolved once at
+  // mount (PostHog reads are imperative; the screen doesn't re-mount mid-import).
+  const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  const importQueue = useImportQueue("mobile", track);
 
   const [state, setState] = useState<ImportState>("idle");
   const [title, setTitle] = useState<string | null>(null);
@@ -309,6 +321,80 @@ export default function ImportSharedScreen() {
     retryAfterAt != null ? Math.max(0, Math.ceil((retryAfterAt - retryNow) / 1000)) : 0;
   const retryDisabled = retrySecondsLeft > 0;
 
+  /**
+   * Apply a successful `/api/recipe-import` response into the review state
+   * (meal-type classification, normalised recipe, title). Extracted so the
+   * legacy inline path AND the queued `import-progress-v2` path land a
+   * finished import identically — no drift between "imported inline" and
+   * "imported via the queue then reviewed".
+   */
+  const applyImportedRecipeResult = useCallback(
+    (recipe: ApiImportedRecipe, imageUsedFlag?: boolean) => {
+      setImageUsed(imageUsedFlag);
+      const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(String) : [];
+      const fromApi = recipe.mealType;
+      const allowed = /^(breakfast|lunch|dinner|snack)$/;
+      const fromApiNorm =
+        Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
+          ? fromApi.map((x) => String(x).toLowerCase().trim()).filter((x) => allowed.test(x))
+          : [];
+      const autoTags =
+        fromApiNorm.length > 0
+          ? fromApiNorm
+          : classifyMealType({
+              title: recipe.title ?? "",
+              ingredients,
+              caloriesPerServing: recipe.calories ?? null,
+            });
+      setMealTags(autoTags);
+      const normalized = normalizeApiImportedRecipe(recipe as Record<string, unknown>);
+      setPendingRecipe(normalized);
+      setTitle(decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"));
+      setState("review");
+    },
+    [],
+  );
+
+  /**
+   * Fetch + parse one URL import. Shared by the inline + queued paths.
+   * Accepts an optional AbortSignal so the queue can cancel an in-flight
+   * import. Throws `ImportRunnerError` (stable code) on failure so the queue
+   * maps it to retry-eligible copy; resolves with the parsed recipe so the
+   * caller decides how to surface it (inline → review; queued → drawer +
+   * last-wins review).
+   */
+  const fetchImportedRecipe = useCallback(
+    async (url: string, signal?: AbortSignal): Promise<{ recipe: ApiImportedRecipe; imageUsed?: boolean }> => {
+      const res = await authedFetch(`${base}/api/recipe-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+        signal,
+      });
+      // F-121: read Retry-After before the body so a 429 can drive a countdown.
+      const retryAfterHeader = res.headers.get("Retry-After");
+      const data = (await res.json()) as {
+        ok?: boolean;
+        recipe?: ApiImportedRecipe;
+        message?: string;
+        imageUsed?: boolean;
+        error?: string;
+      };
+      if (!data.ok || !data.recipe) {
+        if (res.status === 429 || data.error === "ai_rate_limited") {
+          const sec = retryAfterHeader
+            ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
+            : 30;
+          setRetryAfterAt(Date.now() + sec * 1000);
+        }
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return { recipe: data.recipe, imageUsed: data.imageUsed };
+    },
+    [base],
+  );
+
   const runImport = useCallback(
     async (url: string) => {
       const trimmed = url.trim();
@@ -331,82 +417,64 @@ export default function ImportSharedScreen() {
         return;
       }
 
+      // import-progress-v2 — enqueue into the shared scheduler so the import
+      // runs with live per-stage progress + queue position in the persistent
+      // drawer, and multiple shares can import concurrently. The screen stays
+      // on `idle` (the drawer carries progress); the legacy inline
+      // `importing` path below stays alive when the flag is OFF.
+      if (importProgressV2) {
+        setError(null);
+        setSavedRecipeId(null);
+        // Deterministic id so a duplicate concurrent share/clipboard/deep-link
+        // of the SAME url is a scheduler no-op (mirrors the legacy
+        // `importInFlightRef` dedupe).
+        const id = importJobIdForUrl("url", trimmed);
+        let seedTitle = "Recipe";
+        try {
+          seedTitle = new URL(trimmed).hostname.replace(/^www\./, "");
+        } catch {
+          /* keep default */
+        }
+        importQueue.enqueue({
+          id,
+          kind: "url",
+          title: seedTitle,
+          run: async (controls) => {
+            controls.setStage("extracting");
+            const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed, controls.signal);
+            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+            controls.setStage("organizing");
+            controls.setTitle(recipe.title ?? seedTitle);
+            // Last-wins: the most recent finished import populates the review
+            // form; all imports remain listed in the drawer.
+            applyImportedRecipeResult(recipe, used);
+            return { title: recipe.title ?? seedTitle };
+          },
+        });
+        return;
+      }
+
       setState("importing");
       setError(null);
       setSavedRecipeId(null);
       setCompletedSteps([]);
 
       try {
-        const res = await authedFetch(`${base}/api/recipe-import`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: trimmed }),
-        });
-
-        // F-121: pull `Retry-After` BEFORE consuming the body so we can
-        // surface a countdown to the user when OpenAI is rate-limited.
-        const retryAfterHeader = res.headers.get("Retry-After");
-
-        const data = (await res.json()) as {
-          ok?: boolean;
-          recipe?: ApiImportedRecipe;
-          message?: string;
-          imageUsed?: boolean;
-          error?: string;
-        };
-
-        if (!data.ok || !data.recipe) {
-          setState("error");
-          setError(userFacingImportError(data));
-          if (res.status === 429 || data.error === "ai_rate_limited") {
-            const sec = retryAfterHeader
-              ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
-              : 30;
-            setRetryAfterAt(Date.now() + sec * 1000);
-          }
-          return;
-        }
-        // Audit I05 (2026-05-05) — record the imageUsed signal so the
-        // preview can flag silent text-only fallback to the user.
-        setImageUsed(data.imageUsed);
-
-        console.log("[import] API response - calories:", data.recipe.calories,
-          "ingredientMacros:", data.recipe.ingredientMacros?.length,
-          "first:", JSON.stringify(data.recipe.ingredientMacros?.[0])?.substring(0, 100));
-
-        // Auto-classify meal type as default, let user edit
-        const ingredients = Array.isArray(data.recipe.ingredients)
-          ? data.recipe.ingredients.map(String)
-          : [];
-        const fromApi = data.recipe.mealType;
-        const allowed = /^(breakfast|lunch|dinner|snack)$/;
-        const fromApiNorm =
-          Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
-            ? fromApi
-                .map((x) => String(x).toLowerCase().trim())
-                .filter((x) => allowed.test(x))
-            : [];
-        const autoTags =
-          fromApiNorm.length > 0
-            ? fromApiNorm
-            : classifyMealType({
-                title: data.recipe.title ?? "",
-                ingredients,
-                caloriesPerServing: data.recipe.calories ?? null,
-              });
-        setMealTags(autoTags);
-        const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
-        setPendingRecipe(normalized);
-        setTitle(
-          decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"),
-        );
-        setState("review");
-      } catch {
+        const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed);
+        console.log("[import] API response - calories:", recipe.calories,
+          "ingredientMacros:", recipe.ingredientMacros?.length,
+          "first:", JSON.stringify(recipe.ingredientMacros?.[0])?.substring(0, 100));
+        applyImportedRecipeResult(recipe, used);
+      } catch (e) {
         setState("error");
-        setError(IMPORT_ERROR_COPY.network_error);
+        if (e instanceof ImportRunnerError) {
+          setError(IMPORT_ERROR_COPY[e.code]);
+        } else {
+          setError(IMPORT_ERROR_COPY.network_error);
+        }
       }
     },
-    [base, userId],
+    [base, userId, importProgressV2, importQueue, fetchImportedRecipe, applyImportedRecipeResult],
   );
 
   /**
@@ -1393,7 +1461,10 @@ export default function ImportSharedScreen() {
           </View>
         )}
 
-        {state === "importing" && (
+        {/* import-progress-v2 OFF → inline skeleton. ON → the persistent
+            ImportProgressDrawer (mounted below the ScrollView) carries
+            live per-stage progress + queue position instead. */}
+        {state === "importing" && !importProgressV2 && (
           <View style={styles.panelCard}>
             <Text style={[styles.panelTitle, { fontSize: 15, marginBottom: Spacing.xs }]}>
               Extracting recipe…
@@ -2064,6 +2135,15 @@ export default function ImportSharedScreen() {
         onReset={() => setOverrideIngredientIdx(null)}
         colors={colors}
       />
+
+      {/* import-progress-v2 — persistent, non-blocking queue drawer anchored
+          above the footer. Renders nothing until there's import activity. */}
+      {importProgressV2 ? (
+        <ImportProgressDrawer
+          queue={importQueue}
+          onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

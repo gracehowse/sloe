@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Accent, MacroColors, Type } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -107,15 +107,21 @@ export function ProgressAverageAdherence({
         </View>
       </View>
 
+      {/* ENG-996 — vertical rhythm snapped to the Spacing scale so the
+          headline / big % / macro-bar list read with the same calm
+          cadence as the sibling weight + THIS WEEK cards. Was a 4/16/12/6
+          cascade of off-token gaps; now sm(8) under the overline, lg(20)
+          hero-break before the bars, md(16) between rows, sm(8) label→bar.
+          Mirror: web `progress-average-adherence.tsx`. */}
       <Text
         testID="progress-adherence-pct"
-        style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: text, marginTop: 4, fontVariant: ["tabular-nums"] }}
+        style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: text, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
       >
         {adherencePct}
         <Text style={{ fontSize: 22, color: sub }}>%</Text>
       </Text>
 
-      <View style={{ marginTop: 16, gap: 12 }}>
+      <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
         {macros.map(({ name, pct, color }) => {
           const bar = formatMacroAdherenceBar({ adherencePct: pct });
           const tone = bar.isOver ? Accent.warning : color;
@@ -131,7 +137,7 @@ export function ProgressAverageAdherence({
                   {bar.isOver ? <Text style={{ color: sub, fontWeight: "400" }}> · over</Text> : null}
                 </Text>
               </View>
-              <View style={{ marginTop: 6, height: 8, borderRadius: 999, backgroundColor: colors.inputBg, overflow: "hidden" }}>
+              <View style={{ marginTop: Spacing.sm, height: 8, borderRadius: 999, backgroundColor: colors.inputBg, overflow: "hidden" }}>
                 <View
                   testID={`progress-adherence-bar-${name.toLowerCase()}`}
                   style={{ height: "100%", width: `${bar.barFillPct}%`, borderRadius: 999, backgroundColor: tone }}

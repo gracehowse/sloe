@@ -28,7 +28,7 @@
  *     `confidence ≥ 0.85`) is recorded as an OPTIONAL alias signal so a
  *     differently-spelled future ingredient that matched the SAME food can
  *     reuse the tile. v1 ships the text-only path (no alias storage yet —
- *     ENG-905); `matchedAliasKey()` is exported for that fast-follow. We
+ *     ENG-987); `matchedAliasKey()` is exported for that fast-follow. We
  *     NEVER key off a weak match (CLAUDE.md: reject low-confidence collapses).
  *
  * Granularity (image key only — raw/cooked do NOT split; a grain of rice
@@ -294,7 +294,7 @@ export function deriveTextKey(name: string | null | undefined): string {
 /**
  * Build the matched-food alias key — `source:food_id` — ONLY when the match
  * is trustworthy (`confidence ≥ MATCHED_ALIAS_MIN_CONFIDENCE` and both parts
- * present). Returns `null` otherwise. v1 has no alias storage (ENG-905); this
+ * present). Returns `null` otherwise. v1 has no alias storage (ENG-987); this
  * is exported for the fast-follow + so callers wire the inputs through now.
  */
 export function matchedAliasKey(input: CanonicalImageKeyInput): string | null {

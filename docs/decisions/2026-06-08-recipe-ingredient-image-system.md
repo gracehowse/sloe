@@ -5,7 +5,10 @@
 - **Status:** Resolved — implemented + backfilled (fal.ai funded 2026-06-08); hero cooked-state fix
   applied + heroes regenerated 2026-06-08; **canonical-key re-key + Nano Banana Pro ingredient re-shoot
   + lazy generate-on-miss shipped 2026-06-08** (see "Canonical key + Nano + lazy generation (2026-06-08)"
-  below — the Template-B engine change awaits `brand-manager` ratification, tracked ENG-905). Builds on
+  below — the Template-B engine change awaits `brand-manager` ratification, tracked ENG-987). **Dish heroes
+  (Template A) migrated FLUX 2 Pro → Nano Banana Pro 2026-06-08 (code + tests + docs done; the 6-hero
+  regeneration is BLOCKED on fal balance — exhausted mid-session — see "Dish heroes (Template A) → Nano
+  Banana Pro" below; LOCKED-artefact change also awaits `brand-manager` ratification, ENG-987).** Builds on
   the ratified [image-generation strategy](2026-06-03-image-generation-strategy.md) and the LOCKED
   [Sloe image prompt template](../brand/sloe-image-prompt-template.md).
 
@@ -155,7 +158,7 @@ corpus + idempotency, so the key can never silently drift again.
   coriander→cilantro). Real corpus: **51 raw names → 43 canonical keys** (down from 51 polluted keys).
 - **Matched-food alias** (`matchedAliasKey`, `confidence ≥ 0.85`) is computed + wired through the input
   type but NOT folded into the key (a weak match can never corrupt grouping). v1 has no alias storage —
-  fast-follow ENG-905.
+  fast-follow ENG-987.
 
 ### 2. Ingredient engine → Nano Banana Pro (Template B)
 
@@ -166,7 +169,7 @@ is reduced to the ONE representative subject (`A single {x}.`; loose foods → `
 liquids → `A small unlabelled portion of {x} …`) — **never the literal recipe quantity**. This fixes the
 FLUX ingredient drift (pile-vs-bowl, "4 eggs" for one ingredient, egg-white-rendered-as-a-milk-bottle).
 **Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** The LOCKED template (§2) is updated with a
-PENDING-`brand-manager`-sign-off banner (ENG-905).
+PENDING-`brand-manager`-sign-off banner (ENG-987).
 
 ### 3. Lazy generate-on-miss + cache (the library grows itself)
 
@@ -189,6 +192,70 @@ Forensic per-image verification of a ~15-image sample (incl. egg, egg white, oat
 cherry tomato, salt, a leafy green, a branded sauce) + a stitched set-consistency strip: see the
 implementing session report.
 
+## Dish heroes (Template A) → Nano Banana Pro (2026-06-08, later same day)
+
+The last imagery class still on FLUX 2 Pro — the recipe dish heroes (Template A) — **migrated to Nano
+Banana Pro** (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image), unifying the WHOLE app on one model
+(ingredients moved earlier this day; marketing/social already on Nano per
+[`2026-06-07-universal-food-imagery.md`](2026-06-07-universal-food-imagery.md)).
+
+**Why.** Nano is markedly more photoreal than FLUX for dish heroes — verified on the meatballs A/B (a real
+cookbook-grade photograph vs FLUX's flatter render). One engine also simplifies cost, ops, and the prompt
+templates.
+
+**What changed in code** (`src/lib/server/falImageGenerator.ts` `generateDishImage`):
+- Model `fal-ai/flux-2-pro` → `fal-ai/nano-banana-pro`; params `aspect_ratio: "4:3"` (landscape hero),
+  `resolution: "2K"`, `output_format: "jpeg"`. **NO fixed seed** (each dish is unique — variety is fine,
+  unlike the ingredient set which pins seed 424242). The per-recipe cache (keyed by `recipe_id`) is
+  unchanged.
+- The editorial house style + cooked-state guards moved from a FLUX positive-prompt fold-in into a FIXED
+  `DISH_SYSTEM_PROMPT` (the consistency lever, mirroring the ingredient path — a true Gemini-3 system
+  instruction, which Nano honours and which is stronger than a positive avoid-clause). The per-dish
+  `prompt` is now just `Hyperreal editorial food photography of {TITLE}. {LLM_DESCRIPTION}`.
+- **KEPT:** the `describeDishAppearance` LLM step (the raw-eggs fix — it writes a cooked-dish description,
+  never a raw ingredient list) and the cooked-state guards (now inside `DISH_SYSTEM_PROMPT`). The
+  `runFlux` runner + the FLUX-only `STYLE_ANCHOR`/`AVOID_CLAUSE`/`COOKED_STATE_GUARDS`/`inferPlatingNoun`
+  constants were deleted (dead after the migration); `runNano` is now ONE runner for both classes (dish =
+  4:3/no-seed/dish-system-prompt; ingredient = 1:1/seed/ingredient-system-prompt).
+- **Reliability + never-hang (added this session):** `runNano` now uses active polling
+  (`mode: "polling"`, `pollInterval: 1000`, `logs: true`, `onQueueUpdate`) — without an active
+  queue-update subscription the 2K Nano `subscribe` polls very slowly and can appear to hang. It is also
+  wrapped in a function-level `withTimeout` (`NANO_TIMEOUT_MS = 180s`, fal's own client `timeout` is
+  documented as not enforced), so a stuck call returns a typed `fal_network_error` and the caller falls
+  back to the placeholder rather than blocking a backfill / server request forever.
+
+**Tests:** `tests/unit/falImageGenerator.test.ts` updated — `buildDishPrompt` now asserts the short
+title + description shape and that the house style is NOT in the per-dish line; a new block pins
+`DISH_SYSTEM_PROMPT` (exported) so the cooked-state guards + editorial register + no-people/no-text guards
+break the test if removed (they are the load-bearing raw-eggs protection now). Graceful-degradation tests
+unchanged (still pass). 18/18 green.
+
+**Docs:** `docs/brand/sloe-image-prompt-template.md` §1 (Template A) + §6 (Model row) + top banner updated
+to the Nano + FIXED-`system_prompt` recipe, with the PENDING-`brand-manager` banner kept. The
+LOCKED-artefact Template-A model change is ratification-pending alongside the cooked-state + Template-B
+changes (ENG-987).
+
+### ⚠️ Regeneration BLOCKED — fal balance exhausted mid-session (2026-06-08)
+
+The 6-hero regeneration (`backfill-images.ts --apply --heroes-only --regenerate-heroes`) is **staged but
+not yet run to completion**: the funded fal balance was **exhausted during this session** (the validation
+probes + retried generations drained it). Every Nano call now 403s with
+`"User is locked. Reason: Exhausted balance. Top up your balance at fal.ai/dashboard/billing."`
+
+- **Code path is PROVEN.** Before the balance ran out, a single end-to-end Nano dish generation produced a
+  correct hyper-realistic 4:3/2K hero (Chicken Meatballs with Orzo — read forensically: photoreal, cooked,
+  no raw ingredients, no hands, on-brand editorial). The new params + `system_prompt` passthrough are
+  validated against the live endpoint.
+- **No data was harmed.** `generateDishImage` only generates + uploads to Storage; the **DB write happens
+  only on a successful backfill**, and every backfill Nano call 403'd, so `recipes.image_url` is
+  **unchanged** — all 6 heroes still point at the original FLUX `.png` files and the 2 imported Instagram
+  covers are untouched. This is the graceful-degradation contract working as designed.
+- **To finish:** top up fal at fal.ai/dashboard/billing, then run
+  `node --env-file=.env.local --import tsx scripts/backfill-images.ts --apply --heroes-only --regenerate-heroes`.
+  It overwrites the 6 FLUX `.png` heroes with new Nano `.jpg` heroes and leaves the 2 imported covers
+  alone. Then forensically Read each of the 6 regenerated heroes (the per-hero check: hyper-real, no
+  raw/uncooked, no raw eggs, no hands, on-brand) before trusting the display.
+
 ## Display wiring (web + mobile parity)
 
 - **Web** `src/app/components/RecipeDetail.tsx`: load effect hydrates the image map; each ingredient
@@ -202,13 +269,22 @@ implementing session report.
 
 ## Follow-ups (tracked, not silent)
 
-- **`brand-manager` ratification of the Template-A cooked-state change AND the Template-B Nano switch**
-  (ENG-905). Two LOCKED-artefact changes shipped code-first (proven via fal): (a) the §1 hero
-  cooked-state fix (LLM dish description + cooked-state guards, replacing the raw `featuring {ingredients}`
-  clause) and (b) the §2 ingredient ENGINE move FLUX → Nano Banana Pro + the FIXED `system_prompt`/seed.
-  Both prompt-doc sections carry a PENDING-SIGN-OFF banner. `brand-manager` to formally ratify both and
-  record in `docs/decisions/`.
-- **Matched-food-name persistence + alias storage** (ENG-905, fast-follow). Two related gaps: (1) the
+- **🔴 Run the 6-hero regeneration once fal balance is topped up** (BLOCKED 2026-06-08 — fal exhausted
+  mid-session, every call 403s `"User is locked. Reason: Exhausted balance"`). Code/tests/docs for the
+  Template-A → Nano migration are DONE and the path is proven (one end-to-end hero generated correctly
+  before the balance ran out). To finish: top up at fal.ai/dashboard/billing, then
+  `node --env-file=.env.local --import tsx scripts/backfill-images.ts --apply --heroes-only --regenerate-heroes`,
+  and forensically Read each of the 6 regenerated heroes before trusting the display. The DB is currently
+  untouched (all 6 heroes still the original FLUX `.png`; 2 imported covers intact). See "Dish heroes
+  (Template A) → Nano Banana Pro" above.
+- **`brand-manager` ratification of the Template-A cooked-state change, the Template-A ENGINE migration
+  (FLUX → Nano), AND the Template-B Nano switch** (ENG-987). Three LOCKED-artefact changes shipped
+  code-first (proven via fal): (a) the §1 hero cooked-state fix (LLM dish description + cooked-state guards,
+  replacing the raw `featuring {ingredients}` clause); (b) the §1 dish-hero ENGINE move FLUX → Nano Banana
+  Pro (4:3/2K/jpeg, no seed, house style + guards on the FIXED `DISH_SYSTEM_PROMPT`); and (c) the §2
+  ingredient ENGINE move FLUX → Nano + the FIXED `system_prompt`/seed. All affected prompt-doc sections
+  carry a PENDING-SIGN-OFF banner. `brand-manager` to formally ratify and record in `docs/decisions/`.
+- **Matched-food-name persistence + alias storage** (ENG-987, fast-follow). Two related gaps: (1) the
   tile label should *prefer the matched food name* (e.g. the FatSecret match's name) but
   `recipe_ingredients` has no `matched_food_name` column — v1 uses `cleanIngredientDisplayName(name)` (the
   spec's documented fallback), correct but not the matched name; (2) `canonicalImageKey` computes a

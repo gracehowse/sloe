@@ -72,8 +72,14 @@ type DocumentAsset = {
 
 export function MobileMfpCsvImportCard({
   surface = "onboarding",
+  highlightApp = null,
 }: {
   surface?: "onboarding" | "settings";
+  /** ENG-990 — when the user picked an importable app on the app-choice
+   *  step, the data-bridges step passes its display name (e.g.
+   *  "MyFitnessPal") so this card leads with their app and reads as the
+   *  pre-selected next step. `null` keeps the generic multi-app copy. */
+  highlightApp?: string | null;
 }) {
   const colors = useThemeColors();
   const [phase, setPhase] = React.useState<Phase>({ kind: "idle" });
@@ -195,6 +201,17 @@ export function MobileMfpCsvImportCard({
     }
   }, [uploadFile]);
 
+  // ENG-990 — lead with the user's app when they told us they're
+  // switching from one we can import. `highlightApp` is `null` on the
+  // generic Settings surface and when no importable app was chosen.
+  const highlighted = highlightApp != null;
+  const title = highlighted
+    ? `Bring your ${highlightApp} history`
+    : "Import from another app";
+  const body = highlighted
+    ? `Upload your ${highlightApp} CSV export and we'll bring your meal history into Sloe — your numbers stay exactly as you logged them.`
+    : "MyFitnessPal, Lose It, or Cronometer — upload the CSV export and we'll bring your meal history into Sloe without changing the macros you already logged.";
+
   return (
     <View
       style={{
@@ -203,7 +220,11 @@ export function MobileMfpCsvImportCard({
         padding: 16,
         borderWidth: 1,
         borderColor:
-          phase.kind === "success" ? Accent.success + "66" : colors.border,
+          phase.kind === "success"
+            ? Accent.success + "66"
+            : highlighted && phase.kind === "idle"
+              ? Accent.primary + "66"
+              : colors.border,
       }}
     >
       <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
@@ -235,7 +256,7 @@ export function MobileMfpCsvImportCard({
                 letterSpacing: -0.2,
               }}
             >
-              Import from another app
+              {title}
             </Text>
             {phase.kind === "success" ? (
               <View
@@ -274,9 +295,7 @@ export function MobileMfpCsvImportCard({
               lineHeight: 18,
             }}
           >
-            MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
-            we&rsquo;ll bring your meal history into Sloe without changing the
-            macros you already logged.
+            {body}
           </Text>
 
           {phase.kind === "idle" && (

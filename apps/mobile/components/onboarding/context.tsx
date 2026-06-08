@@ -6,6 +6,7 @@ import {
   TOTAL_STEPS,
   canAdvance as canAdvanceStep,
   computeV2Targets,
+  displayPosition,
   paceWarning,
   resolveNextStep,
   type OnboardingState,
@@ -13,6 +14,13 @@ import {
   type StepId,
   type V2Targets,
 } from "@/lib/onboarding";
+import { isFeatureEnabled } from "@/lib/analytics";
+
+/** ENG-990 — feature flag gating the "Coming from another app?"
+ *  (`app-choice`) step. Same flag name on web (see
+ *  `src/app/components/onboarding/context.tsx#APP_CHOICE_FLAG`). When OFF
+ *  the step is auto-skipped in `go()` and dropped from `displayTotal`. */
+export const APP_CHOICE_FLAG = "onboarding-app-choice";
 
 /**
  * Mobile OnboardingProvider — same shape as the web provider at
@@ -138,6 +146,15 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     })();
   }, [state, hasInitial]);
 
+  // ENG-990 — resolve the app-choice flag once per render. Cold-safe:
+  // `isFeatureEnabled` returns false when PostHog isn't ready, which is
+  // exactly the safe default (skip the new step) so the live flow is
+  // untouched until the flag ramps. Held in a ref so `go()` (a stable
+  // callback) always reads the latest value.
+  const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
+  const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
+  appChoiceEnabledRef.current = appChoiceEnabled;
+
   const set = React.useCallback<OnboardingContext["set"]>((patch) => {
     setState((prev) => ({
       ...prev,
@@ -148,7 +165,9 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   const go = React.useCallback<OnboardingContext["go"]>((delta) => {
     setState((prev) => ({
       ...prev,
-      step: resolveNextStep(prev.step, delta, prev),
+      step: resolveNextStep(prev.step, delta, prev, {
+        appChoiceEnabled: appChoiceEnabledRef.current,
+      }),
     }));
   }, []);
 
@@ -174,6 +193,13 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     [currentStepId, state, warning],
   );
 
+  // 1-indexed display, counting only the steps visible for this flow —
+  // mirror of the web context. ENG-990: the shared `displayPosition`
+  // helper drops the flag-hidden `app-choice` step from both the index
+  // and the total. Welcome is "Step 1 of N" (its overline + top bar are
+  // hidden). The refresh-plan adjustment below composes on top.
+  const base = displayPosition(state.step, { appChoiceEnabled });
+
   const value = React.useMemo<OnboardingContext>(
     () => ({
       state,
@@ -184,20 +210,19 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       targets,
       warning,
       currentStepId,
-      // 1-indexed display — mirror of web context. Welcome is "Step 1
-      // of 13" but its overline + top bar are both hidden.
-      displayIndex: state.step + 1,
+      displayIndex: base.index,
       // 2026-05-12 (Grace TF) — drop the data-bridges step from the
       // displayed total on refresh-plan, because mobile-flow routes
       // reveal → handleComplete directly in that mode. Without this,
-      // the user sees "Step 12 of 13" on what is, for them, the last
-      // step they'll ever see — confusing and inaccurate.
-      displayTotal: isRefreshPlan ? TOTAL_STEPS - 1 : TOTAL_STEPS,
+      // the user sees "Step N of N" on what is, for them, the last step
+      // they'll ever see — confusing and inaccurate. Composes with the
+      // app-choice discount already applied in `base.total`.
+      displayTotal: isRefreshPlan ? base.total - 1 : base.total,
       canAdvance,
       stepLabels: STEP_LABELS,
       isRefreshPlan,
     }),
-    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance, isRefreshPlan],
+    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance, isRefreshPlan, base.index, base.total],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

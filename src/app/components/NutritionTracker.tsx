@@ -333,6 +333,7 @@ function NorthStarBlockHost({
   remainingProtein,
   remainingCarbs,
   remainingFat,
+  dailyCalorieTarget,
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
@@ -345,6 +346,10 @@ function NorthStarBlockHost({
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
+  /** ENG-995: the user's FULL daily calorie target (not remaining).
+   *  Threaded into the scorer so the per-meal budget is a share of the
+   *  day, never the whole remaining day. */
+  dailyCalorieTarget: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly (mobile) or open the log sheet (web — arg ignored). */
@@ -421,6 +426,8 @@ function NorthStarBlockHost({
     protein: remainingProtein,
     carbs: remainingCarbs,
     fat: remainingFat,
+    // ENG-995: full daily target drives the per-meal budget.
+    dailyCalorieTarget,
   };
 
   const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {
@@ -2600,6 +2607,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
           remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
           remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
+          dailyCalorieTarget={effectiveCalorieTarget}
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);

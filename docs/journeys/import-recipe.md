@@ -51,10 +51,60 @@ User opens Import screen
 ### Step 2: Recipe Extraction
 ```
 POST /api/recipe-import with URL
-  → App shows "Pulling recipe..." spinner
+  → App shows progress (see "Staged progress + queue" below)
   → API fetches HTML, extracts JSON-LD
   → Returns parsed recipe with ingredients, instructions, macros
 ```
+
+#### Staged progress + queue (`import-progress-v2`, 2026-06-08)
+
+Borrowed from Julienne's best-in-class import UX (see
+`docs/research/2026-06-08-julienne-strengths.md` §2.6). Replaces the single
+opaque "Adding recipe… 15–30s" spinner with a **persistent, non-blocking
+queue drawer** that shows live per-stage progress, queue position for
+concurrent imports, and per-recipe cancel/retry. **Flag-gated**; the legacy
+single-`importing`-state + `ImportLoadingSkeleton` path stays live in the
+`else` until the flag holds 100% for two weeks.
+
+**Honest stage machine** (`src/lib/recipes/importProgressMachine.ts`,
+shared web ↔ mobile). The stages map only to boundaries the client genuinely
+observes — Sloe's extraction is one atomic server POST (this ticket does NOT
+touch that backend), so we never fake sub-stages inside the server call:
+
+```
+queued      → "In queue (#N) — starts when a slot opens"   (waiting for a concurrency slot)
+confirming  → "Confirming recipe type"                     (client validates + dispatches)
+extracting  → "Extracting recipe details" / "Reading the   (server round-trip in flight —
+               photo" / "Reading the post"                  honest-indeterminate, the long leg)
+organizing  → "Organizing ingredients and steps"           (client normalises + classifies)
+done        → "Ready to review"                            (terminal-success; tap to open)
+cancelled   → "Cancelled"                                  (user aborted; the fetch is aborted)
+failed      → reuses importErrorCopy message                (terminal; retry offered iff retryable)
+```
+
+**Queue** (`src/lib/recipes/recipeImportScheduler.ts`): a slot-based
+scheduler (default concurrency 2) runs N imports across M slots. `enqueue`
+is idempotent by id (a re-render / duplicate share intent can't double-run);
+`cancel` aborts the in-flight `fetch` via an `AbortController` and frees the
+slot; `retry` re-runs a failed + retryable job under the same id. Slots
+always release in `finally` so a thrown runner can never leak one.
+
+**Scope:** v2 wires the **URL/link** path (the lead viral hook) into the
+queue on BOTH platforms; image (OCR) + caption imports keep the inline
+single-import path on both platforms for now (parity is preserved — neither
+platform queues image/caption yet). Caption/image queue parity is tracked,
+not silently deferred — see the Linear "Import-progress staged
+state-machine + queue UX" issue follow-up.
+
+**Analytics** (same event names web + mobile, via the shared
+`useImportQueue` hook):
+- `recipe_import_stage_changed { stage, previousStage, kind, platform, queuePosition?, errorCode?, elapsedMs }`
+- `recipe_import_enqueued { kind, platform, activeCount, queuedCount }`
+- `recipe_import_job_action { action: "cancel" | "retry", kind, platform, errorCode?, stage }`
+
+Distinct from the server-side `recipe_import_pipeline_stage` (which traces
+extraction internals for nutrition-debug) — the v2 events measure the
+front-end *experience* (time-at-stage, cancel points, batch size).
 
 ### Step 3: Review & Tag (NEW)
 ```

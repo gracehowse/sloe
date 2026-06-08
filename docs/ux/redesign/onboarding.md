@@ -2,7 +2,7 @@
 
 **Version:** 2026-06-02
 **Status:** Design specification — awaiting HTML prototype + flag-gated implementation
-**Surfaces covered:** All 13 onboarding steps (Welcome → Signup → Goal → Sex → Age → Height → Weight → Activity → Pace → Diet → Strategy → Reveal → Data-bridges)
+**Surfaces covered:** All 14 onboarding steps (Welcome → App-choice → Signup → Goal → Sex → Age → Height → Weight → Activity → Pace → Diet → Strategy → Reveal → Data-bridges). `App-choice` ("Coming from another app?", ENG-990 / 2026-06-08) is flag-gated behind `onboarding-app-choice` and auto-skipped when OFF — see `docs/decisions/2026-06-08-onboarding-app-choice-capture.md`.
 **Platforms:** iOS (primary), Web (parity — narrative column divergence documented)
 **Functionality gate:** Every audited feature, data point, rule, calculation, safety check, and persistence mechanism must survive this redesign. See §12 for the exhaustive FUNCTIONALITY PRESERVED checklist.
 **Source inventory:** `src/lib/onboarding/`, `apps/mobile/components/onboarding/`, `src/lib/nutrition/tdee.ts`, `src/lib/onboarding/targets.ts`, `src/lib/onboarding/persist.ts`
@@ -76,7 +76,7 @@ All token references use the warm-coaching direction locked 2026-06-02.
 - **Pace danger-acknowledgement gate** — no comparable has a genuine block; Suppr exceeds the bar.
 - **weightSkipped path** — no comparable handles null-target users; unique inclusion differentiator.
 - **14 regulated allergens (EU FIC / UK FSA)** — all comparable apps show 8 or fewer; Suppr's full set is a compliance differentiator.
-- **MFP CSV import card on data-bridges** — zero comparables; refugee-capture moat.
+- **MFP CSV import card on data-bridges** — zero comparables; refugee-capture moat. Now paired with the front-of-funnel **App-choice step** ("Coming from another app?", ENG-990) that captures which tracker the user is leaving and pre-highlights the importer for an importable app — the Yazio competitor-switch pattern (`docs/research/2026-06-08-yazio-teardown.md`) wired into our real CSV pipeline.
 
 ### Weaknesses to fix
 

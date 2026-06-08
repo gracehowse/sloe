@@ -5131,6 +5131,7 @@ export default function TrackerScreen() {
             remainingProtein={remainingProtein}
             remainingCarbs={remainingCarbs}
             remainingFat={remainingFat}
+            dailyCalorieTarget={effectiveCalorieGoal}
             onPrimaryCta={(recipeId) => {
               router.push(`/recipe/${recipeId}` as any);
             }}

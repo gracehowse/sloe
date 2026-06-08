@@ -265,7 +265,7 @@ describe("matchedAliasKey — only trusts high-confidence matches", () => {
 
   it("the text key is ALWAYS the canonical key regardless of match (v1 text-only path)", () => {
     // Even with a strong match, the canonical key is the text spine — the
-    // alias is recorded separately (ENG-905), never folded in, so a weak
+    // alias is recorded separately (ENG-987), never folded in, so a weak
     // match can never corrupt grouping.
     const withMatch = canonicalImageKey({
       name: "chicken mince",

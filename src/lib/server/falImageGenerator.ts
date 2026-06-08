@@ -1,17 +1,24 @@
 /**
- * fal.ai image generator — server-only. DUAL ENGINE (2026-06-08):
+ * fal.ai image generator — server-only. UNIFIED ON NANO BANANA PRO (2026-06-08):
  *
  * Part of the Sloe image system (2026-06-08,
  * `docs/decisions/2026-06-08-recipe-ingredient-image-system.md`).
  *
  * Two entry points, one per imagery class from the LOCKED brand prompt
- * template (`docs/brand/sloe-image-prompt-template.md`):
- *   - `generateDishImage(title, keyIngredients[])`   — Template A, FLUX 2 Pro
- *     (`fal-ai/flux-2-pro`), landscape_4_3, finished plated dish,
- *     editorial-on-wood. Calls the LLM dish-appearance step
- *     (`describeDishAppearance`) first so the prompt describes the COOKED,
- *     plated dish — not a raw ingredient list (which made FLUX render raw
- *     eggs / loose powder on top). UNCHANGED.
+ * template (`docs/brand/sloe-image-prompt-template.md`) — BOTH now on Nano
+ * Banana Pro (Google Gemini 3 Pro Image, `fal-ai/nano-banana-pro`):
+ *   - `generateDishImage(title, keyIngredients[])`   — Template A, NANO BANANA
+ *     PRO, 4:3 landscape hero, 2K, finished plated dish, editorial-on-wood.
+ *     Migrated FLUX 2 Pro → Nano 2026-06-08 for hyper-realism (the meatballs
+ *     A/B head-to-head proved Nano markedly more photoreal for dish heroes;
+ *     also unifies the app on ONE model now ingredients are on Nano). Still
+ *     calls the LLM dish-appearance step (`describeDishAppearance`) first so
+ *     the per-dish prompt describes the COOKED, plated dish — not a raw
+ *     ingredient list (which rendered raw eggs / loose powder on top). The
+ *     editorial house style + cooked-state guards now live in a FIXED
+ *     `system_prompt` (the consistency lever, mirroring the ingredient path),
+ *     so every hero reads as one editorial set. NO fixed seed — each dish is
+ *     unique, variety is fine; cache stays per-recipe (recipe_id).
  *   - `generateIngredientImage(cleanName)`           — Template B, NANO BANANA
  *     PRO (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image), 1:1, 2K,
  *     single ingredient on pure white. Switched from FLUX 2026-06-08: Nano +
@@ -35,10 +42,12 @@
  * path — the worst case is a typed error object. The instant the fal
  * balance is topped up, this works unchanged.
  *
- * FLUX 2 Pro has NO `negative_prompt` field, so the §5 "never" list is
- * folded into the POSITIVE prompt as an explicit "Avoid: …" clause
- * (the template's §5 guidance). FLUX-2 follows the positive literally,
- * so this is phrased as constraints, not bare "no X" tokens.
+ * Nano Banana Pro (Gemini 3 Pro Image) has NO `negative_prompt` field.
+ * Both classes therefore carry their style + exclusions in a FIXED
+ * `system_prompt` (a true Gemini-3 system instruction — stronger than a
+ * positive avoid-clause), with the per-image `prompt` reduced to the one
+ * subject (the dish title + LLM cooked-dish description for heroes; the
+ * single representative ingredient for tiles).
  * ────────────────────────────────────────────────────────────────────
  *
  * NEVER import this file into a client bundle — it reads `FAL_KEY` and
@@ -50,22 +59,47 @@ import type { NanoBananaProInput } from "@fal-ai/client/endpoints";
 import { getSupabaseAdminClient } from "../supabase/serverAdminClient";
 import { describeDishAppearance } from "./llmDishAppearance";
 
-/** Template A (dish heroes) — FLUX 2 Pro, unchanged. */
-const FAL_MODEL = "fal-ai/flux-2-pro";
 /**
- * Template B (single ingredient on white) — Nano Banana Pro (Google Gemini 3
- * Pro Image). Switched 2026-06-08: Nano produces a CONSISTENT set (the brand
- * head-to-head winner + what the top competitor uses), driven by a FIXED
- * `system_prompt` + a FIXED seed so a grid of ingredient tiles reads as one
- * coherent set. The FLUX path stays on Template A (dish heroes) only.
- * See docs/brand/sloe-image-prompt-template.md §2 (Template B, Nano recipe)
- * + the 2026-06-08 decision doc.
+ * BOTH classes now run on Nano Banana Pro (Google Gemini 3 Pro Image).
+ * Template A (dish heroes) migrated FLUX 2 Pro → Nano 2026-06-08 for
+ * hyper-realism (the meatballs A/B head-to-head proved Nano markedly more
+ * photoreal for dish heroes), which also unifies the app on ONE model. The
+ * prompt templates are model-swappable; the per-image prompt does not change
+ * when the model does. See docs/brand/sloe-image-prompt-template.md §6 +
+ * the 2026-06-08 decision doc.
  */
-const FAL_INGREDIENT_MODEL = "fal-ai/nano-banana-pro";
+const FAL_MODEL = "fal-ai/nano-banana-pro";
 /**
- * The consistency lever. Pinned, identical on EVERY ingredient call — DO NOT
- * EDIT per call (it is what keeps lighting/scale/shadow identical across the
- * whole library). Verbatim from the locked Template B Nano recipe.
+ * Template A (dish heroes) — the editorial house style + cooked-state guards,
+ * pinned identically on EVERY hero call (the consistency lever, mirroring the
+ * ingredient approach). Carries everything the FLUX positive prompt used to
+ * fold in — editorial register, soft moody window light, shallow DoF, warm
+ * earthy palette, the no-people/no-text guards, AND the cooked-state guards
+ * that keep raw ingredients off the surface. Nano honours a separate
+ * `system_prompt` (a true Gemini-3 system instruction, stronger than a
+ * positive avoid-clause), so the consistency + the "nothing raw on top" rule
+ * live here, NOT in the per-dish line. DO NOT EDIT per call. Verbatim from the
+ * locked Template A Nano recipe (docs/brand/sloe-image-prompt-template.md §1).
+ *
+ * Exported so the guard test can assert the cooked-state guards survive — they
+ * are the load-bearing raw-eggs protection now they live here, not in the
+ * per-dish prompt.
+ */
+export const DISH_SYSTEM_PROMPT =
+  "Warm editorial food photography for a premium recipe app. Soft moody natural window light from " +
+  "the side, slightly under-exposed editorial mood, shallow depth of field — the dish sharp, the " +
+  "background softly blurred. Warm, muted, earthy palette: browns, creams, sage greens, ochre. " +
+  "Styled on a linen napkin over a weathered wooden table, matte ceramic dishware. Magazine-quality, " +
+  "in the register of @thelittleplantation and @_foodstories_. Ultra-realistic photograph, fine " +
+  "natural detail and texture, real food. Never illustrated, never 3D-rendered, never glossy CGI. " +
+  "No people, no hands, no fingers, no text, no logo, no watermark. The dish is fully cooked and " +
+  "integrated, served exactly as it would be eaten — no raw or uncooked ingredients, no whole raw " +
+  "eggs, no loose powder, nothing raw piled on top.";
+/**
+ * Template B (single ingredient on white) — the consistency lever. Pinned,
+ * identical on EVERY ingredient call — DO NOT EDIT per call (it is what keeps
+ * lighting/scale/shadow identical across the whole library). Verbatim from the
+ * locked Template B Nano recipe.
  */
 const INGREDIENT_SYSTEM_PROMPT =
   "Studio product photography of a single food ingredient for a premium nutrition app. " +
@@ -83,9 +117,33 @@ const BUCKET = "recipe-images";
 const HERO_PREFIX = "heroes";
 const INGREDIENT_PREFIX = "ingredients";
 
-/** Storage upload cap for a generated image — generous; FLUX png output
- *  is typically < 2 MB at these sizes. Guards against a runaway fetch. */
+/** Storage upload cap for a generated image — generous; a Nano 2K jpeg is
+ *  typically < 3 MB. Guards against a runaway fetch. */
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+
+/** Function-level timeout for a single Nano generation. fal's own client-side
+ *  `timeout` is documented as not enforced, so we bound it ourselves. A 2K Nano
+ *  gen normally lands in ~40s; this is generous headroom for queue load while
+ *  still guaranteeing the call never hangs a backfill / server request forever
+ *  (the module's never-hang contract). On timeout, callers get a typed
+ *  `fal_network_error` and fall back to the placeholder. */
+const NANO_TIMEOUT_MS = 180_000;
+
+/** Marker error so `runNano` can distinguish our own timeout from a fal/network
+ *  throw and map it to a typed `fal_network_error`. */
+class FalTimeoutError extends Error {}
+
+/** Resolve `p`, or reject with `FalTimeoutError` after `ms`. The timer is always
+ *  cleared so it can't keep the event loop alive after settle. The underlying
+ *  fal request is abandoned (fal may still finish it server-side — harmless;
+ *  the per-recipe cache means a later run reuses it). */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new FalTimeoutError(`timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
 
 export type FalImageOk = { ok: true; url: string; requestId: string | null };
 export type FalImageError = {
@@ -113,89 +171,34 @@ function readFalKey(): string | null {
 
 // ── Prompt assembly (verbatim from the LOCKED template) ──────────────
 
-/** §4 shared style anchor block — appended to every positive prompt. */
-const STYLE_ANCHOR =
-  "Sloe brand imagery. Warm, calm, editorial, premium, honest. Natural light only. " +
-  "Earthy muted palette. Real food, real materials, real kitchen. Considered restraint, " +
-  "never busy, never gimmicky. Photographic, not illustrated, not rendered. High detail, " +
-  "professional quality.";
-
 /**
- * §5 negative list, folded into a POSITIVE "Avoid" clause because
- * FLUX-2-pro has no negative_prompt field. Phrased as constraints the
- * model can follow literally.
- */
-const AVOID_CLAUSE =
-  "Avoid: flat stock photography, white-tablecloth overhead commercial style, watercolour, " +
-  "painterly or loose illustration, cartoon, anime, clip art, vector or flat design, 3D render, " +
-  "CGI, cold glossy chrome, plastic-looking food, glossy product render, oversaturation, neon, " +
-  "HDR, harsh studio flash, hard shadows, busy cluttered composition, any text, words, letters, " +
-  "typography, logos, watermarks, signatures, brand labels or packaging text, people, hands, " +
-  "faces or fingers, deformed or fused ingredients, melted shapes, anything uncanny or " +
-  "unappetising, low detail, blurry subject, distorted proportions, duplicated objects, frames, " +
-  "borders, collage or split images.";
-
-const PLATING_DEFAULT = "bowl";
-
-/** Pick a plating noun from the dish title (§1 `{PLATING_NOUN}` rules). */
-function inferPlatingNoun(title: string): string {
-  const t = title.toLowerCase();
-  if (/\b(smoothie|shake|juice|latte|drink|cocktail)\b/.test(t)) return "glass";
-  if (/\b(bread|loaf|focaccia|bun|roll|bake|tart|sharing)\b/.test(t)) return "wooden board";
-  if (/\b(skillet|frittata|traybake|one-pan|one pan)\b/.test(t)) return "skillet";
-  if (/\b(steak|roast|fish|salmon|chop|fillet|schnitzel|main)\b/.test(t)) return "plate";
-  // stews / grains / salads / pasta / soup / bowl → default bowl
-  return PLATING_DEFAULT;
-}
-
-/**
- * §1 cooked-state GUARDS, folded into the positive prompt.
+ * Template A per-dish `prompt` — just the ONE subject (the dish title + the
+ * LLM cooked-dish description), mirroring the ingredient approach. The whole
+ * editorial house style (light, surface, palette, register) AND the
+ * cooked-state guards now live in the FIXED `DISH_SYSTEM_PROMPT` (a true
+ * Gemini-3 system instruction on Nano), NOT here — so every hero reads as one
+ * consistent editorial set even though the per-dish line is short.
  *
- * ── The bug this fixes ────────────────────────────────────────────────
- * The previous Template-A prompt listed raw ingredients ("featuring eggs,
- * protein powder, spinach…"). FLUX-2-pro follows the positive prompt
- * literally and rendered those ingredients RAW, sitting on top of the
- * cooked dish — whole raw eggs on a frittata, loose powder heaped on oats.
- *
- * The fix is two-pronged: (1) `buildDishPrompt` now takes an LLM-written
- * description of the FINISHED, cooked, plated dish instead of a raw
- * ingredient list (see `llmDishAppearance.describeDishAppearance`), and
- * (2) these explicit cooked-state guards are appended so the model is
- * told, in the positive, that nothing raw belongs on the surface. FLUX-2
- * has no negative_prompt, so — like the §5 AVOID_CLAUSE — these are
- * phrased as positive constraints the model can follow.
- */
-const COOKED_STATE_GUARDS =
-  "The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or " +
-  "uncooked ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, " +
-  "nothing raw piled on the surface. No people, no hands, no fingers. No text, no logo, no watermark.";
-
-/**
- * Template A positive prompt — finished dish (§1).
+ * ── The cooked-dish-description rule (the raw-eggs bug fix — KEPT) ─────
+ * `dishDescription` is the one-to-two sentence description of how the
+ * FINISHED, cooked, plated dish looks when served, from
+ * `describeDishAppearance`. Never pass a raw ingredient LIST here — that is
+ * exactly the bug the LLM step + the system-prompt cooked-state guards exist
+ * to prevent (FLUX rendered "featuring eggs, protein powder" as whole raw eggs
+ * / loose powder on top; the cooked-dish description + guards fixed it, and
+ * that fix is preserved on Nano).
  *
  * @param title           recipe title (lightly cleaned upstream)
- * @param dishDescription one-to-two sentence description of how the
- *   FINISHED, cooked, plated dish looks when served (from
- *   `describeDishAppearance`). When empty, the prompt still renders a
- *   generic finished dish — but callers should always supply one; passing
- *   a raw ingredient LIST here is exactly the bug `COOKED_STATE_GUARDS`
- *   and the LLM step exist to prevent.
+ * @param dishDescription one-to-two sentence cooked-dish description (from
+ *   `describeDishAppearance`). When empty, the prompt still renders a generic
+ *   finished dish steered by the system prompt — but callers should always
+ *   supply one.
  */
 export function buildDishPrompt(title: string, dishDescription: string): string {
   const cleanTitle = title.trim() || "a home-cooked dish";
   const description = dishDescription.trim();
   const descriptionClause = description ? ` ${description}` : "";
-  const plating = inferPlatingNoun(cleanTitle);
-  return (
-    `Hyperreal editorial food photography of ${cleanTitle}.${descriptionClause} ` +
-    `The finished dish is served in a matte ceramic ${plating}, styled on a linen napkin over a ` +
-    `weathered wooden table, a few natural props nearby. Soft moody natural window light from the ` +
-    `side, gentle shadows, slightly under-exposed for an editorial mood. Shallow depth of field, the ` +
-    `dish sharp and the background softly blurred. Warm, muted, earthy colour palette — browns, ` +
-    `creams, sage greens, ochre. Artful, considered, unhurried composition. Magazine-quality food ` +
-    `photography in the style of @thelittleplantation and @_foodstories_. ${COOKED_STATE_GUARDS} ` +
-    `${STYLE_ANCHOR} ${AVOID_CLAUSE}`
-  );
+  return `Hyperreal editorial food photography of ${cleanTitle}.${descriptionClause}`.trimEnd();
 }
 
 /**
@@ -234,102 +237,42 @@ export function buildIngredientPrompt(cleanName: string): string {
 
 // ── fal call + Storage upload ────────────────────────────────────────
 
-type FluxImage = { url?: string; content_type?: string };
-type FluxOutput = { images?: FluxImage[] };
-
-/**
- * Run a single FLUX-2-pro generation. Returns the first image URL (a
- * short-lived fal CDN URL) or a typed error. Never throws.
- */
-async function runFlux(
-  prompt: string,
-  imageSize: "landscape_4_3" | "square_hd",
-  callSite: string,
-): Promise<{ ok: true; imageUrl: string; requestId: string | null } | FalImageError> {
-  const key = readFalKey();
-  if (!key) {
-    return {
-      ok: false,
-      error: "fal_not_configured",
-      message: "FAL_KEY is not set — image generation is unavailable.",
-      upstreamStatus: null,
-    };
-  }
-
-  const client = createFalClient({ credentials: key });
-
-  let result: { data: unknown; requestId: string };
-  try {
-    result = await client.subscribe(FAL_MODEL, {
-      input: {
-        prompt,
-        image_size: imageSize,
-        // FLUX-2-pro outputs jpeg/png only (no webp at the model). Per
-        // template §6 we generate png then store it; a transcode-to-webp
-        // pass at the storage layer is a future optimisation, not a
-        // launch blocker. `persistToStorage` stamps the right extension
-        // from the response content-type.
-        output_format: "png",
-        // provider defaults for guidance/steps/safety — the prompt
-        // carries the style; do not over-tune (template §6).
-      },
-      logs: false,
-    });
-  } catch (err) {
-    // fal throws an ApiError (with `.status`) on 4xx/5xx, including the
-    // 403 "Exhausted balance" account-lock. Classify but never rethrow.
-    const status =
-      typeof (err as { status?: unknown })?.status === "number"
-        ? (err as { status: number }).status
-        : null;
-    const detail = err instanceof Error ? err.message : String(err);
-    console.warn(`[${callSite}] fal generate failed status=${status ?? "?"}: ${detail}`);
-    if (status != null) {
-      return {
-        ok: false,
-        error: "fal_http_error",
-        message: `fal returned ${status}.`,
-        upstreamStatus: status,
-      };
-    }
-    return {
-      ok: false,
-      error: "fal_network_error",
-      message: "Could not reach fal.ai.",
-      upstreamStatus: null,
-    };
-  }
-
-  const out = result.data as FluxOutput | null;
-  const imageUrl = out?.images?.[0]?.url;
-  if (typeof imageUrl !== "string" || imageUrl.trim() === "") {
-    return {
-      ok: false,
-      error: "fal_no_image",
-      message: "fal returned no image URL.",
-      upstreamStatus: null,
-    };
-  }
-  return { ok: true, imageUrl, requestId: result.requestId ?? null };
-}
-
 type NanoImage = { url?: string; content_type?: string };
 type NanoOutput = { images?: NanoImage[] };
 
 /**
- * Run a single Nano Banana Pro ingredient generation (Template B). Uses the
- * FIXED `system_prompt` + FIXED `seed` so the whole library is one coherent
- * set; `aspect_ratio: 1:1`, `resolution: 2K`, `output_format: jpeg` per the
- * locked recipe. Returns the first image URL or a typed error. Never throws.
+ * Run a single Nano Banana Pro (Gemini 3 Pro Image) generation. ONE runner for
+ * BOTH classes now they share the model (dish heroes Template A + ingredient
+ * tiles Template B). The per-class shape is passed in:
+ *   - dish heroes:   `aspect_ratio: "4:3"`, NO seed (variety per dish),
+ *                    `DISH_SYSTEM_PROMPT`.
+ *   - ingredients:   `aspect_ratio: "1:1"`, FIXED `seed: 424242`,
+ *                    `INGREDIENT_SYSTEM_PROMPT`.
+ * Both use `resolution: "2K"`, `output_format: "jpeg"`. Returns the first
+ * image URL (a short-lived fal CDN URL) or a typed error. Never throws.
  *
  * Note: `system_prompt` is passed through `input` even though the generated
  * fal TS type for Nano doesn't enumerate it — fal serializes the whole input
- * object to the model (Gemini 3 Pro Image honours a system instruction). If a
- * future fal release rejects unknown keys, fold the system prompt into the
- * positive `prompt` (it is the consistency lever either way).
+ * object to the model (Gemini 3 Pro Image honours a system instruction, which
+ * is what makes the house style + cooked-state guards the consistency lever).
+ * If a future fal release rejects unknown keys, fold the system prompt into
+ * the positive `prompt` (it is the consistency lever either way).
+ *
+ * Reliability: we pin `mode: "polling"` with an explicit `pollInterval` + an
+ * `onQueueUpdate` callback. Without an active queue-update subscription the fal
+ * client's `subscribe` polls Nano very slowly and can appear to hang on the 2K
+ * Gemini-3 endpoint (verified 2026-06-08: an identical call WITHOUT
+ * `onQueueUpdate` stalled >60s with no result, WITH it resolved in ~40s). We do
+ * not need the log stream, but `logs: true` is the proven-reliable shape that
+ * keeps the poll active; the streamed status is tiny and discarded.
  */
-async function runNanoIngredient(
+async function runNano(
   prompt: string,
+  opts: {
+    systemPrompt: string;
+    aspectRatio: NonNullable<NanoBananaProInput["aspect_ratio"]>;
+    seed?: number;
+  },
   callSite: string,
 ): Promise<{ ok: true; imageUrl: string; requestId: string | null } | FalImageError> {
   const key = readFalKey();
@@ -351,18 +294,46 @@ async function runNanoIngredient(
     // the required `prompt` typed while permitting the extra key.
     const nanoInput: NanoBananaProInput & { system_prompt: string } = {
       prompt,
-      system_prompt: INGREDIENT_SYSTEM_PROMPT,
-      aspect_ratio: "1:1",
+      system_prompt: opts.systemPrompt,
+      aspect_ratio: opts.aspectRatio,
       resolution: "2K",
       output_format: "jpeg",
-      seed: INGREDIENT_SEED,
       num_images: 1,
+      // Dish heroes omit the seed (each dish is unique — variety is fine);
+      // ingredient tiles pin one seed so the whole set is reproducibly coherent.
+      ...(opts.seed != null ? { seed: opts.seed } : {}),
     };
-    result = await client.subscribe(FAL_INGREDIENT_MODEL, {
-      input: nanoInput,
-      logs: false,
-    });
+    // Bounded with our own timeout race: fal's client-side `timeout` field is
+    // documented as "currently not enforced", so we guard the function-level
+    // hang ourselves. A 2K Nano gen normally lands in ~40s; under heavy queue
+    // load it can be slower. NANO_TIMEOUT_MS is generous, but bounded so a
+    // stuck call returns a typed `fal_network_error` instead of blocking a
+    // backfill or a server request forever (the module's never-hang contract).
+    result = await withTimeout(
+      client.subscribe(FAL_MODEL, {
+        input: nanoInput,
+        // Active polling — the proven-reliable shape for the 2K Nano endpoint
+        // (see the reliability note above). The status callback is a no-op; its
+        // presence is what keeps the queue poll running.
+        mode: "polling",
+        pollInterval: 1000,
+        logs: true,
+        onQueueUpdate: () => {},
+      }),
+      NANO_TIMEOUT_MS,
+    );
   } catch (err) {
+    if (err instanceof FalTimeoutError) {
+      console.warn(`[${callSite}] nano generate timed out after ${NANO_TIMEOUT_MS}ms`);
+      return {
+        ok: false,
+        error: "fal_network_error",
+        message: `Nano generation exceeded ${Math.round(NANO_TIMEOUT_MS / 1000)}s.`,
+        upstreamStatus: null,
+      };
+    }
+    // fal throws an ApiError (with `.status`) on 4xx/5xx, including the
+    // 403 "Exhausted balance" account-lock. Classify but never rethrow.
     const status =
       typeof (err as { status?: unknown })?.status === "number"
         ? (err as { status: number }).status
@@ -485,22 +456,26 @@ function slugify(input: string, fallback: string): string {
 }
 
 /**
- * Generate a finished-dish hero image (Template A). Returns the stored
- * public URL or a typed error. Never throws, never blocks.
+ * Generate a finished-dish hero image (Template A, Nano Banana Pro). Returns
+ * the stored public URL or a typed error. Never throws, never blocks.
  *
  * Pipeline:
  *   1. Ask the LLM for a one-to-two sentence description of how the
  *      FINISHED, cooked, plated dish looks (`describeDishAppearance`).
- *      This replaces the old raw "featuring {ingredients}" clause that
- *      made FLUX render whole raw eggs / loose powder on top of the dish.
- *      The call never throws and falls back to a generic cooked clause.
- *   2. Build the Template-A prompt from that description + cooked-state
- *      guards, generate with FLUX-2-pro, and persist to Storage.
+ *      This KEPT step replaces the old raw "featuring {ingredients}" clause
+ *      that rendered whole raw eggs / loose powder on top of the dish. The
+ *      call never throws and falls back to a generic cooked clause.
+ *   2. Build the short per-dish prompt (title + that description) and
+ *      generate with Nano (`fal-ai/nano-banana-pro`) at `aspect_ratio: "4:3"`,
+ *      `resolution: "2K"`, `output_format: "jpeg"`, NO seed (variety per
+ *      dish). The editorial house style + cooked-state guards ride on the
+ *      FIXED `DISH_SYSTEM_PROMPT` (the consistency lever), then persist to
+ *      Storage. Cache stays per-recipe (the caller keys by recipe_id).
  *
  * @param title          dish title (lightly cleaned upstream)
  * @param keyIngredients 3–6 visually-defining ingredients (optional) —
  *   used ONLY to inform the LLM dish description, never listed verbatim
- *   in the FLUX prompt.
+ *   in the image prompt.
  * @param opts.userId    optional Supabase user id, for AI attribution on
  *   the dish-description LLM call.
  */
@@ -514,26 +489,32 @@ export async function generateDishImage(
     userId: opts.userId ?? null,
   });
   const prompt = buildDishPrompt(title, dishDescription);
-  const flux = await runFlux(prompt, "landscape_4_3", callSite);
-  if (!flux.ok) return flux;
+  // 4:3 landscape hero, no seed — each dish is unique, variety is fine. The
+  // house style + cooked-state guards live in DISH_SYSTEM_PROMPT.
+  const nano = await runNano(
+    prompt,
+    { systemPrompt: DISH_SYSTEM_PROMPT, aspectRatio: "4:3" },
+    callSite,
+  );
+  if (!nano.ok) return nano;
   const stored = await persistToStorage(
-    flux.imageUrl,
+    nano.imageUrl,
     HERO_PREFIX,
     slugify(title, "recipe-hero"),
     callSite,
   );
   if (!stored.ok) return stored;
-  return { ok: true, url: stored.publicUrl, requestId: flux.requestId };
+  return { ok: true, url: stored.publicUrl, requestId: nano.requestId };
 }
 
 /**
  * Generate a single-ingredient image (Template B, Nano Banana Pro). Returns
  * the stored public URL or a typed error. Never throws, never blocks.
  *
- * Uses Nano (not FLUX) with the FIXED system prompt + seed so the whole
- * ingredient library reads as one consistent set (the FLUX dish/hero path is
- * untouched). The per-image prompt is just the ONE representative subject
- * ("A single whole head of garlic." etc.) — never the literal recipe quantity.
+ * Uses the FIXED `INGREDIENT_SYSTEM_PROMPT` + FIXED seed so the whole
+ * ingredient library reads as one consistent set. The per-image prompt is just
+ * the ONE representative subject ("A single whole head of garlic." etc.) —
+ * never the literal recipe quantity.
  *
  * @param cleanName a tidy single-ingredient label
  *   (e.g. from `cleanIngredientDisplayName`)
@@ -541,7 +522,11 @@ export async function generateDishImage(
 export async function generateIngredientImage(cleanName: string): Promise<FalImageResult> {
   const callSite = "fal/ingredient";
   const prompt = buildIngredientPrompt(cleanName);
-  const nano = await runNanoIngredient(prompt, callSite);
+  const nano = await runNano(
+    prompt,
+    { systemPrompt: INGREDIENT_SYSTEM_PROMPT, aspectRatio: "1:1", seed: INGREDIENT_SEED },
+    callSite,
+  );
   if (!nano.ok) return nano;
   const stored = await persistToStorage(
     nano.imageUrl,

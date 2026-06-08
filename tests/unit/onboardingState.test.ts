@@ -8,6 +8,7 @@ import {
   STEP_LABELS,
   TOTAL_STEPS,
   canAdvance,
+  displayPosition,
   resolveNextStep,
   type OnboardingState,
   type StepId,
@@ -17,13 +18,17 @@ import {
  * Onboarding v2 — state shape, step ordering, and `canAdvance`
  * validation rules. Locks in the decision-doc invariants:
  *
- *  - 13 steps in fixed order; `pace` auto-skips when goal = maintain.
+ *  - 14 steps in fixed order; `pace` auto-skips when goal = maintain,
+ *    `app-choice` auto-skips when the `onboarding-app-choice` flag is OFF.
  *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
  *    `import`, `recipes` were moved off the linear flow. Components
  *    kept on disk for the post-launch nudge queue.
  *    Build-40 (2026-05-01) — re-added `data-bridges` as the new
  *    terminal step bundling manual-targets / Apple Health /
- *    notifications / recipe URL cards. See state.ts STEP_IDS.)
+ *    notifications / recipe URL cards.
+ *    ENG-990 (2026-06-08) — added `app-choice` ("Coming from another
+ *    app?") after Welcome, flag-gated + auto-skipped when OFF. See
+ *    state.ts STEP_IDS.)
  *  - Pace safety floor is SOFT-WARN — `canAdvance("pace", …)` returns
  *    true even when projected target falls below 1,200/1,500 kcal.
  *    Only the *banner* policy lives in `targets.ts`.
@@ -40,10 +45,11 @@ const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState =>
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 13 steps in the documented order (customer-lens shrink 2026-04-30 + Build-40 data-bridges re-add)", () => {
-    expect(TOTAL_STEPS).toBe(13);
+  it("ships exactly 14 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice)", () => {
+    expect(TOTAL_STEPS).toBe(14);
     expect(STEP_IDS).toEqual([
       "welcome",
+      "app-choice",
       "signup",
       "goal",
       "sex",
@@ -80,30 +86,34 @@ describe("onboarding v2 — step ordering", () => {
 });
 
 describe("onboarding v2 — resolveNextStep auto-skip", () => {
+  // Index-relative so the assertions survive future step reordering
+  // (ENG-990 shifted every body-stats step by one when `app-choice`
+  // landed after Welcome). The pace step always sits between `activity`
+  // and `diet`; we navigate from `activity` and expect to land on the
+  // next *unskipped* step.
+  const ACTIVITY = STEP_IDS.indexOf("activity");
+  const DIET = STEP_IDS.indexOf("diet");
+
   it("skips the pace step when goal = maintain (forward navigation)", () => {
-    // We're on `activity` (index 7); the next non-skipped step is
-    // `diet` (index 9), not `pace` (index 8).
-    const next = resolveNextStep(7, +1, baseState({ goal: "maintain" }));
+    const next = resolveNextStep(ACTIVITY, +1, baseState({ goal: "maintain" }));
     expect(STEP_IDS[next]).toBe("diet");
   });
 
   it("skips the pace step when goal = maintain (backward navigation)", () => {
-    // We're on `diet` (index 9); going back should land on `activity`
-    // (index 7), not `pace` (index 8).
-    const prev = resolveNextStep(9, -1, baseState({ goal: "maintain" }));
+    const prev = resolveNextStep(DIET, -1, baseState({ goal: "maintain" }));
     expect(STEP_IDS[prev]).toBe("activity");
   });
 
   it("does not skip the pace step for cut/recomp/gain goals", () => {
     for (const goal of ["lose", "recomp", "gain"] as const) {
-      const next = resolveNextStep(7, +1, baseState({ goal }));
+      const next = resolveNextStep(ACTIVITY, +1, baseState({ goal }));
       expect(STEP_IDS[next]).toBe("pace");
     }
   });
 
   it("also auto-skips the pace step when weightSkipped is true (Stage F diversity-inclusion)", () => {
     const next = resolveNextStep(
-      7,
+      ACTIVITY,
       +1,
       baseState({ goal: "lose", weightSkipped: true }),
     );
@@ -116,10 +126,85 @@ describe("onboarding v2 — resolveNextStep auto-skip", () => {
   });
 });
 
+describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () => {
+  const WELCOME = STEP_IDS.indexOf("welcome");
+
+  it("skips app-choice when the flag is OFF (default) — welcome jumps to signup", () => {
+    // No options arg → appChoiceEnabled defaults to false → skip.
+    const next = resolveNextStep(WELCOME, +1, baseState());
+    expect(STEP_IDS[next]).toBe("signup");
+  });
+
+  it("skips app-choice when the flag is explicitly OFF", () => {
+    const next = resolveNextStep(WELCOME, +1, baseState(), {
+      appChoiceEnabled: false,
+    });
+    expect(STEP_IDS[next]).toBe("signup");
+  });
+
+  it("lands on app-choice when the flag is ON", () => {
+    const next = resolveNextStep(WELCOME, +1, baseState(), {
+      appChoiceEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("app-choice");
+  });
+
+  it("skips app-choice on backward navigation too (signup → welcome with flag OFF)", () => {
+    const signup = STEP_IDS.indexOf("signup");
+    const prev = resolveNextStep(signup, -1, baseState(), {
+      appChoiceEnabled: false,
+    });
+    expect(STEP_IDS[prev]).toBe("welcome");
+  });
+});
+
+describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)", () => {
+  it("excludes app-choice from the total when the flag is OFF", () => {
+    const { total } = displayPosition(0, { appChoiceEnabled: false });
+    expect(total).toBe(TOTAL_STEPS - 1);
+  });
+
+  it("includes app-choice in the total when the flag is ON", () => {
+    const { total } = displayPosition(0, { appChoiceEnabled: true });
+    expect(total).toBe(TOTAL_STEPS);
+  });
+
+  it("does not inflate the display index for steps after the hidden app-choice (flag OFF)", () => {
+    // signup is raw index 2, but with app-choice hidden it's the 2nd
+    // visible step → display index 2 (welcome is 1).
+    const signup = STEP_IDS.indexOf("signup");
+    const off = displayPosition(signup, { appChoiceEnabled: false });
+    expect(off.index).toBe(2);
+    // With the flag ON, signup is the 3rd visible step → index 3.
+    const on = displayPosition(signup, { appChoiceEnabled: true });
+    expect(on.index).toBe(3);
+  });
+
+  it("welcome is always 'Step 1' in both flag states", () => {
+    expect(displayPosition(0, { appChoiceEnabled: false }).index).toBe(1);
+    expect(displayPosition(0, { appChoiceEnabled: true }).index).toBe(1);
+  });
+});
+
 describe("onboarding v2 — canAdvance per step", () => {
   const cases: Array<[StepId, OnboardingState, boolean, string]> = [
     // welcome — no inputs required
     ["welcome", baseState(), true, "always advances"],
+    // app-choice — ENG-990 optional capture; advancing without a pick is
+    // a first-class choice (the "starting fresh" tile / footer Continue).
+    ["app-choice", baseState(), true, "always advances (pick is optional)"],
+    [
+      "app-choice",
+      baseState({ appChoice: "mfp" }),
+      true,
+      "advances with an importable app chosen",
+    ],
+    [
+      "app-choice",
+      baseState({ appChoice: "none" }),
+      true,
+      "advances when starting fresh",
+    ],
     // signup — ENG-672 (2026-05-26): advancing past Signup is gated on a
     // REAL Supabase session. Without `hasSession` in the ctx (or with it
     // false) `canAdvance` returns false — this is the guard that stops a

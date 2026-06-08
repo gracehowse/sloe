@@ -58,11 +58,20 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
+import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
 
 export function MobileDataBridgesStep() {
   const overline = useStepOverline();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const { state } = useOnboarding();
+  // ENG-990 — lead the importer card with the app the user told us they
+  // were switching from (app-choice step), when it's one we can import.
+  // `null` for "other" / "none" / no choice keeps the generic copy.
+  const highlightApp = appChoiceDisplayName(state.appChoice);
+  const csvCard = (
+    <MobileMfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
+  );
 
   return (
     <MobileStepBody>
@@ -72,11 +81,14 @@ export function MobileDataBridgesStep() {
         subtitle="Skip any of these — or all of them. You can always set this up later in Settings."
       />
 
+      {/* ENG-990 — when the user is switching from an importable app the
+          CSV import is their primary next action; float it to the top. */}
+      {highlightApp ? csvCard : null}
       <ManualTargetsCard />
       {Platform.OS === "ios" ? <AppleHealthCard userId={userId} /> : null}
       <NotificationsCard userId={userId} />
       <RecipeUrlCard />
-      <MobileMfpCsvImportCard surface="onboarding" />
+      {highlightApp ? null : csvCard}
 
       {/*
         P1 (customer-lens 2026-05-11): the in-body "Maybe later" link

@@ -1,6 +1,6 @@
 /**
  * POST /api/recipe-import/image-hero — generate an on-brand dish hero
- * image for a recipe (fal.ai FLUX-2-pro, Template A) and write it to
+ * image for a recipe (fal.ai Nano Banana Pro, Template A) and write it to
  * `recipes.image_url`.
  *
  * Part of the Sloe image system (2026-06-08,

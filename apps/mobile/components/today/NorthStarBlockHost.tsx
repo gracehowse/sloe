@@ -63,6 +63,10 @@ export interface NorthStarBlockHostProps {
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
+  /** ENG-995: the user's FULL daily calorie target (not remaining).
+   *  Threaded into the scorer so the per-meal budget is a share of the
+   *  day, never the whole remaining day. Mirror of the web host prop. */
+  dailyCalorieTarget: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly to that recipe (or open the log sheet, on web). */
@@ -92,6 +96,7 @@ export function NorthStarBlockHost({
   remainingProtein,
   remainingCarbs,
   remainingFat,
+  dailyCalorieTarget,
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
@@ -155,6 +160,8 @@ export function NorthStarBlockHost({
     protein: remainingProtein,
     carbs: remainingCarbs,
     fat: remainingFat,
+    // ENG-995: full daily target drives the per-meal budget.
+    dailyCalorieTarget,
   };
 
   const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {

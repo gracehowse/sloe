@@ -19,7 +19,8 @@ fits the calories + macros they have left for the slot they're in.
 - **Scorer (shared lib):** `src/lib/nutrition/northStarSuggestion.ts`
   — `pickNorthStarSuggestion`, `pickNextNorthStarSuggestion`,
   `detectSlotForHour`, `ctaForSlot`, `bandLabel`,
-  `NORTH_STAR_LIBRARY_MIN`, `isLibraryEligibleForNorthStar`.
+  `NORTH_STAR_LIBRARY_MIN`, `isLibraryEligibleForNorthStar`,
+  `NORTH_STAR_SLOT_SHARE`, `NORTH_STAR_NO_SLOT_SHARE` (ENG-995).
 - **Web primitive:** `src/app/components/suppr/north-star-block.tsx`
   — four `kind` branches (`default` / `library-empty` /
   `over-budget` / `no-fit`).
@@ -27,9 +28,12 @@ fits the calories + macros they have left for the slot they're in.
   — same four kinds + swipe-to-skip gesture (mobile only) with
   reduce-motion `X` button fallback.
 - **Web host:** `NorthStarBlockHost` inside `NutritionTracker.tsx`
-  picks the right `kind` based on remaining macros + library size.
-- **Mobile host:** wired into `apps/mobile/app/(tabs)/index.tsx`
-  (see `NorthStarBlock` import and render).
+  picks the right `kind` based on remaining macros + library size, and
+  threads `dailyCalorieTarget` (`effectiveCalorieTarget`) into the
+  scorer for the per-meal budget.
+- **Mobile host:** `apps/mobile/components/today/NorthStarBlockHost.tsx`,
+  wired into `apps/mobile/app/(tabs)/index.tsx`; threads
+  `dailyCalorieTarget` (`effectiveCalorieGoal`).
 
 ## Branch logic
 
@@ -56,24 +60,83 @@ The slot is also threaded into the picker's filter — recipes whose
 `mealType` excludes the slot are filtered out. Untagged recipes are
 eligible for any slot.
 
-## Scoring
+## Scoring (rebuilt 2026-06-08 — ENG-995)
 
 `pickNorthStarSuggestion(library, remaining, options?)` —
 
 1. Reject when library empty, remaining calories ≤ 0, or all
    candidates excluded.
 2. Filter by slot (if provided).
-3. Per recipe, evaluate at portion multipliers `{0.5, 1.0, 1.5, 2.0}`
-   matching the planner clamp.
-4. Score: asymmetric calorie penalty (over ×3 / under ×1.5),
-   protein-shortfall pull (×0.5), carb / fat distance (×0.1).
-5. Return the lowest-penalty (recipe, multiplier) pair plus its
-   adherence band: `tight` (within 5%), `close` (within 15%),
-   `loose` (beyond).
+3. Compute a per-**meal** calorie budget (see below) — the recipe is
+   scored against ONE meal's worth of calories, never the whole
+   remaining day.
+4. Per recipe, evaluate at its **actual single serving** — no portion
+   scaling. `predictedCalories = recipe.calories` (and predicted
+   macros are the recipe's per-serving macros), so the card shows the
+   recipe's real per-serving number, identical to the recipe detail
+   screen.
+5. Score: asymmetric calorie penalty vs the per-meal budget (over ×3 /
+   under ×1.5), protein-shortfall pull toward the **day's** remaining
+   protein (×0.5), carb / fat distance from the day's remaining (×0.1).
+6. Return the lowest-penalty recipe (always one serving) plus its
+   adherence band, computed on the per-serving fit to the per-meal
+   budget: `tight` (within 5%), `close` (within 15%), `loose` (beyond).
+
+### Why this was rebuilt (founder feedback, ENG-995)
+
+The original scorer (a) scaled each recipe by a `{0.5, 1.0, 1.5, 2.0}`
+multiplier and surfaced the *scaled* number — so a 573-kcal/serving
+recipe could display as 860 kcal (1.5×), which doesn't match the recipe
+detail and isn't a real serving — and (b) scored every recipe against
+the **entire remaining day**, so in the morning (a full day left) the
+"best fit" was whatever recipe was closest to the whole day's worth of
+calories, i.e. it preferred a giant double portion. Verbatim: *"use
+actual servings when suggesting recipes, not scaled up ones … it's the
+morning — you shouldn't suggest a double portion of one meal to fill the
+whole day's calories, that makes no sense."*
+
+Two fixes: **actual servings only** (no multiplier) and **score against
+a per-meal budget**, not the whole remaining day. This is a correctness
+fix, shipped without a feature flag.
+
+### Per-meal calorie budget
+
+```
+perMealTarget = min(slotShare[slot] · dailyCalorieTarget, remaining.calories)
+```
+
+- `dailyCalorieTarget` is the user's **full** daily calorie target (not
+  remaining). It's a required field on `NorthStarRemaining`, threaded
+  from each Today host (`effectiveCalorieTarget` on web,
+  `effectiveCalorieGoal` on mobile). Required-not-optional so the
+  compiler forces every call site to supply it — no silent fall-back to
+  whole-day scoring.
+- `slotShare` is **tunable** via `NORTH_STAR_SLOT_SHARE` (exported):
+
+  | Slot      | Share |
+  |-----------|-------|
+  | breakfast | 0.25  |
+  | lunch     | 0.35  |
+  | dinner    | 0.35  |
+  | snack     | 0.10  |
+
+  When no slot is detected (late night / pre-dawn — the generic "Log it"
+  CTA case) the share is `NORTH_STAR_NO_SLOT_SHARE = 1.0`: the whole
+  remaining day is the meal budget, because we genuinely don't know which
+  meal this is and the `min(…, remaining)` cap never oversizes.
+- The `min(…, remaining.calories)` cap means that late in the day, with
+  little left, the meal budget shrinks to what's actually available — so
+  the suggestion never exceeds the remaining day.
+
+Result: a wide-open morning targets ~25–35% of the day (a normal single
+meal); late in the day with little left it caps at `remaining`. It never
+sizes one meal to the whole day. The shares are documented defaults — a
+future flag / experiment can rebind `NORTH_STAR_SLOT_SHARE` without a
+code change.
 
 The scorer is independent from the planner's whole-day
 `scoreMealSetCanonical`. The two scorers solve different problems
-(single-recipe-against-remaining vs whole-day-set), and trying to
+(single-recipe-against-a-meal-budget vs whole-day-set), and trying to
 share one scorer was the failure mode that produced the gated
 "Dinner could hit" prototype that this block replaces.
 
@@ -126,13 +189,23 @@ render the same `X` whenever an `onSkip` handler is supplied
 
 ## Tests
 
-- `tests/unit/northStarSuggestion.test.ts` — 28 tests on the scorer
-  (band thresholds, asymmetric penalty, slot filter, exclude-ids,
-  CTA copy, library threshold).
-- `tests/unit/northStarBlockPhase3.test.tsx` — 10 tests on the web
-  primitive (every kind, CTA, skip, thumbnail).
-- `apps/mobile/tests/unit/northStarBlockPhase3.test.tsx` — 7 mobile
-  tests including reduce-motion `X` button fallback.
+- `tests/unit/northStarSuggestion.test.ts` — scorer pins (band
+  thresholds, asymmetric penalty, slot filter, exclude-ids, CTA copy,
+  library threshold, why-line). ENG-995 adds the three load-bearing
+  pins: (a) a 573-kcal recipe suggestion shows 573 (one serving), not a
+  scaled number; (b) a wide-open morning targets a meal-sized share of
+  the day (slotShare · dayTarget), not the whole day, and picks the
+  meal-sized recipe over a day-sized one; (c) the suggestion is never
+  more than one serving (`portionMultiplier === 1`). Plus the
+  `NORTH_STAR_SLOT_SHARE` / `NORTH_STAR_NO_SLOT_SHARE` constant pins.
+- `tests/unit/northStarBlockPhase3.test.tsx` — web primitive (every
+  kind, CTA, skip, thumbnail). Reads `predictedCalories` (now
+  per-serving) — no edit needed.
+- `apps/mobile/tests/unit/northStarBlockPhase3.test.tsx` — mobile
+  primitive incl. reduce-motion `X` button fallback.
+- `apps/mobile/tests/unit/northStarBlockHostPhase5.test.tsx` — mobile
+  host branching; each render now supplies the required
+  `dailyCalorieTarget` prop.
 
 ## Open visual-qa flags carried forward
 

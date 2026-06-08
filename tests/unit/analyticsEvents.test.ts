@@ -28,6 +28,13 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.week_start_day_changed).toBe("week_start_day_changed");
   });
 
+  it("registers onboarding_app_choice (ENG-990 competitor-switch capture)", () => {
+    // ENG-990 — the "Coming from another app?" step emits this on both
+    // platforms with an identical payload. A rename would break the
+    // MFP-refugee capture funnel (chosen-app → activation).
+    expect(AnalyticsEvents.onboarding_app_choice).toBe("onboarding_app_choice");
+  });
+
   it("registers fit_this_in_previewed with the canonical value", () => {
     expect(AnalyticsEvents.fit_this_in_previewed).toBe("fit_this_in_previewed");
   });

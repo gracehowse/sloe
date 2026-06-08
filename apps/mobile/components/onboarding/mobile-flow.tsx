@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureDisabled, track } from "@/lib/analytics";
+import { isFeatureDisabled, isFeatureEnabled, track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { seedSaveTelemetry } from "@suppr/shared/onboarding/seedSaveTelemetry";
@@ -33,7 +33,7 @@ import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
 } from "@/lib/onboarding";
-import { useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
 void mapV2GoalToLegacy;
@@ -122,6 +122,21 @@ export function MobileFlow() {
       go(1);
     }
   }, [isWelcome, isRefreshPlan, go]);
+
+  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
+  // when the flag is OFF, but a user whose persisted AsyncStorage `step`
+  // points at app-choice (reached it while the flag was ON, then it was
+  // ramped back to 0) would render it directly on remount. Defensive
+  // auto-skip, same shape as the signup already-authed skip above.
+  // `isFeatureEnabled` is cold-safe (false → skip), and we also skip it
+  // on refresh-plan (a returning user resetting their plan has no app to
+  // switch from).
+  const isAppChoice = currentStepId === "app-choice";
+  React.useEffect(() => {
+    if (isAppChoice && (!isFeatureEnabled(APP_CHOICE_FLAG) || isRefreshPlan === true)) {
+      go(1);
+    }
+  }, [isAppChoice, isRefreshPlan, go]);
 
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
@@ -286,6 +301,9 @@ export function MobileFlow() {
           used_default_seeds: usedDefaults,
           data_bridge_chosen: state.dataBridgeChosen,
           manual_targets_set: manualTargetsSet,
+          // ENG-990 — the app the user said they're switching from
+          // (`null` when the app-choice step was skipped / flag OFF).
+          app_choice: state.appChoice,
         });
       } catch {
         /* analytics is fire-and-forget */

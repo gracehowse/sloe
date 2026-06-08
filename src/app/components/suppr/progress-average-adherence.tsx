@@ -109,15 +109,21 @@ export function ProgressAverageAdherence({
         </div>
       </div>
 
+      {/* ENG-996 — vertical rhythm snapped to the spacing scale so the
+          headline / big % / macro-bar list read with the same calm
+          cadence as the sibling cards. Was a 4/16/12/6 cascade of
+          off-token gaps; now 8 under the overline, 20 hero-break before
+          the bars, 16 between rows, 8 label→bar. Mirror: mobile
+          `ProgressAverageAdherence.tsx`. */}
       <p
         data-testid="progress-adherence-pct"
-        className="mt-1 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-foreground tabular-nums"
+        className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-foreground tabular-nums"
       >
         {adherencePct}
         <span className="text-[22px] text-muted-foreground">%</span>
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-5 space-y-4">
         {macros.map(({ name, pct, color }) => {
           const bar = formatMacroAdherenceBar({ adherencePct: pct });
           const tone = bar.isOver ? "var(--warning)" : color;
@@ -135,7 +141,7 @@ export function ProgressAverageAdherence({
                   ) : null}
                 </span>
               </div>
-              <div className="mt-1.5 h-2 rounded-full bg-muted overflow-hidden">
+              <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full"
                   data-testid={`progress-adherence-bar-${name.toLowerCase()}`}
