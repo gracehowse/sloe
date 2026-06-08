@@ -75,6 +75,7 @@ import {
 import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
+  composeRecipeMeta,
   composeSubtitleParts,
   computeFitsYourDayVerdict,
   shouldRenderTimeStats,
