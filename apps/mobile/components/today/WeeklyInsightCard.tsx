@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { SupprCard, CARD_RADIUS } from "@/components/ui/SupprCard";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   weeklyInsightCoachLine,
@@ -172,39 +172,51 @@ export function WeeklyInsightCard({
 
   if (figmaLayout) {
     return (
-      <View
+      // Flat `SupprCard` slab — same chrome as every resting Today card.
+      // `tone="magenta"` carries the CROSS-SCREEN insight wash (Sloe damson
+      // `rgba(106,75,122,0.10)`), the same lilac language the Progress
+      // THIS WEEK card uses (`PROGRESS_INSIGHT_LILAC_BG` ≈ damson 0.12) — so
+      // "insight = lilac" reads consistently across Today and Progress. The
+      // flat lift drops the border (no rogue hairline) and the old ad-hoc
+      // cooler-lilac inline rgba fill is gone (2026-06-08 flat-slab
+      // unification). To make Today's insight cream-neutral like the rest of
+      // Today instead, change `tone="magenta"` → `tone="neutral"` here AND in
+      // the legacy branch below (one founder decision; see the card report).
+      <SupprCard
+        lift="flat"
+        tone="magenta"
+        padding="lg"
         testID="today-weekly-insight-mobile"
         accessibilityLabel="Weekly insight"
-        style={[
-          styles.figmaInsightCard,
-          { borderColor: _borderColor, backgroundColor: "rgba(237,234,241,0.4)" },
-        ]}
+        innerStyle={styles.figmaInsightRow}
       >
-        <View style={styles.figmaInsightRow}>
-          <View
-            style={[
-              styles.figmaInsightIcon,
-              { borderColor: _borderColor, backgroundColor: _cardBackgroundColor },
-            ]}
-          >
-            <TrendingUp size={18} color={MacroColors.calories} strokeWidth={2} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.figmaInsightTitle, { color: MacroColors.calories }]}>
-              Weekly Insight
-            </Text>
-            <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
-              {proseBody}
-            </Text>
-          </View>
+        <View
+          style={[
+            styles.figmaInsightIcon,
+            { borderColor: _borderColor, backgroundColor: _cardBackgroundColor },
+          ]}
+        >
+          <TrendingUp size={18} color={MacroColors.calories} strokeWidth={2} />
         </View>
-      </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.figmaInsightTitle, { color: MacroColors.calories }]}>
+            Weekly Insight
+          </Text>
+          <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
+            {proseBody}
+          </Text>
+        </View>
+      </SupprCard>
     );
   }
 
   return (
+    // `tone="magenta"` — the cross-screen insight lilac (matches Progress's
+    // THIS WEEK card); flat lift keeps it a borderless slab. Flip to
+    // `tone="neutral"` here + in the figma branch above for cream-neutral.
     <SupprCard
       lift="flat"
+      tone="magenta"
       padding="lg"
       testID="today-weekly-insight-mobile"
       accessibilityLabel="Weekly insight"
@@ -365,14 +377,6 @@ const styles = StyleSheet.create({
   },
   summaryLine: {
     ...Type.caption,
-  },
-  figmaInsightCard: {
-    borderWidth: 1,
-    // 24px Sloe slab corner (Figma 654:2) — NOT Radius.lg/xl, which the
-    // `todayFlatCardFigma` guard forbids for Today cards.
-    borderRadius: CARD_RADIUS,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
   },
   figmaInsightRow: {
     flexDirection: "row",

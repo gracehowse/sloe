@@ -163,7 +163,9 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
     // placeholder with the sage initial — never the loud gradient glyph.
     expect(WEB_SRC).toContain("resolveIngredientTileImage");
     expect(WEB_SRC).toContain("getIngredientTilePlaceholder");
-    expect(WEB_SRC).toContain("fetchIngredientImageMap");
+    // 2026-06-08: hydration moved to `fetchIngredientImages` (returns the map
+    // + the missing canonical keys for lazy generate-on-miss).
+    expect(WEB_SRC).toContain("fetchIngredientImages");
     expect(WEB_SRC).toContain("recipe-ingredient-image-");
     expect(WEB_SRC).toContain("recipe-ingredient-placeholder-");
     // Labels use the cleaned display name (brand/quantity noise dropped).
@@ -309,7 +311,9 @@ describe("mobile detail — full Figma 332:2 visual language (not just bounded d
     // screen hydrates `ingredient_images` and passes the map down so each
     // tile shows the on-brand photo (or the calm cream placeholder).
     expect(MOBILE_SRC).toContain("RecipeIngredientGrid");
-    expect(MOBILE_SRC).toContain("fetchIngredientImageMap");
+    // 2026-06-08: hydration moved to `fetchIngredientImages` (map + missing
+    // keys for lazy generate-on-miss).
+    expect(MOBILE_SRC).toContain("fetchIngredientImages");
     expect(MOBILE_SRC).toContain("imageMap={ingredientImageMap}");
   });
 

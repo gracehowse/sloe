@@ -38,7 +38,9 @@ describe("Today flat borderless slab (Figma 654:2)", () => {
     "components/today/TodayMealsSection.tsx",
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayActivityBonusCard.tsx",
+    "components/today/TodayActivityCard.tsx",
     "components/today/NorthStarBlock.tsx",
+    "components/today/WeeklyCheckinBanner.tsx",
     "components/HydrationStimulantsCard.tsx",
   ];
 
@@ -49,6 +51,35 @@ describe("Today flat borderless slab (Figma 654:2)", () => {
       expect(src).toMatch(/<SupprCard[\s\S]*?lift="flat"/);
     },
   );
+
+  // The two below-hero cards Grace flagged as inconsistent (2026-06-08). They
+  // are now flat `SupprCard` slabs like every other resting Today card — these
+  // assertions fail if either reverts to a hand-rolled bordered `<View>` with
+  // an inline tint (the exact drift that was fixed: WeeklyCheckinBanner's peach
+  // `${Accent.primary}08` + clay border, WeeklyInsightCard's `rgba(237,234,…)`).
+  it("WeeklyCheckinBanner is a flat SupprCard with no hand-rolled card border", () => {
+    const src = readFileSync(
+      join(ROOT, "components/today/WeeklyCheckinBanner.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/<SupprCard[\s\S]*?lift="flat"/);
+    // No rogue card-surface border/tint on the outer wrapper. (The clay OPEN
+    // button keeps its own `backgroundColor: Accent.primary` — that's a CTA,
+    // not the card surface — so we only forbid the banner-tint pattern.)
+    expect(src).not.toMatch(/backgroundColor:\s*`\$\{Accent\.primary\}08`/);
+    expect(src).not.toMatch(/borderColor:\s*`\$\{Accent\.primary\}30`/);
+  });
+
+  it("WeeklyInsightCard renders both branches as SupprCards (no rogue inline rgba tint)", () => {
+    const src = readFileSync(
+      join(ROOT, "components/today/WeeklyInsightCard.tsx"),
+      "utf8",
+    );
+    // Both the legacy stat-grid AND the Figma narrative branch are SupprCards.
+    expect(src).not.toMatch(/rgba\(237,\s*234,\s*241/);
+    // The deleted hand-rolled bordered card style must not come back.
+    expect(src).not.toContain("figmaInsightCard");
+  });
 
   it("index.tsx styles.card uses useTodayCardElevation (not soft lift)", () => {
     const src = readFileSync(join(ROOT, "app/(tabs)/index.tsx"), "utf8");

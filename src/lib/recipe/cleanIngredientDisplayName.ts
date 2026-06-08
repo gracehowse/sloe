@@ -78,7 +78,13 @@ const UNIT_ALT = LEADING_UNIT_WORDS
   .map((u) => u.replace(/ /g, "\\s+"))
   .join("|");
 
-const LEADING_QTY_RE = new RegExp(
+/**
+ * Leading quantity + unit matcher. Exported so the canonical image key
+ * (`canonicalImageKey.ts`) reuses the EXACT same quantity-strip spine the
+ * display label uses — write-key and read-key must share one regex or the
+ * tile lookup drifts (the original `ingredient_images` bug).
+ */
+export const LEADING_QTY_RE = new RegExp(
   // start
   "^\\s*" +
     // optional "a "/"an " article OR a numeric quantity
@@ -111,7 +117,7 @@ const LEADING_QTY_RE = new RegExp(
  * and a non-trivial tail — this keeps "Salt · Pepper · Garlic" style
  * lists intact rather than dropping the first item.
  */
-function stripBrandPrefix(s: string): string {
+export function stripBrandPrefix(s: string): string {
   // Prefer the middot / pipe brand convention.
   for (const sep of [" · ", "·", " | ", "|"]) {
     const idx = s.indexOf(sep);
@@ -139,7 +145,7 @@ function stripBrandPrefix(s: string): string {
 }
 
 /** Strip ALL trailing/embedded parentheticals: "Puntalette (Dried)" → "Puntalette". */
-function stripParentheticals(s: string): string {
+export function stripParentheticals(s: string): string {
   return s.replace(/\s*\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
 }
 

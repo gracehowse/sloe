@@ -135,30 +135,66 @@ trailing `Avoid: …` clause on `fal-ai/flux-2-pro` (no `negative_prompt` field;
 
 ## 2. Template B — Single ingredient
 
-**Rule (locked, §11.1):** stylised-photoreal single subject on pure white, soft studio-product daylight,
+> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template B's ENGINE + technique below were changed
+> to fix the consistency drift (pile-vs-bowl, background, literal-quantity — egg-whites rendered as a milk
+> bottle, "4 eggs" for one ingredient). The engine moved **FLUX 2 Pro → Nano Banana Pro** for ingredients,
+> and the consistency is now driven by a **FIXED `system_prompt` + FIXED seed (424242)** applied on every
+> call, with the per-image `prompt` reduced to the ONE representative subject. This is a change to a LOCKED
+> artefact and must be ratified by `brand-manager` (record in `docs/decisions/`). The code shipped first
+> (proven via fal — egg-white verified correct, not a milk bottle) to unblock the library re-shoot; the
+> doc reflects the new reality. See the implementation in
+> [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts) `generateIngredientImage`
+> + the 2026-06-08 decision doc. **Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** Linear: ENG-905.
+
+**Rule (locked, §11.1):** studio product photo of a single subject on pure white, soft even daylight, one
 soft natural shadow below, 1:1. Matches the existing eggs/blueberries set exactly. Not watercolour, not
 flat illustration, not 3D render. **Do not drift this style** — it is already established across the app
 and the allergen/diet tiles.
 
+### Engine + technique (Nano Banana Pro — the consistency lever)
+
+- **Model:** `fal-ai/nano-banana-pro` (Google Gemini 3 Pro Image) — NOT FLUX, for ingredients. (Brand
+  head-to-head winner + what the top competitor uses + verified to produce a consistent set.)
+- **Per-image params:** `aspect_ratio: "1:1"`, `resolution: "2K"`, `output_format: "jpeg"`, a FIXED
+  `seed: 424242` for the whole set, and the EXACT `system_prompt` below on every call (the consistency
+  lever — **do not edit it per call**):
+
+```
+Studio product photography of a single food ingredient for a premium nutrition app. ALWAYS, identically
+for every ingredient: exactly one subject, centred, on a pure white seamless background; soft even
+natural daylight from the front-left; one soft natural shadow directly beneath the subject; sharp focus;
+true-to-life natural colour; clean and uncluttered; NO props, NO bowl, NO plate, NO utensils, NO scenery,
+NO hands, NO text or labels. Warm, calm, editorial, photographic — never illustrated, never 3D-rendered,
+never glossy CGI. Keep lighting, scale, camera angle and shadow identical across every ingredient so a
+grid of them reads as one consistent set.
+```
+
 **Input:**
-- `{INGREDIENT}` — the single food item or small group, plain words (e.g. "three brown eggs", "a handful
-  of blueberries", "a bunch of fresh basil").
+- `{INGREDIENT}` — the single canonical food, plain words. ONE representative item — **never the literal
+  recipe quantity** (one egg, not four; a single head of garlic).
 
-**Positive prompt:**
+**Per-image `prompt`** — just the subject:
 
 ```
-Stylised-photoreal product photograph of {INGREDIENT}, a single subject isolated on a pure white
-seamless background. Soft natural daylight, gentle soft shadow directly beneath the subject. Sharp
-focus, high detail, true-to-life colour, clean and uncluttered. Hyperreal photographic style with
-light studio-product lighting. No surface texture, no props, no background scenery.
+A single {canonical food}.
 ```
 
-Then append the **style anchor block** (§4, ingredient variant — see note) and pass the **negative
-prompt** (§5).
+e.g. `A single whole head of garlic.`, `A single egg white.`, `A single cherry tomato.`
+
+- **Loose / heap-forming foods** (salt, pepper, oregano, flour, sugar, oats, ground spices): one consistent
+  treatment — `A small neat mound of {X}.` (not a bowl for one and a pile for another).
+- **Liquids / condiments** (oil, soy, honey, vinegar, sauce): `A small unlabelled portion of {X} in a
+  simple clear vessel.` — no branded bottle, no label.
+
+> The white background / lighting / scale / shadow consistency now lives ENTIRELY in the FIXED
+> `system_prompt` + seed — NOT in the per-image line. That is why a grid of tiles reads as one set even
+> though each per-image prompt is a single short sentence. Nano honours a separate `system_prompt`
+> (Gemini-3 system instruction), so — unlike FLUX — the consistency block is a true system prompt, not a
+> trailing positive clause.
 
 > Template B overrides two anchors from §4: background is **pure white** (not wood/linen), and the mood is
-> **clean daylight** (not moody under-exposure). Everything else in the anchor + negative list still
-> applies. Aspect ratio for B is **1:1**.
+> **clean daylight** (not moody under-exposure). Everything else in the anchor + never-list still applies.
+> Aspect ratio for B is **1:1**.
 
 ---
 
@@ -443,7 +479,7 @@ Constant across the brand. Per-surface, only `aspect_ratio` varies.
 
 | Param | Value | Why |
 |---|---|---|
-| **Model** | `fal-ai/flux-2-pro` (FLUX 2 Pro) — runtime; `fal-ai/nano-banana-pro` (Nano Banana Pro) — marketing/hero | **Dual-engine split (2026-06-07 head-to-head, see strategy doc):** Nano Banana Pro = default for hero/marketing/social/Discover-feature/recipe-hero imagery (won on editorial quality — window light, depth, kitchen context; $0.15/img, low-volume); FLUX 2 Pro = default for runtime per-user recipe-gen (cost-critical, high-volume, cached; $0.01-0.04/img). **The prompt templates are model-swappable and do not change** — same assembled string drives either engine. Budget tier FLUX 2 Flex / GPT Image fallback may be swapped at the engine layer — prompt unchanged. **Engine caveat:** the fal `fal-ai/flux-2-pro` endpoint exposes only `prompt`, `image_size`, `seed`, `output_format`, `safety_tolerance` — **no separate `negative_prompt` field**. The §5 never-list is therefore appended to the positive prompt as a trailing `Avoid: ...` clause. If a future batch shows the model summoning negated nouns from the avoid-clause, move to an engine that honours a true negative prompt. (First recorded in `docs/decisions/2026-06-07-universal-food-imagery.md`.) |
+| **Model** | **Template A dish heroes:** `fal-ai/flux-2-pro` (FLUX 2 Pro). **Template B ingredients:** `fal-ai/nano-banana-pro` (Nano Banana Pro) from 2026-06-08. **Marketing/hero/social:** `fal-ai/nano-banana-pro`. | **Engine split:** (1) **Ingredient tiles (Template B) → Nano Banana Pro (2026-06-08, ENG-905).** Nano + a FIXED `system_prompt` + FIXED seed (424242) produces a CONSISTENT set — the FLUX ingredient batch drifted (pile-vs-bowl, literal quantity, egg-white-as-milk-bottle). The per-image prompt is just the ONE representative subject; the consistency lives in the system prompt. Verified via fal before the switch. (2) **Dish heroes (Template A) → FLUX 2 Pro**, unchanged (cost-critical, high-volume, cached; cooked-state LLM-description fix in §1). (3) **Marketing/social/landing/Discover → Nano Banana Pro** (won the 2026-06-07 head-to-head on editorial quality). **The prompt templates are model-swappable; the per-image prompt does not change when the model does.** **Negative-prompt caveat:** neither `fal-ai/flux-2-pro` nor `fal-ai/nano-banana-pro` exposes a `negative_prompt` field. For FLUX (Template A) the §5 never-list is a trailing `Avoid: …` clause; for **Nano (Template B)** the consistency + exclusions ("NO props, NO bowl, NO text…") live in the FIXED `system_prompt` (a true Gemini-3 system instruction), which is stronger than a positive avoid-clause. (First recorded in `docs/decisions/2026-06-07-universal-food-imagery.md` + the 2026-06-08 ingredient-image decision.) |
 | **`aspect_ratio` — dish (A)** | `4:3` hero, `1:1` square card, `16:9` paywall/landing strip | Recipe heroes are landscape-ish; the runtime import card hero is 4:3. Pick per surface, never stretch. |
 | **`aspect_ratio` — ingredient (B) / object (C)** | `1:1` | Locked in §11.1. |
 | **`aspect_ratio` — lifestyle (D, proposed)** | `4:5` social portrait, `1:1` IG grid, `16:9` landing/banner | Social-first formats; pass as an explicit `image_size: { width, height }` object (1080x1350 / 1080x1080 / 1920x1080). |

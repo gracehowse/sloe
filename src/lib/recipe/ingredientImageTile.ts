@@ -6,10 +6,14 @@
  * `docs/decisions/2026-06-08-recipe-ingredient-image-system.md`).
  *
  * When `ingredient_images` has a `ready` image for the ingredient we
- * render that photo (stylised-photoreal on white, Template B). Until the
- * backfill runs the table is empty, so we render a calm placeholder
- * instead: a warm cream tile with the ingredient's initial in sage —
- * deterministic per name so the same ingredient always looks the same.
+ * render that photo (studio product photo on white, Template B, Nano Banana
+ * Pro). Until the backfill runs the table is empty, so we render a calm
+ * placeholder instead: a warm cream tile with the ingredient's initial in
+ * sage — deterministic per canonical key so the same ingredient always
+ * looks the same. Rows are keyed by `canonicalImageKey` (NOT
+ * `normalizeIngredientNameKey`) — the same key the backfill writer and
+ * `fetchIngredientImageMap` use, so write-key == read-key (the original
+ * `ingredient_images` drift bug).
  *
  * This mirrors the §11.4 fallback hierarchy (warm placeholder, never a
  * grey box, never a broken-image icon) at the small ingredient scale.
@@ -21,7 +25,7 @@
  */
 
 import { djb2 } from "./recipeHeroFallback";
-import { normalizeIngredientNameKey } from "../planning/ingredientNameKey";
+import { canonicalImageKey } from "./canonicalImageKey";
 
 export interface IngredientTilePlaceholder {
   /** Single uppercase initial to render (the ingredient's first letter,
@@ -47,7 +51,10 @@ const SAGE = "#7C8466";
 export function getIngredientTilePlaceholder(
   name: string | null | undefined,
 ): IngredientTilePlaceholder {
-  const key = typeof name === "string" ? normalizeIngredientNameKey(name) : "";
+  // Keyed by the SAME canonical key the image is stored under, so a given
+  // ingredient's placeholder is stable and consistent with its eventual
+  // photo (same initial, same cream tint).
+  const key = typeof name === "string" ? canonicalImageKey(name) : "";
   // First alphabetic character of the (cleaned) key, uppercased.
   const letter = key.match(/[a-z]/i)?.[0];
   const initial = letter ? letter.toUpperCase() : "·";
@@ -65,7 +72,9 @@ export function resolveIngredientTileImage(
   imageMap: ReadonlyMap<string, string> | null | undefined,
 ): string | null {
   if (!imageMap || imageMap.size === 0) return null;
-  const key = typeof name === "string" ? normalizeIngredientNameKey(name) : "";
+  // MUST match how the backfill writer + `fetchIngredientImageMap` key rows
+  // (`canonicalImageKey`) or the lookup silently misses → placeholder forever.
+  const key = typeof name === "string" ? canonicalImageKey(name) : "";
   if (!key) return null;
   return imageMap.get(key) ?? null;
 }

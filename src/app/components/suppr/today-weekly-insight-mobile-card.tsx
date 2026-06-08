@@ -12,6 +12,7 @@ import {
   computeWeekBarStates,
 } from "../../../lib/nutrition/weekInsightBar";
 import { SupprCard } from "../ui/suppr-card.tsx";
+import { PROGRESS_INSIGHT_LILAC_STYLE } from "./progress-headline.tsx";
 
 /**
  * Below-meals weekly insight on mobile-web — parity with
@@ -67,8 +68,22 @@ export function TodayWeeklyInsightMobileCard({
 
   if (figmaLayout) {
     return (
-      <div
-        className="md:hidden mb-4 rounded-xl border border-border bg-[color-mix(in_srgb,var(--frost-mist)_40%,transparent)] p-5"
+      // Flat `SupprCard` slab — same chrome as the other resting Today cards.
+      // The CROSS-SCREEN insight lilac (`PROGRESS_INSIGHT_LILAC_STYLE` =
+      // `var(--slot-dinner-soft)`, the exact wash the Progress THIS WEEK card
+      // uses) carries the "insight = lilac" language on Today too, but now as a
+      // borderless flat slab (the old `rounded-xl border border-border` +
+      // cooler `--frost-mist` ad-hoc fill are gone, 2026-06-08 flat-slab
+      // unification — parity with mobile `tone="magenta"`). To make Today's
+      // insight cream-neutral like the rest of Today, drop the `style` lilac
+      // (one founder decision; see the card report). `slab-flat` already drops
+      // the border, so the lilac border in the style is inert here.
+      <SupprCard
+        elevation="slab-flat"
+        radius="lg"
+        padding="xl"
+        className="md:hidden mb-4"
+        style={PROGRESS_INSIGHT_LILAC_STYLE}
         data-testid="today-weekly-insight-mobile"
         aria-label="Weekly insight"
       >
@@ -85,16 +100,19 @@ export function TodayWeeklyInsightMobileCard({
             </p>
           </div>
         </div>
-      </div>
+      </SupprCard>
     );
   }
 
   return (
+    // Cross-screen insight lilac (matches Progress THIS WEEK); flat slab keeps
+    // it borderless. Drop the `style` lilac for cream-neutral (see card report).
     <SupprCard
       elevation="slab-flat"
       radius="lg"
       padding="lg"
       className="md:hidden mb-3"
+      style={PROGRESS_INSIGHT_LILAC_STYLE}
       data-testid="today-weekly-insight-mobile"
       aria-label="Weekly insight"
     >

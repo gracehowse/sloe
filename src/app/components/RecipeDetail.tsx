@@ -26,7 +26,8 @@ import {
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
-import { fetchIngredientImageMap } from "../../lib/recipe/ingredientImages.ts";
+import { fetchIngredientImages } from "../../lib/recipe/ingredientImages.ts";
+import { enqueueIngredientImages } from "../../lib/recipe/enqueueIngredientImages.ts";
 import {
   getIngredientTilePlaceholder,
   resolveIngredientTileImage,
@@ -775,8 +776,21 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     }
     let cancelled = false;
     void (async () => {
-      const map = await fetchIngredientImageMap(supabase, names);
-      if (!cancelled) setIngredientImageMap(map);
+      const { map, missingKeys } = await fetchIngredientImages(supabase, names);
+      if (cancelled) return;
+      setIngredientImageMap(map);
+      // Lazy generate-on-miss: enqueue the tiles that have no ready image
+      // (fire-and-forget; never blocks render). The library fills itself.
+      if (missingKeys.length > 0) {
+        enqueueIngredientImages(names, (b) =>
+          fetch("/api/ingredient-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify(b),
+          }),
+        );
+      }
     })();
     return () => {
       cancelled = true;

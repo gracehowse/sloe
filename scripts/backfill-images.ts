@@ -10,10 +10,11 @@
  *       (`generateDishImage`) and write it to `recipes.image_url`.
  *
  *   (b) INGREDIENTS — for each DISTINCT canonical ingredient key across
- *       `recipe_ingredients` (keyed by `normalizeIngredientNameKey`),
- *       generate a Template-B single-ingredient image
- *       (`generateIngredientImage`) and upsert a row into
- *       `ingredient_images` (name_key, display_name, image_url, status).
+ *       `recipe_ingredients` (keyed by `canonicalImageKey` — the SAME key
+ *       the display readers use, so write-key == read-key), generate a
+ *       Template-B single-ingredient image (`generateIngredientImage`, Nano
+ *       Banana Pro studio-on-white) and upsert a row into `ingredient_images`
+ *       (name_key, display_name, image_url, status).
  *
  * ── IMPORTANT: needs fal.ai FUNDED to do anything ──────────────────
  * fal.ai is currently OUT OF BALANCE (account locked). With no funds the
@@ -38,6 +39,9 @@
  *     Instagram CDN covers) — those are not under the `heroes/` path.
  *   - Ingredients pass skips keys already `ready` in `ingredient_images`;
  *     `pending`/`failed` rows are retried.
+ *   - `--regenerate-ingredients` FORCE-regenerates EVERY canonical key
+ *     (overwrites existing `ready` tiles). Used for the 2026-06-08 re-key +
+ *     Nano Banana Pro re-shoot of the whole ingredient library.
  *   - Rate-limited (default 1 req / 1.2 s) to be gentle on fal + storage.
  *   - `--limit N` caps how many items each pass processes (spot-check
  *     before a full run). `--heroes-only` / `--ingredients-only` scope it.
@@ -53,10 +57,12 @@
  *   npx tsx scripts/backfill-images.ts --apply --ingredients-only
  *   # regenerate ONLY the existing AI heroes with the new prompt:
  *   npx tsx scripts/backfill-images.ts --apply --heroes-only --regenerate-heroes
+ *   # re-key + regenerate the WHOLE ingredient library on Nano Banana Pro:
+ *   npx tsx scripts/backfill-images.ts --apply --ingredients-only --regenerate-ingredients
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { normalizeIngredientNameKey } from "../src/lib/planning/ingredientNameKey";
+import { canonicalImageKey } from "../src/lib/recipe/canonicalImageKey";
 import { cleanIngredientDisplayName } from "../src/lib/recipe/cleanIngredientDisplayName";
 import {
   generateDishImage,
@@ -73,6 +79,11 @@ const INGREDIENTS_ONLY = argv.has("--ingredients-only");
  *  `recipe-images/heroes/` storage path). Real imported/external images
  *  are never touched (they're not under that path). */
 const REGENERATE_HEROES = argv.has("--regenerate-heroes");
+/** Force-regenerate EVERY ingredient tile — re-runs generation for all
+ *  canonical keys even those already `ready`. Used for the 2026-06-08 re-key
+ *  + Nano Banana Pro re-shoot (overwrite the old inconsistent FLUX tiles).
+ *  Without this, `ready` rows are skipped (normal idempotent behaviour). */
+const REGENERATE_INGREDIENTS = argv.has("--regenerate-ingredients");
 const limitArg = process.argv.find((a) => a.startsWith("--limit"));
 const LIMIT = limitArg
   ? Number.parseInt(limitArg.split("=")[1] ?? process.argv[process.argv.indexOf(limitArg) + 1] ?? "0", 10) || null
@@ -209,16 +220,21 @@ async function runIngredients(sb: ReturnType<typeof createClient> | null) {
     log("recipe_ingredients query failed:", error.message);
     return;
   }
+  // Canonical key per distinct ingredient — the SAME key the display
+  // readers use (`canonicalImageKey`), so write-key == read-key. The first
+  // raw name that maps to a key wins as the display/prompt subject (cleaned).
   const keyToDisplay = new Map<string, string>();
   for (const row of data ?? []) {
     const raw = String((row as { name?: string }).name ?? "");
-    const key = normalizeIngredientNameKey(raw);
+    const key = canonicalImageKey(raw);
     if (key && !keyToDisplay.has(key)) {
       keyToDisplay.set(key, cleanIngredientDisplayName(raw) || raw);
     }
   }
 
-  // Which keys already have a ready image? Skip those.
+  // Which keys already have a ready image? Skip those — UNLESS
+  // --regenerate-ingredients is set (then re-generate every key to overwrite
+  // the old inconsistent FLUX tiles with the new Nano Banana Pro set).
   const { data: existing } = await sb
     .from("ingredient_images")
     .select("name_key, status");
@@ -228,7 +244,15 @@ async function runIngredients(sb: ReturnType<typeof createClient> | null) {
       .map((e) => String((e as { name_key?: string }).name_key ?? "")),
   );
 
-  const pending = Array.from(keyToDisplay.entries()).filter(([k]) => !readyKeys.has(k));
+  if (REGENERATE_INGREDIENTS) {
+    log(
+      "--regenerate-ingredients ON: will FORCE-regenerate EVERY canonical ingredient key (overwrite existing ready tiles) with the new Nano Banana Pro recipe.",
+    );
+  }
+
+  const pending = Array.from(keyToDisplay.entries()).filter(
+    ([k]) => REGENERATE_INGREDIENTS || !readyKeys.has(k),
+  );
   const scoped = LIMIT ? pending.slice(0, LIMIT) : pending;
   log(
     `${keyToDisplay.size} distinct ingredients (${readyKeys.size} already ready); processing ${scoped.length}.`,

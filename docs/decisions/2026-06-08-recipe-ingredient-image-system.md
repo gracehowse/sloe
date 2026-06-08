@@ -3,10 +3,10 @@
 - **Date:** 2026-06-08
 - **Area:** Recipes — imagery (web + mobile); nutrition pipeline (display only)
 - **Status:** Resolved — implemented + backfilled (fal.ai funded 2026-06-08); hero cooked-state fix
-  applied + heroes regenerated 2026-06-08 (see "Hero cooked-state fix" below — the LOCKED-template
-  change awaits `brand-manager` ratification; Linear issue to be opened for the ratification +
-  follow-ups). Builds on the ratified
-  [image-generation strategy](2026-06-03-image-generation-strategy.md) and the LOCKED
+  applied + heroes regenerated 2026-06-08; **canonical-key re-key + Nano Banana Pro ingredient re-shoot
+  + lazy generate-on-miss shipped 2026-06-08** (see "Canonical key + Nano + lazy generation (2026-06-08)"
+  below — the Template-B engine change awaits `brand-manager` ratification, tracked ENG-905). Builds on
+  the ratified [image-generation strategy](2026-06-03-image-generation-strategy.md) and the LOCKED
   [Sloe image prompt template](../brand/sloe-image-prompt-template.md).
 
 ## Context
@@ -38,12 +38,13 @@ Two image classes, both generated from the LOCKED brand template, stored in Supa
    generator (service key) own writes. Migration: `supabase/migrations/20260608120000_ingredient_images.sql`
    (applied via `supabase db push --linked` 2026-06-08; never MCP `apply_migration`).
 
-2. **Key = `normalizeIngredientNameKey(name)`, used identically at write-time and read-time.** The
-   backfill keys rows by it and the grids hydrate by it (`fetchIngredientImageMap` →
-   `resolveIngredientTileImage`). The key function MUST match on both sides or lookups miss. (Known
-   imperfection: `normalizeIngredientNameKey` does not strip leading quantities, so "1 tbsp soy
-   sauce" and "soy sauce" are distinct keys → near-duplicate tiles. Cosmetic + minor cost only;
-   tracked, not blocking — see Follow-ups.)
+2. **Key = `canonicalImageKey(name)`, used identically at write-time and read-time** (updated 2026-06-08
+   from `normalizeIngredientNameKey`). The backfill keys rows by it and the grids hydrate by it
+   (`fetchIngredientImages` → `resolveIngredientTileImage`). The key function MUST match on both sides or
+   lookups miss — enforced by the mandatory guard test `tests/unit/canonicalImageKey.test.ts`
+   (writer-key == reader-key across the real corpus + idempotency). `canonicalImageKey` strips leading
+   quantities + brand prefixes (fixing the "120g spinach" / "spinach" dup-tile bug) and applies a curated
+   image-key granularity policy. See "Canonical key + Nano + lazy generation (2026-06-08)" below.
 
 3. **Clean display name is DISPLAY-ONLY.** Tiles + labels use `cleanIngredientDisplayName(name)`;
    this is NEVER fed back into nutrition matching, verification, or the `recipe_ingredients.name`
@@ -126,6 +127,68 @@ no hands/people, (e) on-brand. **All 6 passed**, including the two that previous
 updated to the LLM-description + cooked-state-guards pattern, flagged for `brand-manager` ratification
 (LOCKED-artefact change).
 
+## Canonical key + Nano + lazy generation (2026-06-08)
+
+Three changes shipped together to fix the two open follow-ups (key drift / quantity pollution + the
+inconsistent FLUX ingredient set) and add the self-growing library.
+
+### 1. Canonical image key — `src/lib/recipe/canonicalImageKey.ts` (NEW, single source of truth)
+
+`ingredient_images.name_key` is now `canonicalImageKey(name)`, used IDENTICALLY by the backfill writer
+(`scripts/backfill-images.ts`) and every display reader (`ingredientImageTile.ts` `resolveIngredientTileImage`
++ `ingredientImages.ts` `fetchIngredientImages`, web + mobile via `@suppr/shared`). The prior key
+(`normalizeIngredientNameKey`) did not strip leading quantities, so "120g spinach" / "spinach" got two
+tiles, and three Fage/Waitrose Greek-yogurt brand forms got three. A **mandatory guard test**
+(`tests/unit/canonicalImageKey.test.ts`) asserts writer-key == reader-key across the real 51-string
+corpus + idempotency, so the key can never silently drift again.
+
+- **Hybrid:** text spine (`deriveTextKey`) is ALWAYS the key (the matched-food id is null across the whole
+  seed corpus). It reuses `cleanIngredientDisplayName`'s brand/quantity/parenthetical strip spine (those
+  helpers are now exported), plus an image-key-specific regional + identity-collapse alias map (curated —
+  deliberately NOT the nutrition `NAME_ALIASES`, which expands single words to USDA strings like
+  "egg"→"egg whole raw" and would break grouping). `applyNameAliases` in `verifyIngredients.ts` is
+  **untouched**, as is `src/lib/planning/ingredientNameKey.ts` (shopping/plan still key by it).
+- **Granularity (image key only — raw/cooked do NOT split):** DISTINCT — egg ≠ egg white ≠ egg yolk;
+  milk ≠ oat ≠ almond; chicken breast ≠ thigh ≠ ground; cherry tomato ≠ tomato ≠ paste ≠ sauce; each
+  cheese; sugars; onions; rice. COLLAPSE — all salt → `salt`; olive-oil grades → `olive oil`; herb preps
+  → the herb; meat mince → `ground X`; regional synonyms (courgette→zucchini, prawns→shrimp,
+  coriander→cilantro). Real corpus: **51 raw names → 43 canonical keys** (down from 51 polluted keys).
+- **Matched-food alias** (`matchedAliasKey`, `confidence ≥ 0.85`) is computed + wired through the input
+  type but NOT folded into the key (a weak match can never corrupt grouping). v1 has no alias storage —
+  fast-follow ENG-905.
+
+### 2. Ingredient engine → Nano Banana Pro (Template B)
+
+`generateIngredientImage` switched FLUX 2 Pro → `fal-ai/nano-banana-pro` (Google Gemini 3 Pro Image) with
+a FIXED `system_prompt` (the consistency lever — identical lighting/scale/shadow on every call) + a FIXED
+`seed: 424242`, `aspect_ratio: "1:1"`, `resolution: "2K"`, `output_format: "jpeg"`. The per-image prompt
+is reduced to the ONE representative subject (`A single {x}.`; loose foods → `A small neat mound of {x}.`;
+liquids → `A small unlabelled portion of {x} …`) — **never the literal recipe quantity**. This fixes the
+FLUX ingredient drift (pile-vs-bowl, "4 eggs" for one ingredient, egg-white-rendered-as-a-milk-bottle).
+**Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** The LOCKED template (§2) is updated with a
+PENDING-`brand-manager`-sign-off banner (ENG-905).
+
+### 3. Lazy generate-on-miss + cache (the library grows itself)
+
+`fetchIngredientImages` now returns `{ map, missingKeys }`; the display layer (web `RecipeDetail.tsx` +
+mobile `recipe/[id].tsx`, via the shared `enqueueIngredientImages` helper) fires
+`POST /api/ingredient-image` for any canonical key with no `ready` image. The endpoint idempotently claims
+each key `pending` via an atomic `insert … on conflict do nothing` (so two devices / two rows for the same
+ingredient never double-spend fal), generates with Nano, and caches `ready`. **Never blocks render**
+(fire-and-forget; the screen re-hydrates on its next load), **never regenerates an existing key**, and
+degrades to the calm placeholder on any fal/DB error. Per-user rate-limited; capped at 6 keys/request.
+The candidate-selection logic is extracted to a pure, unit-tested helper
+(`src/lib/recipe/ingredientImageQueue.ts`).
+
+### Re-key + regeneration run (2026-06-08)
+
+Ran `backfill-images.ts --apply --ingredients-only --regenerate-ingredients` (new force flag) to re-key +
+re-shoot the WHOLE ingredient library on Nano: **43/43 canonical keys regenerated** (overwriting the old
+inconsistent FLUX tiles). Old-key orphan rows (the 51 − matched pre-existing keys) deleted post-run.
+Forensic per-image verification of a ~15-image sample (incl. egg, egg white, oat/almond, chicken cuts,
+cherry tomato, salt, a leafy green, a branded sauce) + a stitched set-consistency strip: see the
+implementing session report.
+
 ## Display wiring (web + mobile parity)
 
 - **Web** `src/app/components/RecipeDetail.tsx`: load effect hydrates the image map; each ingredient
@@ -139,24 +202,30 @@ updated to the LLM-description + cooked-state-guards pattern, flagged for `brand
 
 ## Follow-ups (tracked, not silent)
 
-- **`brand-manager` ratification of the Template-A cooked-state change.** The hero cooked-state fix
-  (LLM dish description + cooked-state guards, replacing the raw `featuring {ingredients}` clause)
-  changed a LOCKED brand artefact (`sloe-image-prompt-template.md` §1). The code shipped first
-  (proven via fal) to unblock regeneration; the prompt-doc carries a PENDING-SIGN-OFF banner.
-  `brand-manager` to formally ratify and record in `docs/decisions/`. **Linear issue to be opened**
-  (Engineering team) — the Linear MCP was not reachable in the implementing session.
-- **Ingredient-key quantity pollution.** `normalizeIngredientNameKey` keeps leading quantities, so
-  the same ingredient at different amounts gets distinct keys → near-duplicate tiles + minor extra
-  fal spend. A stronger canonical key (strip quantity before keying, applied identically at
-  write + read) would dedup better. Deferred — needs a deliberate cross-surface change (every
-  read site + the migration comment) and does not affect nutrition correctness. Track via Linear.
-- **Branded-product tiles occasionally show pseudo-label text.** FLUX can render faint
-  packaging-like text on packaged-product ingredients (e.g. protein-supplement tubs) despite the
-  never-list, per the prompt-doc §6 caveat. Whole-food tiles are clean. Acceptable for v1; if it
-  worsens, move that class to an engine honouring a true `negative_prompt`. Track via Linear.
-- **webp transcode.** Generated PNGs are stored as PNG (the model emits png/jpeg, not webp). A
-  storage-layer transcode-to-webp is a future optimisation, not a blocker (see `falImageGenerator`
-  docblock).
+- **`brand-manager` ratification of the Template-A cooked-state change AND the Template-B Nano switch**
+  (ENG-905). Two LOCKED-artefact changes shipped code-first (proven via fal): (a) the §1 hero
+  cooked-state fix (LLM dish description + cooked-state guards, replacing the raw `featuring {ingredients}`
+  clause) and (b) the §2 ingredient ENGINE move FLUX → Nano Banana Pro + the FIXED `system_prompt`/seed.
+  Both prompt-doc sections carry a PENDING-SIGN-OFF banner. `brand-manager` to formally ratify both and
+  record in `docs/decisions/`.
+- **Matched-food-name persistence + alias storage** (ENG-905, fast-follow). Two related gaps: (1) the
+  tile label should *prefer the matched food name* (e.g. the FatSecret match's name) but
+  `recipe_ingredients` has no `matched_food_name` column — v1 uses `cleanIngredientDisplayName(name)` (the
+  spec's documented fallback), correct but not the matched name; (2) `canonicalImageKey` computes a
+  high-confidence `matchedAliasKey(source, food_id)` but there is no alias storage
+  (`ingredient_image_aliases` / `ingredient_images.matched_*` columns) — so a differently-spelled future
+  ingredient that matched the SAME food doesn't yet share a tile via the alias path (it still shares via
+  the text key when those converge). Both need a deliberate schema + persistence change; the matched id is
+  null across the whole seed corpus today, so neither fires yet.
+- **~~Ingredient-key quantity pollution~~ — RESOLVED 2026-06-08.** `canonicalImageKey` strips leading
+  quantities + brand prefixes at write + read (51 raw → 43 keys), guarded by
+  `tests/unit/canonicalImageKey.test.ts`.
+- **Branded-product tiles + pseudo-label text.** The Nano `system_prompt` explicitly forbids text/labels
+  (a true Gemini-3 system instruction, stronger than FLUX's positive avoid-clause). Re-verify the branded
+  items (protein supplement, chili crisp, dark chocolate) in the post-regeneration sample; if any still
+  show faint pseudo-text, note it in the verification table. Whole-food tiles are clean.
+- **webp transcode.** Generated images are stored as JPEG (Nano emits jpeg/png, not webp). A storage-layer
+  transcode-to-webp is a future optimisation, not a blocker (see `falImageGenerator` docblock).
 
 ## Related
 

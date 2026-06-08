@@ -34,7 +34,8 @@ import {
 } from "@suppr/shared/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
-import { fetchIngredientImageMap } from "@suppr/shared/recipe/ingredientImages";
+import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
+import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -42,6 +43,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { getSupprApiBase } from "@/lib/supprWeb";
+import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
@@ -899,8 +901,23 @@ export default function RecipeDetailScreen() {
     }
     let cancelled = false;
     void (async () => {
-      const map = await fetchIngredientImageMap(supabase, names);
-      if (!cancelled) setIngredientImageMap(map);
+      const { map, missingKeys } = await fetchIngredientImages(supabase, names);
+      if (cancelled) return;
+      setIngredientImageMap(map);
+      // Lazy generate-on-miss: enqueue the tiles that have no ready image
+      // (fire-and-forget; never blocks render). Parity with web RecipeDetail.
+      if (missingKeys.length > 0) {
+        const apiBase = getSupprApiBase();
+        if (apiBase) {
+          enqueueIngredientImages(names, (b) =>
+            authedFetch(`${apiBase}/api/ingredient-image`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(b),
+            }),
+          );
+        }
+      }
     })();
     return () => {
       cancelled = true;

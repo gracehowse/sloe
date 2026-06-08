@@ -1,23 +1,27 @@
 /**
- * fal.ai FLUX-2-pro image generator — server-only.
+ * fal.ai image generator — server-only. DUAL ENGINE (2026-06-08):
  *
  * Part of the Sloe image system (2026-06-08,
  * `docs/decisions/2026-06-08-recipe-ingredient-image-system.md`).
  *
  * Two entry points, one per imagery class from the LOCKED brand prompt
  * template (`docs/brand/sloe-image-prompt-template.md`):
- *   - `generateDishImage(title, keyIngredients[])`   — Template A,
- *     landscape_4_3, finished plated dish, editorial-on-wood. Calls the
- *     LLM dish-appearance step (`describeDishAppearance`) first so the
- *     prompt describes the COOKED, plated dish — not a raw ingredient
- *     list (which made FLUX render raw eggs / loose powder on top).
- *   - `generateIngredientImage(cleanName)`           — Template B,
- *     square_hd, single ingredient on pure white.
+ *   - `generateDishImage(title, keyIngredients[])`   — Template A, FLUX 2 Pro
+ *     (`fal-ai/flux-2-pro`), landscape_4_3, finished plated dish,
+ *     editorial-on-wood. Calls the LLM dish-appearance step
+ *     (`describeDishAppearance`) first so the prompt describes the COOKED,
+ *     plated dish — not a raw ingredient list (which made FLUX render raw
+ *     eggs / loose powder on top). UNCHANGED.
+ *   - `generateIngredientImage(cleanName)`           — Template B, NANO BANANA
+ *     PRO (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image), 1:1, 2K,
+ *     single ingredient on pure white. Switched from FLUX 2026-06-08: Nano +
+ *     a FIXED `system_prompt` + a FIXED seed (424242) produces a CONSISTENT
+ *     set (identical lighting/scale/shadow) so a grid of tiles reads as one
+ *     library. The per-image prompt is just the ONE representative subject.
  *
- * Both: build the prompt verbatim from the template, call
- * `fal-ai/flux-2-pro`, download the returned image, upload it to
- * Supabase Storage (service-role), and return `{ ok, url }` or a typed
- * `{ ok: false, error }`.
+ * Both: build the prompt from the locked template, call the engine, download
+ * the returned image, upload it to Supabase Storage (service-role), and
+ * return `{ ok, url }` or a typed `{ ok: false, error }`.
  *
  * ── GRACEFUL DEGRADATION (load-bearing) ────────────────────────────
  * fal.ai is OUT OF BALANCE at time of writing — the account is locked
@@ -42,10 +46,39 @@
  */
 
 import { createFalClient } from "@fal-ai/client";
+import type { NanoBananaProInput } from "@fal-ai/client/endpoints";
 import { getSupabaseAdminClient } from "../supabase/serverAdminClient";
 import { describeDishAppearance } from "./llmDishAppearance";
 
+/** Template A (dish heroes) — FLUX 2 Pro, unchanged. */
 const FAL_MODEL = "fal-ai/flux-2-pro";
+/**
+ * Template B (single ingredient on white) — Nano Banana Pro (Google Gemini 3
+ * Pro Image). Switched 2026-06-08: Nano produces a CONSISTENT set (the brand
+ * head-to-head winner + what the top competitor uses), driven by a FIXED
+ * `system_prompt` + a FIXED seed so a grid of ingredient tiles reads as one
+ * coherent set. The FLUX path stays on Template A (dish heroes) only.
+ * See docs/brand/sloe-image-prompt-template.md §2 (Template B, Nano recipe)
+ * + the 2026-06-08 decision doc.
+ */
+const FAL_INGREDIENT_MODEL = "fal-ai/nano-banana-pro";
+/**
+ * The consistency lever. Pinned, identical on EVERY ingredient call — DO NOT
+ * EDIT per call (it is what keeps lighting/scale/shadow identical across the
+ * whole library). Verbatim from the locked Template B Nano recipe.
+ */
+const INGREDIENT_SYSTEM_PROMPT =
+  "Studio product photography of a single food ingredient for a premium nutrition app. " +
+  "ALWAYS, identically for every ingredient: exactly one subject, centred, on a pure white " +
+  "seamless background; soft even natural daylight from the front-left; one soft natural shadow " +
+  "directly beneath the subject; sharp focus; true-to-life natural colour; clean and uncluttered; " +
+  "NO props, NO bowl, NO plate, NO utensils, NO scenery, NO hands, NO text or labels. Warm, calm, " +
+  "editorial, photographic — never illustrated, never 3D-rendered, never glossy CGI. Keep lighting, " +
+  "scale, camera angle and shadow identical across every ingredient so a grid of them reads as one " +
+  "consistent set.";
+/** Fixed seed for the whole ingredient set — reproducible coherent batch. */
+const INGREDIENT_SEED = 424242;
+
 const BUCKET = "recipe-images";
 const HERO_PREFIX = "heroes";
 const INGREDIENT_PREFIX = "ingredients";
@@ -165,16 +198,38 @@ export function buildDishPrompt(title: string, dishDescription: string): string 
   );
 }
 
-/** Template B positive prompt — single ingredient on pure white (§2). */
+/**
+ * Loose, pourable / heap-forming foods that must be shown as "a small neat
+ * mound of X" (ONE consistent treatment for all loose items — not a bowl for
+ * one and a pile for another). Matched on the cleaned subject (lowercased).
+ */
+const LOOSE_ITEM_RE =
+  /\b(salt|pepper|peppercorns?|oregano|thyme|basil|rosemary|parsley|cilantro|coriander|paprika|cumin|cinnamon|turmeric|chil(?:li|i)\s*(?:flakes|powder)|flour|sugar|oats?|rice|quinoa|couscous|breadcrumbs?|sesame seeds?|flaked almonds?|protein powder|cocoa(?:\s*powder)?|baking powder|baking soda|spice|seasoning)\b/i;
+
+/**
+ * Liquids / condiments shown as a simple unlabelled pour or small portion in
+ * a plain clear vessel — consistent per class (no branded bottle, no label).
+ */
+const LIQUID_ITEM_RE =
+  /\b(oil|sauce|honey|syrup|vinegar|milk|cream|yog(?:h)?urt|juice|broth|stock|crisp|condiment|dressing|paste|puree|passata|tahini|mustard|ketchup|mayonnaise)\b/i;
+
+/**
+ * Build the per-image `prompt` for Nano (Template B). Just the ONE
+ * representative subject — never the literal recipe quantity. Loose foods →
+ * "a small neat mound of X"; liquids/condiments → "a small unlabelled portion
+ * of X"; everything else → "a single X". The consistency comes from the
+ * FIXED system prompt + seed, not from this line.
+ */
 export function buildIngredientPrompt(cleanName: string): string {
-  const subject = cleanName.trim() || "a single fresh ingredient";
-  return (
-    `Stylised-photoreal product photograph of ${subject}, a single subject isolated on a pure white ` +
-    `seamless background. Soft natural daylight, gentle soft shadow directly beneath the subject. ` +
-    `Sharp focus, high detail, true-to-life colour, clean and uncluttered. Hyperreal photographic ` +
-    `style with light studio-product lighting. No surface texture, no props, no background scenery. ` +
-    `${STYLE_ANCHOR} ${AVOID_CLAUSE}`
-  );
+  const raw = cleanName.trim().toLowerCase().replace(/\.$/, "");
+  const subject = raw || "fresh ingredient";
+  if (LOOSE_ITEM_RE.test(subject)) {
+    return `A small neat mound of ${subject}.`;
+  }
+  if (LIQUID_ITEM_RE.test(subject)) {
+    return `A small unlabelled portion of ${subject} in a simple clear vessel.`;
+  }
+  return `A single ${subject}.`;
 }
 
 // ── fal call + Storage upload ────────────────────────────────────────
@@ -246,6 +301,91 @@ async function runFlux(
   }
 
   const out = result.data as FluxOutput | null;
+  const imageUrl = out?.images?.[0]?.url;
+  if (typeof imageUrl !== "string" || imageUrl.trim() === "") {
+    return {
+      ok: false,
+      error: "fal_no_image",
+      message: "fal returned no image URL.",
+      upstreamStatus: null,
+    };
+  }
+  return { ok: true, imageUrl, requestId: result.requestId ?? null };
+}
+
+type NanoImage = { url?: string; content_type?: string };
+type NanoOutput = { images?: NanoImage[] };
+
+/**
+ * Run a single Nano Banana Pro ingredient generation (Template B). Uses the
+ * FIXED `system_prompt` + FIXED `seed` so the whole library is one coherent
+ * set; `aspect_ratio: 1:1`, `resolution: 2K`, `output_format: jpeg` per the
+ * locked recipe. Returns the first image URL or a typed error. Never throws.
+ *
+ * Note: `system_prompt` is passed through `input` even though the generated
+ * fal TS type for Nano doesn't enumerate it — fal serializes the whole input
+ * object to the model (Gemini 3 Pro Image honours a system instruction). If a
+ * future fal release rejects unknown keys, fold the system prompt into the
+ * positive `prompt` (it is the consistency lever either way).
+ */
+async function runNanoIngredient(
+  prompt: string,
+  callSite: string,
+): Promise<{ ok: true; imageUrl: string; requestId: string | null } | FalImageError> {
+  const key = readFalKey();
+  if (!key) {
+    return {
+      ok: false,
+      error: "fal_not_configured",
+      message: "FAL_KEY is not set — image generation is unavailable.",
+      upstreamStatus: null,
+    };
+  }
+
+  const client = createFalClient({ credentials: key });
+
+  let result: { data: unknown; requestId: string };
+  try {
+    // `system_prompt` is a Gemini-3 passthrough not enumerated on the fal TS
+    // type for Nano, so attach it alongside the typed fields. The cast keeps
+    // the required `prompt` typed while permitting the extra key.
+    const nanoInput: NanoBananaProInput & { system_prompt: string } = {
+      prompt,
+      system_prompt: INGREDIENT_SYSTEM_PROMPT,
+      aspect_ratio: "1:1",
+      resolution: "2K",
+      output_format: "jpeg",
+      seed: INGREDIENT_SEED,
+      num_images: 1,
+    };
+    result = await client.subscribe(FAL_INGREDIENT_MODEL, {
+      input: nanoInput,
+      logs: false,
+    });
+  } catch (err) {
+    const status =
+      typeof (err as { status?: unknown })?.status === "number"
+        ? (err as { status: number }).status
+        : null;
+    const detail = err instanceof Error ? err.message : String(err);
+    console.warn(`[${callSite}] nano generate failed status=${status ?? "?"}: ${detail}`);
+    if (status != null) {
+      return {
+        ok: false,
+        error: "fal_http_error",
+        message: `fal returned ${status}.`,
+        upstreamStatus: status,
+      };
+    }
+    return {
+      ok: false,
+      error: "fal_network_error",
+      message: "Could not reach fal.ai.",
+      upstreamStatus: null,
+    };
+  }
+
+  const out = result.data as NanoOutput | null;
   const imageUrl = out?.images?.[0]?.url;
   if (typeof imageUrl !== "string" || imageUrl.trim() === "") {
     return {
@@ -387,8 +527,13 @@ export async function generateDishImage(
 }
 
 /**
- * Generate a single-ingredient image (Template B). Returns the stored
- * public URL or a typed error. Never throws, never blocks.
+ * Generate a single-ingredient image (Template B, Nano Banana Pro). Returns
+ * the stored public URL or a typed error. Never throws, never blocks.
+ *
+ * Uses Nano (not FLUX) with the FIXED system prompt + seed so the whole
+ * ingredient library reads as one consistent set (the FLUX dish/hero path is
+ * untouched). The per-image prompt is just the ONE representative subject
+ * ("A single whole head of garlic." etc.) — never the literal recipe quantity.
  *
  * @param cleanName a tidy single-ingredient label
  *   (e.g. from `cleanIngredientDisplayName`)
@@ -396,16 +541,16 @@ export async function generateDishImage(
 export async function generateIngredientImage(cleanName: string): Promise<FalImageResult> {
   const callSite = "fal/ingredient";
   const prompt = buildIngredientPrompt(cleanName);
-  const flux = await runFlux(prompt, "square_hd", callSite);
-  if (!flux.ok) return flux;
+  const nano = await runNanoIngredient(prompt, callSite);
+  if (!nano.ok) return nano;
   const stored = await persistToStorage(
-    flux.imageUrl,
+    nano.imageUrl,
     INGREDIENT_PREFIX,
     slugify(cleanName, "ingredient"),
     callSite,
   );
   if (!stored.ok) return stored;
-  return { ok: true, url: stored.publicUrl, requestId: flux.requestId };
+  return { ok: true, url: stored.publicUrl, requestId: nano.requestId };
 }
 
 /** True when `FAL_KEY` is configured. Callers use this to skip the

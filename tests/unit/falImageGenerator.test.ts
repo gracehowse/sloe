@@ -1,9 +1,10 @@
 /**
- * fal.ai FLUX-2-pro image generator (2026-06-08) — pins the LOCKED
- * prompt assembly (Template A / B) and the load-bearing GRACEFUL
- * DEGRADATION: with `FAL_KEY` unset, the generators return a typed
- * error and NEVER throw (so a fire-and-forget caller can't crash and a
- * save can't be blocked). No network is touched in these tests.
+ * fal.ai image generator (2026-06-08) — pins the LOCKED prompt assembly
+ * (Template A = FLUX 2 Pro dish heroes; Template B = Nano Banana Pro single
+ * ingredient, ONE representative subject) and the load-bearing GRACEFUL
+ * DEGRADATION: with `FAL_KEY` unset, the generators return a typed error and
+ * NEVER throw (so a fire-and-forget caller can't crash and a save can't be
+ * blocked). No network is touched in these tests.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -74,19 +75,46 @@ describe("buildDishPrompt — Template A (cooked-dish description, NOT a raw ing
   });
 });
 
-describe("buildIngredientPrompt — Template B (single subject on pure white)", () => {
-  it("places the subject on a pure white seamless background, 1:1 daylight", () => {
-    const p = buildIngredientPrompt("a small bunch of fresh coriander");
-    expect(p).toContain("a small bunch of fresh coriander");
-    expect(p).toContain("pure white seamless background");
-    expect(p).toContain("Soft natural daylight");
-    expect(p).toContain("Sloe brand imagery");
-    expect(p).toContain("Avoid:");
+describe("buildIngredientPrompt — Template B (Nano: ONE representative subject)", () => {
+  // The white-background / lighting / shadow consistency now lives in the
+  // FIXED Nano `system_prompt` (applied on every call), NOT in this per-image
+  // line. The per-image prompt is just the ONE representative subject — never
+  // the literal recipe quantity.
+  it("renders a single subject for a solid food", () => {
+    expect(buildIngredientPrompt("garlic")).toBe("A single garlic.");
+    expect(buildIngredientPrompt("Cherry Tomato")).toBe("A single cherry tomato.");
+    expect(buildIngredientPrompt("egg white")).toBe("A single egg white.");
+  });
+
+  it("renders loose / heap-forming foods as a small neat mound (one consistent treatment)", () => {
+    expect(buildIngredientPrompt("salt")).toBe("A small neat mound of salt.");
+    expect(buildIngredientPrompt("dry oregano")).toBe("A small neat mound of dry oregano.");
+    expect(buildIngredientPrompt("flour")).toBe("A small neat mound of flour.");
+    expect(buildIngredientPrompt("protein powder")).toBe("A small neat mound of protein powder.");
+  });
+
+  it("renders liquids / condiments as a small unlabelled portion in a clear vessel", () => {
+    expect(buildIngredientPrompt("olive oil")).toBe(
+      "A small unlabelled portion of olive oil in a simple clear vessel.",
+    );
+    expect(buildIngredientPrompt("soy sauce")).toBe(
+      "A small unlabelled portion of soy sauce in a simple clear vessel.",
+    );
+    expect(buildIngredientPrompt("honey")).toBe(
+      "A small unlabelled portion of honey in a simple clear vessel.",
+    );
+  });
+
+  it("lowercases + strips a trailing period; never the literal quantity", () => {
+    // input is the cleaned display name; we always render ONE representative
+    // item ("A single …"), never the recipe count.
+    expect(buildIngredientPrompt("Garlic.")).toBe("A single garlic.");
+    expect(buildIngredientPrompt("RED ONION")).toBe("A single red onion.");
   });
 
   it("does not crash on an empty name", () => {
     expect(() => buildIngredientPrompt("")).not.toThrow();
-    expect(buildIngredientPrompt("")).toContain("a single fresh ingredient");
+    expect(buildIngredientPrompt("")).toBe("A single fresh ingredient.");
   });
 });
 

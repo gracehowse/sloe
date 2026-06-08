@@ -17,6 +17,17 @@
  * Posture: same calm rules as the Digest. No emoji, no celebration, no
  * "Don't break your streak" copy. The banner is a quiet pointer.
  *
+ * ── Card chrome (Figma 654:2 "flat slabs" sweep, 2026-06-08) ──
+ * Renders the SAME flat `<SupprCard lift="flat">` cream slab as every
+ * other resting Today card (`TodayActivityCard`, `WeeklyInsightCard`,
+ * planned meals, …). It used to be the lone bordered card — an inline
+ * `<View>` with a peach `${Accent.primary}08` tint + a clay
+ * `${Accent.primary}30` hairline — which read as inconsistent next to
+ * the borderless slabs (Grace, 2026-06-08). The nudge semantics now ride
+ * the CONTENT (the clay "WEEKLY CHECK-IN" eyebrow + the clay "OPEN"
+ * button), never the card surface — the same rule the rest of Today
+ * follows (eyebrows/icons/CTAs carry meaning, the slab is neutral).
+ *
  * Mobile-only — web does not surface this banner because the Digest
  * card already lives on the web Progress dashboard (the Sunday cadence
  * is built into the Digest's `shouldShowRecap` gate).
@@ -26,6 +37,7 @@ import { Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface WeeklyCheckinBannerProps {
   textColor: string;
@@ -41,22 +53,20 @@ export function WeeklyCheckinBanner({
   onDismiss,
 }: WeeklyCheckinBannerProps) {
   return (
-    <View
+    <SupprCard
+      lift="flat"
+      padding="md"
       testID="weekly-checkin-banner"
-      style={{
-        marginBottom: Spacing.md,
-        backgroundColor: `${Accent.primary}08`,
-        borderWidth: 1,
-        borderColor: `${Accent.primary}30`,
-        borderRadius: Radius.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
+      style={{ marginBottom: Spacing.md }}
+      innerStyle={{
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
       }}
     >
       <View style={{ flex: 1 }}>
+        {/* Clay eyebrow — the nudge accent now lives in the CONTENT, not a
+            card border (the slab is neutral cream like every Today card). */}
         <Text
           style={{
             fontSize: 10,
@@ -121,7 +131,7 @@ export function WeeklyCheckinBanner({
       >
         <X size={18} color={textSecondaryColor} />
       </Pressable>
-    </View>
+    </SupprCard>
   );
 }
 
