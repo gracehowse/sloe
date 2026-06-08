@@ -30,6 +30,12 @@
  *     generate + write. A dry run prints exactly what WOULD be generated
  *     and makes no fal calls and no DB writes.
  *   - Heroes pass skips recipes that already have a non-default image.
+ *   - `--regenerate-heroes` FORCE-overwrites the existing AI-generated
+ *     heroes (recipes whose `image_url` points at the generated
+ *     `recipe-images/heroes/` storage path). Use this to re-run the dish
+ *     hero generation after the prompt changes (e.g. the cooked-state
+ *     fix). It still NEVER touches real imported/external images (e.g.
+ *     Instagram CDN covers) — those are not under the `heroes/` path.
  *   - Ingredients pass skips keys already `ready` in `ingredient_images`;
  *     `pending`/`failed` rows are retried.
  *   - Rate-limited (default 1 req / 1.2 s) to be gentle on fal + storage.
@@ -45,6 +51,8 @@
  *   npx tsx scripts/backfill-images.ts                 # dry run, both passes
  *   npx tsx scripts/backfill-images.ts --apply --limit 5
  *   npx tsx scripts/backfill-images.ts --apply --ingredients-only
+ *   # regenerate ONLY the existing AI heroes with the new prompt:
+ *   npx tsx scripts/backfill-images.ts --apply --heroes-only --regenerate-heroes
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -61,6 +69,10 @@ const argv = new Set(process.argv.slice(2));
 const APPLY = argv.has("--apply") || process.env.APPLY === "1";
 const HEROES_ONLY = argv.has("--heroes-only");
 const INGREDIENTS_ONLY = argv.has("--ingredients-only");
+/** Force-overwrite the existing AI-generated heroes (those under the
+ *  `recipe-images/heroes/` storage path). Real imported/external images
+ *  are never touched (they're not under that path). */
+const REGENERATE_HEROES = argv.has("--regenerate-heroes");
 const limitArg = process.argv.find((a) => a.startsWith("--limit"));
 const LIMIT = limitArg
   ? Number.parseInt(limitArg.split("=")[1] ?? process.argv[process.argv.indexOf(limitArg) + 1] ?? "0", 10) || null
@@ -84,6 +96,16 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
   return url.includes("images.unsplash.com");
 }
 
+/** A previously AI-generated dish hero. These live in the `recipe-images`
+ *  Storage bucket under the `heroes/` prefix (see `falImageGenerator`
+ *  HERO_PREFIX). This is the precise signal that distinguishes the
+ *  generated heroes from real imported/external covers (Instagram CDN,
+ *  user uploads) — only generated heroes carry this path, so
+ *  `--regenerate-heroes` can force-overwrite them and nothing else. */
+function isGeneratedHero(url: string | null | undefined): boolean {
+  return !!url && url.includes("/recipe-images/heroes/");
+}
+
 // ── supabase (only needed for --apply) ────────────────────────────────
 function getClient() {
   const url =
@@ -103,8 +125,15 @@ function getClient() {
 // ── heroes pass ───────────────────────────────────────────────────────
 async function runHeroes(sb: ReturnType<typeof createClient> | null) {
   log("── heroes pass ──");
+  if (REGENERATE_HEROES) {
+    log("--regenerate-heroes ON: will FORCE-overwrite existing AI-generated heroes (recipe-images/heroes/), in addition to null/placeholder images. Real imported/external covers are left untouched.");
+  }
   if (!sb) {
-    log("(dry run) would query recipes with null/default image_url and generate a Template-A hero for each.");
+    log(
+      REGENERATE_HEROES
+        ? "(dry run) would query recipes with null/default image_url OR an existing generated hero and generate a fresh Template-A hero for each."
+        : "(dry run) would query recipes with null/default image_url and generate a Template-A hero for each.",
+    );
     return;
   }
 
@@ -117,11 +146,15 @@ async function runHeroes(sb: ReturnType<typeof createClient> | null) {
     return;
   }
 
-  const candidates = (data ?? []).filter((r) =>
-    isPlaceholderImage((r as { image_url?: string | null }).image_url),
-  );
+  const candidates = (data ?? []).filter((r) => {
+    const url = (r as { image_url?: string | null }).image_url;
+    // Always re-process recipes with no real image. With --regenerate-heroes,
+    // ALSO re-process recipes whose current image is a generated hero
+    // (overwrite). Never matches real imported/external covers.
+    return isPlaceholderImage(url) || (REGENERATE_HEROES && isGeneratedHero(url));
+  });
   const scoped = LIMIT ? candidates.slice(0, LIMIT) : candidates;
-  log(`${candidates.length} recipes need a hero; processing ${scoped.length}.`);
+  log(`${candidates.length} recipes to (re)generate a hero for; processing ${scoped.length}.`);
 
   let generated = 0;
   let failed = 0;

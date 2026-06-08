@@ -26,6 +26,12 @@ import {
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { fetchIngredientImageMap } from "../../lib/recipe/ingredientImages.ts";
+import {
+  getIngredientTilePlaceholder,
+  resolveIngredientTileImage,
+} from "../../lib/recipe/ingredientImageTile.ts";
+import { cleanIngredientDisplayName } from "../../lib/recipe/cleanIngredientDisplayName.ts";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE } from "../../context/appData/constants.ts";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
@@ -376,6 +382,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const recipeYieldEscapeBlurRef = useRef(false);
   const [dbIngredients, setDbIngredients] = useState<IngredientRow[]>([]);
   const [dbIngredientIds, setDbIngredientIds] = useState<string[]>([]);
+  // Sloe image system (2026-06-08) — `name_key → image_url` for the
+  // ingredient tiles, hydrated from the global `ingredient_images` table.
+  // Empty until the fal-funded backfill runs; missing keys fall back to
+  // the calm cream placeholder. Never blocks render (async load effect).
+  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
@@ -748,6 +761,29 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }, [recipeYieldEditing]);
 
   const ingredients = dbIngredients;
+
+  // Sloe image system (2026-06-08) — hydrate the ingredient tile images
+  // by `name_key`. Keyed on the joined names so it only re-fetches when
+  // the ingredient set actually changes (not on every render). Degrades
+  // to an empty map (calm placeholders) on any error; never throws.
+  const ingredientNamesKey = ingredients.map((i) => i.name).join("");
+  useEffect(() => {
+    const names = ingredients.map((i) => i.name);
+    if (names.length === 0) {
+      setIngredientImageMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const map = await fetchIngredientImageMap(supabase, names);
+      if (!cancelled) setIngredientImageMap(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ingredientNamesKey]);
+
   const instructionSteps = useMemo(() => {
     // Shared normaliser handles `\n` / `/n` typos + whitespace trimming
     // + paragraph collapse. Identical helper runs on the mobile detail
@@ -2148,6 +2184,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                         ingredient.unit,
                       )
                     : ingredient.unit;
+                  // Sloe image system (2026-06-08) — on-brand tile image
+                  // (Template B, white-bg) when `ingredient_images` has a
+                  // ready row for this name's key, else a calm cream
+                  // placeholder. Label uses the cleaned display name.
+                  const tileImageUrl = resolveIngredientTileImage(ingredient.name, ingredientImageMap);
+                  const tilePlaceholder = getIngredientTilePlaceholder(ingredient.name);
+                  const displayName = cleanIngredientDisplayName(ingredient.name) || ingredient.name;
                   return (
                     <li
                       key={index}
@@ -2155,16 +2198,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       style={whiteSlabStyle}
                       data-testid={`recipe-ingredient-card-${index}`}
                     >
-                      {/* Image area — deterministic RecipeHeroFallback glyph
-                          keyed per ingredient (no per-ingredient photo exists;
-                          never an empty box, no new imagery). Confidence dot +
-                          kcal pill ride the image corners. */}
+                      {/* Image area — on-brand ingredient tile (Sloe image
+                          system, 2026-06-08). When `ingredient_images` has a
+                          ready Template-B photo for this ingredient we render
+                          it; otherwise a calm cream placeholder with the
+                          ingredient's sage initial (never the loud gradient,
+                          never an empty box). Confidence dot + kcal pill ride
+                          the image corners. */}
                       <div className="relative h-[86px] w-full">
-                        <RecipeHeroFallback
-                          id={`${recipe.id}-ing-${index}`}
-                          title={ingredient.name}
-                          iconSize={28}
-                        />
+                        {tileImageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={tileImageUrl}
+                            alt={displayName}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
+                            data-testid={`recipe-ingredient-image-${index}`}
+                          />
+                        ) : (
+                          <div
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{ backgroundColor: tilePlaceholder.bg }}
+                            data-testid={`recipe-ingredient-placeholder-${index}`}
+                            aria-hidden
+                          >
+                            <span
+                              className="text-2xl font-semibold"
+                              style={{ color: tilePlaceholder.fg, fontFamily: "var(--font-headline)" }}
+                            >
+                              {tilePlaceholder.initial}
+                            </span>
+                          </div>
+                        )}
                         <span
                           className="absolute left-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-white"
                           style={{ backgroundColor: tierColorVar }}
@@ -2180,7 +2245,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       <div className="px-2.5 py-2">
                         <div className="flex items-center gap-1">
                           <p className="text-xs font-semibold leading-snug text-foreground line-clamp-2">
-                            {ingredient.name}
+                            {displayName}
                           </p>
                           {rowHasOverride ? (
                             <Badge variant="override" title="Manual macro override is pinned on this row.">

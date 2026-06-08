@@ -136,7 +136,7 @@ export async function POST(req: Request) {
 
   let result;
   try {
-    result = await generateDishImage(effectiveTitle, ingredients);
+    result = await generateDishImage(effectiveTitle, ingredients, { userId });
   } catch (err) {
     // Defensive — the generator is built not to throw, but a fire-and-
     // forget caller must never see a 5xx from here regardless.

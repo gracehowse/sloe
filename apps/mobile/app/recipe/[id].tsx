@@ -34,6 +34,7 @@ import {
 } from "@suppr/shared/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
+import { fetchIngredientImageMap } from "@suppr/shared/recipe/ingredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -289,6 +290,13 @@ export default function RecipeDetailScreen() {
   // Figma 332:2 §6 — the ingredient grid shows a preview then expands via the
   // "View all N ingredients" pill.
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
+  // Sloe image system (2026-06-08) — `name_key → image_url` for the
+  // ingredient tiles, hydrated from the global `ingredient_images` table.
+  // Empty until the fal-funded backfill runs; missing keys fall back to the
+  // calm cream placeholder. Never blocks render (async load effect).
+  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   // PR1 (Paprika parity, 2026-05-02): viewing-servings stepper. Defaults
   // to the recipe's authored yield. The multiplier
   // (`viewServings / recipe.servings`) drives ingredient amount
@@ -877,6 +885,28 @@ export default function RecipeDetailScreen() {
       };
     });
   }, [ingredients, ingredientsHaveNutrition, recipe, autoVerifyingIngredients]);
+
+  // Sloe image system (2026-06-08) — hydrate ingredient tile images by
+  // `name_key`. Keyed on the joined names so it only re-fetches when the
+  // ingredient set changes. Degrades to an empty map (calm placeholders)
+  // on any error; never throws.
+  const ingredientNamesKey = ingredientsForIngredientsTab.map((i) => i.name).join("");
+  useEffect(() => {
+    const names = ingredientsForIngredientsTab.map((i) => i.name);
+    if (names.length === 0) {
+      setIngredientImageMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const map = await fetchIngredientImageMap(supabase, names);
+      if (!cancelled) setIngredientImageMap(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ingredientNamesKey]);
 
   useEffect(() => {
     autoVerifySucceededForRecipeId.current = null;
@@ -1697,6 +1727,7 @@ export default function RecipeDetailScreen() {
             onIngredientPress={onIngredientPress}
             onViewAll={() => setIngredientsExpanded((v) => !v)}
             expanded={ingredientsExpanded}
+            imageMap={ingredientImageMap}
           />
 
           {/* FatSecret attribution (ToS) when any line is FatSecret-sourced. */}

@@ -4,27 +4,36 @@
  *
  * Header row: "Ingredients" (serif) left, "For N servings" right. Then a
  * 4-per-row thumbnail grid: each cell is a cream rounded-24 tile (image area)
- * over a centered name + amount. recipe_ingredients carry no per-ingredient
- * image, so the tile reuses the deterministic `RecipeHeroFallback` glyph keyed
- * per ingredient — never an empty box, no new imagery wired. A "View all N
- * ingredients" pill follows.
+ * over a centered name + amount.
+ *
+ * Sloe image system (2026-06-08): when the global `ingredient_images` table
+ * has a ready Template-B photo for an ingredient (keyed by
+ * `normalizeIngredientNameKey`), the tile shows that on-brand image; otherwise
+ * it falls back to a calm cream placeholder with the ingredient's sage initial
+ * (never the loud gradient, never an empty box). The label uses
+ * `cleanIngredientDisplayName` so brand/quantity noise is dropped. The
+ * `imageMap` is hydrated by the parent screen and passed in.
  *
  * Wired features preserved: per-ingredient 4-tier confidence (corner dot +
  * tap-to-info Alert with status/source/macros), Verify CTA path (tap a card →
  * info; the header Edit + the View-all pill both route to /recipe/verify), and
  * count-to-weight scaled amounts via the viewing multiplier.
  */
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 import { Accent, FontFamily } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   deriveIngredientVerificationTier,
   type IngredientVerificationTier,
 } from "@suppr/shared/recipe-ingredients/ingredientVerificationStatus";
+import {
+  getIngredientTilePlaceholder,
+  resolveIngredientTileImage,
+} from "@suppr/shared/recipe/ingredientImageTile";
+import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName";
 
 /** Number of cells shown before the grid collapses behind "View all". */
 const GRID_PREVIEW_COUNT = 8;
@@ -63,6 +72,7 @@ export function RecipeIngredientGrid({
   onIngredientPress,
   onViewAll,
   expanded,
+  imageMap,
 }: {
   recipeId: string;
   ingredients: RecipeGridIngredient[];
@@ -71,6 +81,10 @@ export function RecipeIngredientGrid({
   onIngredientPress: (index: number) => void;
   onViewAll: () => void;
   expanded: boolean;
+  /** Sloe image system — `name_key → image_url` for on-brand ingredient
+   *  tiles, hydrated by the parent screen. Empty until the backfill runs;
+   *  missing keys fall back to the calm cream placeholder. */
+  imageMap?: ReadonlyMap<string, string> | null;
 }) {
   const colors = useThemeColors();
   if (ingredients.length === 0) return null;
@@ -111,12 +125,17 @@ export function RecipeIngredientGrid({
           const dot = tierColor(tier, colors.textTertiary);
           const scaledAmount =
             ing.amount != null ? Math.round(ing.amount * viewMultiplier * 100) / 100 : null;
+          // Sloe image system — ready Template-B photo if present, else a
+          // calm cream placeholder. Label uses the cleaned display name.
+          const tileImageUrl = resolveIngredientTileImage(ing.name, imageMap);
+          const tilePlaceholder = getIngredientTilePlaceholder(ing.name);
+          const displayName = cleanIngredientDisplayName(ing.name) || decodeEntities(ing.name);
           return (
             <View key={i} style={{ width: "25%", padding: 6 }}>
               <Pressable
                 onPress={() => onIngredientPress(i)}
                 accessibilityRole="button"
-                accessibilityLabel={`${decodeEntities(ing.name)} ${tier}`}
+                accessibilityLabel={`${displayName} ${tier}`}
                 style={{ gap: 6 }}
                 testID={`recipe-ingredient-card-${i}`}
               >
@@ -130,7 +149,42 @@ export function RecipeIngredientGrid({
                     overflow: "hidden",
                   }}
                 >
-                  <RecipeHeroFallback id={`${recipeId}-ing-${i}`} title={ing.name} iconSize={24} />
+                  {tileImageUrl ? (
+                    <Image
+                      source={{ uri: tileImageUrl }}
+                      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                      resizeMode="cover"
+                      accessibilityIgnoresInvertColors
+                      testID={`recipe-ingredient-image-${i}`}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: tilePlaceholder.bg,
+                      }}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                      testID={`recipe-ingredient-placeholder-${i}`}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: FontFamily.serifRegular,
+                          fontSize: 26,
+                          fontWeight: "600",
+                          color: tilePlaceholder.fg,
+                        }}
+                      >
+                        {tilePlaceholder.initial}
+                      </Text>
+                    </View>
+                  )}
                   <View
                     style={{
                       position: "absolute",
@@ -157,7 +211,7 @@ export function RecipeIngredientGrid({
                   }}
                   numberOfLines={2}
                 >
-                  {decodeEntities(ing.name)}
+                  {displayName}
                 </Text>
                 {scaledAmount != null ? (
                   <Text

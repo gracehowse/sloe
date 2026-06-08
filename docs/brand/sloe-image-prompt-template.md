@@ -1,5 +1,15 @@
 # Sloe — Canonical Image Generation Prompt Template
 
+> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template A §1 below was changed to fix the
+> "raw ingredients rendered on top of a cooked dish" failure mode (whole raw eggs on a frittata, loose
+> protein powder heaped on porridge). The raw `featuring {KEY_INGREDIENTS}` clause was **replaced** by an
+> LLM-written description of the FINISHED, cooked, plated dish, plus explicit cooked-state guards. This is
+> a change to a LOCKED artefact and must be ratified by `brand-manager` (record in `docs/decisions/`).
+> The code change shipped first (proven via fal) to unblock the hero regeneration; the doc reflects the
+> new reality. See §1 "Failure mode + fix" and the implementation in
+> [`src/lib/server/llmDishAppearance.ts`](../../src/lib/server/llmDishAppearance.ts) +
+> [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts).
+
 > **Status:** LOCKED brand artefact. Owned by `brand-manager`.
 > **Engine:** FLUX 2 Pro (Black Forest Labs) via fal.ai. Model-swappable per the strategy doc, but
 > these templates are the constant — the prompt does not change when the model does.
@@ -45,11 +55,40 @@ and `@_foodstories_`. Moody natural window light, contextual props (ceramic, lin
 depth of field, warm earthy muted palette. Never flat stock, never overhead studio flash, never
 watercolour, never cartoon, never 3D render.
 
+### Failure mode + fix (2026-06-08) — describe the COOKED dish, never list raw ingredients
+
+**The bug.** The original Template A prompt listed the recipe's raw ingredients verbatim
+(`…a finished plated dish featuring {KEY_INGREDIENTS}…`, e.g. "featuring eggs, protein powder, spinach").
+FLUX-2-pro follows the positive prompt **literally**, so it rendered those ingredients in their **raw**
+form, sitting **on top** of the finished dish — whole raw eggs perched on a baked frittata, a heap of dry
+protein powder dumped on porridge. The list told the model *what* was in the dish but never *that it was
+cooked*, so the model defaulted to depicting the ingredients as-bought.
+
+**The fix (proven via fal 2026-06-08).** Stop listing raw ingredients. Instead:
+
+1. **LLM dish-appearance step.** Before generating, call an LLM
+   ([`describeDishAppearance`](../../src/lib/server/llmDishAppearance.ts)) with the title + key ingredients
+   and ask it to return **one to two sentences describing how the FINISHED, fully cooked, plated dish
+   looks when served** — emphasising the cooked/integrated state (eggs set firm in a frittata; powder
+   stirred and dissolved into oats; batter baked through), naming **only ingredients visible in the
+   finished dish** (garnishes, proteins, visible veg, sauces), and **never implying raw ingredients sit on
+   top**. It's a cheap, fast, low-temp call (Haiku / `gpt-4o-mini`, ≤160 tokens). **Fail-safe:** if the
+   LLM call fails (unconfigured, timeout, rate-limit, junk reply) it falls back to a generic
+   *"fully cooked and plated exactly as it would be served… nothing raw or uncooked on the surface"*
+   clause — generation is **never** blocked.
+2. **Cooked-state guards in the positive prompt.** Because FLUX-2-pro has **no `negative_prompt` field**
+   (see §6), the guards are folded into the positive prompt as constraints the model can follow literally:
+   *"The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or uncooked
+   ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw piled on the
+   surface. No people, no hands, no fingers. No text, no logo, no watermark."*
+
 **Inputs from the parsed recipe:**
 - `{RECIPE_TITLE}` — the dish name, lightly cleaned (drop emoji, drop "EASY!!!", drop @handles).
-- `{KEY_INGREDIENTS}` — 3-6 of the most visually defining ingredients, comma-separated, in plain words
-  (e.g. "charred broccoli, lemon, almonds, chilli"). Pull from the parsed ingredient list; prefer the
-  hero/visible components, drop pantry invisibles (salt, oil, water, baking powder).
+- `{KEY_INGREDIENTS}` — 3-6 of the most visually defining ingredients (salt/oil/water dropped). **These
+  are passed to the LLM dish-appearance step ONLY — they are no longer listed verbatim in the FLUX
+  prompt.** They inform the description; they never appear as a raw `featuring …` clause.
+- `{DISH_DESCRIPTION}` — the one-to-two sentence finished-dish description returned by the LLM step (or the
+  generic cooked fallback). This is what tells FLUX the dish is cooked and plated.
 - `{PLATING_NOUN}` — how it's served, inferred from the dish or defaulted: `bowl` (default for
   stews/grains/salads/pasta/soup), `plate` (mains, fish, roast), `wooden board` (bread, sharing, baked),
   `glass` (drinks/smoothies), `skillet` (one-pan bakes).
@@ -57,21 +96,40 @@ watercolour, never cartoon, never 3D render.
 **Positive prompt:**
 
 ```
-Hyperreal editorial food photography of {RECIPE_TITLE}, a finished plated dish featuring
-{KEY_INGREDIENTS}, served in a matte ceramic {PLATING_NOUN}. Styled on a linen napkin over a
-weathered wooden table, a few natural props nearby. Soft moody natural window light from the
-side, gentle shadows, slightly under-exposed for an editorial mood. Shallow depth of field, the
-dish sharp and the background softly blurred. Warm, muted, earthy colour palette — browns, creams,
-sage greens, ochre. Artful, considered, unhurried composition. Magazine-quality food photography
-in the style of @thelittleplantation and @_foodstories_.
+Hyperreal editorial food photography of {RECIPE_TITLE}. {DISH_DESCRIPTION} The finished dish is served
+in a matte ceramic {PLATING_NOUN}, styled on a linen napkin over a weathered wooden table, a few natural
+props nearby. Soft moody natural window light from the side, gentle shadows, slightly under-exposed for an
+editorial mood. Shallow depth of field, the dish sharp and the background softly blurred. Warm, muted,
+earthy colour palette — browns, creams, sage greens, ochre. Artful, considered, unhurried composition.
+Magazine-quality food photography in the style of @thelittleplantation and @_foodstories_. The dish is
+fully cooked and integrated, served exactly as it would be eaten — no raw or uncooked ingredients, no
+whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw piled on the surface. No
+people, no hands, no fingers. No text, no logo, no watermark.
 ```
 
-Then append the **style anchor block** (§4) and pass the **negative prompt** (§5).
+Then append the **style anchor block** (§4) and the **negative list** (§5) — folded into the positive as a
+trailing `Avoid: …` clause on `fal-ai/flux-2-pro` (no `negative_prompt` field; see §6).
+
+> **Worked example (the proven fix).** Chicken Frittata, with the LLM description in place:
+>
+> > Hyperreal editorial food photography of Chicken Frittata. A fully-set Italian baked egg dish, golden
+> > and firm all the way through, beaten eggs cooked evenly with tender chicken and wilted spinach folded
+> > throughout, cut into wedges with one wedge tilted on its side to reveal the set custardy interior. The
+> > finished dish is served in a matte ceramic skillet, styled on a linen napkin over a weathered wooden
+> > table… The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or
+> > uncooked ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, nothing raw
+> > piled on the surface. No people, no hands, no fingers. No text, no logo, no watermark. [§4 anchor] [§5
+> > avoid clause]
+>
+> And Protein Overnight Oats: *"…thick, creamy overnight oats, the rolled oats soaked soft and the protein
+> fully stirred and dissolved into the smooth creamy base, topped simply with a few berries and a
+> drizzle… no protein powder piled on top, no loose powder, nothing raw or powdery dumped on the surface.
+> No people, no hands."*
 
 > **Realism honesty note:** Template A produces a *representative* hyperreal image of the kind of dish,
 > not a forensic photograph of the user's exact cook. The product labels it as AI-generated (see the copy
-> spec) precisely so the realism never reads as a claim. Keep ingredient fidelity high (it must look like
-> *that* recipe) without implying it is a literal photo of the user's plate.
+> spec) precisely so the realism never reads as a claim. Keep dish fidelity high (it must look like *that*
+> recipe, cooked and plated) without implying it is a literal photo of the user's plate.
 
 ---
 

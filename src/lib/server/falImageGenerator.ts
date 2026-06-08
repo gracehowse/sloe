@@ -7,7 +7,10 @@
  * Two entry points, one per imagery class from the LOCKED brand prompt
  * template (`docs/brand/sloe-image-prompt-template.md`):
  *   - `generateDishImage(title, keyIngredients[])`   — Template A,
- *     landscape_4_3, finished plated dish, editorial-on-wood.
+ *     landscape_4_3, finished plated dish, editorial-on-wood. Calls the
+ *     LLM dish-appearance step (`describeDishAppearance`) first so the
+ *     prompt describes the COOKED, plated dish — not a raw ingredient
+ *     list (which made FLUX render raw eggs / loose powder on top).
  *   - `generateIngredientImage(cleanName)`           — Template B,
  *     square_hd, single ingredient on pure white.
  *
@@ -40,6 +43,7 @@
 
 import { createFalClient } from "@fal-ai/client";
 import { getSupabaseAdminClient } from "../supabase/serverAdminClient";
+import { describeDishAppearance } from "./llmDishAppearance";
 
 const FAL_MODEL = "fal-ai/flux-2-pro";
 const BUCKET = "recipe-images";
@@ -111,24 +115,53 @@ function inferPlatingNoun(title: string): string {
   return PLATING_DEFAULT;
 }
 
-/** Template A positive prompt — finished dish (§1). */
-export function buildDishPrompt(title: string, keyIngredients: string[]): string {
+/**
+ * §1 cooked-state GUARDS, folded into the positive prompt.
+ *
+ * ── The bug this fixes ────────────────────────────────────────────────
+ * The previous Template-A prompt listed raw ingredients ("featuring eggs,
+ * protein powder, spinach…"). FLUX-2-pro follows the positive prompt
+ * literally and rendered those ingredients RAW, sitting on top of the
+ * cooked dish — whole raw eggs on a frittata, loose powder heaped on oats.
+ *
+ * The fix is two-pronged: (1) `buildDishPrompt` now takes an LLM-written
+ * description of the FINISHED, cooked, plated dish instead of a raw
+ * ingredient list (see `llmDishAppearance.describeDishAppearance`), and
+ * (2) these explicit cooked-state guards are appended so the model is
+ * told, in the positive, that nothing raw belongs on the surface. FLUX-2
+ * has no negative_prompt, so — like the §5 AVOID_CLAUSE — these are
+ * phrased as positive constraints the model can follow.
+ */
+const COOKED_STATE_GUARDS =
+  "The dish is fully cooked and integrated, served exactly as it would be eaten — no raw or " +
+  "uncooked ingredients, no whole raw eggs, no runny yolks on top, no loose or dry powder, " +
+  "nothing raw piled on the surface. No people, no hands, no fingers. No text, no logo, no watermark.";
+
+/**
+ * Template A positive prompt — finished dish (§1).
+ *
+ * @param title           recipe title (lightly cleaned upstream)
+ * @param dishDescription one-to-two sentence description of how the
+ *   FINISHED, cooked, plated dish looks when served (from
+ *   `describeDishAppearance`). When empty, the prompt still renders a
+ *   generic finished dish — but callers should always supply one; passing
+ *   a raw ingredient LIST here is exactly the bug `COOKED_STATE_GUARDS`
+ *   and the LLM step exist to prevent.
+ */
+export function buildDishPrompt(title: string, dishDescription: string): string {
   const cleanTitle = title.trim() || "a home-cooked dish";
-  const ings = keyIngredients
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 6)
-    .join(", ");
-  const ingClause = ings ? ` featuring ${ings}` : "";
+  const description = dishDescription.trim();
+  const descriptionClause = description ? ` ${description}` : "";
   const plating = inferPlatingNoun(cleanTitle);
   return (
-    `Hyperreal editorial food photography of ${cleanTitle}, a finished plated dish${ingClause}, ` +
-    `served in a matte ceramic ${plating}. Styled on a linen napkin over a weathered wooden table, ` +
-    `a few natural props nearby. Soft moody natural window light from the side, gentle shadows, ` +
-    `slightly under-exposed for an editorial mood. Shallow depth of field, the dish sharp and the ` +
-    `background softly blurred. Warm, muted, earthy colour palette — browns, creams, sage greens, ` +
-    `ochre. Artful, considered, unhurried composition. Magazine-quality food photography in the ` +
-    `style of @thelittleplantation and @_foodstories_. ${STYLE_ANCHOR} ${AVOID_CLAUSE}`
+    `Hyperreal editorial food photography of ${cleanTitle}.${descriptionClause} ` +
+    `The finished dish is served in a matte ceramic ${plating}, styled on a linen napkin over a ` +
+    `weathered wooden table, a few natural props nearby. Soft moody natural window light from the ` +
+    `side, gentle shadows, slightly under-exposed for an editorial mood. Shallow depth of field, the ` +
+    `dish sharp and the background softly blurred. Warm, muted, earthy colour palette — browns, ` +
+    `creams, sage greens, ochre. Artful, considered, unhurried composition. Magazine-quality food ` +
+    `photography in the style of @thelittleplantation and @_foodstories_. ${COOKED_STATE_GUARDS} ` +
+    `${STYLE_ANCHOR} ${AVOID_CLAUSE}`
   );
 }
 
@@ -315,15 +348,32 @@ function slugify(input: string, fallback: string): string {
  * Generate a finished-dish hero image (Template A). Returns the stored
  * public URL or a typed error. Never throws, never blocks.
  *
+ * Pipeline:
+ *   1. Ask the LLM for a one-to-two sentence description of how the
+ *      FINISHED, cooked, plated dish looks (`describeDishAppearance`).
+ *      This replaces the old raw "featuring {ingredients}" clause that
+ *      made FLUX render whole raw eggs / loose powder on top of the dish.
+ *      The call never throws and falls back to a generic cooked clause.
+ *   2. Build the Template-A prompt from that description + cooked-state
+ *      guards, generate with FLUX-2-pro, and persist to Storage.
+ *
  * @param title          dish title (lightly cleaned upstream)
- * @param keyIngredients 3–6 visually-defining ingredients (optional)
+ * @param keyIngredients 3–6 visually-defining ingredients (optional) —
+ *   used ONLY to inform the LLM dish description, never listed verbatim
+ *   in the FLUX prompt.
+ * @param opts.userId    optional Supabase user id, for AI attribution on
+ *   the dish-description LLM call.
  */
 export async function generateDishImage(
   title: string,
   keyIngredients: string[] = [],
+  opts: { userId?: string | null } = {},
 ): Promise<FalImageResult> {
   const callSite = "fal/dish";
-  const prompt = buildDishPrompt(title, keyIngredients);
+  const dishDescription = await describeDishAppearance(title, keyIngredients, {
+    userId: opts.userId ?? null,
+  });
+  const prompt = buildDishPrompt(title, dishDescription);
   const flux = await runFlux(prompt, "landscape_4_3", callSite);
   if (!flux.ok) return flux;
   const stored = await persistToStorage(

@@ -150,15 +150,24 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
   });
 
   it("ingredients render as a photo-card grid (not a bullet/divide list)", () => {
-    // Figma 332:2 — the in-app ingredients tab now matches the public-share
-    // photo-card grid: 3/4-col grid of cards, each with the EXISTING
-    // RecipeHeroFallback glyph image area keyed per ingredient.
+    // Figma 332:2 — the in-app ingredients tab is a 3/4-col grid of cards.
     expect(WEB_SRC).toMatch(/grid grid-cols-3 sm:grid-cols-4 gap-3/);
     expect(WEB_SRC).toContain("recipe-ingredient-card-");
-    expect(WEB_SRC).toContain("RecipeHeroFallback");
-    expect(WEB_SRC).toContain("-ing-");
     // Old dense `divide-y` ingredient list is gone.
     expect(WEB_SRC).not.toContain("divide-y divide-border");
+  });
+
+  it("ingredient tiles show the on-brand image (Sloe image system) with a calm cream fallback", () => {
+    // Sloe image system (2026-06-08): the tile shows the ready Template-B
+    // photo from `ingredient_images` when present, else a calm cream
+    // placeholder with the sage initial — never the loud gradient glyph.
+    expect(WEB_SRC).toContain("resolveIngredientTileImage");
+    expect(WEB_SRC).toContain("getIngredientTilePlaceholder");
+    expect(WEB_SRC).toContain("fetchIngredientImageMap");
+    expect(WEB_SRC).toContain("recipe-ingredient-image-");
+    expect(WEB_SRC).toContain("recipe-ingredient-placeholder-");
+    // Labels use the cleaned display name (brand/quantity noise dropped).
+    expect(WEB_SRC).toContain("cleanIngredientDisplayName");
   });
 
   it("Start Cooking + I Made This body action buttons are radius-full", () => {
@@ -294,15 +303,14 @@ describe("mobile detail — full Figma 332:2 visual language (not just bounded d
     expect(cardBlock).toContain("colors.background");
   });
 
-  it("ingredients render as a photo-card grid (not the bullet row list)", () => {
-    // Figma 332:2 — the ingredient list is now a 3-col photo-card grid; each
-    // card reuses the EXISTING RecipeHeroFallback glyph keyed per ingredient.
-    expect(MOBILE_SRC).toContain("recipe-ingredient-grid");
-    expect(MOBILE_SRC).toContain("ingredientCard:");
-    expect(MOBILE_SRC).toContain("ingredientCardImage:");
-    // RecipeHeroFallback is keyed per ingredient (no per-ingredient image, no
-    // new imagery wired — existing fallback only).
-    expect(MOBILE_SRC).toMatch(/id={`\$\{recipeId\}-ing-\$\{i\}`}/);
+  it("ingredients render as a photo-card grid wired with the Sloe image map", () => {
+    // Figma 332:2 — the ingredient list is a photo-card grid rendered by the
+    // shared `RecipeIngredientGrid`. Sloe image system (2026-06-08): the
+    // screen hydrates `ingredient_images` and passes the map down so each
+    // tile shows the on-brand photo (or the calm cream placeholder).
+    expect(MOBILE_SRC).toContain("RecipeIngredientGrid");
+    expect(MOBILE_SRC).toContain("fetchIngredientImageMap");
+    expect(MOBILE_SRC).toContain("imageMap={ingredientImageMap}");
   });
 
   it("hero has the Figma rounded-bottom + soft fade treatment", () => {

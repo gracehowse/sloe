@@ -14,19 +14,35 @@ import {
   isFalConfigured,
 } from "../../src/lib/server/falImageGenerator";
 
-describe("buildDishPrompt — Template A (verbatim from the locked template)", () => {
-  it("includes the recipe title and key ingredients", () => {
-    const p = buildDishPrompt("Crispy Gochujang Salmon Bowl", [
-      "salmon",
-      "rice",
-      "cucumber",
-    ]);
-    expect(p).toContain("Crispy Gochujang Salmon Bowl");
-    expect(p).toContain("featuring salmon, rice, cucumber");
+describe("buildDishPrompt — Template A (cooked-dish description, NOT a raw ingredient list)", () => {
+  it("includes the recipe title and the finished-dish description verbatim", () => {
+    const desc =
+      "A golden set frittata with tender chicken and wilted spinach folded throughout, cut into wedges.";
+    const p = buildDishPrompt("Chicken Frittata", desc);
+    expect(p).toContain("Chicken Frittata");
+    expect(p).toContain(desc);
+  });
+
+  it("does NOT list raw ingredients with a `featuring …` clause (the bug being fixed)", () => {
+    // The old prompt did `…a finished plated dish featuring {ingredients}…`,
+    // which made FLUX render raw eggs / loose powder on top. The new prompt
+    // takes a cooked-dish description and must never reintroduce that clause.
+    const p = buildDishPrompt("Chicken Frittata", "A golden set baked egg dish.");
+    expect(p).not.toContain("featuring");
+  });
+
+  it("folds in the cooked-state guards so FLUX renders a cooked dish, nothing raw on top", () => {
+    const p = buildDishPrompt("Protein Overnight Oats", "Creamy oats with the protein dissolved in.");
+    expect(p).toContain("fully cooked and integrated");
+    expect(p).toMatch(/no whole raw eggs/i);
+    expect(p).toMatch(/no runny yolks on top/i);
+    expect(p).toMatch(/no loose or dry powder/i);
+    expect(p).toMatch(/nothing raw piled on the surface/i);
+    expect(p).toMatch(/no people, no hands, no fingers/i);
   });
 
   it("carries the Sloe editorial anchor + the folded-in Avoid clause (no negative_prompt field on FLUX-2)", () => {
-    const p = buildDishPrompt("Stew", []);
+    const p = buildDishPrompt("Stew", "");
     expect(p).toContain("Hyperreal editorial food photography");
     expect(p).toContain("@thelittleplantation");
     expect(p).toContain("Sloe brand imagery");
@@ -38,21 +54,23 @@ describe("buildDishPrompt — Template A (verbatim from the locked template)", (
   });
 
   it("infers a plating noun from the dish (drink → glass, bread → board, default → bowl)", () => {
-    expect(buildDishPrompt("Mango Smoothie", [])).toContain("matte ceramic glass");
-    expect(buildDishPrompt("Seeded Sourdough Loaf", [])).toContain("matte ceramic wooden board");
-    expect(buildDishPrompt("Lentil Stew", [])).toContain("matte ceramic bowl");
-    expect(buildDishPrompt("Pan-Seared Salmon", [])).toContain("matte ceramic plate");
+    expect(buildDishPrompt("Mango Smoothie", "")).toContain("matte ceramic glass");
+    expect(buildDishPrompt("Seeded Sourdough Loaf", "")).toContain("matte ceramic wooden board");
+    expect(buildDishPrompt("Lentil Stew", "")).toContain("matte ceramic bowl");
+    expect(buildDishPrompt("Pan-Seared Salmon", "")).toContain("matte ceramic plate");
+    expect(buildDishPrompt("Chicken Frittata", "")).toContain("matte ceramic skillet");
   });
 
-  it("caps key ingredients at 6", () => {
-    const p = buildDishPrompt("Big Salad", ["a", "b", "c", "d", "e", "f", "g", "h"]);
-    expect(p).toContain("featuring a, b, c, d, e, f");
-    expect(p).not.toContain(", g,");
+  it("renders a coherent prompt even when the description is empty (generic finished dish)", () => {
+    const p = buildDishPrompt("Lentil Stew", "");
+    expect(p).toContain("Hyperreal editorial food photography of Lentil Stew.");
+    // No dangling double-space artefact from the empty description clause.
+    expect(p).not.toContain("  The finished dish");
   });
 
   it("handles an empty title gracefully", () => {
-    expect(() => buildDishPrompt("", [])).not.toThrow();
-    expect(buildDishPrompt("", [])).toContain("a home-cooked dish");
+    expect(() => buildDishPrompt("", "")).not.toThrow();
+    expect(buildDishPrompt("", "")).toContain("a home-cooked dish");
   });
 });
 
@@ -73,14 +91,25 @@ describe("buildIngredientPrompt — Template B (single subject on pure white)", 
 });
 
 describe("graceful degradation — FAL_KEY unset", () => {
-  const original = process.env.FAL_KEY;
+  const originalFal = process.env.FAL_KEY;
+  const originalAnthropic = process.env.ANTHROPIC_API_KEY;
+  const originalOpenai = process.env.OPENAI_API_KEY;
 
   beforeEach(() => {
     delete process.env.FAL_KEY;
+    // Also clear the AI provider keys so the LLM dish-appearance step
+    // inside generateDishImage short-circuits to its fallback string
+    // WITHOUT making a network call — this test asserts no `fetch`.
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.FAL_KEY;
-    else process.env.FAL_KEY = original;
+    if (originalFal === undefined) delete process.env.FAL_KEY;
+    else process.env.FAL_KEY = originalFal;
+    if (originalAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = originalAnthropic;
+    if (originalOpenai === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenai;
     vi.restoreAllMocks();
   });
 
@@ -95,7 +124,8 @@ describe("graceful degradation — FAL_KEY unset", () => {
     if (!result.ok) {
       expect(result.error).toBe("fal_not_configured");
     }
-    // It must never reach the network when the key is missing.
+    // It must never reach the network when the key is missing — neither
+    // the LLM dish-appearance step (AI keys cleared above) nor fal.
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
