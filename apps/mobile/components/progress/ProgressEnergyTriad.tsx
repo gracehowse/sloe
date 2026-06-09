@@ -54,7 +54,9 @@ export function ProgressEnergyTriad({
     letterSpacing: 0.8,
   };
   const value: TextStyle = {
-    fontSize: 20,
+    // 18 (on the ENG-119 type scale), matching the web twin
+    // (suppr/progress-energy-triad.tsx text-[18px]). Was off-scale 20.
+    fontSize: 18,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
     marginTop: 6,
