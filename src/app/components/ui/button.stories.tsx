@@ -32,11 +32,11 @@ export const CssCheck: Story = {
   args: { children: "Submit" },
   play: async ({ canvas }) => {
     const button = canvas.getByRole("button", { name: /submit/i });
-    // Sloe Phase 0: the default Button bg is `--primary-solid`, the deep clay
-    // `--accent-primary-solid`. Re-skin refined the light-theme value to
-    // #A0552E = rgb(160, 85, 46) (2026-06-05; was #A05A30 / rgb(160,90,48),
-    // originally blue #3a6ec6) — keep this in sync with src/styles/theme.css.
-    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(160, 85, 46)");
+    // Sloe: the default Button bg is `--primary-solid` = `--accent-primary-solid`.
+    // The 2026-06-08 aubergine accent system set the light-theme value to deep
+    // plum #3B2A4D = rgb(59, 42, 77) (was clay #A0552E; the accent moved off the
+    // crowded warm-orange recipe lane). Keep in sync with src/styles/theme.css.
+    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(59, 42, 77)");
   },
 };
 
