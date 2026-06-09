@@ -1,24 +1,22 @@
 /**
- * 2026-04-30 ui-product-designer recipe-detail audit — web parity pins.
- * 2026-05-01 v3 redesign — kcal moved inline + macros become hero +
- * Fits-your-day softened to a single line.
+ * Web recipe-detail layout pins. History:
+ *   - 2026-04-30 ui-product-designer audit — first web parity pins.
+ *   - 2026-05-01 v3 — kcal inline + macros hero + softened Fits-your-day.
+ *   - 2026-05-02 v4 — kcal promoted to its own headline line, 4-up tiles.
+ *   - 2026-06-09 Figma 332:2 (the SHIPPED aubergine redesign) — the screen is
+ *     a cream editorial page: serif plum `recipe-body-title` <h1>, the v3/v4
+ *     subtitle row + dedicated kcal headline line are REMOVED, kcal renders as
+ *     the leading CAL column of the flat `recipe-macros-grid` strip (serif
+ *     24px, calories first), tracked micros fall to a chip row, and a single
+ *     tone-tinted `recipe-fits-your-day` chip lives in the title block. The
+ *     canonical reference is mobile `recipeDetailV3SourcePins.test.ts`.
  *
- * 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): two visual
- * fixes against v3 from user feedback:
- *   - "the widgets should be the same size and fit on one row" →
- *     macro tiles switch from a flex-wrap layout (which let fiber
- *     stand alone on row 2 at 48% width) to `grid grid-cols-4` so all
- *     tiles share a width.
- *   - "cals need to be clearer" → kcal got promoted out of the
- *     subtitle row into its own dedicated headline line directly
- *     under the title ("329 kcal · per portion" at 17-pt).
- *
- * RecipeDetail.tsx is a ~2k-line component wired to AppDataContext,
- * Supabase, router, and a dozen sub-dialogs — mounting it for an
- * isolated layout assertion would be a sandbox of mocks. Instead we
- * pin the structural contract via source-string regex (matches the
- * existing `screenAuditFixesParity.test.ts` idiom) plus a real RTL
- * render of the helper-driven JSX pattern in a minimal harness.
+ * RecipeDetail.tsx is a ~2k-line component wired to AppDataContext, Supabase,
+ * router, and a dozen sub-dialogs — mounting it for an isolated layout
+ * assertion would be a sandbox of mocks. Instead we pin the structural
+ * contract via source-string regex (matches the existing
+ * `screenAuditFixesParity.test.ts` idiom) plus a real RTL render of the
+ * helper-driven JSX pattern in a minimal harness that mirrors the 332:2 hero.
  *
  * If this test breaks, recipe detail has regressed.
  */
@@ -28,10 +26,10 @@ import { resolve } from "node:path";
 import { render, within } from "@testing-library/react";
 
 import {
-  composeSubtitleParts,
+  composeRecipeMeta,
   computeFitsYourDayVerdict,
-  shouldRenderTimeStats,
 } from "../../src/lib/recipe/recipeDetailLayout";
+import { normaliseRecipeDisplayTitle } from "../../src/lib/recipe/normaliseDisplayTitle";
 
 const WEB_RECIPE = resolve(__dirname, "../../src/app/components/RecipeDetail.tsx");
 const SRC = readFileSync(WEB_RECIPE, "utf8");
@@ -295,93 +293,122 @@ describe("web recipe-detail — tighter section gaps (Fix 6 / Figma 332:2)", () 
 
 /**
  * RTL render harness — exercises the helper-driven JSX with a minimal
- * stand-in component so we can assert on real DOM structure. The
- * harness mirrors the production hero block exactly (same testIDs,
- * same conditionals) so a structural regression in the production
- * file shows up here too via the source pins above.
+ * stand-in component so we can assert on real DOM structure. The harness
+ * mirrors the production hero block exactly (same testIDs, same
+ * conditionals) so a structural regression in the production file shows up
+ * here too alongside the source pins above.
  *
- * 2026-05-02 v4: harness updated to render kcal on its own dedicated
- * line (`recipe-kcal-line`) instead of inline in the subtitle, and
- * to render the macros grid as `grid grid-cols-4` for the
- * equal-width-tiles assertion.
+ * Re-pinned 2026-06-09 to the canonical Figma 332:2 structure (mobile
+ * `recipeDetailV3SourcePins.test.ts` is the reference). The v4 fiction this
+ * harness used to render — a dedicated `recipe-kcal-line`/`recipe-kcal-number`
+ * headline, a `recipe-subtitle-row`/`recipe-subtitle-kcal` subtitle, and a
+ * `recipe-time-stats` prep·cook line — is SUPERSEDED and never appeared in the
+ * real source again, so asserting on it protected nothing. The 332:2 hero is:
+ *   - plum-serif `recipe-body-title` <h1> (no subtitle row)
+ *   - `recipe-attribution` line (gated on a real byline)
+ *   - a single `recipe-fits-your-day` verdict chip, tinted from `verdict.tone`
+ *   - kcal as the leading CAL column of the four-fixed `recipe-macros-grid`
+ *     strip (CAL / PRO / CARB / FAT, calories first)
+ *   - tracked micros in a `recipe-macro-micro-chips` overflow row
+ *   - `recipe-meta-row` (time · N items) from the shared `composeRecipeMeta`
  */
-describe("web recipe-detail v4 — helper-driven render assertions", () => {
+describe("web recipe-detail — Figma 332:2 helper-driven render assertions", () => {
+  const STRIP_KEYS = ["calories", "protein", "carbs", "fat"] as const;
+
   function HeroHarness(args: {
     prepMin: number | null | undefined;
     cookMin: number | null | undefined;
-    prepDisplay: string;
-    cookDisplay: string;
+    ingredientCount: number;
     kcal: number;
     targetCals: number;
-    authorLabel: string | null;
-    slots: string[];
-    servings: number;
+    bylineLabel: string | null;
+    sourceUrl?: string | null;
+    title?: string;
     macrosToShow?: string[];
   }) {
-    const showRow = shouldRenderTimeStats(args.prepMin, args.cookMin);
-    const segments: string[] = [];
-    if (args.prepMin && args.prepMin > 0) segments.push(`${args.prepDisplay} prep`);
-    if (args.cookMin && args.cookMin > 0) segments.push(`${args.cookDisplay} cook`);
-    const subtitleParts = composeSubtitleParts({
-      authorLabel: args.authorLabel,
-      slots: args.slots,
-      servings: args.servings,
-    });
     const verdict = computeFitsYourDayVerdict({
       kcal: args.kcal,
       targetCals: args.targetCals,
     });
+    // Inline tone-tint, mirroring the production `verdictChip` derivation.
+    const verdictChip = verdict
+      ? verdict.tone === "success"
+        ? { fg: "#5E7C5A", bg: "rgba(94,124,90,0.1)" }
+        : verdict.tone === "destructive"
+          ? { fg: "var(--destructive)", bg: "color-mix(in srgb, var(--destructive) 12%, transparent)" }
+          : { fg: "var(--warning)", bg: "color-mix(in srgb, var(--warning) 12%, transparent)" }
+      : null;
+    const originalHref =
+      typeof args.sourceUrl === "string" && args.sourceUrl.trim()
+        ? args.sourceUrl.trim()
+        : null;
     const hasNutrition = args.kcal > 0;
     // ENG-920 (resolved 2026-06-07): the strip is Figma-fixed at four columns
     // (CAL / PRO / CARB / FAT — calories first). Tracked micros fall to a chip
     // row. `macrosToShow` drives which micro chips render, NOT the strip.
     const tracked = args.macrosToShow ?? ["protein", "carbs", "fat", "fiber"];
-    const STRIP_KEYS = ["calories", "protein", "carbs", "fat"] as const;
     const microChips = ["fiber", "sugar", "sodium"].filter((k) => tracked.includes(k));
+    const metaStats = composeRecipeMeta({
+      prepMin: args.prepMin,
+      cookMin: args.cookMin,
+      ingredientCount: args.ingredientCount,
+    });
     return (
       <div>
-        {hasNutrition ? (
-          <div
-            data-testid="recipe-kcal-line"
-            className="mt-1.5 flex items-baseline gap-1.5"
-            aria-label={`${Math.round(args.kcal)} kilocalories per portion`}
+        <div className="space-y-3" data-testid="recipe-title-block">
+          <h1
+            className="text-foreground-brand leading-tight"
+            style={{ fontFamily: "var(--font-headline)", fontSize: "34px", fontWeight: 400 }}
+            data-testid="recipe-body-title"
           >
-            <span
-              data-testid="recipe-kcal-number"
-              className="text-[18px] font-bold text-foreground tabular-nums leading-none"
+            {normaliseRecipeDisplayTitle(args.title ?? "Lemon Orzo Salad")}
+          </h1>
+          {args.bylineLabel ? (
+            <p className="text-sm text-muted-foreground" data-testid="recipe-attribution">
+              via <span className="font-medium text-foreground">{args.bylineLabel}</span>
+              {originalHref ? (
+                <>
+                  {"  ·  "}
+                  <a href={originalHref} target="_blank" rel="noopener noreferrer">
+                    See original
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          {verdict && verdictChip ? (
+            <div
+              data-testid="recipe-fits-your-day"
+              role="status"
+              aria-label={verdict.a11y}
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 text-xs font-bold"
+              style={{ color: verdictChip.fg, backgroundColor: verdictChip.bg }}
             >
-              {Math.round(args.kcal)} kcal
-            </span>
-            <span aria-hidden>·</span>
-            <span>per portion</span>
-          </div>
-        ) : null}
-        {subtitleParts.length > 0 ? (
-          <div data-testid="recipe-subtitle-row">
-            {subtitleParts.map((p, i) => (
-              <span key={p.key}>
-                {i > 0 ? " · " : ""}
-                <span>{p.label}</span>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {showRow ? (
-          <div data-testid="recipe-time-stats">{segments.join(" · ")}</div>
-        ) : null}
+              <span>{verdict.label}</span>
+            </div>
+          ) : null}
+        </div>
         {!hasNutrition ? (
           <div data-testid="recipe-nutrition-pending">
-            Calories not yet computed
+            Calories not yet computed — open the Ingredients tab to verify
           </div>
         ) : null}
-        <div data-testid="recipe-macros-grid" className="grid grid-cols-4 rounded-2xl">
+        <div
+          data-testid="recipe-macros-grid"
+          role="list"
+          aria-label="Nutrition per serving"
+          className="grid grid-cols-4 rounded-2xl"
+        >
           {STRIP_KEYS.map((key, idx) => (
             <div
               key={key}
+              role="listitem"
               data-testid={`recipe-macro-tile-${key}`}
-              className={idx > 0 ? "border-l border-border" : ""}
+              className={`flex flex-col items-center justify-center py-5 ${
+                idx > 0 ? "border-l border-border" : ""
+              }`}
             >
-              {key}
+              {key === "calories" ? Math.round(args.kcal) : key}
             </div>
           ))}
         </div>
@@ -394,116 +421,134 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
             ))}
           </div>
         ) : null}
-        {verdict ? (
-          <div data-testid="recipe-fits-your-day">{verdict.label}</div>
+        {metaStats.length > 0 ? (
+          <div data-testid="recipe-meta-row" aria-label={metaStats.map((s) => s.label).join(", ")}>
+            {metaStats.map((stat, idx) => (
+              <span key={stat.key}>
+                {idx > 0 ? " · " : ""}
+                {stat.label}
+              </span>
+            ))}
+          </div>
         ) : null}
       </div>
     );
   }
 
-  it("hides recipe-time-stats when both prep and cook are missing", () => {
+  it("renders the plum-serif title <h1> via `normaliseRecipeDisplayTitle`", () => {
+    const { getByTestId } = render(
+      <HeroHarness
+        prepMin={undefined}
+        cookMin={undefined}
+        ingredientCount={0}
+        kcal={0}
+        targetCals={0}
+        bylineLabel={null}
+      />,
+    );
+    const title = getByTestId("recipe-body-title");
+    expect(title.tagName).toBe("H1");
+    expect(title.style.fontFamily).toBe("var(--font-headline)");
+    expect(title.style.fontSize).toBe("34px");
+  });
+
+  it("hides the meta row when neither timing nor item count is known", () => {
     const { queryByTestId } = render(
       <HeroHarness
         prepMin={undefined}
         cookMin={undefined}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={0}
         kcal={0}
         targetCals={0}
-        authorLabel={null}
-        slots={[]}
-        servings={4}
+        bylineLabel={null}
       />,
     );
-    expect(queryByTestId("recipe-time-stats")).toBeNull();
+    expect(queryByTestId("recipe-meta-row")).toBeNull();
   });
 
-  it("renders compact `<X> min prep · <Y> min cook` when timings are present", () => {
+  it("renders the meta row as `<total> min · N items` from `composeRecipeMeta`", () => {
     const { getByTestId } = render(
       <HeroHarness
         prepMin={10}
         cookMin={25}
-        prepDisplay="10 min"
-        cookDisplay="25 min"
+        ingredientCount={8}
         kcal={0}
         targetCals={0}
-        authorLabel={null}
-        slots={[]}
-        servings={4}
+        bylineLabel={null}
       />,
     );
-    expect(getByTestId("recipe-time-stats").textContent).toMatch(
-      /10 min prep · 25 min cook/,
-    );
+    // composeRecipeMeta sums prep+cook → "35 min" and renders the item count.
+    expect(getByTestId("recipe-meta-row").textContent).toMatch(/35 min · 8 items/);
   });
 
-  it("v4: renders kcal on its OWN dedicated line (not inside the subtitle row)", () => {
+  it("renders the attribution line only when a real byline exists", () => {
+    const { queryByTestId, rerender } = render(
+      <HeroHarness
+        prepMin={null}
+        cookMin={null}
+        ingredientCount={5}
+        kcal={329}
+        targetCals={2000}
+        bylineLabel={null}
+      />,
+    );
+    expect(queryByTestId("recipe-attribution")).toBeNull();
+    rerender(
+      <HeroHarness
+        prepMin={null}
+        cookMin={null}
+        ingredientCount={5}
+        kcal={329}
+        targetCals={2000}
+        bylineLabel="emthenutritionist"
+        sourceUrl="https://example.com/recipe"
+      />,
+    );
+    const attribution = queryByTestId("recipe-attribution");
+    expect(attribution).not.toBeNull();
+    expect(attribution!.textContent).toMatch(/via emthenutritionist/);
+    // "See original" surfaces only when a source URL is present.
+    expect(attribution!.textContent).toMatch(/See original/);
+  });
+
+  it("kcal renders as the leading CAL column of the strip — no separate kcal headline", () => {
     const { getByTestId, queryByTestId } = render(
       <HeroHarness
         prepMin={null}
         cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={5}
         kcal={329}
         targetCals={2000}
-        authorLabel="emthenutritionist"
-        slots={["Lunch"]}
-        servings={3}
+        bylineLabel="emthenutritionist"
       />,
     );
-    // Dedicated line exists with the bigger number.
-    const kcalLine = getByTestId("recipe-kcal-line");
-    const kcalNumber = within(kcalLine).getByTestId("recipe-kcal-number");
-    expect(kcalNumber.textContent).toBe("329 kcal");
-    expect(kcalLine.textContent).toMatch(/329 kcal[\s·]+per portion/);
-    // And the subtitle row no longer contains a kcal token.
+    // The superseded v4 dedicated kcal line / subtitle row never render.
+    expect(queryByTestId("recipe-kcal-line")).toBeNull();
+    expect(queryByTestId("recipe-kcal-number")).toBeNull();
+    expect(queryByTestId("recipe-subtitle-row")).toBeNull();
     expect(queryByTestId("recipe-subtitle-kcal")).toBeNull();
-    const subtitle = getByTestId("recipe-subtitle-row");
-    expect(subtitle.textContent).not.toMatch(/kcal/);
-    expect(subtitle.textContent).toMatch(/lunch/);
-    expect(subtitle.textContent).toMatch(/serves 3/);
-    expect(subtitle.textContent).toMatch(/by emthenutritionist/);
+    // kcal is the value of the calories (CAL) column instead.
+    const calColumn = getByTestId("recipe-macro-tile-calories");
+    expect(calColumn.textContent).toBe("329");
   });
 
-  it("v4: kcal number element renders at fontSize ≥ 18px (on-scale)", () => {
+  it("shows the pending placeholder (not a confident 0 kcal) when kcal=0", () => {
     const { getByTestId } = render(
       <HeroHarness
         prepMin={null}
         cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
-        kcal={329}
-        targetCals={2000}
-        authorLabel={null}
-        slots={["Lunch"]}
-        servings={3}
-      />,
-    );
-    const kcalNumber = getByTestId("recipe-kcal-number");
-    expect(kcalNumber.className).toMatch(/text-\[18px\]/);
-    expect(kcalNumber.className).toMatch(/font-bold/);
-    expect(kcalNumber.className).toMatch(/tabular-nums/);
-  });
-
-  it("hides the kcal line AND shows the pending placeholder when kcal=0", () => {
-    const { queryByTestId, getByTestId } = render(
-      <HeroHarness
-        prepMin={null}
-        cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={5}
         kcal={0}
         targetCals={2000}
-        authorLabel="emthenutritionist"
-        slots={["Lunch"]}
-        servings={3}
+        bylineLabel="emthenutritionist"
       />,
     );
-    expect(queryByTestId("recipe-kcal-line")).toBeNull();
-    expect(queryByTestId("recipe-kcal-number")).toBeNull();
     expect(getByTestId("recipe-nutrition-pending").textContent).toMatch(
       /Calories not yet computed/,
     );
+    // The CAL column reflects the un-imported 0 only inside the strip — the
+    // pending placeholder is what tells the user it's not yet computed.
+    expect(getByTestId("recipe-macro-tile-calories").textContent).toBe("0");
   });
 
   it("ENG-920: strip renders the Figma-fixed CAL/PRO/CARB/FAT columns (calories first)", () => {
@@ -511,13 +556,10 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
       <HeroHarness
         prepMin={null}
         cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={5}
         kcal={329}
         targetCals={2000}
-        authorLabel={null}
-        slots={["Lunch"]}
-        servings={3}
+        bylineLabel={null}
         macrosToShow={["protein", "carbs", "fat", "fiber"]}
       />,
     );
@@ -539,13 +581,10 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
       <HeroHarness
         prepMin={null}
         cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={5}
         kcal={329}
         targetCals={2000}
-        authorLabel={null}
-        slots={["Lunch"]}
-        servings={3}
+        bylineLabel={null}
         macrosToShow={["protein", "carbs", "fat", "fiber", "sugar", "sodium"]}
       />,
     );
@@ -560,27 +599,43 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
     expect(within(chips).getByTestId("recipe-macro-chip-sodium")).toBeTruthy();
   });
 
-  it("Fits your day verdict renders as a SIBLING of the macros grid (not a child of a kcal hero)", () => {
-    const { getByTestId, queryByTestId } = render(
+  it("the single Fits-your-day chip is a title-block sibling of the macros grid (no kcal hero)", () => {
+    const { getByTestId, queryByTestId, queryAllByTestId } = render(
       <HeroHarness
         prepMin={null}
         cookMin={null}
-        prepDisplay="—"
-        cookDisplay="—"
+        ingredientCount={5}
         kcal={650}
         targetCals={2000}
-        authorLabel={null}
-        slots={[]}
-        servings={4}
+        bylineLabel={null}
       />,
     );
     // No more kcal hero.
     expect(queryByTestId("recipe-calorie-hero")).toBeNull();
-    // Verdict appears (650/2000 = 32.5% → rounds to 30% → "Fits your day").
+    // Exactly one verdict chip (no flag-off legacy duplicate).
+    expect(queryAllByTestId("recipe-fits-your-day").length).toBe(1);
+    // 650/2000 = 32.5% → rounds to 30% → "Fits your day".
     const verdict = getByTestId("recipe-fits-your-day");
     expect(verdict.textContent).toMatch(/Fits your day/);
+    expect(verdict.getAttribute("role")).toBe("status");
     // And it sits OUTSIDE the macros-grid testID region.
     const grid = getByTestId("recipe-macros-grid");
     expect(grid.contains(verdict)).toBe(false);
+  });
+
+  it("the over-a-day verdict chip uses the destructive tone (red), never sage/clay", () => {
+    const { getByTestId } = render(
+      <HeroHarness
+        prepMin={null}
+        cookMin={null}
+        ingredientCount={5}
+        kcal={2400}
+        targetCals={2000}
+        bylineLabel={null}
+      />,
+    );
+    // 2400/2000 = 120% → destructive tone → the --destructive token, not a hex.
+    const verdict = getByTestId("recipe-fits-your-day");
+    expect(verdict.style.color).toBe("var(--destructive)");
   });
 });

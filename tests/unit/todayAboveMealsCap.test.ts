@@ -110,12 +110,18 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
 });
 
 describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
-  it("TodayEatAgainBanner uses neutral card chrome, not primary tint", () => {
+  it("TodayEatAgainBanner uses aubergine soft-tint nudge chrome (Sloe treatment 2026-06-08)", () => {
+    // Sloe treatment 2026-06-08: eat-again card moved from neutral `bg-card
+    // card-slab-flat` to a soft aubergine wash (`bg-primary/10`) to signal
+    // "actionable" inline re-log. The old `border-primary/30 bg-primary/5`
+    // bordered-card variant (from an interim pass) is also absent — only the
+    // clean `/10` wash is used.
     const bannerSrc = readFileSync(
       resolve(REPO, "src/app/components/suppr/today-eat-again-banner.tsx"),
       "utf-8",
     );
-    expect(bannerSrc).toMatch(/bg-card card-slab-flat/);
+    expect(bannerSrc).toMatch(/bg-primary\/10/);
+    expect(bannerSrc).not.toMatch(/bg-card card-slab-flat/);
     expect(bannerSrc).not.toMatch(/border-primary\/30 bg-primary\/5/);
     expect(bannerSrc).toMatch(/text-muted-foreground">Eat again</);
     expect(bannerSrc).not.toMatch(/tracking-widest text-primary">Eat again/);

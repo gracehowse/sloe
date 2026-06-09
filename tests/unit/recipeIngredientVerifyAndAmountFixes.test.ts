@@ -20,11 +20,25 @@ import { describe, expect, it } from "vitest";
 const MOBILE_RECIPE = resolve(__dirname, "../../apps/mobile/app/recipe/[id].tsx");
 const MOBILE_VERIFY_LIB = resolve(__dirname, "../../apps/mobile/lib/verifyRecipe.ts");
 const WEB_RECIPE_DETAIL = resolve(__dirname, "../../src/app/components/RecipeDetail.tsx");
+// RecipeIngredientGrid now hosts the formatIngredientAmountUnit call-site
+// (extracted from [id].tsx as part of the Figma 332:2 grid refactor).
+const MOBILE_INGREDIENT_GRID = resolve(
+  __dirname,
+  "../../apps/mobile/components/recipe/RecipeIngredientGrid.tsx",
+);
+// IngredientInfoSheet hosts the tierColor dot now that ingredient-tap
+// was upgraded from a raw Alert to the branded bottom-sheet (ENG-821).
+const MOBILE_INGREDIENT_INFO_SHEET = resolve(
+  __dirname,
+  "../../apps/mobile/components/recipe/IngredientInfoSheet.tsx",
+);
 
 const SRC = {
   mobileRecipe: readFileSync(MOBILE_RECIPE, "utf8"),
   mobileVerifyLib: readFileSync(MOBILE_VERIFY_LIB, "utf8"),
   webRecipe: readFileSync(WEB_RECIPE_DETAIL, "utf8"),
+  mobileIngredientGrid: readFileSync(MOBILE_INGREDIENT_GRID, "utf8"),
+  mobileIngredientInfoSheet: readFileSync(MOBILE_INGREDIENT_INFO_SHEET, "utf8"),
 };
 
 describe("Bug 1 — verified state persists past manual verify", () => {
@@ -48,7 +62,9 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     expect(SRC.mobileRecipe).toMatch(
       /ingredientShouldShowVerifyCta\b/,
     );
-    expect(SRC.mobileRecipe).toMatch(/showVerifyCta\s*&&\s*recipeId/);
+    // The helper is called inline (not via a local boolean variable) and
+    // guarded by recipeId — both must be present in the same if-condition.
+    expect(SRC.mobileRecipe).toMatch(/ingredientShouldShowVerifyCta\(tier\)\s*&&\s*recipeId/);
     // Pre-fix gating used `confPct < 75` directly; that path is gone.
     expect(SRC.mobileRecipe).not.toMatch(/\(confPct\s*==\s*null\s*\|\|\s*confPct\s*<\s*75\)\s*&&\s*recipeId/);
   });
@@ -107,16 +123,23 @@ describe("Bug 1 — verified state persists past manual verify", () => {
   });
 
   it("mobile dot colour now follows verification tier rather than raw confidence", () => {
-    // The dot used to be conditional on `confPct != null`, hiding it
-    // for unscored rows; post-fix it always renders with a tier
-    // colour so verified rows show green even when confidence is
-    // missing on legacy data.
-    expect(SRC.mobileRecipe).toMatch(/backgroundColor:\s*tierColor/);
+    // The ingredient-tap flow was upgraded from a raw Alert to the branded
+    // IngredientInfoSheet (ENG-821). The tier dot colour is now owned by that
+    // sheet component — the host ([id].tsx) derives `tier` + resolves the colour
+    // and passes it in; the sheet renders `backgroundColor: info.tierColor`.
+    // Pre-fix the dot was conditional on `confPct != null`, hiding it for
+    // unscored rows. The new path always renders with a tier colour.
+    expect(SRC.mobileIngredientInfoSheet).toMatch(/backgroundColor:\s*info\.tierColor/);
+    // The host must still derive the tier and pass tierColor into the sheet.
+    expect(SRC.mobileRecipe).toMatch(/deriveIngredientVerificationTier\(\s*\{/);
   });
 
   it("auto-verify sends structured amount/unit rows to verify-recipe (not name-only)", () => {
+    // `snap` is a closure-safe alias for the `ingredients` state at call time
+    // (`const snap = ingredients`). The single call site is `snap`.
     expect(SRC.mobileRecipe).toMatch(/structuredIngredientsForVerify\(snap\)/);
-    expect(SRC.mobileRecipe).toMatch(/structuredIngredientsForVerify\(ingredients\)/);
+    // `snap` is captured directly from `ingredients` state — verify that link.
+    expect(SRC.mobileRecipe).toMatch(/const\s+snap\s*=\s*ingredients/);
     expect(SRC.mobileRecipe).not.toMatch(
       /parseRawIngredients\(snap\.map\(\(ing\) => ing\.name\)\)/,
     );
@@ -131,7 +154,11 @@ describe("Bug 1 — verified state persists past manual verify", () => {
 
 describe("Bug 2 — amount renders without duplicated tokens", () => {
   it("mobile recipe-detail row routes amount/unit through formatIngredientAmountUnit", () => {
-    expect(SRC.mobileRecipe).toMatch(
+    // The ingredient grid was extracted to RecipeIngredientGrid (Figma 332:2
+    // §6 grid refactor). formatIngredientAmountUnit is imported and called
+    // there; [id].tsx imports RecipeIngredientGrid and passes viewMultiplier
+    // down — the call-site wiring is protected in the grid component.
+    expect(SRC.mobileIngredientGrid).toMatch(
       /import\s*\{\s*formatIngredientAmountUnit\s*\}\s*from\s*"[^"]*recipe-ingredients\/formatIngredientAmount"/,
     );
     // PR1 (2026-05-02): the multiplier identifier moved from
@@ -139,12 +166,15 @@ describe("Bug 2 — amount renders without duplicated tokens", () => {
     // (stepper-driven, deep-link-seeded). The behaviour this test
     // protects (route through `formatIngredientAmountUnit` with
     // 2-decimal rounding) is unchanged.
-    expect(SRC.mobileRecipe).toMatch(
-      /formatIngredientAmountUnit\(\s*\n?\s*Math\.round\(ing\.amount\s*\*\s*viewMultiplier\s*\*\s*100\)\s*\/\s*100,\s*\n?\s*ing\.unit,?\s*\n?\s*\)/,
+    expect(SRC.mobileIngredientGrid).toMatch(
+      /formatIngredientAmountUnit\(\s*\n?\s*scaledAmount,\s*\n?\s*ing\.unit\s*\)/,
     );
+    // The grid receives `viewMultiplier` as a prop from [id].tsx — verify
+    // the parent still passes it through.
+    expect(SRC.mobileRecipe).toMatch(/viewMultiplier=\{viewMultiplier\}/);
     // Pre-fix the row used a bare template string `${amount} ${unit}`
     // — that line is gone now that we route through the helper.
-    expect(SRC.mobileRecipe).not.toMatch(
+    expect(SRC.mobileIngredientGrid).not.toMatch(
       /\$\{Math\.round\(ing\.amount \* viewMultiplier \* 100\) \/ 100\} \$\{ing\.unit \?\? ""\}/,
     );
   });

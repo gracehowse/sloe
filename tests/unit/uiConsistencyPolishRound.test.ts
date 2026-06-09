@@ -22,14 +22,20 @@ describe("Recipe Detail polish (mobile)", () => {
     expect(SRC).not.toMatch(/pillTags\.map\s*\(/);
   });
 
-  it("labels the fit-percent pill with 'match' so the bare number is no longer ambiguous", () => {
-    expect(SRC).toMatch(/\{fitPercent\}% match/);
-  });
+  // The fit-percent pill ("{fitPercent}% match") was INTENTIONALLY REMOVED in
+  // commit effefaea (GW-08 — dishonest trust chip; the helper fell back to a
+  // hard-coded NEUTRAL_FALLBACK=85, so every recipe showed "85% match" as pure
+  // decoration). There is no test for it here because there is no pill to test.
 
-  it("uses the symmetric portion preset set {0.5, 1, 1.5, 2}", () => {
-    expect(SRC).toMatch(/\[0\.5,\s*1,\s*1\.5,\s*2\]/);
-    // Negative assertion — the legacy 0.75× preset must be gone.
+  it("uses the servings STEPPER (RecipeServingsFooter) instead of the legacy portion-preset buttons", () => {
+    // Figma 332:2 redesign replaced the {0.5, 1, 1.5, 2} portion-preset button
+    // row with a dedicated servings stepper (RecipeServingsFooter). The preset
+    // array is gone; logPortion is now driven by the stepper's viewMultiplier.
+    expect(SRC).toContain("RecipeServingsFooter");
+    expect(SRC).toContain("logPortion");
+    // The old preset button array must be gone from the screen file.
     expect(SRC).not.toMatch(/\[0\.5,\s*0\.75,\s*1,\s*1\.5,\s*2\]/);
+    expect(SRC).not.toMatch(/\[0\.5,\s*1,\s*1\.5,\s*2\]\s*as const/);
   });
 });
 
@@ -37,12 +43,15 @@ describe("Create Recipe polish (mobile)", () => {
   const SRC = read("apps/mobile/app/create-recipe.tsx");
 
   it("uses the canonical primary colour for the Save Recipe submit (not Accent.success)", () => {
-    // The save-button stylesheet must reference Accent.primary, not
-    // Accent.success. Pin via the named-property pattern around saveBtn.
+    // The save-button stylesheet must use the theme-aware aubergine ink
+    // (accentInk = accent.primarySolid / primarySolidDark, not Accent.success).
+    // The redesign patched the static Accent.primary reference to the computed
+    // `accentInk` variable so dark-mode contrast holds; semantically still
+    // aubergine. Pin via the named-property pattern around saveBtn.
     const idx = SRC.indexOf("saveBtn:");
     expect(idx).toBeGreaterThan(0);
     const block = SRC.slice(idx, idx + 400);
-    expect(block).toMatch(/backgroundColor:\s*Accent\.primary/);
+    expect(block).toMatch(/backgroundColor:\s*accentInk/);
     expect(block).not.toMatch(/backgroundColor:\s*Accent\.success/);
   });
 

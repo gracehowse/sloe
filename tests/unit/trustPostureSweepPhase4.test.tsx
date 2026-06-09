@@ -241,7 +241,9 @@ describe("Trust posture sweep — source pins (post-GW-08, 2026-04-28)", () => {
     const src = read("apps/mobile/app/recipe/[id].tsx");
     expect(src).toMatch(/testID="recipe-detail-gluten-disclaimer"/);
     expect(src).toMatch(/Estimated from ingredient names — not a guarantee\./);
-    expect(src).toMatch(/Always[\s\S]{0,40}check labels and packaging if you avoid gluten for medical/);
+    // The JSX source wraps the line between "packaging" and "if" with
+    // indentation whitespace — allow [\s\S]{0,30} to bridge the newline.
+    expect(src).toMatch(/Always[\s\S]{0,40}check labels and packaging[\s\S]{0,30}if you avoid gluten for medical/);
     // Same conditional as the chip (rendered only when a variant resolves).
     expect(src).toMatch(
       /if \(!gluten\.variant\) return null;[\s\S]*recipe-detail-gluten-disclaimer/,

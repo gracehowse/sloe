@@ -2,16 +2,17 @@
  * Frost secondary-colour exploration — RETIRED (ENG-997, 2026-06-08).
  *
  * This file used to pin the `.flag-frost` damson override behaviour. The
- * brand-manager decision (2026-06-08) made Clay `#C8794E` the UNCONDITIONAL
- * functional accent on web + mobile, and Damson reverted to a scarce
- * brand-identity role (win / Pro / streaks). So this file is now the
+ * brand-manager decision (2026-06-08) made Aubergine `#3B2A4D` the
+ * UNCONDITIONAL functional accent on web + mobile
+ * (`docs/decisions/2026-06-08-aubergine-accent-system.md`). Clay survives
+ * only as the carbs macro colour (`--macro-carbs`). So this file is now the
  * RETIREMENT guard — it fails if any of the Frost flag wiring creeps back:
  *
  *   1. The `.flag-frost` (light) + `.dark.flag-frost` override blocks are gone
  *      from `theme.css`, and no `.flag-frost` selector survives anywhere.
- *   2. `--accent-primary` in `:root` (light) and `.dark` is the canonical CLAY,
- *      unconditionally (no flag toggles it any more).
- *   3. The win gradient stays the clay-mid Sloe brand gradient.
+ *   2. `--accent-primary` in `:root` (light) and `.dark` is the canonical
+ *      AUBERGINE unconditionally (no flag toggles it any more).
+ *   3. The win gradient stays the aubergine-family Sloe brand gradient.
  *   4. `brand_frost_secondary` is no longer referenced in `track.ts` at all.
  *   5. The `FrostFlagToggle` component is deleted and `app/providers.tsx`
  *      no longer mounts it.
@@ -70,23 +71,31 @@ describe("Frost flag — retired (.flag-frost cascade removed)", () => {
   });
 });
 
-describe("Clay is the unconditional functional accent", () => {
+describe("Aubergine is the unconditional functional accent", () => {
   const LIGHT = ruleBody(":root {");
   const DARK = ruleBody(".dark {");
 
-  it(":root accent-primary is the canonical clay", () => {
-    expect(readVar(LIGHT, "accent-primary")).toBe("#c8794e");
-    expect(readVar(LIGHT, "accent-primary-solid")).toBe("#a0552e");
+  // Light: --accent-primary #3B2A4D (plum ink, the deepest depth / wordmark hue).
+  // --accent-primary-solid also #3B2A4D (≈12:1 on white — AA PASS as text/icon).
+  // Spec: docs/decisions/2026-06-08-aubergine-accent-system.md
+  it(":root accent-primary is the canonical aubergine (plum ink)", () => {
+    expect(readVar(LIGHT, "accent-primary")).toBe("#3b2a4d");
+    expect(readVar(LIGHT, "accent-primary-solid")).toBe("#3b2a4d");
   });
 
-  it(".dark accent-primary is the lifted clay", () => {
-    expect(readVar(DARK, "accent-primary")).toBe("#d58a5e");
-    expect(readVar(DARK, "accent-primary-solid")).toBe("#c8794e");
+  // Dark: --accent-primary #7E5C92 (lifted for OLED contrast).
+  // --accent-primary-solid #C4ACD0 (the text/icon/link token on dark card).
+  it(".dark accent-primary is the lifted aubergine", () => {
+    expect(readVar(DARK, "accent-primary")).toBe("#7e5c92");
+    expect(readVar(DARK, "accent-primary-solid")).toBe("#c4acd0");
   });
 
-  it("the win gradient stays the clay-mid Sloe brand gradient (light + dark)", () => {
+  // Win gradient: plum → plum-lift → plum-glow (all aubergine-family).
+  // Light: #3B2A4D → #5B3B6E → #7E5C92
+  // Dark:  #815E91 → #D58A5E → #D6A24A  (lifted; D58A5E is the dark lifted clay-mid stop)
+  it("the win gradient stays the aubergine-family Sloe brand gradient (light + dark)", () => {
     expect(readVar(LIGHT, "accent-win-gradient")).toBe(
-      "linear-gradient(120deg, #3b2a4d 0%, #c8794e 50%, #c9892c 100%)",
+      "linear-gradient(120deg, #3b2a4d 0%, #5b3b6e 50%, #7e5c92 100%)",
     );
     expect(readVar(DARK, "accent-win-gradient")).toBe(
       "linear-gradient(120deg, #815e91 0%, #d58a5e 50%, #d6a24a 100%)",

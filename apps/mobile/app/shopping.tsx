@@ -663,7 +663,7 @@ export default function ShoppingListScreen() {
     >
       <PlanTabChrome
         value="shopping"
-        title="Plan"
+        title="Shopping list"
         shoppingUncheckedCount={uncheckedCount}
         onChange={(next) => {
           if (next === "plan") {

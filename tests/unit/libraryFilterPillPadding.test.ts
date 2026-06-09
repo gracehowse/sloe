@@ -80,9 +80,12 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
     // row that was always half-off-screen. Now: paddingHorizontal:13
     // + fontSize:12 + lineHeight:18 + minHeight:36 — descenders
     // ("Q", "g") sit fully inside the pill body and the row fits.
-    it("pins paddingHorizontal: 13 — matches Discover's filter pill", () => {
+    it("pins paddingHorizontal: 12 (Spacing.sm+Spacing.xs) — on-scale canonical value (was 13, snapped 2026-06-09)", () => {
+      // 2026-06-09 library spacing audit snapped 13 → 12 (Spacing.sm+xs=8+4)
+      // to land on the canonical Spacing ladder. The test now pins the
+      // token expression the source uses rather than a raw off-scale literal.
       expect(MOBILE_SRC).toMatch(
-        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*13[\s\S]*?\}/,
+        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*Spacing\.sm\s*\+\s*Spacing\.xs[\s\S]*?\}/,
       );
     });
 

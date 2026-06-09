@@ -1251,6 +1251,10 @@ export default function ProgressScreen() {
             testID="progress-weight-card"
             style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
           >
+            {/* Section eyebrow — matches the "Daily Calories" / "Average Adherence"
+                cards (Sentence-Case source, rendered uppercase via style) so the
+                weight card is no longer the one card on Progress without a header. */}
+            <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88, marginBottom: 8 }}>Weight</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
@@ -1404,76 +1408,19 @@ export default function ProgressScreen() {
 
       {/* 5. AVG INTAKE / EST. TDEE (ADAPTIVE) / DEFICIT triad — real range
           intake + resolved maintenance; deficit = maintenance − intake.
-          Sage TDEE/deficit, amber surplus. Single <SupprCard> shell with three
-          divider cells — testID on the outer node for Maestro/capture anchors
-          (Grace 2026-06-04). */}
-      {hasData ? (() => {
-        const avgCal = caloriesRange.avgCaloriesPerDay != null
-          ? Math.round(caloriesRange.avgCaloriesPerDay)
-          : null;
-        const maintenanceKcal = recapMaintenance?.kcal ?? staticTdee;
-        const isAdaptive = recapMaintenance?.source === "adaptive";
-        const deficitKcal =
-          avgCal != null && maintenanceKcal != null && maintenanceKcal > 0
-            ? Math.round(maintenanceKcal - avgCal)
-            : null;
-        const sage = MacroColors.protein;
-        return (
-          <SupprCard
-            testID="progress-3-stat-row"
-            padding="none"
-            innerStyle={{ flexDirection: "row" }}
-          >
-            {/* Cell: Avg Intake */}
-            <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-              <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                Avg intake
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                {avgCal != null ? avgCal.toLocaleString() : "—"}
-              </Text>
-            </View>
-            {/* Divider */}
-            <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
-            {/* Cell: Est. TDEE */}
-            <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-              <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                Est. TDEE
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: sage, fontVariant: ["tabular-nums"] }}>
-                {maintenanceKcal != null && maintenanceKcal > 0
-                  ? maintenanceKcal.toLocaleString()
-                  : "—"}
-              </Text>
-              {maintenanceKcal != null && maintenanceKcal > 0 ? (
-                <Text style={{ fontSize: 9, fontWeight: "600", color: sage, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-                  {isAdaptive ? "Adaptive" : "Formula"}
-                </Text>
-              ) : null}
-            </View>
-            {/* Divider */}
-            <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
-            {/* Cell: Deficit — sage for deficit, amber for surplus */}
-            <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
-              <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-                Deficit
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: deficitKcal != null && deficitKcal < 0 ? t.amber : deficitKcal != null && deficitKcal > 0 ? sage : t.text, fontVariant: ["tabular-nums"] }}>
-                {deficitKcal != null
-                  ? deficitKcal > 0
-                    ? `−${deficitKcal.toLocaleString()}`
-                    : deficitKcal === 0
-                      ? "0"
-                      : `+${Math.abs(deficitKcal).toLocaleString()}`
-                  : "—"}
-              </Text>
-              {deficitKcal != null && deficitKcal < 0 && (
-                <Text style={{ fontSize: 9, color: t.amber, fontWeight: "500", marginTop: 2 }}>surplus</Text>
-              )}
-            </View>
-          </SupprCard>
-        );
-      })() : null}
+          Sage TDEE/deficit, amber surplus. Rendered via <ProgressEnergyTriad>
+          (mirror: src/app/components/suppr/progress-energy-triad.tsx). */}
+      {hasData ? (
+        <ProgressEnergyTriad
+          avgIntakeKcal={
+            caloriesRange.avgCaloriesPerDay != null
+              ? Math.round(caloriesRange.avgCaloriesPerDay)
+              : null
+          }
+          maintenanceKcal={recapMaintenance?.kcal ?? staticTdee}
+          isAdaptive={recapMaintenance?.source === "adaptive"}
+        />
+      ) : null}
       </ReAnimated.View>
 
       <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>

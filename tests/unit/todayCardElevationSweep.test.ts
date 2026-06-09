@@ -32,7 +32,11 @@ describe("Today card-elevation sweep — hero ring card", () => {
   it("imports + uses SupprCard for the mobile-web hero card", () => {
     expect(HERO_RING).toContain(IMPORT);
     expect(HERO_RING).toContain("<SupprCard");
-    expect(HERO_RING).toContain(SLAB_FLAT);
+    // Audit gap 6 (2026-06-09): hero ring was deliberately upgraded from
+    // slab-flat to `elevation="card"` (soft shadow) so it separates from the
+    // #F6F5F2-on-#FFFFFF page background. This mirrors mobile `lift="soft"`.
+    // The desktop hero (today-hero-stats.tsx) stays slab-flat — its test is unchanged.
+    expect(HERO_RING).toContain('elevation="card"');
   });
   it("no longer hand-rolls the flat hero card div", () => {
     expect(HERO_RING).not.toContain(

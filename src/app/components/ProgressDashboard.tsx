@@ -1273,6 +1273,10 @@ function ProgressDashboardContent() {
               testID="progress-weight-win-moment"
             />
           ) : null}
+          {/* Section eyebrow — parity with mobile (progress.tsx) + the web
+              "Daily Calories" / "Average Adherence" cards, so the weight card
+              is no longer the only Progress card without a header. */}
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="ph-mask">

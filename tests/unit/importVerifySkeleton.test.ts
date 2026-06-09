@@ -28,6 +28,8 @@ describe("ENG-606 import verify skeleton", () => {
   it("web RecipeUpload uses ImportLoadingSkeleton during URL import", () => {
     const src = read("src/app/components/RecipeUpload.tsx");
     expect(src).toContain("ImportLoadingSkeleton");
-    expect(src).toMatch(/importBusy\s*\?\s*<ImportLoadingSkeleton/);
+    // importBusy guard may include a feature-flag condition (e.g. !importProgressV2)
+    // before the ternary — assert the skeleton is conditionally rendered on importBusy.
+    expect(src).toMatch(/importBusy[^?]*\?\s*[\n\r\s]*\(?\s*<ImportLoadingSkeleton/);
   });
 });
