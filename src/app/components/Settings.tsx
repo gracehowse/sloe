@@ -699,9 +699,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   ).toUpperCase();
   const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
   const profileDisplayLabel =
+    // Prefer the name the user set (profileDisplayName, then the resolved
+    // storedName — same metadata the greeting + "Your name" field use) before
+    // the email local-part, so the header isn't an ugly lowercase handle.
     profileDisplayName?.trim()?.length
       ? profileDisplayName
-      : authEmail?.split("@")[0] ?? "Your profile";
+      : storedName?.trim()?.length
+        ? storedName
+        : authEmail?.split("@")[0] ?? "Your profile";
 
   return (
     <div className="product-shell py-8">

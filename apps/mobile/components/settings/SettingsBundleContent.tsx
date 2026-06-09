@@ -1490,8 +1490,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     .toString()
     .toUpperCase();
   const displayName =
-    session?.user?.user_metadata?.display_name ??
-    session?.user?.email?.split("@")[0] ??
+    // Prefer the name the user actually set (the same metadata the Today
+    // greeting + "Your name" field resolve, via metadataFullName) before
+    // falling back to the email local-part — otherwise the header showed an
+    // ugly lowercase handle ("gracemturner") while the greeting said "Grace".
+    session?.user?.user_metadata?.display_name ||
+    metadataFullName ||
+    session?.user?.email?.split("@")[0] ||
     "Your Profile";
   // Base tier collapsed into Free post-Free+Pro consolidation; legacy
   // `userTier === "base"` rows render as "Free". Drives both the profile
