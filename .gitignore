@@ -29,6 +29,9 @@ tsconfig.tsbuildinfo
 
 # Claude Code local scheduler lock (machine-specific)
 .claude/scheduled_tasks.lock
+# Overnight-run guard state (machine-/run-specific). See
+# docs/runbooks/overnight-unattended-runs.md.
+.claude/overnight/
 # Per-user Claude Code skills — installed on demand from the marketplace,
 # not part of the repo. CLAUDE.md (project rules) IS tracked.
 .claude/skills/
