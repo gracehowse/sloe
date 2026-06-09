@@ -266,7 +266,7 @@ export const ShoppingList = memo(function ShoppingList({
             <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
           </div>
           {/* Sloe DS (289:2) — empty-state headline in Newsreader serif plum. */}
-          <p className="font-[family-name:var(--font-headline)] text-[20px] font-medium text-foreground-brand mb-1.5">
+          <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand mb-1.5">
             Your shopping list builds itself
           </p>
           <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
@@ -308,7 +308,7 @@ export const ShoppingList = memo(function ShoppingList({
                 {/* Gap 8 (parity): promote section header to Newsreader serif to match
                     mobile's Type.headline treatment (DS §2.3 + plan.md §3.9
                     'serif group headers'). Drops the ALL-CAPS eyebrow pattern. */}
-                <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium tracking-tight text-foreground-secondary">
+                <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium tracking-tight text-foreground-secondary">
                   {section.name}
                 </p>
                 <span

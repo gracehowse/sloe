@@ -61,7 +61,7 @@ export function StepHeader({
       <h1
         className={cn(
           "font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand leading-tight m-0",
-          compact ? "text-[26px]" : "text-[30px]",
+          compact ? "text-[24px]" : "text-[28px]",
         )}
         style={{ textWrap: "balance" } as React.CSSProperties}
       >

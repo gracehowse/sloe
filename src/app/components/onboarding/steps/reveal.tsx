@@ -117,7 +117,7 @@ export function RevealStep({ compact = false }: RevealProps) {
             Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
             Newsreader serif hero title. */}
         <h1
-          className={`font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[26px]"}`}
+          className={`font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[24px]"}`}
           style={{ letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties}
         >
           Your plan is ready.

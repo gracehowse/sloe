@@ -311,7 +311,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     prev === null ? "saved" : prev === "saved" ? "imported" : null,
                   )
                 }
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
                 aria-label={`Showing ${entryKind ?? "all"} recipes, tap to change`}
               >
                 <Icons.filter className="w-3 h-3" aria-hidden />
@@ -322,7 +322,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               <button
                 type="button"
                 onClick={cycleSort}
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
                 aria-label={`Sort by ${sortLabel}, tap to change`}
               >
                 <Icons.adjust className="w-3 h-3" aria-hidden />
@@ -349,7 +349,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           <h2 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground">
             No saved recipes yet
           </h2>
-          <p className="text-[14px] text-muted-foreground mt-2 leading-relaxed max-w-[260px] mx-auto">
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed max-w-[260px] mx-auto">
             Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
           </p>
           <div className="flex flex-col gap-2.5 mt-6 max-w-[280px] mx-auto">
@@ -546,9 +546,9 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         recipe never shows a confident "0 kcal" (trust
                         posture). Mobile parity:
                         `apps/mobile/app/(tabs)/library.tsx` MacroIconRow.
-                        text-[12px] = DS §2.2 caption ramp. Was text-[11px]
+                        text-[11px] = DS §2.2 caption ramp. Was text-[11px]
                         which is below the 12pt caption floor on the scale. */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[12px] text-muted-foreground tabular-nums">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
                       {kcal > 0 ? (
                         <span className="inline-flex items-center gap-1">
                           <Icons.calories
@@ -762,7 +762,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           • if neither exists, fall back to the honest
                             serving count so the row never reads empty or
                             shows a fabricated rating. */}
-                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground tabular-nums">
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
                       {saves > 0 ? (
                         <span role="img" className="inline-flex items-center gap-1" aria-label={`${saves} ${saves === 1 ? "save" : "saves"}`}>
                           <Icons.star className="w-[13px] h-[13px] text-primary fill-primary" aria-hidden />

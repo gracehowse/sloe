@@ -408,10 +408,10 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
             <Icons.add className="w-5 h-5 text-primary" aria-hidden />
           </div>
           {/* §10.7: headline in Newsreader italic */}
-          <p className="font-[family-name:var(--font-headline)] italic text-[16px] text-foreground mb-1">
+          <p className="font-[family-name:var(--font-headline)] italic text-[15px] text-foreground mb-1">
             Household is solo
           </p>
-          <p className="text-[12px] text-muted-foreground leading-relaxed mb-3 px-2">
+          <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 px-2">
             Invite a partner, flatmate, or family member to share meal plans and shopping lists.
           </p>
           {/* Invite — secondary action, aubergine outline (matches mobile solo-invite CTA) */}
@@ -476,7 +476,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* §3.12 identity row: display name in Newsreader serif */}
-                    <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium text-foreground truncate">
+                    <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground truncate">
                       {m.displayName}
                     </p>
                     {/* §3.12 "You" pill on the self row */}

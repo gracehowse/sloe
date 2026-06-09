@@ -71,13 +71,13 @@ export function ProgressEnergyTriad({
       className={["flex gap-2", className].filter(Boolean).join(" ")}
     >
       <Cell label="Avg intake" testId="progress-energy-avg-intake">
-        <p className="mt-1.5 text-[20px] font-bold tabular-nums text-foreground">
+        <p className="mt-1.5 text-[18px] font-bold tabular-nums text-foreground">
           {avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"}
         </p>
       </Cell>
       <Cell label="Est. TDEE" testId="progress-energy-tdee">
         <p
-          className="mt-1.5 text-[20px] font-bold tabular-nums"
+          className="mt-1.5 text-[18px] font-bold tabular-nums"
           style={{ color: "var(--macro-protein-solid)" }}
         >
           {maintenanceKcal != null && maintenanceKcal > 0
@@ -95,7 +95,7 @@ export function ProgressEnergyTriad({
       </Cell>
       <Cell label="Deficit" testId="progress-energy-deficit">
         <p
-          className="mt-1.5 text-[20px] font-bold tabular-nums"
+          className="mt-1.5 text-[18px] font-bold tabular-nums"
           style={{
             color: isSurplus
               ? "var(--warning)"

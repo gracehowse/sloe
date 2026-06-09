@@ -59,7 +59,7 @@ export function WelcomeStep() {
               warm-coaching brand. Copy moves off "Suppr Club" to the
               Sloe positioning line ("love food AND have goals"). */}
           <h1
-            className="font-[family-name:var(--font-headline)] m-0 mb-4 md:mb-5 text-[40px] md:text-[60px] font-normal leading-[1.06] md:leading-[1.04] text-foreground-brand"
+            className="font-[family-name:var(--font-headline)] m-0 mb-4 md:mb-5 text-[40px] md:text-[56px] font-normal leading-[1.06] md:leading-[1.04] text-foreground-brand"
             style={{
               letterSpacing: "-0.02em",
               textWrap: "balance",

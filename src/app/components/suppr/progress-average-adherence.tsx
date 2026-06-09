@@ -105,7 +105,7 @@ export function ProgressAverageAdherence({
             <span
               data-testid="progress-adherence-trend-chip"
               className={[
-                "inline-flex items-center gap-1 text-[12px] font-medium tabular-nums",
+                "inline-flex items-center gap-1 text-[11px] font-medium tabular-nums",
                 adherenceDeltaPct > 0 ? "text-success" : "text-muted-foreground",
               ].join(" ")}
             >

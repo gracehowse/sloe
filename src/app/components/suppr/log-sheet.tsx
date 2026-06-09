@@ -550,10 +550,10 @@ function LoggedConfirmation({
       {/* Logged-item card — cream slab, 16px corner, soft lift. */}
       <div className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left shadow-[var(--elev-card-soft)]">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-semibold text-foreground">{title}</p>
+          <p className="truncate text-[13px] font-semibold text-foreground">{title}</p>
           <div className="mt-1 flex items-center gap-1.5">
             {source ? <SourceDot source={source} size={6} /> : null}
-            <span className="text-[12px] tabular-nums text-muted-foreground">
+            <span className="text-[11px] tabular-nums text-muted-foreground">
               Est. {kcal} kcal
             </span>
           </div>
@@ -571,7 +571,7 @@ function LoggedConfirmation({
           onClick={onDone}
           aria-label="Done"
           className={cn(
-            "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[14px] font-bold text-primary-solid",
+            "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
             "hover:bg-primary/5 transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
@@ -584,7 +584,7 @@ function LoggedConfirmation({
             onClick={onUndo}
             aria-label="Undo log"
             className={cn(
-              "h-11 w-full rounded-xl text-[14px] font-semibold text-muted-foreground",
+              "h-11 w-full rounded-xl text-[13px] font-semibold text-muted-foreground",
               "hover:bg-muted/50 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             )}

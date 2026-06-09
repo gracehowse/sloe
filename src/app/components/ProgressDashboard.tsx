@@ -1282,7 +1282,7 @@ function ProgressDashboardContent() {
               <p className="ph-mask">
                 <span
                   data-testid="progress-current-weight"
-                  className={`font-[family-name:var(--font-headline)] text-[30px] font-medium leading-none tabular-nums transition-colors duration-200 ${weightPulse ? "text-success" : "text-foreground"}`}
+                  className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums transition-colors duration-200 ${weightPulse ? "text-success" : "text-foreground"}`}
                 >
                   {latestWeightKg != null
                     ? (profileMeasurementSystem === "imperial"
@@ -1325,7 +1325,7 @@ function ProgressDashboardContent() {
                     className={[
                       // Sloe treatment §8: active segment = white lift +
                       // primarySolid label (was warm-ink text).
-                      "rounded-full px-3 py-1 text-[12px] font-semibold capitalize transition-colors",
+                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors",
                       active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
                     ].join(" ")}
                   >
@@ -1428,7 +1428,7 @@ function ProgressDashboardContent() {
               the mobile Type.coach register. Previously plain text-xs. */}
           <p
             data-testid="weight-input-supportive-copy"
-            className="mt-1.5 text-center text-[14px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
+            className="mt-1.5 text-center text-[13px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
           >
             Every check-in gives us better data for you.
           </p>
@@ -1458,7 +1458,7 @@ function ProgressDashboardContent() {
             </p>
             <p className="mt-1 font-[family-name:var(--font-headline)] text-[24px] font-medium leading-none text-foreground tabular-nums">
               {avgCalories.toLocaleString()}
-              <span className="ml-1 text-[14px] text-muted-foreground">avg</span>
+              <span className="ml-1 text-[13px] text-muted-foreground">avg</span>
             </p>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -1861,7 +1861,7 @@ function ProgressDashboardContent() {
         <SupprCard padding="lg" radius="lg" className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
-            <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium text-foreground-brand">Streak freezes</p>
+            <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Streak freezes</p>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             {`Freezes cover one empty day each so a sick or travel day doesn\u2019t break your streak. You earn one every 7-day streak, up to a cap of ${freezeBudgetMax}.`}
@@ -1934,7 +1934,7 @@ function ProgressDashboardContent() {
         <SupprCard padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
-            <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium text-foreground-brand">Maintenance</p>
+            <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Maintenance</p>
             {showAdaptiveExtras ? (
               <span
                 data-testid="maintenance-source-pill"
@@ -2223,7 +2223,7 @@ function ProgressDashboardContent() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
-                <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium text-foreground-brand">Journey</p>
+                <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Journey</p>
               </div>
               {timeline.daysToGoal != null ? (
                 <p className="text-right">
