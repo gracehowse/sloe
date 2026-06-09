@@ -62,9 +62,13 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
   return (
     // Card chrome (fill #F6F5F2, radius 20, soft lift, hairline) is the shared
     // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
+    // lift="soft" (2026-06-09 one-card-treatment): the trajectory card sits
+    // directly on the Progress page ground, so it floats with the soft lift like
+    // every sibling content card. Mirrors web `elevation="card"`.
     <SupprCard
       testID={testID ?? "trajectory-card"}
       accessibilityLabel={accessibilityLabelFor(state)}
+      lift="soft"
       padding="none"
       style={[styles.card, style]}
       innerStyle={styles.cardInner}

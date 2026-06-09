@@ -48,10 +48,10 @@ import {
   Spacing,
   Type,
   FontFamily,
-  Elevation,
   Accent,
 } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   changelogKindLabel,
@@ -179,7 +179,7 @@ function ReleaseBlock({
     <View>
       {/* Header card — outer wrapper carries elevation; inner has overflow:hidden
           so border-radius clips correctly without clipping the shadow. */}
-      <View style={[styles.headerCardOuter, Elevation.cardSoft]}>
+      <View style={styles.headerCardOuter}>
         <View
           style={styles.headerCard}
           testID={isLatest ? "whats-new-header" : `whats-new-header-${entry.buildNumber}`}
@@ -242,7 +242,7 @@ function ReleaseBlock({
                 </Text>
               </View>
               {/* Section card — outer wrapper for elevation shadow */}
-              <View style={[styles.sectionCardOuter, Elevation.cardSoft]}>
+              <View style={styles.sectionCardOuter}>
                 <View style={styles.sectionCard}>
                   {group.items.map((item, idx) => {
                     const isLast = idx === group.items.length - 1;
@@ -281,6 +281,7 @@ function buildStyles(
   colors: ReturnType<typeof useThemeColors>,
   insets: { bottom: number },
   accent: ReturnType<typeof useAccent>,
+  cardElevation: ReturnType<typeof useCardElevation>,
 ) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
@@ -292,14 +293,18 @@ function buildStyles(
     },
     // Outer wrapper for elevation — RN overflow:hidden clips iOS shadows,
     // so the shadow lives on the outer View and border-radius on the inner.
+    // Soft lift routed through the elevation system (was a hand-rolled
+    // `Elevation.cardSoft` at the render site + an always-on hairline): light →
+    // shadow only, dark → tonal lift + hairline (one-card-treatment, 2026-06-09).
     headerCardOuter: {
       borderRadius: Radius.lg,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     headerCard: {
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       padding: Spacing.lg,
       gap: Spacing.xs,
       overflow: "hidden",
@@ -365,12 +370,13 @@ function buildStyles(
     // Outer wrapper for elevation (same pattern as headerCardOuter)
     sectionCardOuter: {
       borderRadius: Radius.lg,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     sectionCard: {
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       overflow: "hidden",
     },
     itemRow: {
@@ -434,6 +440,10 @@ export default function WhatsNewScreen() {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else plum) for the "Done" CTA.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the header card + each section card sit directly on the page
+  // ground, so they take the SOFT lift (routed through the elevation system).
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   // Timeline flag: when on, show all releases in a scrolling timeline
   // (mirrors web /whats-new IA). Flag off (default) shows only the
@@ -450,8 +460,8 @@ export default function WhatsNewScreen() {
   );
 
   const styles = useMemo(
-    () => buildStyles(colors, insets, accent),
-    [colors, insets, accent],
+    () => buildStyles(colors, insets, accent, cardElevation),
+    [colors, insets, accent, cardElevation],
   );
 
   useLayoutEffect(() => {

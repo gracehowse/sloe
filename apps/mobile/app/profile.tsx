@@ -26,8 +26,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius, Type, Elevation } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -51,6 +52,12 @@ export default function ProfileScreen() {
   // dietary pills now use the static `Accent.primarySolid` / `Accent.primarySoft`
   // treatment tokens directly (Sloe, 2026-06-08). Macros keep `MacroColors`.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the identity card AND the Daily Targets / Edit Targets /
+  // Dietary Preferences cards all sit directly on the page ground, so they take the
+  // SOFT lift, routed through the elevation system (was a hand-rolled
+  // `Elevation.cardSoft` on the identity card + a flat hairline card on the rest).
+  const cardElevation = useCardElevation({ variant: "soft" });
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // /(tabs)/more was collapsed to a redirect → /(tabs)/settings (Group G
@@ -169,12 +176,13 @@ export default function ProfileScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: Spacing.md,
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       padding: Spacing.md,
-      ...Elevation.cardSoft,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     monogram: {
       width: 48,
@@ -226,12 +234,13 @@ export default function ProfileScreen() {
     headerTitle: { ...Type.headline, color: colors.text },
 
     card: {
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     // §2.3 — section/card titles read in Newsreader serif (Type.headline,
     // 17/500), matching the serif tile numerals on the same card. The prior
@@ -382,7 +391,7 @@ export default function ProfileScreen() {
     // Styles now source the accent from the static `Accent.*` treatment tokens
     // (Save outline + selected dietary tint), so the StyleSheet only depends on
     // `colors`. `accent` (spinner) is read outside this memo.
-  }), [colors]);
+  }), [colors, cardElevation]);
 
   function TargetStat({
     value,

@@ -64,7 +64,13 @@ export default function TargetsScreen() {
   // and the help affordance. Threaded into the memoised StyleSheet via the dep
   // array below. Macros keep `MacroColors`; status keeps success/warning/destructive.
   const accent = useAccent();
-  const cardElevation = useCardElevation();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the hero calorie card, the Goal card, and the 2×2 macro
+  // tiles all sit directly on the page ground, so they take the SOFT lift. Was
+  // `useCardElevation()` (flat). The small header "Edit" pill is a control, not a
+  // page-ground card, so it keeps the flat treatment via `controlElevation`.
+  const cardElevation = useCardElevation({ variant: "soft" });
+  const controlElevation = useCardElevation({ variant: "flat" });
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)");
@@ -411,10 +417,10 @@ export default function TargetsScreen() {
           paddingHorizontal: Spacing.md,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderWidth: controlElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          ...(cardElevation.shadowStyle ?? {}),
+          backgroundColor: controlElevation.liftBg ?? colors.card,
+          ...(controlElevation.shadowStyle ?? {}),
         },
         editText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
         scroll: {
@@ -564,7 +570,7 @@ export default function TargetsScreen() {
         },
         center: { flex: 1, justifyContent: "center", alignItems: "center" },
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, controlElevation],
   );
 
   const statusPillStyle = (status: string | undefined) => {

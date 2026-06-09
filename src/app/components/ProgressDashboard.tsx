@@ -1269,7 +1269,7 @@ function ProgressDashboardContent() {
         const weekDeltaKg = weightRange.weekDeltaKg;
         const rateKgPerWeek = goalTimeline?.weeklyRateKg ?? null;
         return (
-        <SupprCard padding="lg" radius="lg" className="relative mb-4" data-testid="progress-weight-card">
+        <SupprCard elevation="card" padding="lg" radius="lg" className="relative mb-4" data-testid="progress-weight-card">
           {/* Reserved weight win-moment overlay (ENG-824) — plays once on a
               new all-time low, then unmounts. */}
           {weightWinActive ? (
@@ -1457,7 +1457,7 @@ function ProgressDashboardContent() {
           amber = over, a small goal dot above each bar. Reads the same
           `dailyCaloriesData` (effective-target colouring) the detailed
           chart used; this is the frame-styled primary surface. */}
-      <SupprCard padding="lg" radius="lg" className="mb-4" data-testid="progress-daily-calories-card">
+      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-4" data-testid="progress-daily-calories-card">
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
@@ -1865,7 +1865,7 @@ function ProgressDashboardContent() {
       {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
           freezes, or has consumed any. Hidden entirely when budget = 0. */}
       {freezeBudgetMax > 0 ? (
-        <SupprCard padding="lg" radius="lg" className="mb-6">
+        <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
             <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Streak freezes</p>
@@ -1938,7 +1938,7 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         return (
-        <SupprCard padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
+        <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Maintenance</p>
@@ -2226,7 +2226,7 @@ function ProgressDashboardContent() {
           : null;
 
         return (
-          <SupprCard padding="lg" radius="lg" className="mb-6">
+          <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
@@ -2314,7 +2314,7 @@ function ProgressDashboardContent() {
       })()}
 
       {/* STEPS */}
-      <SupprCard padding="lg" radius="lg" className="mb-6">
+      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
           {/* SLOE Phase 0: the Steps today/goal big stat numerals read in the
@@ -2353,7 +2353,7 @@ function ProgressDashboardContent() {
       </SupprCard>
 
       {/* BODY FAT */}
-      <SupprCard padding="lg" radius="lg">
+      <SupprCard elevation="card" padding="lg" radius="lg">
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
         {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
             makes PostHog session-replay render this as a grey block. */}
@@ -2440,6 +2440,7 @@ function WeightTrendOnlyCardWeb({
   return (
     <SupprCard
       data-testid="progress-weight-trend-only-card"
+      elevation="card"
       padding="lg"
       radius="lg"
       className="mb-4"

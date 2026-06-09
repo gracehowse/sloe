@@ -60,7 +60,12 @@ export function ProgressAverageAdherence({
   adherenceDeltaPct,
 }: ProgressAverageAdherenceProps) {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // One-card-treatment soft lift (2026-06-09): the AVERAGE ADHERENCE card sits
+  // directly on the Progress page ground, so it takes the soft elevation like
+  // every sibling content card (weight / daily-calories / maintenance). Mirrors
+  // web `elevation="card"`. Spread onto the OUTER View; the inner bars don't
+  // clip the shadow.
+  const cardElevation = useCardElevation({ variant: "soft" });
   if (adherencePct == null) return null;
   const sub = colors.textSecondary;
   const text = colors.text;

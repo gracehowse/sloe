@@ -70,7 +70,8 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import { supabase } from "@/lib/supabase";
-import { Accent, Elevation, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import {
@@ -121,6 +122,11 @@ export default function WeeklyRecapScreen() {
   // Secondary accent (Frost flag → damson, else clay) for the active week-dot
   // selection and the recap CTAs/links.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): every recap rollup card sits directly on the page ground, so
+  // it takes the SOFT lift, routed through the elevation system (was a hand-rolled
+  // `Elevation.cardSoft` + an always-on hairline — light → shadow only now).
+  const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user?.id ?? null;
@@ -641,7 +647,7 @@ export default function WeeklyRecapScreen() {
   const card = (children: React.ReactNode, testID?: string) => (
     <View
       style={[
-        Elevation.cardSoft,
+        cardElevation.shadowStyle ?? {},
         {
           borderRadius: Radius.xl,
           marginBottom: Spacing.xl,
@@ -651,9 +657,10 @@ export default function WeeklyRecapScreen() {
       <View
         testID={testID}
         style={{
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.xl,
-          borderWidth: 1,
+          // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.cardBorder,
           padding: Spacing.lg,
           overflow: "hidden",

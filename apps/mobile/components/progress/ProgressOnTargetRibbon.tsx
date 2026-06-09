@@ -31,6 +31,9 @@ export function ProgressOnTargetRibbon({
   return (
     <SupprCard
       testID="progress-ontarget-ribbon"
+      // One-card-treatment soft lift (2026-06-09): page-ground card → soft.
+      // Mirrors web `elevation="card"`.
+      lift="soft"
       padding="lg"
       innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12 }}
     >

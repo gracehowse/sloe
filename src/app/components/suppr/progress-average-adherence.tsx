@@ -92,6 +92,9 @@ export function ProgressAverageAdherence({
   return (
     <SupprCard
       data-testid="progress-average-adherence-card"
+      // One-card-treatment soft lift (2026-06-09): page-ground content card →
+      // soft `.card-slab`. Mirrors mobile `lift="soft"`.
+      elevation="card"
       padding="lg"
       radius="lg"
       className={className}

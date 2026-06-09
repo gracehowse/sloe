@@ -41,6 +41,10 @@ function Cell({
   return (
     <SupprCard
       data-testid={testId}
+      // One-card-treatment soft lift (2026-06-09): each triad cell is its own
+      // page-ground card (not nested), so all three take the soft lift. Mirrors
+      // mobile `lift="soft"`.
+      elevation="card"
       padding="none"
       radius="lg"
       className="flex-1 flex flex-col items-center justify-center text-center px-2 py-4"

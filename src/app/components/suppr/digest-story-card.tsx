@@ -37,6 +37,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
     <SupprCard
       data-slot="digest-story-card"
       data-testid="digest-story-card"
+      // One-card-treatment soft lift (2026-06-09): page-ground content card →
+      // soft `.card-slab`. Mirrors mobile `lift="soft"`.
+      elevation="card"
       padding="xl"
       radius="xl"
       className={className}

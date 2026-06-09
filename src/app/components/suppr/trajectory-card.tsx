@@ -56,6 +56,9 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
     <SupprCard
       data-slot="trajectory-card"
       data-testid="trajectory-card"
+      // One-card-treatment soft lift (2026-06-09): page-ground content card →
+      // soft `.card-slab`. Mirrors mobile `lift="soft"`.
+      elevation="card"
       padding="lg"
       radius="xl"
       className={["mb-6", className ?? ""].filter(Boolean).join(" ")}

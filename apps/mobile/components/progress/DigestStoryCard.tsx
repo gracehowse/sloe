@@ -47,6 +47,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
 
   return (
     // Card chrome is the shared <SupprCard> shell (Grace 2026-06-04).
+    // lift="soft" (2026-06-09 one-card-treatment): the week-digest card sits
+    // directly on the Progress page ground, so it takes the soft lift like every
+    // sibling content card. Mirrors web `elevation="card"`.
     <SupprCard
       testID={testID ?? "digest-story-card"}
       accessibilityLabel={
@@ -54,6 +57,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           ? "Week digest. Quiet week — log a meal to start your story."
           : `Week digest. ${story.paragraph}`
       }
+      lift="soft"
       padding="none"
       style={style}
       innerStyle={styles.cardInner}

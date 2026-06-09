@@ -682,6 +682,12 @@ export const MealPlanner = memo(function MealPlanner({
       {showSummaryCard && summary ? (
         <SupprCard
           data-testid="planner-week-summary-card"
+          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
+          // card-treatment-soft-elevation.md): the week summary slab sits
+          // directly on the Plan page ground, so it lifts soft (`.card-slab`)
+          // like every other resting card — mirrors mobile `summaryCard`
+          // `lift="soft"`. Was the flat default.
+          elevation="card"
           padding="lg"
           radius="xl"
           className="mb-4"
@@ -982,6 +988,10 @@ export const MealPlanner = memo(function MealPlanner({
       {isPlanEmpty ? (
         <SupprCard
           data-testid="planner-empty-state"
+          // One-treatment soft lift (2026-06-09): the empty-state slab is
+          // page-ground, so it lifts soft like the summary card + the mobile
+          // `PlanEmptyState` twin. Was the flat default.
+          elevation="card"
           padding="none"
           radius="xl"
           className="flex flex-col items-center justify-center"
@@ -1077,16 +1087,18 @@ export const MealPlanner = memo(function MealPlanner({
             }
           });
           return (
-            // ENG-822 — routed through the canonical SupprCard so the
-            // elevation flag is owned by the primitive (flag ON → soft
-            // shadow + border dropped; flag OFF → `--elev-card` + hairline,
-            // byte-for-byte). Today-column: tone="primary" gives the
-            // `bg-primary/[0.08]` tint; flag-OFF also surfaces a primary
-            // border accent via SupprCard's primary-tone borderColor
-            // (`--north-star-border`), replacing the prior `border-primary/30`.
-            // Normal columns stay tone="neutral" (default bg-card + border-border).
+            // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-
+            // one-card-treatment-soft-elevation.md): each per-day kanban column
+            // sits directly in the page-ground grid (not nested in another
+            // card), so it lifts soft (`.card-slab`) like every other resting
+            // card. The Today column keeps tone="primary" — the soft shadow
+            // composes with the tint (border dropped, tint carries). Was the
+            // flat default. (Mobile renders Plan days as a continuous list, not
+            // cards — that layout divergence predates this sweep; the rule
+            // applies to whatever cards sit on each platform's page ground.)
             <SupprCard
               key={`day-${dp.day}`}
+              elevation="card"
               padding="none"
               radius="xl"
               tone={isTodayCol ? "primary" : "neutral"}

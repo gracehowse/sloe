@@ -31,6 +31,9 @@ export function ProgressOnTargetRibbon({
   return (
     <SupprCard
       data-testid="progress-ontarget-ribbon"
+      // One-card-treatment soft lift (2026-06-09): page-ground card → soft.
+      // Mirrors mobile `lift="soft"`.
+      elevation="card"
       padding="lg"
       radius="lg"
       className={["flex items-center gap-3", className].filter(Boolean).join(" ")}

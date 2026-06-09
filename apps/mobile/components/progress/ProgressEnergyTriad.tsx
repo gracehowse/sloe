@@ -66,6 +66,10 @@ export function ProgressEnergyTriad({
     <View testID="progress-energy-triad" style={{ flexDirection: "row", gap: 8 }}>
       <SupprCard
         testID="progress-energy-avg-intake"
+        // One-card-treatment soft lift (2026-06-09): each triad cell is its own
+        // card sitting directly on the page ground (not nested), so all three
+        // take the soft lift like the sibling cards. Mirrors web `elevation="card"`.
+        lift="soft"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
@@ -78,6 +82,7 @@ export function ProgressEnergyTriad({
 
       <SupprCard
         testID="progress-energy-tdee"
+        lift="soft"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
@@ -97,6 +102,7 @@ export function ProgressEnergyTriad({
 
       <SupprCard
         testID="progress-energy-deficit"
+        lift="soft"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}

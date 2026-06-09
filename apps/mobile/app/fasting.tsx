@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -94,6 +95,11 @@ export default function FastingScreen() {
   // the memoised StyleSheet via the dep array below. The COMPLETE ring keeps
   // `Accent.success` (sage); the eating-window caution keeps warning/warningSolid.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the ring card, stages card, and history cards all sit
+  // directly on the page ground, so they take the SOFT lift (light → shadow, no
+  // border; dark → tonal lift + hairline).
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   const [fastingWindow, setFastingWindow] = useState("16:8");
   const [sessions, setSessions] = useState<FastingSession[]>([]);
@@ -250,15 +256,18 @@ export default function FastingScreen() {
         // pushed the header ~a third of the way down (the void Grace saw).
         screen: { flex: 1, backgroundColor: colors.background },
         container: { flex: 1, backgroundColor: colors.background },
-        // Cream surface-card slab — Sloe 305:2 geometry (r16 / hairline).
+        // Cream surface-card slab — Sloe 305:2 geometry (r16). Soft lift via the
+        // elevation system: light → cardSoft shadow, no border; dark → tonal lift +
+        // hairline.
         card: {
           marginHorizontal: Spacing.lg,
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.xl,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           marginBottom: Spacing.lg,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         // Ring centre stage chip — clay flame on a clay tint.
         stageChip: {
@@ -409,7 +418,7 @@ export default function FastingScreen() {
         histDate: { fontFamily: FontFamily.sansRegular, fontSize: 13, color: colors.textSecondary },
         histDuration: { fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.text },
       }),
-    [colors, accent],
+    [colors, accent, cardElevation],
   );
 
   if (loading) return <View style={[styles.screen, { paddingTop: insets.top }]} />;

@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react-native";
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { EmptyState } from "@/components/EmptyState";
 
 /**
@@ -45,9 +46,24 @@ export function PlanEmptyState({
   // is the canonical SECONDARY action (prototype §3) — off-white fill, ink
   // label, no accent fill — so the accent stays rationed to the glyph + link.
   const accent = useAccent();
+  // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-card-
+  // treatment-soft-elevation.md): this empty-state card sits directly on the
+  // Plan page ground, so it lifts soft like the summary/setup cards rather than
+  // reading as a hand-rolled flat hairline slab. Light: shadow is the
+  // separation (hairline dropped); dark: tonal lift + hairline. The card View
+  // doesn't clip, so a single-node shadow spread is iOS-safe.
+  const cardElevation = useCardElevation({ variant: "soft" });
   return (
     <View
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[
+        styles.card,
+        {
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderColor: colors.border,
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+        },
+        cardElevation.shadowStyle,
+      ]}
     >
       <EmptyState
         illustration={<BookOpen size={30} color={accent.primary} strokeWidth={1.75} />}

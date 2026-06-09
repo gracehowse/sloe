@@ -159,7 +159,17 @@ export default function ProgressScreen() {
   // success/warning/destructive; macros keep `MacroColors`.
   const accent = useAccent();
   const haptics = useHaptics();
-  const cardElevation = useCardElevation();
+  // One-card-treatment soft elevation (2026-06-09,
+  // docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md): every
+  // card on Progress sits directly on the scroll page ground — the weight,
+  // daily-calories, maintenance, journey cards + their pending/empty/skeleton
+  // shells, all of which spread this object. Resolving `soft` here lifts the
+  // whole page-ground stack off the near-tonal #F6F5F2-on-#FFFFFF page with the
+  // `cardSoft` plum penumbra (light) / tonal lift + hairline (dark), instead of
+  // the flat slabs that re-blended into the background. No card here is nested
+  // inside another card, so there's no double-shadow risk. Mirrors web giving
+  // the same cards `elevation="card"`.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 

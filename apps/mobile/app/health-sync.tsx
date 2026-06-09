@@ -100,7 +100,14 @@ export default function HealthSyncScreen() {
   // the memoised StyleSheet via the dep array below. Disconnect actions keep
   // `Accent.destructive`; connected state keeps `Accent.success`.
   const accent = useAccent();
-  const cardElevation = useCardElevation();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the Apple Health card, the source-toggle card, and the
+  // warning card all sit directly on the page ground, so they take the SOFT lift.
+  // Routed through the elevation system (was a hand-rolled `Elevation.cardSoft` on
+  // the wrapper + an always-on hairline): the hook gives the cardSoft penumbra
+  // (light, no border) / tonal lift + hairline (dark), so the light double-edge is
+  // gone and the treatment can't drift from the other surfaces.
+  const cardElevation = useCardElevation({ variant: "soft" });
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the Apple
   // Health card) the first time a connect succeeds. Gated behind
   // `redesign_winmoment`; inert when off.
@@ -673,12 +680,16 @@ export default function HealthSyncScreen() {
           marginHorizontal: Spacing.xl,
           marginBottom: Spacing.md,
           borderRadius: Radius.xl,
-          ...Elevation.cardSoft,
+          // Soft lift via the elevation system (light → cardSoft shadow; dark →
+          // no shadow, the inner card carries the tonal lift + hairline instead).
+          ...(cardElevation.shadowStyle ?? {}),
         },
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.xl,
-          borderWidth: 1,
+          // Light soft-lift drops the hairline (the shadow is the separation);
+          // dark soft-lift keeps it (no shadow there). Driven by `useBorder`.
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.cardBorder ?? colors.border,
           padding: Spacing.md,       // 16pt — standard settings card
           overflow: "hidden" as const,

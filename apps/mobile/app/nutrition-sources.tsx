@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
 /**
@@ -65,8 +66,11 @@ export default function NutritionSourcesScreen() {
   const colors = useThemeColors();
   // Source links + the INFO overline read in `Accent.primarySolid` (the
   // aubergine text/icon-on-light variant); the icon-box uses `Accent.primarySoft`
-  // (Sloe treatment system, 2026-06-08). Both are static `Accent.*` constants,
-  // so the StyleSheet only depends on `colors`.
+  // (Sloe treatment system, 2026-06-08). Both are static `Accent.*` constants.
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): each nutrition-source card sits directly on the page ground,
+  // so it takes the SOFT lift (light → shadow, no border; dark → tonal lift + hairline).
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   const styles = useMemo(
     () =>
@@ -91,13 +95,14 @@ export default function NutritionSourcesScreen() {
         heading: { ...Type.title, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           flexDirection: "row",
           gap: Spacing.md,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         iconBox: {
           width: 40,
@@ -138,7 +143,7 @@ export default function NutritionSourcesScreen() {
           marginTop: Spacing.md,
         },
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   return (

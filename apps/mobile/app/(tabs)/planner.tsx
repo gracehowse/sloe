@@ -1209,11 +1209,15 @@ export default function PlannerScreen() {
   // handler) so callers below can read it without a TDZ hazard.
   const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
 
-  // ENG-795 / Phase-2 card sweep — soft resting-card elevation. Behind
-  // `design_system_elevation` the summary card picks up the soft ambient
-  // shadow + drops its hairline border; flag-off keeps today's flat
-  // hairline-bordered card. Spread onto the card View below.
-  const cardElevation = useCardElevation();
+  // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-card-
+  // treatment-soft-elevation.md): every card sitting directly on the Plan page
+  // ground gets the SOFT lift so it separates from the #FFFFFF page like every
+  // other resting card (Today hero, Progress weight card, shopping group cards).
+  // Was the no-arg `flat` default — a page-ground summary slab read as an
+  // undifferentiated flat block next to the soft-lifted cards on Today/Progress.
+  // Spread onto the summary + setup card Views below (shadow on the OUTER node;
+  // these cards don't clip, so a single-node spread is iOS-safe).
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   // Batch 3.10 mobile parity — move a meal between slots / days.
   // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
@@ -2768,6 +2772,7 @@ export default function PlannerScreen() {
                 without scrolling to find the disclosure. */}
             <View style={styles.summaryActions}>
               <Pressable
+                testID="plan-generate-menu"
                 style={styles.summaryPrimaryBtn}
                 onPress={openGenerateMenu}
                 disabled={generating}
@@ -2860,32 +2865,13 @@ export default function PlannerScreen() {
                 </Text>
                 <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
               </Pressable>
-              <View style={{ flex: 1 }} />
-              <Pressable
-                testID="plan-generate-menu"
-                accessibilityRole="button"
-                accessibilityLabel="Generate plan menu"
-                onPress={openGenerateMenu}
-                disabled={generating}
-                hitSlop={8}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingHorizontal: 8,
-                  paddingVertical: 6,
-                  opacity: generating ? 0.5 : 1,
-                }}
-              >
-                {generating ? (
-                  <ActivityIndicator size="small" color={accent.primarySolid} />
-                ) : (
-                  <ChevronDown size={13} color={accent.primarySolid} strokeWidth={2.25} />
-                )}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
-                  Generate ▾
-                </Text>
-              </Pressable>
+              {/* The filter-row "Generate ▾" duplicate was removed
+                  (Grace 2026-06-09 "multiple styles fighting" review):
+                  two identical Generate affordances rendered at once —
+                  this row + the summary card's primary button (which now
+                  carries the `plan-generate-menu` testID for Maestro).
+                  The populated state generates from the summary card; the
+                  empty state has its own Generate CTA. */}
             </View>
           );
         })() : null}
@@ -2905,7 +2891,20 @@ export default function PlannerScreen() {
             onImport={openPlanImport}
           />
         ) : (
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              // One-treatment soft lift (2026-06-09): the setup/"Plan your
+              // week" slab sits directly on the page ground, so it lifts soft
+              // like the summary card — was a hand-rolled flat hairline card.
+              // Light: shadow carries the separation, hairline dropped; dark:
+              // tonal lift + hairline. This card doesn't clip, so the spread on
+              // a single node is iOS-safe.
+              cardElevation.shadowStyle,
+              { borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0 },
+              cardElevation.liftBg ? { backgroundColor: cardElevation.liftBg } : null,
+            ]}
+          >
             {/* DC12 (2026-05-14, premium-bar audit) — low-emotion
                 empty state. Linear/direct copy: tells the user what
                 they're looking at (no plan yet) and what to do

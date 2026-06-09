@@ -239,7 +239,14 @@ function SettingsCard({
   flashStyle?: import("react-native").ViewStyle;
 }) {
   const colors = useThemeColors();
-  const { shadowStyle, useBorder, liftBg } = useCardElevation();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): every Settings section card sits directly on the page
+  // ground, so it takes the SOFT lift (light → cardSoft penumbra; dark → tonal
+  // lift + hairline) rather than the flat slab. Was `useCardElevation()` (flat,
+  // the 2026-06-04 slabs era) — flat re-introduced the "cards blend into the
+  // page" read on the near-tonal #F6F5F2-on-#FFFFFF pairing. Mirrors web
+  // `.card-slab` on the Settings section cards.
+  const { shadowStyle, useBorder, liftBg } = useCardElevation({ variant: "soft" });
 
   const inner = (
     <View

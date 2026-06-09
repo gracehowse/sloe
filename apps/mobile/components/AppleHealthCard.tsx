@@ -67,7 +67,11 @@ export function AppleHealthCard({
   // Secondary accent (Frost flag → damson, else clay) for the sync spinner,
   // Retry, and manage link. The not-authorised caution keeps `Accent.warning`.
   const accent = useAccent();
-  const cardElev = useCardElevation();
+  // One-card-treatment soft lift (2026-06-09): the Apple Health card sits
+  // directly on the Progress page ground, so it takes the soft elevation like
+  // every sibling content card. Spread onto the OUTER shell View. Mirrors web's
+  // page-ground cards getting `elevation="card"`.
+  const cardElev = useCardElevation({ variant: "soft" });
   const t = {
     text: colors.text,
     sub: colors.textSecondary,

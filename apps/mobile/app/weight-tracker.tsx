@@ -15,7 +15,8 @@ import { PostHogMaskView } from "posthog-react-native";
 
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { MacroColors, Accent, Radius, Spacing, Type, FontFamily, Elevation } from "@/constants/theme";
+import { MacroColors, Accent, Radius, Spacing, Type, FontFamily } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useAuth } from "@/context/auth";
@@ -100,6 +101,11 @@ export default function ProgressScreen() {
   // Threaded into the memoised StyleSheet via the dep array below. A reached
   // goal keeps `Accent.success` (sage); cautions keep `Accent.warning`.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): every weight-tracker card sits directly on the page ground,
+  // so it takes the SOFT lift, routed through the elevation system (was a hand-rolled
+  // `Elevation.cardSoft` + an always-on hairline — light → shadow only now).
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -575,17 +581,17 @@ export default function ProgressScreen() {
           fontSize: 28,
           color: colors.text,
         },
-        // Gap 10 — §5: tighten card shadow to spec (shadowRadius 4, offset 1,
-        // shadowColor ink #221B26). Switched to Elevation.cardSoft which is the
-        // canonical lifted card shadow for this app (mirrors web --elev-card-soft).
+        // Gap 10 — §5: soft lift routed through the elevation system (the canonical
+        // lifted card shadow, mirrors web `--elev-card-soft`). Light → shadow, no
+        // border; dark → tonal lift + hairline (no double-edge).
         card: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.xl,
           gap: Spacing.sm,
-          ...Elevation.cardSoft,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         // Gap 1 — §2.3: section headers in serif (display-section 17-22pt).
         sectionTitle: {
@@ -653,7 +659,7 @@ export default function ProgressScreen() {
           backgroundColor: accent.primary,
         },
       }),
-    [colors, accent],
+    [colors, accent, cardElevation],
   );
 
   if (!userId) {

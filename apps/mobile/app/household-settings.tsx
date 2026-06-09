@@ -44,7 +44,8 @@ import {
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Elevation, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
@@ -160,6 +161,13 @@ export default function HouseholdSettingsScreen() {
   // dots, member-scope chips, and the primary CTAs/toggles. Destructive actions
   // (leave/remove) keep `Accent.destructive`.
   const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the Members / Sharing presets / Privacy / Legend cards all
+  // sit directly on the page ground, so they take the SOFT lift, routed through the
+  // elevation system (was a hand-rolled `Elevation.cardSoft` on the wrapper + an
+  // always-on hairline — the light double-edge is gone; light → shadow only, dark →
+  // tonal lift + hairline). The tinted solo-empty invite wash keeps its own chrome.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const userId = session?.user?.id ?? null;
 
   const [data, setData] = useState<HouseholdData | null>(null);
@@ -464,13 +472,16 @@ export default function HouseholdSettingsScreen() {
 
         {!household ? (
           <View
-            style={{
-              borderRadius: Radius.lg,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              backgroundColor: colors.card,
-              padding: Spacing.md,
-            }}
+            style={[
+              cardElevation.shadowStyle ?? {},
+              {
+                borderRadius: Radius.lg,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
+                borderColor: colors.cardBorder,
+                backgroundColor: cardElevation.liftBg ?? colors.card,
+                padding: Spacing.md,
+              },
+            ]}
           >
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: Spacing.sm - 2 }}>
               No household yet
@@ -494,12 +505,14 @@ export default function HouseholdSettingsScreen() {
                 it the existing sections still render so the user can
                 preview what they'll get once a second member joins. */}
             {members.length <= 1 ? (
-              // Outer wrapper carries Elevation.cardSoft; inner View clips border+overflow.
-              // RN overflow:hidden clips iOS shadows so they must live on separate Views.
+              // Outer wrapper carries the soft lift via the elevation system; inner
+              // View clips border+overflow. RN overflow:hidden clips iOS shadows so
+              // they must live on separate Views. The tinted lilac invite wash keeps
+              // its own accent bg + border (a deliberate accent, not neutral chrome).
               <View
                 testID="household-settings-solo-empty"
                 style={[
-                  Elevation.cardSoft,
+                  cardElevation.shadowStyle ?? {},
                   {
                     borderRadius: Radius.lg,
                     marginBottom: Spacing.md,
@@ -611,14 +624,14 @@ export default function HouseholdSettingsScreen() {
                   <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primarySolid }}>Invite</Text>
                 </Pressable>
               </View>
-              {/* Outer wrapper carries Elevation.cardSoft; inner clips border+overflow */}
-              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
+              {/* Outer wrapper carries the soft lift (elevation system); inner clips border+overflow */}
+              <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
-                  borderWidth: 1,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
-                  backgroundColor: colors.card,
+                  backgroundColor: cardElevation.liftBg ?? colors.card,
                   overflow: "hidden",
                 }}
               >
@@ -735,14 +748,14 @@ export default function HouseholdSettingsScreen() {
               <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
                 Privacy
               </Text>
-              {/* Outer wrapper carries Elevation.cardSoft; inner clips border */}
-              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
+              {/* Outer wrapper carries the soft lift (elevation system); inner clips border */}
+              <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
-                  borderWidth: 1,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
-                  backgroundColor: colors.card,
+                  backgroundColor: cardElevation.liftBg ?? colors.card,
                   padding: Spacing.md,
                   flexDirection: "row",
                   alignItems: "center",
@@ -781,14 +794,14 @@ export default function HouseholdSettingsScreen() {
               <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
                 Which meals are shared?
               </Text>
-              {/* Outer wrapper carries Elevation.cardSoft; inner clips border+overflow */}
-              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
+              {/* Outer wrapper carries the soft lift (elevation system); inner clips border+overflow */}
+              <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
-                  borderWidth: 1,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
-                  backgroundColor: colors.card,
+                  backgroundColor: cardElevation.liftBg ?? colors.card,
                   overflow: "hidden",
                 }}
               >
@@ -862,14 +875,14 @@ export default function HouseholdSettingsScreen() {
                   {sharedCount} of {totalCells} shared
                 </Text>
               </View>
-              {/* Outer wrapper carries Elevation.cardSoft; inner clips border */}
-              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
+              {/* Outer wrapper carries the soft lift (elevation system); inner clips border */}
+              <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
-                  borderWidth: 1,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
-                  backgroundColor: colors.card,
+                  backgroundColor: cardElevation.liftBg ?? colors.card,
                   padding: Spacing.md,
                 }}
               >

@@ -257,6 +257,11 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <SupprCard
+          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
+          // card-treatment-soft-elevation.md): the empty-state slab is
+          // page-ground, so it lifts soft (`.card-slab`) like the category
+          // cards below + the rest of the app. Was the flat default.
+          elevation="card"
           padding="none"
           radius="xl"
           className="px-6 py-12 text-center"
@@ -297,6 +302,12 @@ export const ShoppingList = memo(function ShoppingList({
             return (
             <SupprCard
               key={section.name}
+              // One-treatment soft lift (2026-06-09): each aisle/category card
+              // sits directly in the page-ground grid, so it lifts soft
+              // (`.card-slab`) — matching the mobile shopping section cards,
+              // which already carry `Elevation.cardSoft` via `cardOuter`. Was
+              // the flat default.
+              elevation="card"
               padding="none"
               radius="xl"
               style={{ padding: 14 }}
