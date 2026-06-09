@@ -498,6 +498,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // CTAs. Destructive actions (sign out / delete) keep `Accent.destructive`;
   // status keeps success/warning; macros keep `MacroColors`.
   const accent = useAccent();
+  // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
+  // tiles (Recipes / Streak), matching the SettingsCard sections around them.
+  const statTileElevation = useCardElevation({ variant: "soft" });
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1661,17 +1664,24 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           ).map(([v, l, c]) => (
             <Pressable
               key={l}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 12,
-                // Sloe reskin: 16px inner stat tile (was 14) so the
-                // Recipes / Streak chips round in step with the slab.
-                borderRadius: 16,
-                backgroundColor: colors.inputBg,
-                borderWidth: 1,
-                borderColor: c + "55",
-              }}
+              // One-card-treatment (2026-06-09): the stat tile sits on the
+              // page ground, so it takes the same soft card chrome as its
+              // siblings — standard card fill + soft lift — instead of the
+              // bespoke tinted-border inputBg chip that read as one-off
+              // "dead chrome" next to the lifted cards around it. The
+              // accent lives in the numeral, not the border.
+              style={[
+                {
+                  flex: 1,
+                  alignItems: "center",
+                  paddingVertical: 12,
+                  borderRadius: 16,
+                  backgroundColor: statTileElevation.liftBg ?? colors.card,
+                  borderWidth: statTileElevation.useBorder ? 1 : 0,
+                  borderColor: colors.cardBorder,
+                },
+                statTileElevation.shadowStyle,
+              ]}
             >
               <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>
                 {v}
