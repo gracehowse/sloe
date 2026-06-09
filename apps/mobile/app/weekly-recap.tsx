@@ -878,7 +878,7 @@ export default function WeeklyRecapScreen() {
             }}
           >
             A streak begins when you log on two different days in the same
-            week. There's nothing to recap yet — come back after your first
+            week. There&apos;s nothing to recap yet — come back after your first
             meal.
           </Text>
           <Pressable

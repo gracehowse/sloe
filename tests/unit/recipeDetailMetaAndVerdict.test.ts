@@ -1,124 +1,77 @@
 /**
- * Sloe image system + recipe-detail frame (2026-06-08) — logic pins for
- * the shared recipe-detail helpers introduced/changed this pass:
+ * Recipe-detail frame (Figma 332:2) — logic pins for the SHIPPED shared
+ * recipe-detail helpers. Re-pinned 2026-06-09 to the canonical structure
+ * (mobile `recipeDetailV3SourcePins.test.ts` is the reference for what the
+ * source actually does).
  *
- *   - `composeRecipeMetaParts` (frame §5: ★ rating · time · difficulty · N items)
- *   - `recipeDifficultyFromSteps` (transparent step-count heuristic)
- *   - `fitsYourDayChipStyle` (frame §315 sage/amber chip palette)
- *   - `computeFitsYourDayVerdict` copy + tone (frame §323–325)
+ * The earlier pass asserted an intermediate frame variant with a fabricated
+ * ★ rating, a `recipeDifficultyFromSteps` step-count heuristic, and a
+ * `fitsYourDayChipStyle` palette helper. None of those shipped: the canonical
+ * meta row is the no-fakes `composeRecipeMeta` (time + items only — rating /
+ * difficulty are DELIBERATELY omitted because the `recipes` table carries no
+ * aggregate-rating or difficulty column, per the no-invented-metadata rule),
+ * and the "Fits your day" chip is tinted inline from `verdict.tone` on both
+ * platforms rather than via a shared palette helper.
  *
- * These are the testable behaviours behind the visible display fixes;
- * web + mobile both consume them so a regression here breaks both.
+ *   - `composeRecipeMeta`         (frame §5: ⏱ time · 🗂 N items, real data only)
+ *   - `computeFitsYourDayVerdict` (frame §323–325 copy + tone)
+ *
+ * Web + mobile both consume these, so a regression here breaks both.
  */
 import { describe, expect, it } from "vitest";
 import {
-  composeRecipeMetaParts,
+  composeRecipeMeta,
   computeFitsYourDayVerdict,
-  fitsYourDayChipStyle,
-  recipeDifficultyFromSteps,
 } from "../../src/lib/recipe/recipeDetailLayout";
 
-describe("recipeDifficultyFromSteps — transparent heuristic", () => {
-  it.each([
-    [1, "Easy"],
-    [4, "Easy"],
-    [5, "Medium"],
-    [8, "Medium"],
-    [9, "Involved"],
-    [20, "Involved"],
-  ])("%i steps → %s", (steps, expected) => {
-    expect(recipeDifficultyFromSteps(steps)).toBe(expected);
-  });
-
-  it("returns null for unknown / zero step counts (hidden, not guessed)", () => {
-    expect(recipeDifficultyFromSteps(0)).toBeNull();
-    expect(recipeDifficultyFromSteps(null)).toBeNull();
-    expect(recipeDifficultyFromSteps(undefined)).toBeNull();
-    expect(recipeDifficultyFromSteps(Number.NaN)).toBeNull();
-  });
-});
-
-describe("composeRecipeMetaParts — real data only, hide unknowns", () => {
-  it("renders all four parts when all data is present", () => {
-    const parts = composeRecipeMetaParts({
-      rating: 4.6,
-      totalMinutes: 35,
-      stepCount: 6,
-      itemCount: 8,
-    });
-    expect(parts.map((p) => p.label)).toEqual(["★ 4.6", "35 min", "Medium", "8 items"]);
-  });
-
-  it("hides the rating when unknown (no fabricated ★)", () => {
-    const parts = composeRecipeMetaParts({
-      rating: null,
-      totalMinutes: 20,
-      stepCount: 3,
-      itemCount: 5,
-    });
+describe("composeRecipeMeta — real data only, hide unknowns", () => {
+  it("renders time + items when both are present (no fabricated rating/difficulty)", () => {
+    // Rating + difficulty are intentionally NOT surfaced — the recipes table has
+    // no aggregate-rating or difficulty column and we never invent recipe
+    // metadata (no-fakes rule). Only real timing + ingredient count render.
+    const parts = composeRecipeMeta({ prepMin: 10, cookMin: 25, ingredientCount: 8 });
+    expect(parts.map((p) => p.label)).toEqual(["35 min", "8 items"]);
+    expect(parts.map((p) => p.key)).toEqual(["time", "items"]);
+    // Never a ★ rating or a difficulty label on this surface.
     expect(parts.find((p) => p.key === "rating")).toBeUndefined();
-    expect(parts.map((p) => p.label)).toEqual(["20 min", "Easy", "5 items"]);
+    expect(parts.find((p) => p.key === "difficulty")).toBeUndefined();
   });
 
   it("hides time when neither prep nor cook is known", () => {
-    const parts = composeRecipeMetaParts({ totalMinutes: 0, stepCount: 2, itemCount: 4 });
+    const parts = composeRecipeMeta({ prepMin: null, cookMin: null, ingredientCount: 5 });
     expect(parts.find((p) => p.key === "time")).toBeUndefined();
+    expect(parts.map((p) => p.label)).toEqual(["5 items"]);
+  });
+
+  it("sums prep + cook into a single time stat", () => {
+    const parts = composeRecipeMeta({ prepMin: 15, cookMin: 20, ingredientCount: 0 });
+    expect(parts).toEqual([{ key: "time", label: "35 min" }]);
   });
 
   it("hides item count at zero (no '0 items')", () => {
-    const parts = composeRecipeMetaParts({ totalMinutes: 10, stepCount: 1, itemCount: 0 });
+    const parts = composeRecipeMeta({ prepMin: 10, cookMin: 0, ingredientCount: 0 });
     expect(parts.find((p) => p.key === "items")).toBeUndefined();
+    expect(parts).toEqual([{ key: "time", label: "10 min" }]);
   });
 
   it("singularises one item", () => {
-    const parts = composeRecipeMetaParts({ itemCount: 1 });
+    const parts = composeRecipeMeta({ prepMin: null, cookMin: null, ingredientCount: 1 });
     expect(parts).toEqual([{ key: "items", label: "1 item" }]);
   });
 
   it("formats long times as hours+minutes", () => {
-    const parts = composeRecipeMetaParts({ totalMinutes: 95 });
+    const parts = composeRecipeMeta({ prepMin: 60, cookMin: 35, ingredientCount: 0 });
     expect(parts).toEqual([{ key: "time", label: "1h 35m" }]);
   });
 
+  it("formats a whole-hour time without trailing minutes", () => {
+    const parts = composeRecipeMeta({ prepMin: 60, cookMin: 60, ingredientCount: 0 });
+    expect(parts).toEqual([{ key: "time", label: "2h" }]);
+  });
+
   it("renders nothing when there is no real data at all", () => {
-    expect(composeRecipeMetaParts({})).toEqual([]);
-    expect(composeRecipeMetaParts({ rating: null, totalMinutes: 0, stepCount: 0, itemCount: 0 })).toEqual([]);
-  });
-
-  it("trims a whole-number rating (4.0 → '★ 4')", () => {
-    const parts = composeRecipeMetaParts({ rating: 4 });
-    expect(parts).toEqual([{ key: "rating", label: "★ 4" }]);
-  });
-
-  it("ignores an out-of-range rating", () => {
-    expect(composeRecipeMetaParts({ rating: 0 })).toEqual([]);
-    expect(composeRecipeMetaParts({ rating: 6 })).toEqual([]);
-    expect(composeRecipeMetaParts({ rating: -1 })).toEqual([]);
-  });
-});
-
-describe("fitsYourDayChipStyle — frame §315 sage/amber palette", () => {
-  it("success is sage text on a 10% sage fill (the permission moment)", () => {
-    expect(fitsYourDayChipStyle("success")).toEqual({
-      fg: "#5E7C5A",
-      bg: "rgba(94, 124, 90, 0.1)",
-    });
-  });
-
-  it("warning is amber text on a 10% amber fill", () => {
-    expect(fitsYourDayChipStyle("warning")).toEqual({
-      fg: "#C9892C",
-      bg: "rgba(201, 137, 44, 0.1)",
-    });
-  });
-
-  it("'over a day' stays amber (deeper 20% fill) — never destructive red", () => {
-    const style = fitsYourDayChipStyle("destructive");
-    expect(style.fg).toBe("#C9892C");
-    expect(style.bg).toBe("rgba(201, 137, 44, 0.2)");
-    // Belt-and-braces: the over-budget chip is NOT red on this surface
-    // (only the calorie ring uses red for over-budget).
-    expect(style.fg).not.toMatch(/b04434|c0533f|F16264|f87171|ef4444/i);
+    expect(composeRecipeMeta({ prepMin: null, cookMin: null, ingredientCount: 0 })).toEqual([]);
+    expect(composeRecipeMeta({ prepMin: undefined, cookMin: undefined, ingredientCount: undefined })).toEqual([]);
   });
 });
 
@@ -141,7 +94,9 @@ describe("computeFitsYourDayVerdict — tone thresholds + frame copy", () => {
   it("≥100% → destructive tone, states the over-day cost", () => {
     const v = computeFitsYourDayVerdict({ kcal: 2200, targetCals: 2000 });
     expect(v!.tone).toBe("destructive");
-    expect(v!.label).toMatch(/Over your day/);
+    // Canonical copy (frame §325): the over-budget verdict spells out that the
+    // recipe is over a full day's calories.
+    expect(v!.label).toMatch(/over a full day/);
     expect(v!.a11y).toMatch(/over a full day/i);
   });
 
@@ -151,12 +106,10 @@ describe("computeFitsYourDayVerdict — tone thresholds + frame copy", () => {
     expect(computeFitsYourDayVerdict({ kcal: 500, targetCals: null })).toBeNull();
   });
 
-  it("the chip style is consistent with the verdict tone for every bucket", () => {
-    const success = computeFitsYourDayVerdict({ kcal: 400, targetCals: 2000 })!;
-    const warning = computeFitsYourDayVerdict({ kcal: 1200, targetCals: 2000 })!;
-    const over = computeFitsYourDayVerdict({ kcal: 2500, targetCals: 2000 })!;
-    expect(fitsYourDayChipStyle(success.tone).fg).toBe("#5E7C5A");
-    expect(fitsYourDayChipStyle(warning.tone).fg).toBe("#C9892C");
-    expect(fitsYourDayChipStyle(over.tone).fg).toBe("#C9892C");
+  it("the verdict carries a 5-percent-rounded pct + an a11y long-form label", () => {
+    const v = computeFitsYourDayVerdict({ kcal: 410, targetCals: 2000 })!;
+    // 410/2000 = 20.5% → rounds to nearest 5 → 20.
+    expect(v.pct).toBe(20);
+    expect(v.a11y).toMatch(/20 percent of your daily calorie target/);
   });
 });
