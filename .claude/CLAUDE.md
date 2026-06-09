@@ -106,7 +106,7 @@ visual changes blind. Two complementary rules from now on:
 ## CI hygiene — non-negotiable
 
 CI runs more gates than a single `npm test` does. Failures are
-visible to Grace + waste deploy slots. Two rules:
+visible to Grace + waste deploy slots. Three rules:
 
 1. **Run `npm run ci` locally before every push.** Mirrors the CI
    workflow — verify-production-env + web typecheck + web vitest +
@@ -118,6 +118,14 @@ visible to Grace + waste deploy slots. Two rules:
    or `gh run list --limit 3` to confirm the latest is green. If
    the most recent run is red, fix it BEFORE moving to the next
    task. A red main blocks all collaborators.
+3. **Scope your checks to what you touched.** Don't run the full
+   `npm run ci` after a one-surface change — it wastes time and
+   context on irrelevant output, and the CPU contention flakes
+   timing-sensitive tests (see `feedback_no_concurrent_full_suites_with_workflow`).
+   Touched only mobile → `npm run mobile:lint && npm run
+   mobile:typecheck && npm run mobile:test`. Touched only web →
+   `npm run typecheck && npm run lint && npm run test`. Run the full
+   `npm run ci` once at the end, before the final push.
 
 Common reasons local-vs-CI diverge:
 - TypeScript build cache. Local `.tsbuildinfo` may carry stale
@@ -218,80 +226,26 @@ Audit cadence: run the `code-quality` silent-deferral sweep at each milestone re
 git config core.hooksPath scripts/git-hooks
 ```
 
-## iOS Simulator Testing (MCP — eyes and hands)
+## Mobile (iOS) work
 
-**Do not ask Grace to drag simulator screenshots into chat.** Use the **`ios-simulator` MCP server** (see `docs/testing/agent-eyes-and-hands.md` and `.cursor/mcp.json`). Prerequisite: `npm run agent:verify-tools` passes (IDB + companion).
+Mobile-specific conventions (bundle id, tabs, auth, iOS-only target) live in
+**`apps/mobile/CLAUDE.md`**, loaded automatically when you work under
+`apps/mobile/`.
 
-When asked to test a feature or verify a mobile UI change:
+To drive the iOS simulator — test/verify a mobile UI change, capture pixels,
+reproduce a TestFlight report — the full MCP playbook is the
+**`suppr-ios-sim-testing`** skill, which loads on demand. The rule that stays
+here because it's behavioural, not how-to: **never ask Grace to drag simulator
+screenshots into chat** — drive the sim yourself and Read the PNG.
 
-1. **Metro running**: `npm run mobile:dev` or `npm run mobile:dev:maestro` (port 8081 for Maestro-aligned flows).
-2. **Dev client on sim**: `npm run mobile:ios:simulator` if not installed or after native dependency changes.
-3. **`get_booted_sim_id`** — confirm a booted simulator.
-4. **`launch_app`** — `bundle_id: com.supprclub.supprapp`, `terminate_running: true` after module-level layout/font/ring changes (Fast Refresh is not enough).
-5. **Navigate** — prefer **deep links** from `sitemap.md` (`simctl openurl` / MCP equivalents); then `ui_find_element`, `ui_tap`, `ui_swipe` (scroll is required for below-fold Today content).
-6. **Verify** — `ui_describe_all` or `ui_find_element`; compare expected labels/states.
-7. **See pixels** — `screenshot` or `ui_view`; **Read the image file** in the repo (`apps/mobile/screenshots/agent/`). Never claim visual pass from accessibility text alone.
-8. **Report** — pass/fail per surface + screenshot path.
+## Web app work
 
-### MCP tool names (`ios-simulator`)
-
-| Intent | Tool |
-|--------|------|
-| Booted UDID | `get_booted_sim_id` |
-| Launch Suppr | `launch_app` |
-| Full a11y tree | `ui_describe_all` |
-| Find by label | `ui_find_element` |
-| Tap / swipe / type | `ui_tap`, `ui_swipe`, `ui_type` |
-| Screenshot | `screenshot` or `ui_view` |
-
-Shell fallback when MCP unavailable: `idb`, `xcrun simctl` — same semantics as `sitemap.md`.
-
-### When something looks wrong
-
-1. `ui_describe_all` — expected vs actual elements
-2. Screenshot for Grace only if MCP cannot fix in-session
-3. Propose a code fix; re-run steps 4–7 after rebuild/relaunch
-
-### Suppr specifics
-
-- **Bundle id:** `com.supprclub.supprapp`
-- **Auth:** Apple Sign In (no email/password QA form)
-- **Tabs:** Today / Plan / ＋(FAB) / Recipes / Progress — Settings via avatar, not a tab
-- **Map:** `sitemap.md` (deep links + tabs)
-- **idb PATH:** `~/.local/bin/idb` via pipx + Python 3.12 (`fb-idb` breaks on 3.14)
-
-## Web App Testing (Playwright — eyes and hands)
-
-The web equivalent of the iOS sim loop above. **Do not ask Grace to paste browser screenshots.** Drive + screenshot the running web app yourself with **`scripts/web-drive.mjs`** — a repo-native CLI over the Playwright the repo already ships (no MCP / new dependency). It is the web analogue of `idb`: launch, navigate, read the DOM/accessibility tree, screenshot to a file.
-
-When asked to test web or mobile-web, or to check web/mobile parity:
-
-1. **Serve**: `npm run dev` — app at `http://localhost:3000` (Next.js + Turbopack). Helper reads `WEB_DRIVE_BASE_URL` to target another host/port. (Browser is preinstalled; if `chromium.launch()` fails once, run `npx playwright install chromium`.)
-2. **Launch / point**: every `web-drive` command spins up a fresh headless Chromium against the dev server and exits non-zero with an actionable message if nothing is listening.
-3. **Navigate** — pass a route; for signed-in surfaces (Today / Activity / Plan) add **`--auth`** to load the committed session (`tests/e2e/.auth/user.json`) so you land on the app, not `/login`. Multi-step: `web-drive.mjs flow <route> click:".." fill:".."="v" wait:ms goto:/p shot:f.png`.
-4. **Read state** — `web-drive.mjs snap <route>` prints the **ARIA accessibility tree** (the web `ui_describe_all`); `dom <route> [--sel CSS]` dumps HTML; `text <route> [--sel CSS]` dumps visible text; `eval <route> "<js>"` returns JSON for getComputedStyle / contrast checks.
-5. **Screenshot** — `web-drive.mjs shot <route> [--out FILE] [--auth] [--vp desktop|mobile|WxH] [--full] [--dark] [--flags a,b]`. Default out: `screenshots/web-drive/<route>-<vp>.png`. Dev overlay is auto-hidden (matches what ships). **Read the PNG file** in the repo — never claim a visual pass from the accessibility text alone (SEE, don't just orchestrate).
-6. **Report** — pass/fail per surface + screenshot path. For **parity**, capture mobile-web at **`--vp mobile`** (390×844) and compare against the iOS sim capture of the same surface; visible UI changes Grace makes on mobile must land on the equivalent web surface.
-
-### web-drive commands (`scripts/web-drive.mjs`)
-
-| Intent | Command |
-|--------|---------|
-| Screenshot a route | `node scripts/web-drive.mjs shot /today --auth --vp mobile` |
-| Element-only shot | `node scripts/web-drive.mjs shot /pricing --sel "main" --out screenshots/web-drive/pricing.png` |
-| Accessibility tree | `node scripts/web-drive.mjs snap /today --auth` |
-| DOM / text dump | `node scripts/web-drive.mjs dom /pricing --sel "main"` · `… text /`|
-| getComputedStyle etc. | `node scripts/web-drive.mjs eval / "JSON.stringify(getComputedStyle(document.body).backgroundColor)"` |
-| Multi-step flow | `node scripts/web-drive.mjs flow /login fill:'you@domain.com'="x" wait:500 shot:after.png` |
-| Force flags ON | add `--flags design-system-colours,redesign-motion` (client-side `__SUPPR_FORCE_FLAGS__`) |
-
-`--vp` accepts `desktop` (1440×900), `mobile` (390×844), or `WxH`; `--dark` emulates dark mode; captures render at 2× for retina sharpness.
-
-### Notes
-
-- **Stale auth state** → `shot --auth` warns when it redirects to `/login`. Regenerate: `E2E_EMAIL=… E2E_PASSWORD=… npx playwright test auth.setup.ts --project=setup`.
-- **Repo E2E remains `npm run test:e2e`** (the Playwright test runner + golden screenshots). `web-drive` is for **agent-driven interactive verification** during implementation — the screenshot specs in `tests/e2e/screenshots/` are the durable regression layer.
-- **Fallback:** the `playwright` MCP (`@playwright/mcp`, listed in `.cursor/mcp.json`) drives the browser too when the CLI isn't an option, but prefer `web-drive.mjs` — it runs from any shell + CI and leaves files on disk to Read.
+To drive the web app — test web or mobile-web, check web↔mobile parity,
+capture pixels — the full `scripts/web-drive.mjs` playbook is the
+**`suppr-web-testing`** skill, which loads on demand. The rule that stays here
+because it's behavioural: **never ask Grace to paste browser screenshots** —
+drive + screenshot it yourself, and SEE the PNG (don't claim a pass from the
+ARIA tree alone).
 
 ## Git hooks
 
