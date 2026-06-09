@@ -73,8 +73,10 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
     it("over-budget-fg maps to Sloe destructive red (D-2)", () => {
       // Sloe Phase 0 (dossier D-2): fat now owns amber, so over-budget moves
       // to red — the ring overage AND the inline "over by N" copy share the
-      // destructive hue. Was orange (#F78A32) → now #C0533F.
-      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#c0533f");
+      // destructive hue. Was orange (#F78A32) → #C0533F → AA-darkened to
+      // #B04434 (2026-06-09) so the inline "over by N" TEXT clears WCAG AA
+      // 4.5:1 on the cream surface (4.86:1). Mirrors web --over-budget-fg.
+      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#b04434");
       expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#dc6b55");
     });
   });

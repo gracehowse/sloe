@@ -162,9 +162,10 @@ describe("cross-platform theme tokens (ENG-623)", () => {
 
   it("TodayHeroStats NET over-target uses the over-budget token (red in Sloe, D-2)", () => {
     // Sloe D-2: fat now owns amber, so the over-budget signal is RED. The
-    // token NAME (`--over-budget-fg`) is unchanged — only its value moved from
-    // amber to `#C0533F`. The structural wiring (NET-over → `over-budget-fg`)
-    // is what we pin; the value is verified in the light/dark sections above.
+    // token NAME (`--over-budget-fg`) is unchanged — its value moved from amber
+    // to brick and was AA-darkened to `#B04434` (2026-06-09). The structural
+    // wiring (NET-over → `over-budget-fg`) is what we pin; the value is verified
+    // in the light/dark sections above.
     const hero = readFileSync(
       resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
       "utf8",
@@ -174,7 +175,10 @@ describe("cross-platform theme tokens (ENG-623)", () => {
   });
 
   it("over-budget token resolves to the Sloe destructive red (D-2), not amber", () => {
-    expect(readCssVar(LIGHT, "over-budget-fg")).toBe("#c0533f");
+    // Light hue AA-darkened #c0533f → #b04434 (2026-06-09) so the shared
+    // destructive/over-budget red clears WCAG AA 4.5:1 as text on the cream
+    // `destructive/5` surface (4.86:1) — it renders as text, not just a fill.
+    expect(readCssVar(LIGHT, "over-budget-fg")).toBe("#b04434");
     expect(readCssVar(DARK, "over-budget-fg")).toBe("#dc6b55");
     // It must match the destructive hue family (over = red, post-Sloe).
     expect(readCssVar(LIGHT, "over-budget-fg")).toBe(readCssVar(LIGHT, "accent-destructive"));

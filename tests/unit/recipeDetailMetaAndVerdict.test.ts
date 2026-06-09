@@ -118,7 +118,7 @@ describe("fitsYourDayChipStyle — frame §315 sage/amber palette", () => {
     expect(style.bg).toBe("rgba(201, 137, 44, 0.2)");
     // Belt-and-braces: the over-budget chip is NOT red on this surface
     // (only the calorie ring uses red for over-budget).
-    expect(style.fg).not.toMatch(/c0533f|F16264|f87171|ef4444/i);
+    expect(style.fg).not.toMatch(/b04434|c0533f|F16264|f87171|ef4444/i);
   });
 });
 

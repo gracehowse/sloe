@@ -85,6 +85,13 @@ export const SloeEntrySheet: Story = {
 /** S13 logged-confirmation (Figma 202:2) — the calm success state after a
  *  log commits. Presentation-only; the host owns persistence. */
 export const LoggedConfirmation: Story = {
+  // The confirmation state REPLACES the slot-selector row, so the meta-level
+  // `a11y.context` ([data-slot="log-sheet-slot-row"]) matches nothing here and
+  // axe errors with "No elements found for include in frame Context". Re-scope
+  // the a11y run to the confirmation card this story actually renders.
+  parameters: {
+    a11y: { context: '[data-slot="log-sheet-confirmation"]' },
+  },
   args: {
     confirmation: {
       title: "Greek yogurt",

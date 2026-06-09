@@ -133,18 +133,23 @@
    *    so `--accent-success-solid` (#466046) carries text: 6.95/6.56 PASS.
    *  - warning → amber. Fill 2.96:1 (text fails), `--accent-warning-solid`
    *    (#956619) carries text: 5.01/4.73 PASS.
-   *  - destructive → warm brick. Fill 4.62:1 on white / 4.36:1 on oat,
-   *    `--accent-destructive-solid` (#9E3F2E) carries text: 6.55/6.19 PASS. */
+   *  - destructive → warm brick. The base hue is the TEXT token in practice
+   *    (`text-destructive` resolves here), so it must clear AA 4.5:1 as text.
+   *    Darkened #C0533F → #B04434 (2026-06-09, a11y): 5.64:1 on white,
+   *    5.17:1 on card #F6F5F2, 4.86:1 on the cream `bg-destructive/5` composite
+   *    #F3EDE9 — PASS as text; still 5.64:1 as a fill (well over the 3:1
+   *    graphical floor). `--accent-destructive-solid` (#9E3F2E) stays the
+   *    darkest text variant: 6.55/6.19 PASS. */
   --accent-success: #5E7C5A;
   --accent-success-solid: #466046;
   --accent-success-soft: rgba(94, 124, 90, 0.12);
   --accent-warning: #C9892C;
   --accent-warning-solid: #956619;
   --accent-warning-soft: rgba(201, 137, 44, 0.12);
-  --accent-destructive: #C0533F;
+  --accent-destructive: #B04434;
   --accent-destructive-foreground: #ffffff;
   --accent-destructive-solid: #9E3F2E;
-  --accent-destructive-soft: rgba(192, 83, 63, 0.12);
+  --accent-destructive-soft: rgba(176, 68, 52, 0.12);
   --accent-info: #6A4B7A;
   /** Damson-lilac wash — the PRO column highlight on the paywall
    *  comparison matrix (Figma `284:2`). Soft enough to read as a
@@ -243,7 +248,7 @@
    *  high → sage, med → amber, low → destructive. */
   --confidence-high: #5E7C5A;
   --confidence-med: #C9892C;
-  --confidence-low: #C0533F;
+  --confidence-low: #B04434;
   /** Confidence chip — neutral grey for adaptive TDEE display
    *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm.
    *  Uses the Sloe `ink-soft` token (readable + calm). */
@@ -267,8 +272,8 @@
   /** Over-budget — Sloe destructive red (dossier D-2). Fat now owns amber,
    *  so over-budget moves to red to stay distinct. Traffic-light mode
    *  (opt-in Settings toggle) still substitutes red — same hue now. */
-  --over-budget-fg: #C0533F;
-  --over-budget-soft: rgba(192, 83, 63, 0.08);
+  --over-budget-fg: #B04434;
+  --over-budget-soft: rgba(176, 68, 52, 0.08);
 
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
    *  cards, burn-detail bonus. Distinct from warning (amber) + over-budget

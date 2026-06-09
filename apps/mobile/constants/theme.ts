@@ -56,9 +56,13 @@ export const Accent = {
   warning: '#C9892C',
   warningLight: '#D6A24A',
   warningSolid: '#956619',
-  /** Brick slot — destructive, error, over-budget. `destructiveSolid`
-   *  (#9E3F2E, 6.55:1 on white) carries text usage. */
-  destructive: '#C0533F',
+  /** Brick slot — destructive, error, over-budget. Base hue is the TEXT
+   *  token in practice, so it must clear AA 4.5:1 as text: darkened
+   *  #C0533F → #B04434 (2026-06-09, a11y; 4.86:1 on the cream
+   *  `destructive/5` composite, 5.64:1 on white — PASS), mirrors web
+   *  `--accent-destructive`. `destructiveSolid` (#9E3F2E, 6.55:1 on white)
+   *  stays the darkest text variant. */
+  destructive: '#B04434',
   destructiveLight: '#DC6B55',
   destructiveSolid: '#9E3F2E',
   /** Legacy `cyan` alias — remapped onto Sloe teal (cyan has no Sloe slot). */
@@ -324,8 +328,8 @@ export const Colors = {
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',
     northStarBorder: 'rgba(59, 42, 77, 0.18)',
-    overBudgetFg: '#C0533F',        // Sloe destructive red (dossier D-2)
-    overBudgetSoft: 'rgba(192, 83, 63, 0.08)',
+    overBudgetFg: '#B04434',        // Sloe destructive red (dossier D-2), AA-darkened 2026-06-09
+    overBudgetSoft: 'rgba(176, 68, 52, 0.08)',
     /** Foreground tokens that previously lived only in CSS — wired
      *  here so RN consumers can stop hardcoding `#fff`. */
     destructiveForeground: '#ffffff',

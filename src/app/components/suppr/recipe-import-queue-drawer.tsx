@@ -178,6 +178,7 @@ function ImportJobRow({
         <div className="flex shrink-0 items-center gap-1">
           {isDone ? (
             <span
+              role="img"
               className="flex size-6 items-center justify-center rounded-full bg-[var(--success)] text-white"
               aria-label="Imported"
             >

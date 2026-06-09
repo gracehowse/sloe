@@ -189,6 +189,7 @@ function ImportJobRow({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           {isDone ? (
             <View
+              accessibilityRole="image"
               accessibilityLabel="Imported"
               style={{
                 width: 22,

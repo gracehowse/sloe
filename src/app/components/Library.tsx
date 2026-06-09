@@ -764,7 +764,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                             shows a fabricated rating. */}
                     <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground tabular-nums">
                       {saves > 0 ? (
-                        <span className="inline-flex items-center gap-1" aria-label={`${saves} ${saves === 1 ? "save" : "saves"}`}>
+                        <span role="img" className="inline-flex items-center gap-1" aria-label={`${saves} ${saves === 1 ? "save" : "saves"}`}>
                           <Icons.star className="w-[13px] h-[13px] text-primary fill-primary" aria-hidden />
                           {saves}
                         </span>

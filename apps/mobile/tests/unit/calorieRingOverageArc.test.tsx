@@ -21,7 +21,7 @@
  *   1. When over budget, the base calorie ring is still PLUM (the ring did
  *      not recolour itself red — the pre-Sloe `isOver ? destructive` bug).
  *   2. When over budget, NO arc uses the retired Sloe over-red
- *      (`#C0533F` light / `#DC6B55` dark) — the red overage arc is gone.
+ *      (`#B04434` light / `#DC6B55` dark) — the red overage arc is gone.
  *   3. When over budget, the overage LAP renders in the lifted-plum family.
  *   4. When over budget, the leading-cap GLOW element is present (a lighter
  *      plum fill).
@@ -49,7 +49,7 @@ void React;
 const PLUM_LIGHT = MacroColors.calories.toUpperCase(); // #3B2A4D
 const PLUM_DARK = "#815E91";
 // Retired Sloe over-red — must NOT appear when over any more.
-const OVER_RED_LIGHT = Colors.light.overBudgetFg.toUpperCase(); // #C0533F
+const OVER_RED_LIGHT = Colors.light.overBudgetFg.toUpperCase(); // #B04434
 const OVER_RED_DARK = Colors.dark.overBudgetFg.toUpperCase(); // #DC6B55
 // Lifted-plum overage lap (one step lighter than the base plum, both modes).
 const LAP_LIGHT = "#6A4B7A";
