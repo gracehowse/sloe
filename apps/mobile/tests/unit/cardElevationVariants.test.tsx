@@ -253,13 +253,20 @@ describe("iOS overflow-clip fix lives in the shared <SupprCard> shell", () => {
     }
   });
 
-  it("Progress `progress-3-stat-row` is a <SupprCard> (testID on the shell)", () => {
-    // The founder-visible Progress stat row routes through the shell; the testID
-    // moved onto the SupprCard outer node so Maestro/captures stay stable.
-    const src = read("app/(tabs)/progress.tsx");
-    const stripped = stripComments(src);
-    expect(stripped).toMatch(
-      /<SupprCard[\s\S]{0,160}testID="progress-3-stat-row"/,
-    );
+  it("Progress energy stat row routes through the <SupprCard> shell", () => {
+    // The founder-visible Progress AVG/TDEE/DEFICIT stat row was extracted from
+    // an inline single `progress-3-stat-row` card into the <ProgressEnergyTriad>
+    // component (three discrete stat cards). The elevation-shell intent is
+    // preserved — each stat card is a <SupprCard> inside the component — so we
+    // assert (a) progress.tsx renders the triad, and (b) the triad routes its
+    // stats through the SupprCard shell (testIDs on the shells).
+    const progress = stripComments(read("app/(tabs)/progress.tsx"));
+    expect(progress).toMatch(/<ProgressEnergyTriad\b/);
+
+    const triad = stripComments(read("components/progress/ProgressEnergyTriad.tsx"));
+    expect(triad).toMatch(/from ["']@\/components\/ui\/SupprCard["']/);
+    expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-avg-intake"/);
+    expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-tdee"/);
+    expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-deficit"/);
   });
 });
