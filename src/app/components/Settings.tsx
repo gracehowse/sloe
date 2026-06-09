@@ -1259,10 +1259,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
                 carries a one-line helper so the user knows what
                 enabling it does. Mirror of mobile settings. */}
-            {/* Nested list-card inside the Preferences card. ENG-823: when soft
-                elevation is on, the parent card already carries the ambient
-                shadow — this inner group keeps only its border (no shadow-on-
-                shadow). Flag OFF → today's `card-elevated`. */}
+            {/* Nested list-card inside the Preferences SupprCard. One-treatment
+                elevation (Grace 2026-06-09): a card nested in another card stays
+                FLAT (`card-slab-flat`) so it never double-shadows — the parent
+                Preferences card already carries the soft lift. (ENG-823.) */}
             <div className="rounded-xl bg-card divide-y divide-border card-slab-flat">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">

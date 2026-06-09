@@ -119,17 +119,22 @@ describe("resting cards STILL hand-rolled — hairline edge, not a heavy 1pt", (
   );
 });
 
-describe("TodayActivityBonusCard — Figma TD1 flat sibling slabs", () => {
+describe("TodayActivityBonusCard — Figma TD1 sibling page-ground slabs", () => {
   const src = read("components/today/TodayActivityBonusCard.tsx");
 
-  it("renders energy balance, burn breakdown, and 7-day rolling as separate <SupprCard lift='flat'> slabs", () => {
+  it("renders energy balance, burn breakdown, and 7-day rolling as separate <SupprCard lift='soft'> sibling slabs", () => {
+    // One-treatment rule (Grace 2026-06-09): all three blocks are sibling cards
+    // sitting on the Today scroll ground, so they take the SOFT lift (matching
+    // the hero reference), not flat. No nested inset sub-panels.
     expect(src).toMatch(/from ["']@\/components\/ui\/SupprCard["']/);
     expect(src).toMatch(/testID="today-energy-balance-card"/);
     expect(src).toMatch(/testID="today-burn-breakdown-card"/);
     expect(src).toMatch(/testID="today-weekly-rolling-card"/);
-    expect(src).toMatch(/lift="flat"/);
+    expect(src).toMatch(/lift="soft"/);
+    // The dead flat direction must not come back for these page-ground slabs.
+    expect(src).not.toMatch(/lift="flat"/);
     expect(src).toMatch(/Layout\.todaySectionCardGap/);
-    // No nested inset sub-panels — each block is its own top-level flat card.
+    // No nested inset sub-panels — each block is its own top-level soft card.
     expect(src).not.toMatch(/size="inset"/);
   });
 

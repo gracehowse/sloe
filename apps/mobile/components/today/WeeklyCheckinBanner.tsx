@@ -17,13 +17,14 @@
  * Posture: same calm rules as the Digest. No emoji, no celebration, no
  * "Don't break your streak" copy. The banner is a quiet pointer.
  *
- * ── Card chrome (Figma 654:2 "flat slabs" sweep, 2026-06-08) ──
- * Renders the SAME flat `<SupprCard lift="flat">` cream slab as every
- * other resting Today card (`TodayActivityCard`, `WeeklyInsightCard`,
- * planned meals, …). It used to be the lone bordered card — an inline
- * `<View>` with a peach `${Accent.primary}08` tint + a clay
+ * ── Card chrome (Figma 654:2 unification 2026-06-08; one-treatment 2026-06-09) ──
+ * Renders the SAME `<SupprCard lift="soft">` cream slab as every other
+ * page-ground Today card (`TodayActivityCard`, `WeeklyInsightCard`, planned
+ * meals, …) — soft because it sits directly on the Today scroll ground
+ * (one-treatment rule, Grace 2026-06-09). It used to be the lone bordered card
+ * — an inline `<View>` with a peach `${Accent.primary}08` tint + a clay
  * `${Accent.primary}30` hairline — which read as inconsistent next to
- * the borderless slabs (Grace, 2026-06-08). The nudge semantics now ride
+ * the other slabs (Grace, 2026-06-08). The nudge semantics now ride
  * the CONTENT (the clay "WEEKLY CHECK-IN" eyebrow + the clay "OPEN"
  * button), never the card surface — the same rule the rest of Today
  * follows (eyebrows/icons/CTAs carry meaning, the slab is neutral).
@@ -58,7 +59,8 @@ export function WeeklyCheckinBanner({
   const accent = useAccent();
   return (
     <SupprCard
-      lift="flat"
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
       padding="md"
       testID="weekly-checkin-banner"
       style={{ marginBottom: Spacing.md }}

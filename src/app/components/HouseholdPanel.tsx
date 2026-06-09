@@ -258,8 +258,10 @@ export function HouseholdPanel() {
 
   // No household — show create/join options
   if (!data?.household) {
+    // One-treatment elevation (Grace 2026-06-09): the household card sits on
+    // the page ground → soft lift (`card-slab`). Was flat slab.
     return (
-      <div className="rounded-xl bg-card p-4 card-slab-flat">
+      <div className="rounded-xl bg-card p-4 card-slab">
         {scopeBanner}
         {/* F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06):
             received-invites banner above the create/join CTAs. When
@@ -330,8 +332,9 @@ export function HouseholdPanel() {
   return (
     <div className="space-y-4">
       {scopeBanner}
-      {/* Header */}
-      <div className="rounded-xl bg-card p-4 card-slab-flat">
+      {/* Header. One-treatment elevation (Grace 2026-06-09): page-ground card
+          → soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-xl bg-card p-4 card-slab">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <IconBox size="sm" tone="primary"><Icons.users /></IconBox>
@@ -468,8 +471,9 @@ export function HouseholdPanel() {
         </div>
       </div>
 
-      {/* Today's shared meals */}
-      <div className="rounded-xl bg-card p-4 card-slab-flat">
+      {/* Today's shared meals. One-treatment elevation (Grace 2026-06-09):
+          page-ground card → soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-xl bg-card p-4 card-slab">
         <p className="text-sm font-semibold text-foreground mb-2">Today&apos;s Shared Meals</p>
         {todayMeals.length === 0 ? (
           <p className="text-xs text-muted-foreground">No shared meals planned for today.</p>
@@ -508,9 +512,10 @@ export function HouseholdPanel() {
         }}
       />
 
-      {/* Upcoming meals */}
+      {/* Upcoming meals. One-treatment elevation (Grace 2026-06-09):
+          page-ground card → soft lift (`card-slab`). Was flat slab. */}
       {upcomingMeals.length > 0 && (
-        <div className="rounded-xl bg-card p-4 card-slab-flat">
+        <div className="rounded-xl bg-card p-4 card-slab">
           <p className="text-sm font-semibold text-foreground mb-2">Upcoming</p>
           <div className="space-y-1.5">
             {upcomingMeals.slice(0, 7).map((meal) => (

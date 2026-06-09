@@ -33,7 +33,9 @@ export function TodayFirstMealEmptyState({
     <section
       role="region"
       aria-label="Ready to log your first meal?"
-      className="mb-6 flex flex-col items-center gap-3 rounded-card bg-card card-slab-flat p-5 text-center"
+      // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+      // lift (`card-slab`). Was flat slab.
+      className="mb-6 flex flex-col items-center gap-3 rounded-card bg-card card-slab p-5 text-center"
     >
       <h2 className="text-base font-bold text-foreground">
         Ready to log your first meal?

@@ -109,7 +109,8 @@ export function TodayMealsFigmaLayout({
           return (
             <SupprCard
               key={slot}
-              lift="flat"
+              // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+              lift="soft"
               padding="none"
               testID={`today-meals-figma-card-${slot}`}
             >

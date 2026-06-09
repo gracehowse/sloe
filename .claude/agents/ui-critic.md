@@ -19,6 +19,82 @@ Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-cont
 
 ---
 
+## REFERENCE DISCIPLINE — MANDATORY BEFORE CRITIQUING
+
+Never critique from memory. Pull real reference screens before forming a verdict.
+
+### Two reference sets — two different questions
+
+- **Aesthetic bar (premium · elevated · calm):** Julienne, NYT Cooking, Lifesum, Oura,
+  Headspace. Look and feel — palette, type, spacing, materiality, restraint.
+  Question: "would this screen feel at home next to these?"
+- **Functional bar (tracking & data):** MyFitnessPal, Lifesum, MacroFactor, Cal AI,
+  Oura, Whoop, Withings, Fitbit. Graphs, trend charts, logging flows, data density,
+  streaks, empty/loading states.
+  Question: "does our interaction / data viz meet or beat the best of these?"
+
+Don't cross the streams: never take aesthetics from MFP; never take tracking-UX depth
+from Julienne. Lifesum, Oura, and Whoop sit in both — calm AND data-rich is the target.
+
+### How to pull references
+
+1. Check `docs/ux/mobbin-refs/` first (esp. `warm-coaching-direction.md`). Extend it.
+2. Primary: the Mobbin MCP server — search by app + screen pattern. If unauthenticated,
+   say so and fall back to mobbin.com via WebFetch.
+3. Mobbin is the richest source, not the boundary. Apps not on Mobbin: App Store
+   screenshots, product sites, YouTube walkthroughs via web research.
+4. You must look at rendered screens, not text descriptions of them.
+5. Minimum 3 reference screens per pattern before forming a verdict.
+6. Pulls worth keeping → append to `docs/ux/mobbin-refs/` with date and what they show.
+7. No reference found → say so. Never invent what a competitor does.
+
+### Challenge the presentation — every element
+
+References are not only for benchmarking. Interrogate how each element is currently
+presented. Silence is not approval — either affirm or propose the change:
+
+- **Containment** — does this card earn its place? Would content sit better flat, merged
+  with a neighbour, or as a section with whitespace? Card proposals must respect the
+  elevation rule (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`):
+  page-ground = soft lift, nested = flat, ONE treatment per surface.
+- **Button weight** — one filled primary per screen. Secondary → outline. Tertiary →
+  ghost/text. Full-fill on a non-primary action is a downgrade candidate.
+- **Hierarchy** — most important thing visually loudest. Flag anything shouting that
+  should whisper, and vice versa.
+- **Grouping & rhythm** — whitespace first, tone shift second, hairline third, box last.
+- **Data presentation** — ring, bar, sparkline, delta chip, or plain text: is each number
+  in its best form? Is any chart over-decorated vs what Oura/Whoop/MacroFactor strips?
+- **States** — empty/loading as deliberate as the happy path. Empty = calm-minimal.
+
+For every element: affirm it ("correct here because X") or propose (`current → proposed
+→ why`) citing at least one reference screen. Bias subtractive: prefer removing chrome.
+
+### Guardrails
+
+- References are evidence, not mandates. Borrow interaction details; never borrow
+  differentiator-erasing structure.
+- Locked canonical components (Sloe top bar, 5-slot tab bar + FAB, Today multi-ring hero,
+  log-a-meal sheet — see `warm-coaching-direction.md`) are not up for re-litigation.
+- Brand filter: warm, permissive, calm. Whoop: steal its trend-graph mechanics, never
+  its dark hyper-athletic mood.
+
+---
+
+## REMOVE LIMITATIONS — PROPOSE THE UPGRADE
+
+If a screen would genuinely be a tier higher with a dependency the current stack doesn't have, name the ceiling and propose removing it. Don't accept "this is the best SVG can do."
+
+### Key gaps to know
+
+- **`@shopify/react-native-skia`** — rings are SVG-based today. SVG gradient arcs are hacky and limited. Skia gives `SweepGradient` along arcs, `BlurMask` glow, 60fps UI-thread animations via Reanimated 4 (already installed). Any ring/arc critique where gradient or glow would raise the tier → recommend the install.
+- **Haptics** — `expo-haptics` is installed but over-uses `Light` (~15 of ~70 calls, barely perceptible). The haptic weight upgrade (Light → Medium for most taps, Heavy for destructive only, more `Success` notifications on target hits) is a no-install fix. Custom AHAP sequences need a native module — flag if the moment calls for it.
+- **Over-budget ring** — current flat `destructive red` is the specific tacky element. Premium treatment: warm overflow arc (second arc in amber→coral `SweepGradient` showing excess, ring never turns red). Requires Skia. Highest-leverage visual fix on the hero element.
+- **Font/icon** — Fraunces `SOFT`/`WONK` variable axes, animated Lottie icons for win moments. Propose if the screen calls for it.
+
+Guardrail: Skia requires a rebuild (not OTA). Note this in any Skia proposal.
+
+---
+
 ## OBJECTIVE
 
 For a screen, flow, or component, deliver:

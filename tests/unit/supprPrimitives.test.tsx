@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe("SupprCard", () => {
-  it("renders children with default neutral tone + flat slab elevation", () => {
+  it("renders children with default neutral tone + flat slab elevation (system contract)", () => {
     render(
       <SupprCard data-testid="card">
         <span>hello</span>
@@ -59,9 +59,13 @@ describe("SupprCard", () => {
     );
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-tone", "neutral");
+    // SupprCard DEFAULT stays flat. The one-treatment rule (Grace 2026-06-09,
+    // `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`) is a
+    // per-call-site decision — page-ground cards opt INTO `elevation="card"`;
+    // the primitive default (and the `useCardElevation` hook default) is
+    // unchanged. Flat borderless slab — no shadow, no hairline; painted via
+    // `.card-slab-flat`, not inline boxShadow.
     expect(card).toHaveAttribute("data-elevation", "slab-flat");
-    // Figma `654:2` default (2026-06-04): flat borderless slab — no shadow,
-    // no hairline. Painted via `.card-slab-flat`, not inline boxShadow.
     expect(card.getAttribute("data-flat-slab")).toBe("true");
     expect(card.className.split(/\s+/)).toContain("card-slab-flat");
     expect(card.style.boxShadow).toBe("");

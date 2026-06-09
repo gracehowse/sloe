@@ -65,7 +65,9 @@ export function TodayWeeklyInsightCard({
   return (
     <section
       aria-label="Weekly insight"
-      className={`rounded-card bg-card card-slab-flat p-4 ${className ?? ""}`}
+      // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+      // lift (`card-slab`). Was flat slab.
+      className={`rounded-card bg-card card-slab p-4 ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 mb-3">
         <Icons.sparkles className="h-4 w-4 text-primary" aria-hidden />

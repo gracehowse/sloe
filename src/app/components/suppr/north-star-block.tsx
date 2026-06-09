@@ -128,7 +128,7 @@ export function NorthStarBlock({
   if (kind === "new-user") {
     return (
       <SupprCard
-        elevation="slab-flat"
+        elevation="card"
         data-slot="north-star-new-user"
         data-testid={testID}
         tone="primary"
@@ -149,7 +149,7 @@ export function NorthStarBlock({
   if (kind === "library-empty") {
     return (
       <SupprCard
-        elevation="slab-flat"
+        elevation="card"
         data-slot="north-star-library-empty"
         data-testid={testID}
         tone="primary"
@@ -180,7 +180,7 @@ export function NorthStarBlock({
   if (kind === "no-fit") {
     return (
       <SupprCard
-        elevation="slab-flat"
+        elevation="card"
         data-slot="north-star-no-fit"
         data-testid={testID}
         tone="neutral"
@@ -366,7 +366,7 @@ function NorthStarDefaultBlock({
     // `prefers-reduced-motion: reduce` via the existing theme.css
     // reduce-motion override.
     <SupprCard
-      elevation="slab-flat"
+      elevation="card"
       data-slot="north-star-default"
       data-testid={testID}
       tone="primary"

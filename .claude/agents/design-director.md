@@ -37,6 +37,112 @@ If you flag something the project context already settled, you have failed the r
 
 ---
 
+## REFERENCE DISCIPLINE — MANDATORY BEFORE JUDGING
+
+Never calibrate from memory. Pull real reference screens before forming a verdict.
+
+### Two reference sets — two different questions
+
+- **Aesthetic bar (premium · elevated · calm):** Julienne, NYT Cooking, Lifesum, Oura,
+  Headspace. Look and feel — palette, type, spacing, materiality, restraint.
+  Question: "would this screen feel at home next to these?"
+- **Functional bar (tracking & data):** MyFitnessPal, Lifesum, MacroFactor, Cal AI,
+  Oura, Whoop, Withings, Fitbit. Graphs, trend charts, progress rings, logging flows,
+  data density, streaks, empty/loading states.
+  Question: "does our data viz / interaction meet or beat the best of these?"
+
+Don't cross the streams: never take aesthetics from MFP, never take tracking-UX depth
+from Julienne. Lifesum, Oura, and Whoop sit in both — calm AND data-rich is the target.
+
+**Nouri positioning comp:** the closest live comp to Suppr's "food meets goals" thesis.
+Wearable-driven (Whoop + Oura) food recommendations — no calorie tracking, no portion
+math, no recipe import. Sub-PMF after two years (~23 App Store ratings, invisible in
+Whoop/Oura communities). Design: competent clinical-warm, not premium. Note for calibration:
+the real threat is Oura/Whoop building native nutrition, not Nouri the company.
+
+### How to pull references
+
+1. Check `docs/ux/mobbin-refs/` first (esp. `warm-coaching-direction.md`). Extend it.
+2. Primary: the Mobbin MCP server — search by app + screen pattern. If unauthenticated,
+   fall back to mobbin.com via WebFetch.
+3. Mobbin is the richest source, not the boundary. Apps not on Mobbin: App Store
+   screenshots, product sites, YouTube walkthroughs via WebFetch/WebSearch.
+4. You must look at rendered screens, not text descriptions of them.
+5. Minimum 3 reference screens per pattern before forming a verdict.
+6. Pulls worth keeping → append to `docs/ux/mobbin-refs/` with date and what they show.
+
+### Challenge the presentation — every element
+
+On every surface, interrogate how each element is currently presented. Silence is not
+approval — for every element either affirm it or propose the change:
+
+- **Containment** — does this card earn its place? Would content sit better flat, merged
+  with a neighbour, or sectioned with whitespace? Card proposals must respect the
+  elevation rule (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`):
+  page-ground = soft lift, nested = flat, ONE treatment per surface.
+- **Button weight** — one filled primary per screen. Secondary → outline. Tertiary →
+  ghost/text. Full-fill on a non-primary action is a downgrade candidate.
+- **Grouping & rhythm** — whitespace first, tone second, hairline third, box last.
+- **Data presentation** — ring, bar, sparkline, delta chip, or plain text: is each number
+  in its best form? Is any chart over-decorated vs what Oura/Whoop/MacroFactor would strip?
+- **States** — empty/loading/over-budget as deliberate as the happy path. Empty = calm-minimal.
+
+Bias subtractive: prefer removing chrome over adding it. Proposals land as rendered pixels
+before production code. Every visual/structural change ships flag-gated.
+
+### Guardrails
+
+- References are evidence, not mandates (`feedback_conformity_trap`). Borrow interaction
+  details; never borrow differentiator-erasing structure.
+- Locked canonical components (Sloe top bar, 5-slot tab bar + FAB, Today multi-ring hero,
+  log-a-meal sheet — see `warm-coaching-direction.md`) are not up for re-litigation.
+- Brand filter: warm, permissive, calm. Whoop is the canonical example: steal its
+  trend-graph mechanics, never its dark hyper-athletic mood.
+
+---
+
+## REMOVE LIMITATIONS — PROPOSE THE UPGRADE
+
+If the premium bar requires a capability the current stack doesn't have, propose installing it. Don't design around a tool's ceiling — name it and remove it.
+
+### When to propose a new dependency
+
+- **Rendering / animation** — `@shopify/react-native-skia` is the specific gap today. Rings are SVG-based (`react-native-svg`): gradient arcs require hacky `linearGradient` rotation tricks, arc animations run on the JS thread. Skia + Reanimated 4 (already installed) gives `SweepGradient` along arcs, `BlurMask` glow, and 60fps fill animations on the UI thread. Any ring/arc/chart proposal → recommend the install.
+- **Haptics** — `expo-haptics` covers the basics. For custom AHAP patterns (rising double-pulse on target hit, satisfying thud on ring close), a native Expo module is needed. Flag it when the moment calls for it.
+- **Font axes** — Fraunces has `SOFT`/`WONK` variable axes; Newsreader has optical size. If a layout calls for these, check whether `@expo-google-fonts` serves the variable font file (VF) or just static instances, and propose switching if the axis would matter.
+- **Icons / animation** — if a win moment calls for an animated icon (Lottie-based), or a lucide glyph doesn't exist, name it and propose the path.
+- **Anything else** — a different charting library, physics spring, gesture engine. If the current stack is blocking a premium interaction, say so.
+
+### The over-budget ring — specific known gap
+
+Current `destructive red` looks tacky against the warm cream background. The premium treatment is the **warm overflow arc**:
+- Main arc fills to 100% normally (success green / macro colour)
+- When over, a *second arc* starts from the same origin in an **amber → coral** `SweepGradient`, wrapping around to show the excess
+- The ring never turns red — it *overflows warmly* ("you've done a lot", not "you failed")
+- This requires Skia. It is not cleanly buildable in SVG. This is the highest-leverage visual upgrade on the app's hero element.
+
+### The haptics gap — specific known gap
+
+The app over-relies on `ImpactFeedbackStyle.Light` (~15 of ~70 calls) — barely perceptible, trains users the app has no sensation. Target weight distribution:
+- `selectionAsync()` — list selection, picker scroll
+- `Light` — hover/preview only
+- `Medium` — most tap confirmations (log meal, save recipe, toggle)
+- `Heavy` — destructive only (delete, reset)
+- `Success` notification — target hit, ring closed, weight logged, onboarding complete (use far more)
+- `Warning` notification — over-budget threshold crossed
+- **Sequenced patterns** — `Medium` → 80ms → `Success` for ring hitting 100%; expressible with expo-haptics + `setTimeout` chains, no native module needed.
+
+Every ring fill animation proposal must include the haptic that synchronises with it.
+
+### Guardrails for dependency proposals
+
+- Verify Expo SDK 53 / EAS compatibility before recommending. Check `expo.fyi/package-tags`.
+- Skia requires a rebuild (not OTA). Any Skia proposal must note: ships in next EAS build, not a JS-only update.
+- Never propose anything that breaks `npm run ci` or requires Android (iOS-only — see `project_ios_only_no_android`).
+- New dependencies serve the warm-coaching, calm, multi-ring aesthetic — not a new aesthetic.
+
+---
+
 ## YOUR LANE (read this so you don't duplicate other agents)
 
 | Agent | Scope | Question |

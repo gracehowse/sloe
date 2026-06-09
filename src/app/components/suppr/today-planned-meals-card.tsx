@@ -35,7 +35,7 @@ export function TodayPlannedMealsCard({
 }: TodayPlannedMealsCardProps) {
   return (
     <SupprCard
-      elevation="slab-flat"
+      elevation="card"
       padding="none"
       radius="lg"
       className="mb-6"

@@ -1,8 +1,15 @@
 /**
- * ProgressDashboard — resting-card flat slab (Figma 2026-06-04).
+ * ProgressDashboard — SupprCard default elevation (system contract).
  *
- * Progress resting cards route through <SupprCard> whose default is
- * `elevation="slab-flat"`: `.card-slab-flat`, no shadow, no hairline border.
+ * Progress cards route through bare <SupprCard> with no explicit elevation
+ * prop, so they render the SupprCard DEFAULT. That default stays FLAT
+ * (`elevation="slab-flat"` → `.card-slab-flat`, no shadow, no hairline) —
+ * it is the system contract, unchanged by the one-treatment rule
+ * (Grace 2026-06-09, `docs/decisions/2026-06-09-one-card-treatment-soft-
+ * elevation.md`): page-ground cards opt INTO soft per call site; the
+ * default itself is unchanged (also pinned by `supprPrimitives` +
+ * `cardElevationVariants`). The Progress tab was not part of the 2026-06-09
+ * web sweep, so these call sites keep the default.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

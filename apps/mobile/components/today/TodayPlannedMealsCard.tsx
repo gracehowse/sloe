@@ -90,11 +90,13 @@ export function TodayPlannedMealsCard({
       {/* Sloe TD3 "Planned" section header — Newsreader title above the card. */}
       <Text style={{ ...Type.title, color: MacroColors.calories, marginBottom: Spacing.sm }}>Planned</Text>
 
-      {/* Card chrome (fill, radius 20, soft lift on an outer wrapper, corner-clip
-          on the inner view, dark hairline) is the shared <SupprCard lift="flat"> shell. The
-          divided rows are the inner contents; padding="none" because each row
-          owns its own padding. */}
-      <SupprCard lift="flat" padding="none">
+      {/* Card chrome (fill, radius, soft lift on an outer wrapper, corner-clip
+          on the inner view, dark hairline) is the shared <SupprCard lift="soft">
+          shell — soft because the card sits on the Today scroll ground
+          (one-treatment, Grace 2026-06-09). The divided rows are the inner
+          contents; padding="none" because each row owns its own padding. */}
+      {/* Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+      <SupprCard lift="soft" padding="none">
         {plannedMeals.map((pm, i) => {
           const name = pm.recipe_title ?? pm.name ?? "Planned meal";
           return (

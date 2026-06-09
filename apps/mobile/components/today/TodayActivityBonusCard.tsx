@@ -270,9 +270,10 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   return (
     <>
     <View style={{ gap: Layout.todaySectionCardGap }}>
-    {/* Figma TD1 — Energy balance is its own flat slab; burn + 7-day are siblings. */}
+    {/* Figma TD1 — Energy balance + burn + 7-day are sibling cards on the Today
+        scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
     <SupprCard
-      lift="flat"
+      lift="soft"
       padding="lg"
       testID="today-energy-balance-card"
       innerStyle={{ gap: Spacing.md }}
@@ -552,7 +553,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
         >
           <SupprCard
-            lift="flat"
+            // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+            lift="soft"
             padding="lg"
             testID="today-burn-breakdown-card"
             innerStyle={{
@@ -624,7 +626,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       ) : null}
 
       {showWeekly ? (
-        <SupprCard lift="flat" padding="lg" testID="today-weekly-rolling-card">
+        // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+        <SupprCard lift="soft" padding="lg" testID="today-weekly-rolling-card">
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
             <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
             <Text style={{ ...Type.label, color: textTertiaryColor }}>

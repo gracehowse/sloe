@@ -1,9 +1,12 @@
 /**
- * ENG-823 / Figma flat slab (2026-06-04) — web Settings resting cards.
+ * Web Settings — card elevation (ENG-823, re-pinned to one-treatment).
  *
- * Settings routes resting surfaces through <SupprCard> (default
- * `elevation="slab-flat"`) and uses `.card-slab-flat` on inner divide-y
- * groups. The `design_system_elevation` flag gate is retired.
+ * Re-pinned to the "one card treatment" rule (Grace 2026-06-09,
+ * `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`).
+ * Settings routes its section surfaces through <SupprCard>; the inner
+ * Tracking-extras list-card is NESTED inside the Preferences section card,
+ * so it stays FLAT (`.card-slab-flat`) — a card nested in a card must not
+ * double-shadow. The `design_system_elevation` flag gate is retired.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -27,7 +30,9 @@ describe("web Settings flat slab (ENG-823)", () => {
     expect(settings).not.toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
   });
 
-  it("uses card-slab-flat on inner settings groups (no always-on card-elevated)", () => {
+  it("keeps the NESTED inner list-card flat (card-slab-flat, no double-shadow)", () => {
+    // One-treatment (Grace 2026-06-09): the Tracking-extras group is nested
+    // inside the Preferences section card, so it stays flat.
     expect(settings).toContain("card-slab-flat");
     expect(settings).not.toMatch(/className="[^"]*card-elevated"/);
     expect(settings).not.toMatch(/className="[^"]*card-elevated-hero[^"]*"/);

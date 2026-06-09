@@ -343,11 +343,12 @@ export function TodayMealsSection({
         </div>
       ) : null}
       {showQuickAdd && (
-        // Design Direction 2026 (ENG-795): canonical SupprCard — soft elevation
-        // under `design_system_elevation`, flat byte-for-byte when OFF.
+        // Design Direction 2026 (ENG-795): canonical SupprCard.
         // `padding="none"` keeps the child-padded `overflow-hidden` layout.
+        // One-treatment elevation (Grace 2026-06-09): the quick-add card sits
+        // on the page ground → soft lift (`elevation="card"`). Was slab-flat.
         <SupprCard
-          elevation="slab-flat"
+          elevation="card"
           radius="lg"
           padding="none"
           className="mb-3 overflow-hidden"
@@ -527,7 +528,10 @@ export function TodayMealsSection({
           return (
             <SupprCard
               key={sectionName}
-              elevation="slab-flat"
+              // One-treatment elevation (Grace 2026-06-09): each meal-slot card
+              // sits on the page ground → soft lift (`elevation="card"`). Was
+              // slab-flat.
+              elevation="card"
               radius="lg"
               padding="none"
               data-testid={`today-slot-${sectionName}`}
@@ -955,7 +959,9 @@ export function TodayMealsSection({
       )}
 
       {!mealsFigmaLayout && mealsForSelectedDate.length === 0 ? (
-        <SupprCard elevation="slab-flat" radius="lg" padding="none" className="overflow-hidden">
+        // One-treatment elevation (Grace 2026-06-09): empty-state card sits on
+        // the page ground → soft lift (`elevation="card"`). Was slab-flat.
+        <SupprCard elevation="card" radius="lg" padding="none" className="overflow-hidden">
           <div
             data-testid="today-meals-empty-state"
             className="px-4 py-10 text-center"
@@ -1052,6 +1058,10 @@ export function TodayMealsSection({
                     }
                     setUsualPicker(null);
                   }}
+                  // One-treatment elevation (Grace 2026-06-09): this row lives
+                  // INSIDE the usual-picker dialog sheet — a card nested in a
+                  // surface stays FLAT (`card-slab-flat`) so it never
+                  // double-shadows.
                   className="w-full text-left rounded-card bg-card card-slab-flat px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
                   aria-label={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
                 >

@@ -189,7 +189,8 @@ export function WeeklyInsightCard({
       // Today instead, change `tone="magenta"` → `tone="neutral"` here AND in
       // the legacy branch below (one founder decision; see the card report).
       <SupprCard
-        lift="flat"
+        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+        lift="soft"
         tone="magenta"
         padding="lg"
         testID="today-weekly-insight-mobile"
@@ -221,7 +222,8 @@ export function WeeklyInsightCard({
     // THIS WEEK card); flat lift keeps it a borderless slab. Flip to
     // `tone="neutral"` here + in the figma branch above for cream-neutral.
     <SupprCard
-      lift="flat"
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
       tone="magenta"
       padding="lg"
       testID="today-weekly-insight-mobile"

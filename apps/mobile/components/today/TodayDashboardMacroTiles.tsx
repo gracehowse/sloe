@@ -89,7 +89,7 @@ export function TodayDashboardMacroTiles({
   waterGoalMl,
   mealsToday,
   onPressMacro,
-  // Tile fill is owned by the shared <SupprCard lift="flat" size="tile"> shell now; the
+  // Tile fill is owned by the shared <SupprCard lift="soft" size="tile"> shell now; the
   // prop stays in the API for call-site stability but no longer drives chrome.
   cardColor: _cardColor,
   cardBorderColor,

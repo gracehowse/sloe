@@ -113,7 +113,8 @@ function SloeCard({
   const colors = useThemeColors();
   return (
     <SupprCard
-      lift="flat"
+      // Section card sits on the page ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       padding="none"

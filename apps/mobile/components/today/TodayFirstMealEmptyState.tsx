@@ -53,7 +53,8 @@ export function TodayFirstMealEmptyState({
   const accent = useAccent();
   return (
     <SupprCard
-      lift="flat"
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
       padding="lg"
       accessibilityLabel="Ready to log your first meal?"
       style={{ marginBottom: Spacing.md }}

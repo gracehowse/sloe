@@ -121,7 +121,7 @@ export function TodayMealsFigmaLayout({
           return (
             <SupprCard
               key={slotName}
-              elevation="slab-flat"
+              elevation="card"
               radius="lg"
               padding="none"
               className="overflow-hidden"

@@ -52,7 +52,8 @@ export function TodayActivityCard({
 }: TodayActivityCardProps) {
   void styles;
   return (
-    <SupprCard lift="flat" padding="lg" testID="today-activity-card" innerStyle={{ gap: Spacing.md }}>
+    // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+    <SupprCard lift="soft" padding="lg" testID="today-activity-card" innerStyle={{ gap: Spacing.md }}>
       {/* Sloe TD1 header — Newsreader title + right-aligned day label. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

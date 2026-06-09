@@ -97,8 +97,10 @@ export function TodayDesktopRightRail({
     >
       {/* Streak card — the warm anchor of the rail. Card-elevated-hero
           carries a softer drop so it reads as the primary surface of
-          the rail (over the two cards below it). */}
-      <div className="rounded-card bg-card card-slab-flat p-5">
+          the rail (over the two cards below it).
+          One-treatment elevation (Grace 2026-06-09): page-ground card →
+          soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-card bg-card card-slab p-5">
         <div className="flex items-center gap-3">
           <div
             className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
@@ -128,8 +130,10 @@ export function TodayDesktopRightRail({
         </div>
       </div>
 
-      {/* Week at a glance card */}
-      <div className="rounded-card bg-card card-slab-flat p-5">
+      {/* Week at a glance card.
+          One-treatment elevation (Grace 2026-06-09): page-ground card →
+          soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-card bg-card card-slab p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             This week
@@ -187,8 +191,10 @@ export function TodayDesktopRightRail({
         </p>
       </div>
 
-      {/* Last 7 days detail */}
-      <div className="rounded-card bg-card card-slab-flat p-4">
+      {/* Last 7 days detail.
+          One-treatment elevation (Grace 2026-06-09): page-ground card →
+          soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-card bg-card card-slab p-4">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5 px-1">
           Daily breakdown
         </h2>

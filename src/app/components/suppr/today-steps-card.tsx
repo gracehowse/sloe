@@ -29,7 +29,9 @@ export function TodayStepsCard({
 }: TodayStepsCardProps) {
   return (
     <div
-      className="rounded-card bg-card card-slab-flat p-5"
+      // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+      // lift (`card-slab`). Was flat slab.
+      className="rounded-card bg-card card-slab p-5"
       data-testid="today-activity-card"
     >
       <div className="mb-4 flex items-center justify-between gap-2">

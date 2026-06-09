@@ -253,7 +253,8 @@ export default function BurnDetailScreen() {
           </View>
         ) : (
           <>
-            <SupprCard lift="flat" padding="none" testID="burn-detail-hero">
+            {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+            <SupprCard lift="soft" padding="none" testID="burn-detail-hero">
               <View style={{ alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: 28, paddingBottom: 24 }}>
                 <View
                   style={{
@@ -290,7 +291,8 @@ export default function BurnDetailScreen() {
               <Text style={{ ...Type.label, color: colors.textTertiary, marginBottom: 8, paddingHorizontal: 4 }}>
                 Breakdown
               </Text>
-              <SupprCard lift="flat" padding="none" testID="burn-detail-breakdown">
+              {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+              <SupprCard lift="soft" padding="none" testID="burn-detail-breakdown">
                 <BurnStatRow
                   icon={<Flame size={18} color={Accent.activity} strokeWidth={2} />}
                   iconBg="rgba(214,162,74,0.14)"
@@ -369,7 +371,8 @@ export default function BurnDetailScreen() {
                 <Text style={{ ...Type.label, color: colors.textTertiary, marginBottom: 8, paddingHorizontal: 4 }}>
                   Activity bonus
                 </Text>
-                <SupprCard lift="flat" padding="lg" testID="burn-detail-bonus-card" innerStyle={{ gap: 0 }}>
+                {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+                <SupprCard lift="soft" padding="lg" testID="burn-detail-bonus-card" innerStyle={{ gap: 0 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
                     <Text style={{ fontSize: 14, color: colors.textSecondary }}>
                       {isPast ? "Final burn" : "Projected burn"}
@@ -424,7 +427,8 @@ export default function BurnDetailScreen() {
 
             {totals && totals.bonus > 0 && isToday ? (
               <SupprCard
-                lift="flat"
+                // Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+                lift="soft"
                 padding="md"
                 innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12 }}
               >

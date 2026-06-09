@@ -80,9 +80,12 @@ describe("useCardElevation — FLAT is the default", () => {
     themeState.resolved = "light"; // restore for later test ordering
   });
 
-  it("useTodayCardElevation() is the named flat wrapper Today uses", () => {
-    // Today (`(tabs)/index`, TodayActivityBonusCard) routes through this wrapper
-    // so the `654:2` slab is requested by name, not by a bare default.
+  it("useTodayCardElevation() is the named flat wrapper (the FLAT system contract)", () => {
+    // The named flat wrapper is the SYSTEM CONTRACT for the flat variant — it
+    // stays available for nested/tile surfaces that must not double-shadow.
+    // (Page-ground Today cards now opt INTO soft under the one-treatment rule,
+    // Grace 2026-06-09, so they no longer call this wrapper — but the wrapper +
+    // its flat guarantee are unchanged.)
     themeState.resolved = "light";
     const { result } = renderHook(() => useTodayCardElevation());
     expect(result.current.shadowStyle).toBeUndefined();

@@ -110,7 +110,9 @@ export function TodayWeekSidebar({
   return (
     <aside
       className={cn(
-        "rounded-card bg-card card-slab-flat p-3",
+        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+        // lift (`card-slab`). Was flat slab.
+        "rounded-card bg-card card-slab p-3",
         className,
       )}
       aria-label="Last 7 days"

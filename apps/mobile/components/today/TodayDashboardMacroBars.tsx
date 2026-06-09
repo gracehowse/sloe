@@ -135,7 +135,8 @@ export function TodayDashboardMacroBars({
 
   return (
     <SupprCard
-      lift="flat"
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
       padding="md"
       testID="today-macro-bars"
       style={{ marginBottom: Spacing.sm }}

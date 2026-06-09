@@ -300,7 +300,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-card bg-card card-slab-flat p-4 flex flex-col justify-between min-h-24"
+            className="rounded-card bg-card card-slab p-4 flex flex-col justify-between min-h-24"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-foreground-secondary">

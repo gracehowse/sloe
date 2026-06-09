@@ -262,7 +262,9 @@ export function HydrationStimulantsCard({
       aria-label="Hydration and stimulants"
     >
       <section
-        className="rounded-card bg-card card-slab-flat p-4"
+        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+        // lift (`card-slab`). Was flat slab.
+        className="rounded-card bg-card card-slab p-4"
         data-testid="today-hydration-card"
       >
         <h3 className="mb-3 font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">
@@ -306,7 +308,9 @@ export function HydrationStimulantsCard({
 
       {showCaffeine || showAlcohol ? (
         <section
-          className="rounded-card bg-card card-slab-flat p-4"
+          // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+          // lift (`card-slab`). Was flat slab.
+          className="rounded-card bg-card card-slab p-4"
           data-testid="today-stimulants-card"
         >
           <div className="mb-3 flex items-center justify-between gap-2">

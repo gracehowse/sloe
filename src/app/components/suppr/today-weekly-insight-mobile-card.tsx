@@ -79,7 +79,7 @@ export function TodayWeeklyInsightMobileCard({
       // (one founder decision; see the card report). `slab-flat` already drops
       // the border, so the lilac border in the style is inert here.
       <SupprCard
-        elevation="slab-flat"
+        elevation="card"
         radius="lg"
         padding="xl"
         className="md:hidden mb-4"
@@ -108,7 +108,7 @@ export function TodayWeeklyInsightMobileCard({
     // Cross-screen insight lilac (matches Progress THIS WEEK); flat slab keeps
     // it borderless. Drop the `style` lilac for cream-neutral (see card report).
     <SupprCard
-      elevation="slab-flat"
+      elevation="card"
       radius="lg"
       padding="lg"
       className="md:hidden mb-3"

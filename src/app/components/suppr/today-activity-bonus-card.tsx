@@ -201,7 +201,9 @@ export function TodayActivityBonusCard({
   return (
     <div className="flex flex-col gap-5">
       <div
-        className="rounded-card bg-card card-slab-flat p-5"
+        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+        // lift (`card-slab`). Was flat slab.
+        className="rounded-card bg-card card-slab p-5"
         data-testid="today-energy-balance-card"
       >
         {showDiscover ? (
@@ -405,7 +407,9 @@ export function TodayActivityBonusCard({
 
       {showWeekly ? (
         <div
-          className="rounded-card bg-card card-slab-flat p-5"
+          // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+          // lift (`card-slab`). Was flat slab.
+          className="rounded-card bg-card card-slab p-5"
           data-testid="today-weekly-rolling-card"
         >
           <div className="mb-3 flex items-center gap-1.5">

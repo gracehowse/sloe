@@ -22,7 +22,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useTodayCardElevation } from "@/hooks/useCardElevation";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -442,7 +442,10 @@ export default function TrackerScreen() {
   // tokens. Threaded into the `styles` useMemo (deps include `accent`) so the
   // StyleSheet members that paint the accent flip with the flag.
   const accent = useAccent();
-  const cardElevation = useTodayCardElevation();
+  // `styles.card` is the Today top-level resting-card style — it sits on the
+  // page (scroll) ground, so it takes the soft lift (one-treatment, Grace
+  // 2026-06-09). Nested/inset surfaces draw their own hairline, never this.
+  const cardElevation = useCardElevation({ variant: "soft" });
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.

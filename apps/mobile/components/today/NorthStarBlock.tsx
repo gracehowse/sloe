@@ -149,7 +149,9 @@ export function NorthStarBlock({
 
   if (kind === "new-user") {
     return (
-      <SupprCard lift="flat"
+      <SupprCard
+        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+        lift="soft"
         testID={testID ?? "north-star-new-user"}
         tone="primary"
         padding="md"
@@ -198,7 +200,9 @@ export function NorthStarBlock({
 
   if (kind === "no-fit") {
     return (
-      <SupprCard lift="flat"
+      <SupprCard
+        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+        lift="soft"
         testID={testID ?? "north-star-no-fit"}
         tone="neutral"
         padding="md"
@@ -470,7 +474,8 @@ function NorthStarDefault({
       testID={testID ?? "north-star-default"}
       style={fadeStyle}
     >
-      <SupprCard lift="flat" tone="primary" padding="md" innerStyle={styles.defaultCard}>
+      {/* Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+      <SupprCard lift="soft" tone="primary" padding="md" innerStyle={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"
