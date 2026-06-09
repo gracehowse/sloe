@@ -7,14 +7,14 @@
  * as inconsistent across web + mobile): the Figma narrative branch used to be
  * a hand-rolled `<div class="rounded-xl border border-border bg-[…frost-mist…]">`
  * — a bordered card with a COOLER ad-hoc lilac that didn't match the
- * cross-screen insight wash. Both branches are now flat `SupprCard`
- * (`elevation="slab-flat"`, borderless) carrying the CANONICAL insight lilac
+ * cross-screen insight wash. Both branches are now soft `SupprCard` slabs
+ * (`elevation="card"`, one-treatment Grace 2026-06-09) carrying the CANONICAL insight lilac
  * (`PROGRESS_INSIGHT_LILAC_STYLE` = `var(--slot-dinner-soft)`, the exact wash
  * the Progress THIS WEEK card uses) — mirroring mobile `tone="magenta"`.
  *
  * Pinned here (both flag branches):
- *   1. The card is a flat `SupprCard` slab — `.card-slab-flat` +
- *      `data-flat-slab` — never the old bordered `rounded-xl border` div.
+ *   1. The card is a soft `SupprCard` slab — `.card-slab` +
+ *      `data-soft-elevation` — never the old bordered `rounded-xl border` div.
  *   2. It carries the canonical insight-lilac background var (matches
  *      Progress), not the cooler `--frost-mist` ad-hoc fill.
  *   3. Every wired figure still renders (the re-chrome is presentation-only).
@@ -72,13 +72,16 @@ describe.each([
     impl: (flag: string) => flag !== "today_meals_figma_654",
   },
 ])("TodayWeeklyInsightMobileCard (web) — $label", ({ impl }) => {
-  it("renders a flat SupprCard slab, never the old bordered figma div", () => {
+  it("renders a soft SupprCard slab, never the old bordered figma div", () => {
     flagMock.mockImplementation(impl);
     const { container } = render(<TodayWeeklyInsightMobileCard {...base} />);
     const card = insightCard(container);
-    // Flat slab — the SupprCard `slab-flat` chrome (borderless).
-    expect(card.className).toContain("card-slab-flat");
-    expect(card).toHaveAttribute("data-flat-slab", "true");
+    // Soft lift — one-treatment (Grace 2026-06-09): page-ground Today cards
+    // carry the `.card-slab` soft elevation, in parity with the flipped
+    // mobile twin (WeeklyInsightCard lift="soft").
+    expect(card.className).toContain("card-slab");
+    expect(card.className).not.toContain("card-slab-flat");
+    expect(card).toHaveAttribute("data-soft-elevation", "true");
     // The deleted hand-rolled bordered figma div must not come back.
     expect(card.className).not.toMatch(/\brounded-xl\b/);
     expect(card.className).not.toMatch(/\bborder-border\b/);
