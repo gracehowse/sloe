@@ -21,19 +21,21 @@
  */
 import { Image, Pressable, Text, View } from "react-native";
 
-import { Accent, FontFamily } from "@/constants/theme";
+import { FontFamily } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   deriveIngredientVerificationTier,
-  type IngredientVerificationTier,
 } from "@suppr/shared/recipe-ingredients/ingredientVerificationStatus";
 import {
   getIngredientTilePlaceholder,
   resolveIngredientTileImage,
 } from "@suppr/shared/recipe/ingredientImageTile";
 import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName";
+// Phase 4 / B3.X — SourceDot per ingredient row (D-2026-04-27-16, §1.6).
+import { SourceDot } from "@/components/ui/SourceDot";
+import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 
 /** Number of cells shown before the grid collapses behind "View all". */
 const GRID_PREVIEW_COUNT = 8;
@@ -51,18 +53,6 @@ export type RecipeGridIngredient = {
   is_verified?: boolean | null;
 };
 
-function tierColor(tier: IngredientVerificationTier, neutral: string): string {
-  switch (tier) {
-    case "verified":
-      return Accent.success;
-    case "partial":
-      return Accent.warning;
-    case "estimated":
-      return Accent.destructive;
-    default:
-      return neutral;
-  }
-}
 
 export function RecipeIngredientGrid({
   recipeId,
@@ -122,7 +112,8 @@ export function RecipeIngredientGrid({
             confidence: conf,
             source: ing.source ?? null,
           });
-          const dot = tierColor(tier, colors.textTertiary);
+          // Phase 4 / B3.X — map to canonical SourceDot key (D-2026-04-27-16).
+          const dotSource = mapMealSourceToDot(ing.source ?? null);
           const scaledAmount =
             ing.amount != null ? Math.round(ing.amount * viewMultiplier * 100) / 100 : null;
           // Sloe image system — ready Template-B photo if present, else a
@@ -185,20 +176,12 @@ export function RecipeIngredientGrid({
                       </Text>
                     </View>
                   )}
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 6,
-                      width: 9,
-                      height: 9,
-                      borderRadius: 5,
-                      backgroundColor: dot,
-                      borderWidth: 1.5,
-                      borderColor: "#FFFFFF",
-                    }}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
+                  {/* Phase 4 / B3.X — SourceDot per ingredient row
+                      (D-2026-04-27-16). Sized 6pt per spec §1.6. */}
+                  <SourceDot
+                    source={dotSource}
+                    size={6}
+                    style={{ position: "absolute", top: 6, right: 6 }}
                   />
                 </View>
                 <Text

@@ -20,7 +20,7 @@ import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
 // Glyph map used: camera-outline → Camera, add-circle → PlusCircle,
 // alert-circle → AlertCircle.
-import { AlertCircle, Camera, PlusCircle, ScanLine, X } from "lucide-react-native";
+import { AlertCircle, Camera, Check, PlusCircle, ScanLine, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
@@ -896,23 +896,33 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            {/* Gap #9 (2026-06-09): SearchResultConfidenceChip promoted to the
-                always-on path so the trust signal is visible regardless of the
-                redesign_search_results flag state. Source line meets 12px
-                textSecondary contrast bar. */}
-            <View style={{ alignItems: "center", gap: Spacing.xs }}>
-              <SearchResultConfidenceChip
-                tier={barcodeConfidenceTier(product)}
-                testID="barcode-confidence-chip"
-              />
+            {searchRedesign ? (
+              // Redesign: legible Verified/Estimated chip (search-results
+              // language) + the source line beneath it for provenance.
+              <View style={{ alignItems: "center", gap: Spacing.xs }}>
+                <SearchResultConfidenceChip
+                  tier={barcodeConfidenceTier(product)}
+                  testID="barcode-confidence-chip"
+                />
+                <Text style={styles.source}>
+                  {product.verified
+                    ? "Verified entry"
+                    : product.source === "user"
+                      ? "Community submitted"
+                      : "via Open Food Facts"}
+                </Text>
+              </View>
+            ) : product.verified ? (
+              // Old path (binary green tick): preserved for flag-off.
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
+                <Text style={styles.source}>Verified</Text>
+              </View>
+            ) : (
               <Text style={styles.source}>
-                {product.verified
-                  ? "Verified entry"
-                  : product.source === "user"
-                    ? "Community submitted"
-                    : "via Open Food Facts"}
+                {product.source === "user" ? "Community submitted" : "via Open Food Facts"}
               </Text>
-            </View>
+            )}
             <View style={styles.btnRow}>
               <Pressable
                 style={[styles.logBtn, searchRedesign && { backgroundColor: accent.primary }]}

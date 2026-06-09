@@ -316,19 +316,21 @@ export default function ProfileScreen() {
       gap: Spacing.md,
       marginTop: Spacing.sm,
     },
-    // Save Targets — FILLED plum (gap #9). This is the commit moment on a write
-    // surface; two equal-weight ghost buttons made Save read as secondary. Per
-    // the documented conversion-CTA exception, the commit action takes the
-    // solid `Accent.primarySolid` fill (white label ≈12:1 AA), so the hierarchy
-    // between dismiss (hairline Cancel) and commit (filled Save) is unambiguous.
+    // Save Targets — aubergine OUTLINE (Sloe treatment, 2026-06-08). Every
+    // everyday settings-surface commit CTA uses the 1.5px `Accent.primarySolid`
+    // border + `Accent.primarySolid` label on a transparent fill, matching the
+    // settingsLaneAubergineOutline spec. FABs and conversion CTAs keep the
+    // filled slab; daily-use writes use the calm outline.
     saveBtn: {
       flex: 1,
-      backgroundColor: Accent.primarySolid,
+      backgroundColor: "transparent",
       borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderColor: Accent.primarySolid,
       paddingVertical: 16,
       alignItems: "center",
     },
-    saveBtnText: { color: Accent.primaryForeground, fontWeight: "700", fontSize: 16 },
+    saveBtnText: { color: Accent.primarySolid, fontWeight: "700", fontSize: 16 },
     cancelBtn: {
       flex: 1,
       backgroundColor: "transparent",

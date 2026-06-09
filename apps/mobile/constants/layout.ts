@@ -26,13 +26,13 @@ export const Layout = {
   /** Figma TD1/TD2 — `mb-5` between sibling cards inside a section. */
   todaySectionCardGap: Spacing.lg,
   todayScreenPaddingX: Spacing.lg,
-  /** Between-tile gap in the 2×2 macro grid. `Spacing.sm` (8) — on the 4pt
-   *  scale (audit gaps 3 + 7; was a bare 12, a v49-density carryover off the
-   *  xs4·sm8·md16·lg20·xl24 scale). `Spacing.md` (16) would push two 48% tiles
-   *  past 100% of the content width and wrap the grid, so the tighter on-scale
-   *  token is the correct pick — verified the 48%/48% cells still fit (≈336px
-   *  + 8px < ≈350px content width on a 390pt device). */
-  macroTileGridGap: Spacing.sm,
+  /** Between-tile gap in the 2×2 macro grid. 12px — Sloe re-skin matches
+   *  Claude Design prototype density (`gap: 10–14`); picked as the midpoint
+   *  12px (ENG-871). Sits between Spacing.sm (8) and Spacing.md (16) — not
+   *  on the 4pt tokenised scale, but intentionally off-scale per the prototype
+   *  spec (same rationale as `planDayGap: 12`). Verified 48%/48% cells still
+   *  fit: ≈336px + 12px < ≈350px content width on a 390pt device. */
+  macroTileGridGap: 12,
   /** Plan tab — same density bar as Today; day blocks are section + flat meal card.
    *  `Spacing.sm` (8) — on the 4pt scale (audit gap 7; was a bare 10, fully off
    *  the scale). Keeps Plan's scroll rhythm aligned with Today's `todayScrollGap`. */
