@@ -1196,7 +1196,16 @@ export default function ProgressScreen() {
           adherence). The "up N%" trend chip stays hidden until the weekly
           aggregate stream lands (documented data gap) — never invented. */}
       <ProgressAverageAdherence
-        adherencePct={caloriesRange.adherencePct}
+        adherencePct={
+          // Don't claim an "average adherence" until there's a meaningful
+          // sample in the range. A single stray logged day produced a
+          // confident headline (e.g. 109%) next to the "building your story /
+          // 0 days logged" gate — incoherent. Gate on the SAME 3-day
+          // sufficiency threshold, applied to the range's logged-day count
+          // (the figure is range-scoped). Below that the card hides and the
+          // story-gate carries the building state. (null → component returns null)
+          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+        }
         onTargetDays={weekStats.days.map(
           (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
         )}

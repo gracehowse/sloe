@@ -25,6 +25,27 @@ describe("Progress empty-state — zero-data fail-closed contract", () => {
     expect(hasEnoughDataForStory(0)).toBe(false);
   });
 
+  it("the AVERAGE ADHERENCE card is gated on a meaningful range sample (web + mobile)", () => {
+    // A single stray logged day used to render a confident "AVERAGE ADHERENCE
+    // 109%" headline next to the "building your story / 0 days logged" gate.
+    // Both surfaces must now gate the adherence card on
+    // hasEnoughDataForStory(caloriesRange.daysLogged) so the average only shows
+    // with a real sample. (The component already returns null on a null pct.)
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const web = readFileSync(
+      `${__dirname}/../../src/app/components/ProgressDashboard.tsx`,
+      "utf8",
+    );
+    const mobile = readFileSync(
+      `${__dirname}/../../apps/mobile/app/(tabs)/progress.tsx`,
+      "utf8",
+    );
+    const gate =
+      /hasEnoughDataForStory\(caloriesRange\.daysLogged\)\s*\?\s*caloriesRange\.adherencePct\s*:\s*null/;
+    expect(web).toMatch(gate);
+    expect(mobile).toMatch(gate);
+  });
+
   it("computeAdaptiveTDEE returns null on an empty input", () => {
     expect(
       computeAdaptiveTDEE({

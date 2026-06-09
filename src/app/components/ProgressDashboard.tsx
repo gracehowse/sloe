@@ -1237,7 +1237,14 @@ function ProgressDashboardContent() {
       )}
       <ProgressAverageAdherence
         className="mb-4"
-        adherencePct={caloriesRange.adherencePct}
+        adherencePct={
+          // Parity with mobile (progress.tsx): don't claim an "average
+          // adherence" until the range holds a meaningful sample (≥3 logged
+          // days). A single stray day produced a confident headline next to
+          // the "building your story" gate — incoherent. Below threshold the
+          // card hides. (null → component returns null)
+          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+        }
         onTargetDays={weekStatsBundle.days.map(
           (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
         )}
