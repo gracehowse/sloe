@@ -10,7 +10,7 @@ import {
   Colors,
   type WinGradient,
 } from "@/constants/theme";
-import { getPostHogClient, isFeatureEnabled } from "@/lib/analytics";
+import { getPostHogClient, isFeatureEnabled, onForcedFlagChange } from "@/lib/analytics";
 
 export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
@@ -68,6 +68,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
     sync();
     let unsub: (() => void) | undefined;
+    let unsubForced: (() => void) | undefined;
     try {
       // `onFeatureFlags` is a real runtime method on the posthog-react-native
       // client (it's what the SDK's own `useFeatureFlags` hook subscribes to)
@@ -80,6 +81,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* PostHog cold / consent declined — mount read stands */
     }
+    // ENG-997: also re-sync when the dev panel flips a forced flag, so
+    // toggling `brand_frost_secondary` in DevFlagOverrides updates the
+    // theme live without requiring "Reload app". No-op in release builds.
+    unsubForced = onForcedFlagChange(() => sync());
     return () => {
       cancelled = true;
       try {
@@ -87,6 +92,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* noop */
       }
+      unsubForced?.();
     };
   }, []);
 

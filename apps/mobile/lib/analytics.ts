@@ -79,6 +79,26 @@ export async function persistSessionReplaySampleRate(
 const FORCED_FLAGS_KEY = "__SUPPR_FORCE_FLAGS__";
 let forcedFlags: Record<string, boolean> = {};
 
+/** Listeners notified whenever a forced flag changes (ENG-997 fix).
+ *  ThemeProvider subscribes so it re-reads the frost flag immediately
+ *  after the dev panel flips it — no more "Reload app" dance. */
+type ForcedFlagListener = () => void;
+const forcedFlagListeners = new Set<ForcedFlagListener>();
+
+/** Subscribe to forced-flag changes. Returns an unsubscribe function.
+ *  Dev-only — no-ops in release builds. */
+export function onForcedFlagChange(cb: ForcedFlagListener): () => void {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return () => {};
+  forcedFlagListeners.add(cb);
+  return () => { forcedFlagListeners.delete(cb); };
+}
+
+function notifyForcedFlagListeners() {
+  for (const cb of forcedFlagListeners) {
+    try { cb(); } catch { /* listener shouldn't throw, but guard anyway */ }
+  }
+}
+
 /** Prime the forced-flag map from AsyncStorage. Awaited by the mobile
  *  `AnalyticsProvider` at bootstrap, BEFORE the first flag read, so a
  *  flag forced in a previous session is honoured on first paint. No-op
@@ -119,6 +139,7 @@ export async function setForcedFlag(
   } catch {
     /* persistence best-effort — in-memory map is already updated */
   }
+  notifyForcedFlagListeners();
 }
 
 /** Dev-only: clear every forced flag. */
@@ -130,6 +151,7 @@ export async function clearForcedFlags(): Promise<void> {
   } catch {
     /* best-effort */
   }
+  notifyForcedFlagListeners();
 }
 
 /** Test-only: reset the forced-flag map without a module reset. */
