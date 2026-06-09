@@ -2,15 +2,23 @@
 
 This is one product across web and mobile.
 
-## Decision framework — before answering
+## Decision framework
 
-Before answering any non-trivial question or implementing a change:
+Match the rigour to the stakes — a light touch on the obvious, full weight on
+anything consequential or hard to reverse. The goal is a well-reasoned, decisive
+answer, not a fixed ritual.
 
-1. List the top 3 ways this could fail in production or real-world usage.
-2. Give 3 alternative approaches with trade-offs.
-3. Rate your confidence from 1-10 and explain what you are uncertain about.
+For anything non-trivial, before you land:
 
-Then provide your recommended approach.
+- **Pressure-test it.** How would this actually fail in production or real use?
+  Name the failure modes that are genuinely real — not a quota of three.
+- **Weigh the alternatives worth weighing**, and say why the others lose. No
+  strawmen; and never float a quick or temporary fix as a live option — propose
+  the correct one and state its cost.
+- **Be honest about what's uncertain.** Add a confidence read (1–10) when it
+  changes how much to trust the answer; skip it when it would just be noise.
+
+Then commit to one recommendation — don't hand back a menu.
 
 ## Non-negotiable rules
 - Web and mobile must stay in sync at all times
