@@ -136,8 +136,8 @@ process.env.RNTL_SKIP_AUTO_DETECT_FAKE_TIMERS = "1";
 // health-sync.tsx) throws "__DEV__ is not defined" at render. Pin it to `false`
 // so tests exercise the PRODUCTION / user-facing branch (matches the
 // healthSyncPremiumBarVisual assertion that dev-only instructions are hidden).
-if (typeof (globalThis as { __DEV__?: boolean }).__DEV__ === "undefined") {
-  (globalThis as { __DEV__: boolean }).__DEV__ = false;
+if (typeof (globalThis as unknown as { __DEV__?: boolean }).__DEV__ === "undefined") {
+  (globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
 }
 
 // Silences React 19 / RTR warnings about missing act env.
