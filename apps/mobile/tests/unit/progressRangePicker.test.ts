@@ -150,32 +150,37 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).toMatch(/\[0, 1, 2, 3\]\.map/);
   });
 
-  it("mobile range picker is the Sloe plum-fill pill rail (web parity, Figma 492:2)", () => {
-    // 2026-06-07 DS-tightening: the mobile picker moved from the old inset
-    // segmented control (muted `colors.backgroundSecondary` container + 10px
-    // radius + `t.elevated` active chip) to the Sloe Figma 492:2 pill rail —
-    // active range = solid plum (`t.plum`) with white text; the rest are
-    // bordered cream pills. This closes the web↔mobile parity gap (web already
-    // used plum-fill pills). The old segmented-control container is gone.
+  it("mobile range picker is the Sloe aubergine soft-tint pill rail (web parity)", () => {
+    // 2026-06-08 Sloe treatment system (docs/prototypes/sloe-component-
+    // treatments.html §7): the selected range pill moved off the solid plum
+    // fill onto the aubergine SOFT-TINT — `accent.primarySoft` fill +
+    // `accent.primarySolid` border/label — rationing the accent (the solid
+    // fill is reserved for the FAB + conversion CTAs). The old inset
+    // segmented-control container stays gone.
     expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: 6 \}\}/);
     expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
-    // Active pill = plum fill + white label; inactive = bordered cream pill.
-    expect(mobileSrc).toMatch(/backgroundColor: active \? t\.plum : t\.elevated/);
-    expect(mobileSrc).toMatch(/borderWidth: active \? 0 : 1/);
-    expect(mobileSrc).toMatch(/color: active \? "#FFFFFF" : t\.sub/);
-    // `t.plum` is the nav-brand plum, mirroring web `bg-foreground-brand`.
-    expect(mobileSrc).toMatch(/plum: colors\.navPrimary/);
+    // Active pill = soft-tint fill + primarySolid border/label; inactive =
+    // bordered cream pill. `t.accentSoft` / `t.accentSolid` thread the tokens.
+    expect(mobileSrc).toMatch(/backgroundColor: active \? t\.accentSoft : t\.elevated/);
+    expect(mobileSrc).toMatch(/borderColor: active \? t\.accentSolid : t\.border/);
+    expect(mobileSrc).toMatch(/color: active \? t\.accentSolid : t\.sub/);
+    // The treatment tokens resolve from the aubergine accent.
+    expect(mobileSrc).toMatch(/accentSolid: accent\.primarySolid/);
+    expect(mobileSrc).toMatch(/accentSoft: accent\.primarySoft/);
+    // The solid-plum range-pill fill is gone.
+    expect(mobileSrc).not.toMatch(/backgroundColor: active \? t\.plum : t\.elevated/);
   });
 
-  it("web range picker uses plum-fill active pills (Sloe Figma 492:2 — now at mobile parity)", () => {
-    // Sloe Figma 492:2: the web picker uses plum-fill active pills
-    // (`bg-foreground-brand text-white`) with bordered inactive pills. As of
-    // the 2026-06-07 DS-tightening the MOBILE picker matches this exactly
-    // (asserted above) — the ENG-985 web↔mobile picker parity gap is closed.
+  it("web range picker uses aubergine soft-tint active pills (mobile parity)", () => {
+    // 2026-06-08 Sloe treatment system §7: the web picker matches mobile —
+    // active range = aubergine soft-tint (`bg-primary/10`) + primarySolid
+    // border/label, inactive = bordered cream pill. The solid-plum
+    // `bg-foreground-brand` active fill is gone (web↔mobile parity preserved).
     expect(webSrc).toMatch(/data-testid="progress-range-picker"/);
-    expect(webSrc).toContain("bg-foreground-brand text-white");
-    expect(webSrc).toMatch(/bg-card border border-border text-muted-foreground/);
-    // Not the old primary-fill chip styling.
+    expect(webSrc).toContain("bg-primary/10 border-primary-solid text-primary-solid");
+    expect(webSrc).toMatch(/bg-card border-border text-muted-foreground/);
+    // Neither the old plum fill nor the old primary-fill chip styling.
+    expect(webSrc).not.toContain("bg-foreground-brand text-white");
     expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);
   });
 

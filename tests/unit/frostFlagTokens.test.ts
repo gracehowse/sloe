@@ -1,22 +1,25 @@
 /**
- * FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`).
+ * Frost secondary-colour exploration — RETIRED (ENG-997, 2026-06-08).
  *
- * Exploration only (`docs/brand/2026-06-07-secondary-colour-exploration.md`).
- * The `.flag-frost` class on `<html>` (applied by `FrostFlagToggle` once PostHog
- * flags resolve) moves ONLY the secondary accent clay → Damson; every other
- * token cascades unchanged via `var()`. This test is the regression guard:
+ * This file used to pin the `.flag-frost` damson override behaviour. The
+ * brand-manager decision (2026-06-08) made Clay `#C8794E` the UNCONDITIONAL
+ * functional accent on web + mobile, and Damson reverted to a scarce
+ * brand-identity role (win / Pro / streaks). So this file is now the
+ * RETIREMENT guard — it fails if any of the Frost flag wiring creeps back:
  *
- *   1. The `.flag-frost` (light) + `.dark.flag-frost` (dark) blocks redefine the
- *      expected secondary-accent tokens with the expected values.
- *   2. Carbs / sugar / chart-3 are NEVER inside either override block — they
- *      must stay clay in BOTH flag states.
- *   3. The flag is NOT in `REDESIGN_DEFAULT_ON` (the old clay path stays the
- *      default; the flag ramps later via PostHog).
+ *   1. The `.flag-frost` (light) + `.dark.flag-frost` override blocks are gone
+ *      from `theme.css`, and no `.flag-frost` selector survives anywhere.
+ *   2. `--accent-primary` in `:root` (light) and `.dark` is the canonical CLAY,
+ *      unconditionally (no flag toggles it any more).
+ *   3. The win gradient stays the clay-mid Sloe brand gradient.
+ *   4. `brand_frost_secondary` is no longer referenced in `track.ts` at all.
+ *   5. The `FrostFlagToggle` component is deleted and `app/providers.tsx`
+ *      no longer mounts it.
  *
- * Web mirror of `apps/mobile/tests/unit/accentTokens.test.ts`
- * (`AccentFrost` / `AccentWinGradientFrost`).
+ * Web mirror of `apps/mobile/tests/unit/accentTokens.test.ts` (which guards the
+ * removal of `AccentFrost` / `AccentWinGradientFrost`).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -26,6 +29,7 @@ const TRACK_TS = readFileSync(
   resolve(ROOT, "src/lib/analytics/track.ts"),
   "utf8",
 );
+const PROVIDERS_TSX = readFileSync(resolve(ROOT, "app/providers.tsx"), "utf8");
 
 /** Extract the body of a single-selector CSS rule by its opening selector text. */
 function ruleBody(selectorOpen: string): string {
@@ -48,78 +52,60 @@ function readVar(body: string, name: string): string | null {
   return m ? m[1].trim().toLowerCase() : null;
 }
 
-const LIGHT = ruleBody(".flag-frost {");
-// The dark override is a grouped selector — anchor on the first selector.
-const DARK = ruleBody(".dark.flag-frost,");
-
-describe("Frost flag — .flag-frost (light) overrides", () => {
-  it("redefines the secondary-accent tokens to Damson", () => {
-    expect(readVar(LIGHT, "accent-primary")).toBe("#6a4b7a");
-    expect(readVar(LIGHT, "accent-primary-solid")).toBe("#54356a");
-    expect(readVar(LIGHT, "accent-primary-soft")).toBe("rgba(106, 75, 122, 0.10)");
-    expect(readVar(LIGHT, "accent-primary-ring")).toBe("rgba(106, 75, 122, 0.22)");
-    expect(readVar(LIGHT, "accent-muted")).toBe("rgba(106, 75, 122, 0.12)");
-    expect(readVar(LIGHT, "sidebar-ring")).toBe("#6a4b7a");
-    expect(readVar(LIGHT, "north-star-bg-to")).toBe("rgba(106, 75, 122, 0.05)");
-    expect(readVar(LIGHT, "elev-float-primary")).toBe(
-      "0 4px 16px rgba(106, 75, 122, 0.40)",
-    );
-    expect(readVar(LIGHT, "accent-win-gradient")).toBe(
-      "linear-gradient(120deg, #3b2a4d 0%, #6a4b7a 50%, #d6a24a 100%)",
-    );
+describe("Frost flag — retired (.flag-frost cascade removed)", () => {
+  it("no .flag-frost selector survives in theme.css", () => {
+    expect(THEME_CSS).not.toContain(".flag-frost");
   });
 
-  it("does NOT redefine carbs / sugar / chart-3 (they stay clay)", () => {
-    expect(readVar(LIGHT, "macro-carbs")).toBeNull();
-    expect(readVar(LIGHT, "macro-carbs-soft")).toBeNull();
-    expect(readVar(LIGHT, "macro-sugar")).toBeNull();
-    expect(readVar(LIGHT, "macro-sugar-soft")).toBeNull();
-    expect(readVar(LIGHT, "chart-3")).toBeNull();
-  });
-
-  it("does NOT touch status / honey / nav tokens", () => {
-    expect(readVar(LIGHT, "accent-success")).toBeNull();
-    expect(readVar(LIGHT, "accent-warning")).toBeNull();
-    expect(readVar(LIGHT, "accent-destructive")).toBeNull();
-    expect(readVar(LIGHT, "over-budget-fg")).toBeNull();
-    expect(readVar(LIGHT, "activity")).toBeNull();
-    expect(readVar(LIGHT, "sidebar-primary")).toBeNull();
-    expect(readVar(LIGHT, "brand-mark-ring")).toBeNull();
+  it("no damson override hexes from the old Frost block leak into theme.css", () => {
+    // The old Frost block redefined the accent to damson #6A4B7A / #54356A /
+    // #9A7BAA / #B6ACC6. None of those may carry the accent any more — clay is
+    // unconditional. (These hexes can still appear for the win/Pro/source-ai
+    // brand-identity roles, so we only assert they're not on --accent-primary*,
+    // checked below.)
+    const LIGHT = ruleBody(":root {");
+    const DARK = ruleBody(".dark {");
+    expect(readVar(LIGHT, "accent-primary")).not.toBe("#6a4b7a");
+    expect(readVar(DARK, "accent-primary")).not.toBe("#9a7baa");
   });
 });
 
-describe("Frost flag — .dark.flag-frost overrides", () => {
-  it("redefines the secondary-accent tokens to lifted Damson", () => {
-    expect(readVar(DARK, "accent-primary")).toBe("#9a7baa");
-    expect(readVar(DARK, "accent-primary-solid")).toBe("#b6acc6");
-    expect(readVar(DARK, "accent-primary-soft")).toBe("rgba(154, 123, 170, 0.16)");
-    expect(readVar(DARK, "accent-primary-ring")).toBe("rgba(154, 123, 170, 0.30)");
-    expect(readVar(DARK, "accent-muted")).toBe("rgba(154, 123, 170, 0.15)");
-    expect(readVar(DARK, "sidebar-ring")).toBe("#9a7baa");
-    expect(readVar(DARK, "north-star-bg-to")).toBe("rgba(154, 123, 170, 0.06)");
-    expect(readVar(DARK, "elev-float-primary")).toBe(
-      "0 4px 16px rgba(154, 123, 170, 0.45)",
+describe("Clay is the unconditional functional accent", () => {
+  const LIGHT = ruleBody(":root {");
+  const DARK = ruleBody(".dark {");
+
+  it(":root accent-primary is the canonical clay", () => {
+    expect(readVar(LIGHT, "accent-primary")).toBe("#c8794e");
+    expect(readVar(LIGHT, "accent-primary-solid")).toBe("#a0552e");
+  });
+
+  it(".dark accent-primary is the lifted clay", () => {
+    expect(readVar(DARK, "accent-primary")).toBe("#d58a5e");
+    expect(readVar(DARK, "accent-primary-solid")).toBe("#c8794e");
+  });
+
+  it("the win gradient stays the clay-mid Sloe brand gradient (light + dark)", () => {
+    expect(readVar(LIGHT, "accent-win-gradient")).toBe(
+      "linear-gradient(120deg, #3b2a4d 0%, #c8794e 50%, #c9892c 100%)",
     );
     expect(readVar(DARK, "accent-win-gradient")).toBe(
-      "linear-gradient(120deg, #815e91 0%, #9a7baa 50%, #e0b25e 100%)",
+      "linear-gradient(120deg, #815e91 0%, #d58a5e 50%, #d6a24a 100%)",
     );
-  });
-
-  it("does NOT redefine carbs / sugar / chart-3 in dark either", () => {
-    expect(readVar(DARK, "macro-carbs")).toBeNull();
-    expect(readVar(DARK, "macro-sugar")).toBeNull();
-    expect(readVar(DARK, "chart-3")).toBeNull();
   });
 });
 
-describe("Frost flag — rollout posture", () => {
-  it("brand_frost_secondary is NOT in REDESIGN_DEFAULT_ON (ramps via PostHog)", () => {
-    // The flag must NOT appear inside the REDESIGN_DEFAULT_ON Set literal — the
-    // whole point is the clay path stays the default until a deliberate ramp.
-    const setStart = TRACK_TS.indexOf("REDESIGN_DEFAULT_ON = new Set");
-    expect(setStart).toBeGreaterThanOrEqual(0);
-    const setEnd = TRACK_TS.indexOf("]);", setStart);
-    const setBody = TRACK_TS.slice(setStart, setEnd);
-    expect(setBody).not.toContain("brand_frost_secondary");
+describe("Frost flag wiring is gone", () => {
+  it("brand_frost_secondary is not referenced in track.ts", () => {
+    expect(TRACK_TS).not.toContain("brand_frost_secondary");
+  });
+
+  it("the FrostFlagToggle component is deleted", () => {
+    expect(
+      existsSync(resolve(ROOT, "src/app/components/FrostFlagToggle.tsx")),
+    ).toBe(false);
+  });
+
+  it("app/providers.tsx no longer mounts FrostFlagToggle", () => {
+    expect(PROVIDERS_TSX).not.toContain("FrostFlagToggle");
   });
 });

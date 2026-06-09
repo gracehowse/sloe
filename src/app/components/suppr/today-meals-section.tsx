@@ -969,12 +969,16 @@ export function TodayMealsSection({
             <p className="text-[13px] text-muted-foreground mb-5">
               Tap below to search, scan, snap a photo, or use your voice.
             </p>
+            {/* Sloe treatment system (2026-06-08): primary inline CTA →
+                aubergine outline (transparent fill + 1.5px primary-solid
+                border + primary-solid label/glyph), not a filled slab.
+                Matches the mobile `TodayFirstMealEmptyState` "Log a meal". */}
             <button
               type="button"
               onClick={onOpenLogSheet}
               data-testid="today-meals-empty-cta"
               aria-label="Log a meal"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border-[1.5px] border-primary-solid bg-transparent px-6 py-3 font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
             >
               <Icons.add className="h-5 w-5" />
               Log a meal

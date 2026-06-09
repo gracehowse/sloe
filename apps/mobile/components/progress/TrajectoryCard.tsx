@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { Spacing, Type } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -88,17 +88,22 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
       {state.kind === "projection" ? (
         <>
           <View style={styles.heroRow}>
+            {/* SLOE Phase 0: the projected-weight hero numeral reads in
+                Newsreader serif (big numerals are a serif moment); the `kg`
+                unit stays sans. Family carries the weight, so the sans
+                `fontWeight: 800` is dropped. Mirrors web trajectory-card. */}
             <Text
               testID="trajectory-hero-kg"
               style={{
+                fontFamily: FontFamily.serifRegular,
                 fontSize: 30,
-                fontWeight: "800",
                 letterSpacing: -0.5,
                 color: accent.primary,
                 fontVariant: ["tabular-nums"],
               }}
             >
-              {state.projectedKg} kg
+              {state.projectedKg}
+              <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600" }}> kg</Text>
             </Text>
             <Text
               testID="trajectory-hero-when"

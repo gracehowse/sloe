@@ -44,7 +44,7 @@ import {
 import { useRouter } from "expo-router";
 import { ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -238,16 +238,22 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                     marginBottom: Spacing.md,
                   }}
                 >
+                  {/* SLOE Phase 0: the recomputed-target hero kcal reads in
+                      Newsreader serif (big numerals are a serif moment); the
+                      `kcal` unit stays sans. Family carries the weight. */}
                   <Text
                     style={{
+                      fontFamily: FontFamily.serifRegular,
                       fontSize: 22,
-                      fontWeight: "700",
                       color: colors.text,
                       fontVariant: ["tabular-nums"],
                       marginBottom: 4,
                     }}
                   >
-                    {editor.preview.target_calories.toLocaleString()} kcal
+                    {editor.preview.target_calories.toLocaleString()}
+                    <Text style={{ fontFamily: FontFamily.sansMedium, fontSize: 13, fontWeight: "500", color: colors.textSecondary }}>
+                      {" "}kcal
+                    </Text>
                   </Text>
                   <Text
                     style={{

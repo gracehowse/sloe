@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Date:** 2026-06-02  
 **Author:** documentation-system (from audit by executor + Mobbin benchmark)  
-**Status:** Spec — not yet implemented. All flag paths must be preserved during any implementation.  
+**Status:** ⚠️ **LARGELY IMPLEMENTED as of 2026-06-08** — most of this spec shipped across May–June 2026 (serif ring numeral, visible Remaining/Consumed toggle pill, forward "Plan your day… No rush." coach line, single-letter week strip, greeting line, serif macro tiles, north-star photo hero with "Fits your day" chip, "Fresh start" empty chip). **Verify against the LIVE iOS app before treating any item as "to build" — do not re-implement shipped work.** Remaining gaps are detail-level, not structural. All flag paths must be preserved during any implementation. (Verified via sim capture 2026-06-08: `apps/mobile/screenshots/agent/today-current-state-2026-06-08.png` + `today-current-scrolled-2026-06-08.png`.)  
 **Cross-ref:** `apps/mobile/app/(tabs)/index.tsx`, `src/app/components/NutritionTracker.tsx`, `docs/ux/mobbin-refs/warm-coaching-direction.md`
 
 ---

@@ -3,8 +3,12 @@
  * the action-pill row in `src/app/components/RecipeDetail.tsx`.
  *
  * Horizontal pills, 46px tall, rounded-full:
- *   - Start Cooking — clay fill, white text/icon → opens Cook Mode
- *   - Log — cream pill, plum ink → opens the log flow
+ *   - Start Cooking — aubergine OUTLINE (transparent bg, 1.5px aubergine
+ *     border + aubergine label/icon) → opens Cook Mode. The everyday primary
+ *     is an outline, not a filled slab (Sloe treatment system, 2026-06-08 —
+ *     `docs/prototypes/sloe-component-treatments.html` §1); fill is reserved
+ *     for the FAB + conversion-critical CTAs.
+ *   - Log — cream pill, ink label → opens the log flow (off-white secondary)
  *   - Edit — cream pill → edit recipe (owner-only; hidden otherwise)
  *
  * The "Ask" pill from the frame is intentionally OMITTED: there is no
@@ -37,9 +41,14 @@ export function RecipeActionPills({
   haptic = "none",
 }: RecipeActionPillsProps) {
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the primary
-  // "Start Cooking" CTA fill. Cream Log/Edit pills keep theme surfaces.
+  // Aubergine accent for the primary "Start Cooking" CTA — rendered as an
+  // OUTLINE (1.5px `primarySolid` border + `primarySolid` label/icon on a
+  // transparent ground), per the Sloe treatment system. Cream Log/Edit pills
+  // keep theme surfaces. On dark, `primarySolidDark` carries the lifted
+  // aubergine so the outline + label stay legible on the dark card.
   const accent = useAccent();
+  const outlineColor =
+    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
 
   const creamPill = {
     flex: 1,
@@ -79,16 +88,20 @@ export function RecipeActionPills({
           gap: 6,
           height: 46,
           borderRadius: Radius.full,
-          backgroundColor: accent.primary,
+          // Aubergine OUTLINE (Sloe treatment §1): transparent ground +
+          // 1.5px aubergine border, NOT a filled slab.
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: outlineColor,
         }}
       >
-        <UtensilsCrossed size={18} color={colors.primaryForeground} />
+        <UtensilsCrossed size={18} color={outlineColor} />
         <Text
           style={{
             fontFamily: FontFamily.sansSemibold,
             fontSize: 14,
             fontWeight: "700",
-            color: colors.primaryForeground,
+            color: outlineColor,
           }}
           numberOfLines={1}
         >

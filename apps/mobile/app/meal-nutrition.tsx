@@ -12,7 +12,7 @@ import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFr
 import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import {
@@ -677,7 +677,10 @@ const styles = StyleSheet.create({
   },
   meta: { fontSize: 12, marginBottom: 4 },
   portion: { fontSize: 13, marginBottom: Spacing.sm },
-  kcal: { fontSize: 28, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
+  // SLOE Phase 0: the big standalone meal-kcal hero reads in Newsreader serif
+  // (the design system reserves big numerals for serif). Family carries the
+  // weight, so the sans `fontWeight: 800` is dropped; size/box/tabular kept.
+  kcal: { fontFamily: FontFamily.serifRegular, fontSize: 28, fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
   macroBar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: Spacing.md },
   macroSeg: { minWidth: 2 },
   macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },

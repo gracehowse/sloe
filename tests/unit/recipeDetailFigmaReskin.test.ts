@@ -173,11 +173,13 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
   });
 
   it("Start Cooking + I Made This body action buttons are radius-full", () => {
-    // The body action row (the Figma-analogous pill row) uses radius-full
-    // clay + cream pills. Pin both directly; "Start Cooking" / "I Made This"
-    // also appear in comments, so we match the className shapes, not a slice.
+    // The body action row (the Figma-analogous pill row) is radius-full. Sloe
+    // treatment system (2026-06-08): Start Cooking is the everyday primary, so
+    // it's an aubergine OUTLINE (transparent + 1.5px aubergine border +
+    // aubergine label), NOT a filled slab — fill is reserved for conversion
+    // CTAs + the FAB. "I Made This" stays the off-white cream secondary pill.
     expect(WEB_SRC).toContain(
-      "rounded-full bg-primary text-primary-foreground font-bold text-sm",
+      "rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-bold text-sm",
     );
     expect(WEB_SRC).toContain(
       "rounded-full bg-card border border-border text-foreground font-bold text-sm",

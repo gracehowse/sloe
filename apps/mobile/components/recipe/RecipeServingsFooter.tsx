@@ -5,7 +5,11 @@
  * Left: a YIELD label over a servings stepper (cream round − / value / cream
  * round +). This is the canonical servings control — it REPLACES the old
  * mid-body servings card; ingredient amounts + batch totals scale off it.
- * Right: a clay "Cook Mode" pill → opens Cook Mode.
+ * Right: an aubergine OUTLINE "Cook Mode" pill (transparent ground + 1.5px
+ * aubergine border + aubergine label/icon) → opens Cook Mode. The everyday
+ * primary is an outline, not a filled slab (Sloe treatment system §1); the
+ * footer ground is the translucent near-white surface so `primarySolid`
+ * reads at full AA contrast.
  *
  * The footer floats over a translucent white surface, safe-area aware.
  */
@@ -125,7 +129,7 @@ export function RecipeServingsFooter({
         </View>
       </View>
 
-      {/* Right — Cook Mode. */}
+      {/* Right — Cook Mode (aubergine OUTLINE, Sloe treatment §1). */}
       <PressableScale
         haptic={haptic}
         onPress={onCookMode}
@@ -139,16 +143,18 @@ export function RecipeServingsFooter({
           height: 52,
           paddingHorizontal: 24,
           borderRadius: Radius.full,
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
         }}
       >
-        <UtensilsCrossed size={18} color={colors.primaryForeground} />
+        <UtensilsCrossed size={18} color={accent.primarySolid} />
         <Text
           style={{
             fontFamily: FontFamily.sansSemibold,
             fontSize: 15,
             fontWeight: "700",
-            color: colors.primaryForeground,
+            color: accent.primarySolid,
           }}
         >
           Cook Mode

@@ -53,9 +53,10 @@ describe("barcode result — redesign gate", () => {
   it("paints the commit CTA with the secondary accent under the flag", () => {
     // The default StyleSheet logBtn stays green (flag-off path); the call
     // site overrides to the secondary accent when searchRedesign is on.
-    // ENG-997: that read is now the flag-aware `accent.primary` (from
-    // `useAccent()` — clay by default, damson when `brand_frost_secondary` is on)
-    // rather than the static `Accent.primary`.
+    // ENG-997: that read goes through `accent.primary` (from `useAccent()`),
+    // which is now the unconditional clay (the Frost secondary-colour
+    // exploration was retired 2026-06-08), rather than the static
+    // `Accent.primary`. The hook indirection is kept; it just always returns clay.
     expect(BARCODE).toMatch(
       /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/,
     );

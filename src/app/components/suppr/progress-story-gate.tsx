@@ -45,14 +45,22 @@ export function ProgressStoryGate({
   const STROKE = 3;
   const radius = (RING_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - placeholder.ringFraction);
+  // ENG-1006 — visible-arc floor (mirror of mobile). At 0 / 3 logged the
+  // bare track read as a dead grey circle. Clamp the FILL fraction (not
+  // the label) to ≥0.06 so even an unstarted ring shows a small clay tick.
+  const ringFill = Math.max(0.06, placeholder.ringFraction);
+  const dashOffset = circumference * (1 - ringFill);
 
   return (
     <SupprCard
       data-slot="progress-story-gate"
       data-testid="progress-story-gate"
       padding="xl"
-      radius="xl"
+      /* ENG-1006 — radius="lg" (var(--radius-card-lg) = 24px) matches the
+         cream sibling cards (AVERAGE ADHERENCE / weight / daily-calories)
+         so the lilac THIS WEEK card shares one corner radius with the
+         stack below it. Was radius="xl" (16px), a detectable 8px mismatch. */
+      radius="lg"
       className={className}
       style={PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
@@ -101,7 +109,10 @@ export function ProgressStoryGate({
           />
         </svg>
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+      {/* ENG-1006 — 13px label-secondary floor (was 11px, below the spec's
+          13–14px body floor and small under the serif headline). Mirror of
+          mobile ProgressStoryGate body bump. */}
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
         {placeholder.body}
       </p>
       <p

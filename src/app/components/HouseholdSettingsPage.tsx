@@ -384,16 +384,55 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
       {error ? (
         <div
           role="alert"
-          className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+          className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-xs"
+          style={{ color: "var(--accent-destructive-solid, #9E3F2E)" }}
         >
           {error}
         </div>
       ) : null}
 
+      {/* Solo-household empty card — ports mobile household-settings-solo-empty.
+          When the user is the only member the sharing grid is meaningless; surface
+          an invite prompt at the top so the next action is obvious. §10.7 empty-state
+          recipe: Newsreader-italic headline + Inter body + CTA. */}
+      {members.length <= 1 ? (
+        <div
+          data-testid="household-settings-solo-empty"
+          className="mb-4 rounded-lg border border-primary/20 p-4 flex flex-col items-center text-center"
+          style={{ backgroundColor: "rgba(59,42,77,0.05)" }}
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-2 shrink-0"
+            style={{ backgroundColor: "rgba(59,42,77,0.12)" }}
+          >
+            <Icons.add className="w-5 h-5 text-primary" aria-hidden />
+          </div>
+          {/* §10.7: headline in Newsreader italic */}
+          <p className="font-[family-name:var(--font-headline)] italic text-[16px] text-foreground mb-1">
+            Household is solo
+          </p>
+          <p className="text-[12px] text-muted-foreground leading-relaxed mb-3 px-2">
+            Invite a partner, flatmate, or family member to share meal plans and shopping lists.
+          </p>
+          {/* Invite — secondary action, aubergine outline (matches mobile solo-invite CTA) */}
+          <button
+            type="button"
+            onClick={() => setInviteDialogOpen(true)}
+            data-testid="household-settings-solo-invite"
+            aria-label="Invite a household member"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-card border border-primary text-[13px] font-bold text-primary hover:opacity-90 transition-opacity"
+          >
+            <Icons.add className="w-3.5 h-3.5" aria-hidden />
+            Invite
+          </button>
+        </div>
+      ) : null}
+
       {/* Members */}
-      <section className="mb-5" data-testid="household-settings-members">
-        <div className="flex items-center justify-between mb-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+      <section className="mb-4" data-testid="household-settings-members">
+        <div className="flex items-center justify-between mb-2">
+          {/* §2.3 section eyebrow: Inter 11px, uppercase, +0.08em tracking, sage #7C8466 */}
+          <p className="text-[11px] font-bold uppercase text-[#7C8466]" style={{ letterSpacing: "0.88px" }}>
             Members
           </p>
           <button
@@ -435,13 +474,25 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
                   {initials}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-foreground truncate">
-                    {m.displayName}
-                    {isSelf ? " (you)" : ""}
-                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">
-                      · {m.role}
-                    </span>
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* §3.12 identity row: display name in Newsreader serif */}
+                    <p className="font-[family-name:var(--font-headline)] text-[17px] font-medium text-foreground truncate">
+                      {m.displayName}
+                    </p>
+                    {/* §3.12 "You" pill on the self row */}
+                    {isSelf ? (
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                        style={{ backgroundColor: "rgba(91,59,110,0.12)", color: "#3B2A4D" }}
+                      >
+                        You
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-normal text-muted-foreground">
+                        · {m.role}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-muted-foreground truncate mt-0.5">{macroCopy}</p>
                 </div>
                 {isSelf ? (
@@ -476,8 +527,9 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
       </section>
 
       {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
-      <section className="mb-5" data-testid="household-settings-privacy">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5">
+      <section className="mb-4" data-testid="household-settings-privacy">
+        {/* §2.3 section eyebrow: sage #7C8466, +0.08em tracking */}
+        <p className="text-[11px] font-bold uppercase mb-2 text-[#7C8466]" style={{ letterSpacing: "0.88px" }}>
           Privacy
         </p>
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
@@ -506,7 +558,8 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
       {/* Presets */}
       <section className="mb-4">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5">
+        {/* §2.3 section eyebrow: sage #7C8466 */}
+        <p className="text-[11px] font-bold uppercase mb-2 text-[#7C8466]" style={{ letterSpacing: "0.88px" }}>
           Which meals are shared?
         </p>
         <div className="rounded-xl border border-border bg-card overflow-hidden" role="radiogroup" aria-label="Sharing presets">
@@ -547,8 +600,9 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
       {/* Grid */}
       <section className="mb-4">
-        <div className="flex items-baseline justify-between mb-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+        <div className="flex items-baseline justify-between mb-2">
+          {/* §2.3 section eyebrow: sage #7C8466 */}
+          <p className="text-[11px] font-bold uppercase text-[#7C8466]" style={{ letterSpacing: "0.88px" }}>
             Weekly plan
           </p>
           <p className="text-[11px] text-muted-foreground" data-testid="household-grid-summary">
@@ -655,12 +709,15 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
       {/* Save — sticky so long grids don't bury the primary action */}
       <div className="sticky bottom-2 mt-6 pt-4 bg-gradient-to-t from-background via-background/90 to-transparent">
+        {/* Aubergine OUTLINE — Sloe treatment #1 (2026-06-08), matches mobile Save CTA.
+            bg-card + border-primary (plum) + text-primary so both surfaces read identically. */}
         <button
           type="button"
           onClick={() => void onSave()}
           disabled={saving || !household.isOwner}
           data-testid="household-settings-save"
-          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+          className="w-full py-3.5 rounded-xl bg-card border border-primary text-primary text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+          style={{ borderWidth: "1.5px" }}
           title={household.isOwner ? undefined : "Only the household owner can change sharing"}
         >
           {/* DC12 (2026-05-14, premium-bar audit) — specific
@@ -684,8 +741,10 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           aria-modal="true"
           aria-label={`Members for ${editingMeta.slotFull} on ${editingMeta.dayLabel}`}
         >
+          {/* §10.3 sheet radius: 20pt (aligns with mobile SHEET_RADIUS=20) — deferred: see ENG-998 for token */}
           <div
-            className="w-full max-w-md rounded-t-3xl border border-border bg-background p-5 pb-7 relative"
+            className="w-full max-w-md border border-border bg-background p-5 pb-7 relative"
+            style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4 opacity-60" />
@@ -793,7 +852,8 @@ function Header({ onBack }: { onBack?: () => void }) {
       >
         <Icons.back className="w-5 h-5" aria-hidden />
       </button>
-      <h1 className="text-[22px] font-bold text-foreground -tracking-[0.01em]">Household</h1>
+      {/* §2.2 display-title: Newsreader serif 28px — matches mobile FontFamily.serifSemibold 28sp. */}
+      <h1 className="font-[family-name:var(--font-headline)] text-[28px] font-semibold text-foreground -tracking-[0.02em] leading-tight">Household</h1>
     </div>
   );
 }

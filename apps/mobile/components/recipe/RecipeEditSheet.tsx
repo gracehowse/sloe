@@ -34,7 +34,7 @@ import {
 import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
 import { Elevation, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { useAccent, useTheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
@@ -125,7 +125,11 @@ export default function RecipeEditSheet({
   // the add-ingredient affordance, the ingredient-load spinner, and the Save
   // CTA. Threaded into the module-level StyleSheet factory.
   const accent = useAccent();
-  const styles = useMemo(() => makeStyles(colors, card, accent), [colors, card, accent]);
+  const { resolved } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(colors, card, accent, resolved),
+    [colors, card, accent, resolved],
+  );
   const isOwner = canEditRecipe(recipe.author_id, userId);
 
   const [title, setTitle] = useState(recipe.title ?? "");
@@ -509,7 +513,9 @@ export default function RecipeEditSheet({
               accessibilityLabel="Save recipe"
             >
               {saving ? (
-                <ActivityIndicator color={colors.primaryForeground} />
+                <ActivityIndicator
+                  color={resolved === "light" ? accent.primarySolid : accent.primarySolidDark}
+                />
               ) : (
                 <Text style={styles.saveText}>Save</Text>
               )}
@@ -525,7 +531,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   const colors = useThemeColors();
   const ce = useCardElevation();
   const accent = useAccent();
-  const styles = makeStyles(colors, ce, accent);
+  const { resolved } = useTheme();
+  const styles = makeStyles(colors, ce, accent, resolved);
   return (
     <View style={{ gap: Spacing.xs }}>
       <Text style={styles.label}>{label}</Text>
@@ -538,8 +545,14 @@ const makeStyles = (
   colors: ReturnType<typeof useThemeColors>,
   ce: CardElevation,
   accent: ReturnType<typeof useAccent>,
-) =>
-  StyleSheet.create({
+  resolved: "light" | "dark",
+) => {
+  // Aubergine-on-surface ink (Sloe treatment system) — the "Save recipe" primary
+  // renders as an aubergine OUTLINE (treatment §1). Light uses the deep
+  // `primarySolid`; dark lifts to `primarySolidDark` so the outline + label
+  // clear AA on the dark sheet. (Scheme via the theme context, not a hex test.)
+  const accentInk = resolved === "light" ? accent.primarySolid : accent.primarySolidDark;
+  return StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
       maxHeight: "92%",
@@ -621,10 +634,11 @@ const makeStyles = (
       gap: Spacing.sm,
       paddingVertical: 12,
       borderRadius: Radius.md,
-      // ENG-821: soft-tinted primary affordance — same chip language as the
-      // meal-type chips above (accent.primarySoft fill + accent.primary edge),
-      // replacing the off-token dashed `accent.primary + "50"` outline so the
-      // editor stops looking like a different design system.
+      // ENG-821: soft-tinted affordance — same chip language as the meal-type
+      // chips above (accent.primarySoft fill + accent.primary edge). Kept on the
+      // EDIT sheet (not flipped to the create-surface outline) so it stays
+      // consistent with the adjacent meal-type chips; both are valid aubergine
+      // SOFT-TINT treatments (Sloe treatment §7).
       borderWidth: 1,
       borderColor: accent.primary,
       backgroundColor: accent.primarySoft,
@@ -648,6 +662,17 @@ const makeStyles = (
     },
     cancelBtn: { borderWidth: 1, borderColor: colors.border },
     cancelText: { fontWeight: "700", color: colors.text, fontSize: 15 },
-    saveBtn: { backgroundColor: accent.primary },
-    saveText: { fontWeight: "800", color: colors.primaryForeground, fontSize: 15 },
+    // "Save recipe" — aubergine OUTLINE (Sloe treatment §1): transparent ground
+    // + 1.5px aubergine border + aubergine label, not a filled slab.
+    saveBtn: {
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: accentInk,
+    },
+    saveText: {
+      fontWeight: "800",
+      color: accentInk,
+      fontSize: 15,
+    },
   });
+};

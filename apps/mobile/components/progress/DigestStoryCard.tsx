@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -63,7 +63,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           style={[
             Type.label,
             {
-              color: accent.primary,
+              // Sloe treatment: small accent label reads in the AA-safe
+              // primarySolid aubergine on light (matches "Daily Calories").
+              color: accent.primarySolid,
             },
           ]}
         >
@@ -156,17 +158,20 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           return (
             <View style={{ marginTop: 12 }}>
               <View style={styles.heroRow} testID="digest-hero-row">
+                {/* SLOE Phase 0: the days-logged hero numeral reads in
+                    Newsreader serif (family carries the weight; the small `/7`
+                    denominator stays sans). */}
                 <Text
                   style={{
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 30,
-                    fontWeight: "700",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],
                     letterSpacing: -0.6,
                   }}
                 >
                   {daysLogged}
-                  <Text style={{ fontSize: 18, color: colors.textTertiary, fontWeight: "600" }}>
+                  <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 18, color: colors.textTertiary, fontWeight: "600" }}>
                     /7
                   </Text>
                 </Text>

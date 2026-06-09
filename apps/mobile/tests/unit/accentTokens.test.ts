@@ -1,11 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 
-import {
-  Accent,
-  AccentFrost,
-  AccentWinGradient,
-  AccentWinGradientFrost,
-} from "../../constants/theme";
+import { Accent, AccentWinGradient, FontFamily, Type } from "../../constants/theme";
+
+import * as themeModule from "../../constants/theme";
 
 /**
  * SLOE Phase 0 (`docs/ux/redesign/phase-0-token-foundation-dossier.md`, dossier
@@ -70,86 +69,72 @@ describe("AccentWinGradient (win-moment fill)", () => {
 });
 
 /**
- * FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`).
- * Exploration only (`docs/brand/2026-06-07-secondary-colour-exploration.md`).
- * `AccentFrost` moves ONLY the secondary-accent keys clay → Damson; every other
- * role (carbs/sugar = clay, status, fiber, win, activity/honey) stays identical
- * to `Accent`. These tests are the regression guard: if a future edit lets the
- * Frost swap leak into carbs/sugar/status, the build fails. Mirrors the web
- * `.flag-frost` block in `src/styles/theme.css`.
+ * Frost secondary-colour exploration — RETIRED (ENG-997, 2026-06-08).
+ *
+ * The brand-manager decision made Clay `#C8794E` the UNCONDITIONAL functional
+ * accent, so the `AccentFrost` / `AccentWinGradientFrost` damson variants were
+ * deleted from `constants/theme.ts` and the flag wiring removed from
+ * `context/theme.tsx`. These are the RETIREMENT guards — they fail if the dead
+ * variants creep back. Mirrors the web `frostFlagTokens.test.ts`.
  */
-describe("AccentFrost (Frost secondary-accent flag palette)", () => {
-  it("moves the secondary-accent keys clay → Damson", () => {
-    expect(AccentFrost.primary).toBe("#6A4B7A");
-    expect(AccentFrost.primaryLight).toBe("#9A7BAA");
-    expect(AccentFrost.primarySolid).toBe("#54356A");
-    expect(AccentFrost.primarySolidDark).toBe("#B6ACC6");
-    expect(AccentFrost.primarySoft).toBe("rgba(106, 75, 122, 0.10)");
-    expect(AccentFrost.primarySoftDark).toBe("rgba(154, 123, 170, 0.16)");
-    expect(AccentFrost.brandBlue).toBe("#6A4B7A");
-    expect(AccentFrost.brandBlueLight).toBe("#9A7BAA");
+describe("Frost variants retired", () => {
+  it("AccentFrost is no longer exported", () => {
+    expect("AccentFrost" in themeModule).toBe(false);
   });
 
-  it("the moved keys differ from the clay Accent (the swap actually happened)", () => {
-    expect(AccentFrost.primary).not.toBe(Accent.primary);
-    expect(AccentFrost.primarySolid).not.toBe(Accent.primarySolid);
-    expect(AccentFrost.brandBlue).not.toBe(Accent.brandBlue);
+  it("AccentWinGradientFrost is no longer exported", () => {
+    expect("AccentWinGradientFrost" in themeModule).toBe(false);
   });
 
-  it("carbs + sugar STAY clay in the Frost palette (regression guard)", () => {
-    // The macro identity colour must NOT move in either flag state.
-    expect(AccentFrost.carbs).toBe(Accent.carbs);
-    expect(AccentFrost.carbs).toBe("#C8794E");
-    expect(AccentFrost.carbsLight).toBe(Accent.carbsLight);
-  });
-
-  it("status / fiber / win / honey roles are untouched by Frost", () => {
-    expect(AccentFrost.success).toBe(Accent.success);
-    expect(AccentFrost.warning).toBe(Accent.warning);
-    expect(AccentFrost.destructive).toBe(Accent.destructive);
-    expect(AccentFrost.fiber).toBe(Accent.fiber);
-    expect(AccentFrost.win).toBe(Accent.win);
-    expect(AccentFrost.winSoft).toBe(Accent.winSoft);
-    expect(AccentFrost.activity).toBe(Accent.activity);
-    expect(AccentFrost.activitySolid).toBe(Accent.activitySolid);
-    expect(AccentFrost.info).toBe(Accent.info);
-  });
-
-  it("ONLY the eight secondary-accent keys differ from Accent — nothing else", () => {
-    const movedKeys = new Set([
-      "primary",
-      "primaryLight",
-      "primarySolid",
-      "primarySolidDark",
-      "primarySoft",
-      "primarySoftDark",
-      "brandBlue",
-      "brandBlueLight",
-    ]);
-    const drifted = (Object.keys(Accent) as (keyof typeof Accent)[]).filter(
-      (k) => Accent[k] !== AccentFrost[k],
+  it("brand_frost_secondary wiring is gone from context/theme.tsx", () => {
+    const ctx = readFileSync(
+      resolve(__dirname, "../../context/theme.tsx"),
+      "utf8",
     );
-    expect(new Set(drifted)).toEqual(movedKeys);
+    expect(ctx).not.toContain("AccentFrost");
+    expect(ctx).not.toContain("FROST_FLAG");
+    // The retirement note may name the flag, but there must be no live
+    // `isFeatureEnabled("brand_frost_secondary")` read.
+    expect(ctx).not.toMatch(/isFeatureEnabled\(\s*["']brand_frost_secondary["']/);
   });
 });
 
 /**
- * The Frost win-moment gradient shifts ONLY the mid clay stop to damson; the
- * plum + honey ends and the offsets are unchanged. Mirrors the web
- * `.flag-frost --accent-win-gradient`.
+ * Clay is the unconditional accent. `Accent.primary` is the clay CTA hue, and
+ * the win gradient keeps its clay middle stop.
  */
-describe("AccentWinGradientFrost (Frost win-moment fill)", () => {
-  it("has plum → damson → honey stops in paint order", () => {
-    expect(AccentWinGradientFrost.stops).toEqual(["#3B2A4D", "#6A4B7A", "#D6A24A"]);
+describe("Clay is the unconditional functional accent", () => {
+  it("Accent.primary is the clay CTA hue", () => {
+    expect(Accent.primary).toBe("#C8794E");
   });
 
-  it("the middle stop moved clay → damson; the ends held", () => {
-    expect(AccentWinGradientFrost.stops[0]).toBe(AccentWinGradient.stops[0]); // plum held
-    expect(AccentWinGradientFrost.stops[1]).toBe("#6A4B7A"); // clay → damson
-    expect(AccentWinGradientFrost.stops[1]).not.toBe(AccentWinGradient.stops[1]);
+  it("the win-moment gradient keeps its clay middle stop", () => {
+    expect(AccentWinGradient.stops[1]).toBe("#C8794E");
+  });
+});
+
+/**
+ * `Type.heroValue` — the serif sibling of `macroValue` (ENG-997, 2026-06-08).
+ * SLOE Phase 0 wants the BIG hero numerals (targets / profile / weight + the
+ * Today macro-tile numeral) in Newsreader serif; this token lets a big-numeral
+ * surface adopt serif without forcing serif on the small inline macro callouts
+ * that keep `macroValue` (saved-meal portion / ingredient sheets). It's the
+ * same 20/24 box + letter-spacing as `macroValue` — only the family differs —
+ * so it's a drop-in swap. (Agent C adopts it on the big-numeral screens.)
+ */
+describe("Type.heroValue (serif big-numeral token)", () => {
+  it("renders in Newsreader serif (not the sans macroValue family)", () => {
+    expect(Type.heroValue.fontFamily).toBe(FontFamily.serifMedium);
+    expect(Type.heroValue.fontFamily).not.toBe(Type.macroValue.fontFamily);
   });
 
-  it("offsets are unchanged from the clay gradient", () => {
-    expect(AccentWinGradientFrost.offsets).toEqual(AccentWinGradient.offsets);
+  it("matches the macroValue box so it's a drop-in swap (20/24/-0.35)", () => {
+    expect(Type.heroValue.fontSize).toBe(Type.macroValue.fontSize);
+    expect(Type.heroValue.lineHeight).toBe(Type.macroValue.lineHeight);
+    expect(Type.heroValue.letterSpacing).toBe(Type.macroValue.letterSpacing);
+  });
+
+  it("macroValue itself STAYS sans (small inline callouts must not go serif)", () => {
+    expect(Type.macroValue.fontFamily).toBe(FontFamily.sansBold);
   });
 });

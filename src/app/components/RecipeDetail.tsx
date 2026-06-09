@@ -1670,7 +1670,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             onClick={() => setCookModeOpen(true)}
             disabled={instructionSteps.length === 0}
             data-testid="recipe-action-start-cooking"
-            className={`flex-[1.6] flex items-center justify-center gap-2 h-11 rounded-full bg-primary text-primary-foreground text-sm font-bold hover:shadow-lg hover:shadow-primary/25 transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
+            // Aubergine OUTLINE (Sloe treatment §1): transparent ground + 1.5px
+            // aubergine border + aubergine label, not a filled slab. The
+            // everyday primary is an outline; fill is reserved for conversion
+            // CTAs + the FAB.
+            className={`flex-[1.6] flex items-center justify-center gap-2 h-11 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-bold hover:bg-primary/5 transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
           >
             <Icons.cook className="w-4 h-4" />
             Start Cooking
@@ -2448,7 +2452,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             <button
               type="button"
               onClick={() => setCookModeOpen(true)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all ${commitCtaPayoffClass}`}
+              // Aubergine OUTLINE (Sloe treatment §1) — everyday primary as a
+              // line, not a filled slab.
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-bold text-sm hover:bg-primary/5 transition-all ${commitCtaPayoffClass}`}
             >
               <Icons.cook className="w-4 h-4" />
               Start Cooking

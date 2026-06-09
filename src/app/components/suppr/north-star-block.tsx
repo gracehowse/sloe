@@ -470,19 +470,20 @@ function NorthStarDefaultBlock({
           </span>
         </div>
 
-        {/* Premium-feel papercut #3 (audit 2026-04-29): the CTA used
-            solid `bg-primary`, matching the persistent Today FAB and
-            creating two competing same-colour buttons within a thumb's
-            reach. Demoted to a subtle-fill variant (8% primary +
-            primary text) so the FAB stays the loudest pixel and this
-            card reads as a suggestion, not a demand. Mirror of the
-            same change in mobile `NorthStarBlock.tsx`. */}
+        {/* Sloe treatment system (2026-06-08): the everyday primary
+            inline CTA is AUBERGINE OUTLINE — transparent fill, 1.5px
+            primary-solid border, primary-solid label — never a filled
+            slab. Keeps the FAB as the one filled moment (the premium-bar
+            papercut #3 intent: the outline is quieter than both a fill
+            and the old 10% tint, so the FAB stays the loudest pixel)
+            while matching the approved ladder. Mirror of the same change
+            in mobile `NorthStarBlock.tsx`. */}
         <button
           type="button"
           onClick={onPrimaryCta}
           className={cn(
-            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md bg-primary/10 px-3 text-[13px] font-semibold text-primary-solid",
-            "hover:bg-primary/15",
+            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md border-[1.5px] border-primary-solid bg-transparent px-3 text-[13px] font-semibold text-primary-solid",
+            "hover:bg-primary/5",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >

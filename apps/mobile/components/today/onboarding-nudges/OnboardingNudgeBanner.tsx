@@ -347,6 +347,10 @@ export function OnboardingNudgeBanner({
           alignItems: "center",
         }}
       >
+        {/* Sloe treatment system (2026-06-08): primary inline CTA →
+            aubergine outline (transparent fill + 1.5px primarySolid border
+            + primarySolid label), not a filled slab. The "Later" sibling
+            below stays a tertiary text dismiss. */}
         <Pressable
           onPress={() => void onPrimary()}
           disabled={busy}
@@ -357,15 +361,17 @@ export function OnboardingNudgeBanner({
             paddingHorizontal: Spacing.lg,
             height: 36,
             borderRadius: Radius.sm + 2,
-            backgroundColor: accent.primary,
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            borderColor: accent.primarySolid,
             alignItems: "center",
             justifyContent: "center",
-            opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+            opacity: busy ? 0.6 : pressed ? 0.6 : 1,
           })}
         >
           <Text
             style={{
-              color: "#ffffff",
+              color: accent.primarySolid,
               // eslint-disable-next-line no-restricted-syntax
               fontSize: 13,
               fontWeight: FontWeight.bold,

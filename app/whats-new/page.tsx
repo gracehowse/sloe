@@ -53,6 +53,29 @@ function formatReleaseDate(iso: string): string {
   // `undefined` locale meant the server picked its env locale
   // (en-US — "May 12, 2026") while the client picked the visitor's
   // (en-GB — "12 May 2026"), causing a hydration date mismatch.
+  //
+  // 2026-06-09 (whats-new audit gap 1): parse as a local calendar date,
+  // not UTC midnight. `new Date('2026-05-12')` is UTC midnight — on any
+  // timezone west of UTC it shifts back one day (e.g. TZ=America/Los_Angeles
+  // gives '11 May 2026'). Splitting and passing (y, m-1, d) to the Date
+  // constructor uses the local timezone, which is what a calendar label
+  // always intends. Mirrors the identical fix in
+  // `apps/mobile/app/whats-new.tsx`.
+  const parts = iso.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+  }
+  // Non-YYYY-MM-DD fallback — best-effort UTC parse.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-GB", {
@@ -97,7 +120,7 @@ export default function WhatsNewPage() {
   const latest = entries[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-white dark:bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           <Link

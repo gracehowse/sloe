@@ -1,7 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -50,7 +51,12 @@ export function ProgressStoryGate({
   const STROKE = 3;
   const radius = (RING_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - placeholder.ringFraction);
+  // ENG-1006 — visible-arc floor. At 0 / 3 logged the bare track read as a
+  // dead grey circle, not a progress affordance. Clamp the FILL fraction
+  // (not the label) to ≥0.06 so even an unstarted ring shows a small clay
+  // tick that says "this is a progress ring, you're at the start".
+  const ringFill = Math.max(0.06, placeholder.ringFraction);
+  const dashOffset = circumference * (1 - ringFill);
 
   return (
     <View
@@ -75,7 +81,7 @@ export function ProgressStoryGate({
           Type.label,
           {
             color: Accent.primary,
-            marginBottom: 6,
+            marginBottom: Spacing.sm,
           },
         ]}
       >
@@ -135,7 +141,7 @@ export function ProgressStoryGate({
         style={{
           fontSize: 11,
           color: colors.textTertiary,
-          marginTop: 8,
+          marginTop: Spacing.sm,
           fontVariant: ["tabular-nums"],
         }}
       >
@@ -153,19 +159,25 @@ export function ProgressStoryGate({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.lg,
+    // ENG-1006 — match the cream sibling cards' radius (CARD_RADIUS = 24)
+    // so the lilac THIS WEEK card doesn't sit at a detectably different
+    // corner radius from the AVERAGE ADHERENCE / weight / daily-calories
+    // cards stacked below it.
+    borderRadius: CARD_RADIUS,
     borderWidth: 1,
     paddingHorizontal: Spacing.xl,
-    paddingVertical: 16,
+    paddingVertical: Spacing.md,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   body: {
-    fontSize: 12,
+    // ENG-1006 — 13pt label-secondary floor (was 12pt, below the spec's
+    // 13–14pt body floor and small under the serif headline).
+    fontSize: 13,
     lineHeight: 18,
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
 });
 

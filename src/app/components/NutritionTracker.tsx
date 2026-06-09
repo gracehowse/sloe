@@ -2890,11 +2890,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         </section>
       ) : null}
 
-      {/* Complete Day */}
+      {/* Complete Day — Sloe treatment system (2026-06-08): primary inline
+          CTA → aubergine outline (transparent fill + 1.5px primary-solid
+          border + primary-solid label), not a filled slab. Mirror of mobile
+          Today host. */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
         <button
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+          className="w-full py-3.5 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-4"
         >
           Complete Day
         </button>

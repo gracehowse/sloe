@@ -171,6 +171,31 @@ Library screen
 └─────────────────────────────────────────────────────┘
 ```
 
+> **Shipped (2026-06-08 — recipe-card redesign-conformance pass).** The
+> macro row + warm fallback are now live on Library, Discover, and the
+> Plan meal-row thumbnails, web + mobile:
+>
+> - **Macro row** (`MacroIconRow` on mobile; macro-hue chip row on web):
+>   `{kcal} · {protein}g · {carbs}g · {fat}g`, protein emphasised
+>   (`emphasiseProtein` → heavier weight + ink ink). kcal is suppressed at
+>   ≤0 so an un-computed recipe never shows a confident "0 kcal" (trust
+>   posture / F4). Library cards previously carried NO macros and read as
+>   unloaded — this reverses that call.
+> - **Warm fallback** (§11.4): a missing/broken card image renders the
+>   sage→cream `RecipeHeroFallback` tile (cuisine glyph in sage), never the
+>   pale-lilac `colors.border` base that read as broken. The Library card
+>   image-wrap base fill moved off the lilac hairline onto the card cream;
+>   the Discover "More ideas" rows + the Plan meal-row thumbnail (on a
+>   stale/expired hero URL via `onError`) both fall back to the same tile.
+> - **Attribution:** the curated seed byline calms from the stale brand to
+>   the live "Sloe Kitchen" at the `displayAttribution` display boundary
+>   (the legal `attribution.author` field stays unchanged — see
+>   `discoverSeedCopyright.test.ts`).
+>
+> Pinned by `recipeCardMacroRowAndFallback.test.ts`,
+> `macroIconRowProteinEmphasis.test.tsx`, `displayAttribution.test.ts`,
+> and `plannerMealRowThumbnail.test.ts`.
+
 **Card visual spec:**
 - Background: `#FFFFFF`, border: `1px solid #ECEAE4`, radius: 12pt, shadow: `0 1px 2px rgba(0,0,0,0.04)` (matches `--elev-card`).
 - Hero image: `object-fit: cover`, 116pt height on mobile (128pt on web), rounded top corners only.
@@ -733,6 +758,27 @@ Each ingredient is a card (not a flat row):
 
 **Standard units table:** g / oz / tbsp / tsp / cup / ml — all preserved. Unit picker in ingredient detail sheet.
 
+### 3.6 Create-recipe wizard premium sweep (2026-06-09 — shipped)
+
+**Component:** `apps/mobile/components/recipe/CreateRecipeWizard.tsx`
+
+The guided 5-step wizard received a full premium-parity sweep against the Julienne benchmark.
+Shipped items (all pinned by `createRecipeWizard.test.ts — premium parity pins (ENG-1011)`):
+
+- **Serif step H1s (gaps 1 + 2):** all five step questions ("What are you making?", "What's in it?", "How do you make it?", "Macros look right?", "Save your recipe") now render in Newsreader SemiBold 28pt (`FontFamily.serifSemibold`, `fontSize: 28`, `lineHeight: 32`). The entire type ramp migrated to `Type` + `FontFamily` tokens — no bespoke inline sizes remain.
+- **Warm photo fallback (gap 3):** cold dashed-border grey camera box replaced with the same `RecipeHeroFallback` (sage→cream gradient + cuisine glyph) used on Library / Discover / Plan cards (§11.4). Glyph is title-deterministic once the user types a name.
+- **Boxed servings stepper (gap 4):** the serving count renders inside a `#F6F5F2` rounded box (`Radius.lg`, hairline border, 44pt height) — reads as a deliberate stepper, not raw text. Numeral is `Type.heroValue` (Newsreader serif) with `fontVariant: ['tabular-nums']`. VoiceOver wired with `accessibilityRole="adjustable"` + `accessibilityValue`.
+- **On-scale spacing (gap 5):** all off-grid padding literals replaced with tokens (`paddingVertical: 14 → Spacing.md`, `padding: 10 → Spacing.sm`, `padding: 6 → Spacing.sm`).
+- **Disabled CTA floor (gap 6):** Continue button disabled opacity raised from 0.45 → 0.65, plus inline helper text ("Add a name to continue" / "Add at least one ingredient to continue") on blocked steps.
+- **Input lift (gap 7):** text input and the photo tile now carry a hairline border (`colors.border`) for field separation on the white page.
+- **Spacing rhythm (gap 9):** progress-bar segment gap uses `Spacing.xs` token; `Spacing.xl` breathing room added below the progress track before the first section block.
+- **Eyebrow tracking (gap 10):** "NEW RECIPE" eyebrow uses `Type.label` tracking (0.88 letterSpacing / 0.08em) instead of the over-tracked raw `2`.
+- **Char counter (gap 11):** recipe-name counter (`0/80`) now hidden at cold open; reveals only when within 20 chars of `TITLE_MAX_LENGTH`.
+- **Description deferral (gap 12):** `description: null` annotated with a Linear reference (`ENG-1012`) per the no-silent-deferrals rule.
+- **Radius warm-up (gap 13):** input, photo tile, ingredient cards, step cards, save card, and CTA buttons all use `Radius.xl` (12pt) — the warm recipe-surface radius the spec intends. Previously used `Radius.md` (6pt) which read clinical.
+
+Web note: the wizard-pacing divergence (5-step iOS / single-form web) is a documented carve-out (§4 "wizard pacing wouldn't help on desktop"). The visual token alignment (serif headings + 12pt radius + soft lift) converges the per-step feel cross-platform without changing the navigation model.
+
 ---
 
 ## 4. Web parity specification
@@ -1027,6 +1073,8 @@ Every feature, data point, rule, state, and gate from the functional inventory (
 - `/Users/graceturner/Suppr-1/apps/mobile/app/shopping.tsx` — Shopping List (mobile)
 - `/Users/graceturner/Suppr-1/apps/mobile/app/recipe/verify.tsx` — Verify screen (mobile)
 - `/Users/graceturner/Suppr-1/apps/mobile/app/import-shared.tsx` — URL/social import (mobile)
+- `/Users/graceturner/Suppr-1/apps/mobile/app/create-recipe.tsx` — Create-recipe form (mobile; reached after the source picker)
+- `/Users/graceturner/Suppr-1/apps/mobile/components/MealTypePicker.tsx` — Meal-type chip row (mobile; shared by create + import)
 - `/Users/graceturner/Suppr-1/apps/mobile/components/recipe/CreateRecipeActionSheet.tsx` — Source picker (mobile)
 - `/Users/graceturner/Suppr-1/src/app/components/RecipeDetail.tsx` — Recipe Detail (web)
 - `/Users/graceturner/Suppr-1/src/app/components/Library.tsx` — Library (web)
@@ -1036,3 +1084,58 @@ Every feature, data point, rule, state, and gate from the functional inventory (
 - `/Users/graceturner/Suppr-1/docs/decisions/2026-05-01-cook-voice-handsfree.md` — Voice shell decision
 - `/Users/graceturner/Suppr-1/docs/ux/brand-tokens.md` — Canonical colour tokens
 - `/Users/graceturner/Suppr-1/docs/ux/design-tokens.md` — Canonical design tokens
+
+---
+
+## 12. Implementation log
+
+### 2026-06-09 — create-recipe-form premium-parity sweep (mobile)
+
+`apps/mobile/app/create-recipe.tsx` + `apps/mobile/components/MealTypePicker.tsx`
+brought to editorial-luxury parity. Pure token swaps + the footer bug fix ship
+un-gated; net-new structural blocks ship behind `isFeatureEnabled("recipes_redesign_v1")`
+with the prior path alive in the `else`.
+
+**Un-gated (token swaps + bug fix):**
+- Footer overlap bug (sev 5): the sticky footer was absolutely positioned and
+  occluded the Ingredients header + quick-add row on short forms. Now a flex
+  sibling below the ScrollView; the ScrollView reserves the footer height
+  (measured via `onLayout`) + safe area + `Spacing.xl` as bottom padding.
+- Serif screen title (sev 5): `Type.title` (Newsreader) replaces the 13pt Inter
+  800 / letterSpacing 3 caption. Mirrors web's serif `text-3xl` H1.
+- Radius (sev 4): inputs / paste textarea / publish row / ingredient cards /
+  totals / meal chips moved `Radius.md` (6pt) → `Radius.xl` (12pt).
+- Spacing (sev 3): all off-scale padding (10/12/14) snapped to the `Spacing`
+  scale; hardcoded `gap: 4/6` → `Spacing.xs`. Inputs clear the 44pt target.
+- Section eyebrows (sev 3): `Type.label` (+0.08em tracking) in sage
+  (`Accent.success`), not tertiary grey.
+- Lucide icons (sev 2): every Ionicons glyph swapped for the lucide equivalent
+  (Camera / ClipboardList / Barcode / Coffee / Sun / UtensilsCrossed / Cookie /
+  CircleCheck / CircleX / Search / Plus / Minus). Zero Ionicons remain.
+- Publish toggle colour (sev 2): track/thumb use the brand accent, not
+  `Accent.success` green (success green is a state colour, not a control colour).
+
+**Flag-gated (`recipes_redesign_v1`):**
+- Warm `RecipeHeroFallback` cover placeholder (sev 4) — sage→cream gradient +
+  sage cookware glyph (§11.4) + tangible warm Camera CTA — replaces the cold grey
+  dashed box. Same component Library/Discover use.
+- Filled primary submit (sev 3) — dark ink slab matching Recipe Detail's "Log
+  all" footer (52pt, serif label); legacy outline kept in the `else`.
+- Lifted clay "Scan photo" quick-action (sev 2) — the magic/viral import path
+  reads as primary, not one of three identical hairline pills.
+- Serif per-serving totals (sev 2) — kcal + macro values in `Type.heroValue`
+  (Newsreader); legacy Inter 800 kept in the `else`.
+- Boxed −/[n]/+ servings stepper (sev 2) — clamps [1, 99]; shared shape with
+  Recipe Detail. Legacy bare 80pt numeric input kept in the `else`.
+
+Guarded by `apps/mobile/tests/unit/createRecipeDsCompliance.test.tsx` (18 assertions).
+
+**Deferred (need a cross-platform/product decision — see Linear):**
+- §3.5 4-tile source-picker convergence + mobile GoPublicDialog attestation
+  (mobile uses a one-shot `Alert`; web uses the `GoPublicDialog` checkbox).
+- Cover-seed alignment: web `RecipeUpload` seeds a stock Unsplash
+  `DEFAULT_COVER_IMAGE` into the save path; mobile persists no stock URL and
+  fires the on-brand `image-hero` background generation, rendering
+  `RecipeHeroFallback` until/if a real hero lands. Converge to one model.
+- `create-recipe.tsx` is ~1.4k lines (legacy, over the 400-line cap); a
+  `useCreateRecipe()` extraction is a separate refactor.

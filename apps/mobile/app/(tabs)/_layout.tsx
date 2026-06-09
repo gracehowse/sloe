@@ -35,11 +35,16 @@ import { supabase } from '@/lib/supabase';
  *  - Progress → dedicated tab (`/(tabs)/progress`). Settings is
  *    reached from the avatar on Today (and deep links), not the tab bar.
  *
- * `discover`, `progress`, `more`, `settings`, `search`, `barcode`, and
- * `notifications` remain as routable screens but are removed from the
- * tab bar (`href: null`). All existing deep-links (e.g. `/library?from=
- * onboarding`, `useSafeBack("/(tabs)/discover")`, `router.push("/(tabs)
- * /more")` from the household card) continue to resolve.
+ * `discover`, `settings`, `barcode`, and `notifications` remain as
+ * routable screens but are removed from the tab bar (`href: null`). All
+ * existing deep-links (e.g. `/library?from=onboarding`,
+ * `useSafeBack("/(tabs)/discover")`) continue to resolve.
+ *
+ * The vestigial read-only `search` tab (a dev-stub USDA lookup, distinct
+ * from the in-sheet food search owned by the Log sheet) was deleted
+ * 2026-06-08 per the nutrition-log spec §3.15 — food search lives only
+ * in `<LogSheet>` now. `more` was deleted earlier in the 4-tab IA
+ * collapse.
  *
  * Documentation: `docs/journeys/tab-collapse-2026-04-27.md`.
  */
@@ -204,7 +209,6 @@ export default function TabLayout() {
           but not surfaced in the tab bar. */}
       <Tabs.Screen name="discover" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
       {/* V1 (2026-05-11 visual sweep): /recipes redirects to /library

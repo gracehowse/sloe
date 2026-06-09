@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 /**
  * Suppr brand accents (mobile). Aligned with the web Sloe palette.
- * Primary: `Accent.primary` (#C8794E clay) — Sloe Phase 0 (2026-06-03).
+ * Primary: `Accent.primary` (#5B3B6E aubergine-violet) — 2026-06-08.
  * Body text stays warm ink via `Colors.*.text`. See `docs/ux/brand-tokens.md`.
  */
 /** Accent palette — SLOE Phase 0 (2026-06-03). Values-only re-skin: every
@@ -21,29 +21,30 @@ import { Platform } from 'react-native';
  *  and a darkened `*Solid` variant carries text/icon usage (mirrors web
  *  `--accent-*-solid`). */
 export const Accent = {
-  /** UI chrome — buttons, tabs, links, Log FAB. Clay slot. */
-  primary: '#C8794E',
-  /** Foreground on filled primary buttons (white on clay = 3.37:1, OK for
-   *  bold button labels). */
+  /** UI chrome — outlined CTAs, tabs, links, Log FAB. Deep plum #3B2A4D
+   *  (2026-06-08 — see docs/decisions/2026-06-08-aubergine-accent-system.md).
+   *  Darker = more premium (Grace), rationed hard; the lighter #5B3B6E is the
+   *  gradient / active LIFT, not the base. */
+  primary: '#3B2A4D',
+  /** Foreground on filled primary buttons (white on plum #3B2A4D ≈ 12:1 — AA). */
   primaryForeground: '#ffffff',
-  /** Lifted clay — dark-mode primary, selected tabs. */
-  primaryLight: '#D58A5E',
-  /** Deep clay — text/icon/link on light (5.48:1 on white — AA PASS).
+  /** Plum Lift — gradient top, pressed/glow, active-tab tint, selected lift. */
+  primaryLight: '#5B3B6E',
+  /** Deep plum — text/icon/link/outline-border on light (≈12:1 on white — AA).
    *  Mirrors web `--accent-primary-solid`. Use INSTEAD of `primary` when the
-   *  clay is small text or an icon on a light surface. */
-  primarySolid: '#A0552E',
-  /** Lifted clay for text on dark (7.18:1 on dark card — AA PASS). */
-  primarySolidDark: '#E0A074',
-  /** Soft fill for selected pills / segmented active. Use INSTEAD of solid
-   *  `primary` on selected segmented controls, filter chips, fasting
-   *  presets, billing toggle. Solid stays reserved for the ONE
-   *  primary action per screen. */
-  primarySoft: 'rgba(200, 121, 78, 0.10)',
-  primarySoftDark: 'rgba(213, 138, 94, 0.16)',
-  /** Legacy alias — now clay. Macro identity (protein) uses
+   *  accent is small text, an icon, or a 1.5px outline border on a light surface. */
+  primarySolid: '#3B2A4D',
+  /** Lifted aubergine for text on dark (AA on dark card). */
+  primarySolidDark: '#C4ACD0',
+  /** Soft fill for selected pills / segmented active / nudge tint. Lifted-aubergine
+   *  hue (12%) so the tint stays perceptible. Solid fill stays reserved for the FAB
+   *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */
+  primarySoft: 'rgba(91, 59, 110, 0.12)',
+  primarySoftDark: 'rgba(154, 123, 170, 0.18)',
+  /** Legacy alias — now deep plum. Macro identity (protein) uses
    *  MacroColors.protein (olive-sage), a different hue. */
-  brandBlue: '#C8794E',
-  brandBlueLight: '#D58A5E',
+  brandBlue: '#3B2A4D',
+  brandBlueLight: '#5B3B6E',
   /** Sage slot — success, calorie-ring at/under-target signals.
    *  `successSolid` (#466046, 6.95:1 on white) carries text usage. */
   success: '#5E7C5A',
@@ -132,67 +133,27 @@ export const Accent = {
  * celebration FILL (ring sweep / glow / pulse). Use with `react-native-svg`
  * `<LinearGradient>` (3 stops at 0% / 50% / 100%) or any consumer that takes an
  * ordered stop list. Mirrors web `--accent-win-gradient`
- * (`linear-gradient(120deg, #3B2A4D 0%, #C8794E 50%, #C9892C 100%)`).
+ * (`linear-gradient(120deg, #3B2A4D 0%, #5B3B6E 50%, #7E5C92 100%)`).
  */
-/** Shared shape for the win-moment gradient (clay default + Frost variant).
- *  Widened from each object's `as const` literal tuples so the two gradients
- *  are assignable to one another (the theme context exposes whichever is
- *  active). 3 ordered stops + matching offsets. */
+/** Shape for the win-moment gradient. 3 ordered stops + matching offsets. */
 export type WinGradient = {
   readonly stops: readonly [string, string, string];
   readonly offsets: readonly [number, number, number];
 };
 
 export const AccentWinGradient: WinGradient = {
-  /** Sloe brand gradient — plum → clay → amber, in paint order. */
-  stops: ['#3B2A4D', '#C8794E', '#C9892C'] as const,
+  /** Sloe brand gradient — plum → aubergine → lift, in paint order. */
+  stops: ['#3B2A4D', '#5B3B6E', '#7E5C92'] as const,
   /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
   offsets: [0, 0.5, 1] as const,
 };
 
-/**
- * FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`).
- * Exploration only (decision doc:
- * `docs/brand/2026-06-07-secondary-colour-exploration.md`). A copy of `Accent`
- * with ONLY the secondary-accent keys moved from clay → Damson; everything else
- * (carbs, sugar, activity/honey, status, fiber, win) is identical so a
- * flag-OFF build is byte-identical to today's clay path. Surfaced through the
- * theme context's `accent` (see `context/theme.tsx` → `useAccent()`); NOT in
- * `REDESIGN_DEFAULT_ON`, so the clay `Accent` stays the default and ramps later
- * via PostHog. Web mirror: `.flag-frost` overrides in `src/styles/theme.css`.
- *
- * Carbs/sugar STAY clay here (`carbs`/`carbsLight` unchanged) — the macro
- * identity colour must not move in either flag state.
- */
-export const AccentFrost = {
-  ...Accent,
-  /** UI chrome / CTA — Damson (was clay). White on damson clears AA-large. */
-  primary: '#6A4B7A',
-  /** Lifted damson — dark-mode primary, selected tabs (was clay light). */
-  primaryLight: '#9A7BAA',
-  /** Deep damson — text/icon/link on light (was clay solid). */
-  primarySolid: '#54356A',
-  /** Lifted damson for text on dark (was clay solid dark). */
-  primarySolidDark: '#B6ACC6',
-  /** Soft damson fill for selected pills / segmented active. */
-  primarySoft: 'rgba(106, 75, 122, 0.10)',
-  primarySoftDark: 'rgba(154, 123, 170, 0.16)',
-  /** Legacy alias — now damson (mirrors `primary`). */
-  brandBlue: '#6A4B7A',
-  brandBlueLight: '#9A7BAA',
-} as const;
-
-/**
- * FROST win/celebration gradient — FLAG-GATED (`brand_frost_secondary`). The
- * mid clay stop shifts to damson; plum + honey ends hold. Surfaced through the
- * theme context's `winGradient`. Web mirror: `.flag-frost --accent-win-gradient`.
- */
-export const AccentWinGradientFrost: WinGradient = {
-  /** Frost gradient — plum → damson → amber-honey, in paint order. */
-  stops: ['#3B2A4D', '#6A4B7A', '#D6A24A'] as const,
-  /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
-  offsets: [0, 0.5, 1] as const,
-};
+// Accent history: the Frost flag (`brand_frost_secondary`) was retired
+// 2026-06-08; clay was briefly the unconditional accent, then SUPERSEDED the
+// same day by the aubergine-violet `#5B3B6E` system (Julienne-restraint review
+// — see docs/decisions/2026-06-08-aubergine-accent-system.md). Clay survives
+// ONLY as `MacroColors.carbs`. Damson `#6A4B7A` stays a scarce brand-identity
+// role (win / Pro / streaks / info), never "the accent".
 
 /**
  * Stimulant tracker colours (Batch 2.5 hydration & stimulants).
@@ -526,12 +487,31 @@ export const Type = {
    *  Sole consumer: `TodayDeficitInsight.tsx` (colour set there to plum). */
   coach:   { fontFamily: FontFamily.serifItalic, fontSize: 17, lineHeight: 23, letterSpacing: 0 },
   /** Macro tile + calorie ring centre value — keep in sync. Inter (numerals
-   *  stay in the sans for tight tabular alignment on small tiles). */
+   *  stay in the sans for tight tabular alignment on small tiles + inline
+   *  macro callouts like the saved-meal portion + ingredient sheets, which
+   *  must NOT go serif). For the BIG hero numerals (targets / profile /
+   *  weight + the Today macro-tile numeral) use `Type.heroValue` instead. */
   macroValue: {
     fontFamily: FontFamily.sansBold,
     fontSize: 20,
     lineHeight: 24,
     fontWeight: '700' as const,
+    letterSpacing: -0.35,
+  },
+  /** Big hero numeral — Newsreader (serif), per the approved Figma frames
+   *  (the `01 · Today` macro-tile numeral + the targets/profile/weight big
+   *  numbers). SLOE Phase 0 wants the big numbers in serif; this is the
+   *  dedicated serif sibling of `macroValue` so adopting it on a big-numeral
+   *  surface never forces serif on the small inline macro callouts that keep
+   *  `macroValue`. Same 20/24 box + tabular alignment as `macroValue` (pair
+   *  with `fontVariant: ['tabular-nums']` at the call site) so it's a drop-in
+   *  swap; the family is the only difference. Bump `fontSize` per surface at
+   *  the call site where the frame is larger. Added ENG-997 (2026-06-08). */
+  heroValue: {
+    fontFamily: FontFamily.serifMedium,
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '500' as const,
     letterSpacing: -0.35,
   },
   /** Numeric specials — the big hero numbers read in Newsreader (serif) to

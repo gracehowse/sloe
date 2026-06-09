@@ -172,14 +172,20 @@ _Canonical 2026-05-22 lock — tighter ladder (Linear / Stripe / Things 3 tier).
 
 ## Fonts (Sloe Phase 0)
 
-- **Headlines / display / ring numerals → Newsreader** (editorial serif).
+- **Headlines / display / hero numerals → Newsreader** (editorial serif).
   Web: `next/font/google` `--font-newsreader` (`app/layout.tsx`), applied to
-  `h1–h3` + `.font-display` in `src/styles/theme.css`. Mobile:
-  `@expo-google-fonts/newsreader` loaded via `useFonts` in
-  `apps/mobile/app/_layout.tsx`; `Type.display/title/headline/ringValue` point
-  at `Newsreader_600SemiBold`. Ring/macro numerals stay Inter tabular (NOT
-  serif) for tight digit alignment.
-- **Body / labels / captions → Inter** (sans). Web `--font-inter`; mobile
+  `h1–h3` + `.font-display` + `font-[family-name:var(--font-headline)]` in
+  `src/styles/theme.css`. Mobile: `@expo-google-fonts/newsreader` loaded via
+  `useFonts` in `apps/mobile/app/_layout.tsx`;
+  `Type.display/title/headline/ringValue/heroValue` point at Newsreader.
+  **Big standalone numeric HERO values are serif** — calorie ring, macro tiles,
+  kcal/kg targets, big stat numbers, the prominent number on a card (SLOE
+  Phase 0 / ENG-997; the consistency pass landed 2026-06-08, see
+  `design-system.md` › "Hero numerals are serif" + `heroNumeralSerif.test.ts`).
+- **Body / labels / captions → Inter** (sans), AND **unit suffixes** (kcal, kg,
+  g, ml, %) beside a serif hero numeral + the small inline macro callouts on the
+  saved-meal portion / ingredient sheets (`Type.macroValue`) — those stay Inter
+  tabular for tight digit alignment. Web `--font-inter`; mobile
   `@expo-google-fonts/inter` (`Inter_400/500/600/700`). `tnum` + `ss01`
   preserved for numerics.
 

@@ -104,14 +104,16 @@
    *  `-solid` variant carries text/icon usage. Computed ratios are listed
    *  beside each `-solid` below. */
 
-  /** Primary / CTA — clay terracotta. The "Get the app" warm button. White
-   *  on clay = 3.37:1 (large/bold button label OK). `-solid` (#A0552E) is
-   *  the text/icon/link variant: 5.48:1 on white, 5.17:1 on oat — AA PASS. */
-  --accent-primary: #C8794E;
+  /** Primary / CTA — deep plum #3B2A4D (2026-06-08; darker = more premium, Grace).
+   *  White on #3B2A4D ≈ 12:1 (filled FAB / conversion CTA). `-solid` (#3B2A4D)
+   *  is the text/icon/link/outline-border variant — ≈12:1 on white, AA PASS.
+   *  `-lift` (#5B3B6E) is the gradient top / active-tab tint. */
+  --accent-primary: #3B2A4D;
+  --accent-primary-lift: #5B3B6E;
   --accent-primary-foreground: #ffffff;
-  --accent-primary-solid: #A0552E;
-  --accent-primary-soft: rgba(200, 121, 78, 0.10);
-  --accent-primary-ring: rgba(200, 121, 78, 0.22);
+  --accent-primary-solid: #3B2A4D;
+  --accent-primary-soft: rgba(91, 59, 110, 0.12);
+  --accent-primary-ring: rgba(91, 59, 110, 0.24);
 
   /** Legacy aliases — old token names still resolve to new values so
    *  callers can be migrated in passes without breaking compile. */
@@ -159,7 +161,7 @@
    *  mobile `Accent.win` / `Accent.winSoft` / `AccentWinGradient`. */
   --accent-win: #6A4B7A;
   --accent-win-soft: rgba(106, 75, 122, 0.12);
-  --accent-win-gradient: linear-gradient(120deg, #3B2A4D 0%, #C8794E 50%, #C9892C 100%);
+  --accent-win-gradient: linear-gradient(120deg, #3B2A4D 0%, #5B3B6E 50%, #7E5C92 100%);
 
   /** Estimated-confidence chip — warm honey-amber, already on-palette.
    *  Kept at #BF8324 (matches the mobile chip). 3.24:1 on white as a chip
@@ -332,13 +334,13 @@
   --sidebar-accent: #EDEAF1;
   --sidebar-accent-foreground: #221B26;
   --sidebar-border: #E8E2EC;
-  --sidebar-ring: #C8794E;
+  --sidebar-ring: #5B3B6E;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
-  --accent-muted: rgba(200, 121, 78, 0.12);
+  --accent-muted: rgba(91, 59, 110, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.04);
@@ -371,14 +373,15 @@
   --popover: #2A2730;
   --popover-foreground: #F5F3F4;
 
-  /** Sloe dark accents — lifted for OLED contrast. Primary clay lifts to
-   *  #D58A5E; `-solid` (text/icon/link on dark) is the base clay #C8794E
-   *  (4.78:1 on the dark card — AA PASS). */
-  --accent-primary: #D58A5E;
+  /** Sloe dark accents — aubergine lifted for OLED contrast. Primary fill
+   *  #7E5C92 (white label ≈4.5:1 — AA); `-solid` (text/icon/link on dark) is
+   *  the light aubergine #C4ACD0 (AA on the dark card). */
+  --accent-primary: #7E5C92;
+  --accent-primary-lift: #9A7BAA;
   --accent-primary-foreground: #ffffff;
-  --accent-primary-solid: #C8794E;
-  --accent-primary-soft: rgba(213, 138, 94, 0.16);
-  --accent-primary-ring: rgba(213, 138, 94, 0.30);
+  --accent-primary-solid: #C4ACD0;
+  --accent-primary-soft: rgba(154, 123, 170, 0.18);
+  --accent-primary-ring: rgba(154, 123, 170, 0.30);
 
   --primary: var(--accent-primary);
   --primary-foreground: var(--accent-primary-foreground);
@@ -560,50 +563,13 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
-/** ── FROST secondary-colour direction — FLAG-GATED (`brand_frost_secondary`) ──
- *  Exploration only (decision doc:
- *  `docs/brand/2026-06-07-secondary-colour-exploration.md`). The `.flag-frost`
- *  class is toggled on `<html>` by `FrostFlagToggle` (web) AFTER PostHog flags
- *  resolve; mobile parity lives in `apps/mobile/constants/theme.ts`
- *  (`AccentFrost`) + `context/theme.tsx` (`useAccent`). NOT in
- *  `REDESIGN_DEFAULT_ON` — the clay path below the class stays the default and
- *  ramps later via PostHog.
- *
- *  Principle (matches mobile): plum `#3B2A4D` stays hero / nav / wordmark; the
- *  clay ACCENT (white-text CTA / active / focus-ring) moves to Damson
- *  `#6A4B7A`. This block redefines ONLY the secondary-accent tokens; every
- *  other token cascades unchanged via `var()`. Deliberately ABSENT (must stay
- *  clay in BOTH flag states — regression guard):
- *    - `--macro-carbs` / `--macro-carbs-soft`
- *    - `--macro-sugar` / `--macro-sugar-soft`
- *    - `--chart-3`
- *  Status (success / warning / destructive / over-budget), honey
- *  (`--activity*`), nav / brand-mark, and the meal-slot / source / confidence
- *  hues are likewise untouched. */
-.flag-frost {
-  --accent-primary: #6A4B7A;
-  --accent-primary-solid: #54356A;
-  --accent-primary-soft: rgba(106, 75, 122, 0.10);
-  --accent-primary-ring: rgba(106, 75, 122, 0.22);
-  --accent-muted: rgba(106, 75, 122, 0.12);
-  --sidebar-ring: #6A4B7A;
-  --north-star-bg-to: rgba(106, 75, 122, 0.05);
-  --elev-float-primary: 0 4px 16px rgba(106, 75, 122, 0.40);
-  --accent-win-gradient: linear-gradient(120deg, #3B2A4D 0%, #6A4B7A 50%, #D6A24A 100%);
-}
-
-.dark.flag-frost,
-.flag-frost.dark {
-  --accent-primary: #9A7BAA;
-  --accent-primary-solid: #B6ACC6;
-  --accent-primary-soft: rgba(154, 123, 170, 0.16);
-  --accent-primary-ring: rgba(154, 123, 170, 0.30);
-  --accent-muted: rgba(154, 123, 170, 0.15);
-  --sidebar-ring: #9A7BAA;
-  --north-star-bg-to: rgba(154, 123, 170, 0.06);
-  --elev-float-primary: 0 4px 16px rgba(154, 123, 170, 0.45);
-  --accent-win-gradient: linear-gradient(120deg, #815E91 0%, #9A7BAA 50%, #E0B25E 100%);
-}
+/* The Frost secondary-colour exploration (`brand_frost_secondary`, ENG-997) was
+ * RETIRED 2026-06-08 (brand-manager): Clay is the unconditional functional
+ * accent on web + mobile, Damson reverts to a scarce brand-identity role. The
+ * light + dark damson cascade overrides that used to live here (gated on an
+ * html class), the FrostFlagToggle that added that class, and the mobile
+ * AccentFrost / context/theme.tsx flag wiring were all removed in the same
+ * change — the clay tokens in `:root` / `.dark` above are now the only path. */
 
 @theme inline {
   /* Fonts — Sloe (Phase 0). Newsreader (serif, --font-newsreader) carries

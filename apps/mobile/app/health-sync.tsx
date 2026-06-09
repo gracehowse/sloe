@@ -3,9 +3,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Ionicons } from "@expo/vector-icons";
-import { Footprints, Flame, HeartPulse, Dumbbell, Scale } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import {
+  AlertCircle,
+  ChevronLeft,
+  Download,
+  Dumbbell,
+  EyeOff,
+  Flame,
+  Footprints,
+  Heart,
+  HeartPulse,
+  Scale,
+  Share2,
+  Trash2,
+  Utensils,
+} from "lucide-react-native";
+import { Accent, Elevation, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -61,6 +74,21 @@ function formatLastSync(iso: string | null): string {
   return `Synced ${new Date(iso).toLocaleDateString()}`;
 }
 
+/**
+ * Leading status-dot colour for a HealthCategoryRow.
+ *   - "Connect to enable" (not connected) → muted `#ECEAE4`
+ *   - Connected, never synced → amber `#C9892C`
+ *   - Connected + synced → success green `#5E7C5A`
+ *
+ * settings.md §3.10: LEADING status dot (green=synced / amber=never synced /
+ * muted=connect to enable), not a trailing circle.
+ */
+function statusDotColor(connected: boolean, lastSyncedAt: string | null): string {
+  if (!connected) return "#ECEAE4";
+  if (!lastSyncedAt) return Accent.warning; // amber — connected but never synced
+  return Accent.success;                     // green — synced at least once
+}
+
 export default function HealthSyncScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)/settings");
@@ -110,7 +138,7 @@ export default function HealthSyncScreen() {
   // no obvious next step. We now show an inline banner with two
   // affordances: "Try again" (re-runs whichever flow failed) and
   // "Open iOS Settings" (deep-links to Settings → Privacy → Health
-  // → Suppr where the user can grant or re-grant permissions).
+  // → Sloe where the user can grant or re-grant permissions).
   type HealthErrorKind = "connect" | "sync" | null;
   const [errorState, setErrorState] = useState<{
     kind: HealthErrorKind;
@@ -122,7 +150,7 @@ export default function HealthSyncScreen() {
   // only trusted as a starting signal — we then probe HealthKit on
   // mount/focus and flip back to disconnected if the bridge errors
   // (user revoked permission in iOS Settings → Privacy → Health →
-  // Suppr). Previously the flag was treated as authoritative for the
+  // Sloe). Previously the flag was treated as authoritative for the
   // life of the install, so a revoked-then-reopened user kept seeing
   // green "Connected" + "Sync Now" while the integration was dead.
   useEffect(() => {
@@ -189,7 +217,7 @@ export default function HealthSyncScreen() {
     }, [connecting, syncing]),
   );
 
-  // If native never calls back, don’t leave the Connect button spinning when leaving this screen.
+  // If native never calls back, don't leave the Connect button spinning when leaving this screen.
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -248,14 +276,16 @@ export default function HealthSyncScreen() {
     if (isExpoGoRuntime()) {
       Alert.alert(
         "Expo Go",
-        "Apple Health isn’t available in Expo Go. Open this app from a development build (Xcode or `expo run:ios --device`).",
+        "Apple Health isn't available in Expo Go. Open this app from a development build (Xcode or `expo run:ios --device`).",
       );
       return;
     }
     if (!available) {
       Alert.alert(
         "Not available",
-        "The Health native module isn’t in this build. From apps/mobile run `npx expo prebuild --platform ios`, then rebuild and install on your iPhone.",
+        __DEV__
+          ? "The Health native module isn't in this build. From apps/mobile run `npx expo prebuild --platform ios`, then rebuild and install on your iPhone."
+          : "Apple Health isn't available on this device.",
       );
       return;
     }
@@ -465,8 +495,8 @@ export default function HealthSyncScreen() {
 
   /**
    * F-57 follow-up — recovery affordance: deep-link to iOS Settings →
-   * Privacy → Health → Suppr where the user can grant or re-grant
-   * permissions. `app-settings:` opens Suppr's app-settings page;
+   * Privacy → Health → Sloe where the user can grant or re-grant
+   * permissions. `app-settings:` opens Sloe's app-settings page;
    * Apple Health permissions are reached from there in two taps. We
    * deliberately don't try to open Health.app directly because there
    * is no public scheme for "Health permissions for app X" and the
@@ -541,7 +571,7 @@ export default function HealthSyncScreen() {
             Alert.alert(
               result.externalEnergyCount > 0 ? "Meals found in Health ✓" : "No meals found in Health",
               result.externalEnergyCount > 0
-                ? `Found ${result.externalEnergyCount} dietary energy sample${result.externalEnergyCount === 1 ? "" : "s"} from other apps in the last 7 days (sources: ${sources}). Tap Sync Now to import new items into Suppr.`
+                ? `Found ${result.externalEnergyCount} dietary energy sample${result.externalEnergyCount === 1 ? "" : "s"} from other apps in the last 7 days (sources: ${sources}). Tap Sync Now to import new items into Sloe.`
                 : `No dietary energy from other apps in the last 7 days. Log food in MyFitnessPal with Health sharing on, then open Health → Browse → Nutrition → Dietary Energy — you should see individual foods with times, not only one daily total.${permissionHint}`,
             );
           },
@@ -601,255 +631,386 @@ export default function HealthSyncScreen() {
     );
   }, [userId]);
 
+  // Icon width (20pt) + row gap (Spacing.sm = 8pt) — expressed as a derived
+  // constant so helper-text indent doesn't rely on a magic literal 28.
+  const ICON_INDENT = 20 + Spacing.sm; // = 28pt, derived not magic
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        header: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
-        title: { flex: 1, fontSize: 20, fontWeight: "800", color: colors.text, textAlign: "center" },
-        card: {
-          marginHorizontal: Spacing.xl,
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: colors.border,
-          padding: Spacing.xl,
-          marginBottom: Spacing.lg,
-          ...(cardElevation.shadowStyle ?? {}),
-        },
-        cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm },
-        desc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-        btn: {
-          marginHorizontal: Spacing.xl,
-          paddingVertical: 16,
-          borderRadius: Radius.md,
+        // Left-aligned stacked header: back chevron + title on the same row,
+        // title left-aligned per settings.md §4 (Fraunces/Newsreader 28sp bold).
+        header: {
+          flexDirection: "row",
           alignItems: "center",
-          marginBottom: Spacing.lg,
+          gap: Spacing.sm,
+          paddingHorizontal: Spacing.xl,
+          paddingVertical: Spacing.md,
         },
-        btnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
-        feature: { flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingVertical: Spacing.sm },
+        title: {
+          fontFamily: FontFamily.serifRegular,
+          fontSize: 28,
+          lineHeight: 34,
+          fontWeight: "700" as const,
+          color: colors.text,
+          // Left-aligned — no textAlign: "center", no flex:1 centering trick
+        },
+        // Section eyebrow: ALL-CAPS, Inter 11sp, +0.08em tracking, sage colour.
+        // settings.md §4: 24pt above / 8pt below each eyebrow.
+        eyebrow: {
+          ...Type.label,
+          color: colors.textSecondary,
+          marginHorizontal: Spacing.xl,
+          marginTop: Spacing.xl,    // 24pt above
+          marginBottom: Spacing.sm, // 8pt below
+        },
+        // Standard settings card — 16pt padding (settings.md §4 "16px all sides"),
+        // Radius.xl (12pt) — closest on-scale token to spec's 16pt ideal.
+        // Elevation.cardSoft on an OUTER wrapper for iOS shadow (overflow:hidden
+        // clips shadows so the shadow must live outside the border-clipped card).
+        cardShadowWrapper: {
+          marginHorizontal: Spacing.xl,
+          marginBottom: Spacing.md,
+          borderRadius: Radius.xl,
+          ...Elevation.cardSoft,
+        },
+        card: {
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderRadius: Radius.xl,
+          borderWidth: 1,
+          borderColor: colors.cardBorder ?? colors.border,
+          padding: Spacing.md,       // 16pt — standard settings card
+          overflow: "hidden" as const,
+        },
+        // Card title — Fraunces ~18sp/600 (display-section editorial register).
+        // settings.md §3 treats sub-screen card headers as Fraunces display-section.
+        cardTitle: {
+          fontFamily: FontFamily.serifSemibold,
+          fontSize: 18,
+          lineHeight: 22,
+          fontWeight: "600" as const,
+          color: colors.text,
+          marginBottom: Spacing.xs,
+        },
+        desc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+        // Aubergine OUTLINE primary CTA (Sloe treatment #1, 2026-06-08) —
+        // transparent fill, 1.5px border in `Accent.primarySolid`, label in
+        // the same. The everyday primary action reads as an accent line.
+        btnOutline: {
+          marginHorizontal: Spacing.xl,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.md,
+          borderWidth: 1.5,
+          borderColor: Accent.primarySolid,
+          backgroundColor: "transparent",
+          alignItems: "center" as const,
+          marginBottom: Spacing.md,
+        },
+        btnOutlineText: { fontSize: 16, fontWeight: "700" as const, color: Accent.primarySolid },
+        // Category row — 44pt minimum height (design-system §3.3 + settings.md §2).
+        // paddingVertical: 12pt gives ~44pt with 20pt icon + label.
+        feature: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: Spacing.sm,
+          paddingVertical: 12,
+          minHeight: 44,
+        },
+        // Hairline separator between category rows (#ECEAE4).
+        rowSeparator: {
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: colors.border,
+          marginLeft: ICON_INDENT, // inset from status-dot column
+        },
         featureText: { fontSize: 14, color: colors.text, flex: 1 },
+        // Helper/rationale text under toggles — on-scale type (Type.caption = 11sp
+        // Inter Medium). Indent = icon width (20) + gap (Spacing.sm = 8) = 28pt,
+        // expressed via ICON_INDENT constant. No negative marginTop hack.
+        helperText: {
+          ...Type.caption,
+          color: colors.textTertiary,
+          marginLeft: ICON_INDENT,
+          marginBottom: Spacing.sm,
+        },
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, ICON_INDENT],
   );
 
   return (
-    <ScrollView testID="screen-health-sync" style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      testID="screen-health-sync"
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
+      {/* Left-aligned stacked header: back chevron + serif title (settings.md §4) */}
       <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        <Pressable onPress={goBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
+          <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
         </Pressable>
         <Text style={styles.title}>Health Sync</Text>
-        <View style={{ width: 32 }} />
       </View>
 
-      <View
-        testID="health-sync-apple-card"
-        style={[styles.card, winMoment.flashStyle]}
-      >
-        <CardTitle styles={styles} icon="heart" text="Apple Health / Health Connect" />
-        <Text style={styles.desc}>
-          Automatically sync your steps, weight, and active energy from Apple Health (iOS) or Google Health Connect (Android). Steps and active energy appear on the Today tab for whichever day you select; water there is from quick-adds plus water logged on foods.
-        </Text>
+      {/* CONNECT eyebrow — settings.md §3.10 */}
+      <Text style={styles.eyebrow}>CONNECT</Text>
 
-        {/* P1-21 (2026-04-25 design-system-enforcer + Carryover rule
-            #2): swap Ionicons for lucide-react-native to match the
-            Claude Design prototype's icon language used everywhere else
-            in the product.
-            2026-05-14 (premium-bar audit Group J #9): each row now
-            shows a "Synced X min ago" subtitle so the user can see at
-            a glance how fresh each category is. Pre-connect / pre-
-            first-sync rows render "Never synced" — same visual slot
-            so the layout doesn't jump after the first Sync Now. */}
-        <View style={{ marginTop: Spacing.lg }}>
-          <HealthCategoryRow
-            icon={Footprints}
-            label="Daily step count"
-            lastSyncedAt={lastSyncTimes.steps}
-            connected={connected}
-            colors={colors}
-            styles={styles}
-          />
-          <HealthCategoryRow
-            icon={Scale}
-            label="Weight measurements"
-            lastSyncedAt={lastSyncTimes.weight}
-            connected={connected}
-            colors={colors}
-            styles={styles}
-          />
-          <HealthCategoryRow
-            icon={Flame}
-            label="Active energy burned"
-            lastSyncedAt={lastSyncTimes.active_energy}
-            connected={connected}
-            colors={colors}
-            styles={styles}
-          />
-          <HealthCategoryRow
-            icon={HeartPulse}
-            label="Resting energy burned"
-            lastSyncedAt={lastSyncTimes.resting_energy}
-            connected={connected}
-            colors={colors}
-            styles={styles}
-          />
-          <HealthCategoryRow
-            icon={Dumbbell}
-            label="Workouts"
-            lastSyncedAt={lastSyncTimes.workouts}
-            connected={connected}
-            colors={colors}
-            styles={styles}
-          />
+      {/* Apple Health card — shadow on outer wrapper so iOS doesn't clip it */}
+      <View style={[styles.cardShadowWrapper, winMoment.flashStyle]} testID="health-sync-apple-card">
+        <View style={styles.card}>
+          <CardTitle styles={styles} icon="heart" text="Apple Health / Health Connect" />
+          <Text style={styles.desc}>
+            Automatically sync your steps, weight, and active energy from Apple Health (iOS) or Google Health Connect (Android). Steps and active energy appear on the Today tab for whichever day you select; water there is from quick-adds plus water logged on foods.
+          </Text>
+
+          {/* P1-21 (2026-04-25 design-system-enforcer + Carryover rule
+              #2): swap Ionicons for lucide-react-native to match the
+              Claude Design prototype's icon language used everywhere else
+              in the product.
+              2026-05-14 (premium-bar audit Group J #9): each row now
+              shows a "Synced X min ago" subtitle so the user can see at
+              a glance how fresh each category is. Pre-connect / pre-
+              first-sync rows render "Never synced" — same visual slot
+              so the layout doesn't jump after the first Sync Now.
+              2026-06-09 (premium-bar audit gap 3): leading status dot
+              replaces the trailing false-affordance ellipse/checkmark. */}
+          <View style={{ marginTop: Spacing.md }}>
+            <HealthCategoryRow
+              icon={Footprints}
+              label="Daily step count"
+              lastSyncedAt={lastSyncTimes.steps}
+              connected={connected}
+              colors={colors}
+              styles={styles}
+            />
+            <View style={styles.rowSeparator} />
+            <HealthCategoryRow
+              icon={Scale}
+              label="Weight measurements"
+              lastSyncedAt={lastSyncTimes.weight}
+              connected={connected}
+              colors={colors}
+              styles={styles}
+            />
+            <View style={styles.rowSeparator} />
+            <HealthCategoryRow
+              icon={Flame}
+              label="Active energy burned"
+              lastSyncedAt={lastSyncTimes.active_energy}
+              connected={connected}
+              colors={colors}
+              styles={styles}
+            />
+            <View style={styles.rowSeparator} />
+            <HealthCategoryRow
+              icon={HeartPulse}
+              label="Resting energy burned"
+              lastSyncedAt={lastSyncTimes.resting_energy}
+              connected={connected}
+              colors={colors}
+              styles={styles}
+            />
+            <View style={styles.rowSeparator} />
+            <HealthCategoryRow
+              icon={Dumbbell}
+              label="Workouts"
+              lastSyncedAt={lastSyncTimes.workouts}
+              connected={connected}
+              colors={colors}
+              styles={styles}
+            />
+          </View>
         </View>
       </View>
 
-      {/* Nutrition export card */}
-      <View style={styles.card}>
-        <CardTitle styles={styles} icon="nutrition" text="Nutrition Sync" />
-        {/* 2026-05-13 (TF feedback `AOe4rm7514fI3dj_TliRdqk` —
-            "internal language needs to be removed"): the prior copy
-            leaked an audit-doc reference ("Audit/2026-04-30"), a
-            competitor name ("matching MyFitnessPal / Cal AI"), and
-            internal jargon ("Complete Day"). Rewritten in plain
-            English for the user-facing surface. */}
-        <Text style={styles.desc}>
-          Share your Sloe meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
-        </Text>
+      {/* NUTRITION eyebrow — settings.md §3.10 */}
+      <Text style={styles.eyebrow}>NUTRITION</Text>
 
-        <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="download-outline" size={20} color={accent.primary} />
-              <Text style={styles.featureText}>Import meals from Health</Text>
-            </View>
-            <Switch
-              value={importEnabled}
-              onValueChange={toggleImport}
-              disabled={!available || !connected}
-              trackColor={{ true: accent.primary }}
-            />
-          </View>
-          <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
-            Pull dietary energy (and matched macros when available) from other apps into your Today journal. Tap Sync Now after enabling.
+      {/* Nutrition Sync card */}
+      <View style={styles.cardShadowWrapper}>
+        <View style={styles.card}>
+          <CardTitle styles={styles} icon="utensils" text="Nutrition Sync" />
+          {/* 2026-05-13 (TF feedback `AOe4rm7514fI3dj_TliRdqk` —
+              "internal language needs to be removed"): the prior copy
+              leaked an audit-doc reference ("Audit/2026-04-30"), a
+              competitor name ("matching MyFitnessPal / Cal AI"), and
+              internal jargon ("Complete Day"). Rewritten in plain
+              English for the user-facing surface. */}
+          <Text style={styles.desc}>
+            Share your Sloe meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
           </Text>
 
-          {importEnabled && available && connected ? (
+          <View style={{ marginTop: Spacing.md, gap: Spacing.xs }}>
+            {/* Import meals toggle row */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
+                <Download size={20} color={accent.primary} strokeWidth={1.75} />
+                <Text style={styles.featureText}>Import meals from Health</Text>
+              </View>
+              <Switch
+                value={importEnabled}
+                onValueChange={toggleImport}
+                disabled={!available || !connected}
+                trackColor={{ true: accent.primary }}
+                accessibilityLabel={`Import meals from Health, currently ${importEnabled ? "on" : "off"}`}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Pull dietary energy (and matched macros when available) from other apps into your Today journal. Tap Sync Now after enabling.
+            </Text>
+
+            {importEnabled && available && connected ? (
+              <Pressable
+                onPress={handleTestImport}
+                accessibilityRole="button"
+                accessibilityLabel="Check whether Apple Health has meals from other apps to import"
+                testID="health-sync-test-import"
+                style={({ pressed }) => ({
+                  flexDirection: "row" as const,
+                  alignItems: "center" as const,
+                  gap: Spacing.sm,
+                  minHeight: 44,
+                  paddingVertical: 12,
+                  marginLeft: ICON_INDENT,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Utensils size={16} color={Accent.primarySolid} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: Accent.primarySolid }}>
+                    Test: check meal import
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                    Verifies Health has meals from other apps to import
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+
+            {/* Simple labels toggle row */}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: ICON_INDENT }} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, opacity: importEnabled ? 1 : 0.45 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
+                <EyeOff size={20} color={accent.primary} strokeWidth={1.75} />
+                <Text style={styles.featureText}>Simple labels only (no food names)</Text>
+              </View>
+              <Switch
+                value={genericImportLabels}
+                onValueChange={toggleGenericImportLabels}
+                disabled={!available || !connected || !importEnabled}
+                trackColor={{ true: accent.primary }}
+                accessibilityLabel={`Simple labels only, currently ${genericImportLabels ? "on" : "off"}`}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Calories, meal time bucket, and macros still come from Health; titles show as Imported food (N kcal) without brand or item names. Clear imported data once if you already synced detailed names.
+            </Text>
+
+            {/* Share meals toggle row */}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: ICON_INDENT }} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
+                <Share2 size={20} color={accent.primary} strokeWidth={1.75} />
+                <Text style={styles.featureText}>Share meals to Health</Text>
+              </View>
+              <Switch
+                value={exportEnabled}
+                onValueChange={toggleExport}
+                disabled={!available || !connected}
+                trackColor={{ true: accent.primary }}
+                accessibilityLabel={`Share meals to Health, currently ${exportEnabled ? "on" : "off"}`}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Your logged meals will be written to Apple Health for other apps to read. Each meal is written when you log it; re-logs of the same entry are de-duplicated.
+            </Text>
+
+            {/* 2026-05-13 (Grace TF feedback — "meals are not sharing
+                to Health from Sloe, only from Health to Sloe"): the
+                write path had no diagnostic. Root cause shipped the
+                same day was a method-name mismatch — our code called
+                `hk.saveFoodSample` but react-native-health exposes
+                `hk.saveFood`, so every meal silently no-op'd. This
+                "Send a test meal" row now writes a 1-kcal probe via
+                `probeNutritionWrite`, which surfaces the real bridge
+                error in the alert. */}
+            {exportEnabled && available && connected ? (
+              <Pressable
+                onPress={handleTestWrite}
+                accessibilityRole="button"
+                accessibilityLabel="Send a test meal to Apple Health to verify writes work"
+                testID="health-sync-test-write"
+                style={({ pressed }) => ({
+                  flexDirection: "row" as const,
+                  alignItems: "center" as const,
+                  gap: Spacing.sm,
+                  minHeight: 44,
+                  paddingVertical: 12,
+                  marginLeft: ICON_INDENT,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Share2 size={16} color={Accent.primarySolid} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: Accent.primarySolid }}>
+                    Test: write a meal to Health
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                    Verifies your Health write permission
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+
+            {/* Clear imported data — lucide Trash2 row, destructive styling.
+                Consistent grammar with the test rows above (icon + label + subtitle).
+                Replaces the previous floating centered text link. */}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: ICON_INDENT }} />
             <Pressable
-              onPress={handleTestImport}
+              onPress={handleClearImported}
               accessibilityRole="button"
-              accessibilityLabel="Check whether Apple Health has meals from other apps to import"
-              testID="health-sync-test-import"
+              accessibilityLabel="Clear all imported data from Apple Health"
               style={({ pressed }) => ({
-                marginTop: Spacing.sm,
-                marginLeft: 28,
-                alignSelf: "flex-start",
-                paddingHorizontal: Spacing.md,
-                paddingVertical: 8,
-                borderRadius: Radius.md,
-                borderWidth: 1,
-                borderColor: accent.primary + "55",
-                backgroundColor: accent.primary + "10",
+                flexDirection: "row" as const,
+                alignItems: "center" as const,
+                gap: Spacing.sm,
+                minHeight: 44,
+                paddingVertical: 12,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
-                Check meal import
-              </Text>
+              <Trash2 size={20} color={Accent.destructive} strokeWidth={1.75} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600" as const, color: Accent.destructive }}>
+                  Clear all imported data
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                  Removes meals imported from Apple Health. Your manually logged meals are unaffected.
+                </Text>
+              </View>
             </Pressable>
-          ) : null}
-
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", opacity: importEnabled ? 1 : 0.45 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="eye-off-outline" size={20} color={accent.primary} />
-              <Text style={styles.featureText}>Simple labels only (no food names)</Text>
-            </View>
-            <Switch
-              value={genericImportLabels}
-              onValueChange={toggleGenericImportLabels}
-              disabled={!available || !connected || !importEnabled}
-              trackColor={{ true: accent.primary }}
-            />
           </View>
-          <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
-            Calories, meal time bucket, and macros still come from Health; titles show as Imported food (N kcal) without brand or item names. Clear imported data once if you already synced detailed names.
-          </Text>
-
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flex: 1 }}>
-              <Ionicons name="share-outline" size={20} color={accent.primary} />
-              <Text style={styles.featureText}>Share meals to Health</Text>
-            </View>
-            <Switch
-              value={exportEnabled}
-              onValueChange={toggleExport}
-              disabled={!available || !connected}
-              trackColor={{ true: accent.primary }}
-            />
-          </View>
-          <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
-            Your logged meals will be written to Apple Health for other apps to read. Each meal is written when you log it; re-logs of the same entry are de-duplicated.
-          </Text>
-
-          {/* 2026-05-13 (Grace TF feedback — "meals are not sharing
-              to Health from Suppr, only from Health to Suppr"): the
-              write path had no diagnostic. Root cause shipped the
-              same day was a method-name mismatch — our code called
-              `hk.saveFoodSample` but react-native-health exposes
-              `hk.saveFood`, so every meal silently no-op'd. This
-              "Send a test meal" button now writes a 1-kcal probe via
-              `probeNutritionWrite`, which surfaces the real bridge
-              error in the alert. */}
-          {exportEnabled && available && connected ? (
-            <Pressable
-              onPress={handleTestWrite}
-              accessibilityRole="button"
-              accessibilityLabel="Send a test meal to Apple Health to verify writes work"
-              testID="health-sync-test-write"
-              style={({ pressed }) => ({
-                marginTop: Spacing.sm,
-                marginLeft: 28,
-                alignSelf: "flex-start",
-                paddingHorizontal: Spacing.md,
-                paddingVertical: 8,
-                borderRadius: Radius.md,
-                borderWidth: 1,
-                borderColor: accent.primary + "55",
-                backgroundColor: accent.primary + "10",
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>
-                Send a test meal to Health →
-              </Text>
-            </Pressable>
-          ) : null}
         </View>
-
-        {/* Clear imported data — always visible so user can clean up past imports */}
-        <Pressable
-          onPress={handleClearImported}
-          style={{ alignSelf: "center", marginTop: Spacing.lg, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg }}
-        >
-          <Text style={{ fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
-            Clear all imported data
-          </Text>
-        </Pressable>
       </View>
 
+      {/* Unavailable state — dev instruction gated behind __DEV__ so users
+          only see a plain-English message (gap 11). "Suppr.xcworkspace" reference
+          removed from user-facing copy. */}
       {!available && (
-        <View style={[styles.card, { borderColor: Accent.warning + "40", gap: Spacing.sm }]}>
-          <Text style={{ fontSize: 14, color: Accent.warning, fontWeight: "600" }}>
-            {isExpoGoRuntime()
-              ? "Apple Health isn’t available in Expo Go."
-              : "Apple Health isn’t available in this install."}
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-            {isExpoGoRuntime()
-              ? "Install the Suppr development build (not the Expo Go app), then return here."
-              : "Rebuild with native modules: from apps/mobile run `npx expo prebuild --platform ios`, open ios/Suppr.xcworkspace, build to your iPhone, and start Metro (`npx expo start` or `npm run ios:device:tunnel`)."}
-          </Text>
+        <View style={[styles.cardShadowWrapper, { marginTop: Spacing.xs }]}>
+          <View style={[styles.card, { borderColor: Accent.warning + "40", gap: Spacing.sm }]}>
+            <Text style={{ fontSize: 14, color: Accent.warning, fontWeight: "600" as const }}>
+              {isExpoGoRuntime()
+                ? "Apple Health isn't available in Expo Go."
+                : "Apple Health isn't available on this device."}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+              {isExpoGoRuntime()
+                ? "Install the Sloe development build (not the Expo Go app), then return here."
+                : __DEV__
+                  ? "Rebuild with native modules: from apps/mobile run `npx expo prebuild --platform ios`, open the Xcode workspace, build to your iPhone, and start Metro (`npx expo start` or `npm run ios:device:tunnel`)."
+                  : "Apple Health requires a device with Health support. If you're seeing this unexpectedly, try reinstalling the app."}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -858,7 +1019,7 @@ export default function HealthSyncScreen() {
           failed, replacing the previous one-line "Sync failed" text
           with a labelled banner + two buttons: "Try again" (re-runs
           the failed flow) and "Open iOS Settings" (deep-links to the
-          Suppr → Privacy → Health permissions page). Pinned by
+          Sloe → Privacy → Health permissions page). Pinned by
           apps/mobile/tests/unit/healthSyncErrorRecovery.test.tsx. */}
       {errorState && (
         <View
@@ -866,25 +1027,29 @@ export default function HealthSyncScreen() {
           style={{
             marginHorizontal: Spacing.xl,
             marginBottom: Spacing.md,
-            padding: Spacing.lg,
+            padding: Spacing.md,
             backgroundColor: Accent.destructive + "12",
             borderColor: Accent.destructive + "40",
-            borderWidth: cardElevation.useBorder ? 1 : 0,
-            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderRadius: Radius.xl,
             gap: Spacing.sm,
-            ...(cardElevation.shadowStyle ?? {}),
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.destructive }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+            <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
+            <Text style={{ fontSize: 14, fontWeight: "700" as const, color: Accent.destructive }}>
               {errorState.kind === "sync" ? "Sync didn't complete" : "Couldn't connect to Apple Health"}
             </Text>
           </View>
           <Text style={{ fontSize: 13, color: colors.text, lineHeight: 18 }}>
             {errorState.message}
           </Text>
-          <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: 4 }}>
+          {/* Recovery actions — both aubergine OUTLINE (Sloe treatment #1,
+              2026-06-08). "Try again" is the primary recovery and "Open iOS
+              Settings" the secondary; both read as accent lines (the prior
+              filled "Try again" is now an outline to match the calm
+              everyday-primary grammar). */}
+          <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.xs }}>
             <Pressable
               testID="health-sync-error-retry"
               onPress={handleRetryAfterError}
@@ -894,12 +1059,13 @@ export default function HealthSyncScreen() {
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary,
-                alignItems: "center",
-                opacity: pressed ? 0.85 : 1,
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
+                backgroundColor: pressed ? Accent.primarySoft : "transparent",
+                alignItems: "center" as const,
               })}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: Accent.primarySolid }}>
                 Try again
               </Text>
             </Pressable>
@@ -912,13 +1078,13 @@ export default function HealthSyncScreen() {
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: Radius.md,
-                borderWidth: 1,
-                borderColor: accent.primary,
-                alignItems: "center",
-                opacity: pressed ? 0.85 : 1,
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
+                alignItems: "center" as const,
+                opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: Accent.primarySolid }}>
                 Open iOS Settings
               </Text>
             </Pressable>
@@ -930,28 +1096,42 @@ export default function HealthSyncScreen() {
         </View>
       )}
 
+      {/* Connect / Sync — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
+          The everyday primary CTA is an accent line, not a filled slab:
+          transparent fill, 1.5px border + `Accent.primarySolid` label. The
+          unavailable Connect state stays a muted grey outline so the disabled
+          affordance still reads as a button. (The ink Apple Sign-In button on
+          auth screens is unaffected — this is the Health connect CTA.) */}
       {!connected ? (
         <Pressable
-          style={[styles.btn, { backgroundColor: available && !connecting ? accent.primary : colors.textTertiary }]}
+          style={[
+            styles.btnOutline,
+            {
+              borderColor: available && !connecting ? Accent.primarySolid : colors.textTertiary,
+            },
+          ]}
           onPress={handleConnect}
           disabled={!available || connecting}
         >
           {connecting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Accent.primarySolid} />
           ) : (
-            <Text style={styles.btnText}>Connect Health Data</Text>
+            <Text
+              style={[
+                styles.btnOutlineText,
+                { color: available ? Accent.primarySolid : colors.textTertiary },
+              ]}
+            >
+              Connect Health Data
+            </Text>
           )}
         </Pressable>
       ) : (
-        <Pressable
-          style={[styles.btn, { backgroundColor: accent.primary }]}
-          onPress={handleSync}
-          disabled={syncing}
-        >
+        <Pressable style={styles.btnOutline} onPress={handleSync} disabled={syncing}>
           {syncing ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Accent.primarySolid} />
           ) : (
-            <Text style={styles.btnText}>Sync Now</Text>
+            <Text style={styles.btnOutlineText}>Sync Now</Text>
           )}
         </Pressable>
       )}
@@ -965,12 +1145,15 @@ export default function HealthSyncScreen() {
   );
 }
 
-function CardTitle({ styles, icon, text }: { styles: any; icon: string; text: string }) {
+function CardTitle({ styles, icon, text }: { styles: any; icon: "heart" | "utensils"; text: string }) {
   // Secondary accent (Frost flag → damson, else clay) for the card-title glyph.
+  // settings.md §3.10: lucide Heart (sage) for Apple Health card.
+  // Design-system §0.1(b): no Ionicons for abstract controls — lucide only.
   const accent = useAccent();
+  const IconComponent = icon === "heart" ? Heart : Utensils;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-      <Ionicons name={icon as any} size={20} color={accent.primary} />
+    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.sm }}>
+      <IconComponent size={20} color={accent.primary} strokeWidth={1.75} />
       <Text style={styles.cardTitle}>{text}</Text>
     </View>
   );
@@ -981,6 +1164,12 @@ function CardTitle({ styles, icon, text }: { styles: any; icon: string; text: st
  * label, last-sync subtitle, and connection check. Extracted so the
  * five rows render identically without 5x duplication of the same
  * layout JSX.
+ *
+ * 2026-06-09 (premium-bar audit gap 3): leading 8pt status dot replaces
+ * the trailing false-affordance ellipse/checkmark:
+ *   - muted (#ECEAE4) when "Connect to enable" (not connected)
+ *   - amber (#C9892C) when connected but never synced
+ *   - success green (#5E7C5A) when "Synced X ago"
  */
 function HealthCategoryRow({
   icon: Icon,
@@ -999,8 +1188,21 @@ function HealthCategoryRow({
 }) {
   // Secondary accent (Frost flag → damson, else clay) for the category glyph.
   const accent = useAccent();
+  const dotColor = statusDotColor(connected, lastSyncedAt);
+  const subtitleText = connected ? formatLastSync(lastSyncedAt) : "Connect to enable";
+
   return (
-    <View style={styles.feature}>
+    <View style={[styles.feature, { gap: Spacing.sm }]}>
+      {/* Leading 8pt status dot — state-scannable at a glance (settings.md §3.10) */}
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: dotColor,
+          flexShrink: 0,
+        }}
+      />
       <Icon size={20} color={accent.primary} strokeWidth={1.75} />
       <View style={{ flex: 1 }}>
         <Text style={styles.featureText}>{label}</Text>
@@ -1012,14 +1214,9 @@ function HealthCategoryRow({
             fontVariant: ["tabular-nums"],
           }}
         >
-          {connected ? formatLastSync(lastSyncedAt) : "Connect to enable"}
+          {subtitleText}
         </Text>
       </View>
-      <Ionicons
-        name={connected ? "checkmark-circle" : "ellipse-outline"}
-        size={20}
-        color={connected ? Accent.success : colors.textTertiary}
-      />
     </View>
   );
 }

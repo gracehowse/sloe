@@ -13,6 +13,12 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  Clipboard as ClipboardIcon,
+  Camera as CameraIcon,
+  Lock,
+  Share2,
+} from "lucide-react-native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -21,7 +27,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius, FontFamily } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -179,6 +185,14 @@ export default function ImportSharedScreen() {
   const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
   const importQueue = useImportQueue("mobile", track);
 
+  // recipe-import-redesign (ENG-997 import surface, 2026-06-09) — unboxes the
+  // idle state into header + paste-field + trust-chip row + recent-imports
+  // sections on the white page ground (design-system §3.2). Flag-gated per
+  // CLAUDE.md; the legacy monolithic `panelCard` slab stays live in the `else`.
+  // Resolved once at mount (PostHog reads are imperative; the screen doesn't
+  // re-mount mid-flow).
+  const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
+
   const [state, setState] = useState<ImportState>("idle");
   const [title, setTitle] = useState<string | null>(null);
   const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
@@ -299,6 +313,44 @@ export default function ImportSharedScreen() {
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
+  // User tier for the photo-import Pro gate (gap #3, 2026-06-09). Photo OCR is
+  // Pro-gated server-side (`/api/recipe-import/image` → 403 `pro_required` for
+  // free), so we surface the gate BEFORE the tap: Free users get a Lock badge +
+  // route to the paywall; Pro users get the picker. Hydrate synchronously from
+  // the cached tier to avoid a gate flash for paid users (mirrors the planner
+  // pattern, F-91), then reconcile against the live profile read.
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { loadCachedUserTier } = await import("@/lib/cachedUserTier");
+      const cached = await loadCachedUserTier();
+      if (!cancelled) setUserTier(cached);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const tier = (data?.user_tier as string | null) ?? null;
+      const resolved: "free" | "base" | "pro" =
+        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      setUserTier(resolved);
+      void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
+        saveCachedUserTier(resolved),
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+  const isFreeTier = userTier === "free";
 
   // Animate progress steps during import
   useEffect(() => {
@@ -685,6 +737,20 @@ export default function ImportSharedScreen() {
     // the handler captures the latest pasted value rather than a stale closure.
   }, [base, userId, manualUrl]);
 
+  /**
+   * Photo-import entry point (gap #3, 2026-06-09). Photo OCR is Pro-gated
+   * server-side (403 `pro_required`). Surface the gate before the tap: Free
+   * users route to the paywall; Pro users open the picker. Stops the
+   * tap-then-fail-at-request-time dead end for free users.
+   */
+  const onPhotoImportPress = useCallback(() => {
+    if (isFreeTier) {
+      router.push("/paywall?from=import_photo" as any);
+      return;
+    }
+    void runImageImport();
+  }, [isFreeTier, router, runImageImport]);
+
   useEffect(() => {
     if (!pendingRecipe || state !== "review") return;
     setReviewServingsDraft(String(pendingRecipe.servings ?? 1));
@@ -1022,11 +1088,12 @@ export default function ImportSharedScreen() {
     },
     backHit: { paddingVertical: 6, paddingHorizontal: 6 },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
+    // Top-bar title = section-eyebrow token (design-system §2.2): Inter 11pt,
+    // weight 600, +0.08em tracking, sage. The old 800/3px-tracking read as a
+    // shouty label rather than the calm editorial eyebrow used elsewhere.
     topTitle: {
-      color: accent.primary,
-      fontSize: 13,
-      fontWeight: "800",
-      letterSpacing: 3,
+      ...Type.label,
+      color: colors.textSecondary,
     },
     scroll: {
       paddingHorizontal: Spacing.xl,
@@ -1046,7 +1113,10 @@ export default function ImportSharedScreen() {
       borderRadius: Radius.xl * 2,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: Spacing.xxxl,
+      // gap #8 — was Spacing.xxxl (40), far looser than the system card
+      // padding; the dead cream amplified the placeholder feel. Tightened to
+      // Spacing.xl (24) — the max the audit allows for any retained slab.
+      padding: Spacing.xl,
       alignItems: "center",
       gap: Spacing.md,
     },
@@ -1146,15 +1216,17 @@ export default function ImportSharedScreen() {
       color: Accent.success,
     },
 
-    // Paste-link pill — soft Sloe radius on the URL field.
+    // Paste-link field — cream fill, Radius.xl (12) per spec §3.2 (was the
+    // orphan 16, off the sm4/md6/lg8/xl12/full scale). ~52px tall on the 4pt
+    // grid (paddingVertical Spacing.md + 16pt text).
     input: {
       alignSelf: "stretch",
       backgroundColor: colors.inputBg,
-      borderRadius: 16,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: Spacing.lg,
-      paddingVertical: 14,
+      paddingVertical: Spacing.md,
       color: colors.text,
       fontSize: 16,
     },
@@ -1165,8 +1237,8 @@ export default function ImportSharedScreen() {
       justifyContent: "center",
       gap: Spacing.sm,
       backgroundColor: accent.primary,
-      borderRadius: 16,
-      paddingVertical: 16,
+      borderRadius: Radius.xl,
+      paddingVertical: Spacing.md,
       marginTop: Spacing.xs,
     },
     btnPressed: { opacity: 0.88 },
@@ -1176,8 +1248,8 @@ export default function ImportSharedScreen() {
       alignSelf: "stretch",
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: 14,
-      borderRadius: 16,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: accent.primary + "55",
       marginTop: Spacing.xs,
@@ -1194,58 +1266,111 @@ export default function ImportSharedScreen() {
     },
     textLinkLabel: { color: accent.primary, fontWeight: "600", fontSize: 15 },
 
-    // Import from grid
-    importSourcesSection: {
-      gap: Spacing.sm,
-      marginBottom: Spacing.lg,
-    },
-    importSourcesLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-      letterSpacing: 0.5,
+    // Inline platform hint (gap #13) — calm advisory note, NOT a clay box.
+    // Design-system §6.2 'recovery / note' variant: white-on-card fill +
+    // 2pt sage left-border, Inter 12pt sage. Stops two clay elements (the old
+    // tinted hint + the Import CTA below it) stacking.
+    platformHint: {
+      alignSelf: "stretch",
+      marginTop: -Spacing.xs,
       marginBottom: Spacing.xs,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      backgroundColor: colors.card,
+      borderLeftWidth: 2,
+      borderLeftColor: Accent.success,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: Spacing.sm,
     },
-    importSourcesGrid: {
+    platformHintText: {
+      flex: 1,
+      color: Accent.successSolid,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+
+    // Section eyebrow (gap #5) — the design-system §2.2 section-eyebrow role:
+    // Inter 11pt, weight 600, +0.08em tracking, uppercase, sage. Shared by
+    // 'WORKS WITH' and 'RECENT IMPORTS' so all-caps labels read identically.
+    sectionEyebrow: {
+      ...Type.label,
+      color: colors.textSecondary,
+    },
+
+    // ── recipe-import-redesign: unboxed idle (design-system §3.2) ──
+    // The idle state renders header + paste-field + trust-chip row +
+    // recent-imports as DISTINCT sections on the white page ground. No outer
+    // panelCard slab. Sections are separated by Spacing.xxl via the scroll
+    // container's `gap`.
+    idleHeader: {
+      gap: Spacing.sm,
+    },
+    idleTitle: {
+      ...Type.title,
+      color: colors.navPrimary,
+    },
+    idleSub: {
+      ...Type.bodyMuted,
+      color: colors.textSecondary,
+    },
+    idlePasteSection: {
+      gap: Spacing.sm,
+    },
+    // Tertiary affordance rows below the field (clipboard / photo). Left-
+    // aligned text-link rows, not boxed buttons.
+    tertiaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm,
+    },
+    tertiaryLabel: {
+      ...Type.body,
+      color: accent.primary,
+    },
+    // Pro pill on the photo affordance (gap #3) — amber lock + "(Pro)" so the
+    // gate is visible before the tap. Amber background tint keeps the amber
+    // off white-text (accessibility: amber as fill, not text).
+    proPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.xs,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.warning + "1F",
+    },
+    proPillText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: Accent.warningSolid,
+    },
+
+    // Trust-affordance row (gap #2 + #9) — non-tappable "WORKS WITH" chips:
+    // small cream chips holding only the platform monogram. NOT buttons (the
+    // old tinted-icon grid was a fake four-way router). Calm + honest.
+    trustSection: {
+      gap: Spacing.sm,
+    },
+    trustChipsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: Spacing.md,
-    },
-    sourceButton: {
-      // Audit 2026-04-29 papercut #7: Instagram / YouTube labels were
-      // wrapping mid-word ("Instagr/am", "YouTu/be") because the
-      // button was too narrow at horizontal padding 14 + icon 32 +
-      // gap 8 (effective text width < label intrinsic width). Switch
-      // to `flex: 1` with a `minWidth` so 4 buttons distribute evenly
-      // across the row, drop horizontal padding from 14 to 8 to give
-      // the label more breathing room. Combined with `numberOfLines:
-      // 1` on the label, "Instagram" + "YouTube" fit cleanly.
-      flex: 1,
-      minWidth: 64,
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 8,
-      paddingVertical: 16,
-      alignItems: "center",
       gap: Spacing.sm,
     },
-    sourceButtonPressed: { opacity: 0.7 },
-    sourceIconBox: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
-      backgroundColor: accent.primary + "22",
+    trustChip: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      gap: Spacing.xs,
+      height: 24,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.lg,
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
     },
-    sourceLabel: {
-      // Audit 2026-05-04 #35: at 13pt the "Instagram" label still
-      // truncated to "Instagr…" on narrower iPhones (16 Pro at 390pt
-      // gives ~80pt per button after grid gaps). Drop one step to
-      // 12pt — tighter than ideal but unambiguous, and the icon
-      // already carries the brand identity.
+    trustChipText: {
       fontSize: 12,
       fontWeight: "600",
       color: colors.text,
@@ -1255,12 +1380,6 @@ export default function ImportSharedScreen() {
     recentSection: {
       gap: Spacing.sm,
       marginBottom: Spacing.lg,
-    },
-    recentLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-      letterSpacing: 0.5,
     },
     recentItem: {
       flexDirection: "row",
@@ -1273,19 +1392,24 @@ export default function ImportSharedScreen() {
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
     },
+    // Neutral mono source badge (gap #10) — one calm treatment for all four
+    // source types (TT/IG/YT/W) per spec §3.2: cream fill, ink text, hairline
+    // border, 6px radius. Replaces the loud solid-black / IG-pink raw-brand
+    // hexes that sat outside the palette.
     recentBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.md,
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
     },
-    recentBadgeTT: { backgroundColor: "#000" },
-    recentBadgeIG: { backgroundColor: "#E4405F" },
     recentBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#fff",
+      color: colors.text,
     },
     recentInfo: { flex: 1 },
     recentTitle: {
@@ -1436,6 +1560,32 @@ export default function ImportSharedScreen() {
       marginTop: 2,
     },
   }), [colors, accent]);
+
+  /**
+   * Inline platform hint (audit I08, restyled gap #13). When the pasted URL is
+   * IG/TT/YouTube, surface a calm sage note pointing the user at the share-sheet
+   * caption flow (which respects the IG/TT legal posture in
+   * docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md by only
+   * feeding the LLM text the user actually shared). Detection runs live on
+   * every keystroke via the derived platform token. Shared by the redesigned
+   * + legacy idle paths so the hint stays identical across the flag.
+   */
+  const renderPlatformHint = () => {
+    const trimmed = manualUrl.trim();
+    if (!trimmed) return null;
+    const platform = detectSourcePlatform(trimmed);
+    if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
+    const platformLabel =
+      platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
+    return (
+      <View testID={`import-platform-hint-${platform}`} style={styles.platformHint}>
+        <Share2 size={16} color={Accent.success} style={{ marginTop: 1 }} />
+        <Text style={styles.platformHintText}>
+          {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Sloe — that captures the caption text directly.
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -1923,147 +2073,194 @@ export default function ImportSharedScreen() {
               </Text>
             </Pressable>
             <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
+              <ClipboardIcon size={18} color={accent.primary} />
               <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
             </Pressable>
           </View>
         )}
 
         {!authLoading && userId && state === "idle" && (
-          <>
-            <View style={styles.panelCard}>
-              <SupprMark size={56} />
-              <Text style={styles.panelTitle}>Paste a recipe link</Text>
-              <Text style={styles.panelSub}>
-                From Instagram, TikTok, or any recipe site. If you just shared to Sloe, the link may already be on
-                your clipboard — tap below.
-              </Text>
-              <TextInput
-                value={manualUrl}
-                onChangeText={setManualUrl}
-                placeholder="https://…"
-                placeholderTextColor={colors.textTertiary}
-                style={styles.input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-              {/* Audit I08 (2026-05-05) — when the pasted URL is
-                  Instagram / TikTok / YouTube, surface an inline hint
-                  pointing the user at the share-sheet flow. The
-                  legacy URL importer still works (server scrapes
-                  og:title / og:description), but the share-sheet
-                  caption flow respects the IG/TT legal posture in
-                  docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md
-                  by only feeding the LLM text the user actually shared.
-                  Detection runs live on every keystroke via the derived
-                  platform token. */}
-              {(() => {
-                const trimmed = manualUrl.trim();
-                if (!trimmed) return null;
-                const platform = detectSourcePlatform(trimmed);
-                if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
-                const platformLabel =
-                  platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
-                return (
-                  <View
-                    testID={`import-platform-hint-${platform}`}
-                    style={{
-                      marginTop: -Spacing.xs,
-                      marginBottom: Spacing.xs,
-                      padding: Spacing.sm,
-                      borderRadius: Radius.sm,
-                      backgroundColor: accent.primary + "12",
-                      borderWidth: 1,
-                      borderColor: accent.primary + "33",
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 8,
-                    }}
-                  >
-                    <Ionicons name="share-outline" size={16} color={accent.primary} style={{ marginTop: 2 }} />
-                    <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
-                      {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Sloe — that captures the caption text directly.
-                    </Text>
-                  </View>
-                );
-              })()}
-              <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-                <Text style={styles.primaryBtnText}>Import</Text>
-              </Pressable>
-              <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-                <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
-                <Text style={styles.textLinkLabel}>Use clipboard</Text>
-              </Pressable>
-              {ImagePicker && (
-                <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
-                  <Ionicons name="camera-outline" size={18} color={accent.primary} />
-                  <Text style={styles.textLinkLabel}>Import from photo</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Import from sources */}
-            <View style={styles.importSourcesSection}>
-              <Text style={styles.importSourcesLabel}>IMPORT FROM</Text>
-              <View style={styles.importSourcesGrid}>
-                {[
-                  { icon: "logo-tiktok", label: "TikTok" },
-                  { icon: "logo-instagram", label: "Instagram" },
-                  { icon: "logo-youtube", label: "YouTube" },
-                  { icon: "globe-outline", label: "Website" },
-                ].map((source) => (
-                  <Pressable
-                    key={source.label}
-                    style={({ pressed }) => [
-                      styles.sourceButton,
-                      pressed && styles.sourceButtonPressed,
-                    ]}
-                    onPress={() => {
-                      // These trigger the paste/import flow
-                      onPasteFromClipboard();
-                    }}
-                  >
-                    <View style={styles.sourceIconBox}>
-                      <Ionicons
-                        name={source.icon as any}
-                        size={24}
-                        color={accent.primary}
-                      />
-                    </View>
-                    <Text style={styles.sourceLabel} numberOfLines={1}>
-                      {source.label}
-                    </Text>
-                  </Pressable>
-                ))}
+          importRedesign ? (
+            /* ── recipe-import-redesign: unboxed editorial idle (§3.2) ──
+               Header + paste field + tertiary affordances + 'WORKS WITH'
+               trust-chip row + RECENT IMPORTS, each a distinct section on the
+               white page ground (sections separated by the scroll `gap`,
+               Spacing.xxl). No outer panelCard slab — that was the dominant
+               reason the surface read as a placeholder modal (gap #1). */
+            <>
+              {/* Header — serif H1 + sub-copy. The 'IMPORT' eyebrow already
+                  lives in the top bar, so the in-card wordmark is dropped on
+                  this sub-screen (gap #11). */}
+              <View style={styles.idleHeader}>
+                <Text style={styles.idleTitle}>Import a recipe</Text>
+                <Text style={styles.idleSub}>From any link, social post or website.</Text>
               </View>
-            </View>
 
-            {/* Recent imports */}
-            {recentImports.length > 0 && <View style={styles.recentSection}>
-              <Text style={styles.recentLabel}>RECENT IMPORTS</Text>
-              {recentImports.map((item, idx) => (
-                <View key={idx} style={styles.recentItem}>
-                  <View
-                    style={[
-                      styles.recentBadge,
-                      item.source === "tiktok"
-                        ? styles.recentBadgeTT
-                        : styles.recentBadgeIG,
-                    ]}
+              {/* Paste field + inline platform hint + Import + tertiary rows */}
+              <View style={styles.idlePasteSection}>
+                <TextInput
+                  value={manualUrl}
+                  onChangeText={setManualUrl}
+                  placeholder="https://…"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                {renderPlatformHint()}
+                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
+                  <Text style={styles.primaryBtnText}>Import</Text>
+                </Pressable>
+
+                {/* Tertiary affordances — left-aligned text-link rows below the
+                    field (gap #1). Lucide glyphs for the abstract controls
+                    (gap #6); brand monograms stay only on the trust chips. */}
+                <Pressable style={styles.tertiaryRow} onPress={onPasteFromClipboard} accessibilityRole="button">
+                  <ClipboardIcon size={18} color={accent.primary} />
+                  <Text style={styles.tertiaryLabel}>Use clipboard</Text>
+                </Pressable>
+                {ImagePicker && (
+                  <Pressable
+                    style={styles.tertiaryRow}
+                    onPress={onPhotoImportPress}
+                    accessibilityRole="button"
+                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                    testID="import-photo-affordance"
                   >
-                    <Text style={styles.recentBadgeText}>
-                      {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
-                    </Text>
-                  </View>
-                  <View style={styles.recentInfo}>
-                    <Text style={styles.recentTitle}>{item.name}</Text>
-                    <Text style={styles.recentTime}>{item.time}</Text>
-                  </View>
+                    <CameraIcon size={18} color={accent.primary} />
+                    <Text style={styles.tertiaryLabel}>Import from photo</Text>
+                    {isFreeTier && (
+                      <View style={styles.proPill}>
+                        <Lock size={12} color={Accent.warningSolid} />
+                        <Text style={styles.proPillText}>Pro</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Trust-affordance row (gap #2 + #9) — non-tappable. Honest:
+                  these are sources we work with, not four separate routes. */}
+              <View style={styles.trustSection}>
+                <Text style={styles.sectionEyebrow}>WORKS WITH</Text>
+                <View style={styles.trustChipsRow}>
+                  {[
+                    { mono: "TT", label: "TikTok" },
+                    { mono: "IG", label: "Instagram" },
+                    { mono: "YT", label: "YouTube" },
+                    { mono: "W", label: "Website" },
+                  ].map((s) => (
+                    <View key={s.label} style={styles.trustChip} accessibilityLabel={`Works with ${s.label}`}>
+                      <Text style={styles.trustChipText}>{s.mono}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>}
-          </>
+              </View>
+
+              {recentImports.length > 0 && (
+                <View style={styles.recentSection}>
+                  <Text style={styles.sectionEyebrow}>RECENT IMPORTS</Text>
+                  {recentImports.map((item, idx) => (
+                    <View key={idx} style={styles.recentItem}>
+                      <View style={styles.recentBadge}>
+                        <Text style={styles.recentBadgeText}>
+                          {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                        </Text>
+                      </View>
+                      <View style={styles.recentInfo}>
+                        <Text style={styles.recentTitle}>{item.name}</Text>
+                        <Text style={styles.recentTime}>{item.time}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            /* Legacy boxed idle (flag OFF) — kept alive until
+               recipe-import-redesign holds 100% for two weeks (CLAUDE.md). */
+            <>
+              <View style={styles.panelCard}>
+                <SupprMark size={56} />
+                <Text style={styles.panelTitle}>Paste a recipe link</Text>
+                <Text style={styles.panelSub}>
+                  From Instagram, TikTok, or any recipe site. If you just shared to Sloe, the link may already be on
+                  your clipboard — tap below.
+                </Text>
+                <TextInput
+                  value={manualUrl}
+                  onChangeText={setManualUrl}
+                  placeholder="https://…"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                {renderPlatformHint()}
+                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
+                  <Text style={styles.primaryBtnText}>Import</Text>
+                </Pressable>
+                <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
+                  <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
+                  <Text style={styles.textLinkLabel}>Use clipboard</Text>
+                </Pressable>
+                {ImagePicker && (
+                  <Pressable
+                    style={styles.textLinkBtn}
+                    onPress={onPhotoImportPress}
+                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                  >
+                    <Ionicons name="camera-outline" size={18} color={accent.primary} />
+                    <Text style={styles.textLinkLabel}>Import from photo</Text>
+                    {isFreeTier && (
+                      <View style={styles.proPill}>
+                        <Lock size={12} color={Accent.warningSolid} />
+                        <Text style={styles.proPillText}>Pro</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Works-with trust chips (legacy path now shares the calm,
+                  non-tappable chip row + sage eyebrow — gap #2/#5/#9/#10). */}
+              <View style={[styles.trustSection, { marginBottom: Spacing.lg }]}>
+                <Text style={styles.sectionEyebrow}>WORKS WITH</Text>
+                <View style={styles.trustChipsRow}>
+                  {[
+                    { mono: "TT", label: "TikTok" },
+                    { mono: "IG", label: "Instagram" },
+                    { mono: "YT", label: "YouTube" },
+                    { mono: "W", label: "Website" },
+                  ].map((s) => (
+                    <View key={s.label} style={styles.trustChip} accessibilityLabel={`Works with ${s.label}`}>
+                      <Text style={styles.trustChipText}>{s.mono}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Recent imports */}
+              {recentImports.length > 0 && <View style={styles.recentSection}>
+                <Text style={styles.sectionEyebrow}>RECENT IMPORTS</Text>
+                {recentImports.map((item, idx) => (
+                  <View key={idx} style={styles.recentItem}>
+                    <View style={styles.recentBadge}>
+                      <Text style={styles.recentBadgeText}>
+                        {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                      </Text>
+                    </View>
+                    <View style={styles.recentInfo}>
+                      <Text style={styles.recentTitle}>{item.name}</Text>
+                      <Text style={styles.recentTime}>{item.time}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>}
+            </>
+          )
         )}
       </ScrollView>
 

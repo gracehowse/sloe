@@ -15,7 +15,9 @@
  * the dots come from the host's per-day on-target booleans; the macro
  * percentages come from `weekStatsBundle`. The week-over-week trend chip
  * only renders when the host supplies a real delta — we never invent the
- * "up N%" figure (documented data gap until weekly aggregates persist).
+ * "up N%" figure (deferred: see ENG-741 weekly aggregate stream — the host
+ * can't pass `adherenceDeltaPct` until weekly aggregates persist; the chip
+ * fills the top-right slot beside the dots once it lands).
  *
  * Over-target macro bars are AMBER (`--warning`), never red — the
  * destructive-red over rule is the calorie-RING carve-out only (every
@@ -51,7 +53,13 @@ export interface ProgressAverageAdherenceProps {
 }
 
 function OnTargetStreakDots({ days }: { days: boolean[] }) {
-  if (days.length === 0) return null;
+  // ENG-1006 — suppressed when no day is on target (not just when the
+  // array is empty), mirroring `<ProgressOnTargetRibbon>`'s "don't show
+  // an empty achievement" rule. A row of empty grey dots next to a >100%
+  // headline read as broken/placeholder chrome — the dots are this-week-
+  // scoped while the headline is range-scoped, so the two can legitimately
+  // disagree. With nothing to celebrate, render nothing.
+  if (days.filter(Boolean).length === 0) return null;
   return (
     <div
       className="flex items-center gap-1.5"
@@ -141,7 +149,10 @@ export function ProgressAverageAdherence({
                   ) : null}
                 </span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+              {/* §7.3 — adherence-bar track 4–6pt; h-1.5 (6px) keeps the
+                  fill legible while reading lighter than the prior h-2 (8px)
+                  full-width x4 stack (less "tracker dashboard"). */}
+              <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full"
                   data-testid={`progress-adherence-bar-${name.toLowerCase()}`}

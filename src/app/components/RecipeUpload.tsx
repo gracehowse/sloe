@@ -1353,7 +1353,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           <button
             type="button"
             onClick={onSwitchToImport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
           >
             <Icons.import className="w-4 h-4" />
             Open Import recipe
@@ -1404,7 +1404,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               type="button"
               disabled={verifying}
               onClick={() => void applyPasteListMatch()}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+              className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-40"
             >
               {verifying ? "Matching…" : "Match to database"}
             </button>
@@ -1467,7 +1467,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 type="button"
                 disabled={importBusy}
                 onClick={() => void runImportFromUrl()}
-                className="px-6 py-3 rounded-[var(--radius-card)] bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
+                className="px-6 py-3 rounded-[var(--radius-card)] bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold disabled:opacity-50 hover:bg-primary/5 transition-colors"
               >
                 {importBusy ? "Importing…" : "Import"}
               </button>
@@ -1632,8 +1632,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     key={tag}
                     onClick={() => setDietary(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-all capitalize ${
+                      // Selected dietary tag = aubergine SOFT-TINT + aubergine
+                      // `primary-solid` label (Sloe treatment §7), not a solid slab.
                       dietary.includes(tag)
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary/10 text-primary-solid"
                         : "bg-muted text-foreground hover:hover:bg-muted"
                     }`}
                   >
@@ -1668,7 +1670,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             <button
               type="button"
               onClick={addIngredient}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:hover:bg-primary/90 transition-all flex items-center gap-2 text-sm font-medium"
+              className="px-4 py-2 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <Icons.add className="w-4 h-4" />
               Add Ingredient
@@ -2262,7 +2264,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             type="button"
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-[var(--radius-card)] hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-shadow"
+            className="w-full px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-[var(--radius-card)] hover:bg-primary/5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
           </button>
@@ -2293,7 +2295,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               type="button"
               disabled={saving !== null}
               onClick={() => void saveRecipe(true)}
-              className="flex-1 px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-xl hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icons.upload className="w-5 h-5" />
               {saving === "publish" ? "Publishing…" : "Publish recipe"}

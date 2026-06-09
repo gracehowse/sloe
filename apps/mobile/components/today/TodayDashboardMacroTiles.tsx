@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -106,6 +106,13 @@ export function TodayDashboardMacroTiles({
   // Progress-bar track tone. Light: Sloe `line` (#E8E2EC) per Figma `654:2`.
   // Dark: theme hairline so the light track hex doesn't glare.
   const barTrackColor = isDark ? cardBorderColor : "#E8E2EC";
+  // Caption colours (audit gap 4). Success (sage) when under target; amber for
+  // over — `warningSolid` is the AA-safe-as-TEXT amber (the base `warning`
+  // #C9892C fails AA as text, per the theme contrast note), dark-lifted on the
+  // dark surface. Mirrors the locked macro over-budget rule (design-system §1.2
+  // — macros over-budget use amber, never the ring's destructive red).
+  const captionUnderColor = isDark ? Accent.successLight : Accent.success;
+  const captionOverColor = isDark ? Accent.warningLight : Accent.warningSolid;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -194,6 +201,39 @@ export function TodayDashboardMacroTiles({
             ? Math.min(1, Math.max(0, def.current / def.target)) * 100
             : 0;
 
+        // Per-tile caption (audit gap 4 — today.md §3.3 / §4 "warm-coaching
+        // payoff"). Web parity: same shape as the web tiles' caption
+        // (`plainRemainingCaption`).
+        //   - referenceOnly (sugar/sodium): muted "ref N unit" — no remaining
+        //     claim, since there's a generic reference not a personal target.
+        //   - unlogged (current ≤ 0, real target): suppress — the "0 / target"
+        //     line already says everything.
+        //   - over target: "N {unit} over" in amber.
+        //   - under target: "N {unit} remaining" in success/sage.
+        let captionText = "";
+        let captionColor = textTertiaryColor;
+        if (def.referenceOnly) {
+          captionText = `ref ${def.target}${def.unit === "g" ? "g" : ` ${def.unit}`}`;
+          captionColor = textTertiaryColor;
+        } else if (def.target > 0 && def.current > 0) {
+          const remain = def.target - def.current;
+          const magnitude = Math.round(Math.abs(remain));
+          const unitSuffix = def.unit === "g" ? "g" : ` ${def.unit}`;
+          if (remain >= 0) {
+            captionText = `${magnitude}${unitSuffix} remaining`;
+            captionColor = captionUnderColor;
+          } else {
+            captionText = `${magnitude}${unitSuffix} over`;
+            captionColor = captionOverColor;
+          }
+        }
+        // Gap 8 — soften the serif value while it's a zero so the editorial
+        // numeral only earns its full ink weight when there's data. Empty
+        // accounts otherwise show four heavy serif zeros that invert the
+        // cold-open hierarchy (the faint empty ring whispers while the zeros
+        // shout). Muted until current > 0.
+        const valueColor = def.current > 0 ? textColor : textTertiaryColor;
+
         return (
           // The 2×2 macro tiles are the `size="tile"` variant of the shared
           // <SupprCard lift="flat"> shell (radius 24, matching the full card, with tighter `md`
@@ -252,7 +292,7 @@ export function TodayDashboardMacroTiles({
                     ...Type.title,
                     fontSize: 20,
                     lineHeight: 24,
-                    color: textColor,
+                    color: valueColor,
                     fontVariant: ["tabular-nums"],
                   }}
                   numberOfLines={1}
@@ -294,6 +334,27 @@ export function TodayDashboardMacroTiles({
                   }}
                 />
               </View>
+              {/* Per-tile caption (audit gap 4) — "N g remaining" (sage) /
+                  "N g over" (amber) / muted "ref N" for reference-only macros.
+                  The at-a-glance "how much left" read today.md §3.3/§4 calls
+                  the warm-coaching payoff. Reserve the row's height even when
+                  the caption is suppressed (unlogged tile) so the grid stays
+                  even. */}
+              <Text
+                testID={`today-macro-tile-caption-${macro}`}
+                style={{
+                  ...Type.caption,
+                  fontSize: 11,
+                  lineHeight: 14,
+                  color: captionColor,
+                  marginTop: Spacing.xs,
+                  minHeight: 14,
+                  fontVariant: ["tabular-nums"],
+                }}
+                numberOfLines={1}
+              >
+                {captionText}
+              </Text>
           </SupprCard>
           </Pressable>
         );

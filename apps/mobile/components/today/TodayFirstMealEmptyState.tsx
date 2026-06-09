@@ -89,23 +89,30 @@ export function TodayFirstMealEmptyState({
       >
         No pressure — log when you&apos;re ready.
       </Text>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primarySolid border
+          + primarySolid label/glyph), not a filled slab. Mirror of web
+          `TodayFirstMealEmptyState`. */}
       <Pressable
         onPress={onLogMeal}
         accessibilityRole="button"
         accessibilityLabel="Log a meal"
-        style={{
+        style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: Radius.md,
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           marginTop: 4,
-        }}
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
-        <Plus size={16} color="#fff" />
-        <Text style={{ ...Type.body, fontWeight: "700", color: "#fff" }}>Log a meal</Text>
+        <Plus size={16} color={accent.primarySolid} />
+        <Text style={{ ...Type.body, fontWeight: "700", color: accent.primarySolid }}>Log a meal</Text>
       </Pressable>
       {showTip && (
         <View

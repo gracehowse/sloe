@@ -123,8 +123,9 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
   // `bg-background` surface and let the real soft `--elev-card-soft` shadow
   // carry separation (no border-as-depth) under the flag. Mirror them exactly;
   // the flag-OFF path keeps today's white/hairline dialog alive (CLAUDE.md
-  // feature-flag non-negotiable). Inputs already use semantic borders and the
-  // Add CTA already uses the blue default Button — no colour repaint here.
+  // feature-flag non-negotiable). Inputs already use semantic borders; the
+  // Add CTA now uses the Sloe aubergine-outline treatment (2026-06-08) via a
+  // per-instance className override on the shared Button.
   const elevated = isFeatureEnabled("design_system_elevation");
   const surfaceCls = elevated
     ? "bg-background border-transparent shadow-[var(--elev-card-soft)]"
@@ -150,8 +151,11 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
                   key={mode}
                   type="button"
                   onClick={() => onAddModeChange(mode)}
+                  // Sloe treatment system (2026-06-08): segmented control
+                  // active segment = white lift + primary-solid label;
+                  // inactive = muted on the warm-grey rail.
                   className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                    addMode === mode ? "bg-card shadow text-foreground" : "text-muted-foreground"
+                    addMode === mode ? "bg-card shadow text-primary-solid" : "text-muted-foreground"
                   }`}
                 >
                   {label}
@@ -329,7 +333,17 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={onSubmit}>
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primary-solid
+              border + primary-solid label). Overrides the shared Button
+              default fill on this instance only. Mirror of mobile
+              quick-add "Add to Today". */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSubmit}
+            className="border-[1.5px] border-primary-solid bg-transparent text-primary-solid hover:bg-primary/5 hover:text-primary-solid"
+          >
             Add meal
           </Button>
         </DialogFooter>

@@ -817,7 +817,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             Sloe Pro
           </span>
         </span>
-        <span className="text-sm font-semibold" style={{ color: "var(--accent-primary-solid)" }}>
+        {/* Manage — aubergine OUTLINE pill (Sloe treatment #1, 2026-06-08).
+            The banner stays a soft aubergine tint (Pro = the brand accent);
+            "Manage" reads as a button (1.5px outline + solid label), not
+            flat coloured text. Mirrors the mobile Pro-banner Manage pill. */}
+        <span
+          className="text-sm font-semibold rounded-full border-[1.5px] px-3.5 py-1.5"
+          style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
+        >
           Manage
         </span>
       </Link>
@@ -906,12 +913,18 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 autoComplete="name"
                 className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
+              {/* Save name — aubergine OUTLINE (Sloe treatment #1,
+                  2026-06-08). The everyday primary CTA is an accent line,
+                  not a filled slab: transparent fill, 1.5px border +
+                  label in `--accent-primary-solid` (AA on the page).
+                  Mirrors the mobile Settings name-save button. */}
               <button
                 type="button"
                 data-testid="settings-name-save"
                 onClick={() => void handleSaveName()}
                 disabled={nameSaving || nameInput.trim() === storedName}
-                className="px-5 py-3 bg-primary text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-3 bg-transparent rounded-xl text-sm font-semibold border-[1.5px] transition-all hover:bg-[var(--accent-primary-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
               >
                 {nameSaving ? "Saving…" : "Save"}
               </button>

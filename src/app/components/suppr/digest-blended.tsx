@@ -267,12 +267,15 @@ export function DigestBlended(props: DigestProps) {
                   />
                 </div>
                 <div className="flex items-baseline justify-between">
+                  {/* SLOE Phase 0: the closest-day hero kcal reads in the
+                      Newsreader serif display face; the `kcal` unit stays sans.
+                      Mirrors mobile DigestBlended. */}
                   <span
-                    className={cn("text-[28px] font-extrabold leading-none tabular-nums", heroNumClass)}
+                    className={cn("font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums", heroNumClass)}
                     data-testid="digest-hero-calories"
                   >
                     {Math.round(closest.calories).toLocaleString()}
-                    <span className="text-[13px] font-semibold ml-0.5">kcal</span>
+                    <span className="font-sans text-[13px] font-semibold ml-0.5">kcal</span>
                   </span>
                   <span className="text-sm font-semibold text-muted-foreground tabular-nums">
                     {Math.round(closestTarget!).toLocaleString()} target
@@ -286,11 +289,11 @@ export function DigestBlended(props: DigestProps) {
             ) : (
               // No per-day target → omit the track; show calories plainly.
               <span
-                className="text-[28px] font-extrabold leading-none tabular-nums text-foreground"
+                className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums text-foreground"
                 data-testid="digest-hero-calories"
               >
                 {Math.round(closest.calories).toLocaleString()}
-                <span className="text-[13px] font-semibold ml-0.5">kcal</span>
+                <span className="font-sans text-[13px] font-semibold ml-0.5">kcal</span>
               </span>
             )}
             <p className="text-xs text-muted-foreground mt-2.5" data-testid="digest-hero-protein">

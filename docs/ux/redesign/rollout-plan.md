@@ -55,7 +55,7 @@ Full detail in the two audit transcripts; condensed here. Every item below must 
 - **Engine:** `tdee.ts` (Mifflin-St Jeor, activity multipliers, pace presets, macro calc w/ protein g/kg by strategy, NHS safety floors), `calcTargets.resolveTargets` (precedence: explicit→computed→defaults), `measureToGrams`/`volumeToGrams`/`inferNaturalServing` (count-to-weight), `estimateIngredientMacros` + `macroPlausibility` (refuses low-confidence; `macrosAreEstimated` rows rejected from journal), `netCarbs` (opt-in), `dailyTargetSnapshot` (freezes history), micros/DV (`dailyValues`, `microNutrientDisplay`, `fullNutrientPanel`).
 
 ### (4) Food Logging
-- **M** `FoodSearchModal`, `BarcodeScannerModal`, `VoiceLogSheet`, `PhotoLogSheet`, `(tabs)/search.tsx`, `(tabs)/barcode.tsx`, Log FAB · **W** `FoodSearch` + LogSheet (`?openLog=1`)
+- **M** `FoodSearchModal`, `BarcodeScannerModal`, `VoiceLogSheet`, `PhotoLogSheet`, `(tabs)/barcode.tsx`, Log FAB · **W** `FoodSearch` + LogSheet (`?openLog=1`)
 - **Engine:** `foodSearchCore`/`foodSearchRanking`/`searchRowTrust`, `aiLogging.classifyConfidence`, `photoLogQuota`, barcode confidence/correction/portion-memory, saved/usual meals, `nutritionJournal` (LOCAL-time day key), slot inference, source canonicalisation.
 - **API:** USDA / FatSecret / Edamam / OFF (search+barcode); photo-log + voice-log (**Pro, server-enforced**, AI provider Claude→OpenAI, Upstash rate-limit fails-closed); scan-label OCR.
 

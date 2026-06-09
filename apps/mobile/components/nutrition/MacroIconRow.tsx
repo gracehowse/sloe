@@ -50,6 +50,16 @@ export interface MacroIconRowProps {
   showMacroLetters?: boolean;
   /** Icon + text glyph size. Default 11 (Library/Discover); use 12 for hero rows. */
   iconSize?: number;
+  /**
+   * Give protein a slightly heavier weight + ink colour than the other
+   * macros, so the row reads "this is a tracker" with one visual accent
+   * (recipes.md §3.1 — "one visual emphasis per card"). Off by default
+   * so Today / Discover hero rows keep their even weighting. The Library
+   * card opts in. Pass `proteinTextColor` to set the emphasised ink.
+   */
+  emphasiseProtein?: boolean;
+  /** Ink colour used for the protein value when `emphasiseProtein`. */
+  proteinTextColor?: string;
   /** Optional override for the outer container style (gap, flexWrap, etc.). */
   style?: StyleProp<ViewStyle>;
   /** Optional override for the inner value-text style. */
@@ -101,6 +111,8 @@ export function MacroIconRow({
   textTertiaryColor,
   showMacroLetters = true,
   iconSize = 11,
+  emphasiseProtein = false,
+  proteinTextColor,
   style,
   textStyle,
 }: MacroIconRowProps) {
@@ -125,10 +137,10 @@ export function MacroIconRow({
           iconColor={MacroColors.protein}
           value={`${Math.round(protein)}g`}
           letter={showMacroLetters ? "P" : undefined}
-          textColor={textColor}
+          textColor={emphasiseProtein ? (proteinTextColor ?? textColor) : textColor}
           textTertiaryColor={textTertiaryColor}
           iconSize={iconSize}
-          textStyle={textStyle}
+          textStyle={[textStyle, emphasiseProtein ? { fontWeight: "700" } : null]}
         />
       ) : null}
       {typeof carbs === "number" && Number.isFinite(carbs) ? (

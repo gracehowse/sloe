@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import Svg, { Line, Text as SvgText } from "react-native-svg";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Radius } from "@/constants/theme";
+import { FontFamily, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -232,9 +232,11 @@ export function RulerSlider({
               keyboardType={parseInput ? "default" : "decimal-pad"}
               accessibilityLabel={accessibilityLabel}
               style={{
+                // SLOE Phase 0: the onboarding ruler hero readout reads in
+                // Newsreader serif (family carries the weight; sans 800 dropped).
+                fontFamily: FontFamily.serifRegular,
                 color: colors.text,
                 fontSize: 60,
-                fontWeight: "800",
                 letterSpacing: -2,
                 textAlign: "center",
                 minWidth: 130,
@@ -269,9 +271,11 @@ export function RulerSlider({
           >
             <Text
               style={{
+                // SLOE Phase 0: the onboarding ruler hero readout reads in
+                // Newsreader serif (family carries the weight; sans 800 dropped).
+                fontFamily: FontFamily.serifRegular,
                 color: colors.text,
                 fontSize: 60,
-                fontWeight: "800",
                 letterSpacing: -2.1,
                 lineHeight: 60,
                 includeFontPadding: false,

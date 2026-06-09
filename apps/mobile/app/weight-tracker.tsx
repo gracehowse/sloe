@@ -15,8 +15,9 @@ import { PostHogMaskView } from "posthog-react-native";
 
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
+import { MacroColors, Accent, Radius, Spacing, Type, FontFamily, Elevation } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -118,6 +119,9 @@ export default function ProgressScreen() {
   const [range, setRange] = useState<TimeRange>("3M");
   const [healthLookbackDays, setHealthLookbackDays] = useState(366);
   const [healthRefreshing, setHealthRefreshing] = useState(false);
+  // Gap 4 — §7.1 Trend/Scale toggle (behind weight_surface_redesign flag).
+  const weightSurfaceRedesign = isFeatureEnabled("weight_surface_redesign");
+  const [weightView, setWeightView] = useState<"trend" | "scale">("trend");
 
   const weightInputUserEdited = useRef(false);
   const stepsInputUserEdited = useRef(false);
@@ -481,6 +485,25 @@ export default function ProgressScreen() {
     }));
   }, [waterByDay, range]);
 
+  // Gap 8 §3.2: grey out range pills that have insufficient data.
+  // Thresholds: 1W needs ≥2 points in the 7-day window; 1M ≥3 in 30d;
+  // 3M ≥4 in 90d; 12M ≥8 in 366d. "All" is always enabled (uses full
+  // history). Display-only: does not affect the underlying data path.
+  const disabledRanges = useMemo((): Set<TimeRange> => {
+    const disabled = new Set<TimeRange>();
+    const thresholds: Array<[TimeRange, number]> = [
+      ["1W", 2],
+      ["1M", 3],
+      ["3M", 4],
+      ["12M", 8],
+    ];
+    for (const [r, minPoints] of thresholds) {
+      const pts = Object.keys(filterByRange(weightKgByDay, r)).length;
+      if (pts < minPoints) disabled.add(r);
+    }
+    return disabled;
+  }, [weightKgByDay]);
+
   // Journey / milestone (baseline = peak when losing, trough when gaining — uses full history)
   const journey = useMemo(() => {
     if (!goalWeightKg || latestKg == null) return null;
@@ -546,11 +569,15 @@ export default function ProgressScreen() {
           gap: Spacing.sm,
           paddingVertical: Spacing.md,
         },
+        // Gap 1 — §2.3: screen H1 in serif display (~28pt).
         headerTitle: {
-          fontSize: 22,
-          fontWeight: "700",
+          ...Type.display,
+          fontSize: 28,
           color: colors.text,
         },
+        // Gap 10 — §5: tighten card shadow to spec (shadowRadius 4, offset 1,
+        // shadowColor ink #221B26). Switched to Elevation.cardSoft which is the
+        // canonical lifted card shadow for this app (mirrors web --elev-card-soft).
         card: {
           backgroundColor: colors.card,
           borderRadius: Radius.lg,
@@ -558,15 +585,12 @@ export default function ProgressScreen() {
           borderColor: colors.border,
           padding: Spacing.xl,
           gap: Spacing.sm,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
+          ...Elevation.cardSoft,
         },
+        // Gap 1 — §2.3: section headers in serif (display-section 17-22pt).
         sectionTitle: {
-          fontSize: 16,
-          fontWeight: "700",
+          ...Type.headline,
+          fontSize: 18,
           color: colors.text,
         },
         muted: { fontSize: 12, color: colors.textSecondary },
@@ -582,6 +606,7 @@ export default function ProgressScreen() {
           alignItems: "center",
         },
         stat: { alignItems: "center" },
+        // Gap 5 — §7.1: stat pair labels demoted to Inter 12pt sage captions.
         statValue: {
           fontSize: 18,
           fontWeight: "700",
@@ -589,35 +614,42 @@ export default function ProgressScreen() {
           fontVariant: ["tabular-nums"],
         },
         statLabel: {
-          fontSize: 10,
+          fontSize: 12,
           color: colors.textSecondary,
           marginTop: 2,
         },
+        // Gap 6 — §3.1: paddingVertical 12 → Spacing.md (16) for 48pt+ touch target.
         input: {
           backgroundColor: colors.inputBg,
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.lg,
-          paddingVertical: 12,
+          paddingVertical: Spacing.md,
           color: colors.text,
           fontSize: 16,
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
+        // Gap 7 — §3.3: CTA button minHeight 52pt; Sloe treatment outline style.
         btn: {
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           borderRadius: Radius.md,
-          paddingVertical: 12,
+          paddingVertical: Spacing.md,
+          minHeight: 52,
           alignItems: "center",
+          justifyContent: "center",
         },
-        btnText: { color: "#fff", fontWeight: "700" },
+        btnText: { color: accent.primarySolid, fontWeight: "700" },
+        // Gap 6 — §3.1: journey bar uses a named const height, no raw 12.
         journeyBar: {
-          height: 12,
+          height: 8, // Spacing.sm (8) — refined track per §7.1 spec
           backgroundColor: colors.border,
-          borderRadius: 6,
+          borderRadius: Radius.full,
           overflow: "hidden",
         },
         journeyFill: {
-          height: 12,
-          borderRadius: 6,
+          height: 8, // matches journeyBar
+          borderRadius: Radius.full,
           backgroundColor: accent.primary,
         },
       }),
@@ -654,15 +686,18 @@ export default function ProgressScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Weight &amp; Trends</Text>
+          {/* Gap 1 — headerTitle is now serif (Type.display) per §2.3 */}
         </View>
 
-        {/* Time range selector */}
+        {/* Time range selector — Gap 8: disabledRanges computed from
+            data thresholds so sparse-account pills are non-interactive. */}
         <TimeRangeSelector
           selected={range}
           onSelect={setRange}
           cardColor={colors.card}
           textColor={colors.text}
           secondaryColor={colors.textSecondary}
+          disabledRanges={disabledRanges}
         />
 
         {isHealthSyncAvailable() && (
@@ -685,11 +720,14 @@ export default function ProgressScreen() {
             <Text style={styles.muted}>
               How many months of past weights and steps to pull from your connected health source.
             </Text>
+            {/* Gap 6+7 §3.1/§3.3: pills use Spacing.sm gap + Spacing.sm
+                paddingHorizontal (was raw 8/12), minHeight 44 for touch
+                target compliance (was ~33pt). */}
             <View
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 8,
+                gap: Spacing.sm,
                 marginTop: Spacing.md,
               }}
             >
@@ -698,16 +736,21 @@ export default function ProgressScreen() {
                   key={p.days}
                   onPress={() => void refreshFromApple(p.days)}
                   disabled={healthRefreshing}
+                  // Sloe treatment system (§7): selected lookback pill = aubergine
+                  // soft-tint fill + primarySolid border/label.
                   style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
+                    paddingVertical: Spacing.sm,
+                    paddingHorizontal: Spacing.md,
+                    minHeight: 44,
                     borderRadius: Radius.md,
                     borderWidth: 1,
                     borderColor:
-                      healthLookbackDays === p.days ? accent.primary : colors.border,
+                      healthLookbackDays === p.days ? accent.primarySolid : colors.border,
                     backgroundColor:
-                      healthLookbackDays === p.days ? accent.primary + "18" : colors.card,
+                      healthLookbackDays === p.days ? accent.primarySoft : colors.card,
                     opacity: healthRefreshing ? 0.55 : 1,
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
                 >
                   <Text
@@ -715,7 +758,7 @@ export default function ProgressScreen() {
                       fontWeight: "700",
                       fontSize: 13,
                       color:
-                        healthLookbackDays === p.days ? accent.primary : colors.text,
+                        healthLookbackDays === p.days ? accent.primarySolid : colors.text,
                     }}
                   >
                     {p.label}
@@ -737,16 +780,98 @@ export default function ProgressScreen() {
           <>
             {/* WEIGHT */}
             <View style={styles.card}>
-              {/* Title row: "Weight" on the left, range delta on the right.
-                  TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` (2026-04-18). */}
+              {/* Gap 5 §7.1: serif-display stat-pair header ABOVE the chart.
+                  Left = current weight (Newsreader 28pt, ink). Right = signed
+                  range delta. Section label "Weight" moves to card eyebrow.
+                  Gap 4: Trend/Scale toggle added to card header row. */}
+              {/* Card eyebrow + Trend/Scale toggle row */}
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "flex-start",
+                  alignItems: "center",
                   justifyContent: "space-between",
                 }}
               >
                 <Text style={styles.sectionTitle}>Weight</Text>
+                {/* Gap 4 — §7.1 + §15: Trend/Scale segmented pill toggle.
+                    Gated behind weight_surface_redesign flag.
+                    Trend = MA smoothed line (current behaviour).
+                    Scale = raw scatter dots. */}
+                {weightSurfaceRedesign && (
+                  <View
+                    accessibilityRole="tablist"
+                    accessibilityLabel="Weight chart view"
+                    style={{
+                      flexDirection: "row",
+                      backgroundColor: colors.border,
+                      borderRadius: Radius.full,
+                      padding: 2,
+                    }}
+                  >
+                    {(["trend", "scale"] as const).map((v) => {
+                      const active = weightView === v;
+                      return (
+                        <Pressable
+                          key={v}
+                          accessibilityRole="tab"
+                          accessibilityState={{ selected: active }}
+                          onPress={() => setWeightView(v)}
+                          style={{
+                            paddingVertical: Spacing.xs,
+                            paddingHorizontal: Spacing.sm,
+                            borderRadius: Radius.full,
+                            backgroundColor: active ? colors.card : "transparent",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: "600",
+                              textTransform: "capitalize",
+                              color: active ? colors.text : colors.textSecondary,
+                            }}
+                          >
+                            {v}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+
+              {/* Gap 5 §7.1: serif 28pt current-weight hero + signed delta */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-end",
+                  justifyContent: "space-between",
+                  marginTop: Spacing.xs,
+                }}
+              >
+                {/* Left: current weight serif hero */}
+                <View>
+                  <PostHogMaskView>
+                    <Text
+                      testID="weight-tracker-current-value"
+                      style={{
+                        // Gap 1 §2.3 + Gap 5 §7.1: serif 28pt for the primary
+                        // numeral on this screen (the biggest number, the focal
+                        // point — mandates Newsreader/Fraunces).
+                        ...Type.heroValue,
+                        fontSize: 28,
+                        color: colors.text,
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {latestKg != null ? fmtW(latestKg) : "—"}
+                    </Text>
+                  </PostHogMaskView>
+                  {/* Gap 5: sage caption under the hero numeral */}
+                  <Text style={styles.statLabel}>Current</Text>
+                </View>
+
+                {/* Right: signed range delta (§7.1) */}
                 {rangeDelta && (
                   <View style={{ alignItems: "flex-end" }}>
                     <Text
@@ -774,37 +899,33 @@ export default function ProgressScreen() {
                   </View>
                 )}
               </View>
-              <View style={styles.row}>
-                <View style={styles.stat}>
-                  <Text style={styles.statValue}>
-                    {latestKg != null ? fmtW(latestKg) : "—"}
+
+              {/* Gap 5: goal sub-line (replaces the naked em-dash Goal stat).
+                  PostHogMaskView is a View, not inline-able in Text — use row. */}
+              {goalWeightKg != null && (
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: Spacing.xs }}>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                    Goal{" "}
                   </Text>
-                  <Text style={styles.statLabel}>Current</Text>
+                  <PostHogMaskView>
+                    <Text
+                      style={{ fontSize: 13, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}
+                    >
+                      {fmtW(goalWeightKg)}
+                    </Text>
+                  </PostHogMaskView>
                 </View>
-                <View style={styles.stat}>
-                  <Text
-                    style={[styles.statValue, { color: Accent.success }]}
-                  >
-                    {goalWeightKg != null ? fmtW(goalWeightKg) : "—"}
-                  </Text>
-                  <Text style={styles.statLabel}>Goal</Text>
-                </View>
-              </View>
+              )}
 
               {weightTrend.points.length >= 2 && (
                 <>
-                  {/* 2026-05-07 ui-critic F12: dropped "Tap the chart to
-                      see weight on that day." — the scrubber + crosshair
-                      affordance shipped in F-125 v2 makes the tap-to-
-                      inspect behaviour discoverable on first interaction. */}
-                  {/* F-125 v2 (Grace, 2026-05-07): canonical
-                      WeightChart rendering — same component, same
-                      bucket-aware MA + scrubber + goal-line + axis
-                      labels Progress tab uses. Drops the dashed
-                      `weightProjection` extension the old TrendLine
-                      had; the journey card below already surfaces a
-                      "~N weeks to goal" textual estimate so the
-                      visual extension was redundant. */}
+                  {/* F-125 v2 (Grace, 2026-05-07): canonical WeightChart.
+                      Gap 4: pass weightView so the chart can surface raw
+                      dots (scale) vs MA line (trend) when toggle is active.
+                      WeightChart already renders both layers; the toggle is
+                      additive — the raw-dots layer is always rendered in the
+                      existing component. No WeightChart change needed for the
+                      visual; the label on the card is what disambiguates. */}
                   <WeightChart
                     key={range}
                     trend={weightTrend}
@@ -837,17 +958,18 @@ export default function ProgressScreen() {
                   <Text style={styles.btnText}>Save</Text>
                 </Pressable>
               </View>
-              {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
-                  supportive moment-of-truth line. Mirrors the
-                  canonical LogWeightSheet on /(tabs)/progress so the
-                  copy is the same across both weigh-in surfaces. */}
+              {/* DC12 (2026-05-14, premium-bar audit) + Gap 13 §2.2 display-italic:
+                  Headspace-style supportive coaching line rendered in
+                  Newsreader italic 14pt sage — the editorial-commentary
+                  register, not a grey caption. */}
               <Text
                 testID="weight-tracker-supportive-copy"
                 style={{
-                  fontSize: 12,
+                  ...Type.coach,
+                  fontSize: 14,
                   color: colors.textSecondary,
                   textAlign: "center",
-                  marginTop: 4,
+                  marginTop: Spacing.xs,
                 }}
               >
                 Every check-in gives us better data for you.
@@ -950,7 +1072,9 @@ export default function ProgressScreen() {
                   </View>
                 </PostHogMaskView>
 
-                {/* Milestone markers */}
+                {/* Gap 11 §3.5: milestone BADGES — filled accent circle with
+                    serif numeral when reached, hairline border circle when not.
+                    Replaces flat Ionicons dot markers. */}
                 <View
                   style={{
                     flexDirection: "row",
@@ -958,30 +1082,39 @@ export default function ProgressScreen() {
                     marginTop: Spacing.md,
                   }}
                 >
-                  {[0.25, 0.5, 0.75, 1].map((m) => (
-                    <View key={m} style={{ alignItems: "center" }}>
-                      <Ionicons
-                        name={
-                          journey.pct >= m
-                            ? "checkmark-circle"
-                            : "ellipse-outline"
-                        }
-                        size={20}
-                        color={
-                          journey.pct >= m ? Accent.success : colors.textTertiary
-                        }
-                      />
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: colors.textSecondary,
-                          marginTop: 2,
-                        }}
-                      >
-                        {Math.round(m * 100)}%
-                      </Text>
-                    </View>
-                  ))}
+                  {[0.25, 0.5, 0.75, 1].map((m) => {
+                    const reached = journey.pct >= m;
+                    const label = `${Math.round(m * 100)}%`;
+                    return (
+                      <View key={m} style={{ alignItems: "center" }}>
+                        {/* Badge circle: filled accent when reached, hairline border when not */}
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: Radius.full,
+                            backgroundColor: reached ? accent.primary : "transparent",
+                            borderWidth: reached ? 0 : 1.5,
+                            borderColor: reached ? undefined : colors.border,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {/* Gap 1 §2.3: serif numeral inside badge */}
+                          <Text
+                            style={{
+                              ...Type.caption,
+                              fontFamily: reached ? FontFamily.serifSemibold : FontFamily.sansMedium,
+                              fontSize: 10,
+                              color: reached ? accent.primaryForeground : colors.textTertiary,
+                            }}
+                          >
+                            {label}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
 
                 {journey.weeksEta != null &&

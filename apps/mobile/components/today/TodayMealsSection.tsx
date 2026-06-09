@@ -795,8 +795,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 accessibilityLabel={`Add food to ${slot}`}
                 testID={`today-add-food-${slot}`}
               >
-                <Plus size={16} color={accent.primary} strokeWidth={2} />
-                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
+                {/* Sloe treatment system (2026-06-08): text-only inline
+                    action → primarySolid (the AA-safe deep aubergine for
+                    labels on the warm-grey card), matching the sibling
+                    add-food link below. */}
+                <Plus size={16} color={accent.primarySolid} strokeWidth={2} />
+                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
                   Add food
                 </Text>
               </Pressable>

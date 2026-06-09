@@ -1075,10 +1075,10 @@ function ProgressDashboardContent() {
             <span
               key={k}
               className={[
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium text-center",
+                "flex-1 rounded-full py-1.5 text-[13px] font-medium text-center border",
                 k === range
-                  ? "bg-foreground-brand text-white"
-                  : "bg-card border border-border text-muted-foreground",
+                  ? "bg-primary/10 border-primary-solid text-primary-solid"
+                  : "bg-card border-border text-muted-foreground",
               ].join(" ")}
             >
               {k === "all" ? "All" : k}
@@ -1156,10 +1156,14 @@ function ProgressDashboardContent() {
               data-testid={`progress-range-pill-${k}`}
               onClick={() => setRange(k)}
               className={[
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-colors",
+                // Sloe treatment system (2026-06-08, §7): selected range pill =
+                // aubergine soft-tint fill + primarySolid border/label (was a
+                // solid plum fill + white text). Mirrors mobile + rations the
+                // accent — the fill is reserved for the FAB + conversion CTAs.
+                "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-colors border",
                 active
-                  ? "bg-foreground-brand text-white"
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground",
+                  ? "bg-primary/10 border-primary-solid text-primary-solid"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               {label}
@@ -1315,8 +1319,10 @@ function ProgressDashboardContent() {
                     data-testid={`progress-weight-view-${v}`}
                     onClick={() => setWeightView(v)}
                     className={[
-                      "rounded-full px-3 py-1 text-[12px] font-medium capitalize transition-colors",
-                      active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                      // Sloe treatment §8: active segment = white lift +
+                      // primarySolid label (was warm-ink text).
+                      "rounded-full px-3 py-1 text-[12px] font-semibold capitalize transition-colors",
+                      active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
                     ].join(" ")}
                   >
                     {v}
@@ -1405,15 +1411,20 @@ function ProgressDashboardContent() {
             <button
               onClick={() => void saveTodayWeight()}
               data-testid="progress-log-weight"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+              /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
+                 (transparent fill, 1.5px primarySolid border + label). */
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
             >
               <Icons.add className="h-4 w-4" aria-hidden />
               Log weight
             </button>
           </div>
+          {/* Gap 13 parity (web mirror of weight-tracker.tsx 2026-06-09):
+              editorial coaching line in Newsreader italic 14px — matches
+              the mobile Type.coach register. Previously plain text-xs. */}
           <p
             data-testid="weight-input-supportive-copy"
-            className="mt-1.5 text-center text-xs text-muted-foreground"
+            className="mt-1.5 text-center text-[14px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
           >
             Every check-in gives us better data for you.
           </p>
@@ -1950,7 +1961,10 @@ function ProgressDashboardContent() {
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <p className={`text-[28px] font-bold tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
+            {/* SLOE Phase 0: the maintenance hero kcal reads in the Newsreader
+                serif display face (big numerals are a serif moment); the
+                `kcal/day` unit stays sans. Mirrors mobile progress.tsx. */}
+            <p className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
               {resolved.kcal.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">kcal/day</p>
@@ -2041,7 +2055,7 @@ function ProgressDashboardContent() {
                   type="button"
                   onClick={() => setMaintenanceExplainerOpen((v) => !v)}
                   aria-expanded={maintenanceExplainerOpen}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary-solid hover:underline"
                 >
                   <span>{maintenanceExplainerOpen ? "Hide" : "How this works"}</span>
                   <span aria-hidden="true" className="text-[10px]">
@@ -2209,7 +2223,8 @@ function ProgressDashboardContent() {
               </div>
               {timeline.daysToGoal != null ? (
                 <p className="text-right">
-                  <span className="text-[22px] font-bold text-primary tabular-nums">{timeline.daysToGoal}</span>
+                  {/* SLOE Phase 0: days-to-goal hero numeral in serif; label stays sans. */}
+                  <span className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-primary tabular-nums">{timeline.daysToGoal}</span>
                   <span className="text-xs text-muted-foreground ml-1">days to goal</span>
                 </p>
               ) : timeline.cappedAtMaxDays ? (
@@ -2291,12 +2306,14 @@ function ProgressDashboardContent() {
       <SupprCard padding="lg" radius="lg" className="mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
+          {/* SLOE Phase 0: the Steps today/goal big stat numerals read in the
+              Newsreader serif display face; the labels below stay sans. */}
           <div className="text-center">
-            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
+            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
           </div>
           <div className="text-center">
-            <p className="text-[22px] font-bold text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
+            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
           </div>
         </div>
@@ -2320,7 +2337,7 @@ function ProgressDashboardContent() {
             onChange={(e) => setStepsInput(e.target.value)}
             type="number"
           />
-          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
         </div>
       </SupprCard>
 
@@ -2329,7 +2346,9 @@ function ProgressDashboardContent() {
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
         {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
             makes PostHog session-replay render this as a grey block. */}
-        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
+        {/* SLOE Phase 0: the body-fat hero stat reads in the Newsreader serif
+            display face (big numerals are a serif moment). `ph-mask` preserved. */}
+        <p className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
         <div className="flex gap-2">
           <input
             className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
@@ -2339,7 +2358,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
         </div>
       </SupprCard>
       <p

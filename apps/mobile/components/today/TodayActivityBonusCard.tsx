@@ -294,17 +294,23 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             {ACTIVITY_BUDGET_DISCOVER_BODY}
           </Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            {/* Sloe treatment system (2026-06-08): primary inline CTA →
+                aubergine outline (transparent fill + 1.5px primarySolid
+                border + primarySolid label), not a filled slab. */}
             <Pressable
               accessibilityRole="button"
               onPress={onEnableActivityBudget}
-              style={{
+              style={({ pressed }) => ({
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: accent.primary,
-              }}
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"

@@ -448,12 +448,15 @@ function MacroTile({
           </span>
         ) : null}
       </div>
+      {/* SLOE Phase 0: the macro-target hero numeral reads in the Newsreader
+          serif display face (matching the calorie ring + mobile reveal); the
+          `g` unit + pct stay sans. */}
       <div
-        className="text-[22px] font-extrabold tabular-nums leading-none text-foreground tracking-tight"
+        className="font-[family-name:var(--font-display)] text-[22px] font-normal tabular-nums leading-none text-foreground tracking-tight"
         style={{ letterSpacing: "-0.025em" }}
       >
         {value}
-        <span className="text-xs text-muted-foreground font-medium ml-0.5">
+        <span className="font-sans text-xs text-muted-foreground font-medium ml-0.5">
           g
         </span>
         {pairedLayout ? (

@@ -30,7 +30,11 @@ export function TodayEatAgainBanner({
   const showThumb = Boolean(imageUrl || suggestion.recipeTitle);
 
   return (
-    <div className="mb-3 rounded-card bg-card card-slab-flat px-3 py-2.5 flex items-center gap-3 v2-fade-up">
+    // Sloe treatment system (2026-06-08): the eat-again prompt is a
+    // soft-tint NUDGE card — a faint aubergine wash (`bg-primary/10`,
+    // mirroring mobile `Accent.primarySoft`) signals "actionable"
+    // without a loud fill. Mirror of the mobile `TodayEatAgainBanner`.
+    <div className="mb-3 rounded-card bg-primary/10 px-3 py-2.5 flex items-center gap-3 v2-fade-up">
       {showThumb ? (
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative">
           {imageUrl ? (
@@ -51,10 +55,15 @@ export function TodayEatAgainBanner({
           {Math.round(suggestion.carbs)}g C · {Math.round(suggestion.fat)}g F · into {slot}
         </p>
       </div>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primary-solid
+          border + primary-solid label), not a filled or tinted slab.
+          Sits on the soft-tint nudge with a white inner fill so the
+          outline reads crisp against the wash. */}
       <button
         type="button"
         onClick={onLog}
-        className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-primary/10 text-primary hover:bg-primary/15"
+        className="px-3 py-1.5 rounded-lg text-[11px] font-bold border-[1.5px] border-primary-solid bg-background text-primary-solid hover:bg-primary/5"
         aria-label={`Log ${suggestion.recipeTitle} to ${slot}`}
       >
         Log it

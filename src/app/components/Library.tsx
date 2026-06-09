@@ -270,8 +270,11 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   onClick={() => setCategory(f.id)}
                   className={[
                     "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] font-medium transition-all whitespace-nowrap",
+                    // Selected = aubergine SOFT-TINT fill + aubergine
+                    // `primary-solid` label (Sloe treatment §7), not a solid
+                    // accent slab. Unselected stays quiet off-white card.
                     active
-                      ? "bg-primary text-primary-foreground border border-primary"
+                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
                       : "bg-card border border-border text-muted-foreground hover:bg-muted/60",
                   ].join(" ")}
                   aria-pressed={active}
@@ -358,7 +361,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 window.history.pushState({}, "", url.toString());
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
-              className="w-full bg-primary text-primary-foreground font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              className="w-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
             >
               <Icons.import className="w-4 h-4" aria-hidden />
               Import a recipe
@@ -392,7 +395,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               setEntryKind(null);
               setSearchQuery("");
             }}
-            className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="px-5 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm hover:bg-primary/5 transition-colors"
           >
             Clear filters
           </button>
@@ -430,6 +433,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
               const kcal = Math.round(recipe.calories ?? 0);
               const protein = Math.round(recipe.protein ?? 0);
+              const carbs = Math.round(recipe.carbs ?? 0);
+              const fat = Math.round(recipe.fat ?? 0);
               const totalTime =
                 (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
                 (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
@@ -534,20 +539,45 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     <p className="text-[11px] text-muted-foreground mt-1 truncate">
                       {recipe.creatorName}
                     </p>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.calories
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-calories)" }}
-                        />
-                        {kcal} kcal
-                      </span>
-                      <span className="inline-flex items-center gap-1">
+                    {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                        carbs · fat in the immutable macro colours, protein
+                        emphasised (heavier + ink) so the card reads as a
+                        tracker. kcal suppressed at ≤0 so an un-computed
+                        recipe never shows a confident "0 kcal" (trust
+                        posture). Mobile parity:
+                        `apps/mobile/app/(tabs)/library.tsx` MacroIconRow.
+                        text-[12px] = DS §2.2 caption ramp. Was text-[11px]
+                        which is below the 12pt caption floor on the scale. */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[12px] text-muted-foreground tabular-nums">
+                      {kcal > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.calories
+                            className="w-[11px] h-[11px]"
+                            style={{ color: "var(--macro-calories)" }}
+                          />
+                          {kcal} kcal
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
                         <Icons.protein
                           className="w-[11px] h-[11px]"
                           style={{ color: "var(--macro-protein)" }}
                         />
-                        {protein} P
+                        {protein}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-carbs)" }}
+                        />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-fat)" }}
+                        />
+                        {fat}g
                       </span>
                       {totalTime > 0 ? (
                         <span className="inline-flex items-center gap-1">
@@ -575,7 +605,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
                           router.replace(`/home?${q}`, { scroll: false });
                         }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90"
+                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-[11px] font-semibold hover:bg-primary/5 transition-colors"
                       >
                         Go public
                       </button>
@@ -619,6 +649,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           >
             {filteredRecipes.map((recipe) => {
               const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
+              const kcal = Math.round(recipe.calories ?? 0);
+              const protein = Math.round(recipe.protein ?? 0);
+              const carbs = Math.round(recipe.carbs ?? 0);
+              const fat = Math.round(recipe.fat ?? 0);
               const totalTime =
                 (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
                 (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
@@ -693,6 +727,34 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     <h3 className="font-[family-name:var(--font-headline)] text-[15px] font-medium leading-snug text-foreground line-clamp-2">
                       {recipe.title}
                     </h3>
+                    {/* Macro row (recipes.md §3.1) — kcal · protein · carbs
+                        · fat in the immutable macro colours, protein
+                        emphasised. kcal suppressed at ≤0 so an un-computed
+                        recipe never shows a confident "0 kcal" (trust
+                        posture). Narrow 2-col card → no letters (the hue +
+                        icon carry the meaning, protein leads). Mobile
+                        parity: `apps/mobile/app/(tabs)/library.tsx`
+                        MacroIconRow with `emphasiseProtein`. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground tabular-nums">
+                      {kcal > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} aria-hidden />
+                          {kcal}
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} aria-hidden />
+                        {protein}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs className="w-[11px] h-[11px]" style={{ color: "var(--macro-carbs)" }} aria-hidden />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} aria-hidden />
+                        {fat}g
+                      </span>
+                    </div>
                     {/* Meta row — Figma `527:2` shape `★ N · M min`, but
                         every chip is REAL + degrades gracefully:
                           • saves chip only when savedCount > 0 (no `★ 0`),

@@ -109,16 +109,26 @@ export function PostOnboardingPushExplainer(
             }
           </Text>
 
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid
+              border + primarySolid label). This is a permission opt-in,
+              not a paywall/onboarding-continue, so it takes the outline
+              rather than the reserved filled treatment. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Notify me"
             onPress={onEnable}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { backgroundColor: accent.primary, opacity: pressed ? 0.9 : 1 },
+              {
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
+                opacity: pressed ? 0.6 : 1,
+              },
             ]}
           >
-            <Text style={styles.primaryBtnText}>Notify me</Text>
+            <Text style={[styles.primaryBtnText, { color: accent.primarySolid }]}>Notify me</Text>
           </Pressable>
 
           <Pressable

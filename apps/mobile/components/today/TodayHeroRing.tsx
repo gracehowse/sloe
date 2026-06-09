@@ -5,7 +5,7 @@ import CalorieRing from "@/components/charts/CalorieRing";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
-import { todayStatusChip } from "@suppr/shared/copy/today";
+import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -283,8 +283,16 @@ export function TodayHeroRing({
     // Card chrome (fill #F6F5F2, radius 24, soft lift, hairline) is the shared
     // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
     // Only the ring's inner layout (centred, gap) lives here via innerStyle.
+    //
+    // lift="soft" (audit gap 6, 2026-06-09): the hero is the single most
+    // important card on Today, yet it was explicitly `flat` — on the
+    // near-tonal #F6F5F2-on-#FFFFFF pairing that made the whole top of the
+    // screen read as one undifferentiated slab (Grace's "cards blend into the
+    // background" note). `soft` gives it the cardSoft plum penumbra so it
+    // separates from the page like every other resting card. Mirrors web
+    // `elevation="card"` on `today-hero-ring.tsx`.
     <SupprCard
-      lift="flat"
+      lift="soft"
       padding="lg"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >
@@ -400,6 +408,34 @@ export function TodayHeroRing({
           )}
         </View>
       ) : null}
+      {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to
+          the ring's long-press macro-rings gesture. The design system (§13)
+          requires every gesture to have a tap-accessible equivalent: long-press
+          can't be the only path to the inner protein/carbs/fat rings. Mirrors
+          web `today-hero-ring.tsx`'s `today-macro-rings-toggle` button + shares
+          the `MACRO_RING_TOGGLE` copy so the two surfaces can't drift. Fires
+          the same `onToggleExpanded` the long-press does. */}
+      <Pressable
+        testID="today-macro-rings-toggle"
+        onPress={onToggleExpanded}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        hitSlop={8}
+        style={({ pressed }) => ({
+          marginTop: Spacing.xs,
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            color: isDark ? Accent.primarySolidDark : Accent.primarySolid,
+          }}
+        >
+          {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        </Text>
+      </Pressable>
     </SupprCard>
   );
 }

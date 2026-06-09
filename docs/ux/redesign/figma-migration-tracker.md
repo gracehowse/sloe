@@ -1,6 +1,6 @@
 # Figma migration tracker — living document
 
-**Status:** Audit COMPLETE (2026-06-07). Implementation starting — Today first. Local changes only, no commits (overnight; Grace reviews AM).
+**Status:** Audit COMPLETE (2026-06-07). **Direction change 2026-06-08 (Grace): APP-FIRST.** Stop blanket Figma backfill of already-shipping screens — backfilling frames of live, wired screens documents reality rather than driving the build (the frame is downstream of the app, schematic, and changes nothing users touch). Figma is now reserved for genuinely **net-new** screens (e.g. Ask coach `185:2`) + quick look-previews. Effort goes to applying the **unbuilt** `today.md`/redesign improvements straight to **iOS** (flag-gated, validated in sim), web in parity. The 🔵 App-Only "Figma backfill epic" (ENG-903) is **deprioritised, not deleted** — resume only if we decide we want a complete standalone Figma artifact for design reviews. Local changes only, no commits (Grace reviews).
 **Owner:** Claude — implements web + mobile, owns nothing-committed until review. Source of truth: Figma `B3UdOFup7ITersgNuoXh0l` (page `0:1 · Sloe · Screens`).
 **Audit sources:** depth (pixel-grounded core-12) `wf_eb96d47a-490` · breadth (all areas) `wf_3015985a-6c5` (full data: `tasks/wr31o3cd9.output`). Research backlog: `wf_7293ea1b-c30`.
 
@@ -9,16 +9,16 @@
 |---|---|
 | Total items tracked | **369** |
 | ✅ Matches Figma | 42 (11%) |
-| 🟡 Partial Match | 135 (37%) |
-| 🔵 App Only (→ Figma task) | 177 (48%) |
+| 🟡 Partial Match | 143 (39%) |
+| 🔵 App Only (→ Figma task) | 169 (46%) |
 | 🟣 Figma Only (build) | 15 (4%) |
-| **Conformance %** (Matches ÷ Matches+Partial+FigmaOnly) | **22%** |
+| **Conformance %** (Matches ÷ Matches+Partial+FigmaOnly) | **21%** |
 | Open blockers | 94 |
 
 ### Per-area scorecard
 | Area | Items | ✅ | 🟡 | 🔵 | 🟣 | Notes |
 |---|--:|--:|--:|--:|--:|---|
-| Today | 37 | 15 | 13 | 8 | 1 | most-conformed; pixel deltas in hero/avatar/meals |
+| Today | 37 | 15 | 21 | 0 | 1 | most-conformed; 8 app-only Figma-backfilled 2026-06-08 |
 | Log a meal | 19 | 0 | 6 | 11 | 2 | Figma frame predates search-first refactor |
 | Recipes & Cookbook | 25 | 1 | 10 | 12 | 2 | Discover sections unbuilt; filter taxonomy mismatch |
 | Recipe detail / create / cook | 30 | 1 | 16 | 13 | 0 | rings-vs-tiles call; import has no frame |
@@ -42,6 +42,7 @@
 - Stop before any destructive/architectural/auth/routing/permissions/dependency/db/config change.
 
 ## Implementation order (priority)
+> **2026-06-08 policy (app-first):** this order now governs **app implementation** of unbuilt redesign items, NOT Figma-frame backfill. Figma backfill happens only for net-new screens. See Status line.
 1. **Today** (closest; retention-critical) — pixel deltas + states.
 2. **Recipes & Cookbook + Discover + Recipe detail** (viral hook landing).
 3. **Log a meal** (core daily loop).
@@ -81,7 +82,7 @@
 
 ## 🔵 App Only — preserve + Figma task needed (177) — Figma-backfill epic
 Confirmed wired, **no Figma frame**. Never remove. Each needs a Stitch→Mobbin→Figma prototype. Highlights (full 177 in `tasks/wr31o3cd9.output`):
-- **Today (8):** complete-day modal · weekly check-in · 30-day milestone · why-this-number sheet · quick-log dialogs · eat-again banner · Apple Health card · streak pip/insight
+- **Today (0 remaining / 8 done):** ~~complete-day modal · weekly check-in · 30-day milestone · why-this-number sheet · quick-log dialogs · eat-again banner · Apple Health card · streak pip/insight~~ — ALL 8 Figma-backfilled 2026-06-08 into section `09 · Today & Plan — deep dive` (TD6–TD13). App implementation pending (→ 🟡 Partial Match).
 - **Log a meal (11):** barcode scanner · quick-add panel · create-custom-food · save-meal · saved-meal portion sheet · AI paywall gate · empty states · loading skeletons · dark mode · barcode 0-kcal recovery · copy-yesterday
 - **Recipe (13):** detail loading/not-found/no-image/dark · edit sheet · add/override ingredient · notes+rating · action sheet · ingredient-info sheet · import (URL/Reel/paste) · PDF/bulk-photo · dev redesign page
 - **Plan (18):** loading/error/dark · shopping empty/loading · swap-meal · move-meal · templates (×2) · setup chips · source selector · generate menu · regenerate toast · household row · copy/duplicate-day (×2) …
@@ -279,3 +280,25 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 **Tests:** new `tests/unit/authChooserFigma.test.ts` (9) + `apps/mobile/tests/unit/loginChooserFigma.test.ts` (8) pin: chooser-first default (no inline form), wordmark, italic-Still headline, sync subtitle, Apple+email buttons, **Google omission + ENG-924 reference**, terms fine-print, **every preserved handler/testID/redirect**, close+back affordances. Existing `authRoutesPremium` (web, 4) + `loginAuthRedirect` (mobile, 1) + `authBootLoading` (mobile, 4) + `authCallbackRedirect` (web, 4) + `onboardingSignupSessionGate` (web, 3) all still green.
 **Verified:** web mobile-vp chooser ✓ `screenshots/web-drive/auth-after.png` (matches `296:2` section-by-section); progressive-disclosure email step ✓ `screenshots/web-drive/auth-after-email.png`. iOS sim capture deferred to the orchestrator (this agent does not touch the sim). Typecheck clean web+mobile on the auth files (pre-existing unrelated `RecipeDetail.tsx` / `ProgressEnergyTriad.tsx` errors untouched).
 **Follow-up (not done here):** Playwright golden snapshots `shell-login-desktop.png` / `shell-login-mobile.png` (in `tests/e2e/__snapshots__/visual-audit.spec.ts/`) now lag the new chooser — regenerate with `npm run test:e2e:visual:update` when the redesign batch is committed (→ qa-lead).
+
+### Today — Figma backfill (8 app-only screens) 2026-06-08
+**All 8 app-only Today screens now have Figma frames** in section `09 · Today & Plan — deep dive` (file `B3UdOFup7ITersgNuoXh0l`). Designed from the `docs/ux/redesign/today.md` spec using the canonical Sloe design language: 500px wide, Newsreader serif headings, Inter body, plum/clay/cream/sage/ink palette, auto-layout containers, consistent radii and spacing.
+
+| # | Frame | Node ID | What it shows |
+|---|---|---|---|
+| TD6 | Weekly check-in modal | `1001:2` | MacroFactor-grade adaptive check-in: Newsreader "Your week, recalibrated." header, 7-day intake vs target bar chart (green under/amber over), −55 kcal delta callout, suggested new target card, confidence badge, terracotta "Update my target" CTA + sage "Keep current target" dismiss |
+| TD7 | Win moment (30-day streak) | `1003:2` | Full-screen calm celebration: 96px terracotta Newsreader "30", "days consistent." serif subhead, freeze-protection context line, 7-dot habit grid (green filled/terracotta-dashed freeze), tap-to-dismiss |
+| TD8 | Complete day modal | `1003:30` | Centred modal: green check circle, "Complete today?" Newsreader header, 3-stat day summary (1,847 kcal / 132g protein / 4 meals), HealthKit export note, green "Complete day" CTA, sage "Not yet" dismiss |
+| TD9 | Goal-hit inline card | `1006:2` | In-context Today screen showing the inline goal-hit card: green check circle + "Targets met." serif + "Calories and protein on target today." — sits above the calorie ring showing 0 remaining, with 4 macro tiles below |
+| TD10 | Streak habit grid (expanded) | `1006:36` | Full Today header with "Morning, Grace" greeting, streak pip badge (30), expanded 4-week × 7-day dot grid (green filled + terracotta-dashed freeze days), "2 freezes used" badge, coaching line, ring context below |
+| TD11 | Why this number (TDEE sheet) | `1009:2` | Bottom sheet explaining the calorie target: Newsreader "Where this number comes from", TDEE breakdown (BMR 1,680 / ×1.38 activity / −270 goal / +120 bonus → 2,170 effective), adaptive estimate badge, explanation copy |
+| TD12 | Quick-log calorie entry | `1010:2` | Sheet with meal slot selector (Breakfast/Lunch/Dinner/Snacks segmented control), "What did you eat?" name input, calories input (serif 450 value), optional P/C/F mini-inputs, terracotta "Log to Lunch" CTA |
+| TD13 | Eat-again banner | `1010:41` | In-context Today showing a logged meal + the eat-again prompt card: terracotta-tinted border, "Had this again?" serif title, "You logged Chicken Caesar Salad yesterday." body, terracotta "Log" CTA. Below: empty Dinner slot with "Recommended for dinner: ~620 kcal" guidance |
+| TD14 | Apple Health card | `1016:2` | In-context Today with the Apple Health connection card: red Apple Health icon, "Connected" green badge, 3-stat grid (Steps 8,420 / Active burn 340 kcal / Workouts 1) in white tile cards, "+120 kcal" amber activity bonus, terracotta "Where this comes from →" provenance link, last-synced timestamp |
+| TD9 | Goal-hit inline card (bonus) | `1006:2` | BONUS (not in original 8): in-context Today with the inline goal-hit win moment card — green check + "Targets met." serif + body — above the calorie ring at 0 remaining. Covers §3.10 goal-hit variant |
+
+**Design language verified (all 9 screenshotted):** Newsreader SemiBold/Medium headings, Inter Regular/Medium body, terracotta #C2683E CTAs, sage #7C8466 secondary text, cream #F6F5F2 card backgrounds, ink #1B1814 primary text, 12px/16px corner radii, consistent auto-layout spacing.
+
+**Today 🔵 App Only → 0.** All 8 original + 1 bonus (goal-hit inline) move to 🟡 Partial Match (Figma frame exists, app implementation pending).
+
+**Next:** Recipes (12 app-only) → Log a meal (11) → Plan (18) → Progress (17).

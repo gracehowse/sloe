@@ -257,7 +257,7 @@ export function SavedMealPortionSheet({
                 testID="saved-portion-confirm"
                 style={s.confirmBtn}
               >
-                <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>
+                <Text style={{ color: Accent.primarySolid, ...Type.headline }}>
                   {`Log ${formatMultiplier(mult)}× to ${slot}`}
                 </Text>
               </PressableScale>
@@ -307,11 +307,16 @@ const s = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+  // outline (transparent fill + 1.5px primarySolid border + primarySolid
+  // label), not a filled slab.
   confirmBtn: {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: Radius.md,
-    backgroundColor: Accent.primary,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: Accent.primarySolid,
     height: 48,
   },
 });

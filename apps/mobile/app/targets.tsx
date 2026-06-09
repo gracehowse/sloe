@@ -28,7 +28,7 @@ import Svg, {
 } from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
@@ -437,11 +437,14 @@ export default function TargetsScreen() {
           letterSpacing: 1.5,
           marginBottom: 6,
         },
+        // SLOE Phase 0: the hero calorie numeral reads in Newsreader serif
+        // (the design system reserves big numerals for serif). Reuse the
+        // `Type.ringValue` token the Today calorie ring uses so the two hero
+        // numbers stay byte-identical in face/size/weight. fontVariant kept
+        // for tabular alignment as the value count-changes on recalculate.
         bigNumber: {
-          fontSize: 48,
-          fontWeight: "800",
+          ...Type.ringValue,
           color: colors.text,
-          letterSpacing: -1.2,
           fontVariant: ["tabular-nums"],
         },
         kcalUnit: {
@@ -489,10 +492,19 @@ export default function TargetsScreen() {
           color: colors.textSecondary,
           letterSpacing: 1.2,
         },
+        // SLOE Phase 0: macro target numerals read in Newsreader serif on the
+        // Targets review surface (the design system reserves big numerals for
+        // serif). This is the documented override of `Type.macroValue` (which
+        // stays sans on the tiny Today ring tiles for tabular alignment); on
+        // the Targets tiles the serif hero treatment is intended. fontVariant
+        // keeps the digits tabular so the value column doesn't jitter.
         macroValue: {
+          fontFamily: FontFamily.serifRegular,
           fontSize: 22,
-          fontWeight: "800",
+          lineHeight: 26,
+          fontWeight: "400",
           color: colors.text,
+          letterSpacing: -0.4,
           fontVariant: ["tabular-nums"],
         },
         macroValueUnit: {
@@ -715,6 +727,13 @@ export default function TargetsScreen() {
               </View>
             </PostHogMaskView>
           ) : null}
+          {/* Recalculate — aubergine OUTLINE button (Sloe treatment #1,
+              2026-06-08). The everyday primary CTA is an accent LINE, not a
+              filled slab: transparent fill, 1.5px border in
+              `Accent.primarySolid` (#4E3260, ≈8.7:1 on the white card — AA),
+              label in the same. Pressed state lifts a faint aubergine wash.
+              The FAB + conversion CTAs keep the fill; this everyday recompute
+              reads as the calm outline. */}
           <Pressable
             onPress={() => void onRecalculate()}
             disabled={recalculating}
@@ -725,22 +744,21 @@ export default function TargetsScreen() {
               marginTop: Spacing.md,
               alignSelf: "center",
               paddingHorizontal: Spacing.lg,
-              paddingVertical: 8,
-              borderRadius: Radius.sm,
-              borderWidth: cardElevation.useBorder ? 1 : 0,
-              borderColor: colors.border,
-              backgroundColor: cardElevation.liftBg ?? colors.card,
-              opacity: pressed || recalculating ? 0.6 : 1,
+              paddingVertical: 9,
+              borderRadius: Radius.full,
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
+              backgroundColor: pressed ? Accent.primarySoft : "transparent",
+              opacity: recalculating ? 0.6 : 1,
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
-              ...(cardElevation.shadowStyle ?? {}),
             })}
           >
             {recalculating ? (
-              <ActivityIndicator size="small" color={accent.primary} />
+              <ActivityIndicator size="small" color={Accent.primarySolid} />
             ) : null}
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primarySolid }}>
               {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
             </Text>
           </Pressable>

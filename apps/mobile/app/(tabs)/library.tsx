@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   View,
   Text,
@@ -27,10 +28,11 @@ import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
+import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Spacing, Radius } from "@/constants/theme";
+import { FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
@@ -146,6 +148,13 @@ export default function LibraryScreen() {
   // entry path (tab tap, deep link, app cold-open) — there's no
   // useful Library state at savedCount=0 to preserve. Gated on
   // `!loading` to avoid bouncing during the initial fetch.
+  //
+  // Consequence: the `emptySlab` (Figma S7 `529:2`) is a FALLBACK-ONLY
+  // state — it only renders on a deep-link/cold-open edge where the
+  // redirect fires after the list renders briefly empty. It is NOT a
+  // "first-time user" entry point in the normal flow (which goes through
+  // Discover). The polish on the slab is intentional and preserved; it
+  // is not dead code. intentionally fallback-only per ENG-100 decision.
   useFocusEffect(
     useCallback(() => {
       if (!loading && savedRecipes.length === 0) {
@@ -176,11 +185,24 @@ export default function LibraryScreen() {
   // multi-source action sheet instead of hard-routing to manual entry.
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
-  const cycleSort = useCallback(() => {
-    setSortKey((prev) => {
-      const keys: SortKey[] = ["recent", "calories", "protein"];
-      return keys[(keys.indexOf(prev) + 1) % keys.length];
-    });
+  // §3.1 (recipes.md): sort opens an action sheet instead of cycling
+  // blindly so users can reach any sort order in one tap, not guess the
+  // cycle order. Options match recipes.md: Recent / Most calories / Most
+  // protein. The chip shows the current label so the surface-level
+  // feedback (what is currently sorted) is unchanged.
+  const openSortSheet = useCallback(() => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: "Sort recipes",
+        options: ["Cancel", "Recent", "Most calories", "Most protein"],
+        cancelButtonIndex: 0,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 1) setSortKey("recent");
+        else if (buttonIndex === 2) setSortKey("calories");
+        else if (buttonIndex === 3) setSortKey("protein");
+      },
+    );
   }, []);
 
   // Entry-kind narrowing (preserved per ENG-921): the quiet control on the
@@ -302,6 +324,13 @@ export default function LibraryScreen() {
     [confirmRemove, persistSaveToggle, refresh],
   );
 
+  // Aubergine-on-surface tokens (Sloe treatment system) — light uses the deep
+  // `primarySolid` for outline borders / labels + the `primarySoft` tint for
+  // selected pills; dark lifts both so the accent clears AA on the dark card.
+  const isLight = colors.background === "#FFFFFF";
+  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
+  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
+
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
@@ -354,16 +383,17 @@ export default function LibraryScreen() {
       // clipped "Quick" against the trailing edge AND gave a
       // visually heavier row than Discover. Now identical.
       //
-      // Geometry: paddingHorizontal:13 + paddingVertical:8 + minHeight:36
-      // + lineHeight:18 — gives descenders ("g" in High-Protein, "Q"
-      // in Quick) the headroom RN/iOS needs without the tails clipping
-      // at the bottom border. `borderRadius:20` matches Discover's
-      // softer corner; the pill is shorter than the 999 fully-round
-      // shape but reads as a proper pill.
-      paddingHorizontal: 13,
-      paddingVertical: 8,
+      // Geometry: paddingHorizontal:12 (Spacing.sm+xs) + paddingVertical:8 +
+      // minHeight:36 + lineHeight:18 — gives descenders ("g" in High-Protein,
+      // "Q" in Quick) the headroom RN/iOS needs without the tails clipping at
+      // the bottom border. `borderRadius:Radius.full` is the canonical fully-
+      // round pill shape (matches Discover, search bar, and the DS §4 pill rule).
+      // Previously 13 and 20 — both were off the canonical Spacing/Radius
+      // ladders; snapped to on-scale values (2026-06-09 library spacing audit).
+      paddingHorizontal: Spacing.sm + Spacing.xs, // 12
+      paddingVertical: Spacing.sm,
       minHeight: 36,
-      borderRadius: 20,
+      borderRadius: Radius.full,
       borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -375,14 +405,15 @@ export default function LibraryScreen() {
       backgroundColor: colors.backgroundSecondary,
       borderColor: colors.text,
     },
-    // ENG-921 — category pill active state per Figma `527:2`: clay fill
-    // + white label (not the cream-card entry-kind active treatment).
+    // Category pill SELECTED — Sloe treatment §7: aubergine SOFT-TINT fill +
+    // aubergine `primarySolid` label (not a solid accent slab). The selected
+    // pill carries a faint tint of the accent; the rest stay quiet off-white.
     categoryPillActive: {
-      backgroundColor: accent.primary,
-      borderColor: accent.primary,
+      backgroundColor: accentSoft,
+      borderColor: accentSoft,
     },
     categoryPillTextActive: {
-      color: "#fff",
+      color: accentInk,
       fontWeight: "700",
     },
     filterPillText: {
@@ -426,9 +457,9 @@ export default function LibraryScreen() {
     quietControl: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      gap: Spacing.xs,          // 4 — unchanged
+      paddingHorizontal: Spacing.sm,  // 8 — was 10 (off-scale); snapped to sm
+      paddingVertical: Spacing.xs,    // 4 — was 5 (off-scale); snapped to xs
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: colors.border,
@@ -438,11 +469,17 @@ export default function LibraryScreen() {
       fontWeight: "600",
       color: colors.textSecondary,
     },
+    // Quiet "+" create entry on the count line — aubergine OUTLINE (Sloe
+    // treatment §1). This is a secondary create affordance, NOT the global FAB
+    // (which keeps the one filled aubergine moment in the tab bar), so it reads
+    // as an outline glyph button, not a filled slab.
     quietCreate: {
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: accent.primary,
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: accentInk,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -460,9 +497,9 @@ export default function LibraryScreen() {
       paddingBottom: Spacing.sm,
     },
     planImportPill: {
-      paddingHorizontal: 11,
-      paddingVertical: 6,
-      borderRadius: 20,
+      paddingHorizontal: Spacing.sm + Spacing.xs,  // 12 — was 11 (off-scale); snapped to sm+xs
+      paddingVertical: Spacing.xs,                 // 4  — was 6 (off-scale); snapped to xs
+      borderRadius: Radius.full,                   // was 20 (off-scale); canonical full pill
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: "transparent",
@@ -489,13 +526,13 @@ export default function LibraryScreen() {
     searchInputWrap: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: Spacing.sm,          // 8 — was 10 (off-scale); snapped to sm
       backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderRadius: 12,
+      borderRadius: Radius.xl,  // 12 — was 12 (correct value, now using token)
       borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
+      paddingHorizontal: Spacing.md, // 16 — was 14 (off-scale); snapped to md
+      paddingVertical: Spacing.md,   // 16 — was 14 (off-scale); snapped to md
       ...(cardElevation.shadowStyle ?? {}),
     },
     searchInput: {
@@ -539,10 +576,15 @@ export default function LibraryScreen() {
       ...(cardElevation.shadowStyle ?? {}),
     },
     // Figma `527:2`: full-bleed square-ish photo to the card's top corners.
+    // Base fill is the warm card cream (`#F6F5F2`), NOT the lilac hairline
+    // (`colors.border` = #E8E2EC) — the old lilac base was the "empty
+    // pale-lilac box" that read as broken when an image was loading or
+    // when the warm RecipeHeroFallback (sage→cream) settled over it.
+    // §11.4: the fallback ground is sage→cream, never a lilac/grey block.
     cardImageWrap: {
       width: "100%",
       aspectRatio: 1,
-      backgroundColor: colors.border,
+      backgroundColor: colors.card,
       position: "relative",
     },
     cardImage: { width: "100%", height: "100%" },
@@ -585,20 +627,39 @@ export default function LibraryScreen() {
       paddingBottom: Spacing.sm,
       gap: 4,
     },
+    // Macro row beneath the title (recipes.md §3.1): kcal · protein ·
+    // carbs · fat using the immutable MacroColors. Protein is emphasised
+    // (slightly heavier digits) so the card reads as a tracker, not just
+    // a recipe app. Tabular-nums for alignment across the 2-column grid.
+    // No marginTop — cardBody gap: Spacing.xs (4) provides the rhythm
+    // uniformly for title→macro→meta.
+    macroRow: {},
+    // Caption-scale value text passed into MacroIconRow.Chunk. Uses 12pt
+    // (the caption ramp token per DS §2.2) instead of the legacy 11.5 /
+    // inline-hardcoded 12 so all three macro rows (Library, Discover, Plan)
+    // route through one canonical size. lineHeight 16 keeps the row
+    // compact at card width.
+    macroValue: {
+      fontSize: 12,
+      lineHeight: 16,
+    },
     // Title — Newsreader serif (Figma `527:2`), parity with web
-    // `var(--font-headline)`.
+    // `var(--font-headline)`. Bumped Medium/15→SemiBold/16 (recipes.md §3.1
+    // "editorial moment"; Julienne parity — the card title is the primary
+    // hierarchy signal on the card and needs editorial weight at 16pt).
     cardTitle: {
-      fontFamily: "Newsreader_500Medium",
-      fontSize: 15,
-      fontWeight: "500",
+      fontFamily: FontFamily.serifSemibold,
+      fontSize: 16,
+      fontWeight: "600",
       color: colors.text,
       letterSpacing: -0.1,
-      lineHeight: 19,
+      lineHeight: 20,
     },
     metaRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: 4,
+      // Removed marginTop:4 — cardBody gap:Spacing.xs carries all
+      // title→macro→meta spacing uniformly on the 4pt grid.
       flexWrap: "wrap",
     },
     metaChip: {
@@ -628,18 +689,22 @@ export default function LibraryScreen() {
       fontWeight: "700",
       color: colors.background,
     },
+    // Inline "Go public" — aubergine OUTLINE (Sloe treatment §1): transparent
+    // ground + 1.5px aubergine border + aubergine label, not a filled slab.
     goPublicBtn: {
       marginTop: Spacing.sm,
       alignSelf: "flex-start",
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: Radius.md,
-      backgroundColor: accent.primary,
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: accentInk,
     },
     goPublicBtnText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#fff",
+      color: accentInk,
     },
     // P2-32 (2026-04-25): the visible remove-from-library trash icon
     // was replaced by a long-press confirm flow on the card itself.
@@ -692,14 +757,19 @@ export default function LibraryScreen() {
       lineHeight: 21,
     },
     emptyActions: { marginTop: 24, gap: 10, width: "100%", maxWidth: 280 },
+    // Empty-state primary "Import a recipe" — aubergine OUTLINE (Sloe treatment
+    // §1). The grey-outline "Explore Discover" (ctaBtnSecondary) sits below it
+    // as the quieter secondary, keeping a clear emphasis ladder.
     ctaBtn: {
       paddingHorizontal: 24,
       paddingVertical: 12,
-      backgroundColor: accent.primary,
+      backgroundColor: "transparent",
       borderRadius: Radius.full,
+      borderWidth: 1.5,
+      borderColor: accentInk,
       alignItems: "center",
     },
-    ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+    ctaBtnText: { color: accentInk, fontWeight: "600", fontSize: 14 },
     ctaBtnSecondary: {
       paddingHorizontal: 24,
       paddingVertical: 12,
@@ -710,7 +780,11 @@ export default function LibraryScreen() {
       alignItems: "center",
     },
     ctaBtnSecondaryText: { color: colors.text, fontWeight: "600", fontSize: 14 },
-  }), [colors, cardElevation, accent]);
+    // `accent` itself is no longer read inside this StyleSheet — the derived
+    // `accentInk` / `accentSoft` (which depend on it) carry the aubergine
+    // treatment, so they are the deps. JSX-level `accent.primary` uses (list
+    // spinner, refresh tint, saved bookmark, star) live outside this memo.
+  }), [colors, cardElevation, accentInk, accentSoft]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
@@ -747,7 +821,7 @@ export default function LibraryScreen() {
             <RecipeCardImage
               uri={item.image}
               cardImageStyle={styles.cardImage}
-              fallbackBg={colors.cardBorder}
+              fallbackBg={colors.card}
               fallbackTint={colors.textTertiary}
               recipeId={item.id}
               recipeTitle={item.title}
@@ -781,6 +855,29 @@ export default function LibraryScreen() {
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+            {/* Macro row (recipes.md §3.1) — kcal · protein · carbs · fat
+                in the immutable MacroColors, protein emphasised. Values come
+                straight off the RecipeCard the list already loaded (real
+                macros for seed + saved rows). kcal is suppressed at ≤0 so a
+                recipe whose nutrition hasn't computed never shows a
+                confident "0 kcal" (trust posture / F4). Letters are off here
+                because the 2-column card is narrow; the macro hue + icon
+                carry the meaning, and protein leads visually. Shared with
+                Discover + web Library via MacroIconRow. */}
+            <MacroIconRow
+              kcal={item.calories > 0 ? item.calories : null}
+              protein={item.protein}
+              carbs={item.carbs}
+              fat={item.fat}
+              textColor={colors.textSecondary}
+              textTertiaryColor={colors.textTertiary}
+              showMacroLetters={false}
+              emphasiseProtein
+              proteinTextColor={colors.text}
+              iconSize={11}
+              style={styles.macroRow}
+              textStyle={styles.macroValue}
+            />
             {/* Meta row — Figma `527:2` shape `★ N · M min`. Every chip is
                 REAL + degrades gracefully: `★` uses the honest saves count
                 (savedCount — there is NO rating field, so we never
@@ -974,10 +1071,10 @@ export default function LibraryScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
-                      onPress={cycleSort}
+                      onPress={openSortSheet}
                       style={styles.quietControl}
                       accessibilityRole="button"
-                      accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}, tap to change`}
+                      accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}, tap to pick`}
                     >
                       <ArrowUpDown size={13} color={colors.textSecondary} />
                       <Text style={styles.quietControlText} maxFontSizeMultiplier={1.2}>
@@ -991,7 +1088,7 @@ export default function LibraryScreen() {
                       accessibilityLabel="Create a new recipe"
                       accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
                     >
-                      <Plus size={14} color="#fff" />
+                      <Plus size={14} color={accentInk} />
                     </Pressable>
                   </View>
                 </View>

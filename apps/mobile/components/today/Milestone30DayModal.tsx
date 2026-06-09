@@ -301,22 +301,29 @@ export function Milestone30DayModal({
             ) : null}
           </ScrollView>
 
-          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll). */}
+          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll).
+              Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid border
+              + primarySolid label), not a filled slab. Mirror of web
+              `milestone-30-day-dialog`. */}
           <Pressable
             onPress={onDismiss}
             accessibilityRole="button"
             accessibilityLabel="Keep going"
-            style={{
+            style={({ pressed }) => ({
               width: "100%",
               paddingVertical: 16,
               borderRadius: Radius.full,
-              backgroundColor: Accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
               alignItems: "center",
               marginTop: Spacing.sm,
               marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
               Keep going
             </Text>
           </Pressable>

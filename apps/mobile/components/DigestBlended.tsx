@@ -31,7 +31,7 @@ import { Share2, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -290,9 +290,11 @@ export function DigestBlended(props: DigestProps) {
                   />
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <Text testID="digest-hero-calories" style={{ fontSize: 28, fontWeight: "800", color: heroColor, fontVariant: ["tabular-nums"] }}>
+                  {/* SLOE Phase 0: the closest-day hero kcal reads in Newsreader
+                      serif (family carries the weight; the `kcal` unit stays sans). */}
+                  <Text testID="digest-hero-calories" style={{ fontFamily: FontFamily.serifRegular, fontSize: 28, color: heroColor, fontVariant: ["tabular-nums"] }}>
                     {Math.round(closest.calories).toLocaleString()}
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: heroColor }}> kcal</Text>
+                    <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: heroColor }}> kcal</Text>
                   </Text>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                     {Math.round(closestTarget!).toLocaleString()} target
@@ -304,9 +306,9 @@ export function DigestBlended(props: DigestProps) {
                 </View>
               </>
             ) : (
-              <Text testID="digest-hero-calories" style={{ fontSize: 28, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+              <Text testID="digest-hero-calories" style={{ fontFamily: FontFamily.serifRegular, fontSize: 28, color: colors.text, fontVariant: ["tabular-nums"] }}>
                 {Math.round(closest.calories).toLocaleString()}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}> kcal</Text>
+                <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.text }}> kcal</Text>
               </Text>
             )}
             <Text testID="digest-hero-protein" style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>

@@ -86,6 +86,16 @@ type TileMeta = {
   targetText: string;
   pct: number;
   caption: string;
+  /** Caption semantic — drives the caption colour (audit gap 4):
+   *   - `under`     → "N g remaining" in success/sage
+   *   - `over`      → "N g over" in amber (`--accent-warning-solid`)
+   *   - `reference` → muted "ref N" for sugar/sodium
+   *   - `none`      → suppressed (unlogged tile) */
+  captionTone: "under" | "over" | "reference" | "none";
+  /** True once the macro has any logged value — gap 8 softens the serif
+   *  value to a muted tone while it's still a zero so the editorial numeral
+   *  only earns its full ink weight when there's data. */
+  hasValue: boolean;
   /** CSS color var (e.g. "var(--macro-protein)") for the progress fill. */
   fillVar: string;
   /** True when `current > target` on a tracked (non-ref) macro.
@@ -113,28 +123,42 @@ function buildMacroTile(
     formatWaterLine,
   } = props;
 
-  const plainRemainingCaption = (cur: number, tgt: number, unit: string): string => {
+  const plainRemainingCaption = (
+    cur: number,
+    tgt: number,
+    unit: string,
+    overIsFlag = true,
+  ): { caption: string; tone: TileMeta["captionTone"] } => {
     // Suppress caption on unlogged tiles — the `0 / target` line
-    // above already says everything the user needs.
-    if (cur <= 0 && tgt > 0) return "";
+    // above already says everything the user needs (gap 8 also softens the
+    // value to muted in that state).
+    if (cur <= 0 && tgt > 0) return { caption: "", tone: "none" };
     const remain = tgt - cur;
     const magnitude = Math.round(Math.abs(remain));
-    return remain >= 0
-      ? `${magnitude} ${unit} left`
-      : `${magnitude} ${unit} over`;
+    if (remain >= 0) {
+      // "remaining" is the canonical copy (design-system §2.2, today.md §4) —
+      // mobile uses the same word so the two surfaces can't drift.
+      return { caption: `${magnitude} ${unit} remaining`, tone: "under" };
+    }
+    // Over target — amber caption, except where over-target is a win (fibre /
+    // water): those keep the muted "over" with no alert colour.
+    return { caption: `${magnitude} ${unit} over`, tone: overIsFlag ? "over" : "under" };
   };
 
   if (macroKey === "protein") {
     const cur = proteinCurrent;
     const tgt = proteinTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    const c = plainRemainingCaption(cur, tgt, "g");
     return {
       label: "Protein",
       Icon: Dumbbell,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.protein,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -163,7 +187,9 @@ function buildMacroTile(
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: plainRemainingCaption(cur, tgt, "g").caption,
+      captionTone: plainRemainingCaption(cur, tgt, "g").tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.carbs,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -172,13 +198,16 @@ function buildMacroTile(
     const cur = fatCurrent;
     const tgt = fatTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    const c = plainRemainingCaption(cur, tgt, "g");
     return {
       label: "Fat",
       Icon: Droplet,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.fat,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -187,13 +216,17 @@ function buildMacroTile(
     const cur = fiberCurrent;
     const tgt = fiberTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    // Fibre over-target is a win, not a flag — no amber caption when over.
+    const c = plainRemainingCaption(cur, tgt, "g", false);
     return {
       label: "Fibre",
       Icon: Sprout,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.fiber,
       isOverBudget: false /* fibre over-target is not a flag -- it's a win */,
     };
@@ -209,6 +242,8 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: `ref ${tgt} g`,
+      captionTone: "reference",
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sugar,
       isOverBudget: false /* sugar is reference-only */,
     };
@@ -224,6 +259,8 @@ function buildMacroTile(
       targetText: `/ ${tgt} mg`,
       pct,
       caption: `ref ${tgt} mg`,
+      captionTone: "reference",
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sodium,
       isOverBudget: false /* sodium is reference-only */,
     };
@@ -232,13 +269,17 @@ function buildMacroTile(
     const cur = waterCurrentMl;
     const tgt = waterTargetMl;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    // Water over-target is a win, not a flag — no amber caption when over.
+    const c = plainRemainingCaption(cur, tgt, "ml", false);
     return {
       label: "Water",
       Icon: Droplet,
       valueText: formatWaterLine(cur),
       targetText: `/ ${formatWaterLine(tgt)}`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "ml"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.water,
       isOverBudget: false /* water over-target is a win, not a flag */,
     };
@@ -280,7 +321,15 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
                 wrap to a second line. */}
             <div className="flex items-baseline min-w-0 gap-1">
-              <span className="font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums text-foreground tracking-tight shrink-0">
+              {/* gap 8 — soften the serif value while it's a zero so the
+                  editorial numeral only earns its full ink weight when there's
+                  data (mobile parity). Muted (`text-foreground-tertiary`) until
+                  the macro has a logged value. */}
+              <span
+                className={`font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums tracking-tight shrink-0 ${
+                  tile.hasValue ? "text-foreground" : "text-foreground-tertiary"
+                }`}
+              >
                 {tile.valueText}
               </span>
               <span className="text-xs text-foreground-tertiary truncate">
@@ -299,6 +348,28 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 }}
               />
             </div>
+            {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
+                (sage) / "N g over" (amber) / muted "ref N" for reference-only
+                macros. The at-a-glance "how much left" read today.md §3.3/§4
+                calls the warm-coaching payoff. Reserve the row height even when
+                suppressed (unlogged tile) so the grid stays even. */}
+            <span
+              data-testid={`today-macro-tile-caption-${macroKey}`}
+              className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
+                tile.captionTone === "under"
+                  ? "text-success"
+                  : tile.captionTone === "over"
+                    ? ""
+                    : "text-foreground-tertiary"
+              }`}
+              style={
+                tile.captionTone === "over"
+                  ? { color: "var(--accent-warning-solid)" }
+                  : undefined
+              }
+            >
+              {tile.caption}
+            </span>
           </div>
         );
       })}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#1B1814;--sec:#6A6072;--hair:#ECEAE4;--serif:'Newsreader',Georgia,serif;--sans:'Inter',system-ui,sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#ECE9E4;font-family:var(--sans);color:var(--ink);padding:40px;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:860px;margin:0 auto;}
+h1{font-family:var(--serif);font-weight:600;font-size:26px;color:#3B2A4D;margin-bottom:6px;}
+.sub{font-size:13px;color:#5b5560;margin-bottom:26px;}
+.row{display:flex;gap:28px;}
+.col{flex:1;display:flex;flex-direction:column;gap:12px;}
+.tag{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+.tag.a{color:#8b7f97;} .tag.b{color:#3B2A4D;}
+/* phone-ish white canvas */
+.canvas{background:#fff;border-radius:22px;padding:22px 18px 20px;box-shadow:0 20px 50px rgba(40,30,50,.16);}
+.wm{font-family:var(--serif);font-weight:600;font-size:19px;}
+.head{font-family:var(--serif);font-weight:600;font-size:21px;margin:14px 0 4px;}
+.body{font-size:12.5px;color:var(--sec);line-height:1.5;margin-bottom:16px;}
+/* CURRENT: #5B3B6E + cream */
+.cur .wm,.cur .head{color:#5B3B6E;}
+.cur .card{background:#F6F5F2;border-radius:14px;padding:14px;margin-bottom:12px;}
+.cur .ctitle{font-family:var(--serif);font-weight:600;font-size:15px;color:#5B3B6E;margin-bottom:8px;}
+.cur .out{display:block;text-align:center;font:600 13px var(--sans);color:#5B3B6E;border:1.5px solid #5B3B6E;background:#fff;border-radius:11px;padding:11px;}
+.cur .fill{display:block;text-align:center;font:600 13px var(--sans);color:#fff;background:#5B3B6E;border-radius:11px;padding:11px;margin-top:9px;}
+/* REFINED: #3B2A4D + white cards */
+.ref .wm,.ref .head{color:#3B2A4D;}
+.ref .card{background:#fff;border:1px solid var(--hair);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(40,30,50,.05);}
+.ref .ctitle{font-family:var(--serif);font-weight:600;font-size:15px;color:#3B2A4D;margin-bottom:8px;}
+.ref .out{display:block;text-align:center;font:600 13px var(--sans);color:#3B2A4D;border:1.5px solid #3B2A4D;background:#fff;border-radius:11px;padding:11px;}
+.ref .fill{display:block;text-align:center;font:600 13px var(--sans);color:#fff;background:linear-gradient(165deg,#5B3B6E,#3B2A4D);border-radius:11px;padding:11px;margin-top:9px;box-shadow:0 8px 18px rgba(59,42,77,.32);}
+.cap{font-size:11px;color:#8b858f;}
+</style></head>
+<body><div class="wrap">
+<h1>Darker &amp; cleaner — confirm by eye</h1>
+<p class="sub">Left: current (#5B3B6E mid-purple + cream cards). Right: refined (one deep #3B2A4D plum, used sparingly, white cards + hairline + soft shadow; the few fills get a subtle gradient so they read as a jewel, not a void).</p>
+<div class="row">
+  <div class="col"><span class="tag a">Current · #5B3B6E + cream</span>
+    <div class="canvas cur">
+      <div class="wm">Sloe</div>
+      <div class="head">Evening, Grace</div>
+      <div class="body">Monday 8 June · about 901 kcal left.</div>
+      <div class="card"><div class="ctitle">Three-cheese fusilli</div><div class="body" style="margin:0 0 10px">312 kcal · 55g protein</div><a class="out">Cook this</a></div>
+      <a class="fill">Build my plan</a>
+    </div>
+  </div>
+  <div class="col"><span class="tag b">Refined · #3B2A4D + white</span>
+    <div class="canvas ref">
+      <div class="wm">Sloe</div>
+      <div class="head">Evening, Grace</div>
+      <div class="body">Monday 8 June · about 901 kcal left.</div>
+      <div class="card"><div class="ctitle">Three-cheese fusilli</div><div class="body" style="margin:0 0 10px">312 kcal · 55g protein</div><a class="out">Cook this</a></div>
+      <a class="fill">Build my plan</a>
+    </div>
+  </div>
+</div>
+<p class="cap" style="margin-top:18px">Note: white cards on a white canvas separate via the hairline + soft shadow (right) — cleaner/more elevated than the cream tonal block (left), matching Julienne's actual pure-white in-app canvas.</p>
+</div></body></html>

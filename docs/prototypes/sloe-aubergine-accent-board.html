@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sloe — aubergine-violet accent board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --white:#FFFFFF; --card:#F6F5F2; --hairline:#ECEAE4; --ink:#1B1814; --secondary:#6A6072;
+    /* refined aubergine-violet scale */
+    --plum-lift:#7E5C92; --plum:#5B3B6E; --plum-ink:#3B2A4D;
+    /* current (flat) + clay */
+    --damson:#6A4B7A; --clay:#C8794E;
+    --protein:#588CE4; --carbs:#C8794E; --fat:#DF5EBC; --sage:#7C8466;
+    --serif:'Newsreader', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', -apple-system, system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#E7E4DF; font-family:var(--sans); color:var(--ink); padding:40px 32px 56px; -webkit-font-smoothing:antialiased;}
+  .head{max-width:980px; margin:0 auto 32px;}
+  .head h1{font-family:var(--serif); font-weight:600; font-size:30px; color:var(--plum-ink); letter-spacing:-.3px;}
+  .head p{font-size:14px; color:#5b5560; margin-top:6px; max-width:680px; line-height:1.5;}
+  .row{display:flex; gap:40px; justify-content:center; align-items:flex-start; flex-wrap:wrap; max-width:980px; margin:0 auto;}
+  .col{display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .tag{font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#7a747f;}
+  .tag.after{color:var(--plum);}
+
+  /* phone */
+  .phone{width:300px; height:620px; background:var(--white); border-radius:44px; padding:11px;
+    box-shadow:0 2px 4px rgba(0,0,0,.06), 0 30px 60px rgba(40,30,50,.22); position:relative;}
+  .bezel{width:100%; height:100%; background:var(--white); border-radius:34px; overflow:hidden; position:relative;}
+  .notch{position:absolute; top:11px; left:50%; transform:translateX(-50%); width:104px; height:26px; background:#0c0a0e; border-radius:16px; z-index:5;}
+  .screen{padding:46px 18px 0; height:100%; display:flex; flex-direction:column;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .wordmark{font-family:var(--serif); font-weight:600; font-size:20px; color:var(--plum-ink);}
+  .avatar{width:30px; height:30px; border-radius:50%; background:var(--plum-ink); color:#fff; font-family:var(--serif); font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .avatar.flat{background:var(--damson);}
+
+  .greet{font-family:var(--serif); font-weight:500; font-size:21px; color:var(--plum-ink); line-height:1.15;}
+  .greet.flat{color:var(--damson);}
+  .date{font-size:12px; color:var(--secondary); margin:3px 0 16px;}
+
+  /* pills */
+  .pills{display:flex; gap:7px; margin-bottom:16px;}
+  .pill{font-size:12px; font-weight:600; padding:7px 13px; border-radius:14px; background:var(--card); color:var(--secondary);}
+  .pill.sel-after{background:rgba(91,59,110,.12); color:var(--plum); }
+  .pill.sel-flat{background:var(--clay); color:#fff;}
+
+  /* hero card */
+  .hcard{background:var(--card); border-radius:18px; overflow:hidden; margin-bottom:14px;}
+  .photo{height:104px; background:
+    radial-gradient(120% 90% at 70% 20%, #cdb89a, #8f7a5e 60%, #6b5944);
+    position:relative;}
+  .photo:after{content:"Fits your day"; position:absolute; top:10px; left:10px; font-size:10px; font-weight:700;
+    color:#fff; background:rgba(124,132,102,.92); padding:4px 8px; border-radius:9px;}
+  .hbody{padding:12px 14px 14px;}
+  .heyebrow{font-size:9px; font-weight:700; letter-spacing:.6px; color:var(--secondary); text-transform:uppercase;}
+  .htitle{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--plum-ink); margin:3px 0 11px;}
+
+  /* CTA */
+  .cta{display:block; text-align:center; font-size:14px; font-weight:600; color:#fff; padding:12px; border-radius:13px;}
+  /* CTA treatments */
+  .cta.after{background:#fff; border:1.5px solid var(--plum); color:var(--plum); box-shadow:none; padding:11px;}
+  .cta.flat{background:var(--damson);}
+  .cta.filled{background:linear-gradient(165deg, var(--plum-lift), var(--plum)); color:#fff;}
+  .cta.outline{background:#fff; border:1.5px solid var(--plum); color:var(--plum); box-shadow:none; padding:11px;}
+  .cta.outline-tint{background:rgba(91,59,110,.06); border:1.5px solid var(--plum); color:var(--plum); box-shadow:none; padding:11px;}
+  .cta.outline-thin{background:#fff; border:1px solid rgba(91,59,110,.55); color:var(--plum); box-shadow:none; padding:11px;}
+  .treat{max-width:980px; margin:28px auto 0; background:#fff; border-radius:18px; padding:20px 24px; box-shadow:0 2px 4px rgba(0,0,0,.05);}
+  .treat h2{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--plum-ink); margin-bottom:6px;}
+  .treat p{font-size:13px; color:#5b5560; margin-bottom:16px;}
+  .treat-row{display:flex; gap:20px; flex-wrap:wrap;}
+  .treat-item{width:200px;}
+  .treat-item .lbl{font-size:11px; color:var(--secondary); text-align:center; margin-top:8px; line-height:1.35;}
+
+  /* macro strip — shows clay survives as carbs */
+  .macros{display:flex; gap:14px; margin:14px 2px 0; font-size:12px; font-weight:600;}
+  .macros span b{font-weight:700;}
+  .m-p{color:var(--protein);} .m-c{color:var(--carbs);} .m-f{color:var(--fat);}
+
+  /* tab bar */
+  .tabs{margin-top:auto; display:flex; align-items:flex-end; justify-content:space-between; padding:12px 22px 18px; position:relative;}
+  .tab{font-size:9px; font-weight:600; color:#a9a4ad; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .tab .dot{width:17px; height:17px; border-radius:5px; background:#d6d2da;}
+  .tab.active{color:var(--plum);}
+  .tab.active.flat{color:var(--clay);}
+  .tab.active .dot{background:var(--plum);}
+  .tab.active.flat .dot{background:var(--clay);}
+  .fab{position:absolute; left:50%; top:-10px; transform:translateX(-50%); width:50px; height:50px; border-radius:25px;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px; font-weight:300;}
+  .fab.after{background:linear-gradient(160deg, var(--plum-lift), var(--plum)); box-shadow:0 10px 22px rgba(91,59,110,.45);}
+  .fab.flat{background:var(--damson); box-shadow:0 6px 14px rgba(60,45,70,.4);}
+
+  /* swatch strip */
+  .swatches{max-width:980px; margin:40px auto 0; background:#fff; border-radius:18px; padding:20px 24px;
+    box-shadow:0 2px 4px rgba(0,0,0,.05);}
+  .swatches h2{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--plum-ink); margin-bottom:14px;}
+  .sw-row{display:flex; gap:14px; flex-wrap:wrap;}
+  .sw{display:flex; flex-direction:column; gap:6px; align-items:center; width:104px;}
+  .chip{width:104px; height:54px; border-radius:11px; border:1px solid var(--hairline);}
+  .sw .name{font-size:11px; font-weight:600; color:var(--ink);}
+  .sw .hex{font-size:10px; color:var(--secondary); font-family:ui-monospace, monospace;}
+  .sw .use{font-size:9px; color:#8b858f; text-align:center; line-height:1.3;}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Sloe — aubergine-violet accent, fixed for depth</h1>
+    <p>Left: today's flat damson <code>#6A4B7A</code> (7% saturation — reads grey), filled CTA, clay flooding the chrome.
+       Right: refined aubergine-violet <code>#5B3B6E</code> — <b>outlined CTAs (Julienne-style)</b>, the one filled gradient reserved
+       for the FAB anchor only, clay demoted to the carbs macro. Accent coverage drops to a hairline + text.</p>
+  </div>
+
+  <div class="row">
+    <!-- BEFORE -->
+    <div class="col">
+      <div class="tag">Before · flat damson + clay</div>
+      <div class="phone"><div class="bezel"><div class="notch"></div>
+        <div class="screen">
+          <div class="topbar"><span class="wordmark" style="color:var(--damson)">Sloe</span><span class="avatar flat">G</span></div>
+          <div class="greet flat">Evening, Grace</div>
+          <div class="date">Monday 8 June</div>
+          <div class="pills"><span class="pill sel-flat">All</span><span class="pill">Breakfast</span><span class="pill">Lunch</span></div>
+          <div class="hcard">
+            <div class="photo"></div>
+            <div class="hbody">
+              <div class="heyebrow">Dinner suggestion</div>
+              <div class="htitle" style="color:var(--damson)">Three-cheese fusilli</div>
+              <a class="cta flat">Cook this</a>
+            </div>
+          </div>
+          <div class="macros"><span class="m-p">P <b>32g</b></span><span class="m-c">C <b>45g</b></span><span class="m-f">F <b>12g</b></span></div>
+          <div class="tabs">
+            <span class="tab active flat"><span class="dot"></span>Today</span>
+            <span class="tab"><span class="dot"></span>Plan</span>
+            <span class="fab flat">+</span>
+            <span class="tab"><span class="dot"></span>Recipes</span>
+            <span class="tab"><span class="dot"></span>Progress</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="col">
+      <div class="tag after">After · aubergine-violet #5B3B6E</div>
+      <div class="phone"><div class="bezel"><div class="notch"></div>
+        <div class="screen">
+          <div class="topbar"><span class="wordmark">Sloe</span><span class="avatar">G</span></div>
+          <div class="greet">Evening, Grace</div>
+          <div class="date">Monday 8 June</div>
+          <div class="pills"><span class="pill sel-after">All</span><span class="pill">Breakfast</span><span class="pill">Lunch</span></div>
+          <div class="hcard">
+            <div class="photo"></div>
+            <div class="hbody">
+              <div class="heyebrow">Dinner suggestion</div>
+              <div class="htitle">Three-cheese fusilli</div>
+              <a class="cta after">Cook this</a>
+            </div>
+          </div>
+          <div class="macros"><span class="m-p">P <b>32g</b></span><span class="m-c">C <b>45g</b></span><span class="m-f">F <b>12g</b></span></div>
+          <div class="tabs">
+            <span class="tab active"><span class="dot"></span>Today</span>
+            <span class="tab"><span class="dot"></span>Plan</span>
+            <span class="fab after">+</span>
+            <span class="tab"><span class="dot"></span>Recipes</span>
+            <span class="tab"><span class="dot"></span>Progress</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- CTA TREATMENTS -->
+  <div class="treat">
+    <h2>CTA weight — pick the outline</h2>
+    <p>Julienne keeps buttons neutral/outlined and rations the filled accent to tiny tags. Filled (far left) is the "too much" you flagged. Outlined is the Julienne move — the accent becomes a hairline + text.</p>
+    <div class="treat-row">
+      <div class="treat-item"><a class="cta filled">Cook this</a><div class="lbl">Filled — too much (your note)</div></div>
+      <div class="treat-item"><a class="cta outline">Cook this</a><div class="lbl">Outline 1.5px — <b>recommended</b></div></div>
+      <div class="treat-item"><a class="cta outline-thin">Cook this</a><div class="lbl">Outline 1px, softer — quietest</div></div>
+      <div class="treat-item"><a class="cta outline-tint">Cook this</a><div class="lbl">Outline + faint tint — a touch more presence</div></div>
+    </div>
+  </div>
+
+  <!-- SWATCHES -->
+  <div class="swatches">
+    <h2>The system</h2>
+    <div class="sw-row">
+      <div class="sw"><div class="chip" style="background:#7E5C92"></div><span class="name">Plum Lift</span><span class="hex">#7E5C92</span><span class="use">gradient top, pressed, glow</span></div>
+      <div class="sw"><div class="chip" style="background:#5B3B6E"></div><span class="name">Plum (accent)</span><span class="hex">#5B3B6E</span><span class="use">FAB · CTA · active tab · selected pill</span></div>
+      <div class="sw"><div class="chip" style="background:#3B2A4D"></div><span class="name">Plum Ink</span><span class="hex">#3B2A4D</span><span class="use">wordmark · serif headings · depth</span></div>
+      <div class="sw"><div class="chip" style="background:#FFFFFF"></div><span class="name">Canvas</span><span class="hex">#FFFFFF</span><span class="use">page base</span></div>
+      <div class="sw"><div class="chip" style="background:#F6F5F2"></div><span class="name">Warm card</span><span class="hex">#F6F5F2</span><span class="use">cards · unselected pills</span></div>
+      <div class="sw"><div class="chip" style="background:#C8794E"></div><span class="name">Clay → carbs</span><span class="hex">#C8794E</span><span class="use">demoted: carbs macro only, off the chrome</span></div>
+    </div>
+  </div>
+</body>
+</html>

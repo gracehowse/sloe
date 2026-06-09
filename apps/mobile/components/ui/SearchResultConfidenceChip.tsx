@@ -49,14 +49,14 @@ const defaultLabel: Record<SearchResultConfidenceTier, string> = {
 
 // Prototype colours: Verified = soft-blue (#eef3fb / brand blue text),
 // Estimated = amber (#fbf2e2 / #bf8324 text). Mapped onto the mobile
-// tokens — `Accent.primary` (blue) and `Accent.win` (the landmark amber,
-// the closest warm-amber to the prototype's #bf8324 without reaching for
+// tokens — `Accent.primary` (clay) for `verified` and a warm amber for
+// `estimated` (the closest to the prototype's #bf8324 without reaching for
 // the orange `warning` slot which reads as "over-budget").
 //
-// HELD WARM (Frost flag `brand_frost_secondary`, ENG-997): the `verified` fg
-// stays `Accent.primary` (clay) and does NOT migrate to `useAccent()`. This is
-// a CONFIDENCE / provenance indicator, not a CTA — per the ship plan, confidence
-// chips/dots stay warm regardless of the flag (only true CTAs flip to damson).
+// The `verified` fg reads the static clay `Accent.primary` directly and is
+// intentionally NOT routed through `useAccent()` — this is a CONFIDENCE /
+// provenance indicator, not a CTA. (The Frost secondary-colour exploration was
+// retired 2026-06-08, ENG-997 — clay is now the unconditional accent.)
 const TIER_STYLE: Record<
   SearchResultConfidenceTier,
   { bg: string; fg: string }

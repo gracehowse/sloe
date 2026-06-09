@@ -23,9 +23,45 @@ Use semantic names, not raw numbers. Add this to components as needed:
 | medium | `"500"` | Subtle emphasis (rarely used) |
 | semibold | `"600"` | Labels, section titles within cards, row labels |
 | bold | `"700"` | Screen titles, headings, CTAs, card titles |
-| heavy | `"800"` | Hero numbers only (calorie totals, stat grid, fasting timer) |
+| heavy | `"800"` | Reserved — see "Hero numerals are serif" below; big standalone numbers are NOT sans 800 anymore |
 
 **Do not use `fontWeight: "900"`.** Maximum weight in product UI is 800.
+
+### Hero numerals are serif (SLOE Phase 0, 2026-06-08)
+
+Big **standalone numeric hero values** read in the **Newsreader serif** display
+face, not sans. Sloe is an editorial app — big numbers are a serif moment. The
+serif face carries its own weight, so a sans `fontWeight` (700/800) is **dropped**
+when converting (leaving it forces a synthetic bold over the serif).
+
+**Applies to** big standalone numbers: calorie totals, kcal/day targets, kg
+weights, big stat-grid numbers, the prominent number on a card, the onboarding
+ruler/stepper/pace/reveal hero readouts.
+
+**How:**
+- **Mobile:** spread a serif `Type.*` token (`Type.display` 32 / `Type.title` 24 /
+  `Type.ringValue` 48 / `Type.heroValue` 20) matching the existing size, OR set
+  `fontFamily: FontFamily.serifRegular` (or `serifMedium`) for a kept custom size,
+  and **remove** the sans `fontWeight`. Keep `color`, `fontVariant: ["tabular-nums"]`,
+  `letterSpacing`. `Type.heroValue` is the dedicated serif sibling of the sans
+  `Type.macroValue` (same 20/24 box) for big-numeral surfaces.
+- **Web:** apply the serif display var — `font-[family-name:var(--font-headline)]`
+  or `font-[family-name:var(--font-display)]` (both Newsreader) with `font-medium`
+  / `font-normal`, replacing `font-bold` / `font-extrabold`. Keep `tabular-nums`.
+
+**Stays sans (do NOT convert):** labels / eyebrows / ALL-CAPS section headers /
+anything ≤ 14px; **unit suffixes** (kcal, kg, g, ml, %) — split these into a
+nested sans `Text`/`<span>` so only the number goes serif; numbers inline inside
+a sentence/paragraph; glyphs, arrows (↑↓), emoji, icon characters; button labels;
++/− stepper glyphs; the small inline macro callouts in the saved-meal portion +
+ingredient sheets (`Type.macroValue` stays sans there for tight tabular
+alignment); cook-mode countdown timer (deliberate Menlo monospace); join/invite
+codes (serif hurts character distinction).
+
+Regression guard: `tests/unit/heroNumeralSerif.test.ts` (web + mobile parity) and
+`tests/unit/targetsHeroKcal.test.ts`. The calorie ring + Today macro tiles +
+burn-detail were converted earlier (ENG-997); this pass covered the remaining
+Progress / onboarding / meal + weight / digest / weekly-recap numerals.
 
 ### Spacing scale
 

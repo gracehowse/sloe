@@ -18,7 +18,7 @@ import {
   PREMIUM_MOTION_COUNT_MS,
 } from "@suppr/shared/preferences/premiumMotion";
 
-import { Accent, MacroColors, Type } from "@/constants/theme";
+import { Accent, Colors, MacroColors, Type } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
 
@@ -287,6 +287,18 @@ export default function CalorieRing({
    *  soft, even-lighter semi-opaque dot sitting on the overage lap's leading
    *  cap. */
   const overageGlowColor = isDark ? "#C4ACD0" : "#9A7BAA";
+  // Empty-state track contrast (audit gap 1, 2026-06-09). On a cold open the
+  // ring is the largest object on the screen, but the default frost-mist track
+  // (#EDEAF1 light) sits only ~10 luminance below the #F6F5F2 card — the ring's
+  // defining shape was nearly invisible and read as an unfinished placeholder.
+  // When empty, lift the track to `borderStrong` (#C9C2D6 light / #47424F dark)
+  // so the circle is unmistakable geometry. The FILLED-state track stays the
+  // soft frost-mist so the plum arc keeps maximum contrast against it. Mirrors
+  // web `--ring-bg-empty` on the empty-state branch of `DailyRing`.
+  const emptyTrackColor = isDark
+    ? Colors.dark.borderStrong
+    : Colors.light.borderStrong;
+  const outerTrackColor = isEmpty ? emptyTrackColor : trackColor;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);
@@ -381,16 +393,35 @@ export default function CalorieRing({
               on this ring: every state strokes a plain `Circle`. */}
           {/* Outer calorie ring track — Sloe grey track in ALL states incl.
               empty (Grace 2026-06-03: empty ring = grey track per the S5
-              frame, not the old blue "calibrating" gradient). */}
+              frame, not the old blue "calibrating" gradient). On the EMPTY
+              state the track lifts to `borderStrong` (audit gap 1) so the
+              ring's shape reads on a cold open instead of disappearing into
+              the near-tonal card; the filled state keeps the soft frost-mist
+              so the plum arc holds contrast. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={trackColor}
+            stroke={outerTrackColor}
             strokeWidth={STROKE}
             opacity={1}
           />
+          {/* Empty-state inner hairline (audit gap 1) — a 1px ring just inside
+              the track so the empty circle reads as intentional geometry, not
+              a faint outline. Sits at the track's inner edge. Hidden the moment
+              anything is logged (the plum arc then carries the shape). */}
+          {isEmpty ? (
+            <Circle
+              cx={CX}
+              cy={CX}
+              r={R - STROKE / 2 - 1}
+              fill="none"
+              stroke={emptyTrackColor}
+              strokeWidth={1}
+              opacity={0.7}
+            />
+          ) : null}
           {/* Bonus calorie segment (orange). Canonical 2026-05-22 v4
               multi-ring revival: when exercise has bumped the daily
               goal above the base target, render the "earned" territory
@@ -438,7 +469,7 @@ export default function CalorieRing({
             r={R}
             stroke={
               isEmpty
-                ? trackColor
+                ? outerTrackColor
                 : ringStateColor
             }
             strokeWidth={STROKE}

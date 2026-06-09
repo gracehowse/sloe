@@ -155,7 +155,7 @@ export function MoveMealSheet({
             </Text>
           </View>
           <Pressable onPress={onClose} accessibilityLabel="Cancel" hitSlop={8}>
-            <Text style={{ color: accent.primary, fontWeight: "600" }}>Cancel</Text>
+            <Text style={{ color: accent.primarySolid, fontWeight: "600" }}>Cancel</Text>
           </Pressable>
         </View>
 
@@ -197,10 +197,13 @@ export function MoveMealSheet({
                   style={[
                     styles.row,
                     {
+                      // Sloe treatment system (§7): the source ("FROM") row
+                      // reads as a selected pill — aubergine soft-tint fill +
+                      // primarySolid border, not a saturated edge.
                       backgroundColor: r.isSource
-                        ? accent.primary + "12"
+                        ? accent.primarySoft
                         : colors.background,
-                      borderColor: r.isSource ? accent.primary : colors.cardBorder,
+                      borderColor: r.isSource ? accent.primarySolid : colors.cardBorder,
                       opacity: r.isSource ? 0.8 : 1,
                     },
                   ]}
@@ -225,7 +228,7 @@ export function MoveMealSheet({
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        color: r.isSource ? accent.primary : colors.text,
+                        color: r.isSource ? accent.primarySolid : colors.text,
                         fontWeight: "700",
                         fontSize: 13,
                       }}
@@ -249,7 +252,7 @@ export function MoveMealSheet({
                   {r.isSource ? (
                     <Text
                       style={{
-                        color: accent.primary,
+                        color: accent.primarySolid,
                         fontSize: 11,
                         fontWeight: "700",
                         letterSpacing: 0.5,

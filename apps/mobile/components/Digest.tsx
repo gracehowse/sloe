@@ -459,6 +459,9 @@ function DigestLegacy(props: DigestProps) {
               ? `You've logged the same one ${usual.repeats} times in 2 weeks.`
               : "Save it once, log it in one tap."}
           </Text>
+          {/* Sloe treatment system (§1): inline CTA inside the nudge =
+              aubergine OUTLINE (transparent fill, 1.5px primarySolid border +
+              label), not a filled slab — keeps the accent rationed. */}
           {onStartUsualMealSave || onOpenSaveCombo ? (
             <Pressable
               onPress={handlePromptTap}
@@ -473,11 +476,13 @@ function DigestLegacy(props: DigestProps) {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
               }}
             >
-              <Ionicons name="bookmark-outline" size={12} color="#fff" />
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
+              <Ionicons name="bookmark-outline" size={12} color={accent.primarySolid} />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>
                 Save {promptSlot} as a meal
               </Text>
             </Pressable>

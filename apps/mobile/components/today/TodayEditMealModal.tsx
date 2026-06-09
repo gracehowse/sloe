@@ -349,7 +349,9 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 accessibilityLabel="Save changes"
                 style={v2.saveBtn}
               >
-                <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>Save changes</Text>
+                {/* Sloe treatment system (2026-06-08): primary inline CTA
+                    → aubergine outline; label in primarySolid. */}
+                <Text style={{ color: Accent.primarySolid, ...Type.headline }}>Save changes</Text>
               </PressableScale>
             </View>
             </View>
@@ -426,7 +428,10 @@ const v2 = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   deleteBtn: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, borderWidth: 1, height: 48 },
-  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: Accent.primary, height: 48 },
+  // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+  // outline (transparent fill + 1.5px primarySolid border + primarySolid
+  // label), not a filled slab.
+  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: "transparent", borderWidth: 1.5, borderColor: Accent.primarySolid, height: 48 },
 });
 
 /**
@@ -526,12 +531,16 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                   paddingVertical: 6,
                   borderRadius: Radius.sm,
                   alignItems: "center",
-                  backgroundColor: editSlot === s ? Accent.primary : borderColor + "30",
+                  // Sloe treatment system (2026-06-08): filter pill selected
+                  // = aubergine soft-tint + primarySolid label, NOT a solid
+                  // fill; unselected = transparent (legacy modal has no `colors`
+                  // hook in scope — prop-based theming).
+                  backgroundColor: editSlot === s ? Accent.primarySoft : "transparent",
                 }}
               >
                 <Text
                   numberOfLines={1}
-                  style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : textSecondaryColor }}
+                  style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? Accent.primarySolid : textSecondaryColor }}
                 >
                   {s}
                 </Text>

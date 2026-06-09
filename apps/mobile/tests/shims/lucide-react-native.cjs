@@ -14,13 +14,37 @@ const React = require("react");
 
 function iconStub(name) {
   const Icon = React.forwardRef(function LucideIconStub(props, ref) {
-    return React.createElement("View", { ...props, ref, accessibilityLabel: name });
+    // A caller-supplied `accessibilityLabel` wins; only fall back to the icon
+    // NAME when the component didn't label the glyph itself. The earlier order
+    // (`{ ...props, accessibilityLabel: name }`) clobbered the caller's label,
+    // so a component that deliberately labels its icon for VoiceOver
+    // (e.g. weekly-recap's empty-state `<CalendarDays accessibilityLabel="Calendar icon">`)
+    // rendered with the icon NAME instead — tests querying the real label failed.
+    const { accessibilityLabel, ...rest } = props || {};
+    return React.createElement("View", {
+      ...rest,
+      ref,
+      accessibilityLabel: accessibilityLabel ?? name,
+    });
   });
   Icon.displayName = name;
   return Icon;
 }
 
-/** Icons referenced anywhere under apps/mobile (auto-audit 2026-05-24). */
+/** Icons referenced anywhere under apps/mobile (auto-audit 2026-06-09).
+ *
+ *  This list must stay a faithful mirror of every lucide icon NAMED-imported
+ *  anywhere under apps/mobile. Named imports (`import { Sprout }`) read the
+ *  module's own enumerable properties after Vite's CJS interop — the Proxy
+ *  fallback in `handler.get` only fires for direct property *access*
+ *  (`Lucide.Sprout`), NOT for destructured named imports, so an icon missing
+ *  from this list resolves to `undefined` and any component that named-imports
+ *  it throws `Element type is invalid` at render. The 2026-06-09 reconciliation
+ *  added Award/CheckCheck/CheckCircle/ClipboardList/Cloud/EyeOff/LayoutList/
+ *  SlidersHorizontal/Sprout/User after a programmatic diff caught them missing
+ *  (Sprout = the Today fibre-tile glyph, which crashed
+ *  `todayMacroTilesProgressBar.test.tsx`). Keep this in sync by re-running the
+ *  named-import diff when adding new glyphs. */
 const ICON_NAMES = [
   "Activity",
   "AlertCircle",
@@ -32,6 +56,7 @@ const ICON_NAMES = [
   "ArrowRight",
   "ArrowUp",
   "ArrowUpDown",
+  "Award",
   "BarChart3",
   "Barcode",
   "Beaker",
@@ -47,6 +72,8 @@ const ICON_NAMES = [
   "Camera",
   "Candy",
   "Check",
+  "CheckCheck",
+  "CheckCircle",
   "CheckCircle2",
   "CheckSquare",
   "ChefHat",
@@ -60,7 +87,9 @@ const ICON_NAMES = [
   "CirclePlus",
   "CircleX",
   "Clipboard",
+  "ClipboardList",
   "Clock",
+  "Cloud",
   "CloudOff",
   "Code",
   "Coffee",
@@ -71,6 +100,7 @@ const ICON_NAMES = [
   "Droplet",
   "Droplets",
   "Dumbbell",
+  "EyeOff",
   "FileSpreadsheet",
   "FileText",
   "Fish",
@@ -87,6 +117,7 @@ const ICON_NAMES = [
   "Images",
   "Info",
   "LayoutGrid",
+  "LayoutList",
   "Leaf",
   "LineChart",
   "Link",
@@ -125,10 +156,12 @@ const ICON_NAMES = [
   "ShieldCheck",
   "ShoppingCart",
   "Sliders",
+  "SlidersHorizontal",
   "Smartphone",
   "Snowflake",
   "Soup",
   "Sparkles",
+  "Sprout",
   "Square",
   "Star",
   "Sun",
@@ -140,6 +173,7 @@ const ICON_NAMES = [
   "TrendingUp",
   "Trophy",
   "Upload",
+  "User",
   "Users",
   "Utensils",
   "UtensilsCrossed",

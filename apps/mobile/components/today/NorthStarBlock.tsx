@@ -602,14 +602,13 @@ function NorthStarDefault({
             </Text>
           </View>
 
-          {/* Premium-feel papercut #3 (audit 2026-04-29): the CTA
-              previously used solid Accent.primary, matching the
-              persistent Today FAB and creating two competing
-              same-colour buttons within a thumb's reach. Demote to
-              a subtle-fill variant (8% accent + accent text) so the
-              FAB stays the loudest pixel and this card reads as a
-              suggestion, not a demand. (Accent flag-aware → damson
-              under Frost; the plum FAB is unchanged.) */}
+          {/* Sloe treatment system (2026-06-08): the everyday primary
+              inline CTA is AUBERGINE OUTLINE — transparent fill, 1.5px
+              primarySolid border, primarySolid label — never a filled
+              slab. This keeps the FAB as the one filled moment (the
+              premium-bar papercut #3 intent: the outline is quieter than
+              both a fill and the old 8% tint, so the FAB stays the
+              loudest pixel) while matching the approved ladder. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={ctaLabel}
@@ -617,14 +616,16 @@ function NorthStarDefault({
             style={({ pressed }) => [
               styles.cta,
               {
-                backgroundColor: `${accent.primary}14`,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 marginTop: 8,
                 alignSelf: "flex-start",
                 opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
-            <Text style={[styles.ctaLabel, { color: accent.primary }]}>{ctaLabel}</Text>
+            <Text style={[styles.ctaLabel, { color: accent.primarySolid }]}>{ctaLabel}</Text>
           </Pressable>
         </View>
       </SupprCard>
@@ -680,7 +681,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ctaLabel: {
-    color: "#fff",
+    // Colour is set inline to Accent.primarySolid (aubergine outline
+    // treatment) — this default is overridden by every caller.
     fontSize: 13,
     fontWeight: "700",
   },

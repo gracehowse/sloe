@@ -116,7 +116,6 @@ nav, but not shown in the tab bar.
 | Screen | File | Deep link | Notes |
 |--------|------|-----------|-------|
 | Discover | `(tabs)/discover.tsx` | `suppr:///discover` | Recipe discovery feed (Recipes sub-tab) |
-| Search | `(tabs)/search.tsx` | `suppr:///search` | Food / USDA lookup |
 | Barcode | `(tabs)/barcode.tsx` | `suppr:///barcode` ✓ | Camera barcode scanner |
 | Notifications | `(tabs)/notifications.tsx` | `suppr:///notifications` | In-app inbox |
 | More (legacy) | `(tabs)/more.tsx` | `suppr:///more` | Redirect → Settings (pre-4-tab IA) |

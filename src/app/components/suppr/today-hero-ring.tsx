@@ -147,7 +147,13 @@ export function TodayHeroRing({
 
   return (
     <SupprCard
-      elevation="slab-flat"
+      // elevation="card" (audit gap 6, 2026-06-09): the hero is the single
+      // most important card on Today, yet it was explicitly flat — on the
+      // near-tonal #F6F5F2-on-#FFFFFF pairing that made the whole top of the
+      // screen read as one undifferentiated slab. The soft `.card-slab` shadow
+      // separates it from the page like every other resting card. Mirrors
+      // mobile `lift="soft"` on `TodayHeroRing.tsx`.
+      elevation="card"
       radius="lg"
       padding="none"
       className="flex flex-col items-center mb-3 px-4 py-3 gap-2"

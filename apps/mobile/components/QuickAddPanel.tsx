@@ -562,14 +562,18 @@ export function QuickAddPanel({
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
                 alignItems: "center",
-                backgroundColor: active ? accent.primary : colors.border + "40",
+                // Sloe treatment system (2026-06-08): filter pill selected
+                // = aubergine soft-tint (primarySoft) + primarySolid label,
+                // NOT a solid fill; unselected = off-white (colors.card)
+                // + textSecondary. Mirror of web QuickAddPanel.
+                backgroundColor: active ? accent.primarySoft : colors.card,
               }}
             >
               <Text
                 style={{
                   fontSize: 11,
                   fontWeight: "700",
-                  color: active ? "#fff" : colors.textSecondary,
+                  color: active ? accent.primarySolid : colors.textSecondary,
                 }}
               >
                 {label}

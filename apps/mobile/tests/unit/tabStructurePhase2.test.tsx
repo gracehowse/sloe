@@ -179,14 +179,18 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     expect(layoutSrc).toContain('name="progress"'); // You default
   });
 
-  it("hides discover / settings / search / barcode / notifications via href: null (more deleted in Batch E)", () => {
+  it("hides discover / settings / barcode / notifications via href: null (more + search deleted)", () => {
     expect(layoutSrc).toContain('name="discover" options={{ href: null }}');
     expect(layoutSrc).toContain('name="settings" options={{ href: null }}');
-    expect(layoutSrc).toContain('name="search" options={{ href: null }}');
     expect(layoutSrc).toContain('name="barcode" options={{ href: null }}');
     expect(layoutSrc).toContain('name="notifications" options={{ href: null }}');
     // more.tsx deleted in Group G IA Batch E (2026-05-14) — no registration needed.
     expect(layoutSrc).not.toContain('name="more"');
+    // search.tsx deleted 2026-06-08 (nutrition-log spec §3.15) — the
+    // vestigial read-only USDA-lookup tab. Food search lives only in
+    // the Log sheet now; this guards against the dead tab being
+    // re-registered.
+    expect(layoutSrc).not.toContain('name="search"');
   });
 
   it("renames the Library Tabs.Screen to Recipes for the visible tab title", () => {

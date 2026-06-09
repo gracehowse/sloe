@@ -102,23 +102,30 @@ export function WeeklyCheckinBanner({
           See last week&rsquo;s intake, weight delta, and adjust your goal pace.
         </Text>
       </View>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primarySolid border
+          + primarySolid label), not a filled slab. Mobile-only banner
+          (no web mirror — web surfaces the Digest on Progress instead). */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open weekly check-in"
         onPress={onOpen}
         testID="weekly-checkin-banner-open"
-        style={{
+        style={({ pressed }) => ({
           paddingHorizontal: 12,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          backgroundColor: accent.primary,
-        }}
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
         <Text
           style={{
             fontSize: 11,
             fontWeight: "700",
-            color: "#fff",
+            color: accent.primarySolid,
             letterSpacing: 0.5,
           }}
         >

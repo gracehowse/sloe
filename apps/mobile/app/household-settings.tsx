@@ -44,7 +44,7 @@ import {
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
@@ -86,6 +86,17 @@ import {
   householdMemberFirstName,
   householdMemberInitials,
 } from "@suppr/shared/household/memberAccents";
+
+/** Sage secondary colour — spec §4 / design-system §2.3 eyebrow colour.
+ *  Not in Colors.light (that slot is warm-grey textSecondary #6A6072).
+ *  The canonical sage for eyebrows is the --secondary role: #7C8466. */
+const SAGE_SECONDARY = "#7C8466";
+
+/** Sheet top radius — design-system §10.3 specifies radius-xl(20pt) for
+ *  sheets. theme.ts Radius.xl=12 (card radius), so the sheet value is kept
+ *  explicit here until a Radius.sheet(20) token is added (deferred: see
+ *  ENG-998 to reconcile the sheet-radius token). */
+const SHEET_RADIUS = 20;
 
 const DAY_LABELS: Record<HouseholdDayId, string> = {
   mon: "Mon",
@@ -430,7 +441,7 @@ export default function HouseholdSettingsScreen() {
           >
             <ChevronLeft size={22} color={colors.text} strokeWidth={1.75} />
           </Pressable>
-          <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text, letterSpacing: -0.2 }}>
+          <Text style={{ fontFamily: FontFamily.serifSemibold, fontSize: 28, fontWeight: "600", color: colors.text, letterSpacing: -0.3, lineHeight: 32 }}>
             Household
           </Text>
         </View>
@@ -439,15 +450,15 @@ export default function HouseholdSettingsScreen() {
           <View
             accessibilityRole="alert"
             style={{
-              marginBottom: 12,
-              padding: 12,
+              marginBottom: Spacing.md,
+              padding: Spacing.md,
               borderRadius: Radius.md,
               borderColor: Accent.destructive + "55",
               borderWidth: 1,
               backgroundColor: Accent.destructive + "14",
             }}
           >
-            <Text style={{ fontSize: 12, color: Accent.destructive }}>{error}</Text>
+            <Text style={{ fontSize: 12, color: Accent.destructiveSolid }}>{error}</Text>
           </View>
         ) : null}
 
@@ -458,18 +469,18 @@ export default function HouseholdSettingsScreen() {
               borderWidth: 1,
               borderColor: colors.cardBorder,
               backgroundColor: colors.card,
-              padding: 16,
+              padding: Spacing.md,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: 6 }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: Spacing.sm - 2 }}>
               No household yet
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginBottom: 10 }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginBottom: Spacing.sm + 2 }}>
               Create or join a household from the Plan tab. Sharing settings show up here once
               you&apos;re part of one.
             </Text>
             <Pressable onPress={() => router.replace("/(tabs)/planner" as any)}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>Open Plan</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primarySolid }}>Open Plan</Text>
             </Pressable>
           </View>
         ) : (
@@ -483,98 +494,109 @@ export default function HouseholdSettingsScreen() {
                 it the existing sections still render so the user can
                 preview what they'll get once a second member joins. */}
             {members.length <= 1 ? (
+              // Outer wrapper carries Elevation.cardSoft; inner View clips border+overflow.
+              // RN overflow:hidden clips iOS shadows so they must live on separate Views.
               <View
                 testID="household-settings-solo-empty"
-                style={{
-                  borderRadius: Radius.lg,
-                  borderWidth: 1,
-                  borderColor: accent.primary + "33",
-                  backgroundColor: accent.primary + "0d",
-                  padding: 18,
-                  marginBottom: 18,
-                  alignItems: "center",
-                }}
+                style={[
+                  Elevation.cardSoft,
+                  {
+                    borderRadius: Radius.lg,
+                    marginBottom: Spacing.md,
+                  },
+                ]}
               >
                 <View
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: accent.primary + "1f",
+                    borderRadius: Radius.lg,
+                    borderWidth: 1,
+                    borderColor: accent.primary + "33",
+                    backgroundColor: accent.primary + "0d",
+                    padding: Spacing.md,
                     alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 12,
+                    overflow: "hidden",
                   }}
                 >
-                  <Plus size={22} color={accent.primary} strokeWidth={2.25} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "700",
-                    color: colors.text,
-                    marginBottom: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  Household is solo
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    textAlign: "center",
-                    lineHeight: 17,
-                    marginBottom: 14,
-                    paddingHorizontal: 8,
-                  }}
-                >
-                  Invite a partner, flatmate, or family member to share
-                  meal plans and shopping lists.
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Invite a household member"
-                  testID="household-settings-solo-invite"
-                  onPress={() => setInviteSheetOpen(true)}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    paddingHorizontal: 18,
-                    paddingVertical: 10,
-                    borderRadius: Radius.md,
-                    backgroundColor: accent.primary,
-                    opacity: pressed ? 0.85 : 1,
-                  })}
-                >
-                  <Plus size={16} color="#fff" strokeWidth={2.25} />
-                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-                    Invite
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: Radius.full,
+                      backgroundColor: accent.primary + "1f",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: Spacing.sm,
+                    }}
+                  >
+                    <Plus size={22} color={accent.primary} strokeWidth={2.25} />
+                  </View>
+                  {/* §10.7 empty-state: headline in Newsreader italic (editorial register) */}
+                  <Text
+                    style={{
+                      fontFamily: FontFamily.serifItalic,
+                      fontSize: 16,
+                      color: colors.text,
+                      marginBottom: Spacing.xs,
+                      textAlign: "center",
+                    }}
+                  >
+                    Household is solo
                   </Text>
-                </Pressable>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      textAlign: "center",
+                      lineHeight: 17,
+                      marginBottom: Spacing.md,
+                      paddingHorizontal: Spacing.sm,
+                    }}
+                  >
+                    Invite a partner, flatmate, or family member to share
+                    meal plans and shopping lists.
+                  </Text>
+                  {/* Invite — secondary action → off-white fill (Sloe
+                      treatment #3, 2026-06-08). Invite is a secondary action
+                      (not the conversion CTA), so it reads as an off-white
+                      slab with an aubergine glyph + ink label rather than a
+                      filled accent button. */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Invite a household member"
+                    testID="household-settings-solo-invite"
+                    onPress={() => setInviteSheetOpen(true)}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: Spacing.sm,
+                      paddingHorizontal: Spacing.lg,
+                      paddingVertical: Spacing.sm + 2,
+                      borderRadius: Radius.md,
+                      backgroundColor: colors.card,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Plus size={16} color={Accent.primarySolid} strokeWidth={2.25} />
+                    <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                      Invite
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null}
 
             {/* Members */}
-            <View style={{ marginBottom: 18 }} testID="household-settings-members">
+            <View style={{ marginBottom: Spacing.md }} testID="household-settings-members">
               <View
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 10,
+                  marginBottom: Spacing.sm,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    letterSpacing: 1.4,
-                    color: colors.textTertiary,
-                    textTransform: "uppercase",
-                  }}
-                >
+                {/* Eyebrow: Type.label token (sage #7C8466, letterSpacing 0.88, uppercase) */}
+                <Text style={[Type.label, { color: SAGE_SECONDARY }]}>
                   Members
                 </Text>
                 <Pressable
@@ -582,13 +604,15 @@ export default function HouseholdSettingsScreen() {
                   accessibilityLabel="Invite a household member"
                   testID="household-settings-add"
                   onPress={() => setInviteSheetOpen(true)}
-                  hitSlop={6}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                  hitSlop={Spacing.sm}
+                  style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
                 >
-                  <Plus size={14} color={accent.primary} strokeWidth={2} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primary }}>Invite</Text>
+                  <Plus size={14} color={Accent.primarySolid} strokeWidth={2} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primarySolid }}>Invite</Text>
                 </Pressable>
               </View>
+              {/* Outer wrapper carries Elevation.cardSoft; inner clips border+overflow */}
+              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
@@ -620,9 +644,10 @@ export default function HouseholdSettingsScreen() {
                     style: {
                       flexDirection: "row" as const,
                       alignItems: "center" as const,
-                      gap: 12,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
+                      gap: Spacing.sm,
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: Spacing.md,
+                      minHeight: 44,
                       borderBottomWidth: isLast ? 0 : 1,
                       borderBottomColor: colors.cardBorder,
                     },
@@ -633,7 +658,7 @@ export default function HouseholdSettingsScreen() {
                         style={{
                           width: 36,
                           height: 36,
-                          borderRadius: 18,
+                          borderRadius: Radius.full,
                           backgroundColor: color,
                           alignItems: "center",
                           justifyContent: "center",
@@ -642,14 +667,31 @@ export default function HouseholdSettingsScreen() {
                         <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>{initials}</Text>
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
-                          {m.displayName}
-                          {isSelf ? " (you)" : ""}
-                          <Text style={{ fontWeight: "400", fontSize: 11, color: colors.textTertiary }}>
-                            {" · "}
-                            {m.role}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, flexWrap: "wrap" }}>
+                          {/* §3.12 identity row: display name in Newsreader serif (Type.headline) */}
+                          <Text style={[Type.headline, { color: colors.text }]} numberOfLines={1}>
+                            {m.displayName}
                           </Text>
-                        </Text>
+                          {/* §3.12 "You" pill on the self row — dignified identity signal */}
+                          {isSelf ? (
+                            <View
+                              style={{
+                                paddingHorizontal: Spacing.sm,
+                                paddingVertical: 2,
+                                borderRadius: Radius.full,
+                                backgroundColor: Accent.primarySoft,
+                              }}
+                            >
+                              <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 10, color: Accent.primarySolid }}>
+                                You
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={{ fontWeight: "400", fontSize: 11, color: colors.textTertiary }}>
+                              · {m.role}
+                            </Text>
+                          )}
+                        </View>
                         <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
                           {macroCopy}
                         </Text>
@@ -684,32 +726,27 @@ export default function HouseholdSettingsScreen() {
                   );
                 })}
               </View>
+              </View>
             </View>
 
             {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
-            <View style={{ marginBottom: 18 }} testID="household-settings-privacy">
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 1.4,
-                  color: colors.textTertiary,
-                  textTransform: "uppercase",
-                  marginBottom: 10,
-                }}
-              >
+            <View style={{ marginBottom: Spacing.md }} testID="household-settings-privacy">
+              {/* Eyebrow: Type.label token (sage secondary) */}
+              <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
                 Privacy
               </Text>
+              {/* Outer wrapper carries Elevation.cardSoft; inner clips border */}
+              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
                   borderWidth: 1,
                   borderColor: colors.cardBorder,
                   backgroundColor: colors.card,
-                  padding: 14,
+                  padding: Spacing.md,
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 12,
+                  gap: Spacing.sm,
                 }}
               >
                 <View style={{ flex: 1 }}>
@@ -735,22 +772,17 @@ export default function HouseholdSettingsScreen() {
                   testID="household-settings-share-targets"
                 />
               </View>
+              </View>
             </View>
 
             {/* Presets */}
-            <View style={{ marginBottom: 14 }}>
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 1.4,
-                  color: colors.textTertiary,
-                  textTransform: "uppercase",
-                  marginBottom: 10,
-                }}
-              >
+            <View style={{ marginBottom: Spacing.md }}>
+              {/* Eyebrow: Type.label token (sage secondary) */}
+              <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
                 Which meals are shared?
               </Text>
+              {/* Outer wrapper carries Elevation.cardSoft; inner clips border+overflow */}
+              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
@@ -773,9 +805,10 @@ export default function HouseholdSettingsScreen() {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 12,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
+                        gap: Spacing.sm,
+                        paddingHorizontal: Spacing.md,
+                        paddingVertical: Spacing.md,
+                        minHeight: 44,
                         borderBottomWidth: isLast ? 0 : 1,
                         borderBottomColor: colors.cardBorder,
                         backgroundColor: active ? accent.primary + "10" : "transparent",
@@ -808,44 +841,40 @@ export default function HouseholdSettingsScreen() {
                   );
                 })}
               </View>
+              </View>
             </View>
 
             {/* Grid */}
-            <View style={{ marginBottom: 14 }}>
+            <View style={{ marginBottom: Spacing.md }}>
               <View
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
                   alignItems: "baseline",
-                  marginBottom: 10,
+                  marginBottom: Spacing.sm,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    letterSpacing: 1.4,
-                    color: colors.textTertiary,
-                    textTransform: "uppercase",
-                  }}
-                >
+                {/* Eyebrow: Type.label token (sage secondary) */}
+                <Text style={[Type.label, { color: SAGE_SECONDARY }]}>
                   Weekly plan
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textTertiary }} testID="household-grid-summary">
                   {sharedCount} of {totalCells} shared
                 </Text>
               </View>
+              {/* Outer wrapper carries Elevation.cardSoft; inner clips border */}
+              <View style={[Elevation.cardSoft, { borderRadius: Radius.lg }]}>
               <View
                 style={{
                   borderRadius: Radius.lg,
                   borderWidth: 1,
                   borderColor: colors.cardBorder,
                   backgroundColor: colors.card,
-                  padding: 14,
+                  padding: Spacing.md,
                 }}
               >
                 {/* Column headers */}
-                <View style={{ flexDirection: "row", gap: 6, marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm }}>
                   <View style={{ width: 28 }} />
                   {HOUSEHOLD_DAY_IDS.map((d) => (
                     <View key={d} style={{ flex: 1, alignItems: "center" }}>
@@ -864,7 +893,7 @@ export default function HouseholdSettingsScreen() {
                   ))}
                 </View>
                 {HOUSEHOLD_SLOT_IDS.map((s) => (
-                  <View key={s} style={{ flexDirection: "row", gap: 6, marginBottom: 6 }}>
+                  <View key={s} style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm }}>
                     <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>
                       {(() => {
                         const Icon = SLOT_META[s].icon;
@@ -921,8 +950,8 @@ export default function HouseholdSettingsScreen() {
                           }`}
                           style={{
                             flex: 1,
-                            height: 34,
-                            borderRadius: 8,
+                            height: 44,
+                            borderRadius: Radius.lg,
                             backgroundColor: bg,
                             borderWidth: 1,
                             borderColor: border,
@@ -945,24 +974,25 @@ export default function HouseholdSettingsScreen() {
                     })}
                   </View>
                 ))}
-                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 12, lineHeight: 15 }}>
+                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: Spacing.sm, lineHeight: 15 }}>
                   Tap a cell to toggle between solo and everyone. Long-press to pick specific members.
                 </Text>
               </View>
+              </View>
 
               {/* Legend */}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginTop: Spacing.sm }}>
                 {members.map((m, idx) => (
                   <View
                     key={m.userId}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 6,
-                      paddingVertical: 4,
-                      paddingLeft: 4,
-                      paddingRight: 10,
-                      borderRadius: 999,
+                      gap: Spacing.sm,
+                      paddingVertical: Spacing.xs,
+                      paddingLeft: Spacing.xs,
+                      paddingRight: Spacing.sm + 2,
+                      borderRadius: Radius.full,
                       backgroundColor: colors.inputBg,
                     }}
                   >
@@ -970,7 +1000,7 @@ export default function HouseholdSettingsScreen() {
                       style={{
                         width: 18,
                         height: 18,
-                        borderRadius: 9,
+                        borderRadius: Radius.full,
                         backgroundColor: householdMemberAccent(idx),
                         alignItems: "center",
                         justifyContent: "center",
@@ -1000,12 +1030,17 @@ export default function HouseholdSettingsScreen() {
             left: 0,
             right: 0,
             bottom: 0,
-            paddingHorizontal: 20,
-            paddingBottom: insets.bottom + 14,
-            paddingTop: 10,
+            paddingHorizontal: Spacing.lg,
+            paddingBottom: insets.bottom + Spacing.md,
+            paddingTop: Spacing.sm,
             backgroundColor: colors.background + "ee",
           }}
         >
+          {/* Save changes — aubergine OUTLINE (Sloe treatment #1,
+              2026-06-08). The everyday primary CTA is an accent line on a
+              white backing (the sticky footer behind it is translucent, so
+              the button fills white to stay crisp), 1.5px border +
+              `Accent.primarySolid` label. */}
           <Pressable
             onPress={() => void onSave()}
             disabled={saving || !household.isOwner}
@@ -1013,14 +1048,16 @@ export default function HouseholdSettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Save household settings"
             style={{
-              paddingVertical: 14,
+              paddingVertical: Spacing.md,
               borderRadius: Radius.lg,
-              backgroundColor: accent.primary,
+              backgroundColor: colors.card,
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
               alignItems: "center",
               opacity: saving || !household.isOwner ? 0.5 : 1,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
+            <Text style={{ color: Accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
               {/* DC12 (2026-05-14, premium-bar audit) — specific
                   confirmation. The button is "Save changes" so the
                   affirmed state should mirror that, not the generic
@@ -1051,21 +1088,21 @@ export default function HouseholdSettingsScreen() {
             onPress={() => undefined}
             style={{
               backgroundColor: colors.background,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              paddingHorizontal: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
+              paddingHorizontal: Spacing.lg,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               borderWidth: 1,
               borderColor: colors.cardBorder,
             }}
           >
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder, alignSelf: "center", marginBottom: 16 }} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder, alignSelf: "center", marginBottom: Spacing.md }} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: Spacing.xs }}>
               Who&apos;s eating?
             </Text>
             {editingMeta ? (
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 16 }}>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}>
                 {editingMeta.slotFull} · {editingMeta.dayLabel}
               </Text>
             ) : null}
@@ -1082,9 +1119,10 @@ export default function HouseholdSettingsScreen() {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 12,
-                        paddingVertical: 10,
-                        paddingHorizontal: 4,
+                        gap: Spacing.sm,
+                        paddingVertical: Spacing.sm,
+                        paddingHorizontal: Spacing.xs,
+                        minHeight: 44,
                         borderBottomWidth: 1,
                         borderBottomColor: colors.cardBorder,
                       }}
@@ -1132,11 +1170,13 @@ export default function HouseholdSettingsScreen() {
             <Pressable
               onPress={() => setEditingCell(null)}
               style={{
-                marginTop: 16,
-                paddingVertical: 12,
+                marginTop: Spacing.md,
+                paddingVertical: Spacing.sm,
+                minHeight: 44,
                 borderRadius: Radius.md,
                 backgroundColor: colors.inputBg,
                 alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Done</Text>

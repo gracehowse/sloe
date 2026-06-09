@@ -16,6 +16,7 @@ import {
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
+import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 import {
   SEED_CLUSTERS,
@@ -466,7 +467,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               }}
               className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
                 feedScope === "following"
-                  ? "bg-primary text-primary-foreground border border-primary"
+                  ? "bg-primary/10 text-primary-solid border border-primary-solid"
                   : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
               }`}
               aria-pressed={feedScope === "following"}
@@ -485,8 +486,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     setCategory(f.id);
                   }}
                   className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
+                    // Selected = aubergine SOFT-TINT + aubergine `primary-solid`
+                    // label (Sloe treatment §7), not a solid accent slab.
                     isActive
-                      ? "bg-primary text-primary-foreground border border-primary"
+                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
                       : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
                   }`}
                   aria-pressed={isActive}
@@ -694,7 +697,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             {displayRecipes.map((recipe) => {
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
+              const carbs = Math.round(recipe.carbs);
+              const fat = Math.round(recipe.fat);
               const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+              // Calm the stale curated-seed brand byline to the live
+              // brand + drop internal seed sources at the display boundary
+              // (see displayAttribution). Mobile parity: discover.tsx uses
+              // the same helper.
+              const byline = displayAttribution({ creatorName: recipe.creatorName });
               return (
                 <button
                   key={`desktop-${recipe.id}`}
@@ -733,7 +743,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       >
                         {recipe.title}
                       </p>
-                      {recipe.creatorName ? (
+                      {byline ? (
                         <p className="text-[11px] text-white/70 mt-1 truncate">
                           {recipe.creatorId ? (
                             <span
@@ -743,21 +753,34 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                               onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                             >
-                              {recipe.creatorName}
+                              {byline}
                             </span>
                           ) : (
-                            recipe.creatorName
+                            byline
                           )}
                         </p>
                       ) : null}
+                      {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                          carbs · fat, protein emphasised. Mobile parity:
+                          discover.tsx MacroIconRow. Over the photo the
+                          macro hue dots are dropped to white/60 for
+                          contrast; protein leads via weight. */}
                       <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-2 text-[11px] text-white/80 tabular-nums">
                         <span className="inline-flex items-center gap-1">
                           <Icons.calories className="w-3 h-3 text-white/60" />
                           {kcal} kcal
                         </span>
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-white">
                           <Icons.protein className="w-3 h-3 text-white/60" />
                           {protein}g
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.carbs className="w-3 h-3 text-white/60" />
+                          {carbs}g
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.fat className="w-3 h-3 text-white/60" />
+                          {fat}g
                         </span>
                         {cookTime ? (
                           <span className="inline-flex items-center gap-1">
@@ -795,13 +818,18 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             }}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
             className="mx-4 mt-3 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-            style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
+            // Aubergine SOFT-TINT nudge card (Sloe treatment §10) — was a stale
+            // hardcoded brand-blue; aligned to the aubergine accent + parity
+            // with the mobile Discover import card.
+            style={{ background: "var(--accent-primary-soft)", borderColor: "var(--accent-primary-ring)" }}
           >
             <IconBox size="lg" tone="primary">
               <Icons.import />
             </IconBox>
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram...</p>
+              {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis.
+                  Mirrors mobile discover.tsx copy change. */}
+              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground" />
@@ -825,6 +853,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               {displayRecipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
+                const carbs = Math.round(recipe.carbs);
+                const fat = Math.round(recipe.fat);
+                const byline = displayAttribution({ creatorName: recipe.creatorName });
                 void computeRecipeFitPercent;
                 void nutritionTargets;
                 return (
@@ -854,7 +885,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         <p className="text-[18px] font-bold text-white leading-tight -tracking-[0.01em] drop-shadow-sm" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {recipe.title}
                         </p>
-                        {recipe.creatorName ? (
+                        {byline ? (
                           <p className="text-[11px] text-white/70 mt-1 truncate">
                             {recipe.creatorId ? (
                               <span
@@ -864,21 +895,32 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
-                                {recipe.creatorName}
+                                {byline}
                               </span>
                             ) : (
-                              recipe.creatorName
+                              byline
                             )}
                           </p>
                         ) : null}
+                        {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                            carbs · fat, protein emphasised. Mobile parity:
+                            discover.tsx MacroIconRow. */}
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                           <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
                             <Icons.calories className="w-3 h-3 text-white/60" />
                             {kcal} kcal
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white tabular-nums font-semibold">
                             <Icons.protein className="w-3 h-3 text-white/60" />
                             {protein}g
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.carbs className="w-3 h-3 text-white/60" />
+                            {carbs}g
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.fat className="w-3 h-3 text-white/60" />
+                            {fat}g
                           </span>
                           {recipe.cookTime ? (
                             <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
@@ -906,6 +948,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     const kcal = Math.round(recipe.calories);
                     const protein = Math.round(recipe.protein);
                     const carbs = Math.round(recipe.carbs);
+                    const byline = displayAttribution({ creatorName: recipe.creatorName });
                     return (
                       <button
                         key={recipe.id}
@@ -935,10 +978,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
-                                {recipe.creatorName}
+                                {byline}
                               </span>
                             ) : (
-                              recipe.creatorName || ""
+                              byline
                             )}
                             {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
                           </span>
@@ -979,7 +1022,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   setFeedScope("forYou");
                   setCategory("all");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-transparent border-[1.5px] border-primary-solid px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
               >
                 Reset filters
               </button>

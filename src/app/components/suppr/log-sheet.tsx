@@ -560,15 +560,19 @@ function LoggedConfirmation({
         </div>
       </div>
 
-      {/* Actions — primary Done (clay CTA) + optional quiet Undo. */}
+      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
+          system (2026-06-08): the primary inline CTA is AUBERGINE
+          OUTLINE (transparent fill + 1.5px primary-solid border +
+          primary-solid label), not a filled slab. Mirror of mobile
+          `LogSheet`. */}
       <div className="mt-6 flex w-full flex-col gap-2">
         <button
           type="button"
           onClick={onDone}
           aria-label="Done"
           className={cn(
-            "h-11 w-full rounded-xl bg-primary text-[14px] font-bold text-primary-foreground",
-            "hover:bg-primary/90 transition-colors",
+            "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[14px] font-bold text-primary-solid",
+            "hover:bg-primary/5 transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >
@@ -838,8 +842,11 @@ function DefaultComposition({
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
                       "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
+                      // Sloe treatment system (2026-06-08): segmented
+                      // control active segment = white lift + primary-solid
+                      // label; inactive = muted on the warm-grey rail.
                       active
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-primary-solid shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     )}
@@ -1106,13 +1113,16 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
           Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
         </p>
         {onBrowseRecipes ? (
+          // Sloe treatment system (2026-06-08): "Browse" is a SECONDARY
+          // action → off-white fill (bg-secondary #F6F5F2) + ink label,
+          // no accent. Mirror of mobile `LibraryList`.
           <button
             type="button"
             onClick={onBrowseRecipes}
             aria-label="Browse recipes"
             className={cn(
-              "mt-3 h-10 rounded-xl bg-primary px-5 text-[13px] font-bold text-primary-foreground",
-              "hover:bg-primary/90 transition-colors",
+              "mt-3 h-10 rounded-xl bg-secondary px-5 text-[13px] font-bold text-foreground",
+              "hover:bg-secondary/80 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             )}
           >
@@ -1331,9 +1341,13 @@ function BarcodeManualEntry({
             fat: Number(fat) || 0,
           });
         }}
+        // Sloe treatment system (2026-06-08): primary inline CTA →
+        // aubergine outline (transparent fill + 1.5px primary-solid border
+        // + primary-solid label), not a filled slab. Mirror of mobile
+        // LogSheet `BarcodeManualEntry`.
         className={cn(
-          "h-11 w-full rounded-xl bg-primary text-[13px] font-bold text-primary-foreground",
-          "hover:bg-primary/90 transition-colors",
+          "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
+          "hover:bg-primary/5 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}
       >

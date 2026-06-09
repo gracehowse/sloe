@@ -159,10 +159,11 @@ export function WinMomentPlayer({
   testID,
 }: WinMomentPlayerProps) {
   const reduceMotion = useReduceMotion();
-  // Win-moment gradient — Frost variant (plum → damson → honey) when
-  // `brand_frost_secondary` is ON, else the clay-mid Sloe brand gradient. The
-  // static `Accent.win` fill/track/text is damson in BOTH states (the win role
-  // is damson regardless), so only the gradient mid-stop moves.
+  // Win-moment gradient — the clay-mid Sloe brand gradient (plum → clay →
+  // honey). The Frost secondary-colour exploration was retired 2026-06-08
+  // (ENG-997), so `useWinGradient()` now always returns this clay gradient.
+  // The static `Accent.win` fill/track/text stays damson (the win role is the
+  // scarce brand-identity damson, distinct from the functional clay accent).
   const winGradient = useWinGradient();
 
   // Ring geometry — a single gold gradient arc inside the player box.

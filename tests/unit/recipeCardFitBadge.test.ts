@@ -37,8 +37,14 @@ describe("F-45 — fit-percent pill is NOT rendered on Discover hero cards", () 
     expect(MOBILE_DISCOVER_SRC).not.toMatch(/\{fitPct\}%/);
   });
 
-  it("mobile More-ideas rows still use the lucide ChefHat glyph", () => {
-    expect(MOBILE_DISCOVER_SRC).toMatch(/<ChefHat\s/);
+  it("mobile More-ideas rows fall back to the warm RecipeHeroFallback (not a flat ChefHat box)", () => {
+    // 2026-06-08 (§11.4 recipe-card pass): the image-less / broken
+    // More-ideas thumbnail was upgraded from a flat `inputBg` ChefHat
+    // box to the sage→cream RecipeHeroFallback tile, matching the hero
+    // card + Library + web. The ChefHat glyph is gone on mobile too.
+    expect(MOBILE_DISCOVER_SRC).toMatch(/<RecipeHeroFallback/);
+    expect(MOBILE_DISCOVER_SRC).not.toMatch(/<ChefHat\s/);
+    expect(MOBILE_DISCOVER_SRC).not.toMatch(/\bChefHat\b/);
   });
 
   it("web Discover does not use ChefHat icon (removed in discover redesign)", () => {

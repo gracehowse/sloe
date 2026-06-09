@@ -35,7 +35,6 @@ import {
  *  roughly in sync with the flags referenced across the mobile app;
  *  test-only probe flags are intentionally omitted. */
 const KNOWN_FLAGS: readonly string[] = [
-  "brand_frost_secondary",
   "import-progress-v2",
   "onboarding-app-choice",
   "supadata-acquisition",

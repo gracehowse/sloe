@@ -209,10 +209,14 @@ export function TodayActivityBonusCard({
             <p className="text-[11px] font-semibold text-foreground">{ACTIVITY_BUDGET_DISCOVER_TITLE}</p>
             <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{ACTIVITY_BUDGET_DISCOVER_BODY}</p>
             <div className="mt-2 flex items-center gap-3">
+              {/* Sloe treatment system (2026-06-08): primary inline CTA →
+                  aubergine outline (transparent fill + 1.5px primary-solid
+                  border + primary-solid label), not a filled slab. Mirror
+                  of mobile `TodayActivityBonusCard`. */}
               <button
                 type="button"
                 onClick={onEnableActivityBudget}
-                className="rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+                className="rounded-md border-[1.5px] border-primary-solid bg-transparent px-3 py-1.5 text-[11px] font-semibold text-primary-solid hover:bg-primary/5"
               >
                 {ACTIVITY_BUDGET_DISCOVER_CTA}
               </button>

@@ -40,9 +40,10 @@ export function PlanEmptyState({
   onImport,
 }: PlanEmptyStateProps) {
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the BookOpen glyph,
-  // the primary "Browse library" CTA fill, and the import text-link. Overrides
-  // the module-level StyleSheet inline since it can't read the hook.
+  // Secondary accent (now aubergine) for the BookOpen glyph + the import
+  // text-link. Sloe treatment system (2026-06-08): "Browse recipe library"
+  // is the canonical SECONDARY action (prototype §3) — off-white fill, ink
+  // label, no accent fill — so the accent stays rationed to the glyph + link.
   const accent = useAccent();
   return (
     <View
@@ -55,12 +56,12 @@ export function PlanEmptyState({
         cta={
           <View style={styles.ctaWrap}>
             <Pressable
-              style={[styles.primaryBtn, { backgroundColor: accent.primary }]}
+              style={[styles.primaryBtn, { backgroundColor: colors.backgroundSecondary }]}
               onPress={onBrowseLibrary}
               accessibilityRole="button"
               accessibilityLabel="Browse recipe library"
             >
-              <Text style={styles.primaryBtnText}>Browse recipe library</Text>
+              <Text style={[styles.primaryBtnText, { color: colors.text }]}>Browse recipe library</Text>
             </Pressable>
             {planImportEnabled ? (
               <Pressable
@@ -69,7 +70,7 @@ export function PlanEmptyState({
                 accessibilityLabel="Import existing meal plan"
                 style={styles.importBtn}
               >
-                <Text style={[styles.importText, { color: accent.primary }]}>Or import a plan you already have</Text>
+                <Text style={[styles.importText, { color: accent.primarySolid }]}>Or import a plan you already have</Text>
               </Pressable>
             ) : null}
           </View>
@@ -87,13 +88,14 @@ const styles = StyleSheet.create({
   },
   ctaWrap: { alignItems: "center", gap: Spacing.sm },
   primaryBtn: {
-    // backgroundColor applied inline (accent.primary — Frost-flag aware).
+    // Secondary off-white fill applied inline (colors.backgroundSecondary);
+    // label colour also inline (colors.text). Sloe treatment §3.
     borderRadius: Radius.md,
     paddingVertical: 16,
     paddingHorizontal: 28,
     alignItems: "center",
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  primaryBtnText: { fontWeight: "700", fontSize: 16 },
   importBtn: { paddingVertical: Spacing.xs },
   // color applied inline (accent.primary — Frost-flag aware).
   importText: { fontSize: 14, fontWeight: "600" },

@@ -1837,6 +1837,11 @@ export default function RecipeDetailScreen() {
           1,
           Math.round((recipe?.servings ?? 1) * cookScaleFactor * 100) / 100,
         );
+        // Aubergine OUTLINE colour for the cook-mode "Next" step CTA — light
+        // detects via the white page; dark uses the lifted aubergine so the
+        // outline + label clear AA on the dark cook surface.
+        const cookNextOutline =
+          colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
         const rawStep = instructionSteps[cookStep] ?? "";
         const cleanedStep = rawStep.replace(/^\d+[\.\)\-]\s*/, "");
         const scaledStep =
@@ -1936,11 +1941,23 @@ export default function RecipeDetailScreen() {
                   <Text style={{ fontWeight: "700", color: cookStep > 0 ? colors.text : colors.textTertiary }}>Previous</Text>
                 </Pressable>
                 {cookStep < instructionSteps.length - 1 ? (
+                  // Aubergine OUTLINE (Sloe treatment §1) — the everyday "Next"
+                  // primary is an outline, not a filled slab. `Done!` (final
+                  // step) keeps the sage success fill below as a deliberate
+                  // landmark; the step-by-step Next is the calm outline.
                   <Pressable
-                    style={{ flex: 1, backgroundColor: accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: "transparent",
+                      borderWidth: 1.5,
+                      borderColor: cookNextOutline,
+                      borderRadius: Radius.md,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                    }}
                     onPress={() => setCookStep((s) => s + 1)}
                   >
-                    <Text style={{ fontWeight: "700", color: colors.primaryForeground }}>Next</Text>
+                    <Text style={{ fontWeight: "700", color: cookNextOutline }}>Next</Text>
                   </Pressable>
                 ) : (
                   <Pressable

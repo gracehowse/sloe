@@ -53,8 +53,10 @@ export function TodaySnapShortcut({
         .filter(Boolean)
         .join(" ")}
     >
+      {/* Sloe treatment system (2026-06-08): soft-tint icon container
+          (bg-primary/10 + primary-solid glyph). Mirror of mobile shutter. */}
       <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-        <Icons.camera className="h-4 w-4 text-primary" aria-hidden />
+        <Icons.camera className="h-4 w-4 text-primary-solid" aria-hidden />
         {locked ? (
           <span
             data-testid="today-snap-shortcut-lock"
@@ -79,7 +81,9 @@ export function TodaySnapShortcut({
             <span
               data-testid="today-snap-shortcut-pro-chip"
               aria-label="Pro feature"
-              className="inline-flex items-center rounded-sm bg-primary px-1.5 py-px text-[9px] font-extrabold tracking-wider text-primary-foreground"
+              // Sloe treatment system (2026-06-08): Pro badge = aubergine
+              // soft-tint + primary-solid label, not a solid fill.
+              className="inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-px text-[9px] font-extrabold tracking-wider text-primary-solid"
             >
               PRO
             </span>

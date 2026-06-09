@@ -12,11 +12,11 @@ import type { TrustChipVariant } from "@suppr/shared/types/trust";
  *
  * Geometry: 22pt height, padding 3 x 8, radius `Radius.full`.
  *
- * HELD WARM (Frost flag `brand_frost_secondary`, ENG-997): every variant fg —
- * including `off-adjusted`'s `Accent.primary` — is a SOURCE / provenance /
- * confidence signal, not a CTA, so it stays warm regardless of the flag and is
- * intentionally NOT migrated to `useAccent()`. (Source/confidence chips + dots
- * are on the ship plan's hold-clay list.)
+ * Every variant fg — including `off-adjusted`'s `Accent.primary` — is a SOURCE /
+ * provenance / confidence signal, not a CTA, so it reads the static clay
+ * `Accent.primary` directly and is intentionally NOT routed through
+ * `useAccent()`. (The Frost secondary-colour exploration was retired 2026-06-08,
+ * ENG-997 — clay is now the unconditional accent regardless.)
  */
 
 export type { TrustChipVariant } from "@suppr/shared/types/trust";

@@ -443,9 +443,12 @@ export default function FastingScreen() {
                 onPress={() => changeWindow(w)}
                 style={[
                   styles.presetPill,
+                  // Sloe treatment system (§7): selected preset = aubergine
+                  // soft-tint fill + primarySolid border/label (was a solid
+                  // plum fill). Idle stays cream + hairline.
                   {
-                    backgroundColor: selected ? colors.navPrimary : colors.card,
-                    borderColor: selected ? colors.navPrimary : colors.border,
+                    backgroundColor: selected ? accent.primarySoft : colors.card,
+                    borderColor: selected ? accent.primarySolid : colors.border,
                   },
                 ]}
                 hitSlop={6}
@@ -453,7 +456,7 @@ export default function FastingScreen() {
                 <Text
                   style={[
                     styles.presetPillText,
-                    { color: selected ? "#FFFFFF" : colors.text },
+                    { color: selected ? accent.primarySolid : colors.text },
                   ]}
                 >
                   {fastingWindowLabel(w)}
@@ -503,12 +506,16 @@ export default function FastingScreen() {
               paddingVertical: 14,
               paddingHorizontal: 28,
               borderRadius: Radius.full,
-              backgroundColor: accent.primary,
+              // Sloe treatment system (§1): primary inline CTA = aubergine
+              // OUTLINE (transparent fill, 1.5px primarySolid border + label).
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               alignSelf: "stretch",
             }}
           >
-            <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600", color: accent.primaryForeground }}>
+            <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>
               Start fast
             </Text>
           </Pressable>
@@ -669,7 +676,13 @@ export default function FastingScreen() {
           precision makes a stray hit unlikely there). */}
       {isFasting && !isComplete ? (
         <Pressable
-          style={[styles.endBtn, { backgroundColor: accent.primary }]}
+          style={[
+            styles.endBtn,
+            // Sloe treatment system (§1): End-fast is a primary inline CTA →
+            // aubergine OUTLINE, not a filled slab (ending a fast is a normal
+            // completion, not a destructive-red action).
+            { backgroundColor: "transparent", borderWidth: 1.5, borderColor: accent.primarySolid },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="End fast — long-press to confirm"
           accessibilityHint="Long-press for one second to end your fast"
@@ -690,7 +703,7 @@ export default function FastingScreen() {
           }}
           delayLongPress={650}
         >
-          <Text style={[styles.endBtnText, { color: accent.primaryForeground }]}>Hold to end fast</Text>
+          <Text style={[styles.endBtnText, { color: accent.primarySolid }]}>Hold to end fast</Text>
         </Pressable>
       ) : isFasting && isComplete ? (
         <Pressable

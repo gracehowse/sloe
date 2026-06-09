@@ -10,7 +10,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
@@ -396,11 +396,15 @@ export default function ProgressMetricDetailScreen() {
           <View style={{ marginTop: Spacing.lg, flexDirection: "row", gap: Spacing.md }}>
             <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
               <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>AVG / DAY</Text>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: t.protein, marginTop: 4, fontVariant: ["tabular-nums"] }}>{weekStats.avgProtein}g</Text>
+              {/* SLOE Phase 0: big stat numerals read in Newsreader serif. */}
+              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.protein, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                {weekStats.avgProtein}
+                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 14, fontWeight: "800" }}>g</Text>
+              </Text>
             </View>
             <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
               <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>ON TARGET</Text>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: t.accent, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.accent, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.proteinOnTarget}/7
               </Text>
             </View>
@@ -454,7 +458,8 @@ export default function ProgressMetricDetailScreen() {
               logging days" reads as a placeholder, not a stat. */}
           {streakDays > 0 ? (
             <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, borderRadius: Radius.lg, ...cardSurface }}>
-              <Text style={{ fontSize: 36, fontWeight: "900", color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
+              {/* SLOE Phase 0: streak hero numeral reads in Newsreader serif. */}
+              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 36, color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
               <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
             </View>
           ) : null}

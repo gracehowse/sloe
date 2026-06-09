@@ -748,7 +748,7 @@ export const MealPlanner = memo(function MealPlanner({
             <button
               type="button"
               onClick={handleShoppingList}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
               style={{ padding: "8px 14px", fontSize: 13 }}
             >
               <ShoppingCart size={14} strokeWidth={2} />
@@ -802,7 +802,7 @@ export const MealPlanner = memo(function MealPlanner({
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
                   active
-                    ? "border-primary bg-primary/10 text-foreground"
+                    ? "border-primary bg-primary/10 text-primary-solid"
                     : "border-border text-foreground hover:bg-muted/60",
                 ].join(" ")}
               >
@@ -886,7 +886,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
                 locked ? "opacity-60" : "",
               ].join(" ")}
@@ -928,7 +928,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-muted-foreground hover:bg-muted/60",
                 isLast ? "cursor-not-allowed opacity-80" : "",
               ].join(" ")}
@@ -969,7 +969,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
               ].join(" ")}
             >
@@ -1012,7 +1012,9 @@ export const MealPlanner = memo(function MealPlanner({
           </p>
           <button
             data-testid="planner-empty-generate-btn"
-            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
+               (transparent fill, 1.5px primarySolid border + label). */
+            className="rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
             onClick={handleRegenerate}
             disabled={isGenerating || !sourceCanGenerate}
@@ -1097,7 +1099,9 @@ export const MealPlanner = memo(function MealPlanner({
                 {isTodayCol ? (
                   <span
                     data-testid={`planner-desktop-today-pill-${dp.day}`}
-                    className="inline-flex items-center rounded-full bg-primary text-primary-foreground uppercase"
+                    /* Sloe treatment §9: today marker = calm aubergine
+                       soft-tint status pill (was a saturated filled pill). */
+                    className="inline-flex items-center rounded-full bg-primary/10 text-primary-solid uppercase"
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -1416,7 +1420,10 @@ export const MealPlanner = memo(function MealPlanner({
                       <button
                         type="button"
                         onClick={() => handleLogToday(meal)}
-                        className="inline-flex items-center justify-center rounded-md bg-primary/10 px-3 py-1 text-primary font-semibold mt-1.5 hover:bg-primary/15 transition-colors"
+                        /* Sloe treatment: quiet off-white log pill (mobile
+                           `mealLogBtn` parity) — off-white fill + hairline
+                           border + muted label, not an accent tint. */
+                        className="inline-flex items-center justify-center rounded-md bg-background-secondary border border-border px-3 py-1 text-muted-foreground font-semibold mt-1.5 hover:bg-muted/60 transition-colors"
                         style={{ fontSize: 12 }}
                         data-testid={`planner-log-today-${dp.day}-${slot}`}
                       >
@@ -1451,7 +1458,10 @@ export const MealPlanner = memo(function MealPlanner({
                         key={slot}
                         type="button"
                         onClick={() => handleAddSlotBack(di, slot)}
-                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-primary border border-primary/40 bg-primary/10 hover:bg-primary/15 transition-colors"
+                        /* Sloe treatment: quiet add-slot chip = off-white fill +
+                           hairline border + muted label (mobile `addSlotChip`
+                           parity), not an accent-tinted chip. */
+                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-muted-foreground border border-border bg-card hover:bg-muted/60 transition-colors"
                         style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.02em" }}
                         aria-label={`Add ${SLOT_TITLE[slot]} slot`}
                       >
@@ -1487,7 +1497,7 @@ export const MealPlanner = memo(function MealPlanner({
         <button
           type="button"
           onClick={handleShoppingList}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
           style={{ padding: "8px 16px", fontSize: 13 }}
         >
           <ShoppingCart size={14} strokeWidth={2} />

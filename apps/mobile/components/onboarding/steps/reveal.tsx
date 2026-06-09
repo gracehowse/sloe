@@ -525,10 +525,13 @@ function MacroTile({
           </Text>
         ) : null}
       </View>
+      {/* SLOE Phase 0: the macro-target hero numeral reads in Newsreader serif
+          (matching the 56px calorie ring above + the web reveal StatTile).
+          Family carries the weight; the `g` unit + pct stay sans. */}
       <Text
         style={{
+          fontFamily: FontFamily.serifRegular,
           fontSize: 22,
-          fontWeight: "800",
           color: colors.text,
           letterSpacing: -0.5,
           fontVariant: ["tabular-nums"],

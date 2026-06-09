@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { Spacing, Radius } from "@/constants/theme";
+import { FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightPoint } from "@/lib/progress/weightTrend";
@@ -37,7 +37,12 @@ export function WeightSparseState({ points, onLogWeight }: Props) {
     return (
       <View style={styles.container}>
         <Scale size={32} color={colors.textTertiary} strokeWidth={1.5} />
-        <Text style={[styles.singleValue, { color: colors.text }]}>{kg.toFixed(1)} kg</Text>
+        {/* SLOE Phase 0: the single-weigh-in hero numeral reads in Newsreader
+            serif (big numerals are a serif moment); the `kg` unit stays sans. */}
+        <Text style={[styles.singleValue, { color: colors.text }]}>
+          {kg.toFixed(1)}
+          <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 16, fontWeight: "700" }}> kg</Text>
+        </Text>
         <Text style={[styles.headline, { color: colors.text }]}>One weigh-in logged</Text>
         <Text style={[styles.body, { color: colors.textSecondary }]}>
           Add two more to see a trend line.
@@ -101,8 +106,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   singleValue: {
+    fontFamily: FontFamily.serifRegular,
     fontSize: 28,
-    fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   body: {

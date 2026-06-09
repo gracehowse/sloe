@@ -61,7 +61,7 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type, FontFamily, Elevation } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -71,6 +71,7 @@ import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
@@ -555,6 +556,11 @@ export default function CreateRecipeWizard() {
           .insert({
             author_id: userId,
             title: normalizeRecipeTitle(title.trim()),
+            // Gap 12 — description field not collected in the wizard.
+            // deferred: see ENG-1012 (add optional description field to
+            // wizard step 1 or step 3; the Recipe Detail spec §3.2 renders
+            // a Description card that is permanently empty for wizard-created
+            // recipes until this is addressed).
             description: null,
             instructions: normaliseInstructions(instructionsString) || null,
             servings: srv,
@@ -660,6 +666,14 @@ export default function CreateRecipeWizard() {
     ],
   );
 
+  // Aubergine-on-surface ink (Sloe treatment system) — the create-recipe
+  // primary CTAs are NOT conversion-critical, so they render as aubergine
+  // OUTLINES (treatment §1), not filled slabs. Light uses the deep
+  // `primarySolid`; dark lifts to `primarySolidDark` so the outline + label
+  // clear AA on the dark surface.
+  const accentInk =
+    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+
   // ---- Styles -----------------------------------------------------------
   const styles = useMemo(
     () =>
@@ -675,30 +689,33 @@ export default function CreateRecipeWizard() {
           borderBottomColor: colors.border,
           gap: Spacing.md,
         },
-        backHit: { padding: 6, marginLeft: -6 },
+        backHit: { padding: Spacing.sm, marginLeft: -Spacing.sm },
         topMeta: { flex: 1, alignItems: "center" },
         topTitle: {
+          // Gap 10: use Type.label tracking (0.88, ≈ 0.08em) instead of 2 (≈ 0.18em).
+          ...Type.label,
           color: accent.primary,
-          fontSize: 11,
-          fontWeight: "800",
-          letterSpacing: 2,
         },
+        // Gap 2: use Type.caption token (replaces raw 12/600).
         topStep: {
+          ...Type.caption,
           color: colors.textSecondary,
-          fontSize: 12,
-          fontWeight: "600",
           marginTop: 2,
         },
         progressRow: {
           flexDirection: "row",
-          gap: 4,
+          // Gap 9: use Spacing.xs token instead of raw 4.
+          gap: Spacing.xs,
           paddingHorizontal: Spacing.xl,
           paddingTop: Spacing.md,
+          // Gap 9: add breathing room below progress track before the first
+          // section block (the system's 2xl above-section-eyebrow rhythm).
+          paddingBottom: Spacing.xl,
         },
         progressDot: {
           flex: 1,
-          height: 4,
-          borderRadius: 2,
+          height: Spacing.xs,
+          borderRadius: Spacing.xs / 2,
           backgroundColor: colors.border,
         },
         progressDotActive: { backgroundColor: accent.primary },
@@ -707,33 +724,39 @@ export default function CreateRecipeWizard() {
           gap: Spacing.lg,
           paddingBottom: 140,
         },
+        // Gap 2: use canonical Type.label token (replaces bespoke 12/700/1 inline).
         label: {
-          fontSize: 12,
-          fontWeight: "700",
+          ...Type.label,
           color: colors.textTertiary,
-          letterSpacing: 1,
-          textTransform: "uppercase",
         },
+        // Gap 1+2: serif display for step H1 — the editorial moment of each step.
+        // Type.display is Newsreader 400 32pt; we override to serifSemibold 600 for
+        // the weight the recipes spec calls for at 28–32pt display role.
         sectionTitle: {
-          fontSize: 22,
-          fontWeight: "700",
+          ...Type.display,
+          fontFamily: FontFamily.serifSemibold,
+          fontSize: 28,
+          lineHeight: 32,
           color: colors.text,
-          letterSpacing: -0.4,
         },
+        // Gap 2: use Type.bodyMuted (replaces bespoke 14/400/20 inline).
         sectionSub: {
-          fontSize: 14,
+          ...Type.bodyMuted,
           color: colors.textSecondary,
-          lineHeight: 20,
-          marginTop: 4,
+          marginTop: Spacing.xs,
         },
+        // Gap 5: paddingVertical 14 → Spacing.md (16) — on-scale.
+        // Gap 7: hairline border so the field separates from the white page.
+        // Gap 13: Radius.xl (12) for warm recipe inputs per recipes.md §0.
         input: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.md,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.xl,
+          borderWidth: 1,
           borderColor: colors.border,
           paddingHorizontal: Spacing.lg,
-          paddingVertical: 14,
+          paddingVertical: Spacing.md,
           color: colors.text,
+          ...Type.body,
           fontSize: 16,
         },
         multilineInput: {
@@ -742,23 +765,34 @@ export default function CreateRecipeWizard() {
         },
         // Step 1 — photo
         photoTouch: { width: "100%" },
+        // Gap 13: Radius.xl (12) — warm recipe spec radius.
         photoPreview: {
           width: "100%",
           height: 200,
-          borderRadius: Radius.lg,
+          borderRadius: Radius.xl,
         },
+        // Gap 3: warm fallback — no dashed border, no cold grey camera box.
+        // Uses #F6F5F2 fill as the ground for RecipeHeroFallback (sage→cream
+        // gradient tile) overlaid in the render. Matches RecipeHeroFallback
+        // treatment on Library / Discover / Plan cards (§11.4).
+        // Gap 13: Radius.xl (12).
         photoFallback: {
           width: "100%",
           height: 180,
-          borderRadius: Radius.lg,
-          borderWidth: cardElevation.useBorder ? 1.5 : 0,
-          borderColor: colors.border,
-          borderStyle: "dashed",
+          borderRadius: Radius.xl,
+          overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          gap: Spacing.xs,
-          ...(cardElevation.shadowStyle ?? {}),
+          backgroundColor: colors.card,
+          ...(Elevation.cardSoft),
+        },
+        // Camera overlay label inside the warm fallback tile.
+        photoFallbackLabel: {
+          position: "absolute",
+          bottom: Spacing.md,
+          alignSelf: "center",
+          ...Type.label,
+          color: colors.textSecondary,
         },
         servingsRow: {
           flexDirection: "row",
@@ -768,27 +802,41 @@ export default function CreateRecipeWizard() {
         servingsBtn: {
           width: 40,
           height: 40,
-          borderRadius: 20,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.full,
+          borderWidth: 1,
           borderColor: colors.border,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          ...(cardElevation.shadowStyle ?? {}),
+          backgroundColor: colors.card,
+        },
+        // Gap 4: boxed container for the stepper value — signals "stepper, not raw text".
+        // #F6F5F2 fill + hairline border + Radius.lg (8) per recipes.md §3.2.
+        // Gap 2: serif Type.heroValue (Newsreader) for the big numeral.
+        servingsValueBox: {
+          minWidth: 56,
+          height: 44,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.card,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: Spacing.sm,
         },
         servingsValue: {
-          minWidth: 56,
+          ...Type.heroValue,
+          fontSize: 28,
+          lineHeight: 32,
           textAlign: "center",
-          fontSize: 24,
-          fontWeight: "700",
           color: colors.text,
           fontVariant: ["tabular-nums"],
         },
         // Step 2 — ingredients
+        // Gap 13: Radius.xl (12) for warm recipe card radius.
         ingCard: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.md,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.xl,
+          borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.md,
           flexDirection: "row",
@@ -796,35 +844,39 @@ export default function CreateRecipeWizard() {
           gap: Spacing.sm,
           ...(cardElevation.shadowStyle ?? {}),
         },
+        // Gap 2: use Type.body token for ingredient name (replaces bespoke 14/600).
         ingName: {
+          ...Type.body,
           flex: 1,
-          fontSize: 14,
-          fontWeight: "600",
           color: colors.text,
         },
-        ingDetail: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+        ingDetail: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
+        // "Add ingredient" / "Add step" — aubergine OUTLINE (Sloe treatment §1),
+        // kept as the dashed "add-more" affordance but in the proper aubergine
+        // ink (was a faded `accent.primary + "50"` edge).
+        // Gap 5: paddingVertical 14 → Spacing.md (16); Gap 13: Radius.xl (12).
         addBtn: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
           gap: Spacing.sm,
-          paddingVertical: 14,
-          borderRadius: Radius.md,
-          borderWidth: cardElevation.useBorder ? 1.5 : 0,
-          borderColor: accent.primary + "50",
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.xl,
+          borderWidth: 1.5,
+          borderColor: accentInk,
           borderStyle: "dashed",
-          ...(cardElevation.shadowStyle ?? {}),
         },
+        // Gap 2: use Type.body semibold for add-button label.
         addBtnText: {
-          color: accent.primary,
-          fontWeight: "600",
-          fontSize: 14,
+          ...Type.body,
+          fontFamily: FontFamily.sansSemibold,
+          color: accentInk,
         },
-        // Step 3 — instructions
+        // Step 3 — instructions. Gap 13: Radius.xl (12).
         stepRow: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.md,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.xl,
+          borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.md,
           gap: Spacing.sm,
@@ -853,7 +905,7 @@ export default function CreateRecipeWizard() {
           minHeight: 64,
           textAlignVertical: "top",
         },
-        stepIconBtn: { padding: 6 },
+        stepIconBtn: { padding: Spacing.sm },
         // Step 4 — macros
         totalsCard: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -877,6 +929,7 @@ export default function CreateRecipeWizard() {
           color: colors.text,
           fontWeight: "600",
         },
+        // Gap 5: padding 10 → Spacing.sm (8) — on-scale.
         macroFieldInput: {
           width: 96,
           textAlign: "right",
@@ -884,16 +937,16 @@ export default function CreateRecipeWizard() {
           borderRadius: Radius.sm,
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
-          padding: 10,
+          padding: Spacing.sm,
           color: colors.text,
           fontSize: 15,
           fontVariant: ["tabular-nums"],
         },
-        // Save step
+        // Save step. Gap 13: Radius.xl (12).
         saveCard: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.xl,
+          borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
@@ -911,39 +964,49 @@ export default function CreateRecipeWizard() {
           paddingHorizontal: Spacing.xl,
           paddingTop: Spacing.md,
         },
+        // Primary wizard CTA (Continue / Save private) — aubergine OUTLINE
+        // (treatment §1): transparent ground + 1.5px aubergine border +
+        // aubergine label. Create-recipe is not conversion-critical, so the
+        // primary is an outline, not a filled slab.
+        // Gap 5: paddingVertical 16 = Spacing.md (already on-scale, confirmed).
+        // Gap 13: Radius.xl (12).
         primaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
           gap: Spacing.sm,
-          backgroundColor: accent.primary,
-          borderRadius: Radius.md,
-          paddingVertical: 16,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accentInk,
+          borderRadius: Radius.xl,
+          paddingVertical: Spacing.md,
         },
+        // Gap 2: use canonical font token for CTA label.
         primaryBtnText: {
-          color: "#fff",
-          fontWeight: "700",
+          ...Type.body,
+          fontFamily: FontFamily.sansBold,
           fontSize: 16,
+          color: accentInk,
         },
+        // Secondary "Publish to community" — OFF-WHITE FILL (treatment §3).
+        // Gap 5: paddingVertical 14 → Spacing.md (16); Gap 13: Radius.xl (12).
         secondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
           gap: Spacing.sm,
-          backgroundColor: "transparent",
-          borderRadius: Radius.md,
-          paddingVertical: 14,
-          borderWidth: cardElevation.useBorder ? 1.5 : 0,
-          borderColor: accent.primary,
-          ...(cardElevation.shadowStyle ?? {}),
+          backgroundColor: colors.card,
+          borderRadius: Radius.xl,
+          paddingVertical: Spacing.md,
         },
+        // Gap 2: use canonical font token.
         secondaryBtnText: {
-          color: accent.primary,
-          fontWeight: "700",
-          fontSize: 15,
+          ...Type.body,
+          fontFamily: FontFamily.sansBold,
+          color: colors.text,
         },
       }),
-    [colors, cardElevation, accent],
+    [colors, cardElevation, accent, accentInk],
   );
 
   // ---- Render ----------------------------------------------------------
@@ -1014,9 +1077,23 @@ export default function CreateRecipeWizard() {
               {imageUri ? (
                 <Image source={{ uri: imageUri }} style={styles.photoPreview} />
               ) : (
+                // Gap 3: warm fallback tile — sage→cream RecipeHeroFallback
+                // gradient instead of a cold dashed-border grey box. Matches
+                // the Library / Discover / Plan card fallback treatment (§11.4).
+                // Uses the wizard-session title as the RecipeHeroFallback seed
+                // so the cuisine glyph is title-deterministic once the user
+                // types a name; falls back to "Utensils" for the empty state.
                 <View style={styles.photoFallback}>
-                  <Camera size={28} color={colors.textTertiary} />
-                  <Text style={styles.label}>Add photo (optional)</Text>
+                  <RecipeHeroFallback
+                    id="wizard-new"
+                    title={title || "recipe"}
+                    iconSize={32}
+                    style={{ borderRadius: Radius.xl }}
+                  />
+                  <View style={{ position: "absolute" }}>
+                    <Camera size={20} color={colors.textSecondary} />
+                  </View>
+                  <Text style={styles.photoFallbackLabel}>Add photo (optional)</Text>
                 </View>
               )}
             </Pressable>
@@ -1032,33 +1109,55 @@ export default function CreateRecipeWizard() {
                 maxLength={TITLE_MAX_LENGTH}
                 accessibilityLabel="Recipe name"
               />
-              <Text
-                style={{ fontSize: 11, color: colors.textTertiary, textAlign: "right" }}
-              >
-                {title.length}/{TITLE_MAX_LENGTH}
-              </Text>
+              {/* Gap 11: show char counter only when within 20 chars of the limit.
+                  A persistent "0/80" on a pristine field is low-polish noise. */}
+              {title.length > TITLE_MAX_LENGTH - 20 && (
+                <Text
+                  style={{ ...Type.caption, color: colors.textTertiary, textAlign: "right" }}
+                >
+                  {title.length}/{TITLE_MAX_LENGTH}
+                </Text>
+              )}
             </View>
 
             <View style={{ gap: Spacing.sm }}>
               <Text style={styles.label}>Servings</Text>
-              <View style={styles.servingsRow}>
+              {/* Gap 4: boxed stepper per recipes.md §3.2 — the numeral lives
+                  inside a #F6F5F2 rounded box so the control reads as a
+                  deliberate stepper, not raw text between two pills.
+                  accessibilityRole="adjustable" + accessibilityValue so
+                  VoiceOver announces it as a stepper control. */}
+              <View
+                style={styles.servingsRow}
+                accessibilityRole="adjustable"
+                accessibilityLabel="Servings"
+                accessibilityValue={{ min: 1, max: 99, now: servings }}
+                onAccessibilityAction={(e) => {
+                  if (e.nativeEvent.actionName === "increment") stepServings(1);
+                  if (e.nativeEvent.actionName === "decrement") stepServings(-1);
+                }}
+              >
                 <Pressable
                   style={styles.servingsBtn}
                   onPress={() => stepServings(-1)}
                   accessibilityLabel="Decrease servings"
+                  hitSlop={8}
                 >
                   <Minus size={18} color={colors.text} />
                 </Pressable>
-                <Text style={styles.servingsValue}>{servings}</Text>
+                <View style={styles.servingsValueBox}>
+                  <Text style={styles.servingsValue}>{servings}</Text>
+                </View>
                 <Pressable
                   style={styles.servingsBtn}
                   onPress={() => stepServings(1)}
                   accessibilityLabel="Increase servings"
+                  hitSlop={8}
                 >
                   <Plus size={18} color={colors.text} />
                 </Pressable>
                 <Text
-                  style={{ fontSize: 13, color: colors.textSecondary, marginLeft: Spacing.sm }}
+                  style={{ ...Type.caption, color: colors.textSecondary, marginLeft: Spacing.sm }}
                 >
                   {servings === 1 ? "serving" : "servings"}
                 </Text>
@@ -1105,7 +1204,7 @@ export default function CreateRecipeWizard() {
               }}
               accessibilityLabel="Add ingredient"
             >
-              <Plus size={18} color={accent.primary} />
+              <Plus size={18} color={accentInk} />
               <Text style={styles.addBtnText}>Add ingredient</Text>
             </Pressable>
           </View>
@@ -1173,7 +1272,7 @@ export default function CreateRecipeWizard() {
               </View>
             ))}
             <Pressable style={styles.addBtn} onPress={addStep} accessibilityLabel="Add step">
-              <Plus size={18} color={accent.primary} />
+              <Plus size={18} color={accentInk} />
               <Text style={styles.addBtnText}>Add step</Text>
             </Pressable>
           </View>
@@ -1312,10 +1411,10 @@ export default function CreateRecipeWizard() {
               accessibilityLabel="Save recipe to private library"
             >
               {saving && !publish ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={accentInk} />
               ) : (
                 <>
-                  <Check size={20} color="#fff" />
+                  <Check size={20} color={accentInk} />
                   <Text style={styles.primaryBtnText}>Save private</Text>
                 </>
               )}
@@ -1330,25 +1429,47 @@ export default function CreateRecipeWizard() {
               accessibilityLabel="Publish recipe to community"
             >
               {saving && publish ? (
-                <ActivityIndicator color={accent.primary} />
+                <ActivityIndicator color={colors.text} />
               ) : (
                 <Text style={styles.secondaryBtnText}>Publish to community</Text>
               )}
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            style={[
-              styles.primaryBtn,
-              !advanceEnabled && { opacity: 0.45 },
-            ]}
-            onPress={goNext}
-            disabled={!advanceEnabled}
-            accessibilityLabel={`Continue to step ${stepIdx + 2}`}
-            accessibilityState={{ disabled: !advanceEnabled }}
-          >
-            <Text style={styles.primaryBtnText}>Continue</Text>
-          </Pressable>
+          // Gap 6: disabled opacity floor raised to 0.65 (from 0.45) so the
+          // outline CTA reads as "not yet" rather than "broken/dead" on cold
+          // open when the title field is empty. An inline helper below the
+          // button communicates what is needed when the step is blocked.
+          <View style={{ gap: Spacing.xs }}>
+            <Pressable
+              style={[
+                styles.primaryBtn,
+                !advanceEnabled && { opacity: 0.65 },
+              ]}
+              onPress={goNext}
+              disabled={!advanceEnabled}
+              accessibilityLabel={`Continue to step ${stepIdx + 2}`}
+              accessibilityState={{ disabled: !advanceEnabled }}
+            >
+              <Text style={styles.primaryBtnText}>Continue</Text>
+            </Pressable>
+            {!advanceEnabled && step === "title-photo" && (
+              <Text
+                style={{ ...Type.caption, color: colors.textTertiary, textAlign: "center" }}
+                accessibilityLiveRegion="polite"
+              >
+                Add a name to continue
+              </Text>
+            )}
+            {!advanceEnabled && step === "ingredients" && (
+              <Text
+                style={{ ...Type.caption, color: colors.textTertiary, textAlign: "center" }}
+                accessibilityLiveRegion="polite"
+              >
+                Add at least one ingredient to continue
+              </Text>
+            )}
+          </View>
         )}
       </View>
 

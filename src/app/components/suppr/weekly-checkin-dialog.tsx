@@ -98,8 +98,11 @@ export function WeeklyCheckinDialog({
             >
               {Math.round(currentTargetKcal).toLocaleString("en-GB")}
             </span>
+            {/* SLOE Phase 0: the suggested-target hero numeral reads in the
+                Newsreader serif display face; the struck-out prior value +
+                `kcal/day` unit stay sans. Mirrors mobile WeeklyCheckinModal. */}
             <span
-              className="text-2xl font-extrabold text-primary"
+              className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary"
               style={{ fontVariantNumeric: "tabular-nums" }}
               aria-label={`Suggested ${content.suggestedTargetKcal} kilocalories per day`}
             >
@@ -115,11 +118,14 @@ export function WeeklyCheckinDialog({
         </div>
 
         <div className="flex flex-col gap-2 mt-4">
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline; the "Keep current" tertiary below keeps
+              its neutral grey outline. Mirror of mobile `WeeklyCheckinModal`. */}
           <button
             type="button"
             onClick={onAccept}
             aria-label="Accept new target"
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
+            className="w-full py-3 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors"
           >
             Accept new target
           </button>

@@ -111,8 +111,10 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 
 // Light theme so useCardElevation's light branch (soft shadow, no border)
 // is exercised when the elevation flag is on. `useAccent` returns the clay
-// `Accent` (flag-OFF default) so the Frost-flag-aware CTA reads resolve to a
-// real palette in the renderer (ENG-997).
+// `Accent` so the accent-driven CTA reads resolve to a real palette in the
+// renderer. (ENG-997: clay is now the unconditional accent — the Frost
+// secondary-colour exploration was retired 2026-06-08 — but `useAccent()` is
+// still the indirection consumers read; it just always returns clay.)
 vi.mock("@/context/theme", async () => {
   const { Accent } = await import("@/constants/theme");
   return {

@@ -9,8 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Check, ShoppingCart, Trash2, Users } from "lucide-react-native";
+import { Check, ChevronRight, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,7 +46,7 @@ import {
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Elevation, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -485,18 +484,26 @@ export default function ShoppingListScreen() {
     },
 
     // Sloe DS — cream slab; soft xl radius to match the Plan-tab cards.
+    // Gap 10: Elevation.cardSoft replaces the flat hairline-only treatment so
+    // these cards sit consistently with Today/Plan elevated cards. Shadow
+    // must be on an outer wrapper (RN overflow:hidden clips iOS shadows) —
+    // see the JSX for the split outer/inner pattern.
+    cardOuter: {
+      ...Elevation.cardSoft,
+      borderRadius: Radius.xl,
+    },
     card: {
       backgroundColor: colors.card,
       borderRadius: Radius.xl,
-      borderWidth: 1,
-      borderColor: colors.border,
+      overflow: "hidden" as const,
       padding: Spacing.xl,
       gap: Spacing.md,
     },
 
-    progressRow: { flexDirection: "row", justifyContent: "space-between" },
+    progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     progressLabel: { ...Type.body, fontWeight: "600", color: colors.text },
-    progressCount: { color: accent.primary, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
+    // Gap 11: hero serif numeral for the progress count (DS §2.3.3).
+    progressCount: { ...Type.heroValue, fontSize: 22, color: accent.primary, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
     progressFill: { height: 6, backgroundColor: accent.primary, borderRadius: 3 },
 
@@ -508,7 +515,9 @@ export default function ShoppingListScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: Spacing.md,
-      paddingVertical: Spacing.sm,
+      // Gap 4: raise to 52pt min touch target (DS §10.1 44pt floor + DS §3.9 52pt spec).
+      paddingVertical: Spacing.md,
+      minHeight: 52,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
@@ -517,14 +526,18 @@ export default function ShoppingListScreen() {
       height: 22,
       borderRadius: 11,
       borderWidth: 1.5,
-      borderColor: colors.tabIconDefault,
+      // Gap 6: use border token instead of tabIconDefault so the unchecked
+      // circle reads as a calm hairline, not a heavy cold ring (DS §3.9).
+      borderColor: colors.border,
       justifyContent: "center",
       alignItems: "center",
     },
     checkboxChecked: { backgroundColor: accent.primary, borderColor: accent.primary },
     itemName: { ...Type.body, color: colors.text },
     itemChecked: { ...Type.bodyMuted, textDecorationLine: "line-through", color: colors.tabIconDefault },
-    itemFrom: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
+    // Gap 12: use Type.caption token (Inter 11pt/medium) and textSecondary colour
+    // so recipe provenance is legible, not a whisper (DS §2.2 label-secondary).
+    itemFrom: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
 
     emptyCard: {
       backgroundColor: colors.card,
@@ -570,16 +583,18 @@ export default function ShoppingListScreen() {
     attributionChip: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 6,
+      // Gap 14: normalise to spacing scale (xs=4, sm=8).
+      gap: Spacing.xs,
+      paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
-      borderRadius: 999,
-      marginTop: 2,
+      borderRadius: Radius.full,
+      marginTop: Spacing.xs,
     },
     attributionInitials: {
-      width: 14,
-      height: 14,
-      borderRadius: 7,
+      // Gap 14: on-scale avatar size 16 with full radius.
+      width: 16,
+      height: 16,
+      borderRadius: Radius.full,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -648,7 +663,7 @@ export default function ShoppingListScreen() {
     >
       <PlanTabChrome
         value="shopping"
-        title="Shopping list"
+        title="Plan"
         shoppingUncheckedCount={uncheckedCount}
         onChange={(next) => {
           if (next === "plan") {
@@ -659,12 +674,14 @@ export default function ShoppingListScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (
+            // Gap 7: use lucide Share2 + Trash2 to match the body icon set
+            // and DS §0.1(b) (abstract controls = lucide line icons).
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
-              <Pressable hitSlop={12} onPress={exportList}>
-                <Ionicons name="share-outline" size={22} color={colors.text} />
+              <Pressable hitSlop={12} onPress={exportList} accessibilityLabel="Share shopping list" accessibilityRole="button">
+                <Share2 size={22} color={colors.text} strokeWidth={1.75} />
               </Pressable>
-              <Pressable hitSlop={12} onPress={clearAll}>
-                <Ionicons name="trash-outline" size={22} color={Accent.destructive} />
+              <Pressable hitSlop={12} onPress={clearAll} accessibilityLabel="Clear shopping list" accessibilityRole="button">
+                <Trash2 size={22} color={Accent.destructive} strokeWidth={1.75} />
               </Pressable>
             </View>
           ) : (
@@ -690,7 +707,7 @@ export default function ShoppingListScreen() {
               <Text style={styles.syncBannerText}>{sharedWithLabel}</Text>
               <Text style={styles.syncBannerSub}>Synced live across your household</Text>
             </View>
-            <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+            <ChevronRight size={14} color={colors.textTertiary} strokeWidth={1.75} />
           </Pressable>
         ) : null}
 
@@ -723,7 +740,7 @@ export default function ShoppingListScreen() {
             <View style={{
               width: 44,
               height: 44,
-              borderRadius: 12,
+              borderRadius: Radius.xl,
               backgroundColor: accent.primary + "14",
               alignItems: "center",
               justifyContent: "center",
@@ -731,8 +748,11 @@ export default function ShoppingListScreen() {
             }}>
               <ShoppingCart size={22} color={accent.primary} strokeWidth={1.75} />
             </View>
+            {/* Gap 9: sync empty-state copy to web's warmer headline ("Your shopping
+                list builds itself" per ShoppingList.tsx) so the voice is consistent
+                across platforms. */}
             <Text style={{ ...Type.headline, color: colors.text, textAlign: "center" }}>
-              No items yet
+              Your shopping list builds itself
             </Text>
             <Text
               style={{
@@ -740,11 +760,11 @@ export default function ShoppingListScreen() {
                 color: colors.textSecondary,
                 textAlign: "center",
                 lineHeight: 20,
-                marginTop: 4,
+                marginTop: Spacing.xs,
                 maxWidth: 280,
               }}
             >
-              Plan your meals and we&apos;ll gather every ingredient into one list, grouped by aisle.
+              Plan your meals for the week and we&apos;ll gather every ingredient into one list, grouped by aisle.
             </Text>
             <Pressable
               onPress={() => router.push("/(tabs)/planner")}
@@ -753,7 +773,7 @@ export default function ShoppingListScreen() {
               hitSlop={8}
               style={{ marginTop: Spacing.md, paddingVertical: 6, paddingHorizontal: 8 }}
             >
-              <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
+              <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
                 Go to plan →
               </Text>
             </Pressable>
@@ -761,14 +781,20 @@ export default function ShoppingListScreen() {
         ) : (
           <>
             <ReAnimated.View style={progressEntrance.style}>
+            {/* Gap 10: cardOuter carries Elevation.cardSoft; inner view clips overflow.
+                Gap 2: use checkedGroupCount/totalGroupCount (both group-based) so the
+                progress card denominator matches the pill count 80px above it.
+                Gap 11: heroValue serif for the progress count (DS §2.3.3). */}
+            <View style={styles.cardOuter}>
             <View style={styles.card}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Progress</Text>
-                <Text style={styles.progressCount}>{checkedCount}/{items.length}</Text>
+                <Text style={styles.progressCount}>{checkedGroupCount}/{totalGroupCount}</Text>
               </View>
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
               </View>
+            </View>
             </View>
 
             {checkedCount > 0 && (
@@ -776,7 +802,7 @@ export default function ShoppingListScreen() {
                 onPress={clearChecked}
                 style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
               >
-                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primary }}>
+                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
                   Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
                 </Text>
               </Pressable>
@@ -795,13 +821,17 @@ export default function ShoppingListScreen() {
                 isShoppingGroupFullyChecked(g),
               ).length;
               return (
-                <View key={section.name} style={styles.card}>
+                // Gap 10: cardOuter carries Elevation.cardSoft so section cards match Today/Plan.
+                <View key={section.name} style={styles.cardOuter}>
+                <View style={styles.card}>
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      marginBottom: 4,
+                      // Gap 5: Spacing.md (16) so the serif header breathes above its rows
+                      // (DS §3.1 section label margin-below = lg/16).
+                      marginBottom: Spacing.md,
                     }}
                   >
                     <Text style={styles.categoryTitle}>{section.name}</Text>
@@ -975,6 +1005,7 @@ export default function ShoppingListScreen() {
                       </Swipeable>
                     );
                   })}
+                </View>
                 </View>
               );
             })}

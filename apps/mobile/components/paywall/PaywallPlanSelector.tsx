@@ -172,10 +172,16 @@ function makeStyles(
       paddingVertical: Spacing.lg,
       paddingHorizontal: Spacing.lg,
     },
-    // Selected — 2px clay ring (the frame's selected-plan treatment).
+    // Selected — 2px aubergine ring + soft aubergine tint fill (Sloe
+    // treatment system 2026-06-08, rule 7: plan-selector active → soft-tint).
+    // The ring is the frame's selected-plan affordance; the soft tint brings
+    // the active row in line with the onboarding `OptionCard` selected
+    // treatment (tint + border) so "selected" reads identically across the
+    // conversion surfaces. The fill stays reserved for the CTA + radio.
     rowSelected: {
       borderWidth: 2,
       borderColor: accent.primary,
+      backgroundColor: accent.primarySoft,
     },
     bestValue: {
       position: "absolute",

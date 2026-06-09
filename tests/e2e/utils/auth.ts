@@ -26,6 +26,14 @@ export async function loginWithTestUser(page: Page): Promise<void> {
         await acceptCookies.click();
       }
 
+      // Chooser-first /login (2026-06-08 redesign): the email/password form is
+      // revealed behind a "Continue with email" button. Click it (if present)
+      // before querying the email field.
+      const continueWithEmail = page.getByRole("button", { name: /continue with email/i });
+      if (await continueWithEmail.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await continueWithEmail.click();
+      }
+
       const emailInput = page.getByPlaceholder("you@domain.com");
       const passwordInput = page.getByPlaceholder(/your password/i);
       await expect(emailInput).toBeVisible({ timeout: 15_000 });

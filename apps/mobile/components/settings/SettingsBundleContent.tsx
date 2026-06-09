@@ -362,6 +362,8 @@ function SegmentedRow({
                 flex: 1,
                 paddingVertical: 6,
                 borderRadius: 6,
+                // Active segment — white lift on the warm-grey rail (Sloe
+                // treatment #8, 2026-06-08).
                 backgroundColor: active ? colors.card : "transparent",
                 alignItems: "center",
               }}
@@ -370,7 +372,9 @@ function SegmentedRow({
                 style={{
                   fontSize: 12,
                   fontWeight: active ? "700" : "500",
-                  color: active ? colors.text : colors.textSecondary,
+                  // Active label reads in `Accent.primarySolid` (aubergine);
+                  // inactive stays muted on the rail (treatment #8).
+                  color: active ? Accent.primarySolid : colors.textSecondary,
                 }}
               >
                 {opt.label}
@@ -1560,12 +1564,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       </Pressable>
 
       {/* Sloe Pro upsell banner — Figma 09 Settings `335:2` / `335:23`.
-          Full-width soft peach/clay-tint rounded card: sparkle + "Sloe Pro"
-          (clay) on the left, "Manage" (clay) on the right. For free/base
+          Full-width aubergine soft-tint rounded card: sparkle + "Sloe Pro"
+          on the left, a "Manage" OUTLINE pill on the right. For free/base
           users "Manage" routes to the paywall (upgrade); for Pro users it
           opens the existing manage-subscription flow (RevenueCat customer
           center). The detailed upgrade/manage/promo rows still live in the
-          Membership card below — this banner is the at-a-glance entry. */}
+          Membership card below — this banner is the at-a-glance entry.
+          2026-06-08: the card tint moved off the hardcoded clay rgba to
+          `Accent.primarySoft` (Pro = the brand aubergine, treatment #9), and
+          the "Manage" text became an aubergine OUTLINE pill (treatment #1)
+          so the action reads as a button, not flat coloured text. Matches
+          the web banner (`Settings.tsx` — `--primary` 16% tint). */}
       <Pressable
         testID="settings-sloe-pro-banner"
         accessibilityRole="button"
@@ -1588,27 +1597,35 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           paddingVertical: 16,
           paddingHorizontal: 16,
           borderRadius: SETTINGS_CARD_RADIUS,
-          backgroundColor: "rgba(200, 121, 78, 0.16)",
+          backgroundColor: Accent.primarySoft,
           marginTop: 18,
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
+          <Sparkles size={18} color={Accent.primarySolid} strokeWidth={1.75} />
           <Text
             style={{
               fontSize: 15,
               fontWeight: "600",
-              color: accent.primarySolid,
+              color: Accent.primarySolid,
             }}
           >
             Sloe Pro
           </Text>
         </View>
-        <Text
-          style={{ fontSize: 14, fontWeight: "600", color: accent.primarySolid }}
+        <View
+          style={{
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: Radius.full,
+            borderWidth: 1.5,
+            borderColor: Accent.primarySolid,
+          }}
         >
-          Manage
-        </Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primarySolid }}>
+            Manage
+          </Text>
+        </View>
       </Pressable>
 
       {/* Stats strip — Recipes / Streak.
@@ -1722,6 +1739,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fontSize: 14,
             }}
           />
+          {/* Save name — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
+              Everyday primary CTA: transparent fill, 1.5px `Accent.primarySolid`
+              border + label. */}
           <Pressable
             testID="settings-bundle-name-save"
             onPress={() => void handleSaveName()}
@@ -1732,13 +1752,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               paddingHorizontal: 18,
               paddingVertical: 12,
               borderRadius: 12,
-              backgroundColor: accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
               opacity:
                 nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
               {nameSaving ? "..." : "Save"}
             </Text>
           </Pressable>
@@ -1916,6 +1938,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 fontSize: 14,
               }}
             />
+            {/* Apply promo — aubergine OUTLINE (Sloe treatment #1,
+                2026-06-08). */}
             <Pressable
               testID="settings-bundle-promo-code-apply"
               onPress={() => void handleRedeemPromo()}
@@ -1924,12 +1948,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 paddingHorizontal: 20,
                 paddingVertical: 12,
                 borderRadius: 12,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
                 {promoSubmitting ? "..." : "Apply"}
               </Text>
             </Pressable>
@@ -2670,11 +2696,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               </View>
             </View>
 
+            {/* Refresh my plan — aubergine OUTLINE (Sloe treatment #1,
+                2026-06-08). The primary (non-destructive) action in the reset
+                modal: transparent fill, 1.5px `Accent.primarySolid` border +
+                label, sitting visually above the red "Erase everything" so the
+                safe path reads calm and the destructive path stays red. */}
             <Pressable
               onPress={() => handleRefreshPlan()}
               disabled={resetting}
               style={{
-                backgroundColor: t.accent,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 borderRadius: Radius.md,
                 paddingVertical: 16,
                 alignItems: "center",
@@ -2682,12 +2715,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 opacity: resetting ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 {resetting ? "Starting..." : "Refresh my plan"}
               </Text>
               <Text
                 style={{
-                  color: "rgba(255,255,255,0.7)",
+                  color: Accent.primarySolid,
+                  opacity: 0.7,
                   fontSize: 11,
                   marginTop: 2,
                 }}
@@ -3073,17 +3107,20 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 </Pressable>
               );
             })}
+            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
             <Pressable
               onPress={() => setWidgetPickerOpen(false)}
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>
@@ -3200,15 +3237,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setCaffeineTargetPickerOpen(false);
               }}
+              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3316,15 +3356,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setAlcoholTargetPickerOpen(false);
               }}
+              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3475,17 +3518,20 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackColor={{ false: colors.border, true: accent.primary }}
               />
             </View>
+            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
             <Pressable
               onPress={() => setWeeklyRecapPushPickerOpen(false)}
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>

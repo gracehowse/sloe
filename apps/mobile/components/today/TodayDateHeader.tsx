@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
-import { Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
@@ -308,6 +308,10 @@ export function TodayDateHeader({
                 overflow: "hidden",
               }}
             >
+              {/* Sloe treatment system (2026-06-08): segmented control
+                  active segment = soft-tint lift (Accent.primarySoft) +
+                  primarySolid icon; inactive = transparent on the
+                  warm-grey rail with a textSecondary glyph. */}
               <Pressable
                 onPress={() => onViewModeChange("day")}
                 accessibilityRole="button"
@@ -317,12 +321,12 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "day" ? textSecondaryColor + "18" : "transparent",
+                    viewMode === "day" ? Accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Sun size={14} color={viewMode === "day" ? textColor : textSecondaryColor} />
+                <Sun size={14} color={viewMode === "day" ? Accent.primarySolid : textSecondaryColor} />
               </Pressable>
               <Pressable
                 onPress={() => onViewModeChange("week")}
@@ -333,14 +337,14 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "week" ? textSecondaryColor + "18" : "transparent",
+                    viewMode === "week" ? Accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <LayoutGrid
                   size={14}
-                  color={viewMode === "week" ? textColor : textSecondaryColor}
+                  color={viewMode === "week" ? Accent.primarySolid : textSecondaryColor}
                 />
               </Pressable>
             </View>

@@ -7,7 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -392,14 +392,18 @@ export function TodayWeekView(props: TodayWeekViewProps) {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Weekly Summary</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: Spacing.md }}>
+          {/* SLOE Phase 0: the weekly-summary big stat numerals read in
+              Newsreader serif (the design system reserves big numerals for
+              serif). Family carries the weight, so the sans `fontWeight: 800`
+              is dropped; the labels below stay sans. */}
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontSize: 24, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
+            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: textColor, fontVariant: ["tabular-nums"] }}>
               {Math.round(weekTotals.calories)}
             </Text>
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Total kcal</Text>
           </View>
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontSize: 24, fontWeight: "800", color: accent.primary, fontVariant: ["tabular-nums"] }}>
+            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accent.primary, fontVariant: ["tabular-nums"] }}>
               {Math.round(weekAvg.calories)}
             </Text>
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>
@@ -424,8 +428,10 @@ export function TodayWeekView(props: TodayWeekViewProps) {
               <View style={{ alignItems: "center" }}>
                 <Text
                   style={{
+                    // SLOE Phase 0: big stat numeral in Newsreader serif
+                    // (family carries the weight; sans 800 dropped).
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 24,
-                    fontWeight: "800",
                     // Amber on over-burn (true surplus), success on
                     // deficit. Never red per project memory
                     // (`feedback_no_quick_temp_fixes.md` + spec §1.4).

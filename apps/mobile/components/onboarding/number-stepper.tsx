@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, StyleProp, Text, View, ViewStyle } from "react-native";
-import { Radius } from "@/constants/theme";
+import { FontFamily, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -85,8 +85,11 @@ export function MobileNumberStepper({
           accessibilityValue={{ now: value, min, max }}
           accessibilityRole="adjustable"
           style={{
+            // SLOE Phase 0: the onboarding stepper hero value reads in
+            // Newsreader serif (family carries the weight; sans 800 dropped).
+            // The +/− glyphs above/below stay sans.
+            fontFamily: FontFamily.serifRegular,
             fontSize: numSize,
-            fontWeight: "800",
             letterSpacing: -1.5,
             lineHeight: numSize,
             color: colors.text,

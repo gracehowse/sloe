@@ -105,23 +105,26 @@ export function PlanTemplatesSheet({
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Plan templates</Text>
           <Pressable onPress={onClose} accessibilityLabel="Close">
-            <Text style={{ color: accent.primary, fontWeight: "600" }}>Close</Text>
+            <Text style={{ color: accent.primarySolid, fontWeight: "600" }}>Close</Text>
           </Pressable>
         </View>
 
         <View style={styles.tabs}>
+          {/* Sloe treatment system (§7): selected segment = aubergine
+              soft-tint fill + primarySolid label; unselected = textSecondary.
+              Was a 13%-alpha primary fill + primary-fill-coloured label. */}
           <Pressable
             onPress={() => setMode("save")}
             style={[
               styles.tab,
-              mode === "save" && { backgroundColor: accent.primary + "22" },
+              mode === "save" && { backgroundColor: accent.primarySoft },
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === "save" }}
           >
             <Text
               style={{
-                color: mode === "save" ? accent.primary : colors.textSecondary,
+                color: mode === "save" ? accent.primarySolid : colors.textSecondary,
                 fontWeight: "600",
                 fontSize: 13,
               }}
@@ -133,14 +136,14 @@ export function PlanTemplatesSheet({
             onPress={() => setMode("list")}
             style={[
               styles.tab,
-              mode === "list" && { backgroundColor: accent.primary + "22" },
+              mode === "list" && { backgroundColor: accent.primarySoft },
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === "list" }}
           >
             <Text
               style={{
-                color: mode === "list" ? accent.primary : colors.textSecondary,
+                color: mode === "list" ? accent.primarySolid : colors.textSecondary,
                 fontWeight: "600",
                 fontSize: 13,
               }}
@@ -180,14 +183,17 @@ export function PlanTemplatesSheet({
                   accessibilityLabel={`Save ${d} day${d === 1 ? "" : "s"}`}
                   style={[
                     styles.dayChip,
+                    // Sloe treatment system (§7): selected pill = aubergine
+                    // soft-tint fill + primarySolid border/label, NOT a solid
+                    // fill (the fill is rationed to the FAB + conversion CTAs).
                     d === dayCount
-                      ? { backgroundColor: accent.primary, borderColor: accent.primary }
+                      ? { backgroundColor: accent.primarySoft, borderColor: accent.primarySolid }
                       : { borderColor: colors.cardBorder },
                   ]}
                 >
                   <Text
                     style={{
-                      color: d === dayCount ? "#fff" : colors.text,
+                      color: d === dayCount ? accent.primarySolid : colors.text,
                       fontWeight: "600",
                       fontSize: 13,
                     }}
@@ -211,16 +217,23 @@ export function PlanTemplatesSheet({
                 {error}
               </Text>
             ) : null}
+            {/* Sloe treatment system (§1): primary inline CTA = aubergine
+                OUTLINE (transparent fill, 1.5px primarySolid border + label).
+                Disabled = muted hairline border + tertiary label. */}
             <Pressable
               onPress={handleSave}
               disabled={!canSave}
               style={[
                 styles.primaryBtn,
-                { backgroundColor: canSave ? accent.primary : colors.cardBorder },
+                {
+                  backgroundColor: "transparent",
+                  borderWidth: 1.5,
+                  borderColor: canSave ? accent.primarySolid : colors.cardBorder,
+                },
               ]}
               accessibilityLabel="Save template"
             >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>
+              <Text style={{ color: canSave ? accent.primarySolid : colors.textTertiary, fontWeight: "700" }}>
                 {saving ? "Saving…" : "Save template"}
               </Text>
             </Pressable>
@@ -258,7 +271,7 @@ export function PlanTemplatesSheet({
                     accessibilityLabel={`Apply ${t.name} to this week`}
                     style={styles.rowBtn}
                   >
-                    <Text style={{ color: accent.primary, fontWeight: "600" }}>Apply</Text>
+                    <Text style={{ color: accent.primarySolid, fontWeight: "600" }}>Apply</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {

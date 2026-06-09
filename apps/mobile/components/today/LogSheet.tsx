@@ -573,7 +573,10 @@ function LoggedConfirmation({
         </View>
       </View>
 
-      {/* Actions — primary Done (clay CTA) + optional quiet Undo. */}
+      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
+          system (2026-06-08): the primary inline CTA is AUBERGINE
+          OUTLINE (transparent fill + 1.5px primarySolid border +
+          primarySolid label), not a filled slab. */}
       <View style={{ width: "100%", marginTop: Spacing.lg, gap: Spacing.sm }}>
         <Pressable
           accessibilityRole="button"
@@ -586,10 +589,15 @@ function LoggedConfirmation({
           }}
           style={({ pressed }) => [
             styles.confirmPrimary,
-            { backgroundColor: accent.primary, opacity: pressed ? 0.85 : 1 },
+            {
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
+              opacity: pressed ? 0.6 : 1,
+            },
           ]}
         >
-          <Text style={{ color: accent.primaryForeground, fontSize: 14, fontWeight: "700" }}>
+          <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
             Done
           </Text>
         </Pressable>
@@ -915,7 +923,11 @@ function BrowseAndFooter({
                   <Text
                     style={[
                       styles.browsePillLabel,
-                      { color: active ? colors.text : colors.textSecondary },
+                      // Sloe treatment system (2026-06-08): segmented
+                      // control active segment = white lift (the pill
+                      // bg above) + primarySolid label; inactive =
+                      // textSecondary on the warm-grey rail.
+                      { color: active ? accent.primarySolid : colors.textSecondary },
                     ]}
                   >
                     {baseLabel}
@@ -1196,12 +1208,15 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
             style={({ pressed }) => [
               styles.libraryEmptyCta,
               {
-                backgroundColor: accent.primary,
-                opacity: pressed ? 0.85 : 1,
+                // Sloe treatment system (2026-06-08): "Browse" is a
+                // SECONDARY action → off-white fill (colors.card
+                // #F6F5F2) + ink label, no accent. Mirror of web.
+                backgroundColor: colors.card,
+                opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
-            <Text style={styles.libraryEmptyCtaText}>Browse recipes</Text>
+            <Text style={[styles.libraryEmptyCtaText, { color: colors.text }]}>Browse recipes</Text>
           </Pressable>
         ) : null}
       </View>
@@ -1506,12 +1521,17 @@ function BarcodeManualEntry({
           height: 44,
           // Sloe DS — pill-soft CTA (mirrors web `rounded-xl`).
           borderRadius: Radius.xl,
-          backgroundColor: accent.primary,
+          // Sloe treatment system (2026-06-08): primary inline CTA →
+          // aubergine outline (transparent fill + 1.5px primarySolid
+          // border + primarySolid label), not a filled slab.
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Log it</Text>
+        <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>Log it</Text>
       </Pressable>
     </ScrollView>
   );
@@ -1679,7 +1699,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   libraryEmptyCtaText: {
-    color: "#fff",
+    // Colour is set inline to colors.text (secondary off-white-fill
+    // treatment) — overridden by the caller.
     fontSize: 14,
     fontWeight: "700",
   },

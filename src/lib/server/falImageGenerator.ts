@@ -68,7 +68,25 @@ import { describeDishAppearance } from "./llmDishAppearance";
  * when the model does. See docs/brand/sloe-image-prompt-template.md §6 +
  * the 2026-06-08 decision doc.
  */
-const FAL_MODEL = "fal-ai/nano-banana-pro";
+// Model is env-swappable. FLUX dev is the cheap bulk run NOW (~$0.02/image,
+// luxury-grade editorial food photography — verified 2026-06-08); Nano Banana
+// Pro returns for the launch hero set. Override with FAL_IMAGE_MODEL.
+const FAL_MODEL = process.env.FAL_IMAGE_MODEL?.trim() || "fal-ai/flux/dev";
+const IS_FLUX = /flux/i.test(FAL_MODEL);
+
+/** Map the brand template's aspect_ratio to a FLUX `image_size` enum.
+ *  (FLUX has no aspect_ratio field; it takes a named image_size.) */
+function aspectToImageSize(ar: string): string {
+  switch (ar) {
+    case "1:1": return "square_hd";
+    case "4:3": return "landscape_4_3";
+    case "3:2": return "landscape_4_3";
+    case "16:9": return "landscape_16_9";
+    case "3:4": return "portrait_4_3";
+    case "9:16": return "portrait_16_9";
+    default: return "square_hd";
+  }
+}
 /**
  * Template A (dish heroes) — the editorial house style + cooked-state guards,
  * pinned identically on EVERY hero call (the consistency lever, mirroring the
@@ -292,17 +310,31 @@ async function runNano(
     // `system_prompt` is a Gemini-3 passthrough not enumerated on the fal TS
     // type for Nano, so attach it alongside the typed fields. The cast keeps
     // the required `prompt` typed while permitting the extra key.
-    const nanoInput: NanoBananaProInput & { system_prompt: string } = {
-      prompt,
-      system_prompt: opts.systemPrompt,
-      aspect_ratio: opts.aspectRatio,
-      resolution: "2K",
-      output_format: "jpeg",
-      num_images: 1,
-      // Dish heroes omit the seed (each dish is unique — variety is fine);
-      // ingredient tiles pin one seed so the whole set is reproducibly coherent.
-      ...(opts.seed != null ? { seed: opts.seed } : {}),
-    };
+    // FLUX takes a named `image_size` and has NO `system_prompt` field, so the
+    // house-style system instruction folds into the positive prompt (the
+    // consistency lever either way — see the note above). Nano keeps the typed
+    // shape. 28 steps / guidance 3.5 = FLUX dev's quality sweet spot.
+    const falInput = IS_FLUX
+      ? {
+          prompt: [opts.systemPrompt, prompt].filter(Boolean).join("\n\n"),
+          image_size: aspectToImageSize(opts.aspectRatio),
+          num_inference_steps: 28,
+          guidance_scale: 3.5,
+          num_images: 1,
+          enable_safety_checker: true,
+          ...(opts.seed != null ? { seed: opts.seed } : {}),
+        }
+      : ({
+          prompt,
+          system_prompt: opts.systemPrompt,
+          aspect_ratio: opts.aspectRatio,
+          resolution: "2K",
+          output_format: "jpeg",
+          num_images: 1,
+          // Dish heroes omit the seed (variety per dish); ingredient tiles pin
+          // one seed so the whole set is reproducibly coherent.
+          ...(opts.seed != null ? { seed: opts.seed } : {}),
+        } as NanoBananaProInput & { system_prompt: string });
     // Bounded with our own timeout race: fal's client-side `timeout` field is
     // documented as "currently not enforced", so we guard the function-level
     // hang ourselves. A 2K Nano gen normally lands in ~40s; under heavy queue
@@ -311,7 +343,7 @@ async function runNano(
     // backfill or a server request forever (the module's never-hang contract).
     result = await withTimeout(
       client.subscribe(FAL_MODEL, {
-        input: nanoInput,
+        input: falInput,
         // Active polling — the proven-reliable shape for the 2K Nano endpoint
         // (see the reliability note above). The status callback is a no-op; its
         // presence is what keeps the queue poll running.

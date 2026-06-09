@@ -100,11 +100,18 @@ describe("Library — desktop prototype port (2026-04-20)", () => {
   });
 
   describe("mobile-web 2-column rebuild — Sloe Figma 527:2 (ENG-921, 2026-06-08)", () => {
-    // The narrow (< md) Library was rebuilt to match the Sloe Figma
-    // `527:2` cookbook frame: a 2-column photo grid, each card showing a
-    // bookmark overlay + `★ saves · time` meta (NO macros, NO `…`
-    // overflow, NO kind badge), a single category-pill row, and a calm
-    // count line. Web + mobile parity is enforced by pinning both here.
+    // The narrow (< md) Library is the Sloe Figma `527:2` cookbook frame:
+    // a 2-column photo grid, each card showing a bookmark overlay, a calm
+    // `★ saves · time` meta line, a single category-pill row, and a calm
+    // count line. NO `…` overflow, NO kind badge.
+    //
+    // 2026-06-08 (recipe-card redesign-conformance pass) — the earlier
+    // "NO macros on the card" call was REVERSED: cards carried no macro
+    // data and read as unloaded/broken, so a macro row (kcal · protein ·
+    // carbs · fat, protein emphasised — recipes.md §3.1) is now rendered
+    // beneath the title on BOTH the desktop and mobile-web cards. The
+    // saves/time line stays as a quieter secondary meta. Web + mobile
+    // parity is enforced by pinning both here.
 
     describe("web (src/app/components/Library.tsx)", () => {
       it("renders the 2-column grid with a `library-mobile-grid` test id", () => {
@@ -117,10 +124,22 @@ describe("Library — desktop prototype port (2026-04-20)", () => {
         // field on RecipeCard — a 4.8-style score would be invented data
         // and would trip recipeCardNoScore.test.ts + the trust posture.
         expect(SRC).toMatch(/recipe\.savedCount/);
-        // The mobile-web card must NOT print P/C/F gram chips anymore
-        // (those moved to the detail screen). The old chips read
-        // `P: {recipe.protein}g` etc — pin they're gone from the file.
+        // The legacy `P: {recipe.protein}g` chip format (a denser,
+        // letter-prefixed style) is gone — the macro row below uses the
+        // calm `{protein}g` + macro-hue-icon grammar instead.
         expect(SRC).not.toMatch(/P:\s*\{recipe\.protein\}g/);
+      });
+
+      it("renders the macro row (kcal · protein · carbs · fat) beneath the card title (recipes.md §3.1)", () => {
+        // Reversal of the earlier "NO macros" call: cards now carry the
+        // macro row so they read as a tracker, not unloaded/broken. The
+        // four macro colour vars are referenced; protein leads.
+        for (const v of ["--macro-calories", "--macro-protein", "--macro-carbs", "--macro-fat"]) {
+          expect(SRC, `web Library card missing ${v}`).toContain(v);
+        }
+        // kcal is suppressed at ≤0 so an un-computed recipe never shows a
+        // confident "0 kcal".
+        expect(SRC).toMatch(/kcal > 0 \?/);
       });
 
       it("renders a bookmark overlay toggle per card and no `…` overflow on the card", () => {
@@ -151,11 +170,16 @@ describe("Library — desktop prototype port (2026-04-20)", () => {
         expect(MOBILE_SRC).toMatch(/columnWrapperStyle=\{styles\.columnWrap\}/);
       });
 
-      it("card meta uses the real saves count + Star/Clock, not MacroIconRow", () => {
+      it("card renders the macro row (MacroIconRow) AND keeps the saves/time meta", () => {
+        // 2026-06-08 (recipe-card redesign-conformance): the macro row was
+        // RE-ADDED to the card (recipes.md §3.1) after the cards read as
+        // unloaded/broken without it. The honest `★ saves · time` line is
+        // kept as a quieter secondary meta — Star + savesCount stay.
         expect(MOBILE_SRC).toMatch(/savesCount/);
         expect(MOBILE_SRC).toMatch(/\bStar\b/);
-        // MacroIconRow (the macro chips) was removed from the card.
-        expect(MOBILE_SRC).not.toMatch(/MacroIconRow/);
+        expect(MOBILE_SRC).toMatch(/<MacroIconRow/);
+        // Protein is emphasised so the card reads as a tracker (§3.1).
+        expect(MOBILE_SRC).toMatch(/emphasiseProtein/);
       });
 
       it("removes the `…` overflow from the card (bookmark is the only overlay)", () => {

@@ -278,10 +278,13 @@ export function MobilePaceStep() {
             >
               Daily target
             </Text>
+            {/* SLOE Phase 0: the Daily-target hero numeral reads in Newsreader
+                serif (matching the 34px rate numeral above + the web pace
+                tile). Family carries the weight; the `kcal` unit stays sans. */}
             <Text
               style={{
+                fontFamily: FontFamily.serifRegular,
                 fontSize: 22,
-                fontWeight: "800",
                 color: colors.text,
                 fontVariant: ["tabular-nums"],
                 letterSpacing: -0.5,
@@ -313,10 +316,12 @@ export function MobilePaceStep() {
             >
               vs. your TDEE
             </Text>
+            {/* SLOE Phase 0: the vs-TDEE hero numeral reads in Newsreader serif
+                (family carries the weight; the `kcal / day` unit stays sans). */}
             <Text
               style={{
+                fontFamily: FontFamily.serifRegular,
                 fontSize: 22,
-                fontWeight: "800",
                 color: accent,
                 fontVariant: ["tabular-nums"],
                 letterSpacing: -0.5,

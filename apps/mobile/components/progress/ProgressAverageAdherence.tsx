@@ -17,7 +17,10 @@ import { formatMacroAdherenceBar } from "@suppr/shared/nutrition/progressWeekRep
  *
  * Every figure is real (range adherence + `progressRangeStats` macro
  * adherence). The "up N%" week-over-week trend chip only renders when the
- * host supplies a real delta — never fabricated.
+ * host supplies a real delta — never fabricated. The host does NOT yet pass
+ * `adherenceDeltaPct` because the weekly-aggregate stream isn't persisted
+ * (deferred: see ENG-741 weekly aggregate stream); when it lands the chip
+ * fills the top-right slot beside the on-target dots.
  *
  * Mirror: `src/app/components/suppr/progress-average-adherence.tsx`.
  */
@@ -91,19 +94,28 @@ export function ProgressAverageAdherence({
               </Text>
             </View>
           ) : null}
-          {/* On-target streak dots (sage filled / hairline empty). */}
-          <View
-            testID="progress-adherence-streak-dots"
-            accessibilityLabel={`${onTargetDays.filter(Boolean).length} of ${onTargetDays.length} days on target`}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-          >
-            {onTargetDays.map((on, i) => (
-              <View
-                key={i}
-                style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: on ? MacroColors.protein : colors.cardBorder }}
-              />
-            ))}
-          </View>
+          {/* On-target streak dots (sage filled / hairline empty).
+              ENG-1006 — suppressed entirely when zero days are on target,
+              mirroring `<ProgressOnTargetRibbon>`'s "don't show an empty
+              achievement" rule. A row of empty grey dots next to a >100%
+              headline read as broken/placeholder chrome (the dots are
+              this-week-scoped while the headline is range-scoped, so the
+              two can legitimately disagree). With nothing to celebrate,
+              show nothing rather than a dead dot row. */}
+          {onTargetDays.filter(Boolean).length > 0 ? (
+            <View
+              testID="progress-adherence-streak-dots"
+              accessibilityLabel={`${onTargetDays.filter(Boolean).length} of ${onTargetDays.length} days on target`}
+              style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+            >
+              {onTargetDays.map((on, i) => (
+                <View
+                  key={i}
+                  style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: on ? MacroColors.protein : colors.cardBorder }}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -137,7 +149,10 @@ export function ProgressAverageAdherence({
                   {bar.isOver ? <Text style={{ color: sub, fontWeight: "400" }}> · over</Text> : null}
                 </Text>
               </View>
-              <View style={{ marginTop: Spacing.sm, height: 8, borderRadius: 999, backgroundColor: colors.inputBg, overflow: "hidden" }}>
+              {/* §7.3 — adherence-bar track 4–6pt; 6pt keeps the fill
+                  legible while reading lighter than the prior 8pt
+                  full-width x4 stack (less "tracker dashboard"). */}
+              <View style={{ marginTop: Spacing.sm, height: 6, borderRadius: 999, backgroundColor: colors.inputBg, overflow: "hidden" }}>
                 <View
                   testID={`progress-adherence-bar-${name.toLowerCase()}`}
                   style={{ height: "100%", width: `${bar.barFillPct}%`, borderRadius: 999, backgroundColor: tone }}

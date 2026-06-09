@@ -551,6 +551,27 @@ Gap #5 (recent imports list mobile-only) and Gap #7 (manual entry split) are not
 
 ---
 
+## 6. Cookbook-import — premium-parity pass notes (2026-06-09)
+
+The DS-compliance pass on `apps/mobile/app/cookbook-import.tsx` fixed the following gaps identified by the premium-bar sweep:
+
+**Fixed (code shipped):**
+- Typography: `cardTitle` and review-row recipe names routed through `Type.headline` (serifMedium / Newsreader). All raw `fontWeight:'700'/'600'` strings replaced with `FontFamily.*` tokens (DS §2.3 rule 2).
+- Spacing: off-scale values removed — `padding:14` → `Spacing.md(16)`, `marginBottom:6` → `Spacing.xs(4)`, `borderRadius:16/14` → `Radius.xl(12)/Radius.lg(8)`, `Radius.xl*2=24` → `Radius.xl(12)`.
+- Alerts: non-destructive feedback (file-too-large, parse errors, paywall, save limit) replaced by inline `InlineBanner` component behind `recipe-import-redesign` flag (DS §10.8). Alert retained in flag-off (legacy) path.
+- Photography: `CookbookReviewRow` adds `UtensilsCrossed` warm fallback thumbnail (DS §11.4). `CookbookParsingView` replaces `ActivityIndicator` with `ChefHat` line-art glyph + thin terracotta progress track (import.md §3.3).
+- Row state: `CookbookReviewRow` uses DS §6.2 selected-card pattern (2pt terracotta border + 6% tint for included) and DS §10.1 visible `CheckCircle` checkbox trailing control for include/exclude state (replaces opacity+strikethrough only).
+- Pagination: `recipe-import-redesign` flag path replaces pager with single `FlatList` + sticky running-totals footer (import.md §3.5). Legacy pager preserved in flag-off path.
+- Success state: `CookbookSuccessView` component (flag-on only) — `CheckCircle` 56px success-green, Fraunces "Saved.", "In your library" chip, View/Plan CTAs. No Alert (DS §3.9 / import.md §3.9).
+- Button: CTA routes through `FontFamily.sansSemibold` (Inter 600) + `accent.primaryForeground` token. `Radius.xl(12)`. Min-height 48pt.
+- Components extracted to `apps/mobile/components/cookbook/`: `CookbookParsingView`, `CookbookSuccessView`, `CookbookReviewRow`. Reduces screen complexity (toward ENG-621 target).
+
+**Deferred (not fixed in this pass):**
+- **Web cookbook-import surface** (sev 5 parity gap): no web UI exists for the batch-cookbook-import journey (multi-recipe parse, per-recipe exclude, author-vs-match, partial-save). The API routes exist but no web page/component. Building a correct web surface is >80 lines and blocked on the `recipe-import-redesign` import-screen parity work (gaps #3/#4 from §5 above must land first). Tracking as ENG-NNN — see gapsDeferred. // deferred: see ENG-NNN (to be filed)
+- **Sweep harness hard-fail for flag-gated routes** (sev 5 functionality): the sweep that produced the false positive `cookbook-import.png` (byte-identical to plan.png) captured the Plan fallback because `cookbook_import_enabled` was off. The harness should detect `router.back()` on mount and fail the sweep. This is a test-infra fix, not a cookbook-import code fix. // deferred: see ENG-NNN (to be filed)
+
+---
+
 ## 6. FUNCTIONALITY PRESERVED Checklist
 
 Every audited feature, data point, interaction, and gating from the functional inventory is checked against this spec. Nothing may be dropped, hidden, simplified, or weakened. Where a feature is upgraded, "IMPROVED" is noted.

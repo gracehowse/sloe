@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, TrendingUp } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import type { WeeklyCheckinContent } from "@/lib/weeklyCheckin";
 
 /**
@@ -232,11 +232,15 @@ export function WeeklyCheckinModal({
               >
                 {Math.round(currentTargetKcal).toLocaleString("en-GB")}
               </Text>
+              {/* SLOE Phase 0: the suggested-target hero numeral reads in
+                  Newsreader serif (big numerals are a serif moment). Family
+                  carries the weight, so the sans `fontWeight: 800` is dropped;
+                  the struck-out prior value + `kcal/day` unit stay sans. */}
               <Text
                 style={[
                   {
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 22,
-                    fontWeight: "800",
                     color: Accent.primary,
                   },
                   tabularStyle,
@@ -288,20 +292,27 @@ export function WeeklyCheckinModal({
             </Text>
           ) : null}
 
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid
+              border + primarySolid label). The "Keep current" tertiary
+              below keeps its neutral grey outline so the hierarchy reads. */}
           <Pressable
             onPress={onAccept}
             accessibilityRole="button"
             accessibilityLabel="Accept new target"
-            style={{
+            style={({ pressed }) => ({
               width: "100%",
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
               alignItems: "center",
               marginBottom: 10,
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
               Accept new target
             </Text>
           </Pressable>

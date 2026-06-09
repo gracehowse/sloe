@@ -79,12 +79,14 @@ describe("TodaySnapShortcut (mobile)", () => {
   });
 
   it("renders the 44x44 shutter button (premium-bar audit Feature 3 #6, 2026-05-14)", () => {
-    // The leading affordance was a 32x32 tinted square with a Camera
-    // glyph. The audit replaces it with an iOS Camera-style filled
-    // shutter button — 44x44, solid `Accent.primary` background,
-    // white 22pt glyph. The testID + layout style are pinned so a
-    // future refactor that tries to flatten the visual cue (e.g. to
-    // just `<Camera>` without the circle) fires this test.
+    // The leading affordance is an iOS Camera-style 44x44 circular
+    // shutter. Sloe treatment system (2026-06-08) re-skinned the fill
+    // from solid `Accent.primary` to a soft-tint container
+    // (`Accent.primarySoft` + `primarySolid` glyph) so the FAB stays the
+    // one filled moment (and to restore web↔mobile parity). The testID +
+    // 44/44/22 layout are pinned so a future refactor that flattens the
+    // visual cue (e.g. to just `<Camera>` without the circle) fires this
+    // test. Colour is intentionally NOT pinned here.
     const { getByTestId } = render(<TodaySnapShortcut onPress={() => {}} />);
     const shutter = getByTestId("today-snap-shortcut-shutter");
     expect(shutter).toBeTruthy();

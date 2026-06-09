@@ -47,7 +47,11 @@ export function TodayEatAgainBanner({
   onLog,
   onDismiss,
 }: TodayEatAgainBannerProps) {
-  const cardBg = surfaceBackgroundColor ?? Accent.primary + "08";
+  // Sloe treatment system (2026-06-08): the eat-again prompt is a
+  // soft-tint NUDGE card — a faint aubergine wash (`Accent.primarySoft`,
+  // 10%) signals "actionable" without a loud fill. The host may still
+  // override with neutral chrome via the surface* props.
+  const cardBg = surfaceBackgroundColor ?? Accent.primarySoft;
   const cardBorder = surfaceBorderColor ?? Accent.primary + "30";
   // 220ms ease-out fade + translate on first paint. No reduce-motion
   // gate here because the banner is a small accent (not a full-bleed
@@ -110,13 +114,23 @@ export function TodayEatAgainBanner({
         accessibilityRole="button"
         accessibilityLabel={`Log ${suggestion.recipeTitle} to ${slot}`}
         onPress={onLog}
-        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, backgroundColor: Accent.primary }}
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: Radius.sm,
+          // Sloe treatment system (2026-06-08): primary inline CTA →
+          // aubergine outline (transparent fill + 1.5px primarySolid
+          // border + primarySolid label), not a filled slab.
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: Accent.primarySolid,
+        }}
       >
         {/* 2026-05-12 (premium-bar audit copy unify): "LOG" all-caps
             was the lone outlier across Today CTAs. The canonical verb
             on the Today + LogSheet + NorthStar surfaces is "Log it"
             (sentence case). This banner now matches. */}
-        <Text style={{ ...Type.caption, color: "#fff" }}>Log it</Text>
+        <Text style={{ ...Type.caption, color: Accent.primarySolid, fontWeight: "700" }}>Log it</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"

@@ -179,6 +179,9 @@ export function WhereThisComesFromSheet({
           </Text>
 
           {primaryCta ? (
+            // Sloe treatment system (2026-06-08): primary inline CTA →
+            // aubergine outline (transparent fill + 1.5px primarySolid
+            // border + primarySolid label/glyph), not a filled slab.
             <Pressable
               onPress={primaryCta.onPress}
               disabled={primaryCta.busy}
@@ -189,7 +192,9 @@ export function WhereThisComesFromSheet({
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.full,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: Accent.primarySolid,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
@@ -198,8 +203,8 @@ export function WhereThisComesFromSheet({
               }}
               testID="where-this-comes-from-cta"
             >
-              <RefreshCw size={17} color="#fff" strokeWidth={2} />
-              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+              <RefreshCw size={17} color={Accent.primarySolid} strokeWidth={2} />
+              <Text style={{ color: Accent.primarySolid, fontWeight: "600", fontSize: 15 }}>
                 {primaryCta.busy ? "Syncing…" : primaryCta.label}
               </Text>
             </Pressable>

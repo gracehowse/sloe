@@ -28,7 +28,7 @@ import { Layout } from "@/constants/layout";
 import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
 import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -950,8 +950,12 @@ export default function ProgressScreen() {
     elevated: colors.card,
     border: colors.cardBorder,
     accent: accent.primary,
-    // Sloe plum (nav/brand primary) — fills the active range pill per
-    // Figma 492:2. Mirrors web `bg-foreground-brand`.
+    // Sloe treatment system (2026-06-08): the selected range pill + segmented
+    // active label now read in the deep aubergine `primarySolid` on a
+    // `primarySoft` tint (§7/§8), superseding the solid-plum range-pill fill.
+    accentSolid: accent.primarySolid,
+    accentSoft: accent.primarySoft,
+    // Sloe plum (nav/brand primary) — retained for any nav-brand chrome.
     plum: colors.navPrimary,
     green: Accent.success,
     amber: Accent.warning,
@@ -1030,13 +1034,15 @@ export default function ProgressScreen() {
                   paddingVertical: 8,
                   alignItems: "center",
                   borderRadius: 999,
-                  borderWidth: active ? 0 : 1,
-                  borderColor: t.border,
-                  backgroundColor: active ? t.plum : t.elevated,
+                  borderWidth: 1,
+                  // Skeleton mirrors the live range pill's soft-tint treatment
+                  // (Sloe §7) so the load state doesn't flash a different shape.
+                  borderColor: active ? t.accentSolid : t.border,
+                  backgroundColor: active ? t.accentSoft : t.elevated,
                   opacity: 0.6,
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "500", color: active ? "#FFFFFF" : t.sub }}>{k === "all" ? "All" : k}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{k === "all" ? "All" : k}</Text>
               </View>
             );
           })}
@@ -1108,7 +1114,7 @@ export default function ProgressScreen() {
       <View
         testID="progress-range-picker"
         accessibilityRole="tablist"
-        style={{ flexDirection: "row", gap: 6 }}
+        style={{ flexDirection: "row", gap: Spacing.sm }}
       >
         {(["7d", "30d", "90d", "all"] as const).map((k) => {
           const active = rangeKey === k;
@@ -1131,13 +1137,17 @@ export default function ProgressScreen() {
                 paddingHorizontal: 4,
                 alignItems: "center",
                 borderRadius: Radius.full,
-                backgroundColor: active ? t.plum : t.elevated,
-                borderWidth: active ? 0 : 1,
-                borderColor: t.border,
+                // Sloe treatment system (2026-06-08, §7): selected range pill =
+                // aubergine soft-tint fill + primarySolid border/label (was a
+                // solid plum fill). The accent stays rationed — the fill is
+                // reserved for the FAB + conversion CTAs.
+                backgroundColor: active ? t.accentSoft : t.elevated,
+                borderWidth: active ? 1 : 1,
+                borderColor: active ? t.accentSolid : t.border,
                 opacity: pressed ? 0.85 : 1,
               }]}
             >
-              <Text style={{ fontSize: 13, fontWeight: "500", color: active ? "#FFFFFF" : t.sub }}>{label}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{label}</Text>
             </Pressable>
           );
         })}
@@ -1281,11 +1291,13 @@ export default function ProgressScreen() {
                         paddingHorizontal: 12,
                         paddingVertical: 4,
                         borderRadius: 999,
+                        // Sloe treatment §8: active segment = white lift +
+                        // primarySolid label (was warm-ink text).
                         backgroundColor: active ? t.elevated : "transparent",
                         opacity: pressed ? 0.85 : 1,
                       }]}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "500", color: active ? t.text : t.sub, textTransform: "capitalize" }}>{v}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? t.accentSolid : t.sub, textTransform: "capitalize" }}>{v}</Text>
                     </Pressable>
                   );
                 })}
@@ -1355,11 +1367,15 @@ export default function ProgressScreen() {
                 paddingHorizontal: 18,
                 paddingVertical: 9,
                 borderRadius: 999,
-                backgroundColor: t.accent,
+                // Sloe treatment system (§1): primary inline CTA = aubergine
+                // OUTLINE (transparent fill, 1.5px primarySolid border + label).
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: t.accentSolid,
                 opacity: pressed ? 0.9 : 1,
               }]}
             >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>＋  Log weight</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: t.accentSolid }}>＋  Log weight</Text>
             </Pressable>
             {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable
@@ -1370,8 +1386,8 @@ export default function ProgressScreen() {
                 testID="progress-view-all-measurements"
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 4, marginTop: 10, opacity: pressed ? 0.7 : 1 })}
               >
-                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>View all measurements</Text>
-                <ArrowRight size={12} color={t.accent} strokeWidth={2} />
+                <Text style={{ fontSize: 12, color: t.accentSolid, fontWeight: "600" }}>View all measurements</Text>
+                <ArrowRight size={12} color={t.accentSolid} strokeWidth={2} />
               </Pressable>
             ) : null}
           </View>
@@ -1551,7 +1567,7 @@ export default function ProgressScreen() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-              <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...Type.display, color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
                 {resolved.kcal.toLocaleString()}
               </Text>
               <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
@@ -1619,13 +1635,13 @@ export default function ProgressScreen() {
                     hitSlop={8}
                     style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accentSolid }}>
                       {maintenanceExplainerOpen ? "Hide" : "How this works"}
                     </Text>
                     {maintenanceExplainerOpen ? (
-                      <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
+                      <ChevronUp size={14} color={t.accentSolid} strokeWidth={1.75} />
                     ) : (
-                      <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
+                      <ChevronDown size={14} color={t.accentSolid} strokeWidth={1.75} />
                     )}
                   </Pressable>
                   {maintenanceExplainerOpen && (
@@ -1735,10 +1751,12 @@ export default function ProgressScreen() {
                     </IconBox>
                     <Text style={{ ...Type.headline, color: t.plum }}>Journey</Text>
                   </View>
+                  {/* SLOE Phase 0: the days-to-goal hero numeral reads in
+                      Newsreader serif; the " days to goal" label stays sans. */}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     {timeline.daysToGoal != null ? (
-                      <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
-                        {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
+                      <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.accent, fontVariant: ["tabular-nums"] }}>
+                        {timeline.daysToGoal}<Text style={{ fontFamily: FontFamily.sansMedium, fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
                       </Text>
                     ) : timeline.cappedAtMaxDays ? (
                       <Text
@@ -1800,8 +1818,8 @@ export default function ProgressScreen() {
                   </View>
                 )}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
-                  <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: t.accentSolid }}>View weight trends</Text>
+                  <ChevronRight size={12} color={t.accentSolid} strokeWidth={1.75} />
                 </View>
               </Pressable>
             );

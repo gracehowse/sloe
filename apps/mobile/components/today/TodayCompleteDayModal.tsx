@@ -152,17 +152,24 @@ export function TodayCompleteDayModal({
             </Text>
           )}
 
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid
+              border + primarySolid label), not a filled slab. Mirror
+              of web `TodayCompleteDayDialog`. */}
           <Pressable
             onPress={onViewProgress}
-            style={{
+            style={({ pressed }) => ({
               width: "100%",
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: Accent.primarySolid,
               alignItems: "center",
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>View my progress</Text>
+            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 16 }}>View my progress</Text>
           </Pressable>
         </View>
       </View>

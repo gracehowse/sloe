@@ -33,6 +33,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { StreakPip } from "../../components/today/StreakPip";
 import WeeklyRecapScreen from "../../app/weekly-recap";
 import { selectClosestToTargetDay } from "@suppr/shared/nutrition/weeklyRecap";
+import { FontFamily, Type } from "../../constants/theme";
 
 void React;
 
@@ -113,6 +114,12 @@ vi.mock("expo-router", () => ({
   useLocalSearchParams: () => ({}),
   usePathname: () => "/weekly-recap",
 }));
+
+// lucide-react-native is already shimmed by tests/setup.ts via the
+// LUCIDE_SHIM_PATH resolver. Every icon stub renders a <View
+// accessibilityLabel={iconName} />. No per-test vi.mock needed — the
+// global shim applies. CalendarDays renders with
+// accessibilityLabel="CalendarDays".
 
 vi.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -305,16 +312,85 @@ describe("WeeklyRecap screen — render states", () => {
 
     const { findByTestId, getByTestId } = render(<WeeklyRecapScreen />);
 
-    // Empty card + headline copy land.
+    // Empty container + headline copy land (no card chrome — bare View).
     await findByTestId("weekly-recap-empty-card");
     expect(getByTestId("weekly-recap-empty-headline")).toBeTruthy();
+  });
+
+  it("empty state renders a sage icon above the headline (§10.7 step 1)", async () => {
+    setMode("ready");
+    loadEmpty();
+    const { findByLabelText } = render(<WeeklyRecapScreen />);
+    // The lucide shim (tests/setup.ts → lucide-react-native.cjs) renders every
+    // icon as a <View accessibilityLabel={iconName} />. CalendarDays renders with
+    // accessibilityLabel "CalendarDays" via the stub; the component passes its
+    // own accessibilityLabel prop which overrides it to "Calendar icon".
+    await findByLabelText("Calendar icon");
+  });
+
+  it("empty state ‘Log a meal’ CTA navigates to Today with openLog param", async () => {
+    setMode("ready");
+    loadEmpty();
+    const { findByLabelText } = render(<WeeklyRecapScreen />);
+    const cta = await findByLabelText("Log a meal");
+    fireEvent.press(cta);
+    expect(pushSpy).toHaveBeenCalledWith("/(tabs)?openLog=1");
+  });
+
+  it("hero numerals use the Newsreader serif font family token (§2.3 rule 3)", async () => {
+    setMode("ready");
+    loadFixture5of7();
+    const { findByTestId } = render(<WeeklyRecapScreen />);
+    // The days-logged card is the first rollup card. Its hero "N of 7 days"
+    // text carries Type.heroValue which uses FontFamily.serifMedium.
+    const daysCard = await findByTestId("weekly-recap-days-card");
+    // Traverse the card’s subtree to find the hero text node.
+    const heroText = daysCard.findAll(
+      (node) =>
+        (node.type as unknown) === "Text" &&
+        typeof node.props?.style === "object" &&
+        !Array.isArray(node.props.style) &&
+        (node.props.style as Record<string, unknown>).fontFamily === FontFamily.serifMedium,
+    );
+    expect(heroText.length).toBeGreaterThan(0);
+  });
+
+  it("section eyebrows use textSecondary colour (sage, design system §2.2)", async () => {
+    setMode("ready");
+    loadFixture5of7();
+    const { findByTestId } = render(<WeeklyRecapScreen />);
+    const daysCard = await findByTestId("weekly-recap-days-card");
+    // The eyebrow Text is the first Text child — it should NOT use
+    // textTertiary (#888 in mock) for colour.
+    const eyebrowTexts = daysCard.findAll(
+      (node) =>
+        (node.type as unknown) === "Text" &&
+        typeof node.props?.style === "object" &&
+        !Array.isArray(node.props.style) &&
+        (node.props.style as Record<string, unknown>).textTransform === "uppercase",
+    );
+    expect(eyebrowTexts.length).toBeGreaterThan(0);
+    // All eyebrows should use textSecondary (#555), NOT textTertiary (#888).
+    for (const n of eyebrowTexts) {
+      const style = n.props.style as Record<string, unknown>;
+      expect(style.color).not.toBe("#888"); // not textTertiary
+    }
+  });
+
+  it("inactive streak pip is suppressed in the header at 0 days", async () => {
+    setMode("ready");
+    loadEmpty();
+    const { queryByLabelText, findByTestId } = render(<WeeklyRecapScreen />);
+    await findByTestId("weekly-recap-empty-card");
+    // The non-tappable pip with 0 days should not appear in the header.
+    expect(queryByLabelText("0-day logging streak")).toBeNull();
   });
 
   it("renders the loading spinner during the initial fetch", () => {
     setMode("pending");
     const { getByTestId } = render(<WeeklyRecapScreen />);
     expect(getByTestId("weekly-recap-loading")).toBeTruthy();
-    // Reset to a deterministic mode so the next test isn't held open
+    // Reset to a deterministic mode so the next test isn’t held open
     // by a never-resolving supabase chain.
     setMode("ready");
   });

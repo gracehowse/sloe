@@ -78,14 +78,16 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
     expect(src).not.toMatch(/borderStyle:\s*"dashed"/);
   });
 
-  it("RecipeEditSheet commit CTA uses the secondary accent (Frost-flag aware)", () => {
+  it("RecipeEditSheet commit CTA is an aubergine OUTLINE (Sloe treatment system)", () => {
     const src = sheet();
-    // ENG-997 (Frost): the Save CTA fill reads the flag-aware secondary accent
-    // via `accent.primary` (clay flag-OFF → damson flag-ON). Threaded into the
-    // StyleSheet factory; the foreground stays the white primary-foreground.
+    // Sloe treatment system (2026-06-08): the Save CTA is the everyday primary,
+    // so it's an aubergine OUTLINE — transparent ground + 1.5px aubergine border
+    // + aubergine `primarySolid` label (light/dark via the theme `resolved`
+    // flag), NOT a filled slab. Supersedes the earlier filled `accent.primary`.
     expect(src).toContain('from "@/context/theme"');
-    expect(src).toMatch(/saveBtn:\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/);
-    expect(src).toMatch(/color:\s*colors\.primaryForeground/);
+    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?backgroundColor:\s*"transparent"/);
+    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?borderColor:\s*accentInk/);
+    expect(src).toMatch(/saveText:\s*\{[\s\S]*?color:\s*accentInk/);
   });
 
   it("IngredientEditRow stays fully tokenised (no hardcoded hex)", () => {

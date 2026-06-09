@@ -206,6 +206,10 @@ export function TodayDateHeader({
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Sloe treatment system (2026-06-08): segmented control
+              active segment = soft-tint lift (bg-primary/10) + primary-solid
+              icon; inactive = muted glyph on the warm-grey rail. Mirror
+              of mobile `TodayDateHeader`. */}
           {!hideViewModeToggle ? (
             <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
               <button
@@ -215,7 +219,7 @@ export function TodayDateHeader({
                 aria-pressed={viewMode === "day"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   viewMode === "day"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary/10 text-primary-solid shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -228,7 +232,7 @@ export function TodayDateHeader({
                 aria-pressed={viewMode === "week"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   viewMode === "week"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary/10 text-primary-solid shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

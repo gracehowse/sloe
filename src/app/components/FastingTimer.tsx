@@ -266,10 +266,10 @@ export function FastingTimer() {
               disabled={isFasting}
               aria-pressed={selected}
               aria-label={`Set fasting window to ${fastingWindowLabel(w)}`}
-              className={`font-[family-name:var(--font-label)] text-[13px] font-semibold px-4 py-2 rounded-full transition-colors tabular-nums ${
+              className={`font-[family-name:var(--font-label)] text-[13px] font-semibold px-4 py-2 rounded-full border transition-colors tabular-nums ${
                 selected
-                  ? "bg-[var(--foreground-brand)] text-white"
-                  : "bg-card border border-border text-muted-foreground hover:bg-muted/40"
+                  ? "bg-primary/10 border-primary-solid text-primary-solid"
+                  : "bg-card border-border text-muted-foreground hover:bg-muted/40"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {fastingWindowLabel(w)}
@@ -421,10 +421,10 @@ export function FastingTimer() {
             onClick={endFast}
             aria-label={isComplete ? "Complete fast" : "End fast early"}
             data-testid="fasting-end-button"
-            className={`w-full font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 transition-opacity hover:opacity-90 ${
+            className={`w-full font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 transition-colors ${
               isComplete
-                ? "bg-[var(--success)] text-white"
-                : "bg-primary text-primary-foreground"
+                ? "bg-[var(--success)] text-white hover:opacity-90"
+                : "bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5"
             }`}
           >
             {isComplete ? "Complete fast" : "End fast"}
@@ -468,7 +468,8 @@ export function FastingTimer() {
             type="button"
             onClick={startFast}
             data-testid="fasting-landing-start"
-            className="w-full max-w-xs font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE. */
+            className="w-full max-w-xs font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5 transition-colors"
           >
             Start {fastingWindowLabel(fastingWindow)} fast
           </button>

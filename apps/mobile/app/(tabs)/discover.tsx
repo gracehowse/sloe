@@ -20,7 +20,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
+import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
@@ -391,6 +391,14 @@ export default function DiscoverScreen() {
     fat: MacroColors.fat,
   };
 
+  // Aubergine-on-surface tokens (Sloe treatment system) — selected filter
+  // pills get a SOFT TINT fill + aubergine `primarySolid` label, NOT a solid
+  // accent slab (treatment §7). Light/dark aware so the accent clears AA on the
+  // dark card.
+  const isLight = colors.background === "#FFFFFF";
+  const accentInk = isLight ? Accent.primarySolid : Accent.primarySolidDark;
+  const accentSoft = isLight ? Accent.primarySoft : Accent.primarySoftDark;
+
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped
   // fit score and read as decorative noise.
@@ -441,7 +449,8 @@ export default function DiscoverScreen() {
               2026-05-03 — failed remote URLs use the same fallback and
               collapse aspect ratio via `DiscoverHeroMedia`. */}
           <DiscoverHeroMedia item={item} />
-          <View style={{ padding: 14 }}>
+          {/* Gap-3 fix (2026-06-09): card body padding 14 → Spacing.md (16) — on-scale. */}
+          <View style={{ padding: Spacing.md }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
             {/* F-45 (2026-04-22): fit-percent pill removed per repeated
@@ -451,8 +460,12 @@ export default function DiscoverScreen() {
                 otherwise, so it read as decorative noise. Keeping the
                 computation available via `computeRecipeFitPercent` in
                 case a future ranking pass wants it. */}
+            {/* Gap-1 fix (2026-06-09): recipe titles ALWAYS Newsreader serif per
+                design-system §2.3 rule 2. Was `{ ...Type.body, fontWeight: '700' }`
+                (Inter 14pt bold). Now `Type.headline` (Newsreader_500Medium 17pt)
+                + fontWeight '600' for card-scale legibility. */}
             <Text
-              style={{ ...Type.body, fontWeight: '700', color: colors.text, paddingRight: 48 }}
+              style={{ ...Type.headline, fontWeight: '600', color: colors.text, paddingRight: 48 }}
               numberOfLines={2}
             >
               {decodeEntities(item.title)}
@@ -488,8 +501,12 @@ export default function DiscoverScreen() {
                 discover should display like this"). Was 60 lines of
                 inline duplicate; component owns the icon/colour/letter
                 grammar so any palette token shift cascades cleanly. */}
+            {/* Gap-3 fix (2026-06-09): marginTop 10 → Spacing.sm (8) — on-scale.
+                Gap-6 fix: iconSize bumped 11→13 + emphasiseProtein active so protein
+                reads unmistakably heavier at card scale. `proteinTextColor` = full
+                ink (`colors.text`) vs secondary for all other macros. */}
             <MacroIconRow
-              kcal={kcal}
+              kcal={kcal > 0 ? kcal : null}
               protein={protein}
               carbs={carbs}
               fat={fat}
@@ -497,7 +514,10 @@ export default function DiscoverScreen() {
               cookTime={item.cookTime}
               textColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
-              style={{ marginTop: 10 }}
+              emphasiseProtein
+              proteinTextColor={colors.text}
+              iconSize={13}
+              style={{ marginTop: Spacing.sm }}
             />
             {/* GW-08 (audit 2026-04-28): pre-fix this card rendered a
                 TrustChip whose source was fabricated from `item.isVerified`
@@ -539,8 +559,10 @@ export default function DiscoverScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
-            padding: 12,
+            // Gap-3 fix (2026-06-09): row gap 12 → Spacing.md (16) — on-scale.
+            gap: Spacing.md,
+            // Gap-3 fix: row padding 12 → Spacing.md (16) — on-scale.
+            padding: Spacing.md,
             borderTopWidth: idx > 0 ? 1 : 0,
             borderTopColor: colors.cardBorder,
           }}
@@ -548,19 +570,24 @@ export default function DiscoverScreen() {
           {/* F-55 (2026-04-22): use real thumbnail when the recipe has
               an image_url (social-feed parity — tester flagged "the
               more you might like is wrong - this is supposed to be
-              like a social media feed"). Chef-hat glyph box stays as
-              the fallback for image-less rows. */}
+              like a social media feed").
+              2026-06-08 (§11.4): image-less / broken rows now fall back
+              to the warm sage→cream RecipeHeroFallback (same calm tile as
+              the hero card + Library), not a flat inputBg chef-hat box —
+              so the row never reads as an empty grey/lilac thumbnail. */}
           <DiscoverCoverImage
             uri={item.image}
             style={{ width: 56, height: 56, borderRadius: 10 }}
             fallback={
-              <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-                <ChefHat size={20} color={colors.textSecondary} />
+              <View style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
+                <RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />
               </View>
             }
           />
           <View style={{ flex: 1 }}>
-            <Text style={{ ...Type.body, color: colors.text }} numberOfLines={1}>
+            {/* Gap-1 fix (2026-06-09): recipe names ALWAYS Newsreader serif per
+                design-system §2.3 rule 2. Was Type.body (Inter 14pt). */}
+            <Text style={{ ...Type.headline, fontWeight: '600', color: colors.text }} numberOfLines={1}>
               {decodeEntities(item.title)}
             </Text>
             <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
@@ -596,18 +623,21 @@ export default function DiscoverScreen() {
         }
         keyboardShouldPersistTaps="handled"
       >
-        {/* Search bar — title + Library/Discover tabs live in RecipesTabChrome. */}
+        {/* Search bar — title + Library/Discover tabs live in RecipesTabChrome.
+            Gap-3 fix (2026-06-09): paddingHorizontal/paddingVertical 14 → Spacing.md
+            (16); marginBottom 14 → Spacing.md (16); borderRadius 12 → Radius.xl (12)
+            — Radius.xl is the on-scale token for this size. gap 10 → Spacing.sm (8). */}
         <View style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
-          paddingHorizontal: 14,
-          paddingVertical: 14,
-          borderRadius: 12,
+          gap: Spacing.sm,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.xl,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.cardBorder,
-          marginBottom: 14,
+          marginBottom: Spacing.md,
         }}>
           <Search size={16} color={colors.textTertiary} />
           <TextInput
@@ -643,13 +673,19 @@ export default function DiscoverScreen() {
             instead of clipping at the bottom border. paddingRight:32
             on the contentContainer keeps the trailing pill from
             sitting flush against the screen edge. */}
-        {/* Category filter pills — ENG-921 / Figma `528:2`. Clay-fill
-            active (solid), line-border inactive. "Following" leads as a
-            secondary feed-scope toggle. Web parity: DiscoverFeed.tsx. */}
+        {/* Category filter pills — ENG-921 / Figma `528:2`. Aubergine SOFT-TINT
+            active (treatment §7), line-border inactive. "Following" leads as a
+            secondary feed-scope toggle. Web parity: DiscoverFeed.tsx.
+            Gap-3 fix (2026-06-09): pill ScrollView marginBottom 12 → Spacing.sm (8).
+            paddingHorizontal: 13 is intentional for descender clearance ("Q" in
+            Quick, "g" in High-Protein) — kept as a chip-specific carve-out, not
+            drift. Documented here so it never reads as an untracked gap.
+            Gap-5 fix: pill label upgraded from Type.caption (11pt) to Type.body
+            (14pt Inter Medium) so filter pills read as deliberate controls. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: Spacing.sm }}
           contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
         >
           <Pressable
@@ -667,15 +703,16 @@ export default function DiscoverScreen() {
               minHeight: 36,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: following ? t.accent : colors.cardBorder,
-              backgroundColor: following ? t.accent : "transparent",
+              // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+              borderColor: following ? accentSoft : colors.cardBorder,
+              backgroundColor: following ? accentSoft : "transparent",
               justifyContent: "center",
               alignItems: "center",
             }}
           >
             <Text
               numberOfLines={1}
-              style={{ ...Type.caption, fontWeight: "600", lineHeight: 18, color: following ? "#fff" : colors.textSecondary }}
+              style={{ ...Type.body, fontWeight: "600", color: following ? accentInk : colors.textSecondary }}
             >
               Following
             </Text>
@@ -699,15 +736,16 @@ export default function DiscoverScreen() {
                   minHeight: 36,
                   borderRadius: 20,
                   borderWidth: 1,
-                  borderColor: active ? t.accent : colors.cardBorder,
-                  backgroundColor: active ? t.accent : "transparent",
+                  // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+                  borderColor: active ? accentSoft : colors.cardBorder,
+                  backgroundColor: active ? accentSoft : "transparent",
                   justifyContent: "center",
                   alignItems: "center",
                 }}
               >
                 <Text
                   numberOfLines={1}
-                  style={{ ...Type.caption, fontWeight: "600", lineHeight: 18, color: active ? "#fff" : colors.textSecondary }}
+                  style={{ ...Type.body, fontWeight: "600", color: active ? accentInk : colors.textSecondary }}
                 >
                   {f.label}
                 </Text>
@@ -728,9 +766,11 @@ export default function DiscoverScreen() {
             when the user has typed at least 3 characters; collapsed
             when no hits so we don't waste vertical space. TestFlight
             `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
+        {/* Gap-3 fix (2026-06-09): eating-out section marginBottom 14 → Spacing.md (16);
+            header row marginBottom 6 → Spacing.xs (4) — nearest on-scale. */}
         {(eatingOutLoading || eatingOut.length > 0) && (
-          <View style={{ marginBottom: 14 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <View style={{ marginBottom: Spacing.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.xs }}>
               <Text style={{ ...Type.label, color: colors.textSecondary }}>
                 Eating out
               </Text>
@@ -763,7 +803,8 @@ export default function DiscoverScreen() {
                   onPress={() => router.push("/(tabs)" as any)}
                   style={{
                     width: 160,
-                    padding: 10,
+                    // Gap-3 fix (2026-06-09): card padding 10 → Spacing.sm (8).
+                    padding: Spacing.sm,
                     borderRadius: Radius.md,
                     backgroundColor: colors.card,
                     borderWidth: 1,
@@ -775,13 +816,14 @@ export default function DiscoverScreen() {
                       {m.brand.toUpperCase()}
                     </Text>
                   ) : null}
-                  <Text style={{ ...Type.caption, fontWeight: '600', color: colors.text, marginBottom: 6 }} numberOfLines={2}>
+                  {/* Gap-3 fix (2026-06-09): marginBottom 6 → Spacing.xs (4). */}
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: colors.text, marginBottom: Spacing.xs }} numberOfLines={2}>
                     {m.label}
                   </Text>
                   <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </Text>
-                  <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
+                  <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: Spacing.xs }}>per 100 g</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -802,20 +844,23 @@ export default function DiscoverScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
-            padding: 14,
+            // Gap-3 fix (2026-06-09): gap 12 → Spacing.md (16); padding 14 →
+            // Spacing.md (16); marginBottom 14 → Spacing.md (16).
+            gap: Spacing.md,
+            padding: Spacing.md,
             borderRadius: Radius.lg,
             backgroundColor: t.accent + "08",
             borderWidth: 1,
             borderColor: t.accent + "22",
-            marginBottom: 14,
+            marginBottom: Spacing.md,
           }}
         >
           <IconBox color={t.accent} size={36}>
             <LinkIcon size={18} color={t.accent} />
           </IconBox>
           <View style={{ flex: 1 }}>
-            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram...</Text>
+            {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis. */}
+            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram & YouTube</Text>
             <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
           </View>
           <ChevronRight size={16} color={colors.textTertiary} />
@@ -842,9 +887,12 @@ export default function DiscoverScreen() {
 
         {loading && filtered.length === 0 ? (
           <View style={{ paddingTop: Spacing.md }}>
+            {/* Gap-2 fix (2026-06-09): "Recipe ideas" loading-state header
+                Type.headline → Type.title (24pt Newsreader serif) for
+                section-divider weight per recipes.md §0 / design-system §2.2. */}
             <Text
               style={{
-                ...Type.headline,
+                ...Type.title,
                 color: colors.text,
                 marginBottom: Spacing.sm,
               }}
@@ -909,24 +957,28 @@ export default function DiscoverScreen() {
                 "everything should be like the bottom one". Single
                 consistent grammar across the whole Discover stream;
                 no special-case treatment for the first card. */}
+            {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
+                (24pt Newsreader serif) for editorial section-divider weight. */}
             <Text
               style={{
-                ...Type.headline,
+                ...Type.title,
                 color: colors.text,
                 marginBottom: Spacing.sm,
               }}
             >
               Recipe ideas
             </Text>
-            <View style={{ gap: 12 }}>
+            {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
+            <View style={{ gap: Spacing.md }}>
               {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
             {filtered.length > 3 ? (
               <>
+                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title. */}
                 <Text
                   style={{
-                    ...Type.headline,
+                    ...Type.title,
                     color: colors.text,
                     marginTop: Spacing.xl,
                     marginBottom: Spacing.sm,
@@ -962,17 +1014,18 @@ export default function DiscoverScreen() {
             sections (2026-05-12 audit). Always renders so users can
             navigate to their saved recipes from the discovery feed
             even when the feed is empty. */}
-        <Text style={{ ...Type.headline, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
+        {/* Gap-2 fix (2026-06-09): "My Library" header Type.headline → Type.title. */}
+        <Text style={{ ...Type.title, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
           My Library
         </Text>
 
-        {/* My Library CTA */}
+        {/* My Library CTA — Gap-3 fix (2026-06-09): gap 12 → Spacing.md (16). */}
         <Pressable
           onPress={() => router.push("/(tabs)/library" as Href)}
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
+            gap: Spacing.md,
             padding: Spacing.md,
             borderRadius: Radius.lg,
             backgroundColor: colors.card,

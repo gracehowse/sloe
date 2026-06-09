@@ -19,7 +19,7 @@
  * Call sites preserved (no changes needed):
  *   - `app/(tabs)/index.tsx` — Today, with budget context (fit-this-in
  *      lights up).
- *   - `app/(tabs)/discover.tsx`, `app/(tabs)/search.tsx` — discovery.
+ *   - `app/(tabs)/discover.tsx` — discovery.
  *   - `app/recipe/verify.tsx`, `app/create-recipe.tsx`,
  *      `app/import-shared.tsx` — verify-ingredient.
  *

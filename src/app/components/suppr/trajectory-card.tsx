@@ -79,11 +79,15 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
       {state.kind === "projection" ? (
         <>
           <p className="flex items-baseline gap-2 mb-1">
+            {/* SLOE Phase 0: the projected-weight hero numeral reads in the
+                Newsreader serif display face (big numerals are a serif moment);
+                the `kg` unit stays sans. Mirrors mobile TrajectoryCard. */}
             <span
               data-testid="trajectory-hero-kg"
-              className="text-[28px] font-extrabold tracking-[-0.5px] text-primary tabular-nums ph-mask"
+              className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tracking-[-0.5px] text-primary tabular-nums ph-mask"
             >
-              {state.projectedKg} kg
+              {state.projectedKg}
+              <span className="font-sans text-base font-semibold"> kg</span>
             </span>
             <span
               data-testid="trajectory-hero-when"

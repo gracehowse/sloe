@@ -20,7 +20,7 @@ import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
 // Glyph map used: camera-outline → Camera, add-circle → PlusCircle,
 // alert-circle → AlertCircle.
-import { AlertCircle, Camera, Check, PlusCircle, X } from "lucide-react-native";
+import { AlertCircle, Camera, PlusCircle, ScanLine, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
@@ -29,7 +29,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
-import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
+import { Accent, Elevation, FontFamily, Radius, Spacing, Type, Colors } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
@@ -41,6 +41,7 @@ import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros"
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { ServingStepper } from "@/components/food-log/ServingStepper";
+import { fallbackSlotFromTimeOfDay } from "@suppr/shared/nutrition/recipeJournalSlot";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -95,6 +96,13 @@ export default function BarcodeScreen() {
   const [corrCarbs, setCorrCarbs] = useState("");
   const [corrFat, setCorrFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
+
+  // Gap #5 (2026-06-09) — meal-slot picker. Defaults to the time-of-day
+  // slot (same ladder used by the recipe log and LogSheet). The user can
+  // override before logging. Previously hardcoded to "Snacks".
+  const [mealSlot, setMealSlot] = useState<"Breakfast" | "Lunch" | "Dinner" | "Snacks">(
+    () => fallbackSlotFromTimeOfDay() as "Breakfast" | "Lunch" | "Dinner" | "Snacks",
+  );
 
   // P0 (2026-05-26) — once the user confirms past a "numbers look unusually
   // high" plausibility warning, this ref lets the next Log tap proceed
@@ -195,7 +203,7 @@ export default function BarcodeScreen() {
       id: mealId,
       user_id: userId,
       date_key: dateKey,
-      name: "Snacks",
+      name: mealSlot,
       recipe_title: `${product.name} (${portionSummary})`,
       time_label: timeLabel,
       calories: Math.min(32767, Math.round(scaled.calories)),
@@ -248,7 +256,7 @@ export default function BarcodeScreen() {
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
-  }, [scaled, product, userId, grams, portionSummary, router, last]);
+  }, [scaled, product, userId, grams, portionSummary, router, last, mealSlot]);
 
   const handleLog = useCallback(async () => {
     if (!scaled || !product || !userId) {
@@ -314,7 +322,7 @@ export default function BarcodeScreen() {
       id: mealId,
       user_id: userId,
       date_key: dateKey,
-      name: "Snacks",
+      name: mealSlot,
       recipe_title: manualName.trim(),
       time_label: timeLabel,
       calories: Math.min(32767, Math.round(cal)),
@@ -354,7 +362,7 @@ export default function BarcodeScreen() {
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
-  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last]);
+  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last, mealSlot]);
 
   const openCorrectionMode = useCallback(() => {
     if (!product) return;
@@ -414,15 +422,61 @@ export default function BarcodeScreen() {
       StyleSheet.create({
         fill: { flex: 1, backgroundColor: colors.background },
         camera: { flex: 1 },
-        reticle: {
+        // Gap #3 (2026-06-09): corner-bracket reticle replaces faint
+        // full-perimeter outline. Four absolute-positioned brackets at
+        // full opacity — legible over both camera feed and white bg.
+        // The bracket container is positioned identically to the old
+        // full-perimeter rect; four <View> children draw each corner.
+        reticleContainer: {
           position: "absolute",
           top: "25%",
           left: "10%",
           width: "80%",
           height: "30%",
-          borderWidth: 2,
-          borderColor: accent.primary + "80",
-          borderRadius: Radius.lg,
+        },
+        reticleCornerTL: {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 24,
+          height: 24,
+          borderTopWidth: 3,
+          borderLeftWidth: 3,
+          borderColor: accent.primary,
+          borderTopLeftRadius: Radius.sm,
+        },
+        reticleCornerTR: {
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: 24,
+          height: 24,
+          borderTopWidth: 3,
+          borderRightWidth: 3,
+          borderColor: accent.primary,
+          borderTopRightRadius: Radius.sm,
+        },
+        reticleCornerBL: {
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          width: 24,
+          height: 24,
+          borderBottomWidth: 3,
+          borderLeftWidth: 3,
+          borderColor: accent.primary,
+          borderBottomLeftRadius: Radius.sm,
+        },
+        reticleCornerBR: {
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          width: 24,
+          height: 24,
+          borderBottomWidth: 3,
+          borderRightWidth: 3,
+          borderColor: accent.primary,
+          borderBottomRightRadius: Radius.sm,
         },
         overlay: {
           position: "absolute",
@@ -430,11 +484,24 @@ export default function BarcodeScreen() {
           right: Spacing.lg,
           bottom: insets.bottom + Spacing.lg,
           padding: Spacing.xl,
-          borderRadius: Radius.lg,
+          // Gap #2 (2026-06-09): editorial overlay treatment — use
+          // elevation tokens for the sheet shadow and tighten radius.
+          borderRadius: Radius.xl,
+          borderWidth: 1,
+          borderColor: Colors.dark.cardBorder,
           backgroundColor: Colors.dark.overlay,
           gap: Spacing.sm,
+          ...Elevation.sheet,
         },
-        overlayTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+        // Gap #1 (2026-06-09): serif for editorial titles (Newsreader
+        // via FontFamily.serifSemibold). 18px/600 matches §2.2
+        // display-section role.
+        overlayTitle: {
+          color: "#fff",
+          ...Type.headline,
+          fontSize: 18,
+          fontFamily: FontFamily.serifSemibold,
+        },
         hint: { color: Colors.dark.textSecondary, fontSize: 13 },
         dim: { color: Colors.dark.textTertiary },
         centered: { flex: 1, padding: Spacing.xl, justifyContent: "center", alignItems: "center", gap: Spacing.md },
@@ -443,16 +510,32 @@ export default function BarcodeScreen() {
         permBtn: {
           backgroundColor: accent.primary,
           paddingHorizontal: Spacing.xxl,
-          paddingVertical: 14,
-          borderRadius: Radius.md,
+          // Gap #4 (2026-06-09): paddingVertical → Spacing.md (16) gives
+          // ≥48px height with fontSize 15 (≈20px line + 32px padding = 52px).
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.xl,
         },
         permBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-        productName: { color: "#fff", fontWeight: "700", fontSize: 16, textAlign: "center" },
+        // Gap #1: product name → serif (Newsreader display-section, 17/600).
+        productName: {
+          color: "#fff",
+          ...Type.headline,
+          fontSize: 17,
+          fontFamily: FontFamily.serifSemibold,
+          textAlign: "center",
+        },
         macroRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.lg },
         macroChip: { alignItems: "center" },
-        macroValue: { color: "#fff", fontWeight: "700", fontSize: 14 },
-        macroLabel: { color: Colors.dark.textTertiary, fontSize: 11 },
-        source: { color: Colors.dark.textTertiary, fontSize: 11, textAlign: "center" },
+        // Gap #1: macro values → heroValue (Newsreader/serif, 20/500).
+        // Gap #12: bump size slightly and use textSecondary for labels.
+        macroValue: {
+          color: "#fff",
+          ...Type.heroValue,
+          fontSize: 16,
+        },
+        // Gap #12: raise caption to 12px and use textSecondary.
+        macroLabel: { color: Colors.dark.textSecondary, fontSize: 12, fontFamily: FontFamily.sansRegular },
+        source: { color: Colors.dark.textSecondary, fontSize: 12, textAlign: "center", fontFamily: FontFamily.sansRegular },
         servingRow: {
           flexDirection: "row",
           alignItems: "center",
@@ -464,20 +547,23 @@ export default function BarcodeScreen() {
           color: "#fff",
           fontWeight: "600",
           fontSize: 15,
-          backgroundColor: "rgba(255,255,255,0.12)",
+          // Gap #10: token-based input bg instead of raw rgba literal.
+          backgroundColor: Colors.dark.inputBg,
           borderRadius: Radius.sm,
           paddingHorizontal: Spacing.sm,
-          paddingVertical: 4,
+          paddingVertical: Spacing.xs,
           minWidth: 56,
           textAlign: "center",
         },
         servingUnit: { color: Colors.dark.textSecondary, fontSize: 13 },
         servingStepper: { flexShrink: 1 },
         servingHint: { color: Colors.dark.textTertiary, fontSize: 11, textAlign: "center" as const },
-        presetRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, justifyContent: "center" as const },
+        // Gap #4: preset row/chip spacing snapped to scale tokens.
+        presetRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: Spacing.sm, justifyContent: "center" as const },
         presetChip: {
-          paddingHorizontal: 10,
-          paddingVertical: 5,
+          // Gap #4: paddingHorizontal → sm(8), paddingVertical → xs(4).
+          paddingHorizontal: Spacing.sm,
+          paddingVertical: Spacing.xs,
           borderRadius: Radius.sm,
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: accent.primary + "55",
@@ -485,6 +571,33 @@ export default function BarcodeScreen() {
         },
         presetChipSelected: { backgroundColor: accent.primary + "22", borderColor: accent.primary },
         presetChipText: { fontSize: 11, fontWeight: "600" as const, color: accent.primary },
+        // Gap #5 (2026-06-09): slot pill row — 4-segment pill above portion
+        // picker. Matches §3.1 LogSheet pattern.
+        slotRow: {
+          flexDirection: "row" as const,
+          gap: Spacing.xs,
+          marginBottom: Spacing.xs,
+        },
+        slotPill: {
+          flex: 1,
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+          paddingVertical: Spacing.xs,
+          borderRadius: Radius.full,
+          borderWidth: 1,
+          borderColor: Colors.dark.border,
+        },
+        slotPillActive: {
+          backgroundColor: accent.primary,
+          borderColor: accent.primary,
+        },
+        slotPillText: {
+          fontSize: 11,
+          fontWeight: "600" as const,
+          color: Colors.dark.textSecondary,
+          fontFamily: FontFamily.sansSemibold,
+        },
+        slotPillTextActive: { color: "#fff" },
         btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xs },
         logBtn: {
           flex: 2,
@@ -493,18 +606,23 @@ export default function BarcodeScreen() {
           justifyContent: "center",
           gap: Spacing.sm,
           backgroundColor: Accent.success,
-          borderRadius: Radius.md,
-          paddingVertical: 14,
+          // Gap #10: radius → xl(12) for premium rounded CTA language.
+          borderRadius: Radius.xl,
+          // Gap #4: paddingVertical → Spacing.md (≥48px height).
+          paddingVertical: Spacing.md,
         },
         logBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
         secondaryBtn: {
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: Radius.md,
+          // Gap #10: radius → xl(12).
+          borderRadius: Radius.xl,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: "rgba(255,255,255,0.2)",
-          paddingVertical: 14,
+          // Gap #10: token-based border instead of raw rgba literal.
+          borderColor: Colors.dark.border,
+          // Gap #4: paddingVertical → Spacing.md (≥48px).
+          paddingVertical: Spacing.md,
           ...(cardElevation.shadowStyle ?? {}),
         },
         secondaryBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
@@ -513,9 +631,11 @@ export default function BarcodeScreen() {
         retryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: accent.primary + "55",
-          borderRadius: Radius.md,
+          // Gap #10: radius → xl(12).
+          borderRadius: Radius.xl,
           paddingHorizontal: Spacing.xl,
-          paddingVertical: 12,
+          // Gap #4: paddingVertical → Spacing.md.
+          paddingVertical: Spacing.md,
           marginTop: Spacing.sm,
           ...(cardElevation.shadowStyle ?? {}),
         },
@@ -523,9 +643,11 @@ export default function BarcodeScreen() {
         manualEntryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: accent.primary + "55",
-          borderRadius: Radius.md,
+          // Gap #10: radius → xl(12).
+          borderRadius: Radius.xl,
           paddingHorizontal: Spacing.xl,
-          paddingVertical: 12,
+          // Gap #4: paddingVertical → Spacing.md.
+          paddingVertical: Spacing.md,
           marginTop: Spacing.xs,
           ...(cardElevation.shadowStyle ?? {}),
         },
@@ -541,11 +663,21 @@ export default function BarcodeScreen() {
           paddingTop: insets.top + Spacing.xl,
           gap: Spacing.md,
         },
-        manualTitle: { color: "#fff", fontWeight: "700", fontSize: 18 },
-        manualSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
+        // Gap #1: sheet titles → serif (Newsreader, 18px/600).
+        manualTitle: {
+          color: "#fff",
+          ...Type.headline,
+          fontSize: 18,
+          fontFamily: FontFamily.serifSemibold,
+        },
+        // Gap #4: replace marginTop:-4 negative hack with gap token on
+        // the parent container (gap: Spacing.md already set on manualOverlay).
+        manualSub: { color: Colors.dark.textSecondary, fontSize: 13 },
         manualInput: {
-          backgroundColor: "rgba(255,255,255,0.12)",
-          borderRadius: Radius.md,
+          // Gap #10: token-based input bg.
+          backgroundColor: Colors.dark.inputBg,
+          // Gap #10: radius → xl(12).
+          borderRadius: Radius.xl,
           paddingHorizontal: Spacing.lg,
           paddingVertical: Spacing.md,
           color: "#fff",
@@ -564,8 +696,15 @@ export default function BarcodeScreen() {
           paddingTop: insets.top + Spacing.xl,
           gap: Spacing.md,
         },
-        corrTitle: { color: "#fff", fontWeight: "700" as const, fontSize: 18 },
-        corrSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
+        // Gap #1: correction sheet title → serif.
+        corrTitle: {
+          color: "#fff",
+          ...Type.headline,
+          fontSize: 18,
+          fontFamily: FontFamily.serifSemibold,
+        },
+        // Gap #4: replace marginTop:-4 negative hack.
+        corrSub: { color: Colors.dark.textSecondary, fontSize: 13 },
       }),
     [colors, insets.bottom, cardElevation, accent],
   );
@@ -603,7 +742,18 @@ export default function BarcodeScreen() {
         onBarcodeScanned={product || manualMode || correctionMode ? undefined : onBarcode}
       />
 
-      {!product && !loading && !manualMode && !correctionMode && <View style={styles.reticle} />}
+      {/* Gap #3 (2026-06-09): corner-bracket targeting marks replace the
+          faint full-perimeter outline. Full-opacity accent brackets are
+          clearly legible over both a real camera feed and the white
+          sim background. */}
+      {!product && !loading && !manualMode && !correctionMode && (
+        <View style={styles.reticleContainer} pointerEvents="none">
+          <View style={styles.reticleCornerTL} />
+          <View style={styles.reticleCornerTR} />
+          <View style={styles.reticleCornerBL} />
+          <View style={styles.reticleCornerBR} />
+        </View>
+      )}
 
       {/*
         E8 (2026-05-11 visual sweep): deeplinking to `/barcode` (from
@@ -670,6 +820,28 @@ export default function BarcodeScreen() {
                 <Text style={styles.macroLabel}>fat</Text>
               </View>
             </View>
+
+            {/* Gap #5 (2026-06-09): 4-segment meal-slot picker above the
+                portion stepper. Defaults to time-of-day slot on mount;
+                user can override before logging. Parity with web
+                today-barcode-dialog.tsx <select> meal slot. */}
+            <View style={styles.slotRow}>
+              {(["Breakfast", "Lunch", "Dinner", "Snacks"] as const).map((s) => (
+                <Pressable
+                  key={s}
+                  style={[styles.slotPill, mealSlot === s && styles.slotPillActive]}
+                  onPress={() => setMealSlot(s)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: mealSlot === s }}
+                  accessibilityLabel={`Log to ${s}`}
+                >
+                  <Text style={[styles.slotPillText, mealSlot === s && styles.slotPillTextActive]}>
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
             {/* F-137 (2026-05-11) — inline stepper replaces the free
                 grams TextInput. Step = 5 g (typical OFF granularity).
                 Direct text entry still works via the inline TextInput
@@ -724,38 +896,29 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            {searchRedesign ? (
-              // Redesign: legible Verified/Estimated chip (search-results
-              // language) + the source line beneath it for provenance.
-              <View style={{ alignItems: "center", gap: 4 }}>
-                <SearchResultConfidenceChip
-                  tier={barcodeConfidenceTier(product)}
-                  testID="barcode-confidence-chip"
-                />
-                <Text style={styles.source}>
-                  {product.verified
-                    ? "Verified entry"
-                    : product.source === "user"
-                      ? "Community submitted"
-                      : "via Open Food Facts"}
-                </Text>
-              </View>
-            ) : product.verified ? (
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
-                <Text style={styles.source}>Verified</Text>
-              </View>
-            ) : (
+            {/* Gap #9 (2026-06-09): SearchResultConfidenceChip promoted to the
+                always-on path so the trust signal is visible regardless of the
+                redesign_search_results flag state. Source line meets 12px
+                textSecondary contrast bar. */}
+            <View style={{ alignItems: "center", gap: Spacing.xs }}>
+              <SearchResultConfidenceChip
+                tier={barcodeConfidenceTier(product)}
+                testID="barcode-confidence-chip"
+              />
               <Text style={styles.source}>
-                {product.source === "user" ? "Community submitted" : "via Open Food Facts"}
+                {product.verified
+                  ? "Verified entry"
+                  : product.source === "user"
+                    ? "Community submitted"
+                    : "via Open Food Facts"}
               </Text>
-            )}
+            </View>
             <View style={styles.btnRow}>
               <Pressable
                 style={[styles.logBtn, searchRedesign && { backgroundColor: accent.primary }]}
                 onPress={handleLog}
                 disabled={logging}
-                accessibilityLabel={`Log ${product.name} to tracker`}
+                accessibilityLabel={`Log ${product.name} to ${mealSlot}`}
               >
                 {logging ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -763,7 +926,7 @@ export default function BarcodeScreen() {
                   <PlusCircle size={20} color="#fff" />
                 )}
                 <Text style={styles.logBtnText} numberOfLines={1}>
-                  {logging ? "Logging…" : "Log this"}
+                  {logging ? "Logging…" : `Log to ${mealSlot}`}
                 </Text>
               </Pressable>
               <Pressable style={styles.secondaryBtn} onPress={resetScan} accessibilityLabel="Scan another barcode">
@@ -784,17 +947,27 @@ export default function BarcodeScreen() {
             <Pressable style={styles.retryBtn} onPress={resetScan} accessibilityLabel="Try scanning again">
               <Text style={styles.retryBtnText}>Try again</Text>
             </Pressable>
-            <Pressable style={styles.manualEntryBtn} onPress={() => setManualMode(true)}>
-              <Text style={styles.manualEntryBtnText}>Enter manually instead</Text>
+            {/* Gap #6 (2026-06-09): photo-fallback CTA added to the
+                not-found state. Matches web today-barcode-dialog.tsx
+                "Scan the label" secondary CTA (parity). Routes to
+                manual entry for now as the Label OCR path is deferred
+                — see ENG-1004. */}
+            <Pressable style={styles.manualEntryBtn} onPress={() => setManualMode(true)} accessibilityLabel="Enter nutrition manually">
+              <Text style={styles.manualEntryBtnText}>Enter manually</Text>
             </Pressable>
           </>
         )}
 
+        {/* Gap #2 (2026-06-09): editorial idle state — serif title, scan
+            icon, calm-coach sub-copy. Centred layout under the reticle. */}
         {!loading && !product && !error && !manualMode && (
-          <>
-            <Text style={styles.overlayTitle}>Barcode Scanner</Text>
-            <Text style={styles.hint}>Point at a product barcode to look up nutrition</Text>
-          </>
+          <View style={{ alignItems: "center", gap: Spacing.sm }}>
+            <ScanLine size={22} color={accent.primary} strokeWidth={1.75} accessibilityLabel="Barcode scanner icon" />
+            <Text style={[styles.overlayTitle, { textAlign: "center" }]}>Scan a barcode</Text>
+            <Text style={[styles.hint, { textAlign: "center" }]}>
+              Point the camera at any EAN or UPC barcode to look up nutrition info
+            </Text>
+          </View>
         )}
       </View>
       </TouchableWithoutFeedback>
@@ -802,11 +975,28 @@ export default function BarcodeScreen() {
       {/* Manual entry overlay */}
       {manualMode && (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + 40 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + Spacing.xxxl }}>
             <Text style={styles.manualTitle}>Add Item Manually</Text>
             <Text style={styles.manualSub}>
               {last ? `Barcode: ${last}` : "Enter the nutrition info from the label"}
             </Text>
+            {/* Gap #5: slot picker in manual entry, parity with the found-product card. */}
+            <View style={styles.slotRow}>
+              {(["Breakfast", "Lunch", "Dinner", "Snacks"] as const).map((s) => (
+                <Pressable
+                  key={s}
+                  style={[styles.slotPill, mealSlot === s && styles.slotPillActive]}
+                  onPress={() => setMealSlot(s)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: mealSlot === s }}
+                  accessibilityLabel={`Log to ${s}`}
+                >
+                  <Text style={[styles.slotPillText, mealSlot === s && styles.slotPillTextActive]}>
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
             <TextInput
               style={styles.manualInput}
               placeholder="Food name"
@@ -865,7 +1055,7 @@ export default function BarcodeScreen() {
               ) : (
                 <PlusCircle size={20} color="#fff" />
               )}
-              <Text style={styles.logBtnText}>{logging ? "Logging..." : "Add to Tracker"}</Text>
+              <Text style={styles.logBtnText}>{logging ? "Logging…" : `Log to ${mealSlot}`}</Text>
             </Pressable>
             <Pressable style={styles.secondaryBtn} onPress={resetScan}>
               <Text style={styles.secondaryBtnText}>Back to scanner</Text>
@@ -877,7 +1067,7 @@ export default function BarcodeScreen() {
       {/* Correction overlay */}
       {correctionMode && (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.corrOverlay}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + 40 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + Spacing.xxxl }}>
             <Text style={styles.corrTitle}>Correct Nutrition Info</Text>
             <Text style={styles.corrSub}>
               {last ? `Barcode: ${last}` : "Update the nutrition data for this product"}

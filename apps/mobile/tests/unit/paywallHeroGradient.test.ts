@@ -24,6 +24,10 @@ import { describe, expect, it } from "vitest";
 
 const PAYWALL_PATH = resolve(__dirname, "../../app/paywall.tsx");
 const HERO_PATH = resolve(__dirname, "../../components/paywall/PaywallHero.tsx");
+const PLAN_SELECTOR_PATH = resolve(
+  __dirname,
+  "../../components/paywall/PaywallPlanSelector.tsx",
+);
 
 describe("mobile paywall — Sloe Pro photo hero (no brand-gradient hero)", () => {
   const screen = readFileSync(PAYWALL_PATH, "utf8");
@@ -58,14 +62,56 @@ describe("mobile paywall — Sloe Pro photo hero (no brand-gradient hero)", () =
     expect(hero).toContain("reach your goals.");
   });
 
-  it("renders the SLOE PRO eyebrow in the secondary accent (Frost-flag aware)", () => {
-    // The eyebrow is the "Pro" voice in the secondary accent per `284:2`.
-    // ENG-997 (Frost): the eyebrow now reads the flag-aware secondary accent
-    // via `useAccent()` (clay flag-OFF → damson flag-ON), not the static
-    // `Accent.primarySolid`. The hero must bind the hook and paint the eyebrow
-    // with `accent.primarySolid`.
+  it("renders the SLOE PRO eyebrow in the aubergine accent via useAccent()", () => {
+    // The eyebrow is the "Pro" voice in the brand accent per `284:2`.
+    // ENG-997: the eyebrow reads the accent via `useAccent()`, which is now the
+    // unconditional aubergine `Accent` (#5B3B6E — the Frost secondary-colour
+    // exploration was retired 2026-06-08 and clay was superseded by aubergine
+    // the same day), not the static `Accent.primarySolid`. The hook indirection
+    // is kept; it just always returns the aubergine palette.
     expect(hero).toContain('from "@/context/theme"');
     expect(hero).toMatch(/const\s+accent\s*=\s*useAccent\(\)/);
     expect(hero).toContain("accent.primarySolid");
+  });
+});
+
+describe("mobile paywall — plan selector active-row treatment (Sloe)", () => {
+  const planSelector = readFileSync(PLAN_SELECTOR_PATH, "utf8");
+
+  /** The `rowSelected: { … }` style block body, isolated so the
+   *  assertions can't accidentally match a `backgroundColor` from a later
+   *  style (e.g. `bestValue` / `radioDot`) via a greedy `[\s\S]*`. */
+  const rowSelectedBlock = (() => {
+    const m = planSelector.match(/rowSelected:\s*\{([\s\S]*?)\}/);
+    return m ? m[1] : "";
+  })();
+
+  it("fills the selected plan row with the aubergine SOFT tint, not a solid slab", () => {
+    // Sloe treatment system (2026-06-08, rule 7): the active plan-selector row
+    // is a soft aubergine tint + 2px ring — NOT a solid accent fill (the fill is
+    // rationed to the FAB + the conversion CTA). This pins the `rowSelected`
+    // style so a future edit can't regress the active row to a bare border or a
+    // solid `accent.primary` slab.
+    expect(rowSelectedBlock).toMatch(/backgroundColor:\s*accent\.primarySoft/);
+    // The ring stays on the full-strength accent (the frame's selected ring).
+    expect(rowSelectedBlock).toMatch(/borderColor:\s*accent\.primary[,\s}]/);
+    // The selected row must NOT paint a solid `accent.primary` background
+    // (only the SOFT variant). `primarySoft` shares the `accent.primary`
+    // prefix, so guard the solid token with a trailing non-identifier char.
+    expect(rowSelectedBlock).not.toMatch(
+      /backgroundColor:\s*accent\.primary[,\s}]/,
+    );
+  });
+
+  it("keeps the radio dot + BEST VALUE badge on the full-strength accent", () => {
+    // The radio dot + the conversion "BEST VALUE" highlight badge legitimately
+    // keep the solid accent (small surfaces / conversion highlight — parity with
+    // the web "Most popular" ribbon). Guard they didn't get diluted to the tint.
+    expect(planSelector).toMatch(
+      /radioDot:\s*\{[\s\S]*backgroundColor:\s*accent\.primary[,\s}]/,
+    );
+    expect(planSelector).toMatch(
+      /bestValue:\s*\{[\s\S]*backgroundColor:\s*accent\.primary[,\s}]/,
+    );
   });
 });

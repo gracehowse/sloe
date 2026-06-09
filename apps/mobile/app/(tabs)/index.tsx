@@ -3710,13 +3710,20 @@ export default function TrackerScreen() {
           ...Type.body,
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
+        // Sloe treatment system (2026-06-08): the quick-add submit is a
+        // primary inline CTA → aubergine OUTLINE (transparent fill + 1.5px
+        // primarySolid border + primarySolid label). Used only by
+        // <TodayAddFoodForm>; the sibling "Search" button overrides to the
+        // off-white secondary fill there.
         submitBtn: {
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
         },
-        submitBtnText: { color: "#fff", ...Type.headline },
+        submitBtnText: { color: accent.primarySolid, ...Type.headline },
 
         // Audit 2026-05-04 #34: previously a full-card offline banner
         // crowded the Today top and looked like a content row. Slim pill
@@ -5473,7 +5480,10 @@ export default function TrackerScreen() {
           </View>
         )}
 
-        {/* Complete Day button — only when viewing today and there are logged meals */}
+        {/* Complete Day button — only when viewing today and there are logged meals.
+            Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+            outline (transparent fill + 1.5px primarySolid border + primarySolid
+            label), not a filled slab. Mirror of web NutritionTracker. */}
         {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
           <Pressable
             onPress={async () => {
@@ -5490,15 +5500,18 @@ export default function TrackerScreen() {
                 } catch {}
               }
             }}
-            style={{
+            style={({ pressed }) => ({
               marginTop: Spacing.lg,
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
               alignItems: "center",
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", ...Type.headline }}>Complete Day</Text>
+            <Text style={{ color: accent.primarySolid, ...Type.headline }}>Complete Day</Text>
           </Pressable>
         )}
 

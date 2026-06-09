@@ -1024,17 +1024,14 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 
 ---
 
-## 13. Search (hidden tab) — `app/(tabs)/search.tsx`
+## 13. Search tab — REMOVED 2026-06-08
 
-USDA dev/debug screen.
-
-- Default query "apple". Search button.
-- NEG `apiBase` empty → "Food search isn't available in this build yet."
-- NEG empty → "Enter a food name."
-- NEG fetch non-ok → "Search failed."
-- NEG net err → "Network error."
-- EXP up to 15 results with FDC ID.
-- UAT FLAG: not production-linked; verify hidden in shipping build.
+The vestigial read-only "Food search" tab (`app/(tabs)/search.tsx`, a
+USDA dev/debug screen) was deleted per the nutrition-log spec §3.15.
+Food search now lives only in the Log sheet (`<LogSheet>` →
+`FoodSearchModal` / `FoodSearchPanel`) — see §32 (Food Logging) and the
+`32_food_search_modal.yaml` Maestro flow. No replacement screen; section
+number retained as a tombstone to keep downstream numbering stable.
 
 ---
 

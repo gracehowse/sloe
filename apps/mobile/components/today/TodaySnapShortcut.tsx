@@ -83,21 +83,19 @@ export function TodaySnapShortcut({
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        {/* 2026-05-14 (premium-bar audit Feature 3 #6 — explicit
-            shutter button): the leading affordance was a flat
-            primary-tinted 32×32 square with a Camera glyph. The
-            audit upgrades this to an iOS-Camera-shutter-style
-            filled circle: 44×44, solid `accent.primary` background,
-            white 22pt glyph. The card now reads as a tap-the-shutter
-            button rather than a generic icon card; matches the
-            shutter-press haptic that was already added on tap. */}
+        {/* Sloe treatment system (2026-06-08): the shutter affordance
+            is a soft-tint icon container (Accent.primarySoft + primarySolid
+            glyph), NOT a second solid-aubergine filled circle competing
+            with the FAB. Rations the fill to the FAB (the one filled
+            moment) and restores web↔mobile parity (web already uses the
+            soft-tint container). 44×44 circle keeps the shutter identity. */}
         <View
           testID="today-snap-shortcut-shutter"
           style={{
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: accent.primary,
+            backgroundColor: accent.primarySoft,
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
@@ -105,7 +103,7 @@ export function TodaySnapShortcut({
         >
           <Camera
             size={22}
-            color={accent.primaryForeground}
+            color={accent.primarySolid}
             strokeWidth={2.25}
           />
           {locked ? (
@@ -148,7 +146,10 @@ export function TodaySnapShortcut({
                   paddingHorizontal: 6,
                   paddingVertical: 1,
                   borderRadius: Radius.sm,
-                  backgroundColor: accent.primary,
+                  // Sloe treatment system (2026-06-08): Pro badge =
+                  // aubergine soft-tint + primarySolid label (premium =
+                  // the colour, but as a tint, not a solid fill).
+                  backgroundColor: accent.primarySoft,
                 }}
               >
                 <Text
@@ -156,7 +157,7 @@ export function TodaySnapShortcut({
                     fontSize: 9,
                     fontWeight: "800",
                     letterSpacing: 0.6,
-                    color: accent.primaryForeground,
+                    color: accent.primarySolid,
                   }}
                 >
                   PRO

@@ -13,6 +13,15 @@ export type RecipesTab = "library" | "discover";
  * tab, so the overline + section-name-as-title (which read as
  * redundant shouting) are dropped. Titles stay pinned; list content
  * scrolls below. Web parity: `src/app/components/suppr/recipes-tab-chrome.tsx`.
+ *
+ * recipes.md §3.1 specifies "Your Recipes" as the Library tab title to
+ * signal "personal cookbook, not a database." That possessive framing
+ * belongs to the Library-sub surface; the SHARED chrome header cannot be
+ * "Your Recipes" without misleading on the Discover tab. The current
+ * "Recipes" title is the correct tab-level label; the Library-specific
+ * editorial copy should live as a section eyebrow or count-line prefix
+ * within library.tsx if the possessive framing is ever wanted.
+ * intentionally "Recipes" — not a gap vs recipes.md §3.1.
  */
 export function RecipesTabChrome() {
   const router = useRouter();

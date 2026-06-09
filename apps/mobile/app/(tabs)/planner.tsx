@@ -17,6 +17,9 @@ import {
   InteractionManager,
   Animated,
   Easing,
+  type StyleProp,
+  type ViewStyle,
+  type ImageStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, type Href } from "expo-router";
@@ -24,6 +27,7 @@ import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
 import { getMyHousehold } from "@suppr/shared/household/householdClient";
@@ -244,6 +248,75 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
   dinner: SlotColors.dinner,
   snacks: SlotColors.snack,
 };
+
+/**
+ * 36×36 thumbnail on the left of a planned meal row.
+ *
+ * Ladder (2026-06-08, §11.4):
+ *   1. real recipe image (when the meal resolves to a recipe with a
+ *      non-broken `image`),
+ *   2. warm sage→cream `RecipeHeroFallback` keyed by the recipe id —
+ *      when the meal HAS a recipe but no image, OR the image URL fails
+ *      to load (the previously-broken case: the bare `<Image>` collapsed
+ *      to an empty tinted box with no glyph),
+ *   3. the slot icon-box (breakfast/lunch/dinner/snacks) — only for
+ *      genuinely empty slots with no recipe at all.
+ *
+ * The on-error state is the key fix: a stale/expired recipe hero URL now
+ * settles into the same calm tile the Library + Discover cards use,
+ * never a flat coloured square.
+ */
+function PlanMealThumb({
+  hasRecipe,
+  recipeId,
+  recipeTitle,
+  imageUri,
+  Icon,
+  tint,
+  iconBoxStyle,
+}: {
+  hasRecipe: boolean;
+  recipeId: string | null;
+  recipeTitle: string;
+  imageUri: string | null;
+  Icon: LucideIcon;
+  tint: string;
+  iconBoxStyle: StyleProp<ViewStyle>;
+}) {
+  const [broken, setBroken] = useState(false);
+  const trimmed = (imageUri ?? "").trim();
+  const showPhoto = hasRecipe && trimmed.length > 0 && !broken;
+
+  if (showPhoto) {
+    return (
+      <Image
+        source={{ uri: trimmed }}
+        accessibilityLabel={`${recipeTitle} thumbnail`}
+        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: tint + "22" }]}
+        resizeMode="cover"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
+  // Recipe present but no usable image → warm recipe-keyed fallback tile
+  // (sage→cream + cuisine glyph), the same calm placeholder as the
+  // Library/Discover cards. Keyed by recipe id so it's stable per recipe.
+  if (hasRecipe && recipeId) {
+    return (
+      <View style={[iconBoxStyle, { overflow: "hidden" }]}>
+        <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={16} />
+      </View>
+    );
+  }
+
+  // Genuinely empty slot → slot icon-box (unchanged behaviour).
+  return (
+    <View style={[iconBoxStyle, { backgroundColor: tint + "22" }]}>
+      <Icon size={16} color={tint} strokeWidth={1.75} />
+    </View>
+  );
+}
 
 type PlanMeal = {
   name: string;
@@ -1367,16 +1440,23 @@ export default function PlannerScreen() {
           marginBottom: Spacing.lg,
         },
         summaryActions: { flexDirection: "row", gap: Spacing.sm },
+        // Sloe treatment system (2026-06-08, docs/prototypes/sloe-component-
+        // treatments.html §1): the everyday PRIMARY inline CTA is an aubergine
+        // OUTLINE, not a filled slab. Transparent fill, 1.5px primarySolid
+        // border, primarySolid label/icon. The filled aubergine is rationed to
+        // the FAB + conversion-critical CTAs (paywall / onboarding).
         summaryPrimaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           paddingHorizontal: Spacing.md,
           paddingVertical: 10,
           borderRadius: Radius.lg,
         },
-        summaryPrimaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+        summaryPrimaryText: { color: accent.primarySolid, fontSize: 13, fontWeight: "700" },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
@@ -1580,15 +1660,23 @@ export default function PlannerScreen() {
           borderColor: colors.tint,
           backgroundColor: colors.tint + "1A",
         },
-        dayBtnTextActivePrimary: { color: colors.text, fontWeight: "700" },
+        // Sloe treatment system (2026-06-08, §7): selected config pill label in
+        // the deep primarySolid aubergine (AA on the 10% tint), matching the
+        // selected-filter-pill treatment. Was `colors.text` (warm ink).
+        dayBtnTextActivePrimary: { color: accent.primarySolid, fontWeight: "700" },
 
+        // Sloe treatment system (2026-06-08, §1): primary inline CTA →
+        // aubergine OUTLINE. Used by "Generate my plan" + "Generate Shopping
+        // List" — the everyday do-it action, an accent line not a slab.
         generateBtn: {
-          backgroundColor: accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           borderRadius: Radius.md,
           paddingVertical: 16,
           alignItems: "center",
         },
-        generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+        generateBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
 
         // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
         // week scans as a calm editorial list of days, not a stack of bold
@@ -1779,14 +1867,18 @@ export default function PlannerScreen() {
         shoppingListSubtitle: { ...Type.body, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
         actionsRow: { gap: Spacing.md },
+        // Sloe treatment system (2026-06-08, §1): secondary "New Plan" /
+        // "Templates" actions read as the canonical aubergine OUTLINE — 1.5px
+        // primarySolid border + primarySolid label (was a faint 50%-alpha
+        // primary border + primary-fill-coloured text).
         regenBtn: {
-          borderWidth: 1,
-          borderColor: accent.primary + "50",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
         },
-        regenBtnText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
+        regenBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
       }),
     [colors, accent],
   );
@@ -2683,10 +2775,10 @@ export default function PlannerScreen() {
                 accessibilityLabel="Generate or import plan"
               >
                 {generating ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={accent.primarySolid} />
                 ) : (
                   <>
-                    <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
+                    <RefreshCw size={14} color={accent.primarySolid} strokeWidth={1.75} />
                     <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
                   </>
                 )}
@@ -2786,11 +2878,11 @@ export default function PlannerScreen() {
                 }}
               >
                 {generating ? (
-                  <ActivityIndicator size="small" color={accent.primary} />
+                  <ActivityIndicator size="small" color={accent.primarySolid} />
                 ) : (
-                  <ChevronDown size={13} color={accent.primary} strokeWidth={2.25} />
+                  <ChevronDown size={13} color={accent.primarySolid} strokeWidth={2.25} />
                 )}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
                   Generate ▾
                 </Text>
               </Pressable>
@@ -2959,7 +3051,7 @@ export default function PlannerScreen() {
                     {active ? (
                       <CheckCircle2
                         size={14}
-                        color={primaryPills ? colors.tint : "#fff"}
+                        color={primaryPills ? accent.primarySolid : colors.text}
                         strokeWidth={1.75}
                         style={{ marginRight: 4 }}
                       />
@@ -3009,7 +3101,9 @@ export default function PlannerScreen() {
                           width: 6,
                           height: 6,
                           borderRadius: 3,
-                          backgroundColor: "#fff",
+                          // Outline CTA (Sloe §1): dots in aubergine so they
+                          // read on the transparent/white button fill.
+                          backgroundColor: accent.primarySolid,
                           opacity: 0.35 + (i / 7) * 0.6,
                         }}
                       />
@@ -3038,7 +3132,7 @@ export default function PlannerScreen() {
                 accessibilityLabel="Import existing meal plan"
                 style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primarySolid }}>
                   Import existing plan
                 </Text>
               </Pressable>
@@ -3265,15 +3359,15 @@ export default function PlannerScreen() {
                     meal has a recipe with a hero image, render that
                     image so a multi-day plan reads as a visual scan of
                     actual meals (not a column of identical slot icons).
-                    Falls back to the slot icon-box when no recipe (empty
-                    slot) or no image (default-pack recipe with the same
-                    hero across IDs). Slot icon-box still uses the shared
-                    `resolvePlanSlotIconKey` so legacy / voice-parsed
-                    slot text lands on the right icon. */}
+                    2026-06-08 (§11.4): a recipe with no usable image —
+                    OR a stale/expired hero URL that fails to load — now
+                    falls back to the warm sage→cream RecipeHeroFallback
+                    (same calm tile as the Library/Discover cards) instead
+                    of collapsing to an empty tinted square. Genuinely
+                    empty slots still show the slot icon-box, keyed off the
+                    shared `resolvePlanSlotIconKey`. See `PlanMealThumb`. */}
                 {(() => {
                   const slotKey = resolvePlanSlotIconKey(meal.name);
-                  const Icon = SLOT_ICON_MOBILE[slotKey];
-                  const tint = SLOT_COLOR_MOBILE[slotKey];
                   const ref =
                     (meal.recipeId
                       ? planRecipePool.find((r) => r.id === meal.recipeId)
@@ -3281,24 +3375,16 @@ export default function PlannerScreen() {
                     planRecipePool.find(
                       (r) => r.title.trim() === meal.recipeTitle.trim(),
                     );
-                  const imageUri = ref?.image ?? null;
-                  if (planMealHasRecipe(meal) && imageUri) {
-                    return (
-                      <Image
-                        source={{ uri: imageUri }}
-                        accessibilityLabel={`${meal.recipeTitle} thumbnail`}
-                        style={[
-                          styles.mealIconBox,
-                          { backgroundColor: tint + "22" },
-                        ]}
-                        resizeMode="cover"
-                      />
-                    );
-                  }
                   return (
-                    <View style={[styles.mealIconBox, { backgroundColor: tint + "22" }]}>
-                      <Icon size={16} color={tint} strokeWidth={1.75} />
-                    </View>
+                    <PlanMealThumb
+                      hasRecipe={planMealHasRecipe(meal)}
+                      recipeId={meal.recipeId ?? ref?.id ?? null}
+                      recipeTitle={meal.recipeTitle}
+                      imageUri={ref?.image ?? null}
+                      Icon={SLOT_ICON_MOBILE[slotKey]}
+                      tint={SLOT_COLOR_MOBILE[slotKey]}
+                      iconBoxStyle={styles.mealIconBox}
+                    />
                   );
                 })()}
                 <View style={{ flex: 1 }}>
@@ -3786,7 +3872,7 @@ export default function PlannerScreen() {
               disabled={generating}
             >
               {generating ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={accent.primarySolid} />
               ) : (
                 <Text style={styles.generateBtnText}>Generate Shopping List</Text>
               )}
@@ -3968,7 +4054,11 @@ export default function PlannerScreen() {
               onPress={() => setChipSheet(null)}
               style={{
                 marginTop: Spacing.lg,
-                backgroundColor: accent.primary,
+                // Sloe treatment system (§1): sheet-confirm primary → aubergine
+                // OUTLINE (transparent fill, 1.5px primarySolid border + label).
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 paddingVertical: 13,
                 borderRadius: Radius.md,
                 alignItems: "center",
@@ -3976,7 +4066,7 @@ export default function PlannerScreen() {
               accessibilityRole="button"
               accessibilityLabel="Done"
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Done</Text>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Done</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -4021,7 +4111,7 @@ export default function PlannerScreen() {
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
-                      <CheckCircle2 size={14} color={primaryPills ? colors.tint : accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
+                      <CheckCircle2 size={14} color={primaryPills ? accent.primarySolid : colors.text} strokeWidth={2} style={{ marginRight: 4 }} />
                     ) : (
                       <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                     )}
@@ -4035,7 +4125,11 @@ export default function PlannerScreen() {
               onPress={() => setChipSheet(null)}
               style={{
                 marginTop: Spacing.lg,
-                backgroundColor: accent.primary,
+                // Sloe treatment system (§1): sheet-confirm primary → aubergine
+                // OUTLINE (transparent fill, 1.5px primarySolid border + label).
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 paddingVertical: 13,
                 borderRadius: Radius.md,
                 alignItems: "center",
@@ -4043,7 +4137,7 @@ export default function PlannerScreen() {
               accessibilityRole="button"
               accessibilityLabel="Done"
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Done</Text>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Done</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -4389,7 +4483,7 @@ export default function PlannerScreen() {
               onPress={() => setPortionModal(null)}
               style={{ paddingVertical: 16, alignItems: "center" }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>Cancel</Text>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>Cancel</Text>
             </Pressable>
           </Pressable>
         </Pressable>

@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { Search } from "lucide-react-native";
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * TodayAddFoodForm — inline quick-add card with slot toggle + 4 macro
@@ -57,8 +58,13 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
   } = props;
 
   // Secondary accent (Frost flag → damson, else clay) for the active slot
-  // toggle + the Search CTA fill.
+  // toggle. The off-white "Search" secondary uses the neutral card token.
   const accent = useAccent();
+  const colors = useThemeColors();
+  // `borderColor` is retained on the public contract for caller
+  // compatibility; the slot pills now derive their fill from the accent +
+  // card tokens (Sloe treatment system, 2026-06-08) so it's unused here.
+  void borderColor;
 
   return (
     <View style={styles.card}>
@@ -73,12 +79,15 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
               paddingVertical: 6,
               borderRadius: Radius.sm,
               alignItems: "center",
-              backgroundColor: activeMealSlot === s ? accent.primary : borderColor + "30",
+              // Sloe treatment system (2026-06-08): filter pill selected =
+              // aubergine soft-tint + primarySolid label, NOT a solid fill;
+              // unselected = off-white (colors.card) + textSecondary.
+              backgroundColor: activeMealSlot === s ? accent.primarySoft : colors.card,
             }}
           >
             <Text
               numberOfLines={1}
-              style={{ fontSize: 11, fontWeight: "700", color: activeMealSlot === s ? "#fff" : textSecondaryColor }}
+              style={{ fontSize: 11, fontWeight: "700", color: activeMealSlot === s ? accent.primarySolid : textSecondaryColor }}
             >
               {s}
             </Text>
@@ -129,15 +138,26 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
         />
       </View>
       <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+        {/* Primary "Add to Today" inherits the aubergine-outline
+            `submitBtn` style. The sibling "Search" is a SECONDARY action
+            → off-white fill (colors.card #F6F5F2) + ink label, no border. */}
         <Pressable style={[styles.submitBtn, { flex: 1 }]} onPress={onSubmit}>
           <Text style={styles.submitBtnText}>Add to Today</Text>
         </Pressable>
         <Pressable
-          style={[styles.submitBtn, { flex: 1, backgroundColor: accent.primary }]}
+          style={[
+            styles.submitBtn,
+            {
+              flex: 1,
+              flexDirection: "row",
+              backgroundColor: colors.card,
+              borderWidth: 0,
+            },
+          ]}
           onPress={onOpenSearch}
         >
-          <Search size={16} color="#fff" style={{ marginRight: 4 }} />
-          <Text style={styles.submitBtnText}>Search</Text>
+          <Search size={16} color={colors.text} style={{ marginRight: 4 }} />
+          <Text style={[styles.submitBtnText, { color: colors.text }]}>Search</Text>
         </Pressable>
       </View>
     </View>
