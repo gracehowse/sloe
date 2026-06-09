@@ -22,7 +22,8 @@ test.describe("Today critical path (authenticated)", () => {
       .getByRole("tab", { name: /^Today$/i })
       .or(page.getByRole("button", { name: /^Today$/i }));
     await expect(todayNav.first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
+    // Sloe redesign renamed the meals section heading "Meals" → "Today's Meals".
+    await expect(page.getByRole("heading", { name: /Today's Meals/i })).toBeVisible();
     await expect(
       page.locator('[data-testid="today-hero-desktop"] [data-testid="today-macro-rings-toggle"]'),
     ).toBeVisible();

@@ -26,7 +26,8 @@ test.describe("Cook mode", () => {
       .first();
     await recipeCard.click({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: /^cook$/i }).click({ timeout: 20_000 });
+    // Sloe redesign renamed the cook-mode launch button "Cook" → "Start Cooking".
+    await page.getByRole("button", { name: /start cooking/i }).first().click({ timeout: 20_000 });
 
     const stepText = page.locator(".leading-relaxed.text-foreground").first();
     await expect(stepText).toBeVisible({ timeout: 15_000 });

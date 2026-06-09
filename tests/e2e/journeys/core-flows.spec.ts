@@ -51,6 +51,10 @@ test.describe("Public pages", () => {
     await expect(page.getByRole("link", { name: /log in/i }).first()).toBeVisible();
     await page.getByRole("link", { name: /log in/i }).first().click();
     await page.waitForURL("**/login**");
+    // Chooser-first /login (2026-06-08 Sloe redesign): the email/password form
+    // is disclosed behind "Continue with email" — reveal it before asserting
+    // the field.
+    await page.getByRole("button", { name: "Continue with email" }).click();
     await expect(page.getByPlaceholder("you@domain.com")).toBeVisible();
   });
 });
