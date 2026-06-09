@@ -27,6 +27,7 @@ import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
+import { Accent } from "../../constants/theme";
 import { TodayActivityCard } from "../../components/today/TodayActivityCard";
 import { TodayActivityBonusCard } from "../../components/today/TodayActivityBonusCard";
 
@@ -374,9 +375,11 @@ describe("TodayActivityBonusCard — TD1 energy-balance calm slider", () => {
     // as host Views carrying their props, so the gradient id is queryable.
     const grad = UNSAFE_getByProps({ id: "energyBalanceTrack" });
     expect(grad).toBeTruthy();
-    // Sage deficit stop + amber surplus stop both present.
-    expect(UNSAFE_getByProps({ stopColor: "#5E7C5A" })).toBeTruthy();
-    expect(UNSAFE_getByProps({ stopColor: "#C8794E" })).toBeTruthy();
+    // Sage deficit stop (Accent.success) + amber surplus stop (Accent.warning)
+    // must both be present, matching the TD1 prototype
+    // `linear-gradient(90deg,#5E7C5A,…,#C9892C)`.
+    expect(UNSAFE_getByProps({ stopColor: Accent.success })).toBeTruthy();
+    expect(UNSAFE_getByProps({ stopColor: Accent.warning })).toBeTruthy();
   });
 
   it("omits the slider entirely when there's no burn data and nothing eaten", () => {

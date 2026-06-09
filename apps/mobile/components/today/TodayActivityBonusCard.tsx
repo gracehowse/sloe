@@ -411,15 +411,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               <Svg width="100%" height={10}>
                 <Defs>
                   {/* Energy-balance scale (deficit→maintenance→surplus) — a
-                      DATA track, not a CTA, so the surplus end stays warm and
-                      does NOT follow the Frost accent. (The TD1 spec calls for
-                      amber `#C9892C` at the surplus end, not clay
-                      `Accent.primary` — a separate latent fix, out of scope for
-                      the Frost flag: see ENG-997 follow-up.) */}
+                      DATA track, not a CTA, so the surplus end uses amber
+                      (`Accent.warning` #C9892C) matching the TD1 prototype
+                      `linear-gradient(90deg,#5E7C5A,#EDEAF1,#C9892C)`. */}
                   <LinearGradient id="energyBalanceTrack" x1="0" y1="0" x2="1" y2="0">
                     <Stop offset="0" stopColor={Accent.success} />
                     <Stop offset="0.5" stopColor={borderColor} />
-                    <Stop offset="1" stopColor={Accent.primary} />
+                    <Stop offset="1" stopColor={Accent.warning} />
                   </LinearGradient>
                 </Defs>
                 <Rect x="0" y="0" width="100%" height={10} rx={5} ry={5} fill="url(#energyBalanceTrack)" />

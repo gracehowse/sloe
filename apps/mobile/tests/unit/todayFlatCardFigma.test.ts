@@ -32,8 +32,21 @@ describe("Today flat borderless slab (Figma 654:2)", () => {
     expect(result.current.liftBg).toBeUndefined();
   });
 
+  // TodayHeroRing is intentionally lift="soft" (audit gap 6, 2026-06-09): the
+  // hero card needs a plum penumbra to separate from the near-tonal
+  // #F6F5F2-on-#FFFFFF page background. It is NOT in the flat list below.
+  it("components/today/TodayHeroRing.tsx uses lift=\"soft\" (hero elevated above flat slabs)", () => {
+    const src = readFileSync(
+      join(ROOT, "components/today/TodayHeroRing.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/<SupprCard[\s\S]*?lift="soft"/);
+    // Guard: must NOT revert to flat (that was the pre-audit-gap-6 state that
+    // made the top of Today read as one undifferentiated slab).
+    expect(src).not.toMatch(/<SupprCard[\s\S]*?lift="flat"/);
+  });
+
   const TODAY_SUPPR_CARD_SURFACES = [
-    "components/today/TodayHeroRing.tsx",
     "components/today/TodayDashboardMacroTiles.tsx",
     "components/today/TodayMealsSection.tsx",
     "components/today/TodayPlannedMealsCard.tsx",

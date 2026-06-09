@@ -71,7 +71,7 @@ export function ProgressStoryGate({
           // so the slot doesn't change tone when the live story unlocks.
           backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
           borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,
       ]}
@@ -164,7 +164,6 @@ const styles = StyleSheet.create({
     // corner radius from the AVERAGE ADHERENCE / weight / daily-calories
     // cards stacked below it.
     borderRadius: CARD_RADIUS,
-    borderWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
   },

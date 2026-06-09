@@ -16,6 +16,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  Accent,
   Colors,
   Elevation,
   IconSize,
@@ -177,9 +178,13 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.sheet.shadowOffset).toEqual({ width: 0, height: -8 });
     });
 
-    it("floatPrimary shadow tracks Accent.primary (Sloe clay)", () => {
-      // Sloe Phase 0: Accent.primary is clay #C8794E; the FAB glow follows it.
-      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#c8794e");
+    it("floatPrimary shadow tracks Accent.primary (Sloe aubergine)", () => {
+      // Aubergine direction (2026-06-08): Accent.primary is deep plum #3B2A4D.
+      // Clay (#C8794E) is now Accent.carbs only — the FAB glow follows the
+      // primary accent, so it must stay in sync via the token, not a hardcoded hex.
+      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe(
+        Accent.primary.toLowerCase(),
+      );
     });
   });
 

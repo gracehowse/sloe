@@ -60,7 +60,7 @@ export function ProgressHeadline({
           // (was cream `colors.card`). The frame's THIS WEEK card is lilac.
           backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
           borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,
       ]}
@@ -131,7 +131,6 @@ export function ProgressHeadline({
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
   },

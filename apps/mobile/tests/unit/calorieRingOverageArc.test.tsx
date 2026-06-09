@@ -184,7 +184,15 @@ describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
  */
 describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)", () => {
   const BLUE_IDLE = "#588CE4";
-  const GREY_TRACK = baseProps.trackColor.toUpperCase(); // #EDEAF1
+  // Empty-state track lifts to `borderStrong` (audit gap 1, 2026-06-09) so
+  // the ring shape reads clearly on a cold open — NOT the soft frost-mist
+  // `trackColor` (#EDEAF1). Accept either light or dark value so the test is
+  // colour-scheme-agnostic (the RNTL jsdom env reports dark, so the dark token
+  // is the one actually rendered, but both are valid design-system values).
+  const EMPTY_TRACK_LIGHT = Colors.light.borderStrong.toUpperCase(); // #C9C2D6
+  const EMPTY_TRACK_DARK = Colors.dark.borderStrong.toUpperCase();   // #47424F
+  const isEmptyTrack = (s: string) =>
+    s === EMPTY_TRACK_LIGHT || s === EMPTY_TRACK_DARK;
 
   it("empty (consumed 0): NO blue #588CE4 stroke anywhere", () => {
     const { UNSAFE_root } = render(
@@ -194,21 +202,21 @@ describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)",
     expect(strokes.some((s) => s === BLUE_IDLE)).toBe(false);
   });
 
-  it("empty (consumed 0): the Sloe grey track colour is present", () => {
+  it("empty (consumed 0): the lifted borderStrong track colour is present", () => {
     const { UNSAFE_root } = render(
       <TodayHeroRing {...baseProps} consumed={0} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
-    expect(strokes.some((s) => s === GREY_TRACK)).toBe(true);
+    expect(strokes.some(isEmptyTrack)).toBe(true);
   });
 
-  it("empty with no goal yet (goal 0): still grey, no blue", () => {
+  it("empty with no goal yet (goal 0): still uses borderStrong track, no blue", () => {
     const { UNSAFE_root } = render(
       <TodayHeroRing {...baseProps} consumed={0} goal={0} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some((s) => s === BLUE_IDLE)).toBe(false);
-    expect(strokes.some((s) => s === GREY_TRACK)).toBe(true);
+    expect(strokes.some(isEmptyTrack)).toBe(true);
   });
 
   it("never references the retired `ringIdle` calibrating gradient", () => {

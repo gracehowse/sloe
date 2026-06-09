@@ -1082,6 +1082,7 @@ export default function LibraryScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
+                      testID="createBtn"
                       onPress={() => setCreateSheetOpen(true)}
                       style={styles.quietCreate}
                       accessibilityRole="button"

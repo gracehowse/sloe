@@ -166,8 +166,18 @@ describe("F-85 — recipe title de-CAPS + per-ingredient macro bars removed", ()
   });
 
   it("mobile recipe screen uses normaliseRecipeDisplayTitle on every title render", () => {
+    // After the Figma 332:2 redesign, the three inline calls were consolidated
+    // into a single `displayTitle` constant (computed once, used in multiple
+    // render sites). The minimum call count is 2: one for the share handler
+    // and one for the `displayTitle` declaration. The constant must then be
+    // threaded to at least 2 JSX title render sites (RecipeDetailHero +
+    // RecipeTitleBlock) — equivalent protection, no weaker contract.
     const matches = SRC.recipe.match(/normaliseRecipeDisplayTitle\(/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // `displayTitle` is the computed normalised value and must appear in
+    // at least 2 title= prop sites so every hero/title render is covered.
+    const titlePropMatches = SRC.recipe.match(/title=\{displayTitle\}/g) ?? [];
+    expect(titlePropMatches.length).toBeGreaterThanOrEqual(2);
   });
 
   it("web recipe detail uses normaliseRecipeDisplayTitle (parity)", () => {

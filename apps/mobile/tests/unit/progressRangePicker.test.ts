@@ -157,7 +157,7 @@ describe("Progress prototype port — header + range picker", () => {
     // `accent.primarySolid` border/label — rationing the accent (the solid
     // fill is reserved for the FAB + conversion CTAs). The old inset
     // segmented-control container stays gone.
-    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: 6 \}\}/);
+    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: (?:6|Spacing\.sm) \}\}/);
     expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
     // Active pill = soft-tint fill + primarySolid border/label; inactive =
     // bordered cream pill. `t.accentSoft` / `t.accentSolid` thread the tokens.

@@ -38,7 +38,7 @@ import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
 import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Colors, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1841,7 +1841,7 @@ export default function RecipeDetailScreen() {
         // detects via the white page; dark uses the lifted aubergine so the
         // outline + label clear AA on the dark cook surface.
         const cookNextOutline =
-          colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+          colors.background === Colors.light.background ? accent.primarySolid : accent.primarySolidDark;
         const rawStep = instructionSteps[cookStep] ?? "";
         const cleanedStep = rawStep.replace(/^\d+[\.\)\-]\s*/, "");
         const scaledStep =

@@ -47,9 +47,15 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
     expect(src).not.toMatch(/router\.push\(\s*"\/weight-tracker"/);
   });
 
-  it("Progress still imports the canonical WeightChart for in-tab rendering", () => {
+  it("Progress still renders the weight sparkline for in-tab chart display", () => {
     // The whole point of the consolidation: Progress remains the
-    // single canonical surface for the chart.
-    expect(src).toContain('from "@/components/progress/WeightChart"');
+    // single canonical surface for the weight chart.
+    // Sloe/aubergine redesign (2026-06-04): the full WeightChart component
+    // was replaced with an inline Sparkline helper for the redesigned
+    // compact weight card. The chart still lives in progress.tsx — it is
+    // not delegated to a push route. Pin both the Sparkline definition and
+    // its usage so a future agent can't silently delete either.
+    expect(src).toContain("function Sparkline(");
+    expect(src).toContain("<Sparkline points={sparkSeries}");
   });
 });

@@ -10,13 +10,14 @@ import * as themeModule from "../../constants/theme";
  * SLOE Phase 0 (`docs/ux/redesign/phase-0-token-foundation-dossier.md`, dossier
  * D-3). The win / celebration role is a DISTINCT landmark-only hue, intentionally
  * outside the 6-hue action palette. It must never collapse onto the commit-CTA
- * colour (`primary` = clay) or the state/data colour (`success` = sage) — that
- * three-role split is the whole point of the token. Sloe sets the persistent win
- * to DAMSON `#6A4B7A` and the celebration fill to the warm Sloe brand gradient
- * (plum → clay → amber), retiring the prior blue→purple→magenta brand spectrum
- * (and the older interim amber `#F2A93B` / gold). Damson is collision-free with
- * the carbs/sodium/warning hues. Mirrors web `--accent-win` /
- * `--accent-win-gradient` in `src/styles/theme.css`.
+ * colour (`primary` = aubergine) or the state/data colour (`success` = sage) —
+ * that three-role split is the whole point of the token. Sloe sets the persistent
+ * win to DAMSON `#6A4B7A` and the celebration fill to the aubergine brand gradient
+ * (plum → aubergine-lift → elevated-lift), retiring the prior blue→purple→magenta
+ * brand spectrum, the older interim amber `#F2A93B` / gold, and the brief clay
+ * middle stop that shipped before the 2026-06-08 aubergine accent decision.
+ * Damson is collision-free with the carbs/sodium/warning hues. Mirrors web
+ * `--accent-win` / `--accent-win-gradient` in `src/styles/theme.css`.
  */
 describe("Accent win token", () => {
   it("win is its own hue — distinct from success (state/data colour)", () => {
@@ -51,16 +52,26 @@ describe("Accent win token", () => {
 /**
  * The celebration FILL is a 3-stop SLOE BRAND gradient. The stops + offsets must
  * match web `--accent-win-gradient`
- * (`linear-gradient(120deg, #3B2A4D 0%, #C8794E 50%, #C9892C 100%)`) so the
- * goal-hit moment looks identical across platforms.
+ * (`linear-gradient(120deg, #3B2A4D 0%, #5B3B6E 50%, #7E5C92 100%)`) — plum
+ * → aubergine (primaryLight) → lift — so the goal-hit moment looks identical
+ * across platforms. Updated 2026-06-08 per
+ * `docs/decisions/2026-06-08-aubergine-accent-system.md`: the brief clay middle
+ * stop was replaced by the aubergine `primaryLight` when aubergine became the
+ * single functional accent.
  */
 describe("AccentWinGradient (win-moment fill)", () => {
   it("has the three Sloe brand-gradient stops in paint order", () => {
-    expect(AccentWinGradient.stops).toEqual(["#3B2A4D", "#C8794E", "#C9892C"]);
+    // plum (primary) → aubergine lift (primaryLight) → elevated lift (#7E5C92)
+    // Mirrors web --accent-win-gradient (#3B2A4D → #5B3B6E → #7E5C92).
+    expect(AccentWinGradient.stops).toEqual([
+      Accent.primary,
+      Accent.primaryLight,
+      "#7E5C92",
+    ]);
   });
 
-  it("the middle (clay) stop is the Sloe primary CTA hue", () => {
-    expect(AccentWinGradient.stops[1]).toBe("#C8794E");
+  it("the middle stop is the Sloe primaryLight (aubergine lift)", () => {
+    expect(AccentWinGradient.stops[1]).toBe(Accent.primaryLight);
   });
 
   it("offsets mirror the web 0% / 50% / 100% stop positions", () => {
@@ -71,11 +82,13 @@ describe("AccentWinGradient (win-moment fill)", () => {
 /**
  * Frost secondary-colour exploration — RETIRED (ENG-997, 2026-06-08).
  *
- * The brand-manager decision made Clay `#C8794E` the UNCONDITIONAL functional
- * accent, so the `AccentFrost` / `AccentWinGradientFrost` damson variants were
- * deleted from `constants/theme.ts` and the flag wiring removed from
- * `context/theme.tsx`. These are the RETIREMENT guards — they fail if the dead
- * variants creep back. Mirrors the web `frostFlagTokens.test.ts`.
+ * The brand-manager decision made Aubergine `#5B3B6E` the UNCONDITIONAL
+ * functional accent (superseding the brief clay-as-accent interim — see
+ * `docs/decisions/2026-06-08-aubergine-accent-system.md`), so the `AccentFrost`
+ * / `AccentWinGradientFrost` variants were deleted from `constants/theme.ts` and
+ * the flag wiring removed from `context/theme.tsx`. These are the RETIREMENT
+ * guards — they fail if the dead variants creep back. Mirrors the web
+ * `frostFlagTokens.test.ts`.
  */
 describe("Frost variants retired", () => {
   it("AccentFrost is no longer exported", () => {
@@ -100,16 +113,24 @@ describe("Frost variants retired", () => {
 });
 
 /**
- * Clay is the unconditional accent. `Accent.primary` is the clay CTA hue, and
- * the win gradient keeps its clay middle stop.
+ * Aubergine is the unconditional functional accent (2026-06-08). `Accent.primary`
+ * is the deep-plum base (`#3B2A4D`); `Accent.primaryLight` is the aubergine-lift
+ * (`#5B3B6E`) used for CTAs and the gradient middle stop. Clay (`#C8794E`)
+ * survives only as `Accent.carbs` / `MacroColors.carbs`. See
+ * `docs/decisions/2026-06-08-aubergine-accent-system.md`.
  */
-describe("Clay is the unconditional functional accent", () => {
-  it("Accent.primary is the clay CTA hue", () => {
-    expect(Accent.primary).toBe("#C8794E");
+describe("Aubergine is the unconditional functional accent", () => {
+  it("Accent.primary is the deep-plum aubergine base, not clay", () => {
+    // The aubergine system: deep plum (#3B2A4D) is the base; primarySolid is
+    // the same hue for text/icon/outline usage. Clay (#C8794E) is carbs-only.
+    expect(Accent.primary).toBe(Accent.primarySolid);
+    expect(Accent.primary).not.toBe(Accent.carbs);
   });
 
-  it("the win-moment gradient keeps its clay middle stop", () => {
-    expect(AccentWinGradient.stops[1]).toBe("#C8794E");
+  it("the win-moment gradient middle stop is aubergine primaryLight, not clay", () => {
+    // Middle stop is Accent.primaryLight (#5B3B6E), not clay (#C8794E).
+    expect(AccentWinGradient.stops[1]).toBe(Accent.primaryLight);
+    expect(AccentWinGradient.stops[1]).not.toBe(Accent.carbs);
   });
 });
 
