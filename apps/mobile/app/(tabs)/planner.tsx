@@ -1408,18 +1408,6 @@ export default function PlannerScreen() {
           paddingBottom: Layout.screenPaddingBottom,
           gap: Layout.planScrollGap,
         },
-        // Prototype port — uppercase micro-overline above the big title.
-        headerOverline: {
-          ...Type.label,
-          color: colors.textTertiary,
-          letterSpacing: 1.2,
-        },
-        headerTitle: {
-          ...Type.title,
-          color: colors.text,
-          marginTop: 2,
-          paddingBottom: 4,
-        },
         headerRow: {
           flexDirection: "row",
           justifyContent: "space-between",
@@ -1531,40 +1519,6 @@ export default function PlannerScreen() {
         },
         filterChipText: { fontSize: 12.5, fontWeight: "600", color: colors.text },
 
-        dayCardsScroll: {
-          marginHorizontal: -Spacing.xl,
-          paddingHorizontal: Spacing.xl,
-          marginBottom: Spacing.sm,
-          gap: Spacing.sm,
-          flexGrow: 0,
-        },
-        dayCardsSingleWrap: {
-          marginBottom: Spacing.sm,
-        },
-        dayCard: {
-          width: 108,
-          minHeight: 128,
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: Spacing.md,
-          alignItems: "center",
-          gap: Spacing.xs,
-        },
-        dayCardFull: {
-          width: "100%" as const,
-          alignSelf: "stretch",
-          minHeight: 132,
-        },
-        dayCardToday: { borderColor: accent.primary, backgroundColor: accent.primary + "08" },
-        dayCardName: { fontSize: 13, fontWeight: "600", color: colors.text },
-        dayCardNameToday: { color: accent.primary },
-        dayCardMeals: { gap: 2 },
-        dayCardMeal: { fontSize: 10, color: colors.textTertiary, lineHeight: 12 },
-        dayCardProgressBar: { width: "100%", height: 3, backgroundColor: colors.border, borderRadius: 1.5, marginVertical: Spacing.xs },
-        dayCardProgressFill: { height: 3, borderRadius: 1.5 },
-        dayCardCalories: { fontSize: 10, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
 
         sectionLabel: {
           ...Type.label,
@@ -1606,11 +1560,6 @@ export default function PlannerScreen() {
           borderWidth: 0,
           borderColor: "transparent",
           overflow: "visible",
-        },
-        planDayCardMeta: {
-          paddingHorizontal: 14,
-          paddingTop: 10,
-          paddingBottom: 6,
         },
 
         // Sloe DS — calm per-day empty slate. Two-line hierarchy (a quiet
@@ -1821,39 +1770,6 @@ export default function PlannerScreen() {
           marginTop: 2,
           fontVariant: ["tabular-nums"],
         },
-        // Prototype port (2026-04-20) — 30×30 square swap button. Sits
-        // immediately before the existing "Log today" button (both
-        // right-aligned). Tapping opens the same swap flow the row's
-        // long-press alert offers; visible entry point.
-        mealSwapBtn: {
-          width: 30,
-          height: 30,
-          borderRadius: 8,
-          backgroundColor: colors.border + "66",
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 3,
-        },
-        // Audit 2026-04-29 papercut #11 — bold 700-weight saturated
-        // accent.primary text screamed for attention with 2-4 of these
-        // visible per day card, competing with the rest of the page.
-        // Demote to a subtle-fill pill (8% Accent bg, primary text,
-        // 600-weight) so the button reads as a tappable affordance
-        // without dominating. Mirrors the #3 demotion of the Today
-        // suggestion-card CTA.
-        mealLogBtn: {
-          paddingVertical: 6,
-          paddingHorizontal: 10,
-          minWidth: 90,
-          borderRadius: 8,
-          backgroundColor: colors.backgroundSecondary,
-          borderWidth: 1,
-          borderColor: colors.border,
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 4,
-        },
-        mealLogBtnText: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, textAlign: "center" },
         // 2026-05-14 (premium-bar audit Plan Card 2 #4) — `…` overflow
         // sits adjacent to the primary Log-as-planned button and opens
         // an action sheet with the same actions long-press exposes.
@@ -1868,42 +1784,7 @@ export default function PlannerScreen() {
           justifyContent: "center",
           marginTop: 3,
         },
-        // 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-row fit
-        // chip ("Fits 92%" / "Over by 220 kcal"). Shape mirrors the
-        // portion-multiplier pill rendered next to the recipe title.
-        mealFitPill: {
-          paddingHorizontal: 6,
-          paddingVertical: 1,
-          borderRadius: 4,
-          alignSelf: "flex-start",
-          marginTop: 4,
-        },
-        mealFitPillText: {
-          fontSize: 11,
-          fontWeight: "700",
-          fontVariant: ["tabular-nums"],
-        },
-        mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
-        shoppingListCard: {
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: Spacing.xl,
-          gap: Spacing.md,
-          flexDirection: "row",
-          alignItems: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
-        },
-        shoppingListIcon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Accent.warning + "15", alignItems: "center", justifyContent: "center", marginRight: Spacing.md },
-        shoppingListContent: { flex: 1 },
-        shoppingListTitle: { ...Type.headline, fontSize: 16, color: colors.text },
-        shoppingListSubtitle: { ...Type.body, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
         actionsRow: { gap: Spacing.md },
         // Sloe treatment system (2026-06-08, §1): secondary "New Plan" /
