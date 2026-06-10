@@ -13,13 +13,31 @@ export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
 
 /** The Frost secondary-colour exploration (`brand_frost_secondary`, ENG-997)
- *  was RETIRED 2026-06-08 (brand-manager): Clay `#C8794E` is now the
- *  UNCONDITIONAL functional accent. `accent` / `winGradient` below always
- *  resolve to the clay palette; the flag read + PostHog/forced-flag listener
- *  and the web `.flag-frost` mirror were removed in the same change. The
- *  `accent` / `winGradient` shape on the context (and `useAccent()` /
- *  `useWinGradient()`) is kept so the ~90 migrated consumers keep working —
- *  they now simply always get clay. */
+ *  was RETIRED 2026-06-08 (brand-manager). The accent is the aubergine system
+ *  (docs/decisions/2026-06-08-aubergine-accent-system.md).
+ *
+ *  SCHEME RESOLUTION (2026-06-09 design-director review): the accent now
+ *  INVERTS on dark, mirroring web `theme.css` `.dark` exactly — deep plum
+ *  `#3B2A4D` is invisible on a near-black ground, so dark lifts to the
+ *  OLED-contrast aubergines (`#7E5C92` fill / `#C4ACD0` text-solid). Every
+ *  component must read the accent via `useAccent()` (never the static
+ *  `Accent` constant) so titles, eyebrows, outline CTAs and selected pills
+ *  stay legible on dark. */
+
+/** Dark-scheme accent — value-for-value mirror of web `.dark` (`theme.css`):
+ *  `--accent-primary #7E5C92` / `-lift #9A7BAA` / `-solid #C4ACD0` /
+ *  `-soft rgba(154,123,170,0.18)`. Non-primary keys (success/warning/
+ *  destructive/activity…) keep their shared values — components already
+ *  scheme-switch those via their `*Light` variants where needed. */
+const DARK_ACCENT: typeof Accent = {
+  ...Accent,
+  primary: "#7E5C92",
+  primaryLight: "#9A7BAA",
+  primarySolid: Accent.primarySolidDark, // #C4ACD0
+  primarySoft: Accent.primarySoftDark, // rgba(154,123,170,0.18)
+  brandBlue: "#7E5C92",
+  brandBlueLight: "#9A7BAA",
+};
 
 type ThemeContextValue = {
   preference: ThemePreference;
@@ -95,8 +113,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const colors = resolved === "light" ? Colors.light : Colors.dark;
 
-  // Clay is the unconditional functional accent (Frost flag retired, ENG-997).
-  const accent = Accent;
+  // Scheme-resolved accent (2026-06-09): dark inverts the aubergine family to
+  // the OLED-contrast values, exactly like web's `.dark` block. Light keeps
+  // the canonical deep plum.
+  const accent = resolved === "dark" ? DARK_ACCENT : Accent;
   const winGradient = AccentWinGradient;
 
   const value = useMemo<ThemeContextValue>(
@@ -123,13 +143,13 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-/** Functional secondary-accent palette — always clay `Accent` (the Frost flag
- *  is retired; clay is the unconditional accent, ENG-997). Use this in
- *  high-visibility accent consumers (primary buttons, tab active tint, FAB glow,
- *  links, win-moment gradient); the long tail imports `Accent` directly (also
- *  clay). Carbs/sugar/status/nav/honey are NOT secondary-accent and must keep
- *  their own (`MacroColors`, `Accent.warning`, `navPrimary`, `Accent.activity`,
- *  …) imports regardless of this hook. */
+/** SCHEME-RESOLVED accent palette (2026-06-09): light → deep plum `#3B2A4D`
+ *  family; dark → the OLED-lifted aubergines (`#7E5C92` fill / `#C4ACD0`
+ *  text-solid), mirroring web `.dark`. ALWAYS read the accent through this
+ *  hook in components — a static `Accent.primary*` import renders deep plum
+ *  on dark (invisible). Status colours (success/warning/destructive),
+ *  `MacroColors`, and `Accent.activity` are NOT scheme-inverted here —
+ *  components keep their existing `*Light`-variant switches for those. */
 export function useAccent(): typeof Accent {
   return useContext(ThemeContext).accent;
 }
