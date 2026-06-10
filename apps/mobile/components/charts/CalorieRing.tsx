@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, TurboModuleRegistry, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as Haptics from "expo-haptics";
@@ -346,6 +346,14 @@ export default function CalorieRing({
   const skiaFlagOn = isFeatureEnabled("ring_skia_v1");
   const SkiaArcs: typeof SkiaRingArcsT | null = useMemo(() => {
     if (!skiaFlagOn) return null;
+    // 2026-06-10 INCIDENT: a try/catch around the require is NOT enough —
+    // in dev, a native-module throw inside a module factory red-boxes the
+    // app even when the requiring code catches (TurboModuleRegistry
+    // .getEnforcing crashed Grace's phone, whose dev client predates the
+    // Skia pod; only the locally-built sim client had it). Probe with
+    // TurboModuleRegistry.get (returns null, never throws) BEFORE touching
+    // the module. Skia stays impossible to crash on, flag on or off.
+    if (TurboModuleRegistry.get("RNSkiaModule") == null) return null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       return require("./SkiaRingArcs").SkiaRingArcs as typeof SkiaRingArcsT;
