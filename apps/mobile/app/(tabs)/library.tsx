@@ -678,9 +678,9 @@ export default function LibraryScreen() {
       position: "absolute",
       top: Spacing.sm,
       left: Spacing.sm,
-      paddingHorizontal: 8,
+      paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.xs,
-      borderRadius: Radius.sm,
+      borderRadius: Radius.full, // tags census 2026-06-10 — tag family is round
       backgroundColor: colors.text + "CC",
     },
     draftBadgeText: {

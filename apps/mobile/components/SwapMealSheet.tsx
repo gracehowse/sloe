@@ -180,7 +180,7 @@ export function SwapMealSheet({
                             backgroundColor: accent.primarySoft,
                             borderRadius: Radius.full,
                             paddingHorizontal: Spacing.sm,
-                            paddingVertical: 1,
+                            paddingVertical: 2, // tag canon pV (census 2026-06-10)
                           }}
                         >
                           <Star size={9} color={accent.primarySolid} strokeWidth={2.5} />

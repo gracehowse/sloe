@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -99,7 +99,7 @@ export function SubTabPill<TId extends string>({
                   minWidth: 20,
                   height: 18,
                   paddingHorizontal: Spacing.xs,
-                  borderRadius: 9,
+                  borderRadius: Radius.full, // tags census 2026-06-10 (was literal 9)
                   backgroundColor: active ? colors.text : colors.border,
                   alignItems: "center",
                   justifyContent: "center",

@@ -45,12 +45,15 @@ export function RecipeTitleBlock({
 }) {
   const colors = useThemeColors();
 
+  // Chips census (2026-06-10): all three tones on *Solid tokens + a
+  // token-derived 10–12% wash (the sage fg was an inlined literal that
+  // duplicated Accent.success — which itself fails AA as text).
   const verdictTone = verdict
     ? verdict.tone === "success"
-      ? { fg: "#5E7C5A", bg: "rgba(94,124,90,0.1)" }
+      ? { fg: Accent.successSolid, bg: Accent.success + "1A" }
       : verdict.tone === "warning"
-        ? { fg: Accent.warningSolid, bg: "rgba(201,137,44,0.12)" }
-        : { fg: Accent.destructiveSolid, bg: "rgba(192,83,63,0.12)" }
+        ? { fg: Accent.warningSolid, bg: Accent.warning + "1F" }
+        : { fg: Accent.destructiveSolid, bg: Accent.destructive + "1F" }
     : null;
 
   return (

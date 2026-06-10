@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Check, Sparkles } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Colors, Radius, Spacing } from "@/constants/theme";
 import type { TrustChipVariant } from "@suppr/shared/types/trust";
 
 /**
@@ -38,31 +38,33 @@ interface VariantConfig {
 
 const config: Record<TrustChipVariant, VariantConfig> = {
   usda: {
-    bg: "rgba(98, 179, 90, 0.08)",
+    // Chips census (2026-06-10): token-derived wash — the rgba literals
+    // were the RETIRED green/indigo palette, not the sage/aubergine system.
+    bg: Accent.success + "14",
     fg: Accent.success,
     glyph: "check",
     label: "USDA verified",
   },
   "off-adjusted": {
-    bg: "rgba(76, 108, 224, 0.12)",
+    bg: Accent.primarySoft,
     fg: Accent.primary,
     glyph: "check",
     label: "OFF · adjusted",
   },
   estimated: {
-    bg: "rgba(224, 168, 56, 0.10)",
+    bg: Accent.warning + "1A",
     fg: Accent.warning,
     glyph: "sparkles",
     label: "Estimated · verify",
   },
   manual: {
-    bg: "rgba(140, 131, 120, 0.12)",
-    fg: "#5e574e",
+    bg: Colors.light.confidenceNeutral + "1F",
+    fg: Colors.light.confidenceNeutral,
     glyph: null,
     label: "Manual",
   },
   "gluten-high-conf": {
-    bg: "rgba(98, 179, 90, 0.08)",
+    bg: Accent.success + "14",
     fg: Accent.success,
     // ENG-748 (legal-reviewer P0): the gluten chip must NOT read as a
     // verified safety guarantee on a coeliac surface. The `check` glyph
@@ -74,7 +76,7 @@ const config: Record<TrustChipVariant, VariantConfig> = {
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {
-    bg: "rgba(224, 168, 56, 0.10)",
+    bg: Accent.warning + "1A",
     fg: Accent.warning,
     glyph: "sparkles",
     label: "Contains potential gluten · review",

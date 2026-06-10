@@ -1362,7 +1362,7 @@ export default function ImportSharedScreen() {
       gap: Spacing.xs,
       paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
-      borderRadius: Radius.sm,
+      borderRadius: Radius.full, // tags census 2026-06-10
       backgroundColor: Accent.warning + "1F",
     },
     proPillText: {
