@@ -10,7 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 
-import { Accent, MacroColors } from "@/constants/theme";
+import { MacroColors } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * MacroIconRow — canonical at-a-glance macro display.
@@ -26,7 +27,7 @@ import { Accent, MacroColors } from "@/constants/theme";
  *   - Wheat    → carbs    (`MacroColors.carbs`)
  *   - Droplet  → fat      (`MacroColors.fat`)
  *   - Sprout   → fibre    (`MacroColors.fiber`)
- *   - Clock  → cook time (optional, `Accent.primary`)
+ *   - Clock  → cook time (optional, `accent.primary` via `useAccent()`)
  *
  * Macro letter labels ("P", "C", "F") render at tertiary opacity so
  * the row is self-explanatory without the icon row reading as "memorise
@@ -116,6 +117,9 @@ export function MacroIconRow({
   style,
   textStyle,
 }: MacroIconRowProps) {
+  // Clock icon uses the scheme-resolved accent primary so it stays
+  // legible on dark (deep plum `#3B2A4D` is invisible on near-black).
+  const accent = useAccent();
   return (
     <View
       style={[{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }, style]}
@@ -181,7 +185,7 @@ export function MacroIconRow({
       {cookTime ? (
         <Chunk
           Icon={Clock}
-          iconColor={Accent.primary}
+          iconColor={accent.primary}
           value={cookTime}
           textColor={textColor}
           textTertiaryColor={textTertiaryColor}

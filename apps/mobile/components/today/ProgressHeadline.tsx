@@ -1,7 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Sparkles } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
@@ -45,6 +46,7 @@ export function ProgressHeadline({
 }: ProgressHeadlineProps) {
   const colors = useThemeColors();
   const cardElevation = useCardElevation();
+  const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
   return (
@@ -67,12 +69,12 @@ export function ProgressHeadline({
     >
       <View style={styles.eyebrowRow}>
         {/* Clay sparkle by the THIS WEEK eyebrow (frame). Mirrors web. */}
-        <Sparkles size={14} color={Accent.primary} strokeWidth={1.75} />
+        <Sparkles size={14} color={accent.primary} strokeWidth={1.75} />
         <Text
           style={[
             Type.label,
             {
-              color: Accent.primary,
+              color: accent.primary,
             },
           ]}
         >

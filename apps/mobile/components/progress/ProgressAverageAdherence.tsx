@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -60,6 +61,9 @@ export function ProgressAverageAdherence({
   adherenceDeltaPct,
 }: ProgressAverageAdherenceProps) {
   const colors = useThemeColors();
+  // "AVERAGE ADHERENCE" overline uses accent.primarySolid — scheme-resolved
+  // so the deep plum lifts to the OLED-contrast aubergine on dark.
+  const accent = useAccent();
   // One-card-treatment soft lift (2026-06-09): the AVERAGE ADHERENCE card sits
   // directly on the Progress page ground, so it takes the soft elevation like
   // every sibling content card (weight / daily-calories / maintenance). Mirrors
@@ -84,7 +88,7 @@ export function ProgressAverageAdherence({
       ]}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>
+        <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>
           Average Adherence
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>

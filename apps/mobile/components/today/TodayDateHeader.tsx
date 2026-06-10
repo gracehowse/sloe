@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
 import { Accent, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
@@ -84,6 +85,7 @@ export function TodayDateHeader({
   stripOnly = false,
 }: TodayDateHeaderProps) {
   const router = useRouter();
+  const accent = useAccent();
   const calmDateNav = hideDayStrip && viewMode === "day";
 
   const navChromeStyle = {
@@ -321,12 +323,12 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "day" ? Accent.primarySoft : "transparent",
+                    viewMode === "day" ? accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Sun size={14} color={viewMode === "day" ? Accent.primarySolid : textSecondaryColor} />
+                <Sun size={14} color={viewMode === "day" ? accent.primarySolid : textSecondaryColor} />
               </Pressable>
               <Pressable
                 onPress={() => onViewModeChange("week")}
@@ -337,14 +339,14 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "week" ? Accent.primarySoft : "transparent",
+                    viewMode === "week" ? accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <LayoutGrid
                   size={14}
-                  color={viewMode === "week" ? Accent.primarySolid : textSecondaryColor}
+                  color={viewMode === "week" ? accent.primarySolid : textSecondaryColor}
                 />
               </Pressable>
             </View>

@@ -4,7 +4,8 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
@@ -64,9 +65,11 @@ export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
-  // Source links + the INFO overline read in `Accent.primarySolid` (the
-  // aubergine text/icon-on-light variant); the icon-box uses `Accent.primarySoft`
-  // (Sloe treatment system, 2026-06-08). Both are static `Accent.*` constants.
+  // Source links + the INFO overline read in `accent.primarySolid` (the
+  // aubergine text/icon-on-light / lifted aubergine on dark); the icon-box
+  // uses `accent.primarySoft` (Sloe treatment system, 2026-06-08). Both
+  // are scheme-resolved via `useAccent()` so they stay legible on dark.
+  const accent = useAccent();
   // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
   // soft-elevation.md): each nutrition-source card sits directly on the page ground,
   // so it takes the SOFT lift (light → shadow, no border; dark → tonal lift + hairline).
@@ -86,11 +89,11 @@ export default function NutritionSourcesScreen() {
           borderBottomColor: colors.border,
         },
         backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-        // INFO overline + source links read in `accent.primarySolid` (#4E3260,
-        // AA on the white page) — small accent text uses the solid variant per
-        // the Sloe treatment system (2026-06-08). The icon-box tint stays the
-        // soft aubergine wash.
-        topTitle: { color: Accent.primarySolid, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+        // INFO overline + source links read in `accent.primarySolid` — small
+        // accent text uses the solid variant per the Sloe treatment system
+        // (2026-06-08). On dark, the hook returns the lifted aubergine
+        // `#C4ACD0` so small text stays legible on near-black.
+        topTitle: { color: accent.primarySolid, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
         scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
         heading: { ...Type.title, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
@@ -108,7 +111,7 @@ export default function NutritionSourcesScreen() {
           width: 40,
           height: 40,
           borderRadius: Radius.md,
-          backgroundColor: Accent.primarySoft,
+          backgroundColor: accent.primarySoft,
           alignItems: "center",
           justifyContent: "center",
           marginTop: 2,
@@ -132,7 +135,7 @@ export default function NutritionSourcesScreen() {
         },
         sourceLink: {
           fontSize: 13,
-          color: Accent.primarySolid,
+          color: accent.primarySolid,
           fontWeight: "600",
           marginTop: Spacing.xs,
         },
@@ -143,7 +146,7 @@ export default function NutritionSourcesScreen() {
           marginTop: Spacing.md,
         },
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, accent],
   );
 
   return (
@@ -176,7 +179,7 @@ export default function NutritionSourcesScreen() {
             return (
               <View key={name} style={styles.card}>
                 <View style={styles.iconBox}>
-                  <FALLBACK_ICON size={20} color={Accent.primarySolid} strokeWidth={1.75} />
+                  <FALLBACK_ICON size={20} color={accent.primarySolid} strokeWidth={1.75} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.sourceName}>{name}</Text>
@@ -188,7 +191,7 @@ export default function NutritionSourcesScreen() {
           return (
             <View key={name} style={styles.card} testID={`nutrition-source-${name}`}>
               <View style={styles.iconBox}>
-                <Icon size={20} color={Accent.primarySolid} strokeWidth={1.75} />
+                <Icon size={20} color={accent.primarySolid} strokeWidth={1.75} />
               </View>
               <View style={styles.cardBody}>
                 <Text style={styles.sourceName}>{name}</Text>
@@ -197,7 +200,7 @@ export default function NutritionSourcesScreen() {
                 <Pressable onPress={() => Linking.openURL(detail.url)}>
                   <Text style={styles.sourceLink}>
                     {detail.url.replace("https://", "")}{" "}
-                    <Ionicons name="open-outline" size={12} color={Accent.primarySolid} />
+                    <Ionicons name="open-outline" size={12} color={accent.primarySolid} />
                   </Text>
                 </Pressable>
               </View>

@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 
 /**
@@ -62,6 +63,9 @@ export function TodayQuickLogStrip({
   // the tinted icon container carries the colour identity. Prop kept on
   // the public contract for caller compatibility / future opt-in.
   void _cardBorderColor;
+  // Snap chip uses the scheme-resolved accent primary so the camera icon
+  // tint stays visible on dark (deep plum #3B2A4D is invisible on near-black).
+  const accent = useAccent();
   const proLocked = userTier !== "pro";
   const entries: readonly {
     label: string;
@@ -72,7 +76,7 @@ export function TodayQuickLogStrip({
   }[] = [
     { label: "Search", Glyph: Search, color: Accent.warning, onPress: onOpenSearch, locked: false },
     { label: "Voice", Glyph: Mic, color: Accent.success, onPress: onOpenVoice, locked: proLocked },
-    { label: "Snap", Glyph: Camera, color: Accent.primary, onPress: onOpenPhoto, locked: proLocked },
+    { label: "Snap", Glyph: Camera, color: accent.primary, onPress: onOpenPhoto, locked: proLocked },
     { label: "Scan", Glyph: ScanBarcode, color: Accent.magenta, onPress: onOpenBarcode, locked: false },
   ];
   return (

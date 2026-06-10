@@ -72,17 +72,28 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
   });
 
   it("Settings name Save + promo Apply are aubergine outlines", () => {
-    expect(BUNDLE).toMatch(/testID="settings-bundle-name-save"[\s\S]{0,600}borderColor:\s*Accent\.primarySolid/);
-    expect(BUNDLE).toMatch(/testID="settings-bundle-promo-code-apply"[\s\S]{0,600}borderColor:\s*Accent\.primarySolid/);
+    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
+    expect(BUNDLE).toMatch(
+      /testID="settings-bundle-name-save"[\s\S]{0,600}borderColor:\s*(?:Accent|accent)\.primarySolid/,
+    );
+    expect(BUNDLE).toMatch(
+      /testID="settings-bundle-promo-code-apply"[\s\S]{0,600}borderColor:\s*(?:Accent|accent)\.primarySolid/,
+    );
   });
 
   it("Sloe Pro banner uses the aubergine soft tint, not the hardcoded clay rgba", () => {
-    expect(BUNDLE).toMatch(/testID="settings-sloe-pro-banner"[\s\S]{0,900}backgroundColor:\s*Accent\.primarySoft/);
+    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
+    expect(BUNDLE).toMatch(
+      /testID="settings-sloe-pro-banner"[\s\S]{0,900}backgroundColor:\s*(?:Accent|accent)\.primarySoft/,
+    );
     expect(BUNDLE).not.toContain("rgba(200, 121, 78, 0.16)");
   });
 
   it("the rail segmented control active label is the aubergine solid", () => {
-    // SegmentedRow active label uses Accent.primarySolid on the white lift.
-    expect(BUNDLE).toMatch(/color:\s*active\s*\?\s*Accent\.primarySolid\s*:\s*colors\.textSecondary/);
+    // SegmentedRow active label uses scheme-resolved primarySolid on the white lift.
+    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
+    expect(BUNDLE).toMatch(
+      /color:\s*active\s*\?\s*(?:Accent|accent)\.primarySolid\s*:\s*colors\.textSecondary/,
+    );
   });
 });

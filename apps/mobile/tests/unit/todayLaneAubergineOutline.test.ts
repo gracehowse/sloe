@@ -94,7 +94,9 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   });
 
   it("Saved-meal portion confirm is an aubergine outline", () => {
-    expect(SAVED_PORTION).toMatch(/confirmBtn:\s*\{[\s\S]{0,200}borderColor:\s*Accent\.primarySolid/);
+    // borderColor is injected inline via the hook-resolved accent; the static
+    // confirmBtn sheet entry handles the non-colour shape (border width, radius, padding).
+    expect(SAVED_PORTION).toMatch(/borderColor:\s*(?:Accent|accent)\.primarySolid/);
   });
 
   it("Activity-bonus 'enable' discover CTA is an aubergine outline", () => {
@@ -146,9 +148,10 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
   });
 
   it("Date-header day/week segmented control: active = primarySoft lift + primarySolid glyph", () => {
-    expect(DATE_HEADER).toMatch(/viewMode === "day"\s*\?\s*Accent\.primarySoft/);
-    expect(DATE_HEADER).toMatch(/viewMode === "week"\s*\?\s*Accent\.primarySoft/);
-    expect(DATE_HEADER).toMatch(/color=\{viewMode === "day"\s*\?\s*Accent\.primarySolid/);
+    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
+    expect(DATE_HEADER).toMatch(/viewMode === "day"\s*\?\s*(?:Accent|accent)\.primarySoft/);
+    expect(DATE_HEADER).toMatch(/viewMode === "week"\s*\?\s*(?:Accent|accent)\.primarySoft/);
+    expect(DATE_HEADER).toMatch(/color=\{viewMode === "day"\s*\?\s*(?:Accent|accent)\.primarySolid/);
   });
 
   it("Log sheet browse segmented control: active label = primarySolid", () => {

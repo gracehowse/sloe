@@ -5,7 +5,7 @@
  * The pre-2026-05-02 primitive surfaced empty tabs as 13pt bold over a
  * tiny 6pt gap — too quiet to read as a state. The new shape:
  *   - Optional `illustration` slot rendered inside a 72pt
- *     `Accent.primary + "10"` tinted disc.
+ *     `accent.primary + "10"` tinted disc (scheme-resolved via `useAccent()`).
  *   - Title routed through `Type.headline` (17pt).
  *   - Description routed through `Type.body` (14pt).
  *   - Optional `cta` slot below.
@@ -85,6 +85,10 @@ describe("EmptyState (mobile) — 72pt illustration + headline ladder + CTA", ()
         (st as { borderRadius?: number }).borderRadius === 36,
     );
     expect(disc).toBeDefined();
+    // The component uses `useAccent()` which returns the light-scheme
+    // `Accent` palette when no ThemeProvider is present (context default).
+    // On light, `accent.primary === Accent.primary`, so this pin correctly
+    // verifies the light-scheme disc colour.
     expect((disc as { backgroundColor?: string }).backgroundColor).toBe(
       Accent.primary + "10",
     );

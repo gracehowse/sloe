@@ -9,7 +9,8 @@ import {
   TODAY_MEAL_SLOT_ORDER,
 } from "@suppr/shared/copy/today";
 import { SupprCard, CARD_RADIUS } from "@/components/ui/SupprCard";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /** Sloe stroke check — Figma `654:2` Logged badge. */
@@ -54,6 +55,7 @@ export function TodayMealsFigmaLayout({
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
   const colors = useThemeColors();
+  const accent = useAccent();
 
   const totalKcal = Math.round(
     TODAY_MEAL_SLOT_ORDER.reduce((sum, slot) => {
@@ -219,7 +221,7 @@ export function TodayMealsFigmaLayout({
               backgroundColor: colors.card,
             }}
           >
-            <SloePlusIcon size={20} color={Accent.primary} />
+            <SloePlusIcon size={20} color={accent.primary} />
             <Text style={{ ...Type.body, fontWeight: "500", color: "#6a6072" }}>
               Log {nextSlot}
             </Text>

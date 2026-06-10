@@ -11,7 +11,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RefreshCw, X } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 export interface WhereThisComesFromSheetProps {
   visible: boolean;
@@ -82,6 +83,7 @@ export function WhereThisComesFromSheet({
   textSecondaryColor,
 }: WhereThisComesFromSheetProps) {
   const insets = useSafeAreaInsets();
+  const accent = useAccent();
   const lastSynced = formatLastSynced(lastSyncedAtMs);
 
   return (
@@ -194,7 +196,7 @@ export function WhereThisComesFromSheet({
                 borderRadius: Radius.full,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
@@ -203,8 +205,8 @@ export function WhereThisComesFromSheet({
               }}
               testID="where-this-comes-from-cta"
             >
-              <RefreshCw size={17} color={Accent.primarySolid} strokeWidth={2} />
-              <Text style={{ color: Accent.primarySolid, fontWeight: "600", fontSize: 15 }}>
+              <RefreshCw size={17} color={accent.primarySolid} strokeWidth={2} />
+              <Text style={{ color: accent.primarySolid, fontWeight: "600", fontSize: 15 }}>
                 {primaryCta.busy ? "Syncing…" : primaryCta.label}
               </Text>
             </Pressable>

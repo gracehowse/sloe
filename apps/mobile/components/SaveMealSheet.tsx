@@ -30,6 +30,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
@@ -57,11 +58,9 @@ type Props = {
   onClose: () => void;
   /** Items the user is bundling into a combo, in preserved order. */
   initialItems: Omit<SavedMealItem, "id" | "position">[];
-  /** Default slot preselected (usually the slot the items came from). */
   defaultSlot?: MealSlot;
-  /** Suggested name pre-fill (e.g. "My breakfast combo"). */
   suggestedName?: string;
-  onSave: (payload: SavePayload) => void | Promise<void>;
+  onSave: (payload: SavePayload) => Promise<void>;
   colors: Theme;
 };
 
@@ -78,6 +77,7 @@ export default function SaveMealSheet({
   const [slot, setSlot] = useState<MealSlot | "">("");
   const [items, setItems] = useState<typeof initialItems>([]);
   const [saving, setSaving] = useState(false);
+  const accent = useAccent();
 
   // Reset local state when the sheet opens so a cancelled edit doesn't
   // leak into a fresh session.
@@ -267,15 +267,15 @@ export default function SaveMealSheet({
                         paddingVertical: 7,
                         borderRadius: 999,
                         borderWidth: 1,
-                        borderColor: isActive ? Accent.primary : colors.cardBorder,
-                        backgroundColor: isActive ? Accent.primary + "18" : "transparent",
+                        borderColor: isActive ? accent.primary : colors.cardBorder,
+                        backgroundColor: isActive ? accent.primary + "18" : "transparent",
                       }}
                     >
                       <Text
                         style={{
                           fontSize: 12,
                           fontWeight: "600",
-                          color: isActive ? Accent.primary : colors.textSecondary,
+                          color: isActive ? accent.primary : colors.textSecondary,
                         }}
                       >
                         {label}
@@ -426,7 +426,7 @@ export default function SaveMealSheet({
                   paddingVertical: 12,
                   alignItems: "center",
                   borderRadius: Radius.md,
-                  backgroundColor: canSave ? Accent.primary : colors.cardBorder,
+                  backgroundColor: canSave ? accent.primary : colors.cardBorder,
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Save usual meal"
