@@ -69,14 +69,24 @@ no design changes from this yet. Consequences for this queue:
 - **Lane B (serif titles) — CHECK WITH GRACE BEFORE RUNNING.** It invests
   further into the serif direction she's questioning. Do not start it on
   autopilot.
-- The **fresh-eyes review (queue #1) should treat the shell direction as an
-  open question**, not a fixed constraint: design-director's "unifying
-  direction" output should evaluate the current warm-editorial shell against
-  the calm-intelligent-companion sketch on the rendered evidence.
-- When Grace wants to decide: G3.5 gate — rendered side-by-side prototypes
-  (same screens, same data; current shell vs neutral+sans vs a
-  break-the-bundle hybrid keeping serif for display only), plus Mobbin pulls.
-  Route positioning language to `brand-manager`.
+- **The review comes FIRST and runs DIRECTION-BLIND (sequencing decided with
+  Grace 2026-06-10).** Do NOT feed Grace's sketch, the three candidate arms,
+  or any shell preference into any review agent's prompt — same anti-anchoring
+  rule as tier verdicts. design-director proposes its own unifying direction
+  from the wall + external references. Knowing the direction is "under
+  challenge" (it's in `_project-context.md`) is fine — that frees judgment;
+  the candidate answers are what must stay out.
+- **Why review-first:** the review's censuses separate "wrong direction" from
+  "badly executed direction" — spacing drift, near-duplicates, and missing
+  states make ANY shell look cheap, and pivoting the shell won't fix them.
+  Decide the shell AFTER seeing how much of the slop-feel is execution debt.
+- **After the review:** compare its independent direction proposal against
+  Grace's calm-intelligent-companion sketch (convergence = strong evidence).
+  Then the G3.5 gate — rendered three-arm side-by-sides (current shell vs
+  neutral+sans vs break-the-bundle hybrid with serif at display tier only),
+  using the review's worst-flagged screens as test screens and the wall as
+  the honest "current" arm. Grace decides on renders. Route positioning
+  language to `brand-manager`.
 - The "Decisions are challengeable" mandate is now in
   `.claude/agents/_project-context.md` (craft contract).
 
