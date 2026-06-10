@@ -5,6 +5,16 @@ State + queue for the next session. Branch: `claude/sloe-redesign-2026-06-04`
 premium/luxury app — editorial equal-or-better than Julienne, better than
 trackers on function; iOS leads, web in lockstep; everything SEE-verified.
 
+> **⚠️ DO NOT INHERIT PRIOR VERDICTS.** The 2026-06-09 design-director review
+> called light mode "Premium, knocking on Flagship". **Grace disputes this —
+> "there are still many inconsistencies, spacing problems etc."** Treat that
+> review as one agent's read of static, top-of-screen captures on a sparse
+> account: no scroll depths, no sheets/modals, no interaction or keyboard
+> states, and no spacing forensics. Multiple agents over-claimed this session
+> (migrations reported complete that weren't). The next session's FIRST job is
+> a fresh-eyes review that assumes nothing — do not feed prior tier verdicts
+> into the reviewing agents' prompts.
+
 ## Shipped this session (all pixel-verified + green)
 
 1. **CI reconciliation** — branch was never green; now every gate passes
@@ -36,31 +46,51 @@ trackers on function; iOS leads, web in lockstep; everything SEE-verified.
   (on flagged surfaces) → ui-product-designer (specs) → build with ui-critic
   mid-build checks.
 
-## THE QUEUE (in order)
+## THE QUEUE (in order — REVISED 2026-06-10)
 
-1. **Lane A — CTA weight fixes** (Spec 2): import-shared Import→outline,
+**0. Merge PR #375 first** (decided with Grace 2026-06-10): the only REQUIRED
+checks are Chromatic's ("Run Chromatic" / "UI Tests" / "storybook") — Grace
+accepts the redesign diffs in the Chromatic UI, then squash-merge. The red
+`test`/`playwright-visual` visual specs are ADVISORY — fix their baselines
+in a small follow-up PR from CI's Linux artifacts (NOT local macOS renders;
+see commit 503518b9 for the pattern). All later work = small PRs off main.
+
+**1. FRESH-EYES FULL REVIEW (before any building).** Re-capture EVERYTHING:
+every screen, light + dark, top AND scrolled states, key sheets/modals
+(LogSheet, edit-meal, portion, move-meal), onboarding, cook mode — populated
+account where possible. Then run the agent ladder per Grace's sequence
+(design-director → premium-auditor on lagging surfaces → ui-product-designer
+specs → build with ui-critic checks) with these constraints:
+  - Do NOT mention prior tier verdicts in any prompt (no anchoring).
+  - Add an explicit SPACING-FORENSICS pass: measured, programmatic checks of
+    gaps/padding against the Spacing scale (4/8/16/20/24/32/40) per surface —
+    Grace: spacing is a recurring weak spot; eyeballing misses it. Pixel-
+    measure card gaps in captures where code reading is ambiguous.
+  - Add a CONSISTENCY sweep across screens: same element, same treatment
+    (chips, pills, rows, section headers, dividers, icon sizes, radii) —
+    "multiple styles fighting" was the last review's miss until Grace saw it.
+  - The review's backlog SUPERSEDES the queue below where they conflict.
+
+2. **Lane A — CTA weight fixes** (Spec 2): import-shared Import→outline,
    LOG TODAY rows→outline pills, weekly-recap Log-a-meal→outline, whats-new
    Done→pill. Web in same commit. Guard pins (hook-form `accent.primarySolid`).
-2. **Lane B — serif titles** (Spec 3): `Type.screenTitle`/`Type.navTitle`
+3. **Lane B — serif titles** (Spec 3): `Type.screenTitle`/`Type.navTitle`
    tokens + web classes; Targets/Health-Sync/Household/weekly-recap +
    PushScreenHeader; tokenise weight-tracker/nutrition-sources; guard test.
-3. **Lane C — WeightChart onto Progress** (premium-audit P0-1): mount the
+4. **Lane C — WeightChart onto Progress** (premium-audit P0-1): mount the
    existing `WeightChart` in the Progress weight card, wire the range picker
    (chart hardcodes "1m"), port `rangeDelta.tone`, delete Sparkline path.
    Web ProgressDashboard parity.
-4. **Lane D — recipe-detail cleanups** (premium-audit gaps 1,3,5,6): cook-CTA
+5. **Lane D — recipe-detail cleanups** (premium-audit gaps 1,3,5,6): cook-CTA
    dedup (Log becomes dominant), method steps→primary ink, ingredient tap→
    IngredientInfoSheet (not Alert), allergen null-state collapse. Web parity.
-5. **Create-recipe green labels → textSecondary + haptic rebalance** (DD move 5).
-6. **After lanes land**: full-app capture sweep (light+dark incl. the 4
-   dark-uncovered screens: household, health-sync, nutrition-sources,
-   whats-new) → ui-critic per changed surface → premium-auditor re-run on
-   FIXED dark Today+Paywall → **regenerate visual-regression baselines**
-   (`npm run test:e2e:visual:update` + mobile equivalents) → full CI green →
-   branch mergeable.
-7. **Skia ring** (Spec 1): build behind `ring_skia_v1` for the NEXT EAS
+6. **Create-recipe green labels → textSecondary + haptic rebalance** (DD move 5).
+7. **After lanes land**: ui-critic per changed surface → premium-auditor
+   re-run on FIXED dark Today+Paywall → refresh the advisory visual baselines
+   again if the lanes moved pixels.
+8. **Skia ring** (Spec 1): build behind `ring_skia_v1` for the NEXT EAS
    build; brightening-plum overflow per the decision doc.
-8. P0-2 adherence-headline product call (story-gate window vs range window;
+9. P0-2 adherence-headline product call (story-gate window vs range window;
    >100% hero tone) — route ui-product-designer, needs Grace.
 
 ## Gotchas (cost real time this session)
