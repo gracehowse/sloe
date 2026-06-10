@@ -44,11 +44,11 @@ export function MobileSegmented<T extends string = string>({
         {
           flexDirection: "row",
           alignSelf: "center",
-          backgroundColor: colors.card,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: Radius.md,
-          padding: Spacing.xs,
+          // Segments census (2026-06-10, §8): the shared inputBg rail —
+          // this was the only bordered-card track of the five.
+          backgroundColor: colors.inputBg,
+          borderRadius: Radius.full,
+          padding: 2,
           gap: 2,
         },
         style,
@@ -68,7 +68,7 @@ export function MobileSegmented<T extends string = string>({
             style={{
               paddingHorizontal: Spacing.dense,
               paddingVertical: Spacing.sm,
-              borderRadius: Radius.sm,
+              borderRadius: Radius.full, // §8 thumb (chips census 2026-06-10)
               // Canonical 2026-05-22: selected = soft fill + primary text,
               // NOT solid indigo. Solid reserved for primary action only.
               backgroundColor: on ? accent.primarySoft : "transparent",

@@ -966,6 +966,7 @@ export default function ProgressScreen() {
     bg: colors.background,
     elevated: colors.card,
     border: colors.cardBorder,
+    inputBg: colors.inputBg, // §8 segmented-track rail (chips census 2026-06-10)
     accent: accent.primary,
     // Sloe treatment system (2026-06-08): the selected range pill + segmented
     // active label now read in the deep aubergine `primarySolid` on a
@@ -1324,7 +1325,9 @@ export default function ProgressScreen() {
               <View
                 testID="progress-weight-view-toggle"
                 accessibilityRole="tablist"
-                style={{ flexDirection: "row", backgroundColor: t.border, borderRadius: 999, padding: 2 }}
+                // Segments census (2026-06-10, §8): inputBg rail (border-grey
+                // was one of five competing tracks), Radius.full token.
+                style={{ flexDirection: "row", backgroundColor: t.inputBg, borderRadius: Radius.full, padding: 2 }}
               >
                 {(["trend", "scale"] as const).map((v) => {
                   const active = weightView === v;

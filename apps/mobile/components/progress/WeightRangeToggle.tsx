@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     borderRadius: Radius.full,
-    padding: 3,
+    padding: 2, // §8 track padding (chips census 2026-06-10)
     alignSelf: "stretch",
   },
   pill: {

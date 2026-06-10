@@ -208,7 +208,7 @@ function DisplayModeToggle({
   textSecondaryColor: string;
   isDark: boolean;
 }) {
-  const activeBg = isDark ? Colors.dark.cardElevated : "#FFFFFF";
+  const activeBg = isDark ? Colors.dark.cardElevated : Colors.light.card; // §8 thumb
   const activeFg = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const segment = (label: string, mode: "remaining" | "consumed") => {
     const active = displayMode === mode;
@@ -233,7 +233,9 @@ function DisplayModeToggle({
       </View>
     );
   };
-  const trackBg = isDark ? cardBackgroundColor : "#EFEFEF";
+  // Segments census (2026-06-10, §8): track = the shared inputBg rail —
+  // the literal #EFEFEF was one of five competing track treatments.
+  const trackBg = useThemeColors().inputBg;
   return (
     <Pressable
       onPress={onToggleDisplayMode}
