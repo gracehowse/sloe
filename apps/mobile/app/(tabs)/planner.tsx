@@ -153,6 +153,7 @@ import {
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
+import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
@@ -859,6 +860,15 @@ export default function PlannerScreen() {
   // Long-press a meal row → action sheet → "Move to another slot…" opens
   // `MoveMealSheet` with `moveSource` set to the pressed cell.
   const [moveSheetOpen, setMoveSheetOpen] = useState(false);
+  // ENG-1011 — SwapMealSheet state (null = closed). `onPick` captures the
+  // fit-ranked pool closure exactly as the old Alert.alert onPress did.
+  const [swapSheet, setSwapSheet] = useState<{
+    slotName: string;
+    dayLabel: string;
+    targetKcal: number;
+    candidates: SwapCandidate[];
+    onPick: (recipeId: string) => void;
+  } | null>(null);
   const [moveSource, setMoveSource] = useState<{ day: number; slotIndex: number } | null>(null);
 
   // P2-40 (TestFlight `APU2FBCjLALmugeCLmQ4Ii0`, 2026-04-25):
@@ -1044,8 +1054,17 @@ export default function PlannerScreen() {
           carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
         }
       : null;
+    // ENG-1011 follow-on (2026-06-10): split the day target across the
+    // day's ACTUAL slots and take this meal's share. The old call passed a
+    // single-slot array — `slotMacroTargets` normalises weights over the
+    // slots it's given, so one slot received 100% of the day (the swap
+    // picker showed "target ~1,252 kcal" for a lunch and ranked candidates
+    // against the day total — visible in the old Alert subtitle too).
+    const daySlotNames = (plan?.[dayIndex]?.meals ?? []).map((m) => m.name);
     const slotMacro = plannerTargets
-      ? slotMacroTargets([canonicalSlot], plannerTargets)[0]!
+      ? (daySlotNames.length > mealIndex
+          ? slotMacroTargets(daySlotNames, plannerTargets)[mealIndex]!
+          : slotMacroTargets([canonicalSlot], plannerTargets)[0]!)
       : { calories: 400, protein: 30, carbs: 45, fat: 15, fiber: 0 };
     const sorted = [...fits].sort(
       (a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro),
@@ -1059,25 +1078,31 @@ export default function PlannerScreen() {
     // tag and a clearer title so the action reads as "pick from your
     // library" rather than just "swap".
     const savedSet = new Set(savedRecipes.map((r) => r.id));
-    const options = sorted.slice(0, 10).map(
-      (r) => `${savedSet.has(r.id) ? "★ " : ""}${r.title} (${r.calories} kcal)`,
-    );
-    options.push("Cancel");
-
-    const savedCount = sorted.slice(0, 10).filter((r) => savedSet.has(r.id)).length;
-    const subtitle =
-      savedCount > 0
-        ? `★ from your library · Target ~${Math.round(slotTarget)} kcal`
-        : `Target: ~${Math.round(slotTarget)} kcal for this slot`;
-
-    Alert.alert(
-      `Pick recipe for ${slotName}`,
-      subtitle,
-      options.map((label, idx) => ({
-        text: label,
-        style: idx === options.length - 1 ? "cancel" as const : "default" as const,
-        onPress: idx === options.length - 1 ? undefined : () => {
-          const picked = sorted[idx];
+    // ENG-1011 (2026-06-10, fresh-eyes P0 class B): SwapMealSheet — the
+    // MoveMealSheet chassis with photo + kcal + protein per candidate, a
+    // ★ Library tag (P1-22 intent preserved), and Δ-vs-target context —
+    // replaces the native Alert.alert pill stack (no photos, no macro
+    // context, no haptics). The pick body below is UNCHANGED: trial
+    // portion-refit + over-target confirm + doSwap.
+    const candidates: SwapCandidate[] = sorted.slice(0, 10).map((r) => ({
+      id: r.id,
+      title: r.title,
+      calories: Math.round(r.calories ?? 0),
+      proteinG: Math.round((r as { protein?: number }).protein ?? 0),
+      image: (r as { image?: string | null }).image ?? null,
+      isSaved: savedSet.has(r.id),
+    }));
+    const swapDayLabel = (() => {
+      const cal = planCalendarDateForIndex(dayIndex, startOffset);
+      return WEEKDAY_LONG[cal.getDay()] ?? `Day ${dayIndex + 1}`;
+    })();
+    setSwapSheet({
+      slotName,
+      dayLabel: swapDayLabel,
+      targetKcal: Math.round(slotTarget),
+      candidates,
+      onPick: (recipeId: string) => {
+          const picked = sorted.find((r) => r.id === recipeId);
           if (!picked || !plan || !plannerTargets) return;
 
           const currentDay = plan[dayIndex];
@@ -1198,9 +1223,8 @@ export default function PlannerScreen() {
             doSwap();
           }
         },
-      })),
-    );
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool]);
+    });
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset]);
 
   // ENG-820 (Plan win-moment, Redesign — Design Direction 2026): one flag gates
   // the whole Plan win layer — the state-aware headline tone + pulse, the 7/7
@@ -1282,6 +1306,17 @@ export default function PlannerScreen() {
   // within ±10% of the daily calorie target. Worst-short day = the
   // day with the largest negative gap (most calories under).
   // Returns null if we don't have targets or plan data yet.
+  // e2e walk 2026-06-10: a freshly-created plan is 7 days of PLACEHOLDER
+  // slots — `plan.length > 0` is true while nothing real is planned. The
+  // summary card was scoring that empty week ("Hits your targets 0 of 7
+  // days") and the worst-short advice referenced meals that don't exist
+  // ("…swap the dinner"). Same disease class as the Progress story-gate
+  // contradiction (ENG-1019): an insight engine speaking without data.
+  const planHasRealMeals = useMemo(
+    () => (plan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
+    [plan],
+  );
+
   const summaryScore = useMemo((): {
     hits: number;
     total: number;
@@ -1373,18 +1408,6 @@ export default function PlannerScreen() {
           paddingBottom: Layout.screenPaddingBottom,
           gap: Layout.planScrollGap,
         },
-        // Prototype port — uppercase micro-overline above the big title.
-        headerOverline: {
-          ...Type.label,
-          color: colors.textTertiary,
-          letterSpacing: 1.2,
-        },
-        headerTitle: {
-          ...Type.title,
-          color: colors.text,
-          marginTop: 2,
-          paddingBottom: 4,
-        },
         headerRow: {
           flexDirection: "row",
           justifyContent: "space-between",
@@ -1452,24 +1475,24 @@ export default function PlannerScreen() {
         summaryPrimaryBtn: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           backgroundColor: "transparent",
           borderWidth: 1.5,
           borderColor: accent.primarySolid,
           paddingHorizontal: Spacing.md,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.lg,
         },
         summaryPrimaryText: { color: accent.primarySolid, fontSize: 13, fontWeight: "700" },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           backgroundColor: colors.background,
           borderWidth: 1,
           borderColor: colors.border,
           paddingHorizontal: Spacing.md,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.lg,
         },
         summarySecondaryText: { color: colors.text, fontSize: 13, fontWeight: "600" },
@@ -1486,8 +1509,8 @@ export default function PlannerScreen() {
         filterChip: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 5,
-          paddingHorizontal: 12,
+          gap: Spacing.xs,
+          paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
           borderRadius: Radius.lg,
           borderWidth: 1,
@@ -1496,40 +1519,6 @@ export default function PlannerScreen() {
         },
         filterChipText: { fontSize: 12.5, fontWeight: "600", color: colors.text },
 
-        dayCardsScroll: {
-          marginHorizontal: -Spacing.xl,
-          paddingHorizontal: Spacing.xl,
-          marginBottom: Spacing.sm,
-          gap: Spacing.sm,
-          flexGrow: 0,
-        },
-        dayCardsSingleWrap: {
-          marginBottom: Spacing.sm,
-        },
-        dayCard: {
-          width: 108,
-          minHeight: 128,
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: Spacing.md,
-          alignItems: "center",
-          gap: Spacing.xs,
-        },
-        dayCardFull: {
-          width: "100%" as const,
-          alignSelf: "stretch",
-          minHeight: 132,
-        },
-        dayCardToday: { borderColor: accent.primary, backgroundColor: accent.primary + "08" },
-        dayCardName: { fontSize: 13, fontWeight: "600", color: colors.text },
-        dayCardNameToday: { color: accent.primary },
-        dayCardMeals: { gap: 2 },
-        dayCardMeal: { fontSize: 10, color: colors.textTertiary, lineHeight: 12 },
-        dayCardProgressBar: { width: "100%", height: 3, backgroundColor: colors.border, borderRadius: 1.5, marginVertical: Spacing.xs },
-        dayCardProgressFill: { height: 3, borderRadius: 1.5 },
-        dayCardCalories: { fontSize: 10, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
 
         sectionLabel: {
           ...Type.label,
@@ -1571,11 +1560,6 @@ export default function PlannerScreen() {
           borderWidth: 0,
           borderColor: "transparent",
           overflow: "visible",
-        },
-        planDayCardMeta: {
-          paddingHorizontal: 14,
-          paddingTop: 10,
-          paddingBottom: 6,
         },
 
         // Sloe DS — calm per-day empty slate. Two-line hierarchy (a quiet
@@ -1712,7 +1696,7 @@ export default function PlannerScreen() {
         mealRow: {
           flexDirection: "row",
           alignItems: "flex-start",
-          paddingVertical: 8,
+          paddingVertical: Spacing.sm,
           paddingHorizontal: 14,
           borderTopWidth: 1,
           borderTopColor: colors.border + "99",
@@ -1724,7 +1708,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
-          paddingHorizontal: 12,
+          paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
@@ -1738,7 +1722,7 @@ export default function PlannerScreen() {
         addSlotRow: {
           flex: 1,
           flexDirection: "row",
-          gap: 6,
+          gap: Spacing.sm,
           minWidth: 0,
         },
         addSlotChip: {
@@ -1747,7 +1731,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: 3,
+          gap: Spacing.xs,
           paddingVertical: 8,
           paddingHorizontal: 4,
           borderRadius: Radius.lg,
@@ -1786,39 +1770,6 @@ export default function PlannerScreen() {
           marginTop: 2,
           fontVariant: ["tabular-nums"],
         },
-        // Prototype port (2026-04-20) — 30×30 square swap button. Sits
-        // immediately before the existing "Log today" button (both
-        // right-aligned). Tapping opens the same swap flow the row's
-        // long-press alert offers; visible entry point.
-        mealSwapBtn: {
-          width: 30,
-          height: 30,
-          borderRadius: 8,
-          backgroundColor: colors.border + "66",
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 3,
-        },
-        // Audit 2026-04-29 papercut #11 — bold 700-weight saturated
-        // accent.primary text screamed for attention with 2-4 of these
-        // visible per day card, competing with the rest of the page.
-        // Demote to a subtle-fill pill (8% Accent bg, primary text,
-        // 600-weight) so the button reads as a tappable affordance
-        // without dominating. Mirrors the #3 demotion of the Today
-        // suggestion-card CTA.
-        mealLogBtn: {
-          paddingVertical: 6,
-          paddingHorizontal: 10,
-          minWidth: 90,
-          borderRadius: 8,
-          backgroundColor: colors.backgroundSecondary,
-          borderWidth: 1,
-          borderColor: colors.border,
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 4,
-        },
-        mealLogBtnText: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, textAlign: "center" },
         // 2026-05-14 (premium-bar audit Plan Card 2 #4) — `…` overflow
         // sits adjacent to the primary Log-as-planned button and opens
         // an action sheet with the same actions long-press exposes.
@@ -1833,42 +1784,7 @@ export default function PlannerScreen() {
           justifyContent: "center",
           marginTop: 3,
         },
-        // 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-row fit
-        // chip ("Fits 92%" / "Over by 220 kcal"). Shape mirrors the
-        // portion-multiplier pill rendered next to the recipe title.
-        mealFitPill: {
-          paddingHorizontal: 6,
-          paddingVertical: 1,
-          borderRadius: 4,
-          alignSelf: "flex-start",
-          marginTop: 4,
-        },
-        mealFitPillText: {
-          fontSize: 11,
-          fontWeight: "700",
-          fontVariant: ["tabular-nums"],
-        },
-        mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
-        shoppingListCard: {
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: Spacing.xl,
-          gap: Spacing.md,
-          flexDirection: "row",
-          alignItems: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
-        },
-        shoppingListIcon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Accent.warning + "15", alignItems: "center", justifyContent: "center", marginRight: Spacing.md },
-        shoppingListContent: { flex: 1 },
-        shoppingListTitle: { ...Type.headline, fontSize: 16, color: colors.text },
-        shoppingListSubtitle: { ...Type.body, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
         actionsRow: { gap: Spacing.md },
         // Sloe treatment system (2026-06-08, §1): secondary "New Plan" /
@@ -1879,7 +1795,7 @@ export default function PlannerScreen() {
           borderWidth: 1.5,
           borderColor: accent.primarySolid,
           borderRadius: Radius.md,
-          paddingVertical: 14,
+          paddingVertical: Spacing.md,
           alignItems: "center",
         },
         regenBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
@@ -2572,7 +2488,7 @@ export default function PlannerScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingBottom: 6, paddingRight: 4 }}
+          contentContainerStyle={{ gap: 8, paddingBottom: Spacing.sm, paddingRight: 4 }}
           style={{ marginBottom: Spacing.sm }}
         >
           {planSlots.map((s) => {
@@ -2632,8 +2548,8 @@ export default function PlannerScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
+                  paddingHorizontal: Spacing.dense,
+                  paddingVertical: Spacing.sm,
                   borderRadius: 999,
                   borderWidth: 1,
                   borderColor: active ? colors.textSecondary : colors.border,
@@ -2681,8 +2597,8 @@ export default function PlannerScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
+              paddingHorizontal: Spacing.dense,
+              paddingVertical: Spacing.sm,
               borderRadius: 999,
               borderWidth: 1,
               borderColor: colors.border,
@@ -2752,10 +2668,14 @@ export default function PlannerScreen() {
               testID="plan-summary-headline"
               style={[styles.summaryTitle, { color: summaryTitleColor }, summaryTitleAnimStyle]}
             >
-              {`Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`}
+              {planHasRealMeals
+                ? `Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`
+                : "Plan your week"}
             </ReAnimated.Text>
             <Text style={styles.summarySubtitle}>
-              {summaryScore.hits === summaryScore.total
+              {!planHasRealMeals
+                ? `Generate fills all ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} around your targets — or add meals to any day below.`
+                : summaryScore.hits === summaryScore.total
                 ? `All ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} land on target.`
                 : summaryScore.worstShort
                   ? `${WEEKDAY_LONG[planCalendarDateForIndex(summaryScore.worstShort.dayIndex, startOffset).getDay()]} is ~${Math.round(summaryScore.worstShort.shortBy)} kcal short. Add a snack or swap the dinner.`
@@ -3079,7 +2999,7 @@ export default function PlannerScreen() {
               disabled={generating || generateDisabled}
             >
               {generating ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                   {/* 2026-05-13 (premium-bar audit Plan Card 4 —
                       7-dot stacked viz inline with headline):
                       replaces the bare `<ActivityIndicator>` with
@@ -3223,7 +3143,7 @@ export default function PlannerScreen() {
           return (
           <View key={dp.day} style={styles.daySection}>
             <View style={styles.daySectionHeader}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Text style={styles.dayTitle}>{weekdayLabel}</Text>
                 {isTodayRow && (
                   <Text
@@ -3419,7 +3339,7 @@ export default function PlannerScreen() {
                       one-line macro string. Render the multiplier as a
                       separate trailing badge and clamp the title to a
                       single line. */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     <Text style={[styles.mealTitle, { flexShrink: 1 }]} numberOfLines={1}>
                       {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
                     </Text>
@@ -4058,7 +3978,7 @@ export default function PlannerScreen() {
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,
-                paddingVertical: 13,
+                paddingVertical: Spacing.md,
                 borderRadius: Radius.md,
                 alignItems: "center",
               }}
@@ -4129,7 +4049,7 @@ export default function PlannerScreen() {
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,
-                paddingVertical: 13,
+                paddingVertical: Spacing.md,
                 borderRadius: Radius.md,
                 alignItems: "center",
               }}
@@ -4309,7 +4229,7 @@ export default function PlannerScreen() {
                 accessibilityLabel={label}
                 testID={testID}
                 style={({ pressed }) => ({
-                  paddingVertical: 14,
+                  paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.xl,
                   borderTopWidth: 1,
                   borderTopColor: colors.border + "60",
@@ -4344,7 +4264,7 @@ export default function PlannerScreen() {
                   <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }} numberOfLines={1}>
                     {hasRecipeOv ? meal.recipeTitle : meal.name}
                   </Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: Spacing.xs }}>
                     {hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot"}
                   </Text>
                 </View>
@@ -4367,7 +4287,7 @@ export default function PlannerScreen() {
                   accessibilityLabel="Cancel"
                   style={{
                     marginHorizontal: Spacing.xl,
-                    paddingVertical: 13,
+                    paddingVertical: Spacing.md,
                     borderRadius: Radius.md,
                     backgroundColor: colors.border + "60",
                     alignItems: "center",
@@ -4466,7 +4386,7 @@ export default function PlannerScreen() {
                       setPortionModal(null);
                     }}
                     style={{
-                      paddingVertical: 14,
+                      paddingVertical: Spacing.md,
                       paddingHorizontal: Spacing.xl,
                       borderTopWidth: StyleSheet.hairlineWidth,
                       borderTopColor: colors.border,
@@ -4504,6 +4424,21 @@ export default function PlannerScreen() {
           handleMove(moveSource, to);
           setMoveSheetOpen(false);
           setMoveSource(null);
+        }}
+      />
+      <SwapMealSheet
+        visible={swapSheet != null}
+        onClose={() => setSwapSheet(null)}
+        slotName={swapSheet?.slotName ?? ""}
+        dayLabel={swapSheet?.dayLabel ?? ""}
+        targetKcal={swapSheet?.targetKcal ?? 0}
+        candidates={swapSheet?.candidates ?? []}
+        onPick={(id) => {
+          const pick = swapSheet?.onPick;
+          // Close before running the pick — the over-target confirm (a
+          // legitimate Alert) must present over the planner, not the sheet.
+          setSwapSheet(null);
+          pick?.(id);
         }}
       />
     </View>

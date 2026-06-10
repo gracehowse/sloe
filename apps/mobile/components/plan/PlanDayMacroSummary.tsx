@@ -67,9 +67,9 @@ export function PlanDayMacroSummary({ cells }: PlanDayMacroSummaryProps) {
           minWidth: 0,
           alignItems: "center",
           justifyContent: "center",
-          gap: 3,
+          gap: Spacing.xs,
           paddingVertical: Spacing.sm,
-          paddingHorizontal: 4,
+          paddingHorizontal: Spacing.xs,
           borderRadius: Radius.lg,
           backgroundColor: colors.backgroundSecondary,
         },
@@ -81,7 +81,7 @@ export function PlanDayMacroSummary({ cells }: PlanDayMacroSummaryProps) {
         statusRow: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 3,
+          gap: Spacing.xs,
         },
         onTrack: {
           fontSize: 10,

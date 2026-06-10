@@ -58,7 +58,7 @@ export function TodayFirstMealEmptyState({
       padding="lg"
       accessibilityLabel="Ready to log your first meal?"
       style={{ marginBottom: Spacing.md }}
-      innerStyle={{ alignItems: "center", gap: 10 }}
+      innerStyle={{ alignItems: "center", gap: Spacing.sm }}
     >
       <Text style={{ ...Type.body, fontWeight: "700", color: textColor, textAlign: "center" }}>
         Ready to log your first meal?
@@ -101,9 +101,9 @@ export function TodayFirstMealEmptyState({
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           paddingHorizontal: 16,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.md,
           backgroundColor: "transparent",
           borderWidth: 1.5,
@@ -122,8 +122,8 @@ export function TodayFirstMealEmptyState({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
-            marginTop: 6,
+            gap: Spacing.sm,
+            marginTop: Spacing.sm,
             paddingHorizontal: 4,
           }}
         >

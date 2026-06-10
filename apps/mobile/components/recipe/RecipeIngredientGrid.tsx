@@ -21,7 +21,7 @@
  */
 import { Image, Pressable, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/theme";
+import { FontFamily, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
@@ -102,7 +102,7 @@ export function RecipeIngredientGrid({
       </View>
 
       <View
-        style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 }}
+        style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -(Spacing.dense / 2) }}
         testID="recipe-ingredient-grid"
       >
         {shown.map((ing, i) => {
@@ -122,12 +122,12 @@ export function RecipeIngredientGrid({
           const tilePlaceholder = getIngredientTilePlaceholder(ing.name);
           const displayName = cleanIngredientDisplayName(ing.name) || decodeEntities(ing.name);
           return (
-            <View key={i} style={{ width: "25%", padding: 6 }}>
+            <View key={i} style={{ width: "25%", padding: Spacing.dense / 2 }}>
               <Pressable
                 onPress={() => onIngredientPress(i)}
                 accessibilityRole="button"
                 accessibilityLabel={`${displayName} ${tier}`}
-                style={{ gap: 6 }}
+                style={{ gap: Spacing.xs }}
                 testID={`recipe-ingredient-card-${i}`}
               >
                 <View
@@ -226,7 +226,7 @@ export function RecipeIngredientGrid({
             borderWidth: 1,
             borderColor: colors.cardBorder,
             backgroundColor: colors.backgroundSecondary,
-            paddingVertical: 12,
+            paddingVertical: Spacing.dense,
             alignItems: "center",
           }}
         >

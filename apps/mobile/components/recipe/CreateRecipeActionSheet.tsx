@@ -185,9 +185,9 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
+                gap: Spacing.dense,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.dense,
                 borderRadius: 16,
                 backgroundColor: `${accent.primary}14`,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
@@ -265,7 +265,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             accessibilityRole="button"
             accessibilityLabel="Cancel"
             onPress={onClose}
-            style={{ paddingVertical: 14, alignItems: "center", marginTop: 4 }}
+            style={{ paddingVertical: Spacing.md, alignItems: "center", marginTop: 4 }}
           >
             <Text
               style={{
@@ -309,8 +309,8 @@ function ActionRow({
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "flex-start",
-        gap: 12,
-        paddingVertical: 14,
+        gap: Spacing.dense,
+        paddingVertical: Spacing.md,
         paddingHorizontal: 4,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
@@ -338,7 +338,7 @@ function ActionRow({
           style={{
             fontSize: 12,
             color: colors.textSecondary,
-            marginTop: 3,
+            marginTop: Spacing.xs,
             lineHeight: 17,
           }}
         >

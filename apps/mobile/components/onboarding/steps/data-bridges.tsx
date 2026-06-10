@@ -156,7 +156,7 @@ function ManualTargetsCard() {
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+      <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.dense }}>
         {/* kcal label held clay (calories identity, not the secondary accent) —
             calories→plum reconciliation is a separate follow-up (ship plan Q1). */}
         <TargetInput
@@ -222,7 +222,7 @@ function TargetInput({
         flex: 1,
         backgroundColor: colors.inputBg,
         borderRadius: Radius.sm,
-        paddingHorizontal: 10,
+        paddingHorizontal: Spacing.sm,
         paddingVertical: 8,
         borderWidth: 1,
         borderColor: colors.border,
@@ -326,7 +326,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             marginTop: 8,
             backgroundColor: Accent.warning + "1A",
             borderRadius: Radius.sm,
-            paddingHorizontal: 10,
+            paddingHorizontal: Spacing.dense,
             paddingVertical: 8,
           }}
         >
@@ -349,7 +349,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
           accessibilityLabel="Connect Apple Health"
           accessibilityState={{ disabled: busy }}
           style={({ pressed }) => ({
-            marginTop: 12,
+            marginTop: Spacing.dense,
             height: 40,
             borderRadius: 12,
             backgroundColor: accent.primary,
@@ -444,7 +444,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
           accessibilityLabel="Turn on notifications"
           accessibilityState={{ disabled: busy }}
           style={({ pressed }) => ({
-            marginTop: 12,
+            marginTop: Spacing.dense,
             height: 40,
             borderRadius: 12,
             backgroundColor: accent.primary,
@@ -484,7 +484,7 @@ function RecipeUrlCard() {
         style={{
           fontSize: 12,
           color: colors.textSecondary,
-          marginTop: 10,
+          marginTop: Spacing.dense,
           lineHeight: 17,
         }}
       >
@@ -528,7 +528,7 @@ function BridgeCard({
       }}
     >
       <View
-        style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}
+        style={{ flexDirection: "row", gap: Spacing.dense, alignItems: "flex-start" }}
       >
         <View
           style={{
@@ -563,7 +563,7 @@ function BridgeCard({
                   gap: 4,
                   backgroundColor: Accent.success + "26",
                   paddingHorizontal: 8,
-                  paddingVertical: 3,
+                  paddingVertical: Spacing.xs,
                   borderRadius: 999,
                 }}
               >

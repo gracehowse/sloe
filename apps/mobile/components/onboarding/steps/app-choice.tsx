@@ -1,7 +1,7 @@
 import * as React from "react";
 import { View, Text } from "react-native";
 import { Sparkles } from "lucide-react-native";
-import { Radius } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -65,7 +65,7 @@ export function MobileAppChoiceStep() {
         subtitle="Tell us where you're tracking now and we'll bring your history across — no re-logging months of meals."
       />
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: Spacing.dense }}>
         {options.map((opt) => (
           <OptionCard
             key={opt.id}
@@ -88,9 +88,9 @@ export function MobileAppChoiceStep() {
           style={{
             marginTop: 16,
             flexDirection: "row",
-            gap: 10,
+            gap: Spacing.sm,
             alignItems: "flex-start",
-            padding: 12,
+            padding: Spacing.dense,
             borderRadius: Radius.md,
             backgroundColor: accent.primary + "0D",
             borderWidth: 1,

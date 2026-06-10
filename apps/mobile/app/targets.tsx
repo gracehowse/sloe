@@ -405,7 +405,7 @@ export default function TargetsScreen() {
           paddingTop: Spacing.sm,
           paddingBottom: Spacing.md,
         },
-        backHit: { padding: 6, marginLeft: -6 },
+        backHit: { padding: Spacing.sm, marginLeft: -Spacing.sm },
         title: {
           flex: 1,
           fontSize: 24,
@@ -415,7 +415,7 @@ export default function TargetsScreen() {
         },
         editBtn: {
           paddingHorizontal: Spacing.md,
-          paddingVertical: 6,
+          paddingVertical: Spacing.sm,
           borderRadius: Radius.sm,
           borderWidth: controlElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
@@ -441,7 +441,7 @@ export default function TargetsScreen() {
           fontWeight: "800",
           color: colors.textSecondary,
           letterSpacing: 1.5,
-          marginBottom: 6,
+          marginBottom: Spacing.sm,
         },
         // SLOE Phase 0: the hero calorie numeral reads in Newsreader serif
         // (the design system reserves big numerals for serif). Reuse the
@@ -457,7 +457,7 @@ export default function TargetsScreen() {
           fontSize: 18,
           fontWeight: "600",
           color: colors.textSecondary,
-          marginLeft: 6,
+          marginLeft: Spacing.sm,
         },
         caption: {
           fontSize: 13,
@@ -484,7 +484,7 @@ export default function TargetsScreen() {
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
-          gap: 8,
+          gap: Spacing.sm,
           ...(cardElevation.shadowStyle ?? {}),
         },
         macroHead: {
@@ -542,8 +542,8 @@ export default function TargetsScreen() {
         // truncate to "≈ 18".
         goalSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18, flexShrink: 1 },
         statusPill: {
-          paddingHorizontal: 10,
-          paddingVertical: 4,
+          paddingHorizontal: Spacing.sm,
+          paddingVertical: Spacing.xs,
           borderRadius: 999,
         },
         statusText: { fontSize: 11, fontWeight: "700" },
@@ -700,7 +700,7 @@ export default function TargetsScreen() {
                   flexDirection: "row",
                   alignItems: "baseline",
                   justifyContent: "center",
-                  gap: 6,
+                  gap: Spacing.sm,
                   marginTop: Spacing.md,
                   paddingTop: Spacing.md,
                   borderTopWidth: 1,
@@ -750,7 +750,7 @@ export default function TargetsScreen() {
               marginTop: Spacing.md,
               alignSelf: "center",
               paddingHorizontal: Spacing.lg,
-              paddingVertical: 9,
+              paddingVertical: Spacing.sm,
               borderRadius: Radius.full,
               borderWidth: 1.5,
               borderColor: accent.primarySolid,
@@ -758,7 +758,7 @@ export default function TargetsScreen() {
               opacity: recalculating ? 0.6 : 1,
               flexDirection: "row",
               alignItems: "center",
-              gap: 6,
+              gap: Spacing.sm,
             })}
           >
             {recalculating ? (
@@ -806,7 +806,7 @@ export default function TargetsScreen() {
                   <Text style={styles.macroLabel}>{m.label}</Text>
                   <MacroIconFor macroKey={m.key} color={color} />
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.sm }}>
                   <Text style={styles.macroValue}>
                     {m.current}
                   </Text>
@@ -883,12 +883,12 @@ export default function TargetsScreen() {
             borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: colors.cardBorder,
             borderRadius: Radius.lg,
-            paddingVertical: 14,
+            paddingVertical: Spacing.md,
             paddingHorizontal: Spacing.lg,
             marginBottom: Spacing.md,
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
+            gap: Spacing.dense,
             opacity: pressed ? 0.7 : 1,
             ...(cardElevation.shadowStyle ?? {}),
           })}

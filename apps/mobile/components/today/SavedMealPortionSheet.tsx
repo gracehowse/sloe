@@ -279,7 +279,7 @@ const s = StyleSheet.create({
   backdrop: { backgroundColor: "rgba(0,0,0,0.5)" },
   keyboardAvoid: { flex: 1, justifyContent: "flex-end" },
   sheet: { maxHeight: "92%", borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: "hidden" },
-  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 6 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: Spacing.sm },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -295,7 +295,7 @@ const s = StyleSheet.create({
   sectionSpaced: { marginTop: Spacing.lg },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm },
   slotRow: { flexDirection: "row", gap: Spacing.xs },
-  slotPill: { flex: 1, paddingVertical: 7, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  slotPill: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   macroRow: {
     flexDirection: "row",
     marginTop: Spacing.lg,

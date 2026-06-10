@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.6,
-    marginBottom: 6,
+    marginBottom: Spacing.sm,
   },
   statusRow: {
     flexDirection: "row",

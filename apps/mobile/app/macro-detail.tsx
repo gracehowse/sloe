@@ -95,7 +95,7 @@ export default function MacroDetailScreen() {
         caption={formatDateLabel(dateKey)}
         onBack={() => router.back()}
         rightSlot={
-          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm }}>
+          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
               {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
             </Text>
@@ -115,7 +115,7 @@ export default function MacroDetailScreen() {
             accessibilityLabel="Breakdown mode"
             style={{
               flexDirection: "row",
-              padding: 3,
+              padding: Spacing.xs,
               backgroundColor: colors.inputBg,
               borderRadius: Radius.full,
               marginBottom: Spacing.md,
@@ -212,10 +212,10 @@ export default function MacroDetailScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      paddingVertical: 12,
+                      paddingVertical: Spacing.dense,
                       borderBottomWidth: 1,
                       borderBottomColor: colors.border,
-                      gap: 12,
+                      gap: Spacing.dense,
                     }}
                   >
                     <View
@@ -253,9 +253,17 @@ export default function MacroDetailScreen() {
                     </Text>
                   </View>
 
-                  {/* Sub-rows — only render when more than one meal in
-                      the slot so we don't duplicate the header. */}
-                  {slotMeals.length > 1 &&
+                  {/* Sub-rows — e2e walk 2026-06-10: single-item slots used
+                      to hide their row entirely, so "BREAKFAST · 24.6g" gave
+                      no clue WHAT contributed the grams without switching to
+                      the By-ingredient tab. Render sub-rows whenever the
+                      meal name adds information; skip only the true
+                      duplicate case (a single entry literally named after
+                      the slot, e.g. a quick-add titled "Breakfast"). */}
+                  {(slotMeals.length > 1 ||
+                    ((slotMeals[0]?.recipeTitle ?? "").trim().toLowerCase() !==
+                      slot.trim().toLowerCase() &&
+                      (slotMeals[0]?.recipeTitle ?? "").trim() !== "")) &&
                     slotMeals.map((meal, i) => {
                       const val = Number(meal[config.field]) || 0;
                       return (
@@ -264,11 +272,11 @@ export default function MacroDetailScreen() {
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            paddingVertical: 10,
+                            paddingVertical: Spacing.sm,
                             paddingLeft: 22,
                             borderBottomWidth: i < slotMeals.length - 1 ? 1 : 0,
                             borderBottomColor: colors.border,
-                            gap: 12,
+                            gap: Spacing.dense,
                           }}
                         >
                           <View style={{ flex: 1 }}>

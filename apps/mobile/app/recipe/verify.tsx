@@ -700,7 +700,7 @@ export default function VerifyScreen() {
     actionRow: { flexDirection: "row", gap: Spacing.md },
     actionBtn: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, paddingVertical: 12, borderRadius: Radius.md,
+      gap: Spacing.sm, paddingVertical: Spacing.dense, borderRadius: Radius.md,
       borderWidth: 1, borderColor: accent.primary + "40",
     },
     actionBtnText: { color: accent.primary, fontSize: 13, fontWeight: "600" },
@@ -880,7 +880,7 @@ export default function VerifyScreen() {
                   <Ionicons name="alert-circle" size={18} color={Accent.warning} style={{ marginRight: Spacing.sm }} />
                 )}
                 <View style={styles.ingContent}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
                     {rowHasOverride ? (
                       <Badge
@@ -994,7 +994,7 @@ export default function VerifyScreen() {
                           key={`${p.label}-${idx}`}
                           onPress={() => onPortionChange(i, p)}
                           style={{
-                            paddingHorizontal: 10, paddingVertical: 6,
+                            paddingHorizontal: Spacing.dense, paddingVertical: Spacing.xs,
                             borderRadius: Radius.sm, borderWidth: 1,
                             borderColor: isActive ? Accent.success : colors.border,
                             backgroundColor: isActive ? Accent.success + "15" : "transparent",
@@ -1410,8 +1410,8 @@ function VerifyLoadingSkeleton({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 10,
-            padding: 14,
+            gap: Spacing.sm,
+            padding: Spacing.md,
             borderRadius: Radius.md,
             backgroundColor: `${accent.primary}10`,
             borderWidth: 1,
@@ -1442,12 +1442,12 @@ function VerifyLoadingSkeleton({
           <View
             key={i}
             style={{
-              padding: 14,
+              padding: Spacing.md,
               borderRadius: Radius.md,
               borderWidth: 1,
               borderColor: colors.border,
               backgroundColor: colors.card,
-              gap: 10,
+              gap: Spacing.sm,
               marginBottom: Spacing.sm,
             }}
           >
@@ -1489,7 +1489,7 @@ function VerifyLoadingSkeleton({
           testID="verify-cancel-button"
           style={{
             marginTop: Spacing.lg,
-            paddingVertical: 14,
+            paddingVertical: Spacing.md,
             alignItems: "center",
           }}
         >

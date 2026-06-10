@@ -240,7 +240,7 @@ export function MoveMealSheet({
                       style={{
                         color: colors.textSecondary,
                         fontSize: 12,
-                        marginTop: 2,
+                        marginTop: Spacing.xs,
                       }}
                       numberOfLines={1}
                     >
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   title: { fontSize: 18, fontWeight: "700" },
-  subtitle: { fontSize: 13, marginTop: 2 },
+  subtitle: { fontSize: 13, marginTop: Spacing.xs },
   row: {
     flexDirection: "row",
     alignItems: "center",

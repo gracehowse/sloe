@@ -114,8 +114,8 @@ export function WeeklyCheckinBanner({
         onPress={onOpen}
         testID="weekly-checkin-banner-open"
         style={({ pressed }) => ({
-          paddingHorizontal: 12,
-          paddingVertical: 6,
+          paddingHorizontal: Spacing.dense,
+          paddingVertical: Spacing.sm,
           borderRadius: Radius.sm,
           backgroundColor: "transparent",
           borderWidth: 1.5,

@@ -584,8 +584,8 @@ const makeStyles = (
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: Radius.md,
-      paddingVertical: 11,
-      paddingHorizontal: 12,
+      paddingVertical: Spacing.dense,
+      paddingHorizontal: Spacing.dense,
       fontSize: 15,
       color: colors.text,
       backgroundColor: colors.inputBg,
@@ -615,7 +615,7 @@ const makeStyles = (
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     chip: {
       paddingVertical: 8,
-      paddingHorizontal: 14,
+      paddingHorizontal: Spacing.dense,
       borderRadius: 999,
       borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
@@ -632,7 +632,7 @@ const makeStyles = (
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      paddingVertical: 12,
+      paddingVertical: Spacing.dense,
       borderRadius: Radius.md,
       // ENG-821: soft-tinted affordance — same chip language as the meal-type
       // chips above (accent.primarySoft fill + accent.primary edge). Kept on the
@@ -655,7 +655,7 @@ const makeStyles = (
     },
     footerBtn: {
       flex: 1,
-      paddingVertical: 13,
+      paddingVertical: Spacing.dense,
       borderRadius: Radius.md,
       alignItems: "center",
       justifyContent: "center",

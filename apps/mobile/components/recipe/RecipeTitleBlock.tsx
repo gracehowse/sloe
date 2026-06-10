@@ -14,7 +14,7 @@
 import { Linking, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { FitsYourDayVerdict } from "@/lib/recipe/recipeDetailLayout";
 
@@ -54,7 +54,7 @@ export function RecipeTitleBlock({
     : null;
 
   return (
-    <View style={{ gap: 12 }} testID="recipe-title-block">
+    <View style={{ gap: Spacing.dense }} testID="recipe-title-block">
       <Text
         style={{
           fontFamily: FontFamily.serifRegular,
@@ -111,9 +111,9 @@ export function RecipeTitleBlock({
             flexDirection: "row",
             alignItems: "center",
             alignSelf: "flex-start",
-            gap: 6,
+            gap: Spacing.xs,
             height: 36,
-            paddingHorizontal: 14,
+            paddingHorizontal: Spacing.md,
             borderRadius: Radius.full,
             backgroundColor: verdictTone.bg,
           }}

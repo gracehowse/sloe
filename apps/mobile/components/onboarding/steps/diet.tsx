@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptionCard } from "@/components/OptionCard";
@@ -115,7 +116,7 @@ export function MobileDietStep() {
           textTransform: "uppercase",
           letterSpacing: 1,
           color: colors.textTertiary,
-          marginBottom: 10,
+          marginBottom: Spacing.sm,
         }}
       >
         Allergies
@@ -130,7 +131,7 @@ export function MobileDietStep() {
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               style={({ pressed }) => ({
-                paddingHorizontal: 14,
+                paddingHorizontal: Spacing.dense,
                 paddingVertical: 8,
                 borderRadius: 999,
                 backgroundColor: on ? accent.primary + "26" : colors.card,

@@ -91,11 +91,11 @@ export function ProgressAverageAdherence({
         <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>
           Average Adherence
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           {adherenceDeltaPct != null && adherenceDeltaPct !== 0 ? (
             <View
               testID="progress-adherence-trend-chip"
-              style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
+              style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
             >
               <SparkleArrow up={adherenceDeltaPct > 0} color={adherenceDeltaPct > 0 ? Accent.success : sub} />
               <Text style={{ fontSize: 12, fontWeight: "500", color: adherenceDeltaPct > 0 ? Accent.success : sub }}>

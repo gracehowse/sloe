@@ -1,7 +1,7 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -31,6 +31,11 @@ export default function NotFound() {
         gap: Spacing.lg,
       }}
     >
+      {/* e2e walk 2026-06-10: hide the stock stack header — it rendered a
+          system-font "Not found" title + a floating chevron-in-circle,
+          both off the Sloe language. The screen carries its own recovery
+          CTA, so no header chrome is needed. */}
+      <Stack.Screen options={{ headerShown: false }} />
       <Text
         style={{
           fontSize: 11,
@@ -44,8 +49,11 @@ export default function NotFound() {
       </Text>
       <Text
         style={{
-          fontSize: 22,
-          fontWeight: "700",
+          // Sloe screen-title voice — Newsreader serif like every other
+          // screen headline (e2e walk 2026-06-10; was stock sans).
+          fontFamily: FontFamily.serifSemibold,
+          fontSize: 24,
+          fontWeight: "600",
           color: colors.text,
           textAlign: "center",
         }}

@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
@@ -46,8 +46,8 @@ export function MobileImportStep() {
               borderColor: colors.border,
               borderWidth: 1,
               borderRadius: Radius.md,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
+              paddingHorizontal: Spacing.md,
+              paddingVertical: Spacing.dense,
               marginBottom: 16,
             }}
           >
@@ -64,7 +64,7 @@ export function MobileImportStep() {
               Recipe URL
             </Text>
             <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
             >
               <Ionicons name="link-outline" size={14} color={colors.textTertiary} />
               <TextInput
@@ -111,7 +111,7 @@ export function MobileImportStep() {
               letterSpacing: 1,
               color: colors.textTertiary,
               marginTop: 20,
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
             }}
           >
             Or pick a source
@@ -208,7 +208,7 @@ function ImportParsing() {
         borderColor: colors.border,
         borderWidth: 1,
         borderRadius: Radius.md + 2,
-        padding: 22,
+        padding: Spacing.xl,
         alignItems: "center",
       }}
     >
@@ -229,9 +229,9 @@ function ImportParsing() {
             key={i}
             style={{
               flexDirection: "row",
-              gap: 10,
+              gap: Spacing.sm,
               alignItems: "center",
-              paddingVertical: 6,
+              paddingVertical: Spacing.sm,
               opacity: i <= cur ? 1 : 0.35,
             }}
           >
@@ -338,7 +338,7 @@ function ImportDone({ source }: { source: ImportSource }) {
           Sheet-pan chicken with roasted peppers
         </Text>
         <Text
-          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 14 }}
+          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}
         >
           {`4 servings · 32 min · ${src}`}
         </Text>
@@ -346,7 +346,7 @@ function ImportDone({ source }: { source: ImportSource }) {
           style={{
             flexDirection: "row",
             gap: 8,
-            paddingTop: 14,
+            paddingTop: Spacing.md,
             borderTopWidth: 1,
             borderTopColor: colors.border,
           }}

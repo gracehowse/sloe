@@ -647,9 +647,9 @@ const styles = StyleSheet.create({
   libraryEmptyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: Spacing.dense,
     paddingHorizontal: 4,
-    paddingVertical: 12,
+    paddingVertical: Spacing.dense,
   },
   defaultCard: {
     flexDirection: "row",
@@ -675,12 +675,12 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: Spacing.xs,
     borderRadius: 999,
   },
   cta: {
     height: 36,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.dense,
     borderRadius: Radius.sm,
     alignItems: "center",
     justifyContent: "center",
@@ -719,10 +719,10 @@ const styles = StyleSheet.create({
     zIndex: 2,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: Spacing.xs,
     backgroundColor: "rgba(94,124,90,0.9)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.dense,
+    paddingVertical: Spacing.sm,
     borderRadius: 999,
   },
   figmaFitsText: {

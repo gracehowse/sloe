@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import { Spacing } from "@/constants/theme";
 import { Award } from "lucide-react-native";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -35,7 +36,7 @@ export function ProgressOnTargetRibbon({
       // Mirrors web `elevation="card"`.
       lift="soft"
       padding="lg"
-      innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+      innerStyle={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}
     >
       <View
         style={{

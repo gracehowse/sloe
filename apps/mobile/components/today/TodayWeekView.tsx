@@ -615,7 +615,7 @@ function ScrubTooltip({
           top: 0,
           [isLeftHalf ? "left" : "right"]: 0,
           paddingVertical: 8,
-          paddingHorizontal: 12,
+          paddingHorizontal: Spacing.dense,
           borderRadius: Radius.md,
           borderWidth: 1,
           borderColor: borderColor,

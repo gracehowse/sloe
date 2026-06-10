@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, StyleProp, Text, View, ViewStyle } from "react-native";
-import { FontFamily, Radius } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -44,7 +44,7 @@ export function MobileNumberStepper({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: big ? 28 : 18,
+          gap: big ? Spacing.xl : Spacing.md,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.border,
@@ -102,7 +102,7 @@ export function MobileNumberStepper({
         {suffix ? (
           <Text
             style={{
-              marginTop: big ? 6 : 4,
+              marginTop: Spacing.xs,
               fontSize: big ? 11 : 10,
               fontWeight: "600",
               textTransform: "uppercase",

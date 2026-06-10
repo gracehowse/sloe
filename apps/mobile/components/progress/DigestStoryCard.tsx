@@ -89,7 +89,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
       {isEmpty ? (
         <Text
           testID="digest-story-card-empty"
-          style={[styles.body, { color: colors.textSecondary, marginTop: 10 }]}
+          style={[styles.body, { color: colors.textSecondary, marginTop: Spacing.dense }]}
         >
           Quiet week — log a meal to start your story.
         </Text>
@@ -160,7 +160,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           const insight = insightParts.join(" ");
 
           return (
-            <View style={{ marginTop: 12 }}>
+            <View style={{ marginTop: Spacing.dense }}>
               <View style={styles.heroRow} testID="digest-hero-row">
                 {/* SLOE Phase 0: the days-logged hero numeral reads in
                     Newsreader serif (family carries the weight; the small `/7`
@@ -193,7 +193,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                   <View
                     testID="digest-delta-pill"
                     style={{
-                      paddingHorizontal: 10,
+                      paddingHorizontal: Spacing.dense,
                       paddingVertical: 4,
                       borderRadius: 999,
                       backgroundColor: deltaBg,
@@ -218,7 +218,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                   testID="digest-support-line"
                   style={[
                     styles.body,
-                    { color: colors.textSecondary, marginTop: 6 },
+                    { color: colors.textSecondary, marginTop: Spacing.sm },
                   ]}
                 >
                   {supportLine}
@@ -232,7 +232,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                     styles.body,
                     {
                       color: colors.textTertiary,
-                      marginTop: 10,
+                      marginTop: Spacing.dense,
                       fontStyle: "italic",
                     },
                   ]}

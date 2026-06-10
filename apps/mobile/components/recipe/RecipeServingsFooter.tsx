@@ -16,7 +16,7 @@
 import { Text, View } from "react-native";
 import { Minus, Plus, UtensilsCrossed } from "lucide-react-native";
 
-import { FontFamily, Radius } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -70,8 +70,8 @@ export function RecipeServingsFooter({
         borderTopWidth: 1,
         borderTopColor: colors.border,
         paddingHorizontal: 24,
-        paddingTop: 12,
-        paddingBottom: bottomInset + 12,
+        paddingTop: Spacing.dense,
+        paddingBottom: bottomInset + Spacing.dense,
       }}
       testID="recipe-detail-sticky-footer"
     >
@@ -89,7 +89,7 @@ export function RecipeServingsFooter({
         >
           Yield
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
           <PressableScale
             onPress={onDecrease}
             disabled={!canDecrease}

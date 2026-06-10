@@ -19,7 +19,7 @@
 import { ActivityIndicator, Text, View } from "react-native";
 import { Pencil, PlusCircle, UtensilsCrossed } from "lucide-react-native";
 
-import { FontFamily, Radius } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -55,7 +55,7 @@ export function RecipeActionPills({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    gap: 6,
+    gap: Spacing.sm,
     height: 46,
     borderRadius: Radius.full,
     backgroundColor: colors.backgroundSecondary,
@@ -71,7 +71,7 @@ export function RecipeActionPills({
 
   return (
     <View
-      style={{ flexDirection: "row", gap: 12 }}
+      style={{ flexDirection: "row", gap: Spacing.dense }}
       testID="recipe-action-pills"
     >
       <PressableScale
@@ -85,7 +85,7 @@ export function RecipeActionPills({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: 6,
+          gap: Spacing.sm,
           height: 46,
           borderRadius: Radius.full,
           // Aubergine OUTLINE (Sloe treatment §1): transparent ground +

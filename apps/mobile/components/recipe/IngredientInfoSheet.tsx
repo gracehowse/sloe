@@ -156,7 +156,7 @@ const s = StyleSheet.create({
     borderTopRightRadius: 20,
     overflow: "hidden",
   },
-  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 6 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: Spacing.sm },
   header: {
     flexDirection: "row",
     alignItems: "center",

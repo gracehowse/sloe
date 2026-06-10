@@ -100,8 +100,8 @@ export default function TimeRangeSelector({
               isDisabled ? "Log more weigh-ins to unlock this view" : undefined
             }
             style={{
-              paddingVertical: 6,
-              paddingHorizontal: 10,
+              paddingVertical: Spacing.sm,
+              paddingHorizontal: Spacing.dense,
               borderRadius: Radius.sm - 2,
               alignItems: "center",
               backgroundColor: selected === r ? accent.primarySoft : "transparent",

@@ -298,7 +298,7 @@ export function TodayDateHeader({
             <ChevronRight size={16} color={textColor} />
           </Pressable>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           {!hideViewModeToggle ? (
             <View
               style={{
@@ -321,7 +321,7 @@ export function TodayDateHeader({
                 accessibilityState={{ selected: viewMode === "day" }}
                 style={{
                   paddingHorizontal: 8,
-                  paddingVertical: 6,
+                  paddingVertical: Spacing.sm,
                   backgroundColor:
                     viewMode === "day" ? accent.primarySoft : "transparent",
                   alignItems: "center",
@@ -337,7 +337,7 @@ export function TodayDateHeader({
                 accessibilityState={{ selected: viewMode === "week" }}
                 style={{
                   paddingHorizontal: 8,
-                  paddingVertical: 6,
+                  paddingVertical: Spacing.sm,
                   backgroundColor:
                     viewMode === "week" ? accent.primarySoft : "transparent",
                   alignItems: "center",

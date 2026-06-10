@@ -18,6 +18,7 @@ import {
   macroSplitIncompleteCopy,
 } from "../../../lib/nutrition/macroSplitConfidence";
 import { macroCalorieSplit } from "../../../lib/nutrition/macroCalorieSplit";
+import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
 
 /**
  * MealNutritionDialog — web per-meal nutrition-detail surface.
@@ -154,7 +155,7 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
   const portionLabel = Number.isInteger(portion) ? String(portion) : String(Math.round(portion * 100) / 100);
 
   const populatedCount = microRows.filter((row) => row.value !== "—").length;
-  const sourceLabel = meal?.source ? meal.source : "the data source";
+  const sourceLabel = formatNutritionSourceLabel(meal?.source) ?? "the data source";
 
   return (
     <Dialog
@@ -196,7 +197,7 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
                 {[meal.name, meal.time].filter(Boolean).join(" · ")}
-                {meal.source ? ` · ${meal.source}` : ""}
+                {meal.source ? ` · ${formatNutritionSourceLabel(meal.source)}` : ""}
               </DialogDescription>
             </DialogHeader>
 
@@ -286,23 +287,30 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                       {populatedCount} of {microRows.length} fields published by {sourceLabel}
                       {showPortionLine ? `; values reflect portion ×${portionLabel}` : ""}.
                     </p>
+                    {/* e2e walk 2026-06-10 — only populated rows render; the
+                        absent fields collapse to one quiet summary line
+                        (mirror of mobile meal-nutrition.tsx). */}
                     <div data-testid="meal-nutrition-micros-list">
-                      {microRows.map((row) => (
-                        <div
-                          key={row.key}
-                          className="flex items-center justify-between gap-3 border-b border-border/30 py-2.5 last:border-b-0"
-                        >
-                          <span className="flex-1 text-sm text-foreground">{row.label}</span>
-                          <span
-                            className={`text-sm tabular-nums ${
-                              row.value === "—" ? "text-muted-foreground/60" : "text-muted-foreground"
-                            }`}
+                      {microRows
+                        .filter((row) => row.value !== "—")
+                        .map((row) => (
+                          <div
+                            key={row.key}
+                            className="flex items-center justify-between gap-3 border-b border-border/30 py-2.5 last:border-b-0"
                           >
-                            {row.value === "—" ? "Not published" : row.value}
-                          </span>
-                        </div>
-                      ))}
+                            <span className="flex-1 text-sm text-foreground">{row.label}</span>
+                            <span className="text-sm tabular-nums text-muted-foreground">{row.value}</span>
+                          </div>
+                        ))}
                     </div>
+                    {populatedCount < microRows.length ? (
+                      <p
+                        data-testid="meal-nutrition-micros-rest"
+                        className="mt-2 text-xs leading-[17px] text-muted-foreground"
+                      >
+                        {microRows.length - populatedCount} more not published by {sourceLabel}.
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>

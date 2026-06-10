@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
 import { useAccent } from "@/context/theme";
@@ -130,7 +131,7 @@ export function MobileWeightStep() {
           style={{
             fontSize: 11,
             color: colors.textTertiary,
-            marginTop: 6,
+            marginTop: Spacing.xs,
             maxWidth: 280,
             textAlign: "center",
             lineHeight: 16,
@@ -187,7 +188,7 @@ function WeightSkippedIllustration() {
       style={{
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 12,
+        paddingVertical: Spacing.dense,
       }}
     >
       <Animated.View

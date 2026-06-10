@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { View } from "react-native";
 import {
   ArrowLeftRight,
@@ -67,7 +68,7 @@ export function MobileGoalStep() {
         title="What's your goal?"
         subtitle="We'll tailor your calorie and macro targets to match. You can change this anytime."
       />
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: Spacing.dense }}>
         {GOALS.map((g) => {
           const selected = state.goal === g.id;
           return (

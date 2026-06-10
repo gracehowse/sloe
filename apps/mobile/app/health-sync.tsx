@@ -725,7 +725,7 @@ export default function HealthSyncScreen() {
           flexDirection: "row" as const,
           alignItems: "center" as const,
           gap: Spacing.sm,
-          paddingVertical: 12,
+          paddingVertical: Spacing.dense,
           minHeight: 44,
         },
         // Hairline separator between category rows (#ECEAE4).
@@ -880,7 +880,7 @@ export default function HealthSyncScreen() {
                   alignItems: "center" as const,
                   gap: Spacing.sm,
                   minHeight: 44,
-                  paddingVertical: 12,
+                  paddingVertical: Spacing.dense,
                   marginLeft: ICON_INDENT,
                   opacity: pressed ? 0.7 : 1,
                 })}
@@ -955,7 +955,7 @@ export default function HealthSyncScreen() {
                   alignItems: "center" as const,
                   gap: Spacing.sm,
                   minHeight: 44,
-                  paddingVertical: 12,
+                  paddingVertical: Spacing.dense,
                   marginLeft: ICON_INDENT,
                   opacity: pressed ? 0.7 : 1,
                 })}
@@ -985,7 +985,7 @@ export default function HealthSyncScreen() {
                 alignItems: "center" as const,
                 gap: Spacing.sm,
                 minHeight: 44,
-                paddingVertical: 12,
+                paddingVertical: Spacing.dense,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
@@ -1068,7 +1068,7 @@ export default function HealthSyncScreen() {
               accessibilityLabel="Try again"
               style={({ pressed }) => ({
                 flex: 1,
-                paddingVertical: 12,
+                paddingVertical: Spacing.dense,
                 borderRadius: Radius.md,
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,
@@ -1087,7 +1087,7 @@ export default function HealthSyncScreen() {
               accessibilityLabel="Open iOS Settings to manage Apple Health permissions"
               style={({ pressed }) => ({
                 flex: 1,
-                paddingVertical: 12,
+                paddingVertical: Spacing.dense,
                 borderRadius: Radius.md,
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,

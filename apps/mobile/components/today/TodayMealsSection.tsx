@@ -236,7 +236,7 @@ function SlotMacroChips({
 }) {
   return (
     <View
-      style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 3 }}
+      style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: Spacing.sm, marginTop: Spacing.xs }}
     >
       <Text
         style={{ ...Type.caption, color: kcalColor, fontVariant: ["tabular-nums"] }}
@@ -695,7 +695,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   alignItems: "center",
                   justifyContent: "space-between",
                   paddingVertical: Spacing.sm,
-                  paddingHorizontal: 14,
+                  paddingHorizontal: Spacing.md,
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
@@ -717,7 +717,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 )}
               </Pressable>
               {!quickAddCollapsed ? (
-                <View style={{ paddingHorizontal: 12, paddingBottom: Spacing.sm }}>{quickAddPanel}</View>
+                <View style={{ paddingHorizontal: Spacing.dense, paddingBottom: Spacing.sm }}>{quickAddPanel}</View>
               ) : null}
             </View>
           )}
@@ -726,9 +726,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               style={{
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                paddingHorizontal: 12,
-                paddingTop: showQuickAdd ? 6 : 10,
-                paddingBottom: 6,
+                paddingHorizontal: Spacing.dense,
+                paddingTop: Spacing.sm,
+                paddingBottom: Spacing.sm,
               }}
             >
               <Pressable
@@ -763,8 +763,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   onPress={() => onPressMeal(m.id)}
                   onLongPress={() => onLongPressEdit(m)}
                   style={{
-                    paddingVertical: 9,
-                    paddingHorizontal: 14,
+                    paddingVertical: Spacing.sm,
+                    paddingHorizontal: Spacing.md,
                     flexDirection: "row",
                     justifyContent: "space-between",
                     alignItems: "center",
@@ -788,9 +788,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 6,
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
+                  gap: Spacing.sm,
+                  paddingVertical: Spacing.sm,
+                  paddingHorizontal: Spacing.md,
                   borderTopWidth: StyleSheet.hairlineWidth,
                   borderTopColor: cardBorderColor + "20",
                 }}
@@ -849,7 +849,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 // more hand-rolled per-slot chrome (Grace 2026-06-04). This animated
                 // wrapper only carries the entering animation, the bottom gap,
                 // and the empty-slot dim (logged slots read as the live ones).
-                marginBottom: 12,
+                marginBottom: Spacing.dense,
                 opacity: hasMeals ? 1 : 0.55,
               }}
             >
@@ -862,9 +862,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   alignItems: "center",
                   borderBottomWidth: hasMeals && isOpen ? 1 : 0,
                   borderBottomColor: cardBorderColor,
-                  padding: 12,
-                  paddingHorizontal: 14,
-                  gap: 10,
+                  padding: Spacing.dense,
+                  paddingHorizontal: Spacing.md,
+                  gap: Spacing.sm,
                 }}
               >
                 <Pressable
@@ -884,7 +884,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     alignItems: "center",
                     flex: 1,
                     minWidth: 0,
-                    gap: 12,
+                    gap: Spacing.dense,
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={
@@ -963,7 +963,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   </Pressable>
                 ) : null}
                 {hasMeals ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexShrink: 0 }}>
                     {/* 2026-05-22 evening (Grace): "+" pill removed
                         from populated slot headers. TD4 (2026-06-03)
                         restored an in-card "+ Add food" action in the
@@ -982,7 +982,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 4,
-                          paddingHorizontal: 10,
+                          paddingHorizontal: Spacing.dense,
                           paddingVertical: 4,
                           borderRadius: 999,
                           backgroundColor: col + "18",
@@ -1062,19 +1062,19 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     // left-aligned with the food rows below (the Sloe frame
                     // places it first in the card body, not indented under the
                     // icon). Was `paddingLeft: 56` (pre-TD4 single-card indent).
-                    paddingTop: 12,
+                    paddingTop: Spacing.dense,
                     paddingBottom: 4,
-                    paddingLeft: 14,
-                    paddingRight: 14,
+                    paddingLeft: Spacing.md,
+                    paddingRight: Spacing.md,
                   }}
                 >
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 6,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
+                      gap: Spacing.sm,
+                      paddingHorizontal: Spacing.dense,
+                      paddingVertical: Spacing.sm,
                       borderRadius: 999,
                       backgroundColor: col + "18",
                       borderWidth: 1,
@@ -1103,7 +1103,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 6,
+                        gap: Spacing.xs,
                         flexShrink: 1,
                       }}
                     >
@@ -1191,9 +1191,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         ]);
                       }}
                       style={{
-                        paddingVertical: 9,
-                        paddingLeft: 14,
-                        paddingRight: 14,
+                        paddingVertical: Spacing.sm,
+                        paddingLeft: Spacing.md,
+                        paddingRight: Spacing.md,
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -1203,7 +1203,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: cardColor,
                       }}
                     >
-                      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                         {(() => {
                           const thumbUrl = mealRowImageUrl(m);
                           if (thumbUrl) {
@@ -1230,7 +1230,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           );
                         })()}
                         <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                           {/* 2026-05-15 (crowder task) — `flexShrink: 1`
                               + `minWidth: 0` so `numberOfLines: 1`
                               actually ellipsises. Without these, the
@@ -1255,7 +1255,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           ? (() => {
                               const ts = formatMealTimeDisplay(m.time, m.createdAt);
                               return ts ? (
-                                <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: 12 }}>{ts}</Text>
+                                <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: Spacing.dense }}>{ts}</Text>
                               ) : null;
                             })()
                           : null}
@@ -1301,9 +1301,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   accessibilityRole="summary"
                   accessibilityLabel={`Tip — make this your usual ${slot}`}
                   style={{
-                    marginHorizontal: 12,
-                    marginVertical: 6,
-                    padding: 12,
+                    marginHorizontal: Spacing.dense,
+                    marginVertical: Spacing.sm,
+                    padding: Spacing.dense,
                     borderRadius: Radius.md,
                     backgroundColor: col + "0C",
                     borderWidth: 1,
@@ -1319,7 +1319,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   <Text style={{ ...Type.caption, color: textTertiaryColor, marginTop: 2 }}>
                     One tap to re-log it tomorrow.
                   </Text>
-                  <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
+                  <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: 8 }}>
                     <Pressable
                       onPress={() => onAcceptUsualMealHint(slot)}
                       accessibilityRole="button"
@@ -1328,8 +1328,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         flexDirection: "row",
                         alignItems: "center",
                         gap: 4,
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
+                        paddingHorizontal: Spacing.dense,
+                        paddingVertical: Spacing.sm,
                         borderRadius: Radius.sm,
                         backgroundColor: col,
                       }}
@@ -1344,8 +1344,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       accessibilityRole="button"
                       accessibilityLabel={`Dismiss usual-meal hint for ${slot}`}
                       style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
+                        paddingHorizontal: Spacing.dense,
+                        paddingVertical: Spacing.sm,
                       }}
                     >
                       <Text style={{ ...Type.caption, color: textSecondaryColor }}>
@@ -1374,9 +1374,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 6,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
+                    gap: Spacing.sm,
+                    paddingVertical: Spacing.dense,
+                    paddingHorizontal: Spacing.md,
                     // Sloe: hairline divider above the action row.
                     borderTopWidth: StyleSheet.hairlineWidth,
                     borderTopColor: cardBorderColor + "30",
@@ -1399,9 +1399,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 6,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
+                    gap: Spacing.sm,
+                    paddingVertical: Spacing.dense,
+                    paddingHorizontal: Spacing.md,
                     // Sloe: hairline divider above the action row.
                     borderTopWidth: StyleSheet.hairlineWidth,
                     borderTopColor: cardBorderColor + "30",
@@ -1435,10 +1435,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 6,
-                    paddingTop: 10,
-                    paddingBottom: 12,
-                    paddingHorizontal: 14,
+                    gap: Spacing.sm,
+                    paddingTop: Spacing.dense,
+                    paddingBottom: Spacing.dense,
+                    paddingHorizontal: Spacing.md,
                   }}
                 >
                   <Plus size={15} color={accent.primarySolid} strokeWidth={2.25} />
@@ -1547,7 +1547,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       accessibilityRole="button"
                       accessibilityLabel={`Show all ${total} saved meals`}
                       style={{
-                        paddingVertical: 10,
+                        paddingVertical: Spacing.dense,
                         alignItems: "center",
                         marginBottom: Spacing.sm,
                       }}
@@ -1568,7 +1568,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               style={{
-                paddingVertical: 10,
+                paddingVertical: Spacing.dense,
                 alignItems: "center",
                 borderRadius: Radius.md,
                 borderWidth: 1,

@@ -117,9 +117,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 11,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
+    gap: Spacing.dense,
+    paddingVertical: Spacing.dense,
+    paddingHorizontal: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
   },
@@ -133,11 +133,11 @@ const styles = StyleSheet.create({
   },
   radioDot: { width: 8, height: 8, borderRadius: 4 },
   textWrap: { flex: 1, minWidth: 0 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   title: { fontSize: 13, fontWeight: "700" },
-  countBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 },
+  countBadge: { borderRadius: 999, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs },
   countText: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  subtitle: { fontSize: 11.5, marginTop: 2, lineHeight: 16 },
+  subtitle: { fontSize: 11.5, marginTop: Spacing.xs, lineHeight: 16 },
 });
 
 export default PlanSourceSelector;

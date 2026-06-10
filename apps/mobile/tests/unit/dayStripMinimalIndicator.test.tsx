@@ -163,13 +163,15 @@ describe("DayStrip render — no filled pill, minimal dots present", () => {
 
     // Belt-and-braces: the day-cell Pressables must have NO backgroundColor at
     // all (the pill is gone). Find cells by their day-cell signature
-    // (paddingVertical:8 + alignItems:center + gap:5) and assert none fills.
+    // (paddingVertical:8 + alignItems:center + gap:Spacing.xs=4 — the gap
+    // snapped from the off-scale 5 in the ENG-1012 migration, 2026-06-10)
+    // and assert none fills.
     const dayCells = allNodes.filter((node) => {
       const style = flattenStyle((node.props as { style?: unknown })?.style);
       return (
         style.paddingVertical === 8 &&
         style.alignItems === "center" &&
-        style.gap === 5
+        style.gap === 4
       );
     });
     expect(dayCells.length).toBeGreaterThan(0);

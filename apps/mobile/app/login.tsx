@@ -158,7 +158,7 @@ export default function LoginScreen() {
       textAlign: "center",
       lineHeight: 20,
     },
-    chooser: { marginTop: Spacing.xxl + Spacing.sm },
+    chooser: { marginTop: Spacing.xxxl },
     form: { gap: Spacing.md, marginTop: Spacing.xl },
     input: {
       backgroundColor: colors.card,
@@ -166,7 +166,7 @@ export default function LoginScreen() {
       borderColor: colors.border,
       borderRadius: Radius.xl,
       paddingHorizontal: Spacing.lg,
-      paddingVertical: 16,
+      paddingVertical: Spacing.md,
       color: colors.text,
       fontSize: 16,
     },
@@ -174,7 +174,7 @@ export default function LoginScreen() {
     // one commit action per screen).
     btn: {
       backgroundColor: colors.tint,
-      paddingVertical: 16,
+      paddingVertical: Spacing.md,
       borderRadius: Radius.full,
       alignItems: "center",
       marginTop: Spacing.sm,
@@ -191,7 +191,7 @@ export default function LoginScreen() {
     backRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
+      gap: Spacing.xs,
       alignSelf: "flex-start",
       marginBottom: Spacing.md,
     },
@@ -199,7 +199,7 @@ export default function LoginScreen() {
     // Continue with Apple — full-pill ink button (`296:2` chooser).
     appleBtn: {
       backgroundColor: colors.text,
-      paddingVertical: 17,
+      paddingVertical: Spacing.md,
       borderRadius: Radius.full,
       alignItems: "center",
       flexDirection: "row",
@@ -210,7 +210,7 @@ export default function LoginScreen() {
     // Continue with email — outline pill (`296:2` chooser).
     emailBtn: {
       backgroundColor: colors.background,
-      paddingVertical: 17,
+      paddingVertical: Spacing.md,
       borderRadius: Radius.full,
       borderWidth: 1.5,
       borderColor: colors.border,

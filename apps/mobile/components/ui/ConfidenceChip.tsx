@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Radius } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     gap: 4,
     height: 22,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
   },
   label: {

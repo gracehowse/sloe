@@ -119,7 +119,7 @@ export function TodayQuickLogStrip({
           >
             <Glyph size={IconSize.lg} color={color} strokeWidth={2.25} />
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
             <Text
               style={{
                 ...Type.caption,

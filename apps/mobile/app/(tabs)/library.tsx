@@ -440,7 +440,7 @@ export default function LibraryScreen() {
       justifyContent: "space-between",
       gap: Spacing.sm,
       paddingHorizontal: Spacing.xl,
-      paddingTop: 2,
+      paddingTop: Spacing.xs,
       paddingBottom: Spacing.md,
     },
     countText: {
@@ -452,7 +452,7 @@ export default function LibraryScreen() {
     countControls: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: Spacing.sm,
     },
     quietControl: {
       flexDirection: "row",
@@ -665,7 +665,7 @@ export default function LibraryScreen() {
     metaChip: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 3,
+      gap: Spacing.xs,
     },
     metaChunk: {
       fontSize: 12,
@@ -680,7 +680,7 @@ export default function LibraryScreen() {
       top: Spacing.sm,
       left: Spacing.sm,
       paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingVertical: Spacing.xs,
       borderRadius: Radius.sm,
       backgroundColor: colors.text + "CC",
     },
@@ -694,7 +694,7 @@ export default function LibraryScreen() {
     goPublicBtn: {
       marginTop: Spacing.sm,
       alignSelf: "flex-start",
-      paddingHorizontal: 12,
+      paddingHorizontal: Spacing.dense,
       paddingVertical: 8,
       borderRadius: Radius.md,
       backgroundColor: "transparent",
@@ -756,13 +756,13 @@ export default function LibraryScreen() {
       marginTop: 8,
       lineHeight: 21,
     },
-    emptyActions: { marginTop: 24, gap: 10, width: "100%", maxWidth: 280 },
+    emptyActions: { marginTop: 24, gap: Spacing.dense, width: "100%", maxWidth: 280 },
     // Empty-state primary "Import a recipe" — aubergine OUTLINE (Sloe treatment
     // §1). The grey-outline "Explore Discover" (ctaBtnSecondary) sits below it
     // as the quieter secondary, keeping a clear emphasis ladder.
     ctaBtn: {
       paddingHorizontal: 24,
-      paddingVertical: 12,
+      paddingVertical: Spacing.dense,
       backgroundColor: "transparent",
       borderRadius: Radius.full,
       borderWidth: 1.5,
@@ -772,7 +772,7 @@ export default function LibraryScreen() {
     ctaBtnText: { color: accentInk, fontWeight: "600", fontSize: 14 },
     ctaBtnSecondary: {
       paddingHorizontal: 24,
-      paddingVertical: 12,
+      paddingVertical: Spacing.dense,
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: colors.border,
@@ -884,7 +884,7 @@ export default function LibraryScreen() {
                 fabricate a 4.8-style score); time uses prep+cook minutes;
                 if neither exists, fall back to the serving count so the row
                 never reads empty. */}
-            <View style={[styles.metaRow, { gap: 6 }]}>
+            <View style={[styles.metaRow, { gap: Spacing.sm }]}>
               {savesCount > 0 ? (
                 <View style={styles.metaChip}>
                   <Star size={13} color={accent.primary} fill={accent.primary} />

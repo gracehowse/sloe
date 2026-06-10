@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptionCard } from "@/components/OptionCard";
@@ -54,7 +55,7 @@ export function MobileSexStep() {
         title="Sex"
         subtitle="Used to estimate your metabolic rate. You can change this anytime."
       />
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: Spacing.dense }}>
         {OPTIONS.map((o) => (
           <OptionCard
             key={o.id ?? "u"}
@@ -81,7 +82,7 @@ export function MobileSexStep() {
         accessibilityRole="button"
         accessibilityState={{ expanded: helpOpen }}
         style={{
-          marginTop: 14,
+          marginTop: Spacing.md,
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
@@ -106,8 +107,8 @@ export function MobileSexStep() {
       {helpOpen ? (
         <View
           style={{
-            marginTop: 12,
-            padding: 14,
+            marginTop: Spacing.dense,
+            padding: Spacing.md,
             backgroundColor: accent.primary + "10",
             borderColor: accent.primary + "33",
             borderWidth: 1,
@@ -131,7 +132,7 @@ export function MobileSexStep() {
               fontSize: 12,
               color: colors.text,
               lineHeight: 18,
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
             }}
           >
             The Mifflin-St Jeor equation uses different coefficients for male
@@ -142,7 +143,7 @@ export function MobileSexStep() {
               fontSize: 12,
               color: colors.text,
               lineHeight: 18,
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
             }}
           >
             If you&apos;re trans, non-binary, or gender non-conforming:

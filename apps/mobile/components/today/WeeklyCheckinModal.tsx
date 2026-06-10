@@ -110,7 +110,7 @@ export function WeeklyCheckinModal({
               backgroundColor: accent.primary + "18",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 12,
+              marginBottom: Spacing.dense,
             }}
           >
             <TrendingUp size={24} color={accent.primary} strokeWidth={2.25} />
@@ -123,7 +123,7 @@ export function WeeklyCheckinModal({
               fontWeight: "700",
               color: textColor,
               textAlign: "center",
-              marginBottom: 6,
+              marginBottom: Spacing.sm,
             }}
           >
             {content.headline}
@@ -213,7 +213,7 @@ export function WeeklyCheckinModal({
                 fontSize: 12,
                 fontWeight: "600",
                 color: textSecondaryColor,
-                marginBottom: 6,
+                marginBottom: Spacing.sm,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}
@@ -256,7 +256,7 @@ export function WeeklyCheckinModal({
                   {
                     fontSize: 14,
                     color: textSecondaryColor,
-                    marginLeft: 6,
+                    marginLeft: Spacing.xs,
                   },
                   tabularStyle,
                 ]}
@@ -310,7 +310,7 @@ export function WeeklyCheckinModal({
               borderWidth: 1.5,
               borderColor: accent.primarySolid,
               alignItems: "center",
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
               opacity: pressed ? 0.6 : 1,
             })}
           >

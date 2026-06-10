@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     // label colour also inline (colors.text). Sloe treatment §3.
     borderRadius: Radius.md,
     paddingVertical: 16,
-    paddingHorizontal: 28,
+    paddingHorizontal: Spacing.xl,
     alignItems: "center",
   },
   primaryBtnText: { fontWeight: "700", fontSize: 16 },

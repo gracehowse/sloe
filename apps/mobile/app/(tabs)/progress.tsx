@@ -1032,7 +1032,7 @@ export default function ProgressScreen() {
             skeleton doesn't look interactive. */}
         <View
           testID="progress-range-picker-skeleton"
-          style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}
+          style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md }}
         >
           {(["7d", "30d", "90d", "all"] as const).map((k) => {
             const active = k === rangeKey;
@@ -1068,7 +1068,7 @@ export default function ProgressScreen() {
               testID={`progress-skeleton-tile-${i}`}
               style={[{
                 width: "47%",
-                padding: 14,
+                padding: Spacing.md,
                 borderRadius: Radius.lg,
                 backgroundColor: cardElevation.liftBg ?? t.elevated,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
@@ -1076,8 +1076,8 @@ export default function ProgressScreen() {
                 minHeight: 86,
               }, cardElevation.shadowStyle]}
             >
-              <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: 10 }} />
-              <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: 6 }} />
+              <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
+              <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
               <View style={{ width: 100, height: 10, borderRadius: 3, backgroundColor: t.border }} />
             </View>
           ))}
@@ -1086,7 +1086,7 @@ export default function ProgressScreen() {
         {/* Inline spinner under the skeleton — reassures the user that
             the view is live without starving the initial paint. */}
         {/* Spinner uses theme `colors.tint` (warm ink / light foreground). */}
-        <View style={{ alignItems: "center", paddingVertical: 12 }}>
+        <View style={{ alignItems: "center", paddingVertical: Spacing.dense }}>
           <ActivityIndicator size="small" color={colors.tint} />
         </View>
       </ScrollView>
@@ -1282,7 +1282,7 @@ export default function ProgressScreen() {
                 cards (Sentence-Case source, rendered uppercase via style) so the
                 weight card is no longer the one card on Progress without a header. */}
             <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88, marginBottom: 8 }}>Weight</Text>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
                   {latestWeightKg != null ? fmtW(latestWeightKg) : "—"}
@@ -1319,7 +1319,7 @@ export default function ProgressScreen() {
                         setWeightView(v);
                       }}
                       style={({ pressed }) => [{
-                        paddingHorizontal: 12,
+                        paddingHorizontal: Spacing.dense,
                         paddingVertical: 4,
                         borderRadius: 999,
                         // Sloe treatment §8: active segment = white lift +
@@ -1335,14 +1335,14 @@ export default function ProgressScreen() {
               </View>
             </View>
             {goalWeightKg != null ? (
-              <Text style={{ fontSize: 13, color: t.sub, marginTop: 6 }}>
+              <Text style={{ fontSize: 13, color: t.sub, marginTop: Spacing.sm }}>
                 Goal {fmtW(goalWeightKg)}
                 {goalDateLabel ? ` · on track for ~${goalDateLabel}` : ""}
               </Text>
             ) : null}
             {/* Clay sparkline with a dashed goal line. */}
             {sparkSeries.length >= 2 ? (
-              <View style={{ marginTop: 12, height: 110, position: "relative" }}>
+              <View style={{ marginTop: Spacing.dense, height: 110, position: "relative" }}>
                 {(() => {
                   // Card inner width = screen − screen padding − card padding (20×2).
                   const chartW = Dimensions.get("window").width - Layout.screenPaddingX * 2 - 40;
@@ -1368,7 +1368,7 @@ export default function ProgressScreen() {
               </View>
             ) : null}
             {/* START / CURRENT / GOAL / RATE stat row */}
-            <View style={{ flexDirection: "row", marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
+            <View style={{ flexDirection: "row", marginTop: Spacing.dense, paddingTop: Spacing.dense, borderTopWidth: 1, borderTopColor: t.border }}>
               {([
                 ["Start", startKg != null ? fmtW(startKg) : "—"],
                 ["Current", latestWeightKg != null ? fmtW(latestWeightKg) : "—"],
@@ -1390,13 +1390,13 @@ export default function ProgressScreen() {
               accessibilityLabel="Log weight"
               onPress={() => setLogWeightOpen(true)}
               style={({ pressed }) => [{
-                marginTop: 14,
+                marginTop: Spacing.md,
                 alignSelf: "center",
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 6,
-                paddingHorizontal: 18,
-                paddingVertical: 9,
+                gap: Spacing.xs,
+                paddingHorizontal: Spacing.lg,
+                paddingVertical: Spacing.sm,
                 borderRadius: 999,
                 // Sloe treatment system (§1): primary inline CTA = aubergine
                 // OUTLINE (transparent fill, 1.5px primarySolid border + label).
@@ -1415,7 +1415,7 @@ export default function ProgressScreen() {
                 accessibilityLabel="View all measurements"
                 hitSlop={8}
                 testID="progress-view-all-measurements"
-                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 4, marginTop: 10, opacity: pressed ? 0.7 : 1 })}
+                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 4, marginTop: Spacing.sm, opacity: pressed ? 0.7 : 1 })}
               >
                 <Text style={{ fontSize: 12, color: t.accentSolid, fontWeight: "600" }}>View all measurements</Text>
                 <ArrowRight size={12} color={t.accentSolid} strokeWidth={2} />
@@ -1518,19 +1518,19 @@ export default function ProgressScreen() {
                         testID={`progress-day-bar-${d.key}`}
                         style={{ width: "100%", height: barH, borderRadius: 6, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.85 }}
                       />
-                      <Text style={{ fontSize: 10, fontWeight: isDayToday ? "700" : "500", color: isDayToday ? t.text : t.dim, marginTop: 6 }}>{d.label.charAt(0)}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: isDayToday ? "700" : "500", color: isDayToday ? t.text : t.dim, marginTop: Spacing.sm }}>{d.label.charAt(0)}</Text>
                     </Pressable>
                   );
                 })}
               </View>
             );
           })()}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: Spacing.dense }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
               <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
               <Text style={{ fontSize: 11, color: t.dim }}>On target</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
               <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
               <Text style={{ fontSize: 11, color: t.dim }}>Over</Text>
             </View>
@@ -1587,7 +1587,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: adaptive"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
                   <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
                 </View>
@@ -1595,14 +1595,14 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: formula estimate"
-                  style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
                   <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
                 </View>
               )}
             </View>
 
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.sm, marginBottom: Spacing.sm }}>
               <Text style={{ ...Type.display, color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
                 {resolved.kcal.toLocaleString()}
               </Text>
@@ -1610,7 +1610,7 @@ export default function ProgressScreen() {
             </View>
 
             {showAdaptiveExtras && resolved.formulaKcal != null && (
-              <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
+              <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
                 Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
                 {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
                   <Text style={{ fontWeight: "600", color: t.text }}>
@@ -1621,9 +1621,9 @@ export default function ProgressScreen() {
             )}
 
             {showAdaptiveExtras && adaptiveConfidence && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: 8 }}>
                 <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
-                <View style={{ flexDirection: "row", gap: 3 }}>
+                <View style={{ flexDirection: "row", gap: Spacing.xs }}>
                   {(["low", "medium", "high"] as const).map((level) => {
                     const filled =
                       (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
@@ -1662,14 +1662,14 @@ export default function ProgressScreen() {
               );
               if (!chain) return null;
               return (
-                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                <View style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: t.border }}>
                   <Pressable
                     onPress={() => setMaintenanceExplainerOpen((v) => !v)}
                     accessibilityRole="button"
                     accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
                     accessibilityState={{ expanded: maintenanceExplainerOpen }}
                     hitSlop={8}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
                   >
                     <Text style={{ fontSize: 12, fontWeight: "600", color: t.accentSolid }}>
                       {maintenanceExplainerOpen ? "Hide" : "How this works"}
@@ -1681,13 +1681,13 @@ export default function ProgressScreen() {
                     )}
                   </Pressable>
                   {maintenanceExplainerOpen && (
-                    <View style={{ marginTop: 10, gap: 6 }}>
+                    <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
                       {chain.steps.map((step, i) => {
                         const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
                         return (
                           <View
                             key={`${step.kind}-${i}`}
-                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}
+                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: Spacing.dense }}
                           >
                             <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: isSummary ? t.sub : t.text, fontWeight: step.emphasis ? "700" : "500" }}>
                               {step.label}
@@ -1789,7 +1789,7 @@ export default function ProgressScreen() {
                   </View>
                   {/* SLOE Phase 0: the days-to-goal hero numeral reads in
                       Newsreader serif; the " days to goal" label stays sans. */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
                     {timeline.daysToGoal != null ? (
                       <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.accent, fontVariant: ["tabular-nums"] }}>
                         {timeline.daysToGoal}<Text style={{ fontFamily: FontFamily.sansMedium, fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
@@ -1806,7 +1806,7 @@ export default function ProgressScreen() {
                   </View>
                 </View>
 
-                <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
+                <Text style={{ fontSize: 13, color: t.sub, marginBottom: Spacing.sm, lineHeight: 18 }}>
                   {timeline.remainingKg > 0.1
                     ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
                     : "You've reached your goal weight."}
@@ -1832,7 +1832,7 @@ export default function ProgressScreen() {
                 )}
 
                 {dailyProjection && maintenanceTdeeKcal != null && (
-                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                  <View style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: t.border }}>
                     {(() => {
                       const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
                       const deficitLabel =
@@ -1853,7 +1853,7 @@ export default function ProgressScreen() {
                     </Text>
                   </View>
                 )}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: Spacing.sm }}>
                   <Text style={{ fontSize: 12, fontWeight: "600", color: t.accentSolid }}>View weight trends</Text>
                   <ChevronRight size={12} color={t.accentSolid} strokeWidth={1.75} />
                 </View>

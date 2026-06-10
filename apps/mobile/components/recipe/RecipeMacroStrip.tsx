@@ -15,7 +15,7 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, MacroColors } from "@/constants/theme";
+import { FontFamily, MacroColors, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type RecipeMacroCell = {
@@ -58,7 +58,7 @@ export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
         backgroundColor: colors.backgroundSecondary,
         borderWidth: 1,
         borderColor: colors.cardBorder,
-        paddingVertical: 18,
+        paddingVertical: Spacing.lg,
       }}
     >
       {cells.map((cell, idx) => (

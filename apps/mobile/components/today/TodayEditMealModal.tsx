@@ -380,7 +380,7 @@ const v2 = StyleSheet.create({
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 8,
-    marginBottom: 6,
+    marginBottom: Spacing.sm,
   },
   header: {
     flexDirection: "row",
@@ -405,7 +405,7 @@ const v2 = StyleSheet.create({
     fontWeight: "500",
   },
   slotRow: { flexDirection: "row", gap: Spacing.xs },
-  slotPill: { flex: 1, paddingVertical: 7, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  slotPill: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   macroGrid: { gap: Spacing.sm },
   macroRowWrap: { flexDirection: "row", gap: Spacing.sm },
   macroCell: { flex: 1 },
@@ -531,7 +531,7 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                 onPress={() => onEditSlotChange(s)}
                 style={{
                   flex: 1,
-                  paddingVertical: 6,
+                  paddingVertical: Spacing.sm,
                   borderRadius: Radius.sm,
                   alignItems: "center",
                   // Sloe treatment system (2026-06-08): filter pill selected
@@ -554,13 +554,13 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
           <Text style={{ fontSize: 12, fontWeight: "700", color: textSecondaryColor, marginBottom: Spacing.xs }}>
             Portion (×)
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: Spacing.sm }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.sm }}>
             {([0.5, 0.75, 1, 1.25, 1.5, 2] as const).map((mult) => (
               <Pressable
                 key={mult}
                 onPress={() => onApplyPortionMultiplier(mult)}
                 style={{
-                  paddingHorizontal: 12,
+                  paddingHorizontal: Spacing.dense,
                   paddingVertical: 8,
                   borderRadius: Radius.sm,
                   backgroundColor: inputBgColor,
@@ -640,7 +640,7 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                 borderRadius: Radius.md,
                 borderWidth: 1,
                 borderColor: Accent.destructive + "30",
-                paddingVertical: 14,
+                paddingVertical: Spacing.md,
               }}
               onPress={onDelete}
             >

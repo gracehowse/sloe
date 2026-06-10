@@ -104,7 +104,7 @@ function Stat({
       style={{
         flex: 1,
         alignItems: "center",
-        gap: 3,
+        gap: Spacing.xs,
         paddingHorizontal: Spacing.sm,
         // Sloe: hairline `divide-x divide-line`, not a 1pt (3px) rule.
         borderLeftWidth: dividerColor ? StyleSheet.hairlineWidth : 0,
@@ -172,10 +172,10 @@ function StatusChip({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
+        gap: Spacing.xs,
         backgroundColor: bg,
         borderRadius: Radius.full,
-        paddingHorizontal: 10,
+        paddingHorizontal: Spacing.sm,
         paddingVertical: 4,
       }}
     >
@@ -215,7 +215,7 @@ function DisplayModeToggle({
     return (
       <View
         style={{
-          paddingHorizontal: 12,
+          paddingHorizontal: Spacing.dense,
           paddingVertical: 4,
           borderRadius: Radius.full,
           backgroundColor: active ? activeBg : "transparent",

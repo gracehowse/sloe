@@ -89,15 +89,15 @@ export default function NotificationsScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: Spacing.xl, gap: Spacing.md },
-        header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+        header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense },
         title: { ...Type.title, color: colors.text },
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
-        center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+        center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
         err: { color: "#f87171", textAlign: "center", fontSize: 15 },
         retry: {
-          marginTop: 6,
-          paddingHorizontal: 20,
-          paddingVertical: 12,
+          marginTop: Spacing.sm,
+          paddingHorizontal: Spacing.lg,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.md,
           borderWidth: 1,
           borderColor: accent.primary + "80",
@@ -105,8 +105,8 @@ export default function NotificationsScreen() {
         retryText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
         btn: {
           backgroundColor: colors.card,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
+          paddingHorizontal: Spacing.dense,
+          paddingVertical: Spacing.sm,
           borderRadius: Radius.md,
           borderWidth: 1,
           borderColor: colors.border,
@@ -134,7 +134,7 @@ export default function NotificationsScreen() {
         cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
         body: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         stamp: { color: colors.textTertiary, marginTop: 8, fontSize: 12 },
-        hint: { color: colors.textTertiary, marginTop: 6, fontSize: 12 },
+        hint: { color: colors.textTertiary, marginTop: Spacing.sm, fontSize: 12 },
         dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: accent.primary, marginTop: 6 },
         dotSpacer: { width: 10, height: 10, marginTop: 6 },
       }),
@@ -336,7 +336,7 @@ export default function NotificationsScreen() {
   const renderItem = useCallback(
     ({ item: n }: { item: InboxItem }) => (
       <Pressable onPress={() => void onNotificationPress(n)} style={styles.card}>
-        <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flexDirection: "row", gap: Spacing.sm }}>
           {!n.readAt ? <View style={styles.dot} /> : <View style={styles.dotSpacer} />}
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{n.title}</Text>
