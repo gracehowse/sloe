@@ -298,10 +298,17 @@ export const Colors = {
     text: '#221B26',                // aubergine ink (the warmth lives here)
     textSecondary: '#6A6072',
     textTertiary: '#9B93A3',
-    background: '#FFFFFF',          // white page (matches all Figma designs; oat removed 2026-06-03)
+    // Material inversion (2026-06-10 fresh-eyes challenge §1+§2): CREAM
+    // ground + WHITE cards. The old white-ground/cream-card pairing differed
+    // by ~3 RGB points — the material system never registered, so real
+    // variation read as chaos. Cream = the splash/onboarding brand ground
+    // (#FBF8F3, app.json); white cards become the gallery surface for food
+    // imagery. Recipe detail pioneered this grammar — the app converges TO
+    // it. Dark mode unchanged.
+    background: '#FBF8F3',
     backgroundSecondary: '#F6F5F2',
-    card: '#F6F5F2',                // Sloe surface-card — Figma `654:2` / stitch `surface.card`. Warm off-white slab on `#FFFFFF` (tonal separation only on flat Today; soft lift on other tabs).
-    cardElevated: '#F6F5F2',        // same fill in light; dark uses a stepped lift; soft shadow carries elevation on non-flat cards
+    card: '#FFFFFF',                // white card on cream ground (inversion §1) — real tonal presence
+    cardElevated: '#FFFFFF',        // same fill in light; dark uses a stepped lift; soft shadow carries elevation on non-flat cards
     cardBorder: '#E8E2EC',          // hairline (Sloe line)
     border: '#E8E2EC',
     borderStrong: '#C9C2D6',
