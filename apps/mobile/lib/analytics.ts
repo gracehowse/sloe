@@ -290,6 +290,9 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // Skia hero ring (SPEC 1) — default ON 2026-06-10 (Grace "I want to see
+  // the ring"); SVG fallback remains for binaries without the native lib.
+  "ring_skia_v1",
   "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",

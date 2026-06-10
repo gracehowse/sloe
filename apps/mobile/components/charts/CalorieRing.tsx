@@ -122,11 +122,14 @@ const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
 // giant pale circle was the first thing every new user saw. The ring
 // earns full size with data. All geometry derives from one scale so the
 // prototype's arc ratios hold at either size.
-export function ringGeometry(compact: boolean) {
+export function ringGeometry(compact: boolean, bold = false) {
   const SIZE = compact ? Math.round(BASE_SIZE * 0.72) : BASE_SIZE;
   return {
     SIZE,
-    STROKE: Math.round(SIZE * 0.05),
+    // Collapsed single-ring mode wears a confident Apple-class stroke
+    // (0.085·S); the multi-ring keeps the thinner 0.05·S so five arcs
+    // don't collide (2026-06-10, Grace composition feedback).
+    STROKE: Math.round(SIZE * (bold ? 0.085 : 0.05)),
     MACRO_STROKE: Math.max(4, Math.round(SIZE * 0.028)),
     CX: SIZE / 2,
     R: Math.round(SIZE * 0.44),
@@ -282,7 +285,7 @@ export default function CalorieRing({
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
   // §5: empty hero renders at 72% — see ringGeometry above.
-  const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(isEmpty);
+  const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(isEmpty, !expanded);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   /** Calorie ring colour. SLOE redesign (2026-06-03, `01 · Today` frame +

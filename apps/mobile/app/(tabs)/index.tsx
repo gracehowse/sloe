@@ -619,7 +619,11 @@ export default function TrackerScreen() {
   // the hero, not an opt-in reveal). The long-press still toggles it
   // (coupled with the display-mode flip) for users who want the calmer
   // calories-only view.
-  const [ringExpanded, setRingExpanded] = useState(true);
+  // 2026-06-10 (Grace: the five packed arcs "still look bad" — she's right):
+  // the hero defaults to ONE confident calorie ring (Apple/Oura grammar);
+  // the macro multi-ring stays one tap away ("Show macro rings") for the
+  // MFP-defector muscle memory. Macros live in the 2×2 tiles right below.
+  const [ringExpanded, setRingExpanded] = useState(false);
   // SLOE redesign (2026-06-04, Grace "ring sub-label → budget left"): the
   // ring opens in *remaining* mode so the centre reads the budget left
   // ("1,633 / of 2,040 kcal", REMAINING) like the Figma 01 frame, not the
