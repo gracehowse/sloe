@@ -353,7 +353,13 @@ export default function CalorieRing({
     // Skia pod; only the locally-built sim client had it). Probe with
     // TurboModuleRegistry.get (returns null, never throws) BEFORE touching
     // the module. Skia stays impossible to crash on, flag on or off.
-    if (TurboModuleRegistry.get("RNSkiaModule") == null) return null;
+    let hasSkiaNative = false;
+    try {
+      hasSkiaNative = TurboModuleRegistry?.get?.("RNSkiaModule") != null;
+    } catch {
+      hasSkiaNative = false;
+    }
+    if (!hasSkiaNative) return null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       return require("./SkiaRingArcs").SkiaRingArcs as typeof SkiaRingArcsT;

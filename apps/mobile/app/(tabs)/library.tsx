@@ -391,20 +391,19 @@ export default function LibraryScreen() {
       // round pill shape (matches Discover, search bar, and the DS §4 pill rule).
       // Previously 13 and 20 — both were off the canonical Spacing/Radius
       // ladders; snapped to on-scale values (2026-06-09 library spacing audit).
-      paddingHorizontal: Spacing.sm + Spacing.xs, // 12
+      // Chips census (2026-06-10): chips are NOT cards — the card-lift
+      // shadow/liftBg spread is gone (a drop-shadowed filter pill read as
+      // a floating button). §7 grammar: quiet off-white slab, hairline in
+      // dark only, soft-tint when selected.
+      paddingHorizontal: Spacing.dense,
       paddingVertical: Spacing.sm,
       minHeight: 36,
       borderRadius: Radius.full,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.border,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
+      backgroundColor: colors.card,
       justifyContent: "center",
       alignItems: "center",
-      ...(cardElevation.shadowStyle ?? {}),
-    },
-    filterPillActive: {
-      backgroundColor: colors.backgroundSecondary,
-      borderColor: colors.text,
     },
     // Category pill SELECTED — Sloe treatment §7: aubergine SOFT-TINT fill +
     // aubergine `primarySolid` label (not a solid accent slab). The selected
@@ -424,11 +423,7 @@ export default function LibraryScreen() {
       fontSize: 12,
       lineHeight: 18,
       fontWeight: "600",
-      color: colors.text,
-    },
-    filterPillTextActive: {
-      color: colors.text,
-      fontWeight: "700",
+      color: colors.textSecondary,
     },
     // ENG-921 polish (2026-06-07) / Figma `527:2` — the entry-kind buckets
     // (All / Saved / Imported) no longer occupy a second filter row. They
@@ -498,18 +493,21 @@ export default function LibraryScreen() {
       paddingBottom: Spacing.sm,
     },
     planImportPill: {
-      paddingHorizontal: Spacing.sm + Spacing.xs,  // 12 — was 11 (off-scale); snapped to sm+xs
-      paddingVertical: Spacing.xs,                 // 4  — was 6 (off-scale); snapped to xs
-      borderRadius: Radius.full,                   // was 20 (off-scale); canonical full pill
-      borderWidth: 1,
+      // Chips census (2026-06-10): the sub-filter row joins the §7 chip
+      // grammar — quiet card fill at rest, soft tint + solid label when
+      // selected (was transparent + a text-colour ring).
+      paddingHorizontal: Spacing.dense,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      backgroundColor: "transparent",
+      backgroundColor: colors.card,
       justifyContent: "center",
       alignItems: "center",
     },
     planImportPillActive: {
-      borderColor: colors.text,
-      backgroundColor: colors.backgroundSecondary,
+      borderColor: accentSoft,
+      backgroundColor: accentSoft,
     },
     planImportPillText: {
       fontSize: 12,
@@ -518,7 +516,7 @@ export default function LibraryScreen() {
       color: colors.textSecondary,
     },
     planImportPillTextActive: {
-      color: colors.text,
+      color: accentInk,
       fontWeight: "700",
     },
     // 2026-05-06 (Grace) — search-input wrapper that holds the

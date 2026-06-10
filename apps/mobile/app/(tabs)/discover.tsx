@@ -693,11 +693,13 @@ export default function DiscoverScreen() {
               paddingHorizontal: Spacing.dense,
               paddingVertical: 8,
               minHeight: 36,
-              borderRadius: 20,
-              borderWidth: 1,
-              // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+              // Chips census (2026-06-10): Radius.full + quiet card fill —
+              // the literal 20 and transparent ground were the drift vs
+              // Library's identical row (§7 selection grammar).
+              borderRadius: Radius.full,
+              borderWidth: StyleSheet.hairlineWidth,
               borderColor: following ? accentSoft : colors.cardBorder,
-              backgroundColor: following ? accentSoft : "transparent",
+              backgroundColor: following ? accentSoft : colors.card,
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -726,11 +728,11 @@ export default function DiscoverScreen() {
                   paddingHorizontal: Spacing.dense,
                   paddingVertical: 8,
                   minHeight: 36,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+                  // Chips census (2026-06-10): see the Following pill above.
+                  borderRadius: Radius.full,
+                  borderWidth: StyleSheet.hairlineWidth,
                   borderColor: active ? accentSoft : colors.cardBorder,
-                  backgroundColor: active ? accentSoft : "transparent",
+                  backgroundColor: active ? accentSoft : colors.card,
                   justifyContent: "center",
                   alignItems: "center",
                 }}

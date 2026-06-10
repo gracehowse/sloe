@@ -1050,16 +1050,17 @@ export default function ProgressScreen() {
                   flex: 1,
                   paddingVertical: 8,
                   alignItems: "center",
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  // Skeleton mirrors the live range pill's soft-tint treatment
-                  // (Sloe §7) so the load state doesn't flash a different shape.
-                  borderColor: active ? t.accentSolid : t.border,
+                  borderRadius: Radius.full,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  // Skeleton mirrors the live range pill's §7 treatment
+                  // (soft fill + solid label, no selected ring) so the load
+                  // state doesn't flash a different shape.
+                  borderColor: active ? t.accentSoft : t.border,
                   backgroundColor: active ? t.accentSoft : t.elevated,
                   opacity: 0.6,
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{k === "all" ? "All" : k}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: active ? t.accentSolid : t.sub }}>{k === "all" ? "All" : k}</Text>
               </View>
             );
           })}
@@ -1158,13 +1159,16 @@ export default function ProgressScreen() {
                 // aubergine soft-tint fill + primarySolid border/label (was a
                 // solid plum fill). The accent stays rationed — the fill is
                 // reserved for the FAB + conversion CTAs.
+                // Chips census (2026-06-10): selected = soft fill + solid
+                // label ONLY — the accentSolid ring double-signalled and no
+                // sibling filter chip wears a selected border (§7 grammar).
                 backgroundColor: active ? t.accentSoft : t.elevated,
-                borderWidth: active ? 1 : 1,
-                borderColor: active ? t.accentSolid : t.border,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: active ? t.accentSoft : t.border,
                 opacity: pressed ? 0.85 : 1,
               }]}
             >
-              <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{label}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: active ? t.accentSolid : t.sub }}>{label}</Text>
             </Pressable>
           );
         })}

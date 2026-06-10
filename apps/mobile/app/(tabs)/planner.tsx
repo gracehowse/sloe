@@ -1514,8 +1514,10 @@ export default function PlannerScreen() {
           gap: Spacing.xs,
           paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          // Chips census (2026-06-10): Radius.full — every other filter chip
+          // in the app is fully round; Plan's square-8 family was the drift.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
@@ -1736,8 +1738,9 @@ export default function PlannerScreen() {
           gap: Spacing.xs,
           paddingVertical: 8,
           paddingHorizontal: 4,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          // Chips census (2026-06-10): Radius.full — chip family is round.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },

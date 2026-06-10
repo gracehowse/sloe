@@ -159,10 +159,13 @@ describe("Progress prototype port — header + range picker", () => {
     // segmented-control container stays gone.
     expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: (?:6|Spacing\.sm) \}\}/);
     expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
-    // Active pill = soft-tint fill + primarySolid border/label; inactive =
-    // bordered cream pill. `t.accentSoft` / `t.accentSolid` thread the tokens.
+    // Chips census (2026-06-10): selected = soft fill + solid LABEL only —
+    // the accentSolid selected RING double-signalled and no sibling filter
+    // chip wears one (§7 grammar). Hairline border matches the fill when
+    // selected so no ring renders.
     expect(mobileSrc).toMatch(/backgroundColor: active \? t\.accentSoft : t\.elevated/);
-    expect(mobileSrc).toMatch(/borderColor: active \? t\.accentSolid : t\.border/);
+    expect(mobileSrc).toMatch(/borderColor: active \? t\.accentSoft : t\.border/);
+    expect(mobileSrc).not.toMatch(/borderColor: active \? t\.accentSolid : t\.border/);
     expect(mobileSrc).toMatch(/color: active \? t\.accentSolid : t\.sub/);
     // The treatment tokens resolve from the aubergine accent.
     expect(mobileSrc).toMatch(/accentSolid: accent\.primarySolid/);
