@@ -46,6 +46,9 @@ const SAVED_PORTION = read("components/today/SavedMealPortionSheet.tsx");
 const ACTIVITY_BONUS = read("components/today/TodayActivityBonusCard.tsx");
 const PUSH_EXPLAINER = read("components/today/PostOnboardingPushExplainer.tsx");
 const NUDGE_BANNER = read("components/today/onboarding-nudges/OnboardingNudgeBanner.tsx");
+const PLANNED_MEALS = read("components/today/TodayPlannedMealsCard.tsx");
+const IMPORT_SHARED = read("app/import-shared.tsx");
+const WHATS_NEW = read("app/whats-new.tsx");
 
 describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   it("North-star 'Cook this'/'Log it' CTA is an outline, not the old 8% tint fill", () => {
@@ -168,5 +171,35 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
   it("Eat-again nudge is a soft-tint card with an outline 'Log it' CTA", () => {
     expect(EAT_AGAIN).toMatch(/accent\.primarySoft/); // card wash
     expect(EAT_AGAIN).toMatch(/borderColor:\s*accent\.primarySolid/); // CTA outline
+  });
+});
+
+describe("CTA weight map — Spec 2 outline/pill conversions (2026-06-09)", () => {
+  it("Planned-meals 'Log today' is a compact outline pill, not bare caps text", () => {
+    // 1.5px primarySolid border + full radius + caps Type.label label — the
+    // per-row primary reads as an accent line, not bare text.
+    expect(PLANNED_MEALS).toMatch(/borderColor:\s*accent\.primarySolid/);
+    expect(PLANNED_MEALS).toMatch(/borderRadius:\s*Radius\.full/);
+    expect(PLANNED_MEALS).toMatch(/\.\.\.Type\.label,\s*color:\s*accent\.primarySolid\s*\}\}>Log today</);
+    // Must NOT regress to the old padded bare-text affordance.
+    expect(PLANNED_MEALS).not.toMatch(/style=\{\{\s*paddingHorizontal:\s*8,\s*paddingVertical:\s*Spacing\.dense\s*\}\}/);
+  });
+
+  it("import-shared 'Import' (both idle paths) is an aubergine outline, not the filled primaryBtn", () => {
+    // The dedicated outline style carries the primarySolid border + label.
+    expect(IMPORT_SHARED).toMatch(/outlineImportBtn:\s*\{[\s\S]{0,300}borderColor:\s*accent\.primarySolid/);
+    expect(IMPORT_SHARED).toMatch(/outlineImportBtnText:\s*\{\s*color:\s*accent\.primarySolid/);
+    // Both idle Import buttons reference the outline style (redesign + legacy).
+    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import"[\s\S]{0,200}styles\.outlineImportBtnText[\s\S]{0,40}>Import</);
+    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import-legacy"[\s\S]{0,200}styles\.outlineImportBtnText[\s\S]{0,40}>Import</);
+    // The cold-open Import must NOT reuse the filled primaryBtn slab. (The
+    // shared filled primaryBtn stays for the mid-task commit CTAs.)
+    expect(IMPORT_SHARED).not.toMatch(/<Pressable style=\{styles\.primaryBtn\} onPress=\{onManualImport\}>/);
+  });
+
+  it("whats-new 'Done' is a compact outline pill, not bold accent text", () => {
+    expect(WHATS_NEW).toMatch(/testID="whats-new-done"[\s\S]{0,260}borderColor:\s*accent\.primarySolid/);
+    expect(WHATS_NEW).toMatch(/testID="whats-new-done"[\s\S]{0,320}borderRadius:\s*Radius\.full/);
+    expect(WHATS_NEW).toMatch(/color:\s*accent\.primarySolid\s*\}\}>\s*\n?\s*Done/);
   });
 });

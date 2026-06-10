@@ -476,15 +476,29 @@ export default function WhatsNewScreen() {
         fontSize: 18,
         color: colors.text,
       },
+      // "Done" — compact aubergine OUTLINE pill (Sloe CTA weight map, Spec 2,
+      // 2026-06-09; lowest priority of the four). Was bold accent text; now an
+      // accent line so a dismissal-grade nav action still reads as the calm
+      // outline grammar, not a filled or bold-text primary. On-scale padding;
+      // full radius; 1.5px `accent.primarySolid` border + same-colour label.
       headerRight: () => (
         <Pressable
           onPress={goBack}
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Done"
-          style={{ paddingHorizontal: Spacing.md }}
+          testID="whats-new-done"
+          style={({ pressed }) => ({
+            marginRight: Spacing.sm,
+            paddingHorizontal: Spacing.dense,
+            paddingVertical: Spacing.xs,
+            borderRadius: Radius.full,
+            borderWidth: 1.5,
+            borderColor: accent.primarySolid,
+            backgroundColor: pressed ? accent.primarySoft : "transparent",
+          })}
         >
-          <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>
             Done
           </Text>
         </Pressable>

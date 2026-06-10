@@ -575,10 +575,12 @@ export default function ProgressScreen() {
           gap: Spacing.sm,
           paddingVertical: Spacing.md,
         },
-        // Gap 1 — §2.3: screen H1 in serif display (~28pt).
+        // Gap 1 — §2.3 / SLOE Spec 3 (2026-06-09): screen H1 tokenised onto the
+        // shared `Type.screenTitle` (Newsreader serif 28/34/600). Was
+        // `Type.display` (serifRegular 32) overridden to 28 — an ad-hoc size off
+        // the screen-title token every sibling screen now shares.
         headerTitle: {
-          ...Type.display,
-          fontSize: 28,
+          ...Type.screenTitle,
           color: colors.text,
         },
         // Gap 10 — §5: soft lift routed through the elevation system (the canonical

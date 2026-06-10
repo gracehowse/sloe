@@ -1244,6 +1244,29 @@ export default function ImportSharedScreen() {
     btnPressed: { opacity: 0.88 },
     primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
     btnIconRight: { marginLeft: 2 },
+    // Aubergine OUTLINE Import CTA — Sloe CTA weight map (Spec 2, 2026-06-09):
+    // the everyday import action is NOT a conversion/FAB moment, so it reads as
+    // an accent line, not a filled slab. Transparent fill + 1.5px
+    // `accent.primarySolid` border + same-colour label (matches the targets /
+    // health / household outline grammar). The shared `primaryBtn` (filled) stays
+    // on the in-flow commit CTAs — "Looks right? Import", "Save to Library",
+    // "View recipe", retry, "Sign in" — which are mid-task confirmations, not the
+    // cold-open idle primary.
+    outlineImportBtn: {
+      alignSelf: "stretch",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: accent.primarySolid,
+      borderRadius: Radius.xl,
+      paddingVertical: Spacing.md,
+      marginTop: Spacing.xs,
+    },
+    outlineImportBtnPressed: { backgroundColor: accent.primarySoft },
+    outlineImportBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
     outlineBtn: {
       alignSelf: "stretch",
       alignItems: "center",
@@ -2109,8 +2132,14 @@ export default function ImportSharedScreen() {
                   keyboardType="url"
                 />
                 {renderPlatformHint()}
-                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-                  <Text style={styles.primaryBtnText}>Import</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.outlineImportBtn, pressed && styles.outlineImportBtnPressed]}
+                  onPress={onManualImport}
+                  accessibilityRole="button"
+                  accessibilityLabel="Import recipe from link"
+                  testID="import-shared-import"
+                >
+                  <Text style={styles.outlineImportBtnText}>Import</Text>
                 </Pressable>
 
                 {/* Tertiary affordances — left-aligned text-link rows below the
@@ -2199,8 +2228,14 @@ export default function ImportSharedScreen() {
                   keyboardType="url"
                 />
                 {renderPlatformHint()}
-                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-                  <Text style={styles.primaryBtnText}>Import</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.outlineImportBtn, pressed && styles.outlineImportBtnPressed]}
+                  onPress={onManualImport}
+                  accessibilityRole="button"
+                  accessibilityLabel="Import recipe from link"
+                  testID="import-shared-import-legacy"
+                >
+                  <Text style={styles.outlineImportBtnText}>Import</Text>
                 </Pressable>
                 <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
                   <Ionicons name="clipboard-outline" size={18} color={accent.primary} />

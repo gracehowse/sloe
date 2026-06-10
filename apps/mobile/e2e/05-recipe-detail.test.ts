@@ -25,8 +25,12 @@ describe('Recipe detail', () => {
     await expect(element(by.text('kcal'))).toBeVisible();
   });
 
-  it('shows Start Cooking button', async () => {
-    await expect(element(by.text('Start Cooking'))).toBeVisible();
+  it('shows the single Cook Mode entry (cook-CTA deduped — premium-audit 2026-06-09 gap 1)', async () => {
+    // The top-row "Start Cooking" pill was removed; the one cook entry is now
+    // the floating footer "Cook Mode" pill, and "Log" is the dominant top-row
+    // action.
+    await expect(element(by.id('recipe-cook-mode-cta'))).toBeVisible();
+    await expect(element(by.id('recipe-action-log'))).toBeVisible();
   });
 
   it('can scroll to Log to journal', async () => {

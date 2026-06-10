@@ -39,6 +39,10 @@ import {
   weightKgByDayToPoints,
   type WeightRange,
 } from "../../lib/progress/weightTrend.ts";
+import {
+  progressRangeKeyToWeightRange,
+  weightDeltaTone,
+} from "../../lib/progress/progressRangeChart.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
   availableFreezes,
@@ -484,8 +488,11 @@ function ProgressDashboardContent() {
   // so web gets the same MFP-style bucket aggregation, calendar-day
   // moving-average, same-day dedup, smart bucket fallback, and
   // iterative min/max as mobile.
-  const weightTrendRange: WeightRange =
-    range === "7d" ? "1w" : range === "30d" ? "1m" : range === "90d" ? "3m" : "all";
+  // 2026-06-10 (premium-audit P0-1): the range→WeightRange mapping was
+  // duplicated inline here and on mobile; routed both through the shared
+  // `progressRangeKeyToWeightRange` so the picker keys the chart range
+  // identically on both platforms.
+  const weightTrendRange: WeightRange = progressRangeKeyToWeightRange(range);
   const weightTrend = useMemo(
     () =>
       computeWeightTrend(
@@ -1275,6 +1282,21 @@ function ProgressDashboardContent() {
         const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
         const weekDeltaKg = weightRange.weekDeltaKg;
         const rateKgPerWeek = goalTimeline?.weeklyRateKg ?? null;
+        // 2026-06-10 (premium-audit #3, web parity with mobile progress.tsx):
+        // tone the "this week" delta magnitude toward-goal = sage /
+        // away-from-goal = warning, via the shared `weightDeltaTone`. The week
+        // baseline is the weigh-in 7 days ago = latest − weekDeltaKg. The arrow
+        // icon stays factual/uncoloured (anti-shame brand rule).
+        const weekDeltaTone =
+          weekDeltaKg != null && latestWeightKg != null
+            ? weightDeltaTone(weekDeltaKg, latestWeightKg - weekDeltaKg, goalWeightKg)
+            : "neutral";
+        const weekDeltaToneClass =
+          weekDeltaTone === "progress"
+            ? "text-success"
+            : weekDeltaTone === "regress"
+              ? "text-warning"
+              : "text-muted-foreground";
         return (
         <SupprCard elevation="card" padding="lg" radius="lg" className="relative mb-4" data-testid="progress-weight-card">
           {/* Reserved weight win-moment overlay (ENG-824) — plays once on a
@@ -1315,7 +1337,9 @@ function ProgressDashboardContent() {
                   ) : (
                     <Icons.trendUp className="h-3.5 w-3.5" aria-hidden />
                   )}
-                  {formatRatePerWeek(weekDeltaKg).replace("/week", "")} this week
+                  <span className={weekDeltaToneClass}>
+                    {formatRatePerWeek(weekDeltaKg).replace("/week", "")} this week
+                  </span>
                 </p>
               ) : null}
             </div>
@@ -1696,6 +1720,13 @@ function ProgressDashboardContent() {
             shareText={formatRecapForShare(recap)}
             state={digestState}
             weightSurfaceMode={profileWeightSurfaceMode}
+            // ENG-1019/1020 — history-aware empty + check-in copy. Any logged
+            // day in the journal store → returning user, not a cold start
+            // (same derivation as the Progress story gate above; mirror of
+            // mobile `weekly-recap.tsx`).
+            hasHistory={Object.keys(nutritionByDay).some(
+              (k) => (nutritionByDay[k] ?? []).length > 0,
+            )}
             onShare={() => { /* Digest handles share sheet + analytics */ }}
             onDismiss={dismissRecap}
             onOpenSaveCombo={(slot, items) => {

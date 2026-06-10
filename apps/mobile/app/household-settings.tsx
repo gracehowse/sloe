@@ -449,7 +449,10 @@ export default function HouseholdSettingsScreen() {
           >
             <ChevronLeft size={22} color={colors.text} strokeWidth={1.75} />
           </Pressable>
-          <Text style={{ fontFamily: FontFamily.serifSemibold, fontSize: 28, fontWeight: "600", color: colors.text, letterSpacing: -0.3, lineHeight: 32 }}>
+          {/* SLOE Spec 3 (2026-06-09): tokenised onto `Type.screenTitle`
+              (Newsreader serif 28/34/600/-0.3) — was a hand-rolled serif header
+              with the same face/size/weight but an off-token 32 lineHeight. */}
+          <Text style={{ ...Type.screenTitle, color: colors.text }}>
             Household
           </Text>
         </View>

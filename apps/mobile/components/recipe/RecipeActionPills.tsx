@@ -3,13 +3,21 @@
  * the action-pill row in `src/app/components/RecipeDetail.tsx`.
  *
  * Horizontal pills, 46px tall, rounded-full:
- *   - Start Cooking — aubergine OUTLINE (transparent bg, 1.5px aubergine
- *     border + aubergine label/icon) → opens Cook Mode. The everyday primary
- *     is an outline, not a filled slab (Sloe treatment system, 2026-06-08 —
- *     `docs/prototypes/sloe-component-treatments.html` §1); fill is reserved
- *     for the FAB + conversion-critical CTAs.
- *   - Log — cream pill, ink label → opens the log flow (off-white secondary)
+ *   - Log — aubergine OUTLINE (transparent bg, 1.5px aubergine border +
+ *     aubergine label/icon), the DOMINANT top-row action → opens the log flow.
+ *     Logging is the product's spine, so it is the everyday primary here
+ *     (premium-audit 2026-06-09, gap 1 + CTA map
+ *     `docs/ux/specs/2026-06-09-skia-ring-cta-map-serif-titles.md` §2). The
+ *     everyday primary is an outline, not a filled slab (Sloe treatment system,
+ *     2026-06-08 — `docs/prototypes/sloe-component-treatments.html` §1); fill
+ *     is reserved for the FAB + conversion-critical CTAs.
  *   - Edit — cream pill → edit recipe (owner-only; hidden otherwise)
+ *
+ * Cook entry deduped (premium-audit 2026-06-09, gap 1): the top-row
+ * "Start Cooking" pill was the SAME destination as the sticky-footer
+ * "Cook Mode" pill at near-equal weight. The single cook entry is now the
+ * floating Cook Mode pill in `RecipeServingsFooter`; this row no longer
+ * carries a cook CTA.
  *
  * The "Ask" pill from the frame is intentionally OMITTED: there is no
  * AI-coach / assistant handler in the app (Ask is net-new, Figma frame
@@ -17,7 +25,7 @@
  * See report + `docs/ux/redesign/figma-migration-tracker.md`.
  */
 import { ActivityIndicator, Text, View } from "react-native";
-import { Pencil, PlusCircle, UtensilsCrossed } from "lucide-react-native";
+import { Pencil, PlusCircle } from "lucide-react-native";
 
 import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -25,7 +33,6 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 
 type RecipeActionPillsProps = {
-  onStartCooking: () => void;
   onLog: () => void;
   logging: boolean;
   /** When set, render the Edit pill (owner-only). */
@@ -34,18 +41,18 @@ type RecipeActionPillsProps = {
 };
 
 export function RecipeActionPills({
-  onStartCooking,
   onLog,
   logging,
   onEdit,
   haptic = "none",
 }: RecipeActionPillsProps) {
   const colors = useThemeColors();
-  // Aubergine accent for the primary "Start Cooking" CTA — rendered as an
-  // OUTLINE (1.5px `primarySolid` border + `primarySolid` label/icon on a
-  // transparent ground), per the Sloe treatment system. Cream Log/Edit pills
-  // keep theme surfaces. On dark, `primarySolidDark` carries the lifted
-  // aubergine so the outline + label stay legible on the dark card.
+  // Aubergine accent for the DOMINANT "Log" CTA — rendered as an OUTLINE
+  // (1.5px `primarySolid` border + `primarySolid` label/icon on a transparent
+  // ground), per the Sloe treatment system + the 2026-06-09 CTA map (Log is
+  // the product's spine, so the top-row primary). The cream Edit pill keeps
+  // theme surfaces. On dark, `primarySolidDark` carries the lifted aubergine
+  // so the outline + label stay legible on the dark card.
   const accent = useAccent();
   const outlineColor =
     colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
@@ -76,11 +83,13 @@ export function RecipeActionPills({
     >
       <PressableScale
         haptic={haptic}
-        onPress={onStartCooking}
+        onPress={onLog}
+        disabled={logging}
         accessibilityRole="button"
-        accessibilityLabel="Start cooking"
-        testID="recipe-action-start-cooking"
+        accessibilityLabel="Log this recipe"
+        testID="recipe-action-log"
         style={{
+          // Dominant primary — wider than the owner Edit pill.
           flex: 1.6,
           flexDirection: "row",
           alignItems: "center",
@@ -93,37 +102,23 @@ export function RecipeActionPills({
           backgroundColor: "transparent",
           borderWidth: 1.5,
           borderColor: outlineColor,
+          opacity: logging ? 0.6 : 1,
         }}
       >
-        <UtensilsCrossed size={18} color={outlineColor} />
-        <Text
-          style={{
-            fontFamily: FontFamily.sansSemibold,
-            fontSize: 14,
-            fontWeight: "700",
-            color: outlineColor,
-          }}
-          numberOfLines={1}
-        >
-          Start Cooking
-        </Text>
-      </PressableScale>
-
-      <PressableScale
-        haptic={haptic}
-        onPress={onLog}
-        disabled={logging}
-        accessibilityRole="button"
-        accessibilityLabel="Log this recipe"
-        testID="recipe-action-log"
-        style={[creamPill, { opacity: logging ? 0.6 : 1 }]}
-      >
         {logging ? (
-          <ActivityIndicator color={colors.text} />
+          <ActivityIndicator color={outlineColor} />
         ) : (
           <>
-            <PlusCircle size={18} color={colors.text} />
-            <Text style={pillLabel} numberOfLines={1}>
+            <PlusCircle size={18} color={outlineColor} />
+            <Text
+              style={{
+                fontFamily: FontFamily.sansSemibold,
+                fontSize: 14,
+                fontWeight: "700",
+                color: outlineColor,
+              }}
+              numberOfLines={1}
+            >
               Log
             </Text>
           </>

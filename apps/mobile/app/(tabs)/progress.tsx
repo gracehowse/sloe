@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Dimensions, ScrollView, Text, Pressable, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -15,8 +15,6 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react-native";
-import Svg, { Polyline, Circle } from "react-native-svg";
-
 import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleHealthCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -112,6 +110,11 @@ import {
   weightKgByDayToPoints,
   type WeightRange,
 } from "@/lib/progress/weightTrend";
+import {
+  progressRangeKeyToWeightRange,
+  weightDeltaTone,
+} from "@/lib/progress/progressRangeChart";
+import { WeightChart } from "@/components/progress/WeightChart";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -247,11 +250,6 @@ export default function ProgressScreen() {
   // Loaded from profiles.weight_surface_mode; defaults to "show" to
   // preserve legacy behaviour.
   const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
-
-  // Weight sparkline window is fixed at 1 month (the frame's weight card
-  // shows a recent trend, not a switchable range — the time-range pills at
-  // the top drive the stat-row + adherence figures, not the mini chart).
-  const weightChartRange: WeightRange = "1m";
 
   // Weight chart consolidation Phase 1 (2026-05-11, B6). Inline
   // log-weight sheet replaces the prior `/weight-tracker` push for the
@@ -919,8 +917,15 @@ export default function ProgressScreen() {
   // week-boundary off-by-one bug; removing the schedule also removed the
   // bug. Server-side emit remains the canonical signal.
 
-  // Weight chart trend — drives the weight card's clay sparkline (Trend =
-  // smoothed moving-average, Scale = raw weigh-ins) + START/CURRENT/GOAL/RATE.
+  // Weight chart range follows the page's top range picker (premium-audit
+  // P0-1, 2026-06-10): 7d→1w / 30d→1m / 90d→3m / All→all. Previously fixed
+  // at "1m" while the picker drove every other stat — a broken affordance.
+  // Mapping lives in the shared `progressRangeChart` helper (web + mobile
+  // read the same tested function).
+  const weightChartRange: WeightRange = progressRangeKeyToWeightRange(rangeKey);
+
+  // Weight chart trend — drives the canonical WeightChart (Trend = smoothed
+  // moving-average, Scale = raw weigh-ins) + START/CURRENT/GOAL/RATE.
   const weightChartTrend = useMemo(
     () => computeWeightTrend(weightKgByDayToPoints(weightKgByDay), weightChartRange, goalWeightKg),
     [weightKgByDay, weightChartRange, goalWeightKg],
@@ -1265,14 +1270,23 @@ export default function ProgressScreen() {
           d.setDate(d.getDate() + tl.daysToGoal);
           return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
         })();
-        // Trend = smoothed moving-average line; Scale = raw weigh-ins.
-        const sparkSeries =
-          weightView === "scale"
-            ? weightChartTrend.points.map((p) => p.kg)
-            : weightChartTrend.movingAvg
-                .map((m, i) => (m != null ? m : weightChartTrend.points[i]?.kg))
-                .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
         const fmtW = (kg: number) => formatWeightForUnit({ kg, system: measurementSystem });
+        // Premium-audit #3 (2026-06-10): tone the "this week" delta magnitude
+        // toward-goal = sage / away-from-goal = amber, via the shared
+        // `weightDeltaTone` helper (same logic as weight-tracker's rangeDelta).
+        // The week baseline is the weigh-in 7 days ago = latest − weekDeltaKg.
+        // The arrow icon stays factual/uncoloured (anti-shame brand rule); only
+        // the number picks up tone.
+        const weekDeltaTone =
+          weekDeltaKg != null && latestWeightKg != null
+            ? weightDeltaTone(weekDeltaKg, latestWeightKg - weekDeltaKg, goalWeightKg)
+            : "neutral";
+        const weekDeltaColor =
+          weekDeltaTone === "progress"
+            ? t.green
+            : weekDeltaTone === "regress"
+              ? t.amber
+              : t.sub;
         return (
           <View
             testID="progress-weight-card"
@@ -1294,7 +1308,7 @@ export default function ProgressScreen() {
                     ) : (
                       <TrendingUp size={14} color={t.sub} strokeWidth={1.75} />
                     )}
-                    <Text style={{ fontSize: 13, color: t.sub, fontVariant: ["tabular-nums"] }}>
+                    <Text style={{ fontSize: 13, color: weekDeltaColor, fontVariant: ["tabular-nums"] }}>
                       {fmtW(Math.abs(weekDeltaKg))} this week
                     </Text>
                   </View>
@@ -1340,31 +1354,23 @@ export default function ProgressScreen() {
                 {goalDateLabel ? ` · on track for ~${goalDateLabel}` : ""}
               </Text>
             ) : null}
-            {/* Clay sparkline with a dashed goal line. */}
-            {sparkSeries.length >= 2 ? (
-              <View style={{ marginTop: Spacing.dense, height: 110, position: "relative" }}>
-                {(() => {
-                  // Card inner width = screen − screen padding − card padding (20×2).
-                  const chartW = Dimensions.get("window").width - Layout.screenPaddingX * 2 - 40;
-                  const chartH = 110;
-                  const goalKgConv = goalWeightKg;
-                  const allVals = goalKgConv != null ? [...sparkSeries, goalKgConv] : sparkSeries;
-                  const minV = Math.min(...allVals);
-                  const maxV = Math.max(...allVals);
-                  const span = maxV - minV === 0 ? 1 : maxV - minV;
-                  const goalY = goalKgConv != null ? 4 + (chartH - 8) - ((goalKgConv - minV) / span) * (chartH - 8) : null;
-                  return (
-                    <>
-                      {goalY != null ? (
-                        <View
-                          pointerEvents="none"
-                          style={{ position: "absolute", left: 0, right: 0, top: goalY, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.sub, opacity: 0.5 }}
-                        />
-                      ) : null}
-                      <Sparkline points={sparkSeries} color={t.carbs} width={chartW} height={chartH} />
-                    </>
-                  );
-                })()}
+            {/* Canonical WeightChart (premium-audit P0-1, 2026-06-10):
+                plum line + hollow dots, right Y-axis ticks, dashed goal
+                line, range-aware X ticks, scrub-to-read pill, "you are
+                here" marker. Replaces the toy Sparkline; same component the
+                weight-tracker route already mounts (Withings parity). Keyed
+                on rangeKey so a range change remounts with a fresh layout.
+                The Trend/Scale toggle is label-only — the chart always draws
+                the points line + smoothed MA envelope. */}
+            {weightChartTrend.points.length >= 2 ? (
+              <View style={{ marginTop: Spacing.dense }}>
+                <WeightChart
+                  key={rangeKey}
+                  trend={weightChartTrend}
+                  goalKg={goalWeightKg ?? null}
+                  isImperial={measurementSystem === "imperial"}
+                  range={weightChartRange}
+                />
               </View>
             ) : null}
             {/* START / CURRENT / GOAL / RATE stat row */}
@@ -2079,83 +2085,6 @@ type CardTheme = {
   amber: string;
   red: string;
 };
-
-/**
- * Tiny inline sparkline driven by react-native-svg. Pure — no state,
- * no animation (adds weight we don't need for a Progress card). When
- * the series has <2 points we render an empty axis placeholder rather
- * than a 1-point polyline; consuming card decides whether to still
- * render the outer card shell.
- */
-function Sparkline({
-  points,
-  color,
-  width,
-  height,
-}: {
-  points: number[];
-  color: string;
-  width: number;
-  height: number;
-}) {
-  if (points.length < 2) {
-    return <View style={{ width, height }} />;
-  }
-  // F-24 (2026-04-21): on the "All" range a single bad weight reading
-  // (e.g. a 100 kg typo among 55 kg values) was blowing out the y-axis
-  // domain so the real series rendered as a flat line at the bottom
-  // (TestFlight AOCd89_asuNA). Use a trimmed 5th–95th percentile domain
-  // so normal values get visual space, then clamp outliers to the chart
-  // bounds so the spike is still visible at the edge. Threshold bumped
-  // to 8 points so short series (1w / 1m) keep their raw domain — the
-  // bug only manifests on long series with outliers.
-  const sorted = [...points].sort((a, b) => a - b);
-  let min: number;
-  let max: number;
-  if (points.length >= 8) {
-    const lo = Math.floor(sorted.length * 0.05);
-    const hi = Math.ceil(sorted.length * 0.95) - 1;
-    min = sorted[lo];
-    max = sorted[hi];
-    if (!(max > min)) {
-      min = sorted[0];
-      max = sorted[sorted.length - 1];
-    }
-  } else {
-    min = sorted[0];
-    max = sorted[sorted.length - 1];
-  }
-  const rangeSpan = max - min === 0 ? 1 : max - min;
-  const pad = 4;
-  const innerW = width - pad * 2;
-  const innerH = height - pad * 2;
-  const step = innerW / (points.length - 1);
-  const xy = points.map((v, i) => {
-    const x = pad + i * step;
-    // Lower values → higher y (invert). For weight we render raw kg
-    // so the sparkline trends down when the user loses weight.
-    const rawY = pad + innerH - ((v - min) / rangeSpan) * innerH;
-    // Clamp outliers that fell outside the trimmed domain so they
-    // render at the chart edge rather than offscreen.
-    const y = Math.max(pad, Math.min(pad + innerH, rawY));
-    return [x, y] as const;
-  });
-  const polylinePoints = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const last = xy[xy.length - 1];
-  return (
-    <Svg width={width} height={height}>
-      <Polyline
-        points={polylinePoints}
-        stroke={color}
-        strokeWidth={2}
-        fill="none"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <Circle cx={last[0]} cy={last[1]} r={3} fill={color} />
-    </Svg>
-  );
-}
 
 /**
  * T13.2 — direction-only Weight tile rendered in `trends_only` mode.

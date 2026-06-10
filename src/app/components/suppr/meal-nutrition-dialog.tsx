@@ -104,7 +104,12 @@ function MacroStat({
         {Math.round(grams * 10) / 10}g
       </p>
       {pct != null ? (
-        <p className="text-xs tabular-nums" style={{ color: cssVar, opacity: 0.85 }}>
+        // e2e walk 2026-06-10 (mobile parity): the "% of kcal" line is a
+        // neutral share-of-energy stat → muted-foreground, NOT the macro hue.
+        // `--macro-fat` is amber (the over-budget signal), so painting this
+        // caption in `cssVar` made a neutral stat read as a warning. The macro
+        // hue stays on the dot + grams; this caption is informational text.
+        <p className="text-xs tabular-nums text-muted-foreground">
           {Math.round(kcal)} kcal · {pct}% of kcal
         </p>
       ) : null}

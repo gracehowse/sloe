@@ -60,6 +60,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
 import { CalendarDays } from "lucide-react-native";
@@ -97,6 +98,11 @@ import {
   buildWeeklyCheckin,
   type WeeklyCheckin,
 } from "@/lib/weeklyCheckin";
+import {
+  buildWeeklyRecapEmptyCopy,
+  CHECKIN_FIRST_WEEK_COLD_START,
+  resolveCheckinFirstWeekHeadline,
+} from "@/lib/weeklyRecapEmptyCopy";
 import {
   readTdeeSnapshot,
   writeTdeeSnapshot,
@@ -411,6 +417,19 @@ export default function WeeklyRecapScreen() {
     [weekStats.days],
   );
 
+  // ENG-1019/1020 — `hasHistory` for the history-aware empty + check-in
+  // copy. Derived purely from the 90-day journal window already loaded
+  // (`byDay`): any logged day OUTSIDE the current recap week means the
+  // account is a returning user, not a cold start. No extra fetch.
+  const hasHistory = useMemo(() => {
+    const weekKeys = new Set(weekStats.days.map((d) => d.key));
+    for (const [key, meals] of Object.entries(byDay)) {
+      if (weekKeys.has(key)) continue;
+      if (meals.some((m) => (m.calories ?? 0) > 0)) return true;
+    }
+    return false;
+  }, [byDay, weekStats.days]);
+
   const weekLabel = useMemo(() => {
     if (weekStats.days.length === 0) return "";
     return formatWeekLabel(weekStats.days[0].key, weekStats.days[weekStats.days.length - 1].key);
@@ -530,6 +549,25 @@ export default function WeeklyRecapScreen() {
     daysLogged,
   ]);
 
+  // ENG-1019/1020 — history-aware check-in headline. `buildWeeklyCheckin`
+  // returns `first_week` whenever last week's TDEE snapshot is missing,
+  // which also fires on a returning user's FIRST visit this week — so the
+  // cold-start "starts after 7 days of data" line would lie against a
+  // month of confident data. Swap it for a week-scoped line when the
+  // account has history; leave every other state's copy untouched.
+  const checkinHeadline = useMemo(() => {
+    if (!checkin) return "";
+    if (
+      checkin.kind === "first_week" &&
+      checkin.headline === CHECKIN_FIRST_WEEK_COLD_START
+    ) {
+      return (
+        resolveCheckinFirstWeekHeadline({ hasHistory }) ?? checkin.headline
+      );
+    }
+    return checkin.headline;
+  }, [checkin, hasHistory]);
+
   // Fire `weekly_checkin_viewed` once per visible weekKey. Mirrors the
   // legacy `weekly_recap_shown` gate on the Digest.
   const weekKeyForView = useMemo(
@@ -616,6 +654,12 @@ export default function WeeklyRecapScreen() {
   // going). The threshold is "no logged days this week" because
   // that's the most conservative empty signal.
   const isEmpty = state === "empty" || daysLogged === 0;
+
+  // ENG-1019/1020 — resolve the empty-state copy once (headline + body) so
+  // the two reads can't diverge. History-aware: returning user with an
+  // empty current week gets week-scoped copy; true cold start keeps the
+  // "starts here" promise.
+  const emptyCopy = buildWeeklyRecapEmptyCopy({ hasHistory });
 
   // Section eyebrow — design system §2.2: Inter 11pt 600, +0.08em tracking
   // (11 * 0.08 = 0.88), colour --secondary (sage, textSecondary token),
@@ -734,7 +778,7 @@ export default function WeeklyRecapScreen() {
                   marginBottom: Spacing.xs,
                 }}
               >
-                {checkin.headline}
+                {checkinHeadline}
               </Text>
               {checkin.deltaLine ? (
                 // ENG-534 P1 (2026-05-16): TDEE delta is HIGH-class
@@ -847,7 +891,10 @@ export default function WeeklyRecapScreen() {
       {isEmpty ? (
         // Empty state — design system §6.3 + §10.7: NO card chrome.
         // Full-width editorial: sage lucide icon + Newsreader italic headline
-        // + Inter body + plum text-link CTA. No bordered card wrapper.
+        // + Inter body + outline "Log a meal" pill. No bordered card wrapper.
+        // ENG-1019/1020: copy is history-aware — true cold start keeps the
+        // "starts here" promise; a returning user with an empty current week
+        // gets week-scoped copy (never "come back after your first meal").
         <View
           testID="weekly-recap-empty-card"
           style={{
@@ -872,7 +919,7 @@ export default function WeeklyRecapScreen() {
               marginBottom: Spacing.sm,
             }}
           >
-            Your streak starts here.
+            {emptyCopy.headline}
           </Text>
           <Text
             style={{
@@ -884,11 +931,14 @@ export default function WeeklyRecapScreen() {
               marginBottom: Spacing.lg,
             }}
           >
-            A streak begins when you log on two different days in the same
-            week. There&apos;s nothing to recap yet — come back after your first
-            meal.
+            {emptyCopy.body}
           </Text>
-          <Pressable
+          {/* "Log a meal" — aubergine OUTLINE pill per the 2026-06-09 CTA
+              weight map (filled = FAB + conversion only; this everyday
+              primary reads as an outline). Scheme-resolved accent.primarySolid
+              border + label; PressableScale for the pressed state. */}
+          <PressableScale
+            haptic="selection"
             accessibilityRole="button"
             accessibilityLabel="Log a meal"
             onPress={() =>
@@ -900,18 +950,26 @@ export default function WeeklyRecapScreen() {
               })
             }
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+              paddingVertical: Spacing.dense,
+              paddingHorizontal: Spacing.lg,
+              borderRadius: Radius.full,
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
+              alignSelf: "center",
+            }}
           >
             <Text
               style={{
                 fontFamily: FontFamily.sansSemibold,
                 fontSize: 14,
-                color: accent.primary,
+                color: accent.primarySolid,
                 letterSpacing: 0.1,
               }}
             >
               Log a meal
             </Text>
-          </Pressable>
+          </PressableScale>
         </View>
       ) : (
         <>

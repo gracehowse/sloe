@@ -9,8 +9,12 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * PushScreenHeader — canonical chrome for non-tab push screens.
  *
  * 2026-05-22 (DRIFT-04 fix): unifies push-screen header chrome.
- * Back chevron on the left, bold sans title (`Type.headline`), optional
+ * Back chevron on the left, serif nav title (`Type.navTitle`), optional
  * caption underneath in `textSecondary`, optional right slot.
+ *
+ * 2026-06-09 (Spec 3): the title moved `Type.headline` → `Type.navTitle`
+ * (Newsreader serif 18/22) — the single shared lever for the compact
+ * nav-bar-row title voice across every push screen using this header.
  *
  * Screens that use this MUST be added to `STACK_HEADER_HIDDEN` in
  * `apps/mobile/app/_layout.tsx` so the auto-stack chrome doesn't
@@ -63,7 +67,7 @@ export function PushScreenHeader({
         <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
       </Pressable>
       <View style={{ flex: 1 }}>
-        <Text style={{ ...Type.headline, color: colors.text }} numberOfLines={1}>
+        <Text style={{ ...Type.navTitle, color: colors.text }} numberOfLines={1}>
           {title}
         </Text>
         {caption ? (

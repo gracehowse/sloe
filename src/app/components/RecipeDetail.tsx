@@ -1765,6 +1765,23 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           const normalised = normaliseAllergenIds(allergensFromRecipe);
           const containsLine = formatContainsLine(normalised);
           // Design Direction 2026 — allergen callout routed through SupprCard.
+          // Null state is QUIET (premium-audit 2026-06-09, gap 6 — mobile
+          // parity): when an allergen IS tagged the full white-slab card
+          // renders with the verify caveat; when nothing is tagged it collapses
+          // to one quiet caption line, same calm-minimal class as the micros
+          // collapse. Silence ≠ safety, so the caption still names the caveat.
+          if (!containsLine) {
+            return (
+              <p
+                className="text-xs text-muted-foreground/80 leading-snug"
+                role="note"
+                aria-label="Not tagged for allergens. We tag recipes from matched ingredients — always verify against the original source if an allergen is a safety concern."
+                data-testid="recipe-allergen-callout"
+              >
+                Not tagged for allergens — always verify against the original source.
+              </p>
+            );
+          }
           return (
             <SupprCard
               padding="md"
@@ -1775,11 +1792,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               aria-label="Regulated-allergen information"
               data-testid="recipe-allergen-callout"
             >
-              {containsLine ? (
-                <p className="font-semibold text-foreground mb-1">{containsLine}</p>
-              ) : (
-                <p className="font-semibold text-foreground mb-1">Not tagged for allergens</p>
-              )}
+              <p className="font-semibold text-foreground mb-1">{containsLine}</p>
               <p className="text-muted-foreground leading-snug">
                 We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
               </p>

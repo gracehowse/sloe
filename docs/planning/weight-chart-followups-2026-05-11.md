@@ -9,6 +9,36 @@ up for now"**.
 This file captures what's still off so the next session can pick up
 without re-walking the discovery.
 
+## 2026-06-10 update — Progress weight card now mounts the real WeightChart
+
+Premium-audit P0-1 (`docs/ux/reviews/2026-06-09-premium-audit-recipe-progress.md`)
+resolved. The Progress-tab weight card (`apps/mobile/app/(tabs)/progress.tsx`)
+rendered a toy `Sparkline` on a **hardcoded "1m"** range while the Withings-grade
+`WeightChart` was mounted only on the deprecated `/weight-tracker` route. Fixed:
+
+- ✅ Progress weight card mounts `<WeightChart>` (plum line + hollow dots, right
+  Y-axis ticks, dashed in-domain goal line, range-aware X ticks, scrub pill,
+  "you are here" marker). Old inline `Sparkline` + its hand-rolled goal-line
+  `<View>` deleted; the `Sparkline` component is now removed from `progress.tsx`
+  (it was local to that file — no shared/other-file references).
+- ✅ The chart range follows the page's top range picker (7d→1w / 30d→1m /
+  90d→3m / All→all) — was a broken affordance (picker drove every other stat
+  but not the chart). Mapping lives in the shared
+  `src/lib/progress/progressRangeChart.ts` (`progressRangeKeyToWeightRange`);
+  web routed through the same helper, replacing its duplicated inline mapping.
+- ✅ "↗ N kg this week" delta now carries trend tone (toward-goal = sage,
+  away-from-goal = warning) via the shared `weightDeltaTone` helper. The arrow
+  icon stays factual/uncoloured (anti-shame rule). Web + mobile both toned.
+
+**Goal-line note (re: "What NOT to do" below):** Grace's 2026-05-11 rejection
+was of the *off-chart floating "Goal X kg ↓" chip*, which the WeightChart
+component already dropped (see the in-code comment at `WeightChart.tsx`
+~L482-489). The remaining dashed goal line only draws when the goal sits inside
+the visible data domain — the Withings-parity element from the signed-off
+mockup. The prior Progress Sparkline already drew its own dashed goal line, so
+this is not a re-introduction. If Grace wants the goal line gone from the
+Progress card specifically, that's a one-line prop gate — route as a decision.
+
 ## What's already shipped (PR #233 squashed into main)
 
 - ✅ "No data" header bug → falls back to raw first/last delta when MA

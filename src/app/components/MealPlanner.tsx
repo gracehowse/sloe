@@ -1080,7 +1080,17 @@ export const MealPlanner = memo(function MealPlanner({
             carbs: nutritionTargets.carbs,
             fat: nutritionTargets.fat,
           });
-          const renderTotals = dayTotalLine.hasTargets && dp.meals.length > 0;
+          // e2e walk 2026-06-10 (mobile parity): gate the kcal header +
+          // P/C/F delta chips on the day having a REAL meal (recipe chosen,
+          // not a placeholder), not merely a non-empty slot list. A
+          // placeholder-only day has `meals.length > 0` but all-zero totals,
+          // which rendered a wall of "P 0g −99g" delta chips under a blank
+          // day. Same per-day predicate as `planHasRealMeals` and mobile
+          // `dp.meals.some(planMealHasRecipe)`.
+          const dayHasRealMeal = dp.meals.some(
+            (m) => !m.isPlaceholder && !!m.recipeTitle,
+          );
+          const renderTotals = dayTotalLine.hasTargets && dayHasRealMeal;
           // F2-A (2026-04-28): bySlot now indexes all four canonical
           // slots (Breakfast / Lunch / Dinner / Snacks) so the grid
           // renders Snacks when the generated plan carries it. Pre-

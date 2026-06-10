@@ -109,3 +109,22 @@ describe("today_meals_figma_654 flag wiring", () => {
     expect(MOBILE_MEALS).toMatch(/today_meals_figma_654/);
   });
 });
+
+describe("single-item card row dedup (ENG-1020 #4 — web + mobile parity)", () => {
+  // e2e walk 2026-06-10: the Figma summary card header already shows the
+  // single (primary) meal's title + kcal/protein. When a slot has exactly one
+  // entry whose title equals that header title, the expanded row repeated it
+  // verbatim. The renderSlotExpanded callback in each platform's
+  // TodayMealsSection must suppress just that redundant row (keep Add food).
+  it("web computes the redundant-single-row guard from the header title", () => {
+    expect(WEB_MEALS).toMatch(/redundantSingleRow/);
+    expect(WEB_MEALS).toMatch(/sectionMeals\.length === 1/);
+    expect(WEB_MEALS).toMatch(/redundantSingleRow \? \[\] : sectionMeals/);
+  });
+
+  it("mobile computes the same guard and keeps Add food reachable", () => {
+    expect(MOBILE_MEALS).toMatch(/redundantSingleRow/);
+    expect(MOBILE_MEALS).toMatch(/meals\.length === 1/);
+    expect(MOBILE_MEALS).toMatch(/redundantSingleRow\s*\n?\s*\?\s*null\s*\n?\s*:\s*meals\.map/);
+  });
+});

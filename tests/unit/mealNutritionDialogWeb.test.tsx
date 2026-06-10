@@ -116,6 +116,21 @@ describe("MealNutritionDialog (web) — meal WITH data", () => {
     expect(screen.getAllByText(/% of kcal/).length).toBe(3);
   });
 
+  it("paints the '% of kcal' caption in neutral muted-foreground, NOT the macro hue (ENG-1020 #5)", () => {
+    // e2e walk 2026-06-10: the share-of-energy caption is a neutral stat. It
+    // must NOT inherit the macro hue — `--macro-fat` is amber (the over-budget
+    // signal), so the Fat caption used to read as a warning. All three render
+    // in muted-foreground with no inline macro-var colour.
+    render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
+    const captions = screen.getAllByText(/% of kcal/);
+    expect(captions.length).toBe(3);
+    for (const caption of captions) {
+      expect(caption.className).toMatch(/text-muted-foreground/);
+      // No inline macro-hue colour leaked back in.
+      expect(caption.getAttribute("style") ?? "").not.toMatch(/--macro-/);
+    }
+  });
+
   it("renders the macronutrient detail rows with published values (fibre first)", () => {
     render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
     const list = screen.getByTestId("meal-nutrition-micros-list");

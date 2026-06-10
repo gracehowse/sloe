@@ -15,25 +15,23 @@
  * and passes a fully-resolved `info` object. That keeps one derivation path
  * and makes the sheet trivially testable.
  *
- * Intended call-site gate: `design_system_elevation` — flag ON → this sheet;
- * flag OFF → the original `Alert.alert` info popup stays alive. No web analog
- * is needed — web already shows ingredient detail inline on `RecipeDetail`.
+ * No web analog is needed — web already shows ingredient detail inline on
+ * `RecipeDetail` (a dialog, not a native alert).
  *
- * NOTE — wiring handoff: the recipe-detail screen (`app/recipe/[id].tsx`) is
- * being actively rewritten by the ENG-818/819 detail-card lane, so this sheet
- * is delivered ready-to-wire rather than wired here (strict file lanes — the
- * edit sheet + ingredient editor are this lane; the detail screen is not). The
- * host wires it with: a `useState<IngredientInfo | null>` slot, set on
- * ingredient tap when `isFeatureEnabled('design_system_elevation')`, with the
- * existing `Alert.alert` kept in the `else`, and `<IngredientInfoSheet
- * info={ingredientInfo} onClose={() => setIngredientInfo(null)} />` mounted
- * once below the ingredient list. See ENG-821.
+ * Wired into the recipe-detail screen (`app/recipe/[id].tsx`) as the canonical
+ * ingredient-tap surface (premium-audit 2026-06-09, gap 5) — the host owns a
+ * `useState<IngredientInfo | null>` slot set on ingredient tap, replacing the
+ * prior off-brand `Alert.alert` popup. The optional `onVerify` callback
+ * preserves the wired Verify route for tiers that still need review (the host
+ * passes it only when `ingredientShouldShowVerifyCta` + a real recipe id).
  */
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { Elevation, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Elevation, FontFamily, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 export interface IngredientInfo {
   /** Already entity-decoded display name. */
@@ -58,11 +56,20 @@ export interface IngredientInfo {
 export function IngredientInfoSheet({
   info,
   onClose,
+  onVerify,
 }: {
   info: IngredientInfo | null;
   onClose: () => void;
+  /** When set, render an aubergine-outline "Verify this recipe" CTA. The host
+   *  passes it only for tiers that still need review on a real recipe row. */
+  onVerify?: () => void;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
+  // Aubergine OUTLINE (Sloe treatment §1) — light detects via the white sheet
+  // surface, dark uses the lifted aubergine so the border + label clear AA.
+  const outlineColor =
+    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
   const open = info != null;
 
   const macroSummary = info
@@ -140,6 +147,21 @@ export function IngredientInfoSheet({
               <Text style={[Type.bodyMuted, s.explanation, { color: colors.textSecondary }]}>
                 {info.explanation}
               </Text>
+
+              {onVerify ? (
+                <PressableScale
+                  haptic="confirm"
+                  onPress={onVerify}
+                  accessibilityRole="button"
+                  accessibilityLabel="Verify this recipe"
+                  testID="ingredient-info-verify"
+                  style={[s.verifyBtn, { borderColor: outlineColor }]}
+                >
+                  <Text style={[s.verifyLabel, { color: outlineColor }]}>
+                    Verify this recipe
+                  </Text>
+                </PressableScale>
+              ) : null}
             </ScrollView>
           ) : null}
         </View>
@@ -181,6 +203,18 @@ const s = StyleSheet.create({
   macroLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
   macroDot: { width: 8, height: 8, borderRadius: 4 },
   explanation: { marginTop: Spacing.lg, lineHeight: 20 },
+  verifyBtn: {
+    marginTop: Spacing.lg,
+    alignSelf: "flex-start",
+    height: 40,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.full,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  verifyLabel: { fontFamily: FontFamily.sansSemibold, fontSize: 14, fontWeight: "700" },
 });
 
 export default IngredientInfoSheet;

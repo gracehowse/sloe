@@ -7,6 +7,12 @@
  * title and the step paragraph (Inter 16px, line-height 26). When a step has no
  * distinct leading sentence/title we render the paragraph only — never a fake
  * title.
+ *
+ * Step body renders in PRIMARY ink (`colors.text`), not `textSecondary`
+ * (premium-audit 2026-06-09, gap 3 — method steps are the read-while-cooking
+ * content and must carry full reading contrast; the faint serif index stays
+ * `textTertiary` for hierarchy). Web parity: web Steps tab already uses
+ * `text-foreground` (`RecipeDetail.tsx`).
  */
 import { Text, View } from "react-native";
 
@@ -52,7 +58,7 @@ export function RecipeMethodSteps({ steps }: { steps: string[] }) {
                   fontFamily: FontFamily.sansRegular,
                   fontSize: 16,
                   lineHeight: 26,
-                  color: colors.textSecondary,
+                  color: colors.text,
                 }}
                 accessibilityLabel={`Step ${i + 1}. ${step}`}
               >

@@ -36,6 +36,11 @@ import { useCallback, useEffect, useRef } from "react";
 import type { SavedMealItem } from "../../../lib/nutrition/savedMeals";
 import type { WeeklyCheckin } from "../../../lib/nutrition/weeklyCheckin";
 import type { DigestBlendedExtras } from "../../../lib/nutrition/digest";
+import {
+  buildWeeklyRecapEmptyCopy,
+  CHECKIN_FIRST_WEEK_COLD_START,
+  resolveCheckinFirstWeekHeadline,
+} from "../../../lib/nutrition/weeklyRecapEmptyCopy";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
 import { Icons } from "../ui/icons";
@@ -128,6 +133,15 @@ export interface DigestProps {
    * Missing / unknown values fall through to "show" via `coerceWeightSurfaceMode`.
    */
   weightSurfaceMode?: WeightSurfaceMode;
+  /**
+   * ENG-1019/1020 — whether the account has ANY logged history (derived
+   * by the host from the journal store). Drives history-aware empty +
+   * check-in copy: a returning user whose recap week is empty must not
+   * read cold-start copy ("come back after your first meal" / "starts
+   * after 7 days of data"). Defaults to `false` (true cold start).
+   * Mirror of the mobile `weekly-recap.tsx` `hasHistory` derivation.
+   */
+  hasHistory?: boolean;
   /** UI state selector (§7). Defaults to "success". */
   state?: "loading" | "empty" | "partial" | "success" | "error" | "offline";
   /** Relative "synced X ago" label — only used when state === "offline". */
@@ -192,6 +206,7 @@ function DigestLegacy(props: DigestProps) {
     onStartUsualMealSave,
     onAdjustGoalPace,
     weightSurfaceMode = "show",
+    hasHistory = false,
     className,
   } = props;
 
@@ -367,9 +382,13 @@ function DigestLegacy(props: DigestProps) {
       >
         {headline}
       </h2>
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="text-xs text-muted-foreground mb-4" data-testid="digest-subline">
         {isEmpty
-          ? "No days logged — that's fine."
+          ? // ENG-1019/1020 — history-aware empty subline. Returning user
+            // (history in the journal) with an empty recap week gets
+            // week-scoped copy; true cold start keeps the "starts here"
+            // promise. Mirror of mobile `weekly-recap.tsx`.
+            buildWeeklyRecapEmptyCopy({ hasHistory }).body
           : `${daysLogged} day${daysLogged === 1 ? "" : "s"} logged · ${mealsLogged} item${mealsLogged === 1 ? "" : "s"}.`}
       </p>
 
@@ -484,7 +503,16 @@ function DigestLegacy(props: DigestProps) {
             data-testid="digest-weekly-checkin-headline"
             className="text-[13px] font-bold text-foreground mb-1"
           >
-            {narrative.weeklyCheckin.headline}
+            {/* ENG-1019/1020 — the cascade returns `first_week` whenever
+                last week's TDEE snapshot is missing, which also fires on a
+                returning user's first visit this week. Swap the cold-start
+                headline for a week-scoped line when the account has history;
+                every other state's copy is untouched. Mirror of mobile. */}
+            {narrative.weeklyCheckin.kind === "first_week" &&
+            narrative.weeklyCheckin.headline === CHECKIN_FIRST_WEEK_COLD_START
+              ? (resolveCheckinFirstWeekHeadline({ hasHistory }) ??
+                narrative.weeklyCheckin.headline)
+              : narrative.weeklyCheckin.headline}
           </p>
           {narrative.weeklyCheckin.deltaLine ? (
             <p
