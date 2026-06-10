@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -21,6 +21,8 @@ import {
 } from "@suppr/shared/preferences/premiumMotion";
 
 import { Accent, Colors, MacroColors, Type } from "@/constants/theme";
+import { ringPhase, ringPhaseEvent } from "@/lib/ringPhase";
+import type { SkiaRingArcs as SkiaRingArcsT } from "./SkiaRingArcs";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
@@ -332,6 +334,53 @@ export default function CalorieRing({
   // (Grace visual walk, 2026-06-01).
   const budgetLine = `of ${Math.round(goal).toLocaleString()} kcal`;
   const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
+
+  // ── ring_skia_v1 (SPEC 1, 2026-06-09) ───────────────────────────────
+  // The Skia arc layer replaces the SVG layer behind the flag. The module
+  // is require()'d ONLY when the flag is on so a binary built without the
+  // native lib can never crash on import while flagged off; if the native
+  // module is missing at runtime, we fall back to SVG silently.
+  const skiaFlagOn = isFeatureEnabled("ring_skia_v1");
+  const SkiaArcs: typeof SkiaRingArcsT | null = useMemo(() => {
+    if (!skiaFlagOn) return null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require("./SkiaRingArcs").SkiaRingArcs as typeof SkiaRingArcsT;
+    } catch {
+      return null;
+    }
+  }, [skiaFlagOn]);
+  const overFrac = !isEmpty && isOver && goal > 0 ? Math.min(consumed / goal - 1, 1) : 0;
+  const bonusFrac = !isEmpty && baseGoal && baseGoal < goal && goal > 0 ? (goal - baseGoal) / goal : 0;
+
+  // Phase machine + haptics (ships with the Skia layer; see ringPhase.ts
+  // for the contract — upward entries only, highest milestone wins).
+  const [goalHitCount, setGoalHitCount] = useState(0);
+  const prevPhaseRef = useRef(ringPhase(consumed, goal));
+  useEffect(() => {
+    if (!SkiaArcs) return; // haptic grammar ships with the Skia experience
+    const next = ringPhase(consumed, goal);
+    const ev = ringPhaseEvent(prevPhaseRef.current, next);
+    prevPhaseRef.current = next;
+    if (!ev) return;
+    if (ev === "near") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else if (ev === "hit") {
+      setGoalHitCount((c) => c + 1);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setTimeout(() => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }, 80);
+    } else if (ev === "overflow") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  }, [consumed, goal, SkiaArcs]);
+
+  // Brightening-plum overflow stops + win glow tone (2026-06-09 decision —
+  // amber rejected; scheme-resolved).
+  const overflowFrom = isDark ? "#815E91" : "#5B3B6E";
+  const overflowTo = isDark ? "#C4ACD0" : "#9A7BAA";
+  const winGlowColor = isDark ? "#C4ACD0" : "#7E5C92";
   const mainCirc = CIRC(R);
 
   const progress = useSharedValue(0);
@@ -401,6 +450,30 @@ export default function CalorieRing({
           justifyContent: "center",
         }}
       >
+        {SkiaArcs ? (
+          // ring_skia_v1 — Skia arc layer (SPEC 1). Centre overlay below is
+          // shared with the SVG path; only the arcs swap renderers.
+          <SkiaArcs
+            geom={{ SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R }}
+            fillPct={pct}
+            overFrac={overFrac}
+            bonusFrac={bonusFrac}
+            macroPcts={[proteinPct, carbsPct, fatPct]}
+            macroColors={[MacroColors.protein, MacroColors.carbs, MacroColors.fat]}
+            macroTrackColor={trackColor}
+            trackColor={outerTrackColor}
+            emptyInnerColor={emptyTrackColor}
+            ringColor={isEmpty ? outerTrackColor : ringStateColor}
+            bonusColor={Accent.activity}
+            overflowFrom={overflowFrom}
+            overflowTo={overflowTo}
+            glowColor={winGlowColor}
+            isEmpty={isEmpty}
+            isOver={isOver}
+            expanded={expanded}
+            goalHitCount={goalHitCount}
+          />
+        ) : (
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
           {/* SLOE redesign (2026-06-03): the MFP-style diagonal hash that
               previously marked the over-budget portion is replaced by a
@@ -606,6 +679,7 @@ export default function CalorieRing({
             </>
           ) : null}
         </Svg>
+        )}
         {/* Center text — number tweens to `centerValue` via
             `useAnimatedNumber`. The displayed integer counts up
             smoothly when the user logs a meal, finishing with the
