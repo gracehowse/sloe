@@ -215,29 +215,44 @@ export function SkiaRingArcs({
           opacity={0.7}
         />
       ) : null}
-      {/* Activity-bonus territory (honey) — behind the food fill. */}
+      {/* Activity-bonus territory — a quiet honey TINT on the track
+          (2026-06-10: the solid honey block read as another colour blob;
+          earned territory is context, not content — it sits at low
+          opacity behind the ribbon and lets the fill claim it). */}
       {!isEmpty && bonusFrac > 0 ? (
         <Path
           path={mainPath}
           style="stroke"
           strokeWidth={STROKE}
           color={bonusColor}
+          opacity={0.28}
           start={bonusStart}
           end={1}
         />
       ) : null}
-      {/* Food fill — the plum arc (full ring when over; the lap carries
-          the overage). */}
+      {/* Food fill — ONE continuous ribbon of light (2026-06-10, Grace:
+          the contrasting overage segment read as a cheap blob; comps —
+          Any Distance / Klima / Zero — all keep ONE hue and let light +
+          depth signal the wrap). The sweep gradient runs base → bright
+          across the full lap, so the arc brightens as it fills; past
+          100% the second lap continues the same gradient to the glowing
+          cap. No seam, no second colour. */}
       {!isEmpty ? (
         <Path
           path={mainPath}
           style="stroke"
           strokeWidth={STROKE}
           strokeCap="round"
-          color={ringColor}
           start={0}
           end={fillEnd}
-        />
+        >
+          <SweepGradient
+            c={vec(CX, CX)}
+            start={-90}
+            end={270}
+            colors={[ringColor, overflowFrom]}
+          />
+        </Path>
       ) : null}
       {/* Goal-hit glow lap (600ms pulse on goalHitCount). */}
       {!isEmpty ? (
@@ -254,12 +269,27 @@ export function SkiaRingArcs({
           <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
-      {/* Over-budget OVERFLOW lap — brightening-plum SweepGradient
-          (2026-06-09 decision; amber rejected). Sweep starts at 12
-          o'clock with the dim stop and brightens toward the leading
-          cap; a blurred copy of the leading segment carries the glow. */}
+      {/* Over-budget second lap — the SAME ribbon continuing (2026-06-09
+          brightening-plum decision + 2026-06-10 continuity fix). The lap's
+          gradient STARTS where the first lap ENDED (overflowFrom) and keeps
+          brightening to the lilac cap. A soft dark shadow under the leading
+          cap carries the overlap depth (the Apple/Klima wrap grammar), and
+          the blurred glow rides the cap itself. */}
       {!isEmpty && isOver && overFrac > 0 ? (
         <Group>
+          {/* Overlap depth: cap shadow UNDER the lap's leading edge. */}
+          <Path
+            path={mainPath}
+            style="stroke"
+            strokeWidth={STROKE * 1.15}
+            strokeCap="round"
+            color="#000000"
+            opacity={0.18}
+            start={overGlowStart}
+            end={overEnd}
+          >
+            <BlurMask blur={STROKE * 0.5} style="normal" />
+          </Path>
           <Path
             path={mainPath}
             style="stroke"
@@ -271,18 +301,18 @@ export function SkiaRingArcs({
             <SweepGradient
               c={vec(CX, CX)}
               start={-90}
-              end={-90 + 360 * Math.max(overFrac, 0.02)}
+              end={-90 + 360 * Math.max(overFrac, 0.04)}
               colors={[overflowFrom, overflowTo]}
             />
           </Path>
-          {/* Leading-cap glow — the last ~6% of the lap, blurred. */}
+          {/* Leading-cap glow — light marks the wrap, not colour. */}
           <Path
             path={mainPath}
             style="stroke"
             strokeWidth={STROKE}
             strokeCap="round"
             color={overflowTo}
-            opacity={0.55}
+            opacity={0.5}
             start={overGlowStart}
             end={overEnd}
           >
