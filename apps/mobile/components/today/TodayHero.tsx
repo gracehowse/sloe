@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 import { TodayHeroRing } from "./TodayHeroRing";
-import { Accent } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 
 // Soft fill for the success pill — no `Accent.successSoft` token exists,
@@ -155,14 +155,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: Spacing.sm,
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   pillText: {
     fontSize: 11,

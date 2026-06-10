@@ -488,12 +488,12 @@ export function MobileFlow() {
       <View
         style={{
           paddingTop: Platform.OS === "ios" ? 54 : 16,
-          paddingBottom: 14,
+          paddingBottom: Spacing.md,
           paddingHorizontal: Spacing.xl,
         }}
       >
         <View
-          style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+          style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}
         >
           <Pressable
             onPress={() => go(-1)}
@@ -533,7 +533,7 @@ export function MobileFlow() {
             <View
               style={{
                 marginLeft: Spacing.sm,
-                paddingHorizontal: 10,
+                paddingHorizontal: Spacing.dense,
                 paddingVertical: 4,
                 borderRadius: 999,
                 backgroundColor: `${accent.primaryLight}1f`,
@@ -575,8 +575,8 @@ export function MobileFlow() {
       <View
         style={{
           paddingHorizontal: Spacing.xl,
-          paddingTop: 14,
-          paddingBottom: Platform.OS === "ios" ? 38 : 24,
+          paddingTop: Spacing.md,
+          paddingBottom: Platform.OS === "ios" ? Spacing.xxxl : Spacing.xl,
           backgroundColor: colors.background,
           borderTopWidth: 1,
           borderTopColor: "transparent",

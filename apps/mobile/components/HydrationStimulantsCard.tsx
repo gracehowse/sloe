@@ -206,7 +206,7 @@ function Row({
             {label}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           <Text
             style={{
               ...(emphasizeValue ? Type.title : Type.headline),
@@ -300,7 +300,7 @@ function Row({
                 onReset();
                 setMenuOpen(false);
               }}
-              style={{ paddingVertical: 10 }}
+              style={{ paddingVertical: Spacing.dense }}
             >
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Reset today</Text>
             </Pressable>
@@ -308,7 +308,7 @@ function Row({
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               onPress={() => setMenuOpen(false)}
-              style={{ paddingVertical: 10 }}
+              style={{ paddingVertical: Spacing.dense }}
             >
               <Text style={{ fontSize: 14, fontWeight: "500", color: colors.textSecondary }}>Cancel</Text>
             </Pressable>
@@ -346,8 +346,8 @@ function Chip({
         flexGrow: 1,
         flexBasis: "22%",
         alignItems: "center",
-        paddingVertical: 9,
-        paddingHorizontal: 6,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
         borderRadius: Radius.full,
         backgroundColor: colors.backgroundSecondary,
         borderWidth: 1,

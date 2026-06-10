@@ -10,6 +10,7 @@ import Svg, {
 import * as Haptics from "expo-haptics";
 import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Layout } from "@/constants/layout";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -105,7 +106,7 @@ export function MobileRevealStep() {
           justifyContent: "center",
           paddingHorizontal: 24,
           paddingVertical: 32,
-          gap: 18,
+          gap: Spacing.lg,
         }}
       >
         <View
@@ -166,7 +167,7 @@ export function MobileRevealStep() {
             textTransform: "uppercase",
             letterSpacing: 1.3,
             color: colors.textTertiary,
-            marginBottom: 10,
+            marginBottom: Spacing.sm,
           }}
         >
           Your daily target
@@ -259,7 +260,7 @@ export function MobileRevealStep() {
                     fontSize: 12,
                     fontWeight: "600",
                     color: colors.textSecondary,
-                    marginTop: 6,
+                    marginTop: Spacing.xs,
                   }}
                 >
                   kcal / day
@@ -297,7 +298,7 @@ export function MobileRevealStep() {
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+        <View style={{ flexDirection: "row", gap: Layout.macroTileGridGap, marginBottom: Spacing.md }}>
           <MacroTile
             name="Protein"
             value={targets.proteinG}
@@ -324,7 +325,7 @@ export function MobileRevealStep() {
             borderColor: colors.border,
             borderWidth: 1,
             borderRadius: 14,
-            padding: 14,
+            padding: Spacing.md,
             flexDirection: "row",
           }}
         >
@@ -378,7 +379,7 @@ export function MobileRevealStep() {
             borderWidth: 1,
             borderColor: colors.border,
             backgroundColor: colors.card,
-            gap: 14,
+            gap: Spacing.md,
           }}
         >
           <Text
@@ -437,7 +438,7 @@ function NextStepRow({
 }) {
   const colors = useThemeColors();
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: Spacing.dense }}>
       <View
         style={{
           width: 32,
@@ -490,7 +491,7 @@ function MacroTile({
         borderColor: colors.border,
         borderWidth: 1,
         borderRadius: Radius.md + 2,
-        padding: 14,
+        padding: Spacing.dense,
       }}
     >
       <View
@@ -558,7 +559,7 @@ function MacroTile({
       </Text>
       <View
         style={{
-          marginTop: 10,
+          marginTop: Spacing.sm,
           height: 3,
           borderRadius: 2,
           backgroundColor: color + "22",
@@ -679,7 +680,7 @@ function RevealShowTheMaths({
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.xs,
           paddingVertical: 8,
           opacity: pressed ? 0.6 : 1,
         })}
@@ -703,13 +704,13 @@ function RevealShowTheMaths({
       {open ? (
         <View
           style={{
-            marginTop: 6,
+            marginTop: Spacing.sm,
             borderRadius: Radius.md,
             borderWidth: 1,
             borderColor: colors.border,
             backgroundColor: colors.card,
             padding: Spacing.md,
-            gap: 12,
+            gap: Spacing.dense,
           }}
           accessibilityRole="text"
         >

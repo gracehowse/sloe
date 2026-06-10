@@ -132,7 +132,7 @@ export function MobilePaceStep() {
               style={({ pressed }) => ({
                 flex: 1,
                 paddingHorizontal: 8,
-                paddingVertical: 10,
+                paddingVertical: Spacing.dense,
                 borderRadius: Radius.md - 2,
                 backgroundColor: active ? accent + "26" : colors.inputBg,
                 borderWidth: 1.5,
@@ -186,7 +186,7 @@ export function MobilePaceStep() {
         >
           Rate
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.xs }}>
           {/* Sloe reskin (Figma pace 191:2): rate hero numeral in the
               Newsreader serif display face + plum heading ink, mirroring
               the web pace numeral. */}
@@ -229,7 +229,7 @@ export function MobilePaceStep() {
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
-            marginTop: 6,
+            marginTop: Spacing.sm,
           }}
         >
           <Text
@@ -256,7 +256,7 @@ export function MobilePaceStep() {
       {projectedTarget != null && dailyMagnitude != null ? (
         <View
           style={{
-            marginTop: 14,
+            marginTop: Spacing.md,
             padding: Spacing.md + 2,
             borderRadius: Radius.md,
             borderWidth: 1,
@@ -405,15 +405,15 @@ function PaceWarningBanner({
       accessibilityRole="alert"
       accessibilityLabel={warning.title}
       style={{
-        marginTop: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        marginTop: Spacing.dense,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.dense,
         borderRadius: 12,
         borderWidth: 1,
         backgroundColor: config.bg,
         borderColor: config.border,
         flexDirection: "row",
-        gap: 12,
+        gap: Spacing.dense,
         alignItems: "flex-start",
       }}
     >
@@ -437,7 +437,7 @@ function PaceWarningBanner({
             fontWeight: "700",
             color: colors.text,
             letterSpacing: -0.2,
-            marginBottom: 3,
+            marginBottom: Spacing.xs,
           }}
         >
           {warning.title}
@@ -458,7 +458,7 @@ function PaceWarningBanner({
             accessibilityState={{ checked: acknowledged }}
             accessibilityLabel="I understand and accept responsibility for proceeding below the safety floor"
             style={{
-              marginTop: 12,
+              marginTop: Spacing.dense,
               flexDirection: "row",
               alignItems: "flex-start",
               gap: 8,

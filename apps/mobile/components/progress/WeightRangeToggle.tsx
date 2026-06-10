@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   pill: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 5,
+    paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
   },
   label: {

@@ -103,7 +103,7 @@ export function WhereThisComesFromSheet({
             paddingBottom: insets.bottom + Spacing.lg,
           }}
         >
-          <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+          <View style={{ alignItems: "center", paddingTop: Spacing.dense, paddingBottom: 4 }}>
             <View style={{ width: 40, height: 6, borderRadius: 3, backgroundColor: "#E8E2EC" }} />
           </View>
 
@@ -192,7 +192,7 @@ export function WhereThisComesFromSheet({
               style={{
                 marginHorizontal: Spacing.lg,
                 marginTop: Spacing.lg,
-                paddingVertical: 14,
+                paddingVertical: Spacing.md,
                 borderRadius: Radius.full,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,

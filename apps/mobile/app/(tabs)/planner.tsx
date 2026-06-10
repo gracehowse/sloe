@@ -1476,24 +1476,24 @@ export default function PlannerScreen() {
         summaryPrimaryBtn: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           backgroundColor: "transparent",
           borderWidth: 1.5,
           borderColor: accent.primarySolid,
           paddingHorizontal: Spacing.md,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.lg,
         },
         summaryPrimaryText: { color: accent.primarySolid, fontSize: 13, fontWeight: "700" },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           backgroundColor: colors.background,
           borderWidth: 1,
           borderColor: colors.border,
           paddingHorizontal: Spacing.md,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           borderRadius: Radius.lg,
         },
         summarySecondaryText: { color: colors.text, fontSize: 13, fontWeight: "600" },
@@ -1510,8 +1510,8 @@ export default function PlannerScreen() {
         filterChip: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 5,
-          paddingHorizontal: 12,
+          gap: Spacing.xs,
+          paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
           borderRadius: Radius.lg,
           borderWidth: 1,
@@ -1736,7 +1736,7 @@ export default function PlannerScreen() {
         mealRow: {
           flexDirection: "row",
           alignItems: "flex-start",
-          paddingVertical: 8,
+          paddingVertical: Spacing.sm,
           paddingHorizontal: 14,
           borderTopWidth: 1,
           borderTopColor: colors.border + "99",
@@ -1748,7 +1748,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
-          paddingHorizontal: 12,
+          paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
@@ -1762,7 +1762,7 @@ export default function PlannerScreen() {
         addSlotRow: {
           flex: 1,
           flexDirection: "row",
-          gap: 6,
+          gap: Spacing.sm,
           minWidth: 0,
         },
         addSlotChip: {
@@ -1771,7 +1771,7 @@ export default function PlannerScreen() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: 3,
+          gap: Spacing.xs,
           paddingVertical: 8,
           paddingHorizontal: 4,
           borderRadius: Radius.lg,
@@ -1903,7 +1903,7 @@ export default function PlannerScreen() {
           borderWidth: 1.5,
           borderColor: accent.primarySolid,
           borderRadius: Radius.md,
-          paddingVertical: 14,
+          paddingVertical: Spacing.md,
           alignItems: "center",
         },
         regenBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
@@ -2596,7 +2596,7 @@ export default function PlannerScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingBottom: 6, paddingRight: 4 }}
+          contentContainerStyle={{ gap: 8, paddingBottom: Spacing.sm, paddingRight: 4 }}
           style={{ marginBottom: Spacing.sm }}
         >
           {planSlots.map((s) => {
@@ -2656,8 +2656,8 @@ export default function PlannerScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
+                  paddingHorizontal: Spacing.dense,
+                  paddingVertical: Spacing.sm,
                   borderRadius: 999,
                   borderWidth: 1,
                   borderColor: active ? colors.textSecondary : colors.border,
@@ -2705,8 +2705,8 @@ export default function PlannerScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
+              paddingHorizontal: Spacing.dense,
+              paddingVertical: Spacing.sm,
               borderRadius: 999,
               borderWidth: 1,
               borderColor: colors.border,
@@ -3103,7 +3103,7 @@ export default function PlannerScreen() {
               disabled={generating || generateDisabled}
             >
               {generating ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                   {/* 2026-05-13 (premium-bar audit Plan Card 4 —
                       7-dot stacked viz inline with headline):
                       replaces the bare `<ActivityIndicator>` with
@@ -3247,7 +3247,7 @@ export default function PlannerScreen() {
           return (
           <View key={dp.day} style={styles.daySection}>
             <View style={styles.daySectionHeader}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Text style={styles.dayTitle}>{weekdayLabel}</Text>
                 {isTodayRow && (
                   <Text
@@ -3443,7 +3443,7 @@ export default function PlannerScreen() {
                       one-line macro string. Render the multiplier as a
                       separate trailing badge and clamp the title to a
                       single line. */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     <Text style={[styles.mealTitle, { flexShrink: 1 }]} numberOfLines={1}>
                       {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
                     </Text>
@@ -4082,7 +4082,7 @@ export default function PlannerScreen() {
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,
-                paddingVertical: 13,
+                paddingVertical: Spacing.md,
                 borderRadius: Radius.md,
                 alignItems: "center",
               }}
@@ -4153,7 +4153,7 @@ export default function PlannerScreen() {
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
                 borderColor: accent.primarySolid,
-                paddingVertical: 13,
+                paddingVertical: Spacing.md,
                 borderRadius: Radius.md,
                 alignItems: "center",
               }}
@@ -4333,7 +4333,7 @@ export default function PlannerScreen() {
                 accessibilityLabel={label}
                 testID={testID}
                 style={({ pressed }) => ({
-                  paddingVertical: 14,
+                  paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.xl,
                   borderTopWidth: 1,
                   borderTopColor: colors.border + "60",
@@ -4368,7 +4368,7 @@ export default function PlannerScreen() {
                   <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }} numberOfLines={1}>
                     {hasRecipeOv ? meal.recipeTitle : meal.name}
                   </Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: Spacing.xs }}>
                     {hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot"}
                   </Text>
                 </View>
@@ -4391,7 +4391,7 @@ export default function PlannerScreen() {
                   accessibilityLabel="Cancel"
                   style={{
                     marginHorizontal: Spacing.xl,
-                    paddingVertical: 13,
+                    paddingVertical: Spacing.md,
                     borderRadius: Radius.md,
                     backgroundColor: colors.border + "60",
                     alignItems: "center",
@@ -4490,7 +4490,7 @@ export default function PlannerScreen() {
                       setPortionModal(null);
                     }}
                     style={{
-                      paddingVertical: 14,
+                      paddingVertical: Spacing.md,
                       paddingHorizontal: Spacing.xl,
                       borderTopWidth: StyleSheet.hairlineWidth,
                       borderTopColor: colors.border,

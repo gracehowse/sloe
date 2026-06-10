@@ -139,8 +139,8 @@ const styles = StyleSheet.create({
   eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   body: {
     // Per spec: body 12pt text-secondary inside the headline card.
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   chipRow: {
-    marginTop: 10,
+    marginTop: Spacing.sm,
     flexDirection: "row",
   },
 });

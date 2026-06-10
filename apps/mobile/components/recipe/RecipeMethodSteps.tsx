@@ -10,7 +10,7 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/theme";
+import { FontFamily, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export function RecipeMethodSteps({ steps }: { steps: string[] }) {
@@ -29,7 +29,7 @@ export function RecipeMethodSteps({ steps }: { steps: string[] }) {
       >
         Method
       </Text>
-      <View style={{ gap: 28 }}>
+      <View style={{ gap: Spacing.xl }}>
         {steps.map((step, i) => (
           <View key={i} style={{ flexDirection: "row", gap: 16 }} testID={`recipe-method-step-${i}`}>
             <Text

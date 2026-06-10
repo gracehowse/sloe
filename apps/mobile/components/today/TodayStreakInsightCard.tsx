@@ -35,7 +35,7 @@ export function TodayStreakInsightCard({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: Spacing.dense,
         padding: Spacing.lg,
         borderRadius: Radius.lg,
         backgroundColor: Accent.success + "08",
@@ -84,8 +84,8 @@ export function TodayStreakInsightCard({
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
+              paddingHorizontal: Spacing.sm,
+              paddingVertical: Spacing.sm,
               borderRadius: Radius.md,
               borderWidth: 1,
               borderColor: Accent.cyan + "30",
@@ -101,7 +101,7 @@ export function TodayStreakInsightCard({
               accessibilityRole="button"
               accessibilityLabel="Got it — dismiss earned freeze"
               hitSlop={6}
-              style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.sm }}
+              style={{ paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm }}
             >
               <Text
                 style={{

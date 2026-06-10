@@ -123,7 +123,7 @@ export function TodayPlannedMealsCard({
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${name} today`}
                 hitSlop={8}
-                style={{ paddingHorizontal: 8, paddingVertical: 12 }}
+                style={{ paddingHorizontal: 8, paddingVertical: Spacing.dense }}
               >
                 <Text style={{ ...Type.label, color: accent.primarySolid }}>Log today</Text>
               </Pressable>

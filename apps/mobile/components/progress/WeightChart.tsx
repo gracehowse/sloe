@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   floatingLabel: {
     position: "absolute",
     paddingHorizontal: 6,
-    paddingVertical: 3,
+    paddingVertical: Spacing.xs,
     borderRadius: 6,
     borderWidth: 1,
   },

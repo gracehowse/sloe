@@ -88,7 +88,7 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation
       borderColor: colors.border,
       borderRadius: Radius.sm,
       paddingVertical: 8,
-      paddingHorizontal: 10,
+      paddingHorizontal: Spacing.dense,
       fontSize: 14,
       color: colors.text,
       backgroundColor: ce.liftBg ?? colors.inputBg,
@@ -96,7 +96,7 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation
     nameInput: { flex: 1 },
     amountInput: { width: 56, textAlign: "center" },
     unitInput: { width: 64, textAlign: "center" },
-    deleteBtn: { padding: 6 },
+    deleteBtn: { padding: Spacing.sm },
   });
 
 export const IngredientEditRow = memo(IngredientEditRowImpl);

@@ -273,10 +273,10 @@ export default function FastingScreen() {
         stageChip: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 5,
+          gap: Spacing.xs,
           backgroundColor: accent.primarySoft,
-          paddingHorizontal: 10,
-          paddingVertical: 4,
+          paddingHorizontal: Spacing.sm,
+          paddingVertical: Spacing.xs,
           borderRadius: Radius.full,
           marginBottom: Spacing.sm,
         },
@@ -512,8 +512,8 @@ export default function FastingScreen() {
             onPress={startFast}
             style={{
               marginTop: Spacing.sm,
-              paddingVertical: 14,
-              paddingHorizontal: 28,
+              paddingVertical: Spacing.md,
+              paddingHorizontal: Spacing.xl,
               borderRadius: Radius.full,
               // Sloe treatment system (§1): primary inline CTA = aubergine
               // OUTLINE (transparent fill, 1.5px primarySolid border + label).
@@ -776,7 +776,7 @@ export default function FastingScreen() {
                   {isExtended ? (
                     <View
                       style={{
-                        paddingHorizontal: 6,
+                        paddingHorizontal: Spacing.sm,
                         paddingVertical: 2,
                         borderRadius: 4,
                         backgroundColor: Accent.warning + "1F",

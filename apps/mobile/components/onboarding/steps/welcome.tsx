@@ -40,7 +40,7 @@ export function MobileWelcomeStep() {
           flex: 1,
           justifyContent: "flex-end",
           paddingHorizontal: 24,
-          paddingBottom: 28,
+          paddingBottom: Spacing.xxl,
           position: "relative",
           overflow: "hidden",
         }}
@@ -80,7 +80,7 @@ export function MobileWelcomeStep() {
             letterSpacing: -0.8,
             color: colors.navPrimary,
             marginTop: 24,
-            marginBottom: 12,
+            marginBottom: Spacing.dense,
             lineHeight: 42,
           }}
         >
@@ -104,7 +104,7 @@ export function MobileWelcomeStep() {
         style={{
           paddingHorizontal: 24,
           paddingBottom: 24,
-          paddingTop: 12,
+          paddingTop: Spacing.dense,
           backgroundColor: colors.background,
         }}
       >
@@ -152,7 +152,7 @@ export function MobileWelcomeStep() {
           accessibilityLabel="Sign in to existing account"
           hitSlop={12}
           style={({ pressed }) => ({
-            marginTop: 16,
+            marginTop: Spacing.md,
             alignSelf: "center",
             paddingVertical: 8,
             opacity: pressed ? 0.55 : 1,
@@ -204,8 +204,8 @@ function FloatingPreview() {
           borderColor: colors.border,
           borderWidth: 1,
           borderRadius: 14,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.dense,
           transform: [{ rotate: "-2.4deg" }],
           opacity: 0.85,
         }}
@@ -217,7 +217,7 @@ function FloatingPreview() {
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
-            marginBottom: 6,
+            marginBottom: Spacing.sm,
           }}
         >
           <Ionicons name="link-outline" size={12} color={accent.primaryLight} />
@@ -250,11 +250,11 @@ function FloatingPreview() {
           borderColor: Accent.success + "59",
           borderWidth: 1,
           borderRadius: 999,
-          paddingHorizontal: 11,
-          paddingVertical: 6,
+          paddingHorizontal: Spacing.dense,
+          paddingVertical: Spacing.sm,
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: Spacing.sm,
           transform: [{ rotate: "-1deg" }],
           opacity: 0.85,
         }}

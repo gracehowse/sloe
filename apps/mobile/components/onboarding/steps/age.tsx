@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAccent } from "@/context/theme";
@@ -52,7 +53,7 @@ export function MobileAgeStep() {
         accessibilityRole="button"
         accessibilityState={{ expanded: helpOpen }}
         style={{
-          marginTop: 18,
+          marginTop: Spacing.md,
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
@@ -77,8 +78,8 @@ export function MobileAgeStep() {
       {helpOpen ? (
         <View
           style={{
-            marginTop: 12,
-            padding: 14,
+            marginTop: Spacing.dense,
+            padding: Spacing.md,
             backgroundColor: accent.primary + "10",
             borderColor: accent.primary + "33",
             borderWidth: 1,
@@ -102,7 +103,7 @@ export function MobileAgeStep() {
               fontSize: 12,
               color: colors.text,
               lineHeight: 18,
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
             }}
           >
             The Mifflin-St Jeor equation subtracts about 5 kcal/year from
@@ -114,7 +115,7 @@ export function MobileAgeStep() {
               fontSize: 12,
               color: colors.text,
               lineHeight: 18,
-              marginBottom: 10,
+              marginBottom: Spacing.sm,
             }}
           >
             This is an estimate, not a verdict on your metabolism. Sloe

@@ -134,7 +134,7 @@ export function TodaySnapShortcut({
               a Pro gate — testers were tapping through expecting a
               prompt-on-tap rather than an upgrade gate. The chip
               makes the gate state unambiguous before the user taps. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
             <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
               Snap a meal
             </Text>
@@ -143,7 +143,7 @@ export function TodaySnapShortcut({
                 testID="today-snap-shortcut-pro-chip"
                 accessibilityLabel="Pro feature"
                 style={{
-                  paddingHorizontal: 6,
+                  paddingHorizontal: Spacing.sm,
                   paddingVertical: 1,
                   borderRadius: Radius.sm,
                   // Sloe treatment system (2026-06-08): Pro badge =

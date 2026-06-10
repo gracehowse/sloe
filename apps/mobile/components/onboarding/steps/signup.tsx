@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from "r
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -143,7 +143,7 @@ export function MobileSignupStep() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            gap: 10,
+            gap: Spacing.sm,
             marginBottom: 16,
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,
           })}
@@ -168,8 +168,8 @@ export function MobileSignupStep() {
             borderColor: Accent.destructive + "40",
             borderWidth: 1,
             borderRadius: Radius.md,
-            padding: 12,
-            marginBottom: 12,
+            padding: Spacing.dense,
+            marginBottom: Spacing.dense,
           }}
         >
           <Text style={{ fontSize: 12, color: Accent.destructive, lineHeight: 17 }}>
@@ -188,7 +188,7 @@ export function MobileSignupStep() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
+          gap: Spacing.sm,
           marginVertical: 16,
         }}
       >
@@ -250,8 +250,8 @@ function LabelledField({
         borderWidth: 1,
         borderColor: colors.border,
         borderRadius: Radius.md,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.dense,
       }}
     >
       <Text

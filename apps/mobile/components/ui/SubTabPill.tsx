@@ -77,7 +77,7 @@ export function SubTabPill<TId extends string>({
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
-              gap: 6,
+              gap: Spacing.sm,
               borderBottomWidth: 2,
               marginBottom: -1,
               borderBottomColor: active ? colors.text : "transparent",
@@ -98,7 +98,7 @@ export function SubTabPill<TId extends string>({
                 style={{
                   minWidth: 20,
                   height: 18,
-                  paddingHorizontal: 5,
+                  paddingHorizontal: Spacing.xs,
                   borderRadius: 9,
                   backgroundColor: active ? colors.text : colors.border,
                   alignItems: "center",

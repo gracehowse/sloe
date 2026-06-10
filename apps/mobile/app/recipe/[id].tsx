@@ -1317,7 +1317,7 @@ export default function RecipeDetailScreen() {
     container: { flex: 1, backgroundColor: colors.backgroundSecondary },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
     errorText: { color: colors.text, fontSize: 16 },
-    backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
+    backBtn: { paddingHorizontal: 20, paddingVertical: Spacing.dense, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
     backBtnText: { color: colors.text, fontWeight: "600" },
 
     // Page body — single-scroll editorial stack (Figma 332:2 §2–7).
@@ -1602,7 +1602,7 @@ export default function RecipeDetailScreen() {
             if (!gluten.variant) return null;
             return (
               <View style={{ gap: 4 }}>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
                   <TrustChip variant={gluten.variant} testID="recipe-detail-gluten-chip" />
                 </View>
                 <Text style={styles.glutenDisclaimer} testID="recipe-detail-gluten-disclaimer">
@@ -1671,9 +1671,9 @@ export default function RecipeDetailScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "baseline",
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
+                    gap: Spacing.xs,
+                    paddingHorizontal: Spacing.dense,
+                    paddingVertical: Spacing.xs,
                     borderRadius: Radius.full,
                     backgroundColor: colors.backgroundSecondary,
                     borderWidth: 1,
@@ -1880,7 +1880,7 @@ export default function RecipeDetailScreen() {
                           alignItems: "center",
                           gap: 4,
                           paddingHorizontal: Spacing.sm,
-                          paddingVertical: 6,
+                          paddingVertical: Spacing.xs,
                           borderRadius: 999,
                           borderWidth: 1,
                           borderColor: accent.primary,
@@ -1916,7 +1916,7 @@ export default function RecipeDetailScreen() {
                       borderWidth: 1,
                       borderColor: accent.primary + "30",
                       paddingVertical: 8,
-                      paddingHorizontal: 12,
+                      paddingHorizontal: Spacing.dense,
                       marginBottom: Spacing.md,
                     }}
                   >

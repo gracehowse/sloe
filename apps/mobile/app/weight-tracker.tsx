@@ -1016,8 +1016,8 @@ export default function ProgressScreen() {
                       <View
                         style={{
                           marginTop: 2,
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
+                          paddingHorizontal: Spacing.xs,
+                          paddingVertical: Spacing.xs,
                           borderRadius: 8,
                           backgroundColor: Accent.success + "22",
                         }}
@@ -1044,8 +1044,8 @@ export default function ProgressScreen() {
                       <View
                         style={{
                           marginTop: 2,
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
+                          paddingHorizontal: Spacing.xs,
+                          paddingVertical: Spacing.xs,
                           borderRadius: 8,
                           backgroundColor: colors.border,
                         }}

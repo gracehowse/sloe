@@ -1,5 +1,5 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, MacroColors } from "@/constants/theme";
+import { Accent, MacroColors, Spacing } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -59,7 +59,7 @@ export function ProgressEnergyTriad({
     fontSize: 18,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
-    marginTop: 6,
+    marginTop: Spacing.xs,
   };
 
   return (

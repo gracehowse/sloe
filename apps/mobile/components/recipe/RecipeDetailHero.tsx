@@ -13,7 +13,7 @@ import { Image, Pressable, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Bookmark, ChevronLeft, MoreHorizontal, Share2 } from "lucide-react-native";
 
-import { Accent } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 /** Fixed hero height — Figma `332:2` §1 (375px). */
@@ -135,7 +135,7 @@ export function RecipeDetailHero({
         <HeroCircleButton onPress={onBack} accessibilityLabel="Go back">
           <ChevronLeft size={24} color="#FFFFFF" />
         </HeroCircleButton>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           <HeroCircleButton
             onPress={onToggleSave}
             accessibilityLabel={saved ? "Remove from library" : "Save to library"}

@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
   eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 9,
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   heroRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 4 },
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   barTrack: {
     height: 6,
     borderRadius: 3,
-    marginTop: 12,
+    marginTop: Spacing.dense,
     overflow: "hidden",
   },
   barFill: { height: "100%", borderRadius: 3 },

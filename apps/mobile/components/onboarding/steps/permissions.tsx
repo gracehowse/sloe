@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors } from "@/constants/theme";
+import { Accent, MacroColors, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -176,13 +176,13 @@ function PermissionCard({
         backgroundColor: colors.card,
         borderRadius: 14,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: Spacing.dense,
         borderWidth: 1,
         borderColor: granted === true ? Accent.success + "66" : colors.border,
       }}
     >
       <View
-        style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 12 }}
+        style={{ flexDirection: "row", gap: Spacing.dense, alignItems: "flex-start", marginBottom: Spacing.dense }}
       >
         <View
           style={{
@@ -228,7 +228,7 @@ function PermissionCard({
         </View>
       ) : granted === false ? (
         <View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
             <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>
               {errorMessage ?? "Skipped — you can allow later"}
             </Text>
@@ -246,7 +246,7 @@ function PermissionCard({
           </View>
         </View>
       ) : (
-        <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flexDirection: "row", gap: Spacing.dense }}>
           <Pressable
             onPress={onAllow}
             disabled={busy}

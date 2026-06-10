@@ -82,7 +82,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
               <Ionicons name="chevron-forward" size={22} color={colors.text} />
             </Pressable>
           </View>
-          <View style={{ flexDirection: "row", marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", marginBottom: Spacing.sm }}>
             {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
               <Text key={`${d}-${i}`} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: "600", color: colors.textTertiary }}>
                 {d}
@@ -141,7 +141,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
           </View>
           <Pressable
             onPress={onClose}
-            style={{ marginTop: Spacing.md, paddingVertical: 12, alignItems: "center" }}
+            style={{ marginTop: Spacing.md, paddingVertical: Spacing.dense, alignItems: "center" }}
           >
             <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primarySolid }}>Cancel</Text>
           </Pressable>

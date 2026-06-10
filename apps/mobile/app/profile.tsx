@@ -280,7 +280,7 @@ export default function ProfileScreen() {
     // serif. `Type.heroValue` is the dedicated serif sibling of `Type.macroValue`
     // (same 20/24 box) so the swap is drop-in; the unit stays sans (separate node).
     targetTileValue: { ...Type.heroValue, fontVariant: ["tabular-nums"] },
-    targetTileUnit: { ...Type.caption, color: colors.textSecondary, marginLeft: 3 },
+    targetTileUnit: { ...Type.caption, color: colors.textSecondary, marginLeft: Spacing.xs },
     // Legacy aliases kept for any future callers — match Today tokens.
     targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
     targetLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
@@ -795,7 +795,7 @@ export default function ProfileScreen() {
               style={{
                 marginTop: Spacing.md,
                 paddingHorizontal: Spacing.md,
-                paddingVertical: 10,
+                paddingVertical: Spacing.dense,
                 borderRadius: Radius.md,
                 backgroundColor: Accent.warning + "14",
                 borderWidth: 1,

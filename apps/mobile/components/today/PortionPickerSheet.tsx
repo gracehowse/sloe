@@ -125,7 +125,7 @@ export function PortionPickerSheet({
                 accessibilityLabel={`${p.label} portion`}
                 style={{
                   minHeight: 44,
-                  paddingVertical: 12,
+                  paddingVertical: Spacing.dense,
                   paddingHorizontal: 4,
                   flexDirection: "row",
                   alignItems: "center",
@@ -153,7 +153,7 @@ export function PortionPickerSheet({
             accessibilityRole="button"
             accessibilityLabel="Cancel"
             style={{
-              paddingVertical: 12,
+              paddingVertical: Spacing.dense,
               alignItems: "center",
               borderWidth: 1,
               borderColor: colors.cardBorder,

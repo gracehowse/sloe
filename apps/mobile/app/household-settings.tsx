@@ -369,7 +369,7 @@ export default function HouseholdSettingsScreen() {
 
   if (!userId) {
     return (
-      <View style={{ flex: 1, paddingTop: insets.top + 20, paddingHorizontal: 20, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, paddingTop: insets.top + 20, paddingHorizontal: Spacing.lg, backgroundColor: colors.background }}>
         <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
           Sign in to manage your household.
         </Text>
@@ -387,8 +387,8 @@ export default function HouseholdSettingsScreen() {
         <View
           style={{
             paddingTop: insets.top + 8,
-            paddingHorizontal: 12,
-            paddingBottom: 8,
+            paddingHorizontal: Spacing.dense,
+            paddingBottom: Spacing.sm,
             flexDirection: "row",
             alignItems: "center",
           }}
@@ -402,7 +402,7 @@ export default function HouseholdSettingsScreen() {
             <ChevronLeft size={26} color={colors.text} strokeWidth={1.75} />
           </Pressable>
         </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.dense }}>
           <ActivityIndicator size="large" color={accent.primary} />
           <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Loading household…</Text>
         </View>
@@ -435,11 +435,11 @@ export default function HouseholdSettingsScreen() {
         contentContainerStyle={{
           paddingTop: insets.top + 12,
           paddingBottom: insets.bottom + 120,
-          paddingHorizontal: 20,
+          paddingHorizontal: Spacing.lg,
         }}
       >
         {/* Header with back chevron */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.md }}>
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
@@ -1079,7 +1079,7 @@ export default function HouseholdSettingsScreen() {
             </Text>
           </Pressable>
           {!household.isOwner ? (
-            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 6, textAlign: "center" }}>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm, textAlign: "center" }}>
               Only the household owner can change sharing.
             </Text>
           ) : null}

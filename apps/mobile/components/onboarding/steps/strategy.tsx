@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Spacing } from "@/constants/theme";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptionCard } from "@/components/OptionCard";
@@ -71,7 +72,7 @@ export function MobileStrategyStep() {
         title="Pick your macro style"
         subtitle="Pre-picked from your goal. Tap to override."
       />
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: Spacing.dense }}>
         {STRATEGIES.map((s) => {
           const isSelected = selected === s.id;
           const isRecommended = s.id === recommended;
@@ -92,7 +93,7 @@ export function MobileStrategyStep() {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 6,
+                    gap: Spacing.sm,
                   }}
                 >
                   <Text
@@ -108,7 +109,7 @@ export function MobileStrategyStep() {
                     <View
                       style={{
                         backgroundColor: `${accent.primaryLight}26`,
-                        paddingHorizontal: 6,
+                        paddingHorizontal: Spacing.sm,
                         paddingVertical: 2,
                         borderRadius: 4,
                       }}

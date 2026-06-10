@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     paddingHorizontal: Spacing.xl,
-    paddingVertical: 10,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
   },
   btnText: {

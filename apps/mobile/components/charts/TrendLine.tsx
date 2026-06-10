@@ -9,7 +9,7 @@ import {
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 
-import { Accent } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { computeWeightChartDomain } from "@/lib/weightProjection";
 
 type DataPoint = { label: string; value: number };
@@ -343,7 +343,7 @@ export default function TrendLine({
           fontSize: 13,
           fontWeight: "700",
           color,
-          marginTop: 6,
+          marginTop: Spacing.sm,
           height: 20,
           lineHeight: 20,
           fontVariant: ["tabular-nums"],

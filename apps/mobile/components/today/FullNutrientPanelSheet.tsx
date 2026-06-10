@@ -282,7 +282,7 @@ export function FullNutrientPanelSheet({
             backgroundColor: colors.background,
             borderTopLeftRadius: 18,
             borderTopRightRadius: 18,
-            paddingTop: 12,
+            paddingTop: Spacing.dense,
             paddingBottom: insets.bottom + 16,
             maxHeight: "88%",
           }}
@@ -322,7 +322,7 @@ export function FullNutrientPanelSheet({
           <ScrollView
             contentContainerStyle={{
               paddingHorizontal: 16,
-              paddingBottom: 12,
+              paddingBottom: Spacing.dense,
             }}
           >
             {sections.map(({ section, rows }) => (

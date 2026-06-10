@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, Text, View, ViewStyle, StyleProp } from "react-native";
-import { Radius } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -48,7 +48,7 @@ export function MobileSegmented<T extends string = string>({
           borderWidth: 1,
           borderColor: colors.border,
           borderRadius: Radius.md,
-          padding: 3,
+          padding: Spacing.xs,
           gap: 2,
         },
         style,
@@ -66,8 +66,8 @@ export function MobileSegmented<T extends string = string>({
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             style={{
-              paddingHorizontal: 14,
-              paddingVertical: 6,
+              paddingHorizontal: Spacing.dense,
+              paddingVertical: Spacing.sm,
               borderRadius: Radius.sm,
               // Canonical 2026-05-22: selected = soft fill + primary text,
               // NOT solid indigo. Solid reserved for primary action only.

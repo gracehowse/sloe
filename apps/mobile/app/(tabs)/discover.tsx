@@ -85,7 +85,7 @@ function IconBox({ color, size = 28, children }: { color: string; size?: number;
 function SourceBadge({ source }: { source?: string }) {
   if (!source) return null;
   return (
-    <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#00000066" }}>
+    <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: 4, backgroundColor: "#00000066" }}>
       <Text style={{ ...Type.caption, color: "#fff" }}>{source}</Text>
     </View>
   );
@@ -615,7 +615,7 @@ export default function DiscoverScreen() {
       <RecipesTabChrome />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: Spacing.md, paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: insets.bottom + 40 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
@@ -688,7 +688,7 @@ export default function DiscoverScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: Spacing.sm }}
-          contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
+          contentContainerStyle={{ gap: Spacing.sm, paddingRight: 32, alignItems: "center" }}
         >
           <Pressable
             key="following"
@@ -700,7 +700,7 @@ export default function DiscoverScreen() {
             accessibilityRole="button"
             accessibilityState={{ selected: following }}
             style={{
-              paddingHorizontal: 13,
+              paddingHorizontal: Spacing.dense,
               paddingVertical: 8,
               minHeight: 36,
               borderRadius: 20,
@@ -733,7 +733,7 @@ export default function DiscoverScreen() {
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`Category: ${f.label}`}
                 style={{
-                  paddingHorizontal: 13,
+                  paddingHorizontal: Spacing.dense,
                   paddingVertical: 8,
                   minHeight: 36,
                   borderRadius: 20,
@@ -921,7 +921,7 @@ export default function DiscoverScreen() {
                   onPress={() => void refresh()}
                   style={({ pressed }) => ({
                     marginTop: Spacing.sm,
-                    paddingHorizontal: 14,
+                    paddingHorizontal: Spacing.md,
                     paddingVertical: 8,
                     borderRadius: 8,
                     borderWidth: 1,

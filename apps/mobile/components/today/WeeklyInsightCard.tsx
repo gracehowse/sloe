@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingHorizontal: Spacing.xs,
-    gap: 2,
+    gap: Spacing.xs,
   },
   statValue: {
     ...Type.headline,
@@ -376,13 +376,13 @@ const styles = StyleSheet.create({
   },
   weekBar: {
     flexDirection: "row",
-    gap: 6,
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
   coachRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: Spacing.sm,
   },
   coachLine: {
     ...Type.caption,

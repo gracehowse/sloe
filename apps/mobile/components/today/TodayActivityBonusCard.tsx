@@ -302,8 +302,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               accessibilityRole="button"
               onPress={onEnableActivityBudget}
               style={({ pressed }) => ({
-                paddingHorizontal: 10,
-                paddingVertical: 6,
+                paddingHorizontal: Spacing.dense,
+                paddingVertical: Spacing.sm,
                 borderRadius: Radius.sm,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
@@ -343,7 +343,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           <View
             testID="today-activity-bonus-net-chip"
             style={{
-              paddingHorizontal: 10,
+              paddingHorizontal: Spacing.sm,
               paddingVertical: 4,
               borderRadius: Radius.full,
               backgroundColor: chipBg,
@@ -474,7 +474,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             text-[15px]). Burned takes the honey activity hue (it's the burn
             number); Eaten + Maintenance take muted ink so they don't compete. */}
         <View style={{ alignItems: "center", flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
             <Flame size={IconSize.sm} color={Accent.activity} strokeWidth={2} />
             <Text style={{ ...Type.label, color: textTertiaryColor }}>
               Burned
@@ -487,7 +487,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         {/* Sloe: hairline `divide-x divide-line` between stat tiles. */}
         <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
         <View style={{ alignItems: "center", flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
             <Utensils size={IconSize.sm} color={textSecondaryColor} strokeWidth={2} />
             <Text style={{ ...Type.label, color: textTertiaryColor }}>
               Eaten
@@ -505,7 +505,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               testID="today-activity-bonus-maintenance-tile"
               style={{ alignItems: "center", flex: 1 }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
                 <Target size={IconSize.sm} color={MacroColors.calories} strokeWidth={2} />
                 <Text style={{ ...Type.label, color: textTertiaryColor }}>
                   Maintenance
@@ -527,8 +527,10 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       )}
 
       {dayWorkouts.length > 0 && (
-        <View style={{ gap: 6 }}>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 2 }}>Workouts</Text>
+        <View style={{ gap: Spacing.sm }}>
+          {/* marginBottom dropped (was 2) — the parent's gap: Spacing.sm
+              owns the rhythm here (ENG-1012 migration). */}
+          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor }}>Workouts</Text>
           {dayWorkouts.map((w, i) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
               {/* Workout-row glyph stays warm (activity context, not a CTA) —
@@ -564,7 +566,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               gap: Spacing.sm,
             }}
           >
-            <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flex: 1, gap: Spacing.sm }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
                 <Text
@@ -628,7 +630,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       {showWeekly ? (
         // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
         <SupprCard lift="soft" padding="lg" testID="today-weekly-rolling-card">
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.sm }}>
             <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
             <Text style={{ ...Type.label, color: textTertiaryColor }}>
               {weekSummaryHeading(weekSummaryMode)}

@@ -76,7 +76,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
             onPress={() => onActiveMealSlotChange(s)}
             style={{
               flex: 1,
-              paddingVertical: 6,
+              paddingVertical: Spacing.sm,
               borderRadius: Radius.sm,
               alignItems: "center",
               // Sloe treatment system (2026-06-08): filter pill selected =

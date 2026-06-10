@@ -95,7 +95,7 @@ export default function MacroDetailScreen() {
         caption={formatDateLabel(dateKey)}
         onBack={() => router.back()}
         rightSlot={
-          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm }}>
+          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
               {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
             </Text>
@@ -115,7 +115,7 @@ export default function MacroDetailScreen() {
             accessibilityLabel="Breakdown mode"
             style={{
               flexDirection: "row",
-              padding: 3,
+              padding: Spacing.xs,
               backgroundColor: colors.inputBg,
               borderRadius: Radius.full,
               marginBottom: Spacing.md,
@@ -212,10 +212,10 @@ export default function MacroDetailScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      paddingVertical: 12,
+                      paddingVertical: Spacing.dense,
                       borderBottomWidth: 1,
                       borderBottomColor: colors.border,
-                      gap: 12,
+                      gap: Spacing.dense,
                     }}
                   >
                     <View
@@ -264,11 +264,11 @@ export default function MacroDetailScreen() {
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            paddingVertical: 10,
+                            paddingVertical: Spacing.sm,
                             paddingLeft: 22,
                             borderBottomWidth: i < slotMeals.length - 1 ? 1 : 0,
                             borderBottomColor: colors.border,
-                            gap: 12,
+                            gap: Spacing.dense,
                           }}
                         >
                           <View style={{ flex: 1 }}>

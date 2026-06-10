@@ -34,7 +34,7 @@ export function MobileStepHeader({
 }: MobileStepHeaderProps) {
   const colors = useThemeColors();
   return (
-    <View style={{ marginBottom: compact ? Spacing.xl : Spacing.xxl + 4 }}>
+    <View style={{ marginBottom: compact ? Spacing.xl : Spacing.xxxl }}>
       {overline ? (
         // Sloe reskin (Figma onboarding parity 2026-06-07): calm
         // muted-ink overline. Clay is reserved for the footer CTA +
@@ -47,7 +47,7 @@ export function MobileStepHeader({
             textTransform: "uppercase",
             letterSpacing: 1.3,
             color: colors.textTertiary,
-            marginBottom: 10,
+            marginBottom: Spacing.sm,
           }}
         >
           {overline}
@@ -79,7 +79,7 @@ export function MobileStepHeader({
           style={{
             fontSize: 14,
             color: colors.textSecondary,
-            marginTop: 8,
+            marginTop: Spacing.sm,
             lineHeight: 22,
           }}
         >
@@ -141,7 +141,7 @@ export function MobileMethodologyNote({
         borderColor: accent.primary + "26",
         borderRadius: Radius.md,
         flexDirection: "row",
-        gap: 10,
+        gap: Spacing.sm,
         alignItems: "flex-start",
       }}
     >

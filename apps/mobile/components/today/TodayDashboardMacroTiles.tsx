@@ -171,7 +171,7 @@ export function TodayDashboardMacroTiles({
             accessibilityRole="button"
             accessibilityLabel="View all nutrients for today"
             hitSlop={8}
-            style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
           >
             <Text
               style={{

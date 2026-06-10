@@ -155,7 +155,7 @@ export default function DayStrip({
               style={{
                 flex: 1,
                 alignItems: "center",
-                gap: 5,
+                gap: Spacing.xs,
                 paddingVertical: 8,
                 marginHorizontal: 1,
                 opacity: outOfRange ? 0.35 : 1,

@@ -171,7 +171,7 @@ export function ProgressHeroMetric({
           <View
             testID="progress-hero-ontarget-dots"
             accessibilityLabel={`${onTargetDays.filter(Boolean).length} of ${onTargetDays.length} days on target`}
-            style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+            style={{ flexDirection: "row", gap: Spacing.sm, marginTop: 4 }}
           >
             {onTargetDays.map((on, i) => (
               <View

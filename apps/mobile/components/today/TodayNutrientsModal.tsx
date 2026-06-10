@@ -1,4 +1,5 @@
 import React from "react";
+import { Spacing } from "@/constants/theme";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
@@ -42,7 +43,7 @@ export function TodayNutrientsModal({
             backgroundColor,
             borderTopLeftRadius: 18,
             borderTopRightRadius: 18,
-            paddingTop: 12,
+            paddingTop: Spacing.dense,
             paddingBottom: insets.bottom + 20,
             maxHeight: "82%",
           }}
@@ -70,8 +71,8 @@ export function TodayNutrientsModal({
                     width: "48%",
                     flexGrow: 1,
                     minWidth: 140,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingVertical: Spacing.dense,
+                    paddingHorizontal: Spacing.dense,
                     borderRadius: 10,
                     backgroundColor: cardColor,
                     borderWidth: 1,

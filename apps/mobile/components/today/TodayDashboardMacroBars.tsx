@@ -177,7 +177,7 @@ export function TodayDashboardMacroBars({
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "baseline",
-                marginBottom: 6,
+                marginBottom: Spacing.xs,
                 gap: Spacing.sm,
               }}
             >

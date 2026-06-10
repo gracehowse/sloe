@@ -93,7 +93,7 @@ export function TodayMealsFigmaLayout({
         ) : null}
       </View>
 
-      <View style={{ gap: 12 }} testID="today-meals-figma-list">
+      <View style={{ gap: Spacing.dense }} testID="today-meals-figma-list">
         {TODAY_MEAL_SLOT_ORDER.map((slot) => {
           const meals = mealGroups[slot] ?? [];
           if (meals.length === 0) return null;
@@ -124,7 +124,7 @@ export function TodayMealsFigmaLayout({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 16,
-                  padding: 12,
+                  padding: Spacing.dense,
                 }}
               >
                 {thumbUrl ? (

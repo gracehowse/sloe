@@ -1643,7 +1643,7 @@ function MacroOverrideRow({
         helperText ? { borderBottomWidth: 0, paddingBottom: 0 } : null,
       ]}
     >
-      <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
         <Text style={[styles.macroFieldLabel, { color, flex: 0 }]}>{label}</Text>
         {readOnly ? (
           <Calculator

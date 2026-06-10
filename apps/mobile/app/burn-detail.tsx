@@ -255,7 +255,7 @@ export default function BurnDetailScreen() {
           <>
             {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
             <SupprCard lift="soft" padding="none" testID="burn-detail-hero">
-              <View style={{ alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: 28, paddingBottom: 24 }}>
+              <View style={{ alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xl }}>
                 <View
                   style={{
                     width: 44,
@@ -264,7 +264,7 @@ export default function BurnDetailScreen() {
                     backgroundColor: "rgba(214,162,74,0.15)",
                     alignItems: "center",
                     justifyContent: "center",
-                    marginBottom: 12,
+                    marginBottom: Spacing.dense,
                   }}
                 >
                   <Flame size={22} color={Accent.activity} strokeWidth={2} />
@@ -281,7 +281,7 @@ export default function BurnDetailScreen() {
                 >
                   {(totals?.total ?? data.restingBurn + data.activeBurn).toLocaleString()}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 10 }}>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: Spacing.sm }}>
                   kcal burned · {dateCaption}
                 </Text>
               </View>
@@ -344,9 +344,9 @@ export default function BurnDetailScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 8,
+                      gap: Spacing.sm,
                       paddingHorizontal: Spacing.md,
-                      paddingVertical: 10,
+                      paddingVertical: Spacing.sm,
                       borderTopWidth: StyleSheet.hairlineWidth,
                       borderTopColor: colors.border,
                     }}
@@ -373,7 +373,7 @@ export default function BurnDetailScreen() {
                 </Text>
                 {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
                 <SupprCard lift="soft" padding="lg" testID="burn-detail-bonus-card" innerStyle={{ gap: 0 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: Spacing.sm }}>
                     <Text style={{ fontSize: 14, color: colors.textSecondary }}>
                       {isPast ? "Final burn" : "Projected burn"}
                     </Text>
@@ -382,7 +382,7 @@ export default function BurnDetailScreen() {
                     </Text>
                   </View>
                   {data.maintenanceKcal > 0 ? (
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: Spacing.sm }}>
                       <Text style={{ fontSize: 14, color: colors.textSecondary }}>Maintenance estimate</Text>
                       <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 18, color: colors.text, fontVariant: ["tabular-nums"] }}>
                         − {data.maintenanceKcal.toLocaleString()}
@@ -395,8 +395,8 @@ export default function BurnDetailScreen() {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginTop: 10,
-                        paddingTop: 14,
+                        marginTop: Spacing.sm,
+                        paddingTop: Spacing.md,
                         borderTopWidth: StyleSheet.hairlineWidth,
                         borderTopColor: colors.border,
                       }}
@@ -419,7 +419,7 @@ export default function BurnDetailScreen() {
                     </View>
                   ) : null}
                 </SupprCard>
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 12, lineHeight: 18, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: Spacing.dense, lineHeight: 18, paddingHorizontal: 4 }}>
                   Burn above your maintenance estimate adds to your daily food budget.
                 </Text>
               </View>
@@ -430,7 +430,7 @@ export default function BurnDetailScreen() {
                 // Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09).
                 lift="soft"
                 padding="md"
-                innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+                innerStyle={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -502,7 +502,7 @@ function BurnStatRow({
         borderBottomColor: borderColor,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
         <View
           style={{
             width: 40,
@@ -527,7 +527,7 @@ function BurnStatRow({
         </Text>
       </View>
       {stepsBar ? (
-        <View style={{ marginTop: 12, marginLeft: 52, height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
+        <View style={{ marginTop: Spacing.dense, marginLeft: 52, height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
           <View style={{ height: "100%", width: `${stepsBar.pct}%`, borderRadius: 3, backgroundColor: stepsBar.color }} />
         </View>
       ) : null}

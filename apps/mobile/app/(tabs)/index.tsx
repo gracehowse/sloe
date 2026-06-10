@@ -3700,7 +3700,7 @@ export default function TrackerScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           borderRadius: Radius.md,
-          paddingVertical: 12,
+          paddingVertical: Spacing.dense,
           alignItems: "center",
           backgroundColor: colors.backgroundSecondary,
         },

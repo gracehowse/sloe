@@ -562,7 +562,7 @@ function LoggedConfirmation({
                 Type.caption,
                 {
                   color: colors.textSecondary,
-                  marginLeft: source ? 6 : 0,
+                  marginLeft: source ? Spacing.xs : 0,
                   fontVariant: ["tabular-nums"],
                 },
               ]}
@@ -917,7 +917,7 @@ function BrowseAndFooter({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 6,
+                    gap: Spacing.sm,
                   }}
                 >
                   <Text
@@ -1103,7 +1103,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
     <ScrollView contentContainerStyle={{ padding: Spacing.md, paddingBottom: Spacing.xxl }}>
       {today.length > 0 ? (
         <View>
-          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
+          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>
             {"Today's recents"}
           </Text>
           {today.map((e) => (
@@ -1113,7 +1113,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
       ) : null}
       {week.length > 0 ? (
         <View style={{ marginTop: Spacing.lg }}>
-          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
+          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>
             Earlier this week
           </Text>
           {week.map((e) => (
@@ -1338,7 +1338,7 @@ function BrowseRow({
           <Text
             style={[
               Type.caption,
-              { color: colors.textSecondary, marginLeft: 6, fontVariant: ["tabular-nums"] },
+              { color: colors.textSecondary, marginLeft: Spacing.sm, fontVariant: ["tabular-nums"] },
             ]}
           >
             {kcal} kcal
@@ -1362,7 +1362,7 @@ function SkeletonList({ colors }: { colors: ReturnType<typeof useThemeColors> })
             <View
               style={[
                 styles.skeletonLine,
-                { backgroundColor: colors.inputBg, width: "30%", marginTop: 6, height: 8 },
+                { backgroundColor: colors.inputBg, width: "30%", marginTop: Spacing.xs, height: 8 },
               ]}
             />
           </View>
@@ -1565,7 +1565,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 8,
-    marginBottom: 6,
+    marginBottom: Spacing.sm,
   },
   header: {
     flexDirection: "row",
@@ -1591,7 +1591,7 @@ const styles = StyleSheet.create({
   },
   slotPill: {
     flex: 1,
-    paddingVertical: 7,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.sm,
     borderWidth: 1,
     alignItems: "center",
@@ -1610,7 +1610,7 @@ const styles = StyleSheet.create({
   rightEdgeIcons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    gap: Spacing.xs,
   },
   rightEdgeIcon: {
     width: 36,
@@ -1638,7 +1638,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginHorizontal: Spacing.md,
     marginTop: Spacing.md,
-    padding: 3,
+    padding: Spacing.xs,
     // Sloe DS — pill-soft browse toggle (mirrors web `rounded-xl`).
     borderRadius: Radius.xl,
   },
@@ -1695,7 +1695,7 @@ const styles = StyleSheet.create({
   libraryEmptyCta: {
     marginTop: Spacing.md,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 10,
+    paddingVertical: Spacing.dense,
     borderRadius: Radius.md,
   },
   libraryEmptyCtaText: {
@@ -1706,8 +1706,8 @@ const styles = StyleSheet.create({
   },
   libraryMealTag: {
     marginLeft: Spacing.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
     borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
   },

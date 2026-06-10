@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    gap: 6,
+    gap: Spacing.sm,
   },
   card: {
     borderRadius: Radius.lg,

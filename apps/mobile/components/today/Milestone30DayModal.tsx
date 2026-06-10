@@ -115,7 +115,7 @@ export function Milestone30DayModal({
                 backgroundColor: Accent.winSoft,
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 14,
+                marginBottom: Spacing.dense,
               }}
             >
               <Sparkles size={30} color={Accent.win} strokeWidth={2.25} />
@@ -211,7 +211,7 @@ export function Milestone30DayModal({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    marginBottom: 10,
+                    marginBottom: Spacing.sm,
                   }}
                 >
                   <Utensils size={16} color={accent.primary} strokeWidth={2.25} />
@@ -220,7 +220,7 @@ export function Milestone30DayModal({
                       fontSize: 12,
                       fontWeight: "700",
                       color: textSecondaryColor,
-                      marginLeft: 6,
+                      marginLeft: Spacing.sm,
                       textTransform: "uppercase",
                       letterSpacing: 0.5,
                     }}
@@ -363,14 +363,14 @@ function StatTile({
         paddingHorizontal: Spacing.md,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
         {icon}
         <Text
           style={{
             fontSize: 11,
             fontWeight: "700",
             color: textSecondaryColor,
-            marginLeft: 6,
+            marginLeft: Spacing.sm,
             textTransform: "uppercase",
             letterSpacing: 0.5,
           }}

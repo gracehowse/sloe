@@ -156,15 +156,15 @@ export default function SettingsScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 14,
-            paddingVertical: 12,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.dense,
             backgroundColor: colors.card,
             // Sloe reskin: pill search field (was Radius.md 6px) so it
             // reads as a soft Sloe input, not a boxy form field.
             borderRadius: 16,
             borderWidth: 1,
             borderColor: colors.border,
-            gap: 8,
+            gap: Spacing.sm,
           }}
         >
           {/* P0-3 (2026-05-01) — lucide Search. Replaces the emoji
@@ -224,9 +224,9 @@ export default function SettingsScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                paddingVertical: 16,
-                paddingHorizontal: 16,
-                marginTop: 22,
+                paddingVertical: Spacing.md,
+                paddingHorizontal: Spacing.md,
+                marginTop: Spacing.xl,
                 // Sloe warm-slab corner (was 14) — matches the section
                 // cards so the lone Sign Out row reads as one of them.
                 borderRadius: 24,
@@ -279,8 +279,8 @@ export default function SettingsScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
+                  paddingVertical: Spacing.dense,
+                  paddingHorizontal: Spacing.md,
                   borderTopWidth: idx === 0 ? 0 : 1,
                   borderTopColor: colors.border,
                 }}

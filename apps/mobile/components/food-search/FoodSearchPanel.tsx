@@ -1125,7 +1125,7 @@ export default function FoodSearchPanel({
           }
         >
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
               {isCustom && <Badge variant="custom">Custom</Badge>}
               {item.verified && !isCustom && (
                 <CheckCircle2 size={14} color={Accent.success} />
@@ -1314,15 +1314,15 @@ export default function FoodSearchPanel({
             flexDirection: "row",
             alignItems: "center",
             gap: Spacing.md,
-            paddingHorizontal: 15,
-            paddingVertical: 14,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.md,
             borderTopWidth: isFirst ? 0 : StyleSheet.hairlineWidth,
             borderTopColor: colors.cardBorder,
             backgroundColor: pressed ? colors.background : "transparent",
           })}
         >
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
               {isCustom && <Badge variant="custom">Custom</Badge>}
               {renderConfidenceChip(item.confidenceTier)}
               <Text style={styles.resultName} numberOfLines={2}>
@@ -1501,7 +1501,7 @@ export default function FoodSearchPanel({
                       });
                     }}
                     style={{
-                      paddingHorizontal: 14, paddingVertical: 8,
+                      paddingHorizontal: Spacing.dense, paddingVertical: 8,
                       borderRadius: Radius.md, borderWidth: 1,
                       borderColor: isActive ? Accent.success : colors.border,
                       backgroundColor: isActive ? Accent.success + "15" : "transparent",
@@ -1634,7 +1634,7 @@ export default function FoodSearchPanel({
               <Text style={{ fontSize: 10, fontWeight: "700", letterSpacing: 0.8, color: colors.textTertiary, marginBottom: 4, textTransform: "uppercase" }}>
                 If you log this
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12, rowGap: 4 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: Spacing.dense, rowGap: 4 }}>
                 {[
                   { label: "kcal", value: fitHint.calories, delta: fitHint.deltas.calories, over: fitHint.overCalories, unit: "" as string },
                   { label: "P", value: fitHint.protein, delta: fitHint.deltas.protein, over: fitHint.overProtein, unit: "g" },
@@ -1665,14 +1665,14 @@ export default function FoodSearchPanel({
 
           <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
             <Pressable
-              style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+              style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
               onPress={onConfirmPreview}
             >
               <Check size={18} color="#fff" />
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Use this</Text>
             </Pressable>
             <Pressable
-              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
+              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
               onPress={() => setPreview(null)}
             >
               <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
@@ -1823,8 +1823,8 @@ export default function FoodSearchPanel({
             onPress={onScanBarcodePressed}
             style={{
               marginTop: Spacing.sm,
-              paddingVertical: 12,
-              paddingHorizontal: 12,
+              paddingVertical: Spacing.dense,
+              paddingHorizontal: Spacing.dense,
               borderWidth: 1,
               borderColor: colors.border,
               borderRadius: Radius.md,
@@ -1964,8 +1964,8 @@ export default function FoodSearchPanel({
               testID={`food-search-category-${cat}`}
               hitSlop={6}
               style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
+                paddingHorizontal: Spacing.dense,
+                paddingVertical: Spacing.sm,
                 borderRadius: 999,
                 borderWidth: 1,
                 borderColor: isActive ? accent.primary : colors.border,
@@ -1997,7 +1997,7 @@ export default function FoodSearchPanel({
             flexWrap: "wrap",
             paddingHorizontal: Spacing.md,
             paddingTop: Spacing.sm,
-            gap: 6,
+            gap: Spacing.sm,
           }}
         >
           {autocomplete.suggestions.map((s) => (
@@ -2010,7 +2010,7 @@ export default function FoodSearchPanel({
                 backgroundColor: colors.cardBorder,
                 borderRadius: 999,
                 paddingVertical: 4,
-                paddingHorizontal: 10,
+                paddingHorizontal: Spacing.dense,
               }}
             >
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s}</Text>
@@ -2078,7 +2078,7 @@ export default function FoodSearchPanel({
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
-                paddingVertical: 12,
+                paddingVertical: Spacing.dense,
                 borderBottomWidth: i < Math.min(4, recentFoods.length - 1) ? StyleSheet.hairlineWidth : 0,
                 borderBottomColor: colors.border,
                 opacity: pressed ? 0.6 : 1,

@@ -61,7 +61,7 @@ export function TodayActivityCard({
     <SupprCard lift="soft" padding="lg" testID="today-activity-card" innerStyle={{ gap: Spacing.md }}>
       {/* Sloe TD1 header — Newsreader title + right-aligned day label. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           <Text style={{ ...Type.headline, color: colors.navPrimary }}>Steps & activity</Text>
           {onShowProvenance ? (
             <Pressable
@@ -81,7 +81,7 @@ export function TodayActivityCard({
       <View style={{ gap: Spacing.md }}>
         <View>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
               <Footprints size={18} color={textSecondaryColor} strokeWidth={2} />
               <Text style={{ fontSize: 15, color: textColor }}>Steps</Text>
             </View>
@@ -112,7 +112,7 @@ export function TodayActivityCard({
         <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
             <Flame size={18} color={Accent.activity} strokeWidth={2} />
             <Text style={{ fontSize: 15, color: textColor }}>Active energy</Text>
           </View>

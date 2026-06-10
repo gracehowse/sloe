@@ -89,7 +89,7 @@ export function TodayEatAgainBanner({
           borderColor: cardBorder,
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.md,
-          paddingVertical: 10,
+          paddingVertical: Spacing.dense,
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
@@ -117,8 +117,8 @@ export function TodayEatAgainBanner({
         accessibilityLabel={`Log ${suggestion.recipeTitle} to ${slot}`}
         onPress={onLog}
         style={{
-          paddingHorizontal: 12,
-          paddingVertical: 6,
+          paddingHorizontal: Spacing.dense,
+          paddingVertical: Spacing.sm,
           borderRadius: Radius.sm,
           // Sloe treatment system (2026-06-08): primary inline CTA →
           // aubergine outline (transparent fill + 1.5px primarySolid
