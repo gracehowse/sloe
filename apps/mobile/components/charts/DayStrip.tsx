@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import { Calendar, Snowflake } from "lucide-react-native";
 
-import { Accent, IconSize, Spacing, Type } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   addDaysLocal,
@@ -143,9 +143,9 @@ export default function DayStrip({
           // logged days, NO filled background, clay precedence on the both-
           // case) lives in the pure `dayStripIndicator` helper so the
           // component and its unit test share one source of truth.
-          const { dotKind, dotColor, numberColor, isActive } = dayStripIndicatorStyle(
+          const { dotKind, dotColor, numberColor, isActive, pillColor, showsPill } = dayStripIndicatorStyle(
             { isSelected, isToday, hasLogs },
-            { clay: accent.primary, sage: Accent.success, text: textColor },
+            { clay: accent.primary, sage: Accent.success, text: textColor, soft: accent.primarySoft },
           );
           return (
             <Pressable
@@ -172,7 +172,19 @@ export default function DayStrip({
               >
                 {label}
               </Text>
-              <View style={{ position: "relative" }}>
+              <View
+                style={{
+                  position: "relative",
+                  // §7 (2026-06-10): soft-tint pill carries selection — see
+                  // dayStripIndicator.ts for the treatment history.
+                  backgroundColor: showsPill ? pillColor : "transparent",
+                  borderRadius: Radius.full,
+                  minWidth: 28,
+                  height: 28,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Text
                   style={{
                     ...Type.headline,
