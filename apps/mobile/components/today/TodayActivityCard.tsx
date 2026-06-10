@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
-import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { todayHealthConnectActiveCaloriesHint } from "@suppr/shared/copy/today";
 
@@ -52,6 +53,8 @@ export function TodayActivityCard({
   borderColor,
 }: TodayActivityCardProps) {
   const accent = useAccent();
+  // ENG-1010: scheme-resolved plum (static plum is near-invisible on dark).
+  const colors = useThemeColors();
   void styles;
   return (
     // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
@@ -59,7 +62,7 @@ export function TodayActivityCard({
       {/* Sloe TD1 header — Newsreader title + right-aligned day label. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text style={{ ...Type.headline, color: MacroColors.calories }}>Steps & activity</Text>
+          <Text style={{ ...Type.headline, color: colors.navPrimary }}>Steps & activity</Text>
           {onShowProvenance ? (
             <Pressable
               onPress={onShowProvenance}

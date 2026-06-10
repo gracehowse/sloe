@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -154,6 +155,9 @@ export function WeeklyInsightCard({
   // on-target week-bar pills. Read before the early return so the hook is
   // always called. Sage check + plum headline keep their own tokens.
   const accent = useAccent();
+  // ENG-1010 (2026-06-10): scheme-resolved plum — static `MacroColors.calories`
+  // measured 1.16–1.37:1 (near-invisible) on dark cards.
+  const colors = useThemeColors();
 
   const figmaLayout = isFeatureEnabled("today_meals_figma_654");
   if (!isFeatureEnabled("today-weekly-insight-mobile") && !figmaLayout) return null;
@@ -203,10 +207,10 @@ export function WeeklyInsightCard({
             { borderColor: _borderColor, backgroundColor: _cardBackgroundColor },
           ]}
         >
-          <TrendingUp size={18} color={MacroColors.calories} strokeWidth={2} />
+          <TrendingUp size={18} color={colors.navPrimary} strokeWidth={2} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.figmaInsightTitle, { color: MacroColors.calories }]}>
+          <Text style={[styles.figmaInsightTitle, { color: colors.navPrimary }]}>
             Weekly Insight
           </Text>
           <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
@@ -239,7 +243,7 @@ export function WeeklyInsightCard({
       </View>
 
       {/* Newsreader headline — honest, derived from the real on-target ratio. */}
-      <Text style={[styles.headline, { color: MacroColors.calories }]}>{headline}</Text>
+      <Text style={[styles.headline, { color: colors.navPrimary }]}>{headline}</Text>
 
       {householdSize > 0 ? (
         <Text style={[styles.planningLine, { color: textSecondaryColor }]}>

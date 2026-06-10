@@ -21,6 +21,7 @@ import {
 } from "@suppr/shared/preferences/premiumMotion";
 
 import { Accent, Colors, MacroColors, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
 
@@ -269,7 +270,7 @@ export default function CalorieRing({
    *  `_gen.mjs multiRing`): the calorie ring is ALWAYS plum — under-budget
    *  AND over-budget. Dark mode lifts plum to #815E91 per the Sloe dark
    *  token row. */
-  const calorieRingColor = isDark ? "#815E91" : MacroColors.calories;
+  const calorieRingColor = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const ringStateColor = calorieRingColor;
   /** Over-budget treatment — Apple-Watch wrap (2026-06-04, Grace decision +
    *  Mobbin field scan: Lifesum / Any Distance / MacroFactor / Bevel all KEEP
