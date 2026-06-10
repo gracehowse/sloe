@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MacroColors, Spacing, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   dateKeyFromDate,
   normalizeJournalSlotName,
@@ -61,7 +62,7 @@ export function TodayDeficitInsight({
   // Dark: the lifted plum (#815E91) so the line stays legible on #19181C —
   // the same split StatusChip uses. Hardcoding the light-only plum would make
   // this line near-invisible in dark mode.
-  const plum = isDark ? "#815E91" : MacroColors.calories;
+  const plum = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   // Use the local-time day key (matches `dateKeyFromDate` used across the
   // host) — `toISOString().slice(0,10)` returns the UTC day, which
   // diverges from the keys used by `byDay` for any user not on UTC.

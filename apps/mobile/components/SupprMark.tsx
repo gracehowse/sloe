@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Text, View, ViewStyle, StyleProp } from "react-native";
-import { FontFamily, MacroColors } from "@/constants/theme";
+import { FontFamily } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * Sloe brand mark — wordmark only.
@@ -27,6 +28,8 @@ function sloeFontSize(size: number) {
 }
 
 function SloeWordmarkText({ size = 28 }: { size?: number }) {
+  // ENG-1010: scheme-resolved plum (static plum near-vanishes on dark).
+  const colors = useThemeColors();
   return (
     <Text
       accessibilityRole="image"
@@ -34,7 +37,7 @@ function SloeWordmarkText({ size = 28 }: { size?: number }) {
       style={{
         fontFamily: FontFamily.serifSemibold,
         fontSize: sloeFontSize(size),
-        color: MacroColors.calories,
+        color: colors.navPrimary,
         fontWeight: "600",
         letterSpacing: -0.4,
         includeFontPadding: false,

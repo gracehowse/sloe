@@ -850,23 +850,28 @@ export default function TrackerScreen() {
   }, [params.date, params._t]);
 
   // 2026-04-30 — `?openLog=1` deep-link from the centered raised Log
-  // button in `<SupprTabBar>`. The button lives in the global tab bar
-  // so the user can tap it from any tab; it routes to Today and we
-  // consume the param here to open the canonical LogSheet (which owns
-  // the journal write-path). Clear the param afterwards so a back-nav
-  // doesn't re-open the sheet on the next focus.
-  useEffect(() => {
-    if (params.openLog === "1") {
-      // 2026-05-08 build-47 follow-up — global tab-bar `+` is generic
-      // (not slot-specific). Reset activeMealSlot to time-of-day so the
-      // LogSheet header + the pick-handlers default to the right slot.
-      // The slot-specific `+ Breakfast` path overrides this immediately
-      // via its own setActiveMealSlot in onOpenFabForSlot.
-      setActiveMealSlot(slotForHour(new Date().getHours()));
-      setFabSheetOpen(true);
-      router.setParams({ openLog: undefined } as Record<string, undefined>);
-    }
-  }, [params.openLog, router]);
+  // button in `<SupprTabBar>` (and external entry: push / Siri / widget
+  // URLs). ENG-1009 (2026-06-10): consumed via `useFocusEffect` keyed on
+  // the `_t` cache-buster — the same contract as the `date` param above —
+  // so re-navigating with openLog from any tab re-fires on focus even
+  // when the param value is unchanged. The previous plain `useEffect`
+  // without `_t` silently dropped repeat/warm deliveries. Params are
+  // cleared after the open state commits so a back-nav doesn't re-open
+  // the sheet.
+  useFocusEffect(
+    useCallback(() => {
+      if (params.openLog === "1") {
+        // 2026-05-08 build-47 follow-up — global tab-bar `+` is generic
+        // (not slot-specific). Reset activeMealSlot to time-of-day so the
+        // LogSheet header + the pick-handlers default to the right slot.
+        // The slot-specific `+ Breakfast` path overrides this immediately
+        // via its own setActiveMealSlot in onOpenFabForSlot.
+        setActiveMealSlot(slotForHour(new Date().getHours()));
+        setFabSheetOpen(true);
+        router.setParams({ openLog: undefined, _t: undefined } as Record<string, undefined>);
+      }
+    }, [params.openLog, params._t, router]),
+  );
 
   // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
   // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
@@ -4749,7 +4754,7 @@ export default function TrackerScreen() {
           <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.lg }}>
             <Text
               testID="today-hero-greeting"
-              style={{ ...Type.title, fontWeight: "500", color: MacroColors.calories, textAlign: "center" }}
+              style={{ ...Type.title, fontWeight: "500", color: colors.navPrimary, textAlign: "center" }}
               numberOfLines={2}
             >
               {headline}

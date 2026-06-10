@@ -130,7 +130,7 @@ function SloeCard({
           paddingBottom: Spacing.sm,
         }}
       >
-        <Text style={{ ...Type.headline, color: MacroColors.calories }}>{title}</Text>
+        <Text style={{ ...Type.headline, color: colors.navPrimary }}>{title}</Text>
         {rightLabel ? (
           <Text style={{ ...Type.caption, color: colors.textTertiary }}>{rightLabel}</Text>
         ) : null}

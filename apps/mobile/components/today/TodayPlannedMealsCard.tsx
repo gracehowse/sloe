@@ -88,7 +88,7 @@ export function TodayPlannedMealsCard({
   return (
     <View>
       {/* Sloe TD3 "Planned" section header — Newsreader title above the card. */}
-      <Text style={{ ...Type.title, color: MacroColors.calories, marginBottom: Spacing.sm }}>Planned</Text>
+      <Text style={{ ...Type.title, color: colors.navPrimary, marginBottom: Spacing.sm }}>Planned</Text>
 
       {/* Card chrome (fill, radius, soft lift on an outer wrapper, corner-clip
           on the inner view, dark hairline) is the shared <SupprCard lift="soft">

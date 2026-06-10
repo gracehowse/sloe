@@ -385,6 +385,12 @@ export const Colors = {
 export const Spacing = {
   xs: 4,
   sm: 8,
+  // ENG-1012 (Grace, 2026-06-10): the legal dense step between sm and md —
+  // chip/pill internal padding, dense meal-row rhythm. Adopted because the
+  // 8→16 jump was too coarse: 12 appeared 224× as a literal (the single
+  // heaviest off-scale value in the 2026-06-10 census). Use this token, not
+  // the literal.
+  dense: 12,
   md: 16,
   lg: 20,
   xl: 24,

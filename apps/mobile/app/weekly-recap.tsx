@@ -891,7 +891,14 @@ export default function WeeklyRecapScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Log a meal"
-            onPress={() => router.push("/(tabs)?openLog=1")}
+            onPress={() =>
+              // ENG-1009: `_t` cache-buster so the Today consumer re-fires
+              // even on repeat navigations (same contract as SupprTabBar).
+              router.navigate({
+                pathname: "/(tabs)" as never,
+                params: { openLog: "1", _t: String(Date.now()) },
+              })
+            }
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text

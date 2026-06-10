@@ -59,6 +59,15 @@ export default function DayStrip({
   // marker stays `Accent.success` (held).
   const accent = useAccent();
   const flatRef = useRef<FlatList<Date>>(null);
+  // ENG-1008 (2026-06-10): only user-initiated swipes may write `selectedDate`
+  // back from scroll position. Programmatic `scrollToOffset` calls (the align
+  // effect below) can be CLAMPED by RN to the last measured page when the
+  // target week hasn't been laid out yet; the momentum-end readback of that
+  // clamped settle overwrote a correct calendar/deep-link date with the last
+  // week of the journal range (+5 weeks, weekday preserved — the "June 3 →
+  // July 8" bug). User gestures always begin with a drag; programmatic
+  // scrolls never do, so `onScrollBeginDrag` is the discriminator.
+  const userDragRef = useRef(false);
   const [pagerW, setPagerW] = useState(0);
   const { min, max } = useMemo(() => journalRangeBounds(), []);
   const weekStarts = useMemo(() => enumerateWeekStartsInJournalRange(weekStartDay), [weekStartDay]);
@@ -102,6 +111,9 @@ export default function DayStrip({
 
   const handleMomentumEnd = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      // Ignore momentum from programmatic scrolls (see userDragRef above).
+      if (!userDragRef.current) return;
+      userDragRef.current = false;
       if (pagerW <= 0) return;
       const idx = Math.round(e.nativeEvent.contentOffset.x / pagerW);
       const clamped = Math.max(0, Math.min(weekStarts.length - 1, idx));
@@ -243,7 +255,15 @@ export default function DayStrip({
                 offset: pagerW * index,
                 index,
               })}
+              // Mount directly on the selected week so the align effect's
+              // corrective scroll is a no-op — removes the only scroll that
+              // could target unmeasured content (ENG-1008 hardening; safe
+              // because `getItemLayout` is provided).
+              initialScrollIndex={weekIndexContaining(selectedDate, weekStarts)}
               renderItem={renderWeekPage}
+              onScrollBeginDrag={() => {
+                userDragRef.current = true;
+              }}
               onMomentumScrollEnd={handleMomentumEnd}
               keyboardShouldPersistTaps="handled"
               removeClippedSubviews={false}

@@ -82,9 +82,15 @@ export function SupprTabBar({
     // the param via useFocusEffect, opens the LogSheet, then clears
     // the param so a back-nav doesn't re-open the sheet.
     //
-    // `router.push` (vs `replace`) so the back stack reflects the
-    // user's navigation if they came from another tab.
-    router.push({ pathname: "/(tabs)" as never, params: { openLog: "1" } });
+    // ENG-1009 (2026-06-10): `_t` cache-buster + `navigate` mirror the
+    // proven `date`-param contract (`index.tsx` date effect) — repeat
+    // taps re-fire the consumer even if a previous `openLog=1` is still
+    // in the params, and `navigate` dedupes onto the existing Today
+    // entry instead of stacking copies.
+    router.navigate({
+      pathname: "/(tabs)" as never,
+      params: { openLog: "1", _t: String(Date.now()) },
+    });
   };
 
   return (

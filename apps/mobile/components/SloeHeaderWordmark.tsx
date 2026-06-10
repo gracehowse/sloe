@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Text, type StyleProp, type TextStyle } from "react-native";
 
-import { FontFamily, MacroColors, Type } from "@/constants/theme";
+import { FontFamily, Type } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type SloeHeaderWordmarkProps = {
   /** Default 22 — matches Today header; use ~48 on launch screen. */
@@ -23,6 +24,10 @@ export function SloeHeaderWordmark({
   style,
   testID = "sloe-header-wordmark",
 }: SloeHeaderWordmarkProps) {
+  // ENG-1010 (2026-06-10): scheme-resolved plum. The static plum wordmark
+  // measured ~1.4:1 on the dark Today header — the first thing on a dark
+  // cold-open was near-invisible.
+  const colors = useThemeColors();
   return (
     <Text
       testID={testID}
@@ -39,7 +44,7 @@ export function SloeHeaderWordmark({
           // bottom when the wordmark is enlarged (e.g. login `fontSize={40}`).
           // ×1.25 → 28 at the default 22px (no regression), 50 at 40px.
           lineHeight: Math.round(fontSize * 1.25),
-          color: MacroColors.calories,
+          color: colors.navPrimary,
         },
         style,
       ]}

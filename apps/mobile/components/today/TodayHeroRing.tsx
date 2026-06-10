@@ -5,8 +5,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
 import { Layout } from "@/constants/layout";
-import { Accent, Colors, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
 
@@ -157,7 +158,7 @@ function StatusChip({
   const accent = useAccent();
   const sage = isDark ? Accent.successLight : Accent.success;
   const red = isDark ? Accent.destructiveLight : Accent.destructive;
-  const plum = isDark ? "#815E91" : MacroColors.calories;
+  const plum = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const config =
     state === "over"
       ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
@@ -208,7 +209,7 @@ function DisplayModeToggle({
   isDark: boolean;
 }) {
   const activeBg = isDark ? Colors.dark.cardElevated : "#FFFFFF";
-  const activeFg = isDark ? "#815E91" : MacroColors.calories;
+  const activeFg = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const segment = (label: string, mode: "remaining" | "consumed") => {
     const active = displayMode === mode;
     return (

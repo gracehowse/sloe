@@ -56,7 +56,8 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   `apps/mobile/constants/theme.ts` (mobile) / `src/styles/theme.css` + the
   Tailwind theme (web). No literal hexes, no off-scale numbers. If the value
   you need doesn't exist, add the token first, then use it.
-- **Spacing snaps to the scale:** 4 / 8 / 16 / 20 / 24 / 32 / 40. An 18px
+- **Spacing snaps to the scale:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
+  (12 adopted 2026-06-10, ENG-1012 — the dense chip/row step). An 18px
   padding or 10px gap is a bug even if it looks fine.
 - **Radius snaps to:** 4 / 6 / 8 / 12 / full.
 - **Type comes from the ramp** (`Type` on mobile; type-scale-gated classes on

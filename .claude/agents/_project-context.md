@@ -117,7 +117,8 @@ enforced at write time as well as review time.
 
 ### Canonical scales — the only legal values
 
-- **Spacing:** 4 / 8 / 16 / 20 / 24 / 32 / 40 (`Spacing`,
+- **Spacing:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 (12 = `Spacing.dense`,
+  adopted 2026-06-10 ENG-1012) (`Spacing`,
   `apps/mobile/constants/theme.ts`; same rhythm on web). An 18px padding or
   10px gap is a bug even if it "looks fine".
 - **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
