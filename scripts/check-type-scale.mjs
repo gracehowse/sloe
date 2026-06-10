@@ -10,7 +10,8 @@
  *
  * Also allows special-purpose sizes: 8, 9, 10 (micro labels, pill
  * badges — existing baseline, grandfathered). Display sizes above
- * 36 (40, 44, 48, 56, 64) are allowed for hero numerics.
+ * 36 (40, 44, 48, 52, 56, 64) are allowed for hero numerics — 52 is the Sloe
+ * net-energy headline (Figma `energy-balance.html` `text-[52px]`; mobile uses 52).
  *
  * Exit 0 on clean, exit 1 with violation report otherwise.
  * Intended for `npm run check:type-scale` and CI.
@@ -19,7 +20,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const ON_SCALE = new Set([8, 9, 10, 11, 13, 15, 18, 22, 24, 28, 36, 40, 44, 48, 56, 64]);
+const ON_SCALE = new Set([8, 9, 10, 11, 13, 15, 18, 22, 24, 28, 36, 40, 44, 48, 52, 56, 64]);
 const SCAN_DIRS = ["src/app/components"];
 const EXTENSIONS = new Set([".tsx", ".ts"]);
 

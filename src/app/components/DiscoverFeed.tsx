@@ -10,7 +10,13 @@ import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
+import {
+  DISCOVER_CATEGORY_PILLS,
+  matchesRecipeCategory,
+  type RecipeCategoryId,
+} from "../../lib/recipes/recipeCategoryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
+import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 import {
   SEED_CLUSTERS,
@@ -134,7 +140,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   });
   const [collections] = useState<CollectionRow[]>(() => loadCollections());
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  const [quickFilter, setQuickFilter] = useState("For You");
+  // ENG-921 (2026-06-07) — CATEGORY filters per Figma `528:2`
+  // (All · Trending · Quick 30 · Under 500 cal · High protein · From
+  // Reels · Breakfast · Dinner · Dessert · Soup · Pasta · Chicken).
+  // `Trending` + `From Reels` are Discover-only signals handled below.
+  const [category, setCategory] = useState<RecipeCategoryId | "trending" | "from-reels">("all");
+  // Following feed scope is wired functionality (author/creator follow
+  // graph) — preserved as a secondary toggle outside the category row.
   const [feedScope, setFeedScope] = useState<"forYou" | "following">("forYou");
   const [followedAuthorIds, setFollowedAuthorIds] = useState<Set<string>>(() => new Set());
   const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(() => new Set());
@@ -310,31 +322,25 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       if (minP !== null && !Number.isNaN(minP) && recipe.protein < minP) {
         return false;
       }
-      // Quick filter pills
-      if (quickFilter === "High Protein" && recipe.protein < 25) return false;
-      if (quickFilter === "Low Carb" && recipe.carbs > 30) return false;
-      if (quickFilter === "Quick") {
-        // GW-06 (audit 2026-04-28): pre-fix recipes with
-        // `cookTimeMin == null` passed through as "Quick" — most
-        // legacy imports don't carry cook time, so the pill silently
-        // behaved like "All". Now requires a real cook- or prep-time
-        // signal to qualify.
-        const cm = recipe.cookTimeMin;
-        const pm = recipe.prepTimeMin;
-        const cookOk = typeof cm === "number" && cm > 0;
-        const prepOk = typeof pm === "number" && pm > 0;
-        if (!cookOk && !prepOk) return false;
-        const total = (cookOk ? cm : 0) + (prepOk ? pm : 0);
-        return total <= 30;
+      // Category filter pills (Figma `528:2`). `Trending` / `From Reels`
+      // are Discover-only signals; everything else routes through the
+      // shared `matchesRecipeCategory` predicate (web ↔ mobile parity).
+      if (category === "trending") {
+        if ((recipe.savedCount ?? 0) < DISCOVER_POPULAR_MIN_SAVES) return false;
+      } else if (category === "from-reels") {
+        // From Reels — recipes imported from a social short-form platform.
+        const sp = recipe.sourcePlatform;
+        if (sp !== "instagram" && sp !== "tiktok" && sp !== "youtube") return false;
+      } else if (category !== "all") {
+        if (!matchesRecipeCategory(category, recipe)) return false;
       }
-      if (quickFilter === "Popular" && (recipe.savedCount ?? 0) < DISCOVER_POPULAR_MIN_SAVES) return false;
       return true;
     });
   }, [
     discoverRecipes,
     searchQuery,
     filters,
-    quickFilter,
+    category,
     activeCollectionId,
     collections,
     feedScope,
@@ -376,7 +382,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
 
   const showClusterCarousels =
     !searchQuery.trim() &&
-    quickFilter === "For You" &&
+    category === "all" &&
     feedScope === "forYou" &&
     !activeCollectionId &&
     !filters.verified &&
@@ -444,39 +450,66 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           ) : null}
         </div>
 
-        {/* Filter pills — horizontal scrollable */}
+        {/* Category filter pills — ENG-921 / Figma `528:2`. Clay-fill
+            active, cream-card + border inactive. "Following" leads as a
+            secondary feed-scope toggle (wired follow-graph feature),
+            then the shared category set. Mobile parity:
+            `apps/mobile/app/(tabs)/discover.tsx`. */}
         <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">
           <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {["For You", "Following", "Popular", "Quick", "High Protein", "Low Carb"].map((label) => {
-              const isFollowingPill = label === "Following";
-              const isActive = isFollowingPill
-                ? feedScope === "following"
-                : feedScope === "forYou" && quickFilter === label;
+            <button
+              key="following"
+              type="button"
+              data-testid="discover-category-following"
+              onClick={() => {
+                setFeedScope("following");
+                setCategory("all");
+              }}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
+                feedScope === "following"
+                  ? "bg-primary/10 text-primary-solid border border-primary-solid"
+                  : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
+              }`}
+              aria-pressed={feedScope === "following"}
+            >
+              Following
+            </button>
+            {DISCOVER_CATEGORY_PILLS.map((f) => {
+              const isActive = feedScope === "forYou" && category === f.id;
               return (
                 <button
-                  key={label}
+                  key={f.id}
                   type="button"
+                  data-testid={`discover-category-${f.id}`}
                   onClick={() => {
-                    if (isFollowingPill) {
-                      setFeedScope("following");
-                      setQuickFilter("For You");
-                    } else {
-                      setFeedScope("forYou");
-                      setQuickFilter(label);
-                    }
+                    setFeedScope("forYou");
+                    setCategory(f.id);
                   }}
-                  className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all duration-200 ${
+                  className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
+                    // Selected = aubergine SOFT-TINT + aubergine `primary-solid`
+                    // label (Sloe treatment §7), not a solid accent slab.
                     isActive
-                      ? "bg-foreground text-background shadow-sm"
+                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
                       : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
                   }`}
+                  aria-pressed={isActive}
+                  aria-label={`Category: ${f.label}`}
                 >
-                  {label}
+                  {f.label}
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* DEFERRED — Figma-only builds (not built this pass, per the
+            Recipes Figma-parity brief):
+              · "Popular collections" carousel (Figma `528:61`) — ENG-907
+              · "Recipes in action" Reels rail (Figma `528:105`) — ENG-908
+            These have no wired data source yet (curated collections +
+            short-form video) and are tracked as net-new builds. The
+            chrome/tabs/filters/states that DO exist are reskinned here.
+            See `docs/ux/redesign/figma-migration-tracker.md`. */}
 
         {/* Eating out — Edamam restaurant + branded meals. Renders only
             when the user has typed at least 3 characters; collapsed
@@ -603,7 +636,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             key={`cluster-${recipe.id}`}
                             type="button"
                             onClick={() => setSelectedRecipe(recipe)}
-                            className={`group shrink-0 snap-start text-left rounded-2xl overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
+                            className={`group shrink-0 snap-start text-left rounded-3xl overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
                             <div className="relative overflow-hidden" style={{ aspectRatio: isHero ? "3 / 4" : "4 / 5" }}>
                               <DiscoverRecipeImage
@@ -664,14 +697,21 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             {displayRecipes.map((recipe) => {
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
+              const carbs = Math.round(recipe.carbs);
+              const fat = Math.round(recipe.fat);
               const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+              // Calm the stale curated-seed brand byline to the live
+              // brand + drop internal seed sources at the display boundary
+              // (see displayAttribution). Mobile parity: discover.tsx uses
+              // the same helper.
+              const byline = displayAttribution({ creatorName: recipe.creatorName });
               return (
                 <button
                   key={`desktop-${recipe.id}`}
                   type="button"
                   id={`discover-desktop-post-${recipe.id}`}
                   onClick={() => setSelectedRecipe(recipe)}
-                  className="group text-left rounded-2xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+                  className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "4 / 5" : "8 / 1" }}>
                     <DiscoverRecipeImage
@@ -703,7 +743,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       >
                         {recipe.title}
                       </p>
-                      {recipe.creatorName ? (
+                      {byline ? (
                         <p className="text-[11px] text-white/70 mt-1 truncate">
                           {recipe.creatorId ? (
                             <span
@@ -713,21 +753,34 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                               onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                             >
-                              {recipe.creatorName}
+                              {byline}
                             </span>
                           ) : (
-                            recipe.creatorName
+                            byline
                           )}
                         </p>
                       ) : null}
+                      {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                          carbs · fat, protein emphasised. Mobile parity:
+                          discover.tsx MacroIconRow. Over the photo the
+                          macro hue dots are dropped to white/60 for
+                          contrast; protein leads via weight. */}
                       <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-2 text-[11px] text-white/80 tabular-nums">
                         <span className="inline-flex items-center gap-1">
                           <Icons.calories className="w-3 h-3 text-white/60" />
                           {kcal} kcal
                         </span>
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-white">
                           <Icons.protein className="w-3 h-3 text-white/60" />
                           {protein}g
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.carbs className="w-3 h-3 text-white/60" />
+                          {carbs}g
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.fat className="w-3 h-3 text-white/60" />
+                          {fat}g
                         </span>
                         {cookTime ? (
                           <span className="inline-flex items-center gap-1">
@@ -765,13 +818,18 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             }}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
             className="mx-4 mt-3 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-            style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
+            // Aubergine SOFT-TINT nudge card (Sloe treatment §10) — was a stale
+            // hardcoded brand-blue; aligned to the aubergine accent + parity
+            // with the mobile Discover import card.
+            style={{ background: "var(--accent-primary-soft)", borderColor: "var(--accent-primary-ring)" }}
           >
             <IconBox size="lg" tone="primary">
               <Icons.import />
             </IconBox>
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram...</p>
+              {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis.
+                  Mirrors mobile discover.tsx copy change. */}
+              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground" />
@@ -795,6 +853,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               {displayRecipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
+                const carbs = Math.round(recipe.carbs);
+                const fat = Math.round(recipe.fat);
+                const byline = displayAttribution({ creatorName: recipe.creatorName });
                 void computeRecipeFitPercent;
                 void nutritionTargets;
                 return (
@@ -803,7 +864,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     type="button"
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
-                    className="group text-left rounded-2xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+                    className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                   >
                     <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "3 / 4" : "8 / 1" }}>
                       <DiscoverRecipeImage
@@ -824,7 +885,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         <p className="text-[18px] font-bold text-white leading-tight -tracking-[0.01em] drop-shadow-sm" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {recipe.title}
                         </p>
-                        {recipe.creatorName ? (
+                        {byline ? (
                           <p className="text-[11px] text-white/70 mt-1 truncate">
                             {recipe.creatorId ? (
                               <span
@@ -834,21 +895,32 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
-                                {recipe.creatorName}
+                                {byline}
                               </span>
                             ) : (
-                              recipe.creatorName
+                              byline
                             )}
                           </p>
                         ) : null}
+                        {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                            carbs · fat, protein emphasised. Mobile parity:
+                            discover.tsx MacroIconRow. */}
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                           <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
                             <Icons.calories className="w-3 h-3 text-white/60" />
                             {kcal} kcal
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white tabular-nums font-semibold">
                             <Icons.protein className="w-3 h-3 text-white/60" />
                             {protein}g
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.carbs className="w-3 h-3 text-white/60" />
+                            {carbs}g
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.fat className="w-3 h-3 text-white/60" />
+                            {fat}g
                           </span>
                           {recipe.cookTime ? (
                             <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
@@ -876,6 +948,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     const kcal = Math.round(recipe.calories);
                     const protein = Math.round(recipe.protein);
                     const carbs = Math.round(recipe.carbs);
+                    const byline = displayAttribution({ creatorName: recipe.creatorName });
                     return (
                       <button
                         key={recipe.id}
@@ -905,10 +978,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
-                                {recipe.creatorName}
+                                {byline}
                               </span>
                             ) : (
-                              recipe.creatorName || ""
+                              byline
                             )}
                             {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
                           </span>
@@ -947,8 +1020,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   setFilters({ verified: false, maxCalories: "", minProtein: "" });
                   setActiveCollectionId(null);
                   setFeedScope("forYou");
+                  setCategory("all");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-transparent border-[1.5px] border-primary-solid px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
               >
                 Reset filters
               </button>

@@ -12,11 +12,23 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Beef, Check, Circle, Flame, Leaf, Wheat, Droplet } from "lucide-react-native";
+import {
+  Dumbbell,
+  Check,
+  Circle,
+  Flame,
+  Wheat,
+  Droplet,
+  BookOpen,
+  User,
+  ChevronRight,
+} from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -28,12 +40,24 @@ import {
   type DietaryPreferenceId,
 } from "../../../src/constants/dietaryPreferences";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
+import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
+import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
+  // `accent` (aubergine) drives the loading spinner. The Save CTA + selected
+  // dietary pills now use the static `accent.primarySolid` / `accent.primarySoft`
+  // treatment tokens directly (Sloe, 2026-06-08). Macros keep `MacroColors`.
+  const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the identity card AND the Daily Targets / Edit Targets /
+  // Dietary Preferences cards all sit directly on the page ground, so they take the
+  // SOFT lift, routed through the elevation system (was a hand-rolled
+  // `Elevation.cardSoft` on the identity card + a flat hairline card on the rest).
+  const cardElevation = useCardElevation({ variant: "soft" });
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // /(tabs)/more was collapsed to a redirect → /(tabs)/settings (Group G
@@ -43,9 +67,48 @@ export default function ProfileScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
+  // §3.2 identity card + §3.7 body-stats entry row (settings.md). The new
+  // editorial identity block + the body-stats row are net-new structure, so
+  // both ship behind the `settings_redesign_v2` master gate (the old straight-
+  // to-targets layout stays alive in the `else`). The body-stats row's
+  // destination is itself gated by the existing `goal_editor` flag (matches
+  // `targets.tsx` / web `Targets.tsx`): sheet when on, interim note when off.
+  const settingsRedesignV2 = isFeatureEnabled("settings_redesign_v2");
+  const goalEditorEnabled = isFeatureEnabled("goal_editor");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  // §3.2 identity signals — tier pill (Pro only), "Joined …" label, and the
+  // Recipes + Day-streak stats strip. Streak uses the same
+  // `computeProtectedStreak` helper Today / Progress / Settings use (no
+  // hand-rolled count — that was the trust-killer fixed in the 2026-05-04
+  // settings audit). Recipe count is an exact head-count of `saves`.
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+  const [streak, setStreak] = useState(0);
+  const [recipeCount, setRecipeCount] = useState(0);
+  // §3.7 body-stats entry row → GoalPaceEditorSheet (weight/height/goal/pace).
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  const joinedLabel = useMemo(() => {
+    const createdAt = session?.user?.created_at;
+    if (!createdAt) return null;
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return null;
+    const diffDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    if (diffDays < 7) return "Joined this week";
+    if (diffDays < 30) return `Joined ${Math.max(1, Math.floor(diffDays / 7))}w ago`;
+    if (diffDays < 365) return `Joined ${Math.max(1, Math.floor(diffDays / 30))}mo ago`;
+    return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+  }, [session?.user?.created_at]);
+  // Monogram initial — display name first, else email, else "S" (Sloe). The
+  // §3.2 warm anchor must render even on a name-less fresh account (gap #12).
+  const monogramInitial = useMemo(() => {
+    const fromName = displayName.trim()[0];
+    if (fromName) return fromName.toUpperCase();
+    const fromEmail = session?.user?.email?.trim()[0];
+    if (fromEmail) return fromEmail.toUpperCase();
+    return "S";
+  }, [displayName, session?.user?.email]);
   const [calories, setCalories] = useState(String(NUTRITION_DEFAULTS.calories));
   const [protein, setProtein] = useState(String(NUTRITION_DEFAULTS.protein));
   const [carbs, setCarbs] = useState(String(NUTRITION_DEFAULTS.carbs));
@@ -97,9 +160,66 @@ export default function ProfileScreen() {
     scroll: {
       paddingHorizontal: Spacing.xl,
       paddingBottom: 120,
-      gap: Spacing.xxl,
+      // §3.1 — 24 (xl) between same-topic card sections; 32 (xxl) is reserved
+      // for major-section breaks. The two targets cards + dietary card are one
+      // topic, so 24 keeps them from floating apart (gap #10).
+      gap: Spacing.xl,
     },
     centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+    // §3.2 identity card — warm editorial anchor at the top of the surface.
+    // Monogram (accent.primarySolid) + serif name + tier·joined label, then a
+    // two-tile stats strip. Soft elevation on the outer wrapper so the card
+    // lifts off white (RN clips iOS shadows under overflow:hidden, so the
+    // shadow lives on this padded outer view, never on a clipped child).
+    identityCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: Radius.lg,
+      // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
+      borderWidth: cardElevation.useBorder ? 1 : 0,
+      borderColor: colors.border,
+      padding: Spacing.md,
+      ...(cardElevation.shadowStyle ?? {}),
+    },
+    monogram: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: accent.primarySolid,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // Serif initial — Newsreader (Type.title), white on plum. The one accent
+    // colour-block allowed on this surface (small enough to read as accent).
+    monogramInitial: { ...Type.title, color: "#FFFFFF" },
+    identityName: { ...Type.title, color: colors.text },
+    identityMeta: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
+    tierPill: {
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
+      backgroundColor: accent.primarySoft,
+    },
+    tierPillText: { ...Type.label, color: accent.primarySolid },
+
+    // §3.2 stats strip — two equal-width tiles (Recipes saved + Day streak),
+    // serif numerals, sourced from the canonical streak/recipe data.
+    statsStrip: { flexDirection: "row", gap: Spacing.md },
+    statTile: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: Spacing.md,
+      gap: Spacing.xs,
+    },
+    statTileHeader: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
+    statTileLabel: { ...Type.caption, color: colors.textSecondary },
+    statTileValue: { ...Type.heroValue, fontSize: 24, lineHeight: 28, fontVariant: ["tabular-nums"], color: colors.text },
 
     headerRow: {
       flexDirection: "row",
@@ -114,14 +234,18 @@ export default function ProfileScreen() {
     headerTitle: { ...Type.headline, color: colors.text },
 
     card: {
-      backgroundColor: colors.card,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: Radius.lg,
-      borderWidth: 1,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
+      ...(cardElevation.shadowStyle ?? {}),
     },
-    cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+    // §2.3 — section/card titles read in Newsreader serif (Type.headline,
+    // 17/500), matching the serif tile numerals on the same card. The prior
+    // Inter 16/700 created a mixed register against the serif numbers (gap #7).
+    cardTitle: { ...Type.headline, color: colors.text },
 
     targetsRow: {
       flexDirection: "row",
@@ -140,8 +264,10 @@ export default function ProfileScreen() {
       borderRadius: Radius.md,
       borderWidth: 1,
       backgroundColor: colors.card,
-      paddingVertical: Spacing.sm + 2,
-      paddingHorizontal: Spacing.sm + 2,
+      // On-scale inset-tile padding (gap #6): single Spacing.md token, never
+      // token+2 arithmetic which produced an off-scale 10.
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.md,
     },
     targetTileHeader: {
       flexDirection: "row",
@@ -150,7 +276,10 @@ export default function ProfileScreen() {
       marginBottom: Spacing.sm,
     },
     targetTileLabel: { ...Type.label, color: colors.textTertiary },
-    targetTileValue: { ...Type.macroValue, fontVariant: ["tabular-nums"] },
+    // SLOE Phase 0: the Profile target-tile hero numerals read in Newsreader
+    // serif. `Type.heroValue` is the dedicated serif sibling of `Type.macroValue`
+    // (same 20/24 box) so the swap is drop-in; the unit stays sans (separate node).
+    targetTileValue: { ...Type.heroValue, fontVariant: ["tabular-nums"] },
     targetTileUnit: { ...Type.caption, color: colors.textSecondary, marginLeft: 3 },
     // Legacy aliases kept for any future callers — match Today tokens.
     targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
@@ -161,26 +290,56 @@ export default function ProfileScreen() {
       backgroundColor: colors.inputBg,
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.lg,
-      paddingVertical: 12,
+      // On-scale (gap #3): Spacing.md (16) → ~48pt cell, matching the card
+      // padding rhythm + the 44pt min-row touch guidance. Prior literal 12 was
+      // off the Spacing scale (4/8/16/20/24/32/40 — no 12) and read squat.
+      paddingVertical: Spacing.md,
       color: colors.text,
       fontSize: 15,
     },
+    // §3.7 — the Calories value is an editorial serif moment (Type.heroValue,
+    // 24sp Newsreader) since it is the most important number the user touches
+    // on this write surface (gap #2). Numeric keypad is preserved at the call
+    // site; only the rendered value's type/size change.
+    inputCalories: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      color: colors.text,
+      ...Type.heroValue,
+      fontSize: 24,
+      lineHeight: 28,
+      fontVariant: ["tabular-nums"],
+    },
+    inputCaption: { ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs },
     inputGrid: { flexDirection: "row", gap: Spacing.md },
     inputHalf: { flex: 1, gap: Spacing.xs },
+    // §3.7 macro leading dot — small MacroColors cue before each macro input
+    // label, tying the editable row to its tile colour without adding chrome.
+    macroLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginTop: Spacing.xs },
+    macroDot: { width: 8, height: 8, borderRadius: 4 },
 
     saveRow: {
       flexDirection: "row",
       gap: Spacing.md,
       marginTop: Spacing.sm,
     },
+    // Save Targets — aubergine OUTLINE (Sloe treatment, 2026-06-08). Every
+    // everyday settings-surface commit CTA uses the 1.5px `accent.primarySolid`
+    // border + `accent.primarySolid` label on a transparent fill, matching the
+    // settingsLaneAubergineOutline spec. FABs and conversion CTAs keep the
+    // filled slab; daily-use writes use the calm outline.
     saveBtn: {
       flex: 1,
-      backgroundColor: Accent.primary,
+      backgroundColor: "transparent",
       borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderColor: accent.primarySolid,
       paddingVertical: 16,
       alignItems: "center",
     },
-    saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    saveBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
     cancelBtn: {
       flex: 1,
       backgroundColor: "transparent",
@@ -196,20 +355,43 @@ export default function ProfileScreen() {
     dietaryChip: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
+      // On-scale chip padding (gap #5): sm (8) vertical, md (16) horizontal,
+      // xs (4) gap — snapped off the prior off-scale 10/14/6 literals so the
+      // chip row matches the filter-pill grammar + the input/card rhythm.
+      gap: Spacing.xs,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.inputBg,
     },
+    // Selected dietary preference — aubergine soft tint (Sloe treatment #7,
+    // 2026-06-08). Selected preference pills carry an accent tint + aubergine
+    // edge, matching the web Settings dietary chips and the filter-pill
+    // grammar. (Sage stays reserved for success/status + nutrition-confidence
+    // semantics, not selection state.)
     dietaryChipActive: {
-      borderColor: Accent.success + "80",
-      backgroundColor: Accent.success + "15",
+      borderColor: accent.primarySolid + "80",
+      backgroundColor: accent.primarySoft,
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-  }), [colors]);
+
+    // §3.7 body-stats entry row — leading User glyph, label + subtitle, trailing
+    // ChevronRight. Standard list-row anatomy (≥44pt), sits below dietary prefs.
+    bodyStatsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      minHeight: 44,
+      paddingVertical: Spacing.sm,
+    },
+    bodyStatsLabel: { ...Type.body, color: colors.text },
+    bodyStatsSubtitle: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
+    // Styles now source the accent from the static `Accent.*` treatment tokens
+    // (Save outline + selected dietary tint), so the StyleSheet only depends on
+    // `colors`. `accent` (spinner) is read outside this memo.
+  }), [colors, cardElevation]);
 
   function TargetStat({
     value,
@@ -222,7 +404,7 @@ export default function ProfileScreen() {
     label: string;
     unit: string;
     color: string;
-    Icon: typeof Beef;
+    Icon: typeof Dumbbell;
   }) {
     // DRIFT-07 fix (2026-05-22): align Profile Daily Targets tile with
     // Today's macro tile visual language — uppercase label top-left,
@@ -239,7 +421,9 @@ export default function ProfileScreen() {
       <View style={[styles.targetTile, { borderColor: colors.border }]}>
         <View style={styles.targetTileHeader}>
           <Text style={styles.targetTileLabel}>{label}</Text>
-          <Icon size={14} color={color} strokeWidth={1.75} />
+          {/* §10.1 / settings.md §3.2 — section-tile icons read at 18–20pt for
+              real presence. Prior 14pt floated as an afterthought (gap #8). */}
+          <Icon size={18} color={color} strokeWidth={1.75} />
         </View>
         <View style={{ flexDirection: "row", alignItems: "baseline" }}>
           <Text style={[styles.targetTileValue, { color }]} numberOfLines={1}>
@@ -265,13 +449,60 @@ export default function ProfileScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+        "display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace, user_tier, streak_freezes_earned_at, streak_freezes_used_history, streak_freeze_budget_max",
       )
       .eq("id", userId)
       .maybeSingle();
     if (data) {
       const dn = data.display_name ?? "";
       setDisplayName(dn);
+      // §3.2 tier pill — Pro is the only tier with a reward pill; Free/Base
+      // render no pill (avoids "Free" reading as a penalty marker at the top).
+      const tierRaw = (data as Record<string, unknown>).user_tier;
+      const tier = typeof tierRaw === "string" ? tierRaw : null;
+      setUserTier(tier === "free" || tier === "base" || tier === "pro" ? tier : "free");
+      // §3.2 streak — canonical protected-streak helper (same path as Today /
+      // Progress / Settings). Hydrate a byDay map from nutrition_entries and
+      // the freeze ledger from this same row. Failure is non-fatal: the strip
+      // simply hides the streak tile at 0.
+      try {
+        const { data: logs } = await supabase
+          .from("nutrition_entries")
+          .select("date_key")
+          .eq("user_id", userId)
+          .order("date_key", { ascending: false })
+          .limit(400);
+        const byDay: Record<string, Array<{ calories: number }>> = {};
+        if (logs && logs.length > 0) {
+          for (const l of logs as Array<{ date_key: string }>) {
+            if (!l.date_key) continue;
+            if (!byDay[l.date_key]) byDay[l.date_key] = [];
+            byDay[l.date_key].push({ calories: 1 });
+          }
+        }
+        const ledger = readFreezeLedger({
+          earnedAt: (data as { streak_freezes_earned_at?: unknown }).streak_freezes_earned_at,
+          usedHistory: (data as { streak_freezes_used_history?: unknown }).streak_freezes_used_history,
+        });
+        const budgetMaxRaw = (data as { streak_freeze_budget_max?: unknown }).streak_freeze_budget_max;
+        const budgetMax =
+          typeof budgetMaxRaw === "number" && Number.isFinite(budgetMaxRaw) && budgetMaxRaw >= 0
+            ? budgetMaxRaw
+            : 3;
+        setStreak(computeProtectedStreak(byDay as never, ledger, budgetMax).streakLength);
+      } catch {
+        setStreak(0);
+      }
+      // §3.2 recipes-saved — exact head-count of `saves` (no row payload).
+      try {
+        const { count } = await supabase
+          .from("saves")
+          .select("recipe_id", { count: "exact", head: true })
+          .eq("user_id", userId);
+        setRecipeCount(count ?? 0);
+      } catch {
+        setRecipeCount(0);
+      }
       const d = data as Record<string, unknown>;
       const resolved = resolveTargets(
         {
@@ -459,7 +690,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       </View>
     );
@@ -472,6 +703,61 @@ export default function ProfileScreen() {
     >
       <PushScreenHeader title="Profile" onBack={goBack} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+
+        {/* §3.2 identity card + stats strip (settings.md). Net-new editorial
+            block — the warm human anchor that was missing (gaps #1, #12). Gated
+            behind `settings_redesign_v2`; old layout (straight to Daily Targets)
+            stays alive when the flag is off. The monogram + name render even on
+            a name-less fresh account (initials → email → "S" fallback). */}
+        {settingsRedesignV2 ? (
+          <View style={{ gap: Spacing.md }}>
+            <View style={styles.identityCard}>
+              <View style={styles.monogram} accessible={false}>
+                <Text style={styles.monogramInitial}>{monogramInitial}</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.identityName} numberOfLines={1}>
+                  {displayName.trim() || "Your profile"}
+                </Text>
+                <Text style={styles.identityMeta} numberOfLines={1}>
+                  {userTier === "pro" ? "Pro" : "Free"}
+                  {joinedLabel ? ` · ${joinedLabel}` : ""}
+                </Text>
+              </View>
+              {userTier === "pro" ? (
+                <View style={styles.tierPill}>
+                  <Text style={styles.tierPillText}>Pro</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Stats strip — hidden entirely at 0/0; each tile hidden at its own
+                0 (subtractive-zero rule). Streak is the canonical protected
+                streak; recipes is an exact saves head-count. */}
+            {recipeCount > 0 || streak > 0 ? (
+              <View style={styles.statsStrip}>
+                {recipeCount > 0 ? (
+                  <View style={styles.statTile}>
+                    <View style={styles.statTileHeader}>
+                      <BookOpen size={16} color={Accent.success} strokeWidth={1.75} />
+                      <Text style={styles.statTileLabel}>Recipes saved</Text>
+                    </View>
+                    <Text style={styles.statTileValue}>{recipeCount}</Text>
+                  </View>
+                ) : null}
+                {streak > 0 ? (
+                  <View style={styles.statTile}>
+                    <View style={styles.statTileHeader}>
+                      <Flame size={16} color={accent.primarySolid} strokeWidth={1.75} />
+                      <Text style={styles.statTileLabel}>Day streak</Text>
+                    </View>
+                    <Text style={styles.statTileValue}>{streak}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Current targets summary.
             Audit 2026-05-04 #29: previously the outer card border + 4
@@ -490,7 +776,7 @@ export default function ProfileScreen() {
                 breaks the across-app convention where Protein=blue,
                 Carbs=amber, Fat=magenta. */}
             <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={Flame} />
-            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Beef} />
+            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Dumbbell} />
             <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={Wheat} />
             <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={Droplet} />
           </View>
@@ -541,38 +827,66 @@ export default function ProfileScreen() {
             placeholderTextColor={colors.tabIconDefault}
             style={styles.input}
           />
+          {/* gap #11 — disambiguate the two name concepts. This writes
+              `profiles.display_name` (shared/household surfaces); the Today
+              greeting personalises from the "Your name" field in Settings →
+              Personal (`user_metadata.full_name`). Without this caption a user
+              may reasonably expect editing here to change their greeting.
+              See docs/decisions/2026-06-04-settings-your-name-greeting.md. */}
+          <Text style={styles.inputCaption}>Shown on shared and household surfaces. To change the name in your Today greeting, use Settings → Personal.</Text>
 
+          {/* §3.7 — Calories is the editorial serif moment (the most important
+              number the user touches here). Full-width, Type.heroValue 24sp,
+              with a "kcal / day" caption beneath. Numeric keypad preserved. */}
+          <Text style={styles.inputLabel}>Calories</Text>
+          <TextInput value={calories} onChangeText={setCalories} keyboardType="number-pad" style={styles.inputCalories} placeholderTextColor={colors.tabIconDefault} />
+          <Text style={styles.inputCaption}>kcal / day</Text>
+
+          {/* §3.7 — macro inputs carry a small MacroColors leading dot so the
+              editable row ties back to its read-back tile colour. */}
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Calories</Text>
-              <TextInput value={calories} onChangeText={setCalories} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
-            </View>
-            <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Protein (g)</Text>
+              <View style={styles.macroLabelRow}>
+                <View style={[styles.macroDot, { backgroundColor: MacroColors.protein }]} />
+                <Text style={[styles.inputLabel, { marginTop: 0 }]}>Protein (g)</Text>
+              </View>
               <TextInput value={protein} onChangeText={setProtein} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
-          </View>
-
-          <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Carbs (g)</Text>
+              <View style={styles.macroLabelRow}>
+                <View style={[styles.macroDot, { backgroundColor: MacroColors.carbs }]} />
+                <Text style={[styles.inputLabel, { marginTop: 0 }]}>Carbs (g)</Text>
+              </View>
               <TextInput value={carbs} onChangeText={setCarbs} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
+          </View>
+
+          <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Fat (g)</Text>
+              <View style={styles.macroLabelRow}>
+                <View style={[styles.macroDot, { backgroundColor: MacroColors.fat }]} />
+                <Text style={[styles.inputLabel, { marginTop: 0 }]}>Fat (g)</Text>
+              </View>
               <TextInput value={fat} onChangeText={setFat} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
+            </View>
+            <View style={styles.inputHalf}>
+              <View style={styles.macroLabelRow}>
+                <View style={[styles.macroDot, { backgroundColor: MacroColors.fiber }]} />
+                <Text style={[styles.inputLabel, { marginTop: 0 }]}>Fiber (g)</Text>
+              </View>
+              <TextInput value={fiber} onChangeText={setFiber} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
           </View>
 
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Fiber (g)</Text>
-              <TextInput value={fiber} onChangeText={setFiber} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
-            </View>
-            <View style={styles.inputHalf}>
-              <Text style={styles.inputLabel}>Water (ml)</Text>
+              <View style={styles.macroLabelRow}>
+                <View style={[styles.macroDot, { backgroundColor: MacroColors.water }]} />
+                <Text style={[styles.inputLabel, { marginTop: 0 }]}>Water (ml)</Text>
+              </View>
               <TextInput value={water} onChangeText={setWater} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
+            <View style={styles.inputHalf} />
           </View>
 
           {/* P1-1 + P1-2 (parity spec 2026-04-27) — Save is disabled
@@ -618,7 +932,7 @@ export default function ProfileScreen() {
                   onPress={() => toggleDietary(pref.id)}
                 >
                   {active ? (
-                    <Check size={16} color={Accent.success} strokeWidth={2.5} />
+                    <Check size={16} color={accent.primarySolid} strokeWidth={2.5} />
                   ) : (
                     <Circle
                       size={16}
@@ -633,8 +947,61 @@ export default function ProfileScreen() {
               );
             })}
           </View>
+
+          {/* §3.7 body-stats entry row (settings.md, gap #4). Mobile /profile
+              previously had NO path to body stats / units (web Profile.tsx edits
+              weight/height/sex/age/activity/goal/pace). This row makes the path
+              visible. Destination is gated by the existing `goal_editor` flag
+              (parity with targets.tsx / web Targets.tsx): the GoalPaceEditorSheet
+              when on, an interim note when off (so it is never a dead row). The
+              row itself is net-new structure → behind `settings_redesign_v2`.
+              NOTE: a Metric/Imperial units control (settings_units_row) is NOT
+              added here — per settings.md §3.8 the Units row lives on the
+              Settings → Display card, not on /profile, and editing it from this
+              surface (which has no body-stat inputs visible) would mislead.
+              Tracked as a deferral (see structured output). */}
+          {settingsRedesignV2 ? (
+            <Pressable
+              style={styles.bodyStatsRow}
+              onPress={() => {
+                if (goalEditorEnabled) {
+                  setGoalEditorOpen(true);
+                } else {
+                  Alert.alert(
+                    "Body stats & goal",
+                    "Update your height, weight, age, and activity level during your next target review.",
+                  );
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Edit body stats and goal: height, weight, age, activity level"
+            >
+              <User size={20} color={Accent.success} strokeWidth={1.75} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.bodyStatsLabel}>Body stats &amp; goal</Text>
+                <Text style={styles.bodyStatsSubtitle}>Height, weight, age, activity level</Text>
+              </View>
+              <ChevronRight size={18} color={colors.textTertiary} strokeWidth={1.75} />
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
+
+      {/* §3.7 — GoalPaceEditorSheet is the mobile body-stats edit path. On save,
+          reload this screen's targets so the recomputed calories + macro tiles
+          update in place (mirrors targets.tsx's onSaved → refetch). Only mounted
+          when the redesign block is on AND a userId exists. */}
+      {settingsRedesignV2 && userId ? (
+        <GoalPaceEditorSheet
+          visible={goalEditorOpen}
+          onClose={() => setGoalEditorOpen(false)}
+          userId={userId}
+          onSaved={() => {
+            setGoalEditorOpen(false);
+            void loadProfile();
+          }}
+        />
+      ) : null}
     </View>
   );
 }

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sloe — component treatment system</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --white:#FFFFFF; --offwhite:#F6F5F2; --hairline:#ECEAE4; --ink:#1B1814; --secondary:#6A6072; --grey-border:#D7D3DA;
+    --plum-lift:#7E5C92; --plum:#5B3B6E; --plum-ink:#3B2A4D; --plum-tint:rgba(91,59,110,.10);
+    --sage:#7C8466; --sage-tint:rgba(124,132,102,.16);
+    --clay:#C8794E; --red:#BE4A3A;
+    --protein:#588CE4; --fat:#DF5EBC;
+    --serif:'Newsreader', Georgia, serif; --sans:'Inter', -apple-system, system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#ECE9E4; font-family:var(--sans); color:var(--ink); padding:40px 34px 60px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px; margin:0 auto;}
+  h1{font-family:var(--serif); font-weight:600; font-size:30px; color:var(--plum-ink); letter-spacing:-.3px;}
+  .sub{font-size:14px; color:#5b5560; margin:6px 0 4px; max-width:760px; line-height:1.55;}
+  h2{font-family:var(--serif); font-weight:600; font-size:20px; color:var(--plum-ink); margin:34px 0 4px;}
+  .h2note{font-size:13px; color:#6a646e; margin-bottom:16px;}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .cell{background:#fff; border-radius:16px; padding:18px 18px 16px; box-shadow:0 1px 3px rgba(0,0,0,.05); display:flex; flex-direction:column; gap:11px;}
+  .demo{min-height:64px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px dashed #E7E3DE; border-radius:12px; padding:14px;}
+  .demo.oncanvas{background:#fff;} .demo.oncream{background:var(--offwhite); border-style:solid; border-color:var(--hairline);}
+  .name{font-size:13px; font-weight:700; color:var(--ink);}
+  .treat{font-size:12px; font-weight:600; color:var(--plum);}
+  .use{font-size:11.5px; color:var(--secondary); line-height:1.4;}
+  .alt{font-size:11px; color:#8b858f; line-height:1.4; border-top:1px solid var(--hairline); padding-top:8px;}
+
+  /* buttons */
+  .btn{font:600 14px/1 var(--sans); padding:12px 18px; border-radius:13px; border:1.5px solid transparent; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:default;}
+  .b-fab{width:50px;height:50px;border-radius:25px;background:linear-gradient(160deg,var(--plum-lift),var(--plum)); color:#fff; font-size:24px; font-weight:300; box-shadow:0 10px 22px rgba(91,59,110,.45);}
+  .b-pri-out{background:#fff; border-color:var(--plum); color:var(--plum);}
+  .b-pri-fill{background:linear-gradient(165deg,var(--plum-lift),var(--plum)); color:#fff; border-color:transparent;}
+  .b-sec{background:var(--offwhite); color:var(--ink); border-color:transparent;}
+  .b-sec-out{background:#fff; border-color:var(--grey-border); color:var(--ink);}
+  .b-text{background:transparent; color:var(--plum); padding:8px 6px;}
+  .b-text-n{background:transparent; color:var(--secondary); padding:8px 6px;}
+  .b-destr{background:transparent; color:var(--red); padding:8px 6px;}
+  .b-ink{background:var(--ink); color:#fff; border-color:transparent;}
+  .icobtn{width:34px;height:34px;border-radius:17px;background:var(--offwhite);display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:15px;}
+
+  /* pills + chips */
+  .pill{font:600 12px/1 var(--sans); padding:8px 13px; border-radius:14px;}
+  .p-sel{background:var(--plum-tint); color:var(--plum);}
+  .p-unsel{background:var(--offwhite); color:var(--secondary);}
+  .seg{display:inline-flex; background:var(--offwhite); border-radius:11px; padding:3px;}
+  .seg span{font:600 12px/1 var(--sans); padding:7px 12px; border-radius:9px; color:var(--secondary);}
+  .seg span.on{background:#fff; color:var(--plum); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .chip{font:700 11px/1 var(--sans); padding:5px 9px; border-radius:9px; display:inline-flex; gap:5px; align-items:center;}
+  .c-sage{background:var(--sage-tint); color:var(--sage);}
+  .c-pro{background:var(--plum-tint); color:var(--plum);}
+  .c-conf{background:var(--sage-tint); color:var(--sage);}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+
+  /* cards */
+  .card-warm{background:var(--offwhite); border-radius:16px; padding:14px 16px; width:100%;}
+  .card-white{background:#fff; border-radius:16px; padding:0; width:100%; box-shadow:0 6px 16px rgba(40,30,50,.10); overflow:hidden;}
+  .tile{background:var(--offwhite); border-radius:13px; padding:12px 13px; width:118px;}
+  .tile .tv{font-family:var(--serif); font-weight:600; font-size:22px; color:var(--plum-ink);}
+  .tile .tl{font-size:10px; color:var(--secondary); margin-top:2px;}
+  .cardtitle{font-family:var(--serif); font-weight:600; font-size:15px; color:var(--plum-ink);}
+  .cardbody{font-size:12px; color:var(--secondary); margin-top:3px;}
+  .photo{height:74px;background:radial-gradient(120% 90% at 70% 20%, #cdb89a, #8f7a5e 60%, #6b5944);}
+  .listrow{display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--hairline); width:100%;}
+  .listrow .ic{width:30px;height:30px;border-radius:15px;border:1px solid var(--hairline);display:flex;align-items:center;justify-content:center;color:var(--sage);font-size:13px;}
+  .listrow .lt{font-size:13px;color:var(--ink);flex:1;}
+  .listrow .ch{color:#b7b2bb;}
+  .nudge{background:var(--plum-tint); border-radius:13px; padding:12px 14px; width:100%; display:flex; gap:10px; align-items:center;}
+  .nudge .nt{font-family:var(--serif);font-weight:600;font-size:13px;color:var(--plum-ink);}
+  .nudge .nb{font-size:11px;color:var(--secondary);margin-top:1px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sloe — every button &amp; card, assessed by job</h1>
+  <p class="sub">Treatments drawn from one vocabulary: <b>filled aubergine</b> (rarest), <b>aubergine outline</b>, <b>grey outline</b>, <b>off-white fill</b>, <b>text-only</b>, <b>ink fill</b>, <b>sage</b> (semantic), <b>red</b> (destructive). Principle: ration the accent like Julienne — the FAB is the one filled moment; serif headings + photography carry the rest.</p>
+
+  <h2>1 · Buttons — the emphasis ladder</h2>
+  <div class="h2note">From strongest (one filled moment) to lightest (text). Colour appears less as emphasis drops.</div>
+  <div class="grid">
+    <div class="cell"><div class="demo oncanvas"><span class="b-fab btn">+</span></div><div class="name">FAB (＋ log)</div><div class="treat">Filled aubergine gradient — the ONE filled moment</div><div class="use">Always-present primary nav action. Earns the single saturated anchor.</div></div>
+
+    <div class="cell"><div class="demo oncream"><a class="btn b-pri-out">Cook this</a></div><div class="name">Primary inline CTA</div><div class="treat">Aubergine outline (1.5px)</div><div class="use">"Cook this", "Log to lunch", "Generate", "Start fast", "Update target". The everyday primary — accent as a line, not a slab.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><a class="btn b-pri-fill">Start free trial</a></div><div class="name">Conversion-critical primary</div><div class="treat">Filled aubergine — the exception</div><div class="use">Paywall "Start trial", onboarding "Continue". The few moments where conversion needs the fill. <b>Decision: filled here, or outline everywhere?</b></div></div>
+
+    <div class="cell"><div class="demo oncream"><a class="btn b-sec">Adjust constraints</a></div><div class="name">Secondary action</div><div class="treat">Off-white fill (#F6F5F2), ink text</div><div class="use">"Adjust constraints", "Browse library". Clearly a button, no accent — sits below the primary.</div><div class="alt">Alt: grey 1px outline (shown next) if you want it lighter still.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><a class="btn b-sec-out">Browse library</a></div><div class="name">Secondary — outline variant</div><div class="treat">Grey outline (1px)</div><div class="use">Same role as off-white fill; pick one as the canonical secondary. Outline reads a touch more "button", fill reads softer.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><a class="b-text">Show me another</a></div><div class="name">Tertiary / dismiss</div><div class="treat">Text-only — aubergine, or neutral grey</div><div class="use">"Show me another", "Not now", "Keep current target", "Skip". Link-weight. <span style="color:var(--secondary)">(neutral grey for pure dismiss →)</span> <a class="b-text-n">Not now</a></div></div>
+
+    <div class="cell"><div class="demo oncanvas"><a class="b-destr">Delete account</a></div><div class="name">Destructive</div><div class="treat">Red, text or outline</div><div class="use">Unchanged semantic. Never aubergine — danger reads red.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><a class="btn b-ink">Continue with Apple</a></div><div class="name">OAuth / high-emphasis neutral</div><div class="treat">Ink near-black fill</div><div class="use">"Continue with Apple". Stays brand-neutral ink (Apple HIG), never the accent.</div></div>
+
+    <div class="cell"><div class="demo oncanvas" style="gap:10px"><span class="icobtn">‹</span><span class="icobtn">⤴</span><span class="icobtn">⋯</span></div><div class="name">Icon buttons</div><div class="treat">Neutral — ink glyph on warm-grey, or bare</div><div class="use">Back, share, more, bookmark, close. Neutral; never accent unless toggled-on (then aubergine).</div></div>
+  </div>
+
+  <h2>2 · Pills &amp; chips</h2>
+  <div class="h2note">Small surfaces — where the accent is allowed to appear, but as a tint, never a fill.</div>
+  <div class="grid">
+    <div class="cell"><div class="demo oncanvas" style="gap:7px"><span class="pill p-sel">All</span><span class="pill p-unsel">Lunch</span></div><div class="name">Filter pills</div><div class="treat">Selected = aubergine soft-tint · unselected = off-white</div><div class="use">Library/Discover/Plan filters. Selected carries a tint of accent + aubergine text; the rest are quiet off-white.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><span class="seg"><span class="on">By meal</span><span>By ingredient</span></span></div><div class="name">Segmented control</div><div class="treat">Active = white lift + aubergine label; rail = off-white</div><div class="use">Macro detail, log-sheet tabs. The lift signals active; aubergine label is the only colour.</div></div>
+
+    <div class="cell"><div class="demo oncanvas" style="gap:8px"><span class="chip c-sage">✓ Fits your day</span><span class="chip c-sage">On track</span></div><div class="name">Fit chip / status</div><div class="treat">Sage — UNCHANGED</div><div class="use">Success semantic, not a CTA. Stays sage green; never moves to the accent.</div></div>
+
+    <div class="cell"><div class="demo oncanvas" style="gap:8px"><span class="chip c-pro">✦ Pro</span><span class="chip c-conf"><span class="dot" style="background:var(--sage)"></span>Verified</span></div><div class="name">Pro badge · confidence chip</div><div class="treat">Pro = aubergine tint · Verified = sage</div><div class="use">Pro ties to the brand accent (premium = the colour). Nutrition confidence stays sage/neutral (data semantic).</div></div>
+  </div>
+
+  <h2>3 · Cards &amp; surfaces</h2>
+  <div class="h2note">The canvas is always white. Cards are warm-grey or white — colour comes from photography, not card fills.</div>
+  <div class="grid">
+    <div class="cell"><div class="demo oncanvas"><div class="card-warm"><div class="cardtitle">Energy balance</div><div class="cardbody">About 620 kcal left for today.</div></div></div><div class="name">Default content card</div><div class="treat">Warm-grey #F6F5F2, no border (flat slab)</div><div class="use">The resting card on the white canvas. SupprCard <code>lift="flat"</code>. Most cards are this.</div></div>
+
+    <div class="cell"><div class="demo oncream"><div class="card-white"><div class="photo"></div><div style="padding:11px 13px"><div class="cardtitle">Three-cheese fusilli</div><div class="cardbody">312 kcal · 55g protein</div></div></div></div><div class="name">Elevated / recipe card</div><div class="treat">White + soft shadow; photo is the colour</div><div class="use">Discover/Library/north-star. SupprCard <code>lift="soft"</code> floats off the canvas. The food photo does the colour work.</div></div>
+
+    <div class="cell"><div class="demo oncanvas" style="gap:10px"><div class="tile"><div class="tv">132<span style="font-size:13px;color:var(--secondary)">g</span></div><div class="tl">Protein</div></div><div class="tile"><div class="tv">45<span style="font-size:13px;color:var(--secondary)">g</span></div><div class="tl">Carbs</div></div></div><div class="name">Macro tile</div><div class="treat">Warm-grey #F6F5F2; serif value</div><div class="use">Serif numeral (Plum Ink), macro-colour icon. Clay survives here as the carbs glyph/value only.</div></div>
+
+    <div class="cell"><div class="demo oncream" style="padding:6px 14px"><div class="listrow"><span class="ic">♥</span><span class="lt">Apple Health</span><span class="ch">›</span></div></div><div class="name">List row (settings)</div><div class="treat">White, hairline divider, ink text</div><div class="use">Settings/menu rows. Circle-outline glyph keeps its semantic colour (sage for health). No accent fill.</div></div>
+
+    <div class="cell"><div class="demo oncanvas"><div class="nudge"><span style="font-size:18px">↻</span><div><div class="nt">Had this again?</div><div class="nb">One tap to log yesterday's lunch.</div></div></div></div><div class="name">Nudge / inline banner</div><div class="treat">Aubergine soft-tint card</div><div class="use">Eat-again, gentle prompts. A faint tint signals "actionable" without a loud fill. Use sparingly.</div></div>
+
+    <div class="cell" style="justify-content:center"><div class="name">Page canvas</div><div class="treat">Pure white #FFFFFF</div><div class="use">Every screen background. Never cream in-app (cream is marketing only). Warmth comes from the cards + photos, not the page.</div></div>
+  </div>
+</div>
+</body>
+</html>

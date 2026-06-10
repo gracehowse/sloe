@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Paywall</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<div class="relative">
+  <button class="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/85 backdrop-blur flex items-center justify-center text-ink"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  <div class="relative w-full h-[44vh] min-h-[360px]">
+    <img src="img/a6610a1bee6c.png" class="absolute inset-0 w-full h-full object-cover"/>
+    <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent"></div>
+    <div class="absolute bottom-0 left-0 w-full px-6 pb-6">
+      <p class="font-label text-xs tracking-[0.12em] uppercase text-damson font-semibold mb-2">Sloe Pro</p>
+      <h1 class="font-headline text-4xl text-ink leading-tight">Cook what you love.<br/><span class="italic">Still</span> reach your goals.</h1>
+    </div>
+  </div>
+</div>
+<main class="px-5 pb-32 -mt-2 max-w-2xl mx-auto space-y-6">
+  <div class="grid grid-cols-2 gap-3">
+    <div class="bg-surface-card border border-line rounded-2xl p-5">
+    <span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-clay mb-4"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+    <h3 class="font-headline text-lg text-ink leading-tight">Unlimited imports</h3>
+    <p class="font-body text-[13px] text-ink-soft mt-1 leading-relaxed">Save any recipe from a link or Reel.</p></div>
+    <div class="bg-surface-card border border-line rounded-2xl p-5">
+    <span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-clay mb-4"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></span>
+    <h3 class="font-headline text-lg text-ink leading-tight">Macro fitting</h3>
+    <p class="font-body text-[13px] text-ink-soft mt-1 leading-relaxed">Auto-fit any recipe to your day.</p></div>
+    <div class="bg-surface-card border border-line rounded-2xl p-5">
+    <span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-clay mb-4"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg></span>
+    <h3 class="font-headline text-lg text-ink leading-tight">AI coach</h3>
+    <p class="font-body text-[13px] text-ink-soft mt-1 leading-relaxed">Personalised, guilt-free nudges.</p></div>
+    <div class="bg-surface-card border border-line rounded-2xl p-5">
+    <span class="w-10 h-10 rounded-full bg-white border border-line flex items-center justify-center text-clay mb-4"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>
+    <h3 class="font-headline text-lg text-ink leading-tight">Cloud sync</h3>
+    <p class="font-body text-[13px] text-ink-soft mt-1 leading-relaxed">Your journal, safe on every device.</p></div>
+  </div>
+  <div class="bg-surface-card border border-line rounded-2xl px-4">
+    <div class="grid grid-cols-[1fr_64px_64px] border-b border-line"><div></div><div class="py-3 text-center font-label text-[11px] uppercase tracking-wide text-ink-faint">Free</div><div class="py-3 text-center font-label text-[11px] uppercase tracking-wide text-plum bg-frost-mist/50">Pro</div></div>
+    <div class="grid grid-cols-[1fr_64px_64px] items-center border-b border-line/60 last:border-0">
+    <div class="py-3.5 font-body text-sm text-ink">Log meals & macros</div>
+    <div class="py-3.5 flex justify-center"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <div class="py-3.5 flex justify-center bg-frost-mist/50"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div></div>
+    <div class="grid grid-cols-[1fr_64px_64px] items-center border-b border-line/60 last:border-0">
+    <div class="py-3.5 font-body text-sm text-ink">Browse community recipes</div>
+    <div class="py-3.5 flex justify-center"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <div class="py-3.5 flex justify-center bg-frost-mist/50"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div></div>
+    <div class="grid grid-cols-[1fr_64px_64px] items-center border-b border-line/60 last:border-0">
+    <div class="py-3.5 font-body text-sm text-ink">Unlimited imports</div>
+    <div class="py-3.5 flex justify-center"><span class="w-3.5 h-px bg-line"></span></div>
+    <div class="py-3.5 flex justify-center bg-frost-mist/50"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div></div>
+    <div class="grid grid-cols-[1fr_64px_64px] items-center border-b border-line/60 last:border-0">
+    <div class="py-3.5 font-body text-sm text-ink">AI macro fitting</div>
+    <div class="py-3.5 flex justify-center"><span class="w-3.5 h-px bg-line"></span></div>
+    <div class="py-3.5 flex justify-center bg-frost-mist/50"><svg class="sloe-ico text-sage text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div></div>
+  </div>
+  <div class="space-y-3">
+    <div class="relative border-2 border-clay rounded-2xl p-4 flex items-center justify-between">
+      <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-clay text-white font-label text-[10px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full">Best value</span>
+      <div class="flex items-center gap-3"><span class="w-4 h-4 rounded-full bg-clay flex items-center justify-center"><svg class="sloe-ico text-white text-[10px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><p class="font-headline text-[16px] text-ink">Annual</p><p class="font-body text-xs text-sage">Save 28%</p></div></div>
+      <div class="text-right"><p class="font-headline text-xl text-ink">£19.99<span class="text-sm text-ink-soft">/yr</span></p><p class="font-body text-xs text-ink-faint">just £1.66/mo</p></div>
+    </div>
+    <div class="border border-line rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3"><span class="w-4 h-4 rounded-full border border-line"></span><p class="font-headline text-[16px] text-ink">Monthly</p></div>
+      <p class="font-headline text-xl text-ink">£2.99<span class="text-sm text-ink-soft">/mo</span></p>
+    </div>
+  </div>
+</main>
+<div class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur border-t border-line px-5 pt-3 pb-7">
+  <div class="flex justify-center gap-5 mb-2 font-body text-[12px] text-ink-soft"><span class="flex items-center gap-1.5"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Secure checkout</span><span class="flex items-center gap-1.5"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/></svg> Cancel anytime</span></div>
+  <button class="w-full bg-clay text-white font-body font-semibold text-base rounded-full py-4 flex items-center justify-center gap-2">Start free 7-day trial <svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+  <p class="text-center font-body text-[10px] text-ink-faint mt-2">Subscription auto-renews unless cancelled 24h before period end. <span class="underline">Restore</span> · <span class="underline">Terms</span></p>
+</div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

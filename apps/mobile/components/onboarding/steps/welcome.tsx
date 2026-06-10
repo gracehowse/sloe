@@ -1,9 +1,12 @@
 import * as React from "react";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -64,18 +67,24 @@ export function MobileWelcomeStep() {
 
         <FloatingPreview />
         <SupprMark size={44} />
+        {/* Sloe reskin (Figma welcome 285:2): cold-open hero headline in
+            plum Newsreader serif (`FontFamily.serifRegular` +
+            `colors.navPrimary` theme-aware plum), matching the
+            warm-coaching brand + the web welcome treatment. Copy moves to
+            the Sloe positioning line. */}
         <Text
           style={{
-            fontSize: 36,
-            fontWeight: "800",
-            letterSpacing: -1.3,
-            color: colors.text,
+            fontFamily: FontFamily.serifRegular,
+            fontSize: 38,
+            fontWeight: "400",
+            letterSpacing: -0.8,
+            color: colors.navPrimary,
             marginTop: 24,
             marginBottom: 12,
-            lineHeight: 38,
+            lineHeight: 42,
           }}
         >
-          Eat well,{"\n"}without{"\n"}overthinking it.
+          Eat well,{"\n"}on your terms.
         </Text>
         <Text
           style={{
@@ -85,8 +94,9 @@ export function MobileWelcomeStep() {
             maxWidth: 360,
           }}
         >
-          Import recipes from the sites you already use. We&apos;ll break down
-          the macros and help you hit targets that fit your life.
+          Cook what you love and still hit your goals. Import recipes from the
+          sites you already use — Sloe breaks down the macros and calibrates
+          targets to you.
         </Text>
       </View>
 
@@ -166,6 +176,13 @@ export function MobileWelcomeStep() {
 
 function FloatingPreview() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the decorative
+  // "Example" import-card chip. The USDA-nutrition pill keeps `Accent.success*`
+  // (green status), and the hero gradient keeps its own `Accent.success` /
+  // `Accent.magenta` brand stops. NOTE: the "Get started" CTA + "Sign in" link
+  // read `colors.tint` (the theme-token layer), not `Accent.primary`, so they
+  // are out of `useAccent()`'s scope and stay on the theme tint.
+  const accent = useAccent();
   return (
     <View style={{ height: 140, marginBottom: Spacing.xxl }}>
       {/*
@@ -203,14 +220,14 @@ function FloatingPreview() {
             marginBottom: 6,
           }}
         >
-          <Ionicons name="link-outline" size={12} color={Accent.primaryLight} />
+          <Ionicons name="link-outline" size={12} color={accent.primaryLight} />
           <Text
             style={{
               fontSize: 10,
               fontWeight: "700",
               textTransform: "uppercase",
               letterSpacing: 1,
-              color: Accent.primaryLight,
+              color: accent.primaryLight,
             }}
           >
             Example

@@ -1,3 +1,5 @@
+import "./scripts/load-repo-env.cjs";
+
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 /**

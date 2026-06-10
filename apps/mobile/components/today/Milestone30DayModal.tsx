@@ -2,7 +2,8 @@ import React from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, FontFamily } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
@@ -40,6 +41,7 @@ export function Milestone30DayModal({
   textSecondaryColor,
   borderColor,
 }: Milestone30DayModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   if (!content) return null;
 
@@ -101,30 +103,35 @@ export function Milestone30DayModal({
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: Spacing.sm }}
           >
+            {/* SLOE DS: landmark celebration glyph uses the win DAMSON
+                (three-role colour law — win = celebration, not the clay
+                CTA). Soft damson halo behind the Sparkles. */}
             <View
               style={{
                 alignSelf: "center",
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: Accent.primary + "18",
+                backgroundColor: Accent.winSoft,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 14,
               }}
             >
-              <Sparkles size={30} color={Accent.primary} strokeWidth={2.25} />
+              <Sparkles size={30} color={Accent.win} strokeWidth={2.25} />
             </View>
 
+            {/* Plum serif headline — the Sloe display voice. */}
             <Text
               accessibilityRole="header"
               style={[
                 {
-                  fontSize: 22,
-                  fontWeight: "800",
+                  fontFamily: FontFamily.serifSemibold,
+                  fontSize: 24,
                   color: textColor,
                   textAlign: "center",
                   marginBottom: 4,
+                  letterSpacing: -0.3,
                 },
                 tabularStyle,
               ]}
@@ -165,7 +172,7 @@ export function Milestone30DayModal({
               }}
             >
               <StatTile
-                icon={<Flame size={18} color={Accent.primary} strokeWidth={2.25} />}
+                icon={<Flame size={18} color={accent.primary} strokeWidth={2.25} />}
                 label="Avg daily kcal"
                 value={`${content.avgDailyKcal.toLocaleString("en-GB")}`}
                 textColor={textColor}
@@ -174,7 +181,7 @@ export function Milestone30DayModal({
                 tabularStyle={tabularStyle}
               />
               <StatTile
-                icon={<Sparkles size={18} color={Accent.primary} strokeWidth={2.25} />}
+                icon={<Sparkles size={18} color={accent.primary} strokeWidth={2.25} />}
                 // Audit 2026-05-04 #26: "Best consecutive run" upper-cased
                 // to "BEST CONSECUTIVE R…" with a trailing ellipsis at
                 // the available column width on iPhone 16 Pro. Shorter
@@ -194,7 +201,7 @@ export function Milestone30DayModal({
                 style={{
                   borderWidth: 1,
                   borderColor,
-                  borderRadius: Radius.md,
+                  borderRadius: Radius.xl,
                   paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.md,
                   marginBottom: Spacing.md,
@@ -207,7 +214,7 @@ export function Milestone30DayModal({
                     marginBottom: 10,
                   }}
                 >
-                  <Utensils size={16} color={Accent.primary} strokeWidth={2.25} />
+                  <Utensils size={16} color={accent.primary} strokeWidth={2.25} />
                   <Text
                     style={{
                       fontSize: 12,
@@ -265,7 +272,7 @@ export function Milestone30DayModal({
                 style={{
                   borderWidth: 1,
                   borderColor,
-                  borderRadius: Radius.md,
+                  borderRadius: Radius.xl,
                   paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.md,
                   marginBottom: Spacing.md,
@@ -273,7 +280,7 @@ export function Milestone30DayModal({
                   alignItems: "center",
                 }}
               >
-                <Scale size={18} color={Accent.primary} strokeWidth={2.25} />
+                <Scale size={18} color={accent.primary} strokeWidth={2.25} />
                 <Text
                   style={{
                     fontSize: 14,
@@ -296,22 +303,29 @@ export function Milestone30DayModal({
             ) : null}
           </ScrollView>
 
-          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll). */}
+          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll).
+              Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid border
+              + primarySolid label), not a filled slab. Mirror of web
+              `milestone-30-day-dialog`. */}
           <Pressable
             onPress={onDismiss}
             accessibilityRole="button"
             accessibilityLabel="Keep going"
-            style={{
+            style={({ pressed }) => ({
               width: "100%",
               paddingVertical: 16,
-              borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              borderRadius: Radius.full,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               marginTop: Spacing.sm,
               marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
               Keep going
             </Text>
           </Pressable>
@@ -344,7 +358,7 @@ function StatTile({
         flex: 1,
         borderWidth: 1,
         borderColor,
-        borderRadius: Radius.md,
+        borderRadius: Radius.xl,
         paddingVertical: Spacing.md,
         paddingHorizontal: Spacing.md,
       }}

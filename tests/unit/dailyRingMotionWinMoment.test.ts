@@ -58,13 +58,14 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
     expect(SRC).toContain("function useAnimatedNumber(");
   });
 
-  it("flag ON renders the centre value at display size; flag OFF keeps the prior 22px treatment", () => {
+  it("renders the centre value at a ring-proportional size in Newsreader (Sloe ring parity)", () => {
     expect(SRC).toContain('motionEnabled');
-    // 36px (top of the ENG-119 type scale: 11|13|15|18|22|24|28|36) — the
-    // counting-hero display size. Was 34px, which the type-scale lint rejects
-    // as off-scale (check-type-scale.mjs); 36 is the nearest on-scale value.
-    expect(SRC).toContain('"text-[36px] font-extrabold"');
-    expect(SRC).toContain('"text-[22px] font-bold"');
+    // Centre value scales WITH the ring (`size * 0.23`) rather than a fixed 48px,
+    // so it keeps mobile's 48/207≈0.23 proportion at every ring size — a fixed
+    // 48px overflowed the smaller 160px desktop ring (Grace, 2026-06-07).
+    expect(SRC).toMatch(/fontSize:\s*Math\.round\(size \* 0\.23\)/);
+    expect(SRC).not.toContain('text-[48px]');
+    expect(SRC).toContain('font-[family-name:var(--font-headline)]');
   });
 });
 
@@ -77,11 +78,13 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     );
   });
 
-  it("ships the brand-spectrum gradient def mirroring --accent-win-gradient (#588CE4 → #9679D9 → #DF5EBC)", () => {
+  it("ships the Sloe brand gradient def mirroring --accent-win-gradient (#3B2A4D → #C8794E → #C9892C)", () => {
+    // Sloe Phase 0 (dossier D-3): the celebration fill is the warm Sloe brand
+    // gradient (plum → clay → amber), replacing the blue→purple→magenta spectrum.
     expect(SRC).toContain('<linearGradient id="winSpectrum"');
-    expect(SRC).toContain('stopColor="#588CE4"');
-    expect(SRC).toContain('stopColor="#9679D9"');
-    expect(SRC).toContain('stopColor="#DF5EBC"');
+    expect(SRC).toContain('stopColor="#3B2A4D"');
+    expect(SRC).toContain('stopColor="#C8794E"');
+    expect(SRC).toContain('stopColor="#C9892C"');
   });
 
   it("paints the progress arc with the win-spectrum gradient + glow + thicker stroke ONLY while celebrating", () => {
@@ -91,12 +94,15 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     expect(SRC).toContain('"drop-shadow(0 0 8px var(--accent-win))"');
   });
 
-  it("leaves the steady ring (idle gradient / under-green / over-red) intact below the celebration", () => {
-    // The under-budget steady stroke stays --success; the celebration is
-    // additive (a spectrum OVERRIDE while pulsing), not a swap of the resting hue.
-    // ENG-826: the empty ring now paints the calm idle gradient, not flat grey.
-    expect(SRC).toContain('"var(--success)"');
-    expect(SRC).toContain('"var(--destructive)"');
-    expect(SRC).toContain('"url(#ringIdle)"');
+  it("leaves the steady ring (idle gradient / under-plum / over = damson lap) intact below the celebration", () => {
+    // Sloe D-1 (redesigned 2026-06-04): under-budget steady stroke is
+    // --macro-calories (plum); over-budget is the Apple-Watch overage LAP
+    // (--ring-overage-lap), no longer a red recolour of the arc (the red arc
+    // "read as odd" — superseded). ENG-826: the empty ring paints the calm idle
+    // grey track (mobile parity). The celebration is additive (a Sloe-gradient OVERRIDE while
+    // pulsing), not a swap of the resting hue.
+    expect(SRC).toContain('"var(--macro-calories)"');
+    expect(SRC).toContain('"var(--ring-overage-lap)"');
+    expect(SRC).toContain('"var(--ring-bg)"');
   });
 });

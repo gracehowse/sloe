@@ -1,16 +1,17 @@
 /**
- * Planner meal-row thumbnail — wave-2 (2026-04-30 audit-vs-competitors)
- * FIX 2 (scoped).
+ * Planner meal-row thumbnail.
  *
- * Spec called for stacked 24×24 thumbnails per slot inside the small
- * day-strip cards. The actual day-strip cards are flex:1 across a 7-
- * day grid (~50px wide on iPhone) — too narrow to host four stacked
- * thumbnails per slot without a poor visual outcome. The full per-day
- * meal rows below the strip are where users actually scan recipes; we
- * surface the recipe hero image there instead, replacing the generic
- * slot icon when the meal has both a recipe AND an image. Empty slots
- * + recipes without an image still fall back to the slot-tinted
- * lucide icon-box so the row layout never drifts.
+ * Wave-2 (2026-04-30): the per-day meal rows surface the recipe hero
+ * image, replacing the generic slot icon when the meal has both a recipe
+ * AND an image. Empty slots fall back to the slot-tinted lucide icon-box
+ * so the row layout never drifts.
+ *
+ * 2026-06-08 (recipe-card §11.4 pass): the rendering moved into a
+ * `PlanMealThumb` helper so a stale/expired hero URL that FAILS to load —
+ * previously an empty tinted box — now settles into the warm sage→cream
+ * `RecipeHeroFallback` tile (the same calm placeholder as the Library /
+ * Discover cards). The ladder is: real image → warm recipe-keyed fallback
+ * (no image OR onError) → slot icon-box (genuinely empty slot).
  *
  * Structural source-level test: mounting Plan in vitest pulls
  * Supabase / RC / haptics / etc.
@@ -22,7 +23,7 @@ import { describe, expect, it } from "vitest";
 const PLANNER_PATH = resolve(__dirname, "../../app/(tabs)/planner.tsx");
 const SRC = readFileSync(PLANNER_PATH, "utf8");
 
-describe("Planner meal-row thumbnail (wave-2 FIX 2)", () => {
+describe("Planner meal-row thumbnail", () => {
   it("imports the React Native Image primitive", () => {
     // Sits in the standard react-native named import block at the top
     // of planner.tsx alongside View / Text / Pressable.
@@ -37,26 +38,31 @@ describe("Planner meal-row thumbnail (wave-2 FIX 2)", () => {
     expect(SRC).toMatch(/image:\s*\(r as \{ image\?: string \| null \}\)\.image/);
   });
 
-  it("renders an Image when the meal resolves to a recipe with an image", () => {
-    // Keep it loose — assert presence of the conditional <Image>
-    // render keyed off `planMealHasRecipe(meal) && imageUri`.
-    expect(SRC).toMatch(/planMealHasRecipe\(meal\)\s*&&\s*imageUri/);
-    expect(SRC).toMatch(/source=\{\{\s*uri:\s*imageUri\s*\}\}/);
+  it("renders the thumbnail through the PlanMealThumb helper", () => {
+    expect(SRC).toMatch(/function PlanMealThumb/);
+    expect(SRC).toMatch(/<PlanMealThumb/);
+    // It still renders the recipe photo via an <Image source={{ uri }}>.
+    expect(SRC).toMatch(/source=\{\{\s*uri:\s*trimmed\s*\}\}/);
   });
 
-  it("falls back to the lucide slot icon-box when no image is available", () => {
-    // The fallback path is preserved unchanged — guards against a
-    // regression where the icon path is removed and empty / unimaged
-    // slots blow up.
+  it("falls back to the warm RecipeHeroFallback on a broken/missing image (§11.4)", () => {
+    // The on-error path is the key fix — a stale hero URL now settles
+    // into the calm sage→cream tile, not an empty tinted box.
+    expect(SRC).toMatch(/<RecipeHeroFallback/);
+    expect(SRC).toMatch(/onError=\{\(\) => setBroken\(true\)\}/);
+  });
+
+  it("falls back to the lucide slot icon-box for genuinely empty slots", () => {
+    // The slot-icon path is preserved (now inside PlanMealThumb) — guards
+    // against a regression where empty / unimaged slots blow up.
     expect(SRC).toMatch(/<Icon size=\{16\} color=\{tint\} strokeWidth=\{1\.75\} \/>/);
   });
 
   it("declares the truncateMealName dead-code helper has been removed", () => {
     // Audit hygiene: the old 12-char truncator + the dayCardMeal
-    // styles it would have written into were dead code. Wave-2 deletes
-    // the helper. (Styles `dayCardMeal` etc. are kept for now since
-    // they're also unused but removal is mechanical and not part of
-    // FIX 2's intent.)
+    // styles it would have written into were dead code. (Styles
+    // `dayCardMeal` etc. are kept for now since they're also unused but
+    // removal is mechanical and not part of this fix's intent.)
     expect(SRC).not.toContain("const truncateMealName");
   });
 });

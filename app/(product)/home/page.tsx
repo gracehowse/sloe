@@ -29,7 +29,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Suppr — Dashboard",
+  title: "Sloe — Dashboard",
   description:
     "Your meal plan, today's macros, and recipe library — all in one place.",
 };

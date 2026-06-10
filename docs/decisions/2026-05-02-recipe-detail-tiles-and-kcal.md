@@ -1,6 +1,13 @@
 # Recipe detail v4 polish: 4-up macro tiles + dedicated kcal line (2026-05-02)
 
-**Status:** Resolved.
+> **Superseded in part by ENG-920 (2026-06-07)** — the macro *display*
+> (the 4-up progress-bar tiles described in §Decision/Layout/1) is replaced
+> by the flat Figma 332:2 number strip (CAL / PRO / CARB / FAT, serif value +
+> small-caps label, no per-macro bar). The *dedicated kcal line* (§Decision/
+> Layout/2) is unchanged. See
+> `docs/decisions/2026-06-07-recipe-detail-macro-strip-eng920.md`.
+
+**Status:** Resolved (macro-tile treatment superseded by ENG-920).
 **Authority:** User feedback against v3 (PR #19, 2026-05-01).
 **Owner:** Grace (product). Implementation: `claude/recipe-detail-tiles-and-kcal-v2`.
 **Files:** `apps/mobile/app/recipe/[id].tsx`, `src/app/components/RecipeDetail.tsx`,

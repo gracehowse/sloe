@@ -93,7 +93,9 @@ export function TodayAppleHealthCard({
   return (
     <section
       aria-label="Apple Health today"
-      className={`rounded-card bg-card border border-border p-4 card-elevated ${className ?? ""}`}
+      // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+      // lift (`card-slab`). Was flat slab.
+      className={`rounded-card bg-card card-slab p-4 ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 mb-3">
         <Icons.activity className="h-4 w-4 text-primary" aria-hidden />

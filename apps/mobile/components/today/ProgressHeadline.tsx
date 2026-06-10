@@ -1,6 +1,8 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Sparkles } from "lucide-react-native";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
@@ -8,6 +10,14 @@ import {
   splitBodyIntoSegments,
   type ProgressCommentaryResult,
 } from "@/lib/progressCommentary";
+
+// Sloe Figma 492:2 — the THIS WEEK insight card sits on a soft LILAC
+// (damson at ~12% alpha) wash with a hairline damson border. Mirrors web
+// `PROGRESS_INSIGHT_LILAC_STYLE` (`--slot-dinner-soft` ≈ #6A4B7A12). The
+// story-gate placeholder shares the exact same wash so the card never
+// changes tone when the user crosses the 3-day data floor.
+export const PROGRESS_INSIGHT_LILAC_BG = "rgba(106, 75, 122, 0.12)";
+export const PROGRESS_INSIGHT_LILAC_BORDER = "rgba(106, 75, 122, 0.16)";
 
 /**
  * Mobile `<ProgressHeadline>` — production design spec Surface E
@@ -36,6 +46,7 @@ export function ProgressHeadline({
 }: ProgressHeadlineProps) {
   const colors = useThemeColors();
   const cardElevation = useCardElevation();
+  const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
   return (
@@ -47,24 +58,29 @@ export function ProgressHeadline({
         styles.card,
         cardElevation.shadowStyle,
         {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          // Sloe Figma 492:2 — lilac insight wash + hairline damson edge
+          // (was cream `colors.card`). The frame's THIS WEEK card is lilac.
+          backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
+          borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,
       ]}
     >
-      <Text
-        style={[
-          Type.label,
-          {
-            color: Accent.primary,
-            marginBottom: 6,
-          },
-        ]}
-      >
-        THIS WEEK
-      </Text>
+      <View style={styles.eyebrowRow}>
+        {/* Clay sparkle by the THIS WEEK eyebrow (frame). Mirrors web. */}
+        <Sparkles size={14} color={accent.primary} strokeWidth={1.75} />
+        <Text
+          style={[
+            Type.label,
+            {
+              color: accent.primary,
+            },
+          ]}
+        >
+          THIS WEEK
+        </Text>
+      </View>
 
       <Text
         style={[
@@ -117,9 +133,14 @@ export function ProgressHeadline({
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
   },
   body: {
     // Per spec: body 12pt text-secondary inside the headline card.

@@ -19,7 +19,7 @@ import {
  * Failure mode: HealthKit may not be available (Android, simulator
  * without permissions) or the network may be down — we swallow the
  * error silently so the rest of the screen still loads. The user can
- * trigger a forced sync from More → Connected if they care.
+ * trigger a forced sync from Settings → Connections if they care.
  *
  * @param userId           — current user; the hook no-ops when null
  * @param loadProfileTargets — refreshes the `profiles` table-backed targets
@@ -42,7 +42,7 @@ export function useHealthSyncOnFocus(
           await loadJournal();
         } catch {
           // HealthKit or network — ignore; user can sync from
-          // More → Connected.
+          // Settings → Connections.
         }
       })();
     }, [userId, loadProfileTargets, loadJournal]),

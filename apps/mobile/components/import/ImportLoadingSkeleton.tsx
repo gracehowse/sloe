@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/SkeletonRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -22,6 +23,10 @@ export function ImportLoadingSkeleton({
   onCancel,
 }: ImportLoadingSkeletonProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active-stage
+  // status pill (tint, border, spinner, label). Completed step checks keep
+  // `Accent.success`.
+  const accent = useAccent();
   const STAGES = useMemo(
     () =>
       phase === "checking"
@@ -70,15 +75,15 @@ export function ImportLoadingSkeleton({
           gap: 10,
           padding: 14,
           borderRadius: Radius.md,
-          backgroundColor: `${Accent.primary}10`,
+          backgroundColor: `${accent.primary}10`,
           borderWidth: 1,
-          borderColor: `${Accent.primary}26`,
+          borderColor: `${accent.primary}26`,
           marginBottom: Spacing.md,
         }}
       >
-        <ActivityIndicator size="small" color={Accent.primary} />
+        <ActivityIndicator size="small" color={accent.primary} />
         <Text
-          style={{ flex: 1, fontSize: 13, fontWeight: "600", color: Accent.primary }}
+          style={{ flex: 1, fontSize: 13, fontWeight: "600", color: accent.primary }}
           accessibilityLiveRegion="polite"
           testID="import-status-narration"
         >

@@ -201,9 +201,12 @@ export const ShoppingList = memo(function ShoppingList({
       ) : null}
 
       <div className="hidden md:block">
+      {/* Sloe DS (Figma 289:2 D8 — Shopping list) — page title reads in
+          Newsreader serif plum (`text-foreground-brand`), matching the
+          Plan / Today / Progress landmark headings. */}
       <h1
-        className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
+        className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
+        style={{ margin: "0 0 4px" }}
       >
         Shopping list
       </h1>
@@ -244,7 +247,7 @@ export const ShoppingList = memo(function ShoppingList({
               type="button"
               onClick={handleClearChecked}
               data-testid="shopping-clear-checked"
-              className="text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
+              className="text-[11px] font-semibold text-primary-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
             >
               Remove {checkedCount} checked
             </button>
@@ -254,6 +257,11 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <SupprCard
+          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
+          // card-treatment-soft-elevation.md): the empty-state slab is
+          // page-ground, so it lifts soft (`.card-slab`) like the category
+          // cards below + the rest of the app. Was the flat default.
+          elevation="card"
           padding="none"
           radius="xl"
           className="px-6 py-12 text-center"
@@ -262,7 +270,8 @@ export const ShoppingList = memo(function ShoppingList({
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
             <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
           </div>
-          <p className="text-[18px] font-semibold text-foreground mb-1.5">
+          {/* Sloe DS (289:2) — empty-state headline in Newsreader serif plum. */}
+          <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand mb-1.5">
             Your shopping list builds itself
           </p>
           <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
@@ -272,7 +281,9 @@ export const ShoppingList = memo(function ShoppingList({
             <button
               type="button"
               onClick={() => _onNavigate("plan")}
-              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
+              /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
+                 (transparent fill, 1.5px primarySolid border + label). */
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-transparent border-[1.5px] border-primary-solid px-5 py-2.5 text-sm font-bold text-primary-solid hover:bg-primary/5 transition-colors"
             >
               Start planning
             </button>
@@ -291,6 +302,12 @@ export const ShoppingList = memo(function ShoppingList({
             return (
             <SupprCard
               key={section.name}
+              // One-treatment soft lift (2026-06-09): each aisle/category card
+              // sits directly in the page-ground grid, so it lifts soft
+              // (`.card-slab`) — matching the mobile shopping section cards,
+              // which already carry `Elevation.cardSoft` via `cardOuter`. Was
+              // the flat default.
+              elevation="card"
               padding="none"
               radius="xl"
               style={{ padding: 14 }}
@@ -299,7 +316,10 @@ export const ShoppingList = memo(function ShoppingList({
                 className="flex items-center justify-between"
                 style={{ marginBottom: 10 }}
               >
-                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                {/* Gap 8 (parity): promote section header to Newsreader serif to match
+                    mobile's Type.headline treatment (DS §2.3 + plan.md §3.9
+                    'serif group headers'). Drops the ALL-CAPS eyebrow pattern. */}
+                <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium tracking-tight text-foreground-secondary">
                   {section.name}
                 </p>
                 <span
@@ -343,9 +363,10 @@ export const ShoppingList = memo(function ShoppingList({
                         aria-label={`${allChecked ? "Uncheck" : "Check"} ${rowLabel}`}
                         className="shrink-0 grid place-items-center transition-colors"
                         style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 9,
+                          // Gap 9 (parity): align checkbox size with mobile (22×22 r11).
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
                           border: allChecked ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                           background: allChecked ? "var(--primary)" : "transparent",
                           cursor: "pointer",
@@ -374,9 +395,10 @@ export const ShoppingList = memo(function ShoppingList({
                             aria-hidden
                             className="inline-flex items-center justify-center text-[9px] font-bold text-white"
                             style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: 7,
+                              // Gap 14 (parity): align avatar size with mobile (16×16 full radius).
+                              width: 16,
+                              height: 16,
+                              borderRadius: 9999,
                               background: householdMemberAccent(attributedMember.index),
                             }}
                           >

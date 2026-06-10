@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#3F2D53"/>
+      <stop offset="100%" stop-color="#1B1027"/>
+    </radialGradient>
+    <radialGradient id="berry" cx="40%" cy="34%" r="74%">
+      <stop offset="0%" stop-color="#7E5C92"/>
+      <stop offset="50%" stop-color="#553D6C"/>
+      <stop offset="100%" stop-color="#32214A"/>
+    </radialGradient>
+    <radialGradient id="bloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D9D3E3" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#D9D3E3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C9970"/>
+      <stop offset="100%" stop-color="#5E7C56"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+
+  <!-- stem -->
+  <path d="M540 300 C 536 250, 548 222, 568 206" fill="none" stroke="#8A7559" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- leaf -->
+  <path d="M566 214 C 612 176, 678 176, 706 196 C 672 232, 614 244, 572 232 Z" fill="url(#leaf)"/>
+  <path d="M582 222 C 624 212, 664 206, 700 198" fill="none" stroke="#48643F" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- berry -->
+  <circle cx="540" cy="578" r="292" fill="url(#berry)"/>
+  <!-- matte frosted bloom -->
+  <ellipse cx="452" cy="486" rx="172" ry="142" fill="url(#bloom)"/>
+  <!-- faint frost rim for separation from bg -->
+  <circle cx="540" cy="578" r="290" fill="none" stroke="#C9C2D6" stroke-width="3" opacity="0.16"/>
+</svg>

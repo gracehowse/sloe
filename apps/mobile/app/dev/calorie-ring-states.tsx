@@ -1,11 +1,15 @@
 /**
  * Mobile-side mirror of `app/dev/daily-ring-states/page.tsx` (web).
  *
- * Renders CalorieRing in 4 controlled states so Maestro (or a manual
- * iOS Simulator screenshot) can validate Bundle 1A's N3 + N5 fixes
- * landed correctly on mobile parity:
+ * Renders CalorieRing in controlled states so Maestro (or a manual
+ * iOS Simulator screenshot) can validate mobile parity:
  *   - N3 — centre value with `.toLocaleString()` matches budget line
  *   - N5 — empty state shows "Start your day" in BOTH display modes
+ *   - OVER — the Apple-Watch overage wrap (2026-06-04): the plum ring
+ *     stays plum and the over-target portion draws as a lighter-plum
+ *     SECOND lap wrapping past 12 o'clock with a glow at the leading
+ *     cap (no red). Two over states (~28% and ~64%) make the wrap +
+ *     glow visible at both small and large overage.
  *
  * 404-equivalent in production by simply not being routed; Expo
  * Router includes the file but `app/_layout.tsx` doesn't expose
@@ -15,7 +19,6 @@
 import * as React from "react";
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
-import { Accent } from "@/constants/theme";
 import CalorieRing from "@/components/charts/CalorieRing";
 
 const STATES = [
@@ -42,10 +45,17 @@ const STATES = [
   },
   {
     id: "over",
-    title: "OVER",
+    title: "OVER (APPLE-WATCH WRAP)",
     consumed: 2338,
     goal: 1832,
-    note: "Already correct on mobile (uses Math.abs(diff))",
+    note: "Plum stays plum; overage wraps as a lighter-plum 2nd lap (~28%) past 12 o'clock with a glow at the leading cap. NO red.",
+  },
+  {
+    id: "over-big",
+    title: "OVER — BIG (WRAP + GLOW OBVIOUS)",
+    consumed: 3000,
+    goal: 1832,
+    note: "~64% overage — the lighter-plum wrap clears 12 o'clock by a wide margin so the leading-cap glow is unmistakable.",
   },
 ] as const;
 

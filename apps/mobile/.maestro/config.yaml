@@ -18,7 +18,6 @@ executionOrder:
     - 06_burn_detail.yaml
     - 07_progress.yaml
     - 08_voice_log.yaml
-    - 10_search.yaml
     - 32_food_search_modal.yaml
     - 11_discover.yaml
     - 12_library.yaml

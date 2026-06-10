@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import {
@@ -52,6 +53,10 @@ export interface PortionPickerProps {
 export function PortionPicker(props: PortionPickerProps) {
   const { product, value, onChange, hideQuickChips = false, macrosPer100g, basisCorrected = false, style } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the unit-picker
+  // trigger pill and the active quick-portion chips. The basis-corrected note
+  // keeps `Accent.warning` (amber status).
+  const accent = useAccent();
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
 
   const opts =
@@ -155,16 +160,16 @@ export function PortionPicker(props: PortionPickerProps) {
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              backgroundColor: `${Accent.primary}1a`, // ~10% tint
+              backgroundColor: `${accent.primary}1a`, // ~10% tint
               borderRadius: Radius.full,
               paddingHorizontal: 10,
               paddingVertical: 3,
             }}
           >
-            <Text style={{ fontSize: 11.5, fontWeight: "700", color: Accent.primary, letterSpacing: 0.1 }}>
+            <Text style={{ fontSize: 11.5, fontWeight: "700", color: accent.primary, letterSpacing: 0.1 }}>
               {unitLabel(value)}
             </Text>
-            <Text style={{ fontSize: 10, color: Accent.primary, opacity: 0.7, transform: [{ rotate: "90deg" }] }}>›</Text>
+            <Text style={{ fontSize: 10, color: accent.primary, opacity: 0.7, transform: [{ rotate: "90deg" }] }}>›</Text>
           </Pressable>
         </View>
 
@@ -220,8 +225,8 @@ export function PortionPicker(props: PortionPickerProps) {
                   onPress={() => onTapChip(chip)}
                   style={{
                     borderWidth: 1,
-                    borderColor: isActive ? `${Accent.primary}33` : colors.border,
-                    backgroundColor: isActive ? `${Accent.primary}1a` : colors.card,
+                    borderColor: isActive ? `${accent.primary}33` : colors.border,
+                    backgroundColor: isActive ? `${accent.primary}1a` : colors.card,
                     borderRadius: Radius.full,
                     paddingHorizontal: 12,
                     paddingVertical: 6,
@@ -231,7 +236,7 @@ export function PortionPicker(props: PortionPickerProps) {
                     style={{
                       fontSize: 12.5,
                       fontWeight: "600",
-                      color: isActive ? Accent.primary : colors.text,
+                      color: isActive ? accent.primary : colors.text,
                     }}
                   >
                     {chip.label}
@@ -282,6 +287,8 @@ function UnitPickerModal(props: {
 }) {
   const { visible, units, current, onDismiss, onSelect } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active unit row.
+  const accent = useAccent();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <Pressable
@@ -317,13 +324,13 @@ function UnitPickerModal(props: {
                   paddingHorizontal: 12,
                   paddingVertical: 12,
                   borderRadius: Radius.sm,
-                  backgroundColor: isActive ? `${Accent.primary}1a` : "transparent",
+                  backgroundColor: isActive ? `${accent.primary}1a` : "transparent",
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.primary : colors.text }}>
+                <Text style={{ fontSize: 14, fontWeight: isActive ? "700" : "500", color: isActive ? accent.primary : colors.text }}>
                   {unitLabelFor(u)}
                 </Text>
-                <Text style={{ fontSize: 11.5, color: isActive ? Accent.primary : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                <Text style={{ fontSize: 11.5, color: isActive ? accent.primary : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
                   {unitMeta(u)}
                 </Text>
               </Pressable>

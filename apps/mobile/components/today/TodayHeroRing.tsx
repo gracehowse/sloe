@@ -1,9 +1,14 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
 import { Layout } from "@/constants/layout";
-import { Accent, Radius, Spacing } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Accent, Colors, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
+import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -68,35 +73,59 @@ interface StatProps {
   label: string;
   value: string;
   valueColor: string;
+  labelColor?: string;
   textSecondaryColor: string;
+  /** Sloe redesign: a hairline divider on the left of the 2nd/3rd cells
+   *  (`divide-x divide-line` in the `01 · Today` frame). */
+  dividerColor?: string;
   testID?: string;
 }
 
 /**
- * Streamlined Goal/Food/Bonus stat. Canonical 2026-05-22 v4: no icon,
- * no divider line. Label sits above the value; value is coloured to
- * match the corresponding ring segment so the stats row visually
- * reads as a numeric legend for the ring above (Goal=neutral text,
- * Food=success green, Bonus=warm orange).
+ * Goal / Eaten / Bonus stat cell. SLOE redesign (2026-06-03, `01 · Today`
+ * frame): label `text-[10px] uppercase` above a Newsreader (serif)
+ * `text-xl` value, cells separated by a `divide-x divide-line` hairline.
+ * The value colour still links each stat to its ring segment where it
+ * carries meaning (Bonus → sage when positive, red when over).
  */
-function Stat({ label, value, valueColor, textSecondaryColor, testID }: StatProps) {
+function Stat({
+  label,
+  value,
+  valueColor,
+  labelColor,
+  textSecondaryColor,
+  dividerColor,
+  testID,
+}: StatProps) {
   return (
-    <View testID={testID} style={{ flex: 1, alignItems: "center", gap: 3 }}>
+    <View
+      testID={testID}
+      style={{
+        flex: 1,
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: Spacing.sm,
+        // Sloe: hairline `divide-x divide-line`, not a 1pt (3px) rule.
+        borderLeftWidth: dividerColor ? StyleSheet.hairlineWidth : 0,
+        borderLeftColor: dividerColor,
+      }}
+    >
       <Text
         style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: "600",
-          color: textSecondaryColor,
+          color: labelColor ?? textSecondaryColor,
           textTransform: "uppercase",
-          letterSpacing: 0.5,
+          letterSpacing: 0.6,
         }}
       >
         {label}
       </Text>
       <Text
         style={{
-          fontSize: 14,
-          fontWeight: "700",
+          ...Type.title,
+          fontSize: 19,
+          lineHeight: 23,
           color: valueColor,
           fontVariant: ["tabular-nums"],
         }}
@@ -108,6 +137,121 @@ function Stat({ label, value, valueColor, textSecondaryColor, testID }: StatProp
   );
 }
 
+/**
+ * StatusChip — the calm state pill above the ring (SLOE `01 · Today`
+ * frame, chip-left). Three states with Sloe tints + a lucide glyph:
+ *   - empty → "Fresh start" (frost-mist / plum, sparkles)
+ *   - under → "Under budget" (sage tint, circle-check)
+ *   - over  → "Over budget"  (destructive tint, circle-alert)
+ * Copy comes from the shared `todayStatusChip` helper (Figma `01 · Today`).
+ */
+function StatusChip({
+  state,
+  overByKcal,
+  isDark,
+}: {
+  state: "empty" | "under" | "over";
+  overByKcal: number;
+  isDark: boolean;
+}) {
+  const accent = useAccent();
+  const sage = isDark ? Accent.successLight : Accent.success;
+  const red = isDark ? Accent.destructiveLight : Accent.destructive;
+  const plum = isDark ? "#815E91" : MacroColors.calories;
+  const config =
+    state === "over"
+      ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
+      : state === "empty"
+        ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : "#EDEAF1", Icon: Sparkles }
+        : { fg: sage, bg: `${sage}26`, Icon: CircleCheck };
+  const { fg, bg, Icon } = config;
+  return (
+    <View
+      testID="today-ring-status-chip"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        backgroundColor: bg,
+        borderRadius: Radius.full,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+      }}
+    >
+      <Icon size={13} color={fg} strokeWidth={2} />
+      <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>
+        {todayStatusChip(state, overByKcal)}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * DisplayModeToggle — Remaining/Consumed segmented pill (SLOE `01 · Today`
+ * frame, chip-right). Visible counterpart to the ring long-press gesture;
+ * both fire `onToggleDisplayMode`. The active segment is the CURRENT
+ * `displayMode` so the pill always reflects the ring's centre value.
+ */
+function DisplayModeToggle({
+  displayMode,
+  onToggleDisplayMode,
+  cardBackgroundColor,
+  borderColor,
+  textSecondaryColor,
+  isDark,
+}: {
+  displayMode: "remaining" | "consumed";
+  onToggleDisplayMode: () => void;
+  cardBackgroundColor: string;
+  borderColor: string;
+  textSecondaryColor: string;
+  isDark: boolean;
+}) {
+  const activeBg = isDark ? Colors.dark.cardElevated : "#FFFFFF";
+  const activeFg = isDark ? "#815E91" : MacroColors.calories;
+  const segment = (label: string, mode: "remaining" | "consumed") => {
+    const active = displayMode === mode;
+    return (
+      <View
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 4,
+          borderRadius: Radius.full,
+          backgroundColor: active ? activeBg : "transparent",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: active ? "600" : "500",
+            color: active ? activeFg : textSecondaryColor,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
+    );
+  };
+  const trackBg = isDark ? cardBackgroundColor : "#EFEFEF";
+  return (
+    <Pressable
+      onPress={onToggleDisplayMode}
+      accessibilityRole="button"
+      accessibilityLabel={`Showing ${displayMode} calories. Tap to switch.`}
+      testID="today-ring-display-toggle"
+      style={{
+        flexDirection: "row",
+        backgroundColor: trackBg,
+        borderRadius: Radius.full,
+        padding: 2,
+      }}
+    >
+      {segment("Remaining", "remaining")}
+      {segment("Consumed", "consumed")}
+    </Pressable>
+  );
+}
+
 export function TodayHeroRing({
   consumed,
   goal,
@@ -115,7 +259,10 @@ export function TodayHeroRing({
   textColor,
   secondaryColor,
   trackColor,
-  cardBackgroundColor,
+  // Card fill is now owned by the shared <SupprCard> shell (neutral = #F6F5F2);
+  // the host-passed value is retained in the prop API for call-site stability
+  // but no longer drives the outer card. Inner dividers still use `borderColor`.
+  cardBackgroundColor: _cardBackgroundColor,
   borderColor,
   proteinPct,
   carbsPct,
@@ -124,26 +271,57 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onToggleDisplayMode,
-  textTertiaryColor: _textTertiaryColor,
+  textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
-  const cardElevation = useCardElevation();
+  const accent = useAccent();
+  const isDark = useColorScheme() === "dark";
+  const isEmpty = consumed === 0 || goal <= 0;
+  const isOver = goal > 0 && consumed > goal;
+  const overByKcal = isOver ? consumed - goal : 0;
+  const chipState: "empty" | "under" | "over" = isEmpty
+    ? "empty"
+    : isOver
+      ? "over"
+      : "under";
   return (
-    <View
-      style={[
-        {
-          backgroundColor: cardElevation.liftBg ?? cardBackgroundColor,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: borderColor,
-          borderRadius: Radius.lg,
-          paddingVertical: Spacing.sm,
-          paddingHorizontal: Spacing.md,
-          alignItems: "center",
-          gap: Layout.todayScrollGap,
-        },
-        cardElevation.shadowStyle,
-      ]}
+    // Card chrome (fill #F6F5F2, radius 24, soft lift, hairline) is the shared
+    // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
+    // Only the ring's inner layout (centred, gap) lives here via innerStyle.
+    //
+    // lift="soft" (audit gap 6, 2026-06-09): the hero is the single most
+    // important card on Today, yet it was explicitly `flat` — on the
+    // near-tonal #F6F5F2-on-#FFFFFF pairing that made the whole top of the
+    // screen read as one undifferentiated slab (Grace's "cards blend into the
+    // background" note). `soft` gives it the cardSoft plum penumbra so it
+    // separates from the page like every other resting card. Mirrors web
+    // `elevation="card"` on `today-hero-ring.tsx`.
+    <SupprCard
+      lift="soft"
+      padding="lg"
+      innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >
+      {/* Chip (state) + Remaining/Consumed toggle — SLOE `01 · Today`
+          frame, sits above the ring inside the hero card. */}
+      <View
+        style={{
+          width: "100%",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: Spacing.xs,
+        }}
+      >
+        <StatusChip state={chipState} overByKcal={overByKcal} isDark={isDark} />
+        <DisplayModeToggle
+          displayMode={displayMode}
+          onToggleDisplayMode={onToggleDisplayMode}
+          cardBackgroundColor={isDark ? Colors.dark.background : "#FFFFFF"}
+          borderColor={borderColor}
+          textSecondaryColor={secondaryColor}
+          isDark={isDark}
+        />
+      </View>
       <CalorieRing
         consumed={consumed}
         goal={goal}
@@ -159,21 +337,23 @@ export function TodayHeroRing({
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
       />
-      {/* Canonical 2026-05-22 v4 multi-ring revival: Goal / Food /
-          Bonus stats row sits directly below the ring inside the
-          same hero card. Streamlined per Grace 2026-05-22 follow-up
-          — no icons, no vertical dividers; value colour links each
-          stat to its ring segment (Food → green arc, Bonus → orange
-          arc, Goal → neutral text since it's the whole). Renders
-          only when the ring is non-empty so the first-run "Start
-          your day" empty state stays clean. */}
+      {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame:
+          `grid grid-cols-3 divide-x divide-line`, Newsreader values,
+          a hairline top-border above. Renders only when the ring is
+          non-empty so the first-run "Start your day" empty state stays
+          calm (a deliberate divergence from the static mock, which
+          shows a 0/0 row). Bonus shows the exercise-earned headroom
+          (sage); when over-budget it flips to the deficit/over value
+          in red so the row still reads as a legend for the ring. */}
       {consumed > 0 && goal > 0 ? (
         <View
           style={{
             width: "100%",
             flexDirection: "row",
-            paddingTop: Spacing.sm,
-            borderTopWidth: 1,
+            paddingTop: Spacing.md,
+            marginTop: Spacing.xs,
+            // Sloe: hairline `border-t border-line` above the stats row.
+            borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: borderColor,
           }}
         >
@@ -181,32 +361,87 @@ export function TodayHeroRing({
             label="Goal"
             value={Math.round(goal).toLocaleString()}
             valueColor={textColor}
+            labelColor={textTertiaryColor}
             textSecondaryColor={secondaryColor}
           />
           <Stat
-            label="Food"
+            label="Eaten"
             value={Math.round(consumed).toLocaleString()}
-            valueColor={Accent.success}
+            valueColor={textColor}
+            labelColor={textTertiaryColor}
             textSecondaryColor={secondaryColor}
+            dividerColor={borderColor}
           />
-          <Stat
-            label="Bonus"
-            testID="today-ring-bonus"
-            value={
-              baseGoal && baseGoal < goal
-                ? Math.round(goal - baseGoal).toLocaleString()
-                : "0"
-            }
-            // Yellow to match activity card + burn-detail screen
-            // (`Accent.activity` is the app-wide token for earned-via-
-            // exercise calories, distinct from the orange warning/
-            // over-budget family as of 2026-05-25).
-            valueColor={Accent.activity}
-            textSecondaryColor={secondaryColor}
-          />
+          {isOver ? (
+            <Stat
+              label="Over"
+              testID="today-ring-bonus"
+              value={`−${Math.round(consumed - goal).toLocaleString()}`}
+              valueColor={isDark ? Accent.destructiveLight : Accent.destructive}
+              labelColor={textTertiaryColor}
+              textSecondaryColor={secondaryColor}
+              dividerColor={borderColor}
+            />
+          ) : (
+            <Stat
+              label="Bonus"
+              testID="today-ring-bonus"
+              value={
+                baseGoal && baseGoal < goal
+                  ? `+${Math.round(goal - baseGoal).toLocaleString()}`
+                  : "0"
+              }
+              // Sage (success) for earned headroom — matches the Sloe
+              // frame's `text-sage` bonus label + value.
+              labelColor={
+                baseGoal && baseGoal < goal
+                  ? isDark
+                    ? Accent.successLight
+                    : Accent.success
+                  : secondaryColor
+              }
+              valueColor={
+                baseGoal && baseGoal < goal
+                  ? isDark
+                    ? Accent.successLight
+                    : Accent.success
+                  : textTertiaryColor
+              }
+              textSecondaryColor={secondaryColor}
+              dividerColor={borderColor}
+            />
+          )}
         </View>
       ) : null}
-    </View>
+      {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to
+          the ring's long-press macro-rings gesture. The design system (§13)
+          requires every gesture to have a tap-accessible equivalent: long-press
+          can't be the only path to the inner protein/carbs/fat rings. Mirrors
+          web `today-hero-ring.tsx`'s `today-macro-rings-toggle` button + shares
+          the `MACRO_RING_TOGGLE` copy so the two surfaces can't drift. Fires
+          the same `onToggleExpanded` the long-press does. */}
+      <Pressable
+        testID="today-macro-rings-toggle"
+        onPress={onToggleExpanded}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        hitSlop={8}
+        style={({ pressed }) => ({
+          marginTop: Spacing.xs,
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            color: isDark ? accent.primarySolidDark : accent.primarySolid,
+          }}
+        >
+          {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        </Text>
+      </Pressable>
+    </SupprCard>
   );
 }
 

@@ -37,7 +37,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beef, Wheat, Droplets, Leaf, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Dumbbell, Wheat, Droplet, Sprout, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -296,7 +296,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "protein",
         label: "Protein",
-        Icon: Beef,
+        Icon: Dumbbell,
         current: todayMacros.protein,
         target: targets.protein,
         fillVar: "var(--macro-protein)",
@@ -321,7 +321,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fat",
         label: "Fat",
-        Icon: Droplets,
+        Icon: Droplet,
         current: todayMacros.fat,
         target: targets.fat,
         fillVar: "var(--macro-fat)",
@@ -329,7 +329,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fiber",
         label: "Fiber",
-        Icon: Leaf,
+        Icon: Sprout,
         current: todayMacros.fiber,
         target: targets.fiber,
         fillVar: "var(--success)",
@@ -396,9 +396,16 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               className="absolute inset-0 -rotate-90"
             >
               <defs>
+                {/* Decorative target-display ring (always a full 100% sweep —
+                    NOT the calorie progress ring, which keeps its plum state in
+                    `daily-ring.tsx`). Brand-manager 2026-06-08: the functional
+                    accent is clay; this ring must tint from it, never hardcode
+                    plum/damson. Sources `--primary` (clay) so it stays in
+                    lockstep with the accent token. Mirrors mobile's
+                    `accent.primaryLight → accent.primary` clay gradient. */}
                 <linearGradient id="targets-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="var(--macro-calories)" />
-                  <stop offset="1" stopColor="var(--macro-fat)" />
+                  <stop offset="0" stopColor="var(--primary)" />
+                  <stop offset="1" stopColor="var(--primary-solid)" />
                 </linearGradient>
               </defs>
               <circle
@@ -420,7 +427,13 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[48px] font-extrabold text-foreground tabular-nums -tracking-[0.03em] leading-none">
+              {/* SLOE Phase 0: hero calorie numeral reads in Newsreader serif
+                  (design system reserves big numerals for serif). `.font-display`
+                  is the canonical serif-numeral opt-in (same class the Progress
+                  adherence + Today display numerals use). Drop the sans
+                  `font-extrabold`; the serif carries its own weight at 48px.
+                  Mirrors mobile `Type.ringValue`. */}
+              <span className="font-display text-[48px] font-normal text-foreground tabular-nums -tracking-[0.03em] leading-none">
                 {targets.calories > 0 ? targets.calories.toLocaleString("en-US") : "—"}
               </span>
               <span className="text-[11px] text-muted-foreground tabular-nums mt-1">
@@ -543,7 +556,10 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
                 />
               </div>
               <div className="flex items-baseline">
-                <span className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em]">
+                {/* SLOE Phase 0: macro target numerals read in Newsreader serif
+                    on the Targets review surface (parity with mobile). The
+                    serif `.font-display` replaces the sans `font-bold`. */}
+                <span className="font-display text-[22px] font-normal tabular-nums text-foreground -tracking-[0.02em]">
                   {Math.round(tile.current)}
                 </span>
                 <span className="text-xs text-muted-foreground ml-1">/ {tile.target} g</span>
@@ -674,7 +690,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
        */}
       <p className="mt-8 mb-2 text-xs leading-relaxed text-muted-foreground text-center max-w-md mx-auto">
         Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference NIH/NHS
-        guidance. Suppr is not a substitute for medical advice — consult your doctor before
+        guidance. Sloe is not a substitute for medical advice — consult your doctor before
         any significant dietary change, especially if you&apos;re pregnant, under 18, or
         managing a medical condition.
       </p>

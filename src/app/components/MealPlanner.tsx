@@ -646,9 +646,13 @@ export const MealPlanner = memo(function MealPlanner({
   return (
     <div className="product-shell py-pm-6 space-y-5">
       <div className="hidden md:block">
+      {/* Sloe DS (Figma 523:2 / ENG-919) — page title reads in Newsreader
+          serif plum (`text-foreground-brand`), matching the Today / Progress /
+          Settings landmark headings. Replaces the prior Inter-bold ink H1 so
+          the Plan tab speaks the same warm-editorial language. */}
       <h1
-        className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
+        className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
+        style={{ margin: "0 0 4px" }}
       >
         Meal plan
       </h1>
@@ -678,6 +682,12 @@ export const MealPlanner = memo(function MealPlanner({
       {showSummaryCard && summary ? (
         <SupprCard
           data-testid="planner-week-summary-card"
+          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
+          // card-treatment-soft-elevation.md): the week summary slab sits
+          // directly on the Plan page ground, so it lifts soft (`.card-slab`)
+          // like every other resting card — mirrors mobile `summaryCard`
+          // `lift="soft"`. Was the flat default.
+          elevation="card"
           padding="lg"
           radius="xl"
           className="mb-4"
@@ -710,15 +720,21 @@ export const MealPlanner = memo(function MealPlanner({
                   the tone eases rather than snaps. The `planner-win-pulse` class
                   is applied only on the rising edge into a 7/7 win (the web
                   analog of the mobile scale spring + success haptic). */}
+              {/* Sloe DS (523:2) — the win-moment headline is a card-title
+                  landmark, so it reads in Newsreader serif. Flag-OFF resolves
+                  to plum (`text-foreground-brand`, the card-title ink);
+                  flag-ON the ENG-820 state-aware `summaryHeadlineColor`
+                  (win gold / progress amber / calm muted) still wins via the
+                  inline `color`, and the rising-edge pulse is untouched. */}
               <p
                 data-testid="planner-week-summary-headline"
                 data-tone={winMomentsEnabled ? summaryTone : "off"}
                 data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}
-                className={`text-foreground font-bold -tracking-[0.01em] transition-colors${
+                className={`font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand transition-colors${
                   winMomentsEnabled && winPulse ? " planner-win-pulse" : ""
                 }`}
                 style={{
-                  fontSize: 15,
+                  fontSize: 17,
                   ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
                 }}
               >
@@ -738,7 +754,7 @@ export const MealPlanner = memo(function MealPlanner({
             <button
               type="button"
               onClick={handleShoppingList}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
               style={{ padding: "8px 14px", fontSize: 13 }}
             >
               <ShoppingCart size={14} strokeWidth={2} />
@@ -792,7 +808,7 @@ export const MealPlanner = memo(function MealPlanner({
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
                   active
-                    ? "border-primary bg-primary/10 text-foreground"
+                    ? "border-primary bg-primary/10 text-primary-solid"
                     : "border-border text-foreground hover:bg-muted/60",
                 ].join(" ")}
               >
@@ -876,7 +892,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
                 locked ? "opacity-60" : "",
               ].join(" ")}
@@ -918,7 +934,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-muted-foreground hover:bg-muted/60",
                 isLast ? "cursor-not-allowed opacity-80" : "",
               ].join(" ")}
@@ -959,7 +975,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-foreground"
+                  ? "border-primary bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
               ].join(" ")}
             >
@@ -972,6 +988,10 @@ export const MealPlanner = memo(function MealPlanner({
       {isPlanEmpty ? (
         <SupprCard
           data-testid="planner-empty-state"
+          // One-treatment soft lift (2026-06-09): the empty-state slab is
+          // page-ground, so it lifts soft like the summary card + the mobile
+          // `PlanEmptyState` twin. Was the flat default.
+          elevation="card"
           padding="none"
           radius="xl"
           className="flex flex-col items-center justify-center"
@@ -983,7 +1003,13 @@ export const MealPlanner = memo(function MealPlanner({
           >
             <CalendarRange size={28} className="text-primary" strokeWidth={1.5} />
           </div>
-          <p className="text-foreground text-center" style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          {/* Sloe DS (Figma 321:2 S8 — Plan empty) — empty-state headline
+              reads in Newsreader serif plum, matching the Recipes / Shopping
+              empty states. */}
+          <p
+            className="font-[family-name:var(--font-headline)] font-medium text-foreground-brand text-center"
+            style={{ fontSize: 20, marginBottom: 8 }}
+          >
             Ready to plan your week?
           </p>
           <p
@@ -996,7 +1022,9 @@ export const MealPlanner = memo(function MealPlanner({
           </p>
           <button
             data-testid="planner-empty-generate-btn"
-            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
+               (transparent fill, 1.5px primarySolid border + label). */
+            className="rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
             onClick={handleRegenerate}
             disabled={isGenerating || !sourceCanGenerate}
@@ -1059,16 +1087,18 @@ export const MealPlanner = memo(function MealPlanner({
             }
           });
           return (
-            // ENG-822 — routed through the canonical SupprCard so the
-            // elevation flag is owned by the primitive (flag ON → soft
-            // shadow + border dropped; flag OFF → `--elev-card` + hairline,
-            // byte-for-byte). Today-column: tone="primary" gives the
-            // `bg-primary/[0.08]` tint; flag-OFF also surfaces a primary
-            // border accent via SupprCard's primary-tone borderColor
-            // (`--north-star-border`), replacing the prior `border-primary/30`.
-            // Normal columns stay tone="neutral" (default bg-card + border-border).
+            // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-
+            // one-card-treatment-soft-elevation.md): each per-day kanban column
+            // sits directly in the page-ground grid (not nested in another
+            // card), so it lifts soft (`.card-slab`) like every other resting
+            // card. The Today column keeps tone="primary" — the soft shadow
+            // composes with the tint (border dropped, tint carries). Was the
+            // flat default. (Mobile renders Plan days as a continuous list, not
+            // cards — that layout divergence predates this sweep; the rule
+            // applies to whatever cards sit on each platform's page ground.)
             <SupprCard
               key={`day-${dp.day}`}
+              elevation="card"
               padding="none"
               radius="xl"
               tone={isTodayCol ? "primary" : "neutral"}
@@ -1081,7 +1111,9 @@ export const MealPlanner = memo(function MealPlanner({
                 {isTodayCol ? (
                   <span
                     data-testid={`planner-desktop-today-pill-${dp.day}`}
-                    className="inline-flex items-center rounded-full bg-primary text-primary-foreground uppercase"
+                    /* Sloe treatment §9: today marker = calm aubergine
+                       soft-tint status pill (was a saturated filled pill). */
+                    className="inline-flex items-center rounded-full bg-primary/10 text-primary-solid uppercase"
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -1400,7 +1432,10 @@ export const MealPlanner = memo(function MealPlanner({
                       <button
                         type="button"
                         onClick={() => handleLogToday(meal)}
-                        className="inline-flex items-center justify-center rounded-md bg-primary/10 px-3 py-1 text-primary font-semibold mt-1.5 hover:bg-primary/15 transition-colors"
+                        /* Sloe treatment: quiet off-white log pill (mobile
+                           `mealLogBtn` parity) — off-white fill + hairline
+                           border + muted label, not an accent tint. */
+                        className="inline-flex items-center justify-center rounded-md bg-background-secondary border border-border px-3 py-1 text-muted-foreground font-semibold mt-1.5 hover:bg-muted/60 transition-colors"
                         style={{ fontSize: 12 }}
                         data-testid={`planner-log-today-${dp.day}-${slot}`}
                       >
@@ -1435,7 +1470,10 @@ export const MealPlanner = memo(function MealPlanner({
                         key={slot}
                         type="button"
                         onClick={() => handleAddSlotBack(di, slot)}
-                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-primary border border-primary/40 bg-primary/10 hover:bg-primary/15 transition-colors"
+                        /* Sloe treatment: quiet add-slot chip = off-white fill +
+                           hairline border + muted label (mobile `addSlotChip`
+                           parity), not an accent-tinted chip. */
+                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-muted-foreground border border-border bg-card hover:bg-muted/60 transition-colors"
                         style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.02em" }}
                         aria-label={`Add ${SLOT_TITLE[slot]} slot`}
                       >
@@ -1471,7 +1509,7 @@ export const MealPlanner = memo(function MealPlanner({
         <button
           type="button"
           onClick={handleShoppingList}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
           style={{ padding: "8px 16px", fontSize: 13 }}
         >
           <ShoppingCart size={14} strokeWidth={2} />
@@ -1527,8 +1565,8 @@ export const MealPlanner = memo(function MealPlanner({
               Swap
             </p>
             <DialogTitle
-              className="text-foreground capitalize"
-              style={{ margin: "4px 0 0", fontSize: 16 }}
+              className="font-[family-name:var(--font-headline)] font-medium text-foreground-brand capitalize"
+              style={{ margin: "4px 0 0", fontSize: 18 }}
             >
               {swapFor
                 ? `${shortWeekdayLabel(

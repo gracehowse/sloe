@@ -50,6 +50,17 @@ const HELPER = readFileSync(
   resolve(REPO, "src/lib/nutrition/recipeViewScale.ts"),
   "utf8",
 );
+// ENG-920 / Figma 332:2: the stepper UI was extracted to a dedicated footer
+// component and the ingredient scaling to the ingredient grid component.
+// Source pins that previously targeted [id].tsx now target the correct files.
+const SERVINGS_FOOTER = readFileSync(
+  resolve(REPO, "apps/mobile/components/recipe/RecipeServingsFooter.tsx"),
+  "utf8",
+);
+const INGREDIENT_GRID = readFileSync(
+  resolve(REPO, "apps/mobile/components/recipe/RecipeIngredientGrid.tsx"),
+  "utf8",
+);
 
 describe("mobile recipe-detail — viewing-servings stepper source pins", () => {
   it("imports the shared helpers from `recipeViewScale.ts`", () => {
@@ -58,30 +69,45 @@ describe("mobile recipe-detail — viewing-servings stepper source pins", () => 
     );
   });
 
-  it("renders the stepper with the canonical 'Servings to view' label and testID", () => {
-    expect(MOBILE_RECIPE).toMatch(/testID="recipe-view-servings-stepper"/);
-    expect(MOBILE_RECIPE).toMatch(/Servings to view/);
+  it("renders the stepper with the canonical yield label and testIDs (ENG-920 extraction)", () => {
+    // ENG-920 / Figma 332:2: the stepper was extracted to `RecipeServingsFooter`.
+    // The outer footer carries `recipe-detail-sticky-footer`; the individual
+    // controls carry `recipe-view-servings-minus` / `value` / `plus`.
+    // The visible label above the stepper is "Yield" (Figma §8 copy), NOT the
+    // earlier inline "Servings to view" — the component owns the copy.
+    expect(SERVINGS_FOOTER).toMatch(/testID="recipe-view-servings-minus"/);
+    expect(SERVINGS_FOOTER).toMatch(/testID="recipe-view-servings-value"/);
+    expect(SERVINGS_FOOTER).toMatch(/testID="recipe-view-servings-plus"/);
+    expect(SERVINGS_FOOTER).toMatch(/Yield/);
+    // The screen wires `canDecrease` and `canIncrease` from `RECIPE_VIEW_SERVINGS_MIN/MAX`.
+    expect(MOBILE_RECIPE).toMatch(/canDecrease=\{viewServings\s*>\s*RECIPE_VIEW_SERVINGS_MIN\}/);
+    expect(MOBILE_RECIPE).toMatch(/canIncrease=\{viewServings\s*<\s*RECIPE_VIEW_SERVINGS_MAX\}/);
   });
 
-  it("provides minus/plus pressables with hitSlop and disabled-at-bounds states", () => {
-    expect(MOBILE_RECIPE).toMatch(/testID="recipe-view-servings-minus"/);
-    expect(MOBILE_RECIPE).toMatch(/testID="recipe-view-servings-plus"/);
-    expect(MOBILE_RECIPE).toMatch(/hitSlop=\{8\}/);
-    expect(MOBILE_RECIPE).toMatch(
-      /disabled=\{viewServings\s*<=\s*RECIPE_VIEW_SERVINGS_MIN\}/,
-    );
-    expect(MOBILE_RECIPE).toMatch(
-      /disabled=\{viewServings\s*>=\s*RECIPE_VIEW_SERVINGS_MAX\}/,
-    );
+  it("provides minus/plus pressables with disabled-at-bounds states (ENG-920 extraction)", () => {
+    // ENG-920 / Figma 332:2: stepper controls live in RecipeServingsFooter.
+    // The footer receives boolean `canDecrease`/`canIncrease` props derived
+    // from the RECIPE_VIEW_SERVINGS_MIN/MAX bounds at the call site in [id].tsx.
+    // hitSlop is not present — PressableScale provides adequate touch targets.
+    expect(SERVINGS_FOOTER).toMatch(/testID="recipe-view-servings-minus"/);
+    expect(SERVINGS_FOOTER).toMatch(/testID="recipe-view-servings-plus"/);
+    expect(SERVINGS_FOOTER).toMatch(/disabled=\{!canDecrease\}/);
+    expect(SERVINGS_FOOTER).toMatch(/disabled=\{!canIncrease\}/);
+    // Bounds computation is at the call site in the screen:
+    expect(MOBILE_RECIPE).toMatch(/canDecrease=\{viewServings\s*>\s*RECIPE_VIEW_SERVINGS_MIN\}/);
+    expect(MOBILE_RECIPE).toMatch(/canIncrease=\{viewServings\s*<\s*RECIPE_VIEW_SERVINGS_MAX\}/);
   });
 
-  it("provides a11y labels on minus/plus and an aria-live readout for the value", () => {
-    expect(MOBILE_RECIPE).toMatch(/accessibilityLabel="Decrease servings to view"/);
-    expect(MOBILE_RECIPE).toMatch(/accessibilityLabel="Increase servings to view"/);
-    expect(MOBILE_RECIPE).toMatch(/accessibilityLiveRegion="polite"/);
-    expect(MOBILE_RECIPE).toMatch(
-      /accessibilityState=\{\{\s*disabled:\s*viewServings\s*<=\s*RECIPE_VIEW_SERVINGS_MIN\s*\}\}/,
-    );
+  it("provides a11y labels on minus/plus and an aria-live readout for the value (ENG-920 extraction)", () => {
+    // ENG-920 / Figma 332:2: a11y attributes are on RecipeServingsFooter.
+    // The canonical copy omits "to view" — it is "Decrease servings" /
+    // "Increase servings" (simpler, matches the "Yield" label context).
+    // accessibilityState is NOT used — disabled prop on PressableScale
+    // covers the disabled semantic; `accessibilityLiveRegion="polite"` is
+    // on the value display Text so screen-readers announce changes.
+    expect(SERVINGS_FOOTER).toMatch(/accessibilityLabel="Decrease servings"/);
+    expect(SERVINGS_FOOTER).toMatch(/accessibilityLabel="Increase servings"/);
+    expect(SERVINGS_FOOTER).toMatch(/accessibilityLiveRegion="polite"/);
   });
 
   it("debounces stepper presses through the shared 200ms cadence", () => {
@@ -92,10 +118,15 @@ describe("mobile recipe-detail — viewing-servings stepper source pins", () => 
     expect(MOBILE_RECIPE).toMatch(/stepperPendingDelta/);
   });
 
-  it("scales ingredient amounts by `viewMultiplier`, NOT by the deep-link param", () => {
-    expect(MOBILE_RECIPE).toMatch(/ing\.amount\s*\*\s*viewMultiplier/);
-    // The old `portionMultiplier` const is gone — the deep-link param
-    // is now consumed by the stepper seed instead.
+  it("scales ingredient amounts by `viewMultiplier`, NOT by the deep-link param (ENG-920 extraction)", () => {
+    // ENG-920 / Figma 332:2: scaling moved to RecipeIngredientGrid, which
+    // receives `viewMultiplier` as a prop and applies `ing.amount * viewMultiplier`
+    // per row. The screen no longer inline-scales; it passes the computed
+    // multiplier into the grid component.
+    expect(INGREDIENT_GRID).toMatch(/ing\.amount\s*\*\s*viewMultiplier/);
+    // The screen still derives `viewMultiplier` from the helper and passes it down.
+    expect(MOBILE_RECIPE).toMatch(/viewMultiplier=\{viewMultiplier\}/);
+    // The old `portionMultiplier` const is gone from the screen.
     expect(MOBILE_RECIPE).not.toMatch(/const portionMultiplier\s*=/);
   });
 

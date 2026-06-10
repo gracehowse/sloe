@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 
 /**
  * TodayFirstMealEmptyState — friendly empty card surfaced under the
@@ -41,25 +42,23 @@ export function TodayFirstMealEmptyState({
   onDismissTip,
   textColor,
   textSecondaryColor,
-  cardColor,
-  cardBorderColor,
+  cardColor: _cardColor,
+  cardBorderColor: _cardBorderColor,
 }: TodayFirstMealEmptyStateProps) {
-  const cardElevation = useCardElevation();
+  void _cardColor;
+  void _cardBorderColor;
   const showTip = isBrandNew && !tipDismissed;
+  // Secondary accent (Frost flag → damson, else clay) for the "Log a meal"
+  // CTA. Web parity flips via the `.flag-frost` CSS cascade.
+  const accent = useAccent();
   return (
-    <View
-      accessibilityRole="summary"
+    <SupprCard
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
+      padding="lg"
       accessibilityLabel="Ready to log your first meal?"
-      style={[{
-        backgroundColor: cardElevation.liftBg ?? cardColor,
-        borderRadius: Radius.lg,
-        borderWidth: cardElevation.useBorder ? 1 : 0,
-        borderColor: cardBorderColor,
-        padding: Spacing.lg,
-        marginBottom: Spacing.md,
-        alignItems: "center",
-        gap: 10,
-      }, cardElevation.shadowStyle]}
+      style={{ marginBottom: Spacing.md }}
+      innerStyle={{ alignItems: "center", gap: 10 }}
     >
       <Text style={{ ...Type.body, fontWeight: "700", color: textColor, textAlign: "center" }}>
         Ready to log your first meal?
@@ -91,23 +90,30 @@ export function TodayFirstMealEmptyState({
       >
         No pressure — log when you&apos;re ready.
       </Text>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primarySolid border
+          + primarySolid label/glyph), not a filled slab. Mirror of web
+          `TodayFirstMealEmptyState`. */}
       <Pressable
         onPress={onLogMeal}
         accessibilityRole="button"
         accessibilityLabel="Log a meal"
-        style={{
+        style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: Radius.md,
-          backgroundColor: Accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           marginTop: 4,
-        }}
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
-        <Plus size={16} color="#fff" />
-        <Text style={{ ...Type.body, fontWeight: "700", color: "#fff" }}>Log a meal</Text>
+        <Plus size={16} color={accent.primarySolid} />
+        <Text style={{ ...Type.body, fontWeight: "700", color: accent.primarySolid }}>Log a meal</Text>
       </Pressable>
       {showTip && (
         <View
@@ -143,7 +149,7 @@ export function TodayFirstMealEmptyState({
           </Pressable>
         </View>
       )}
-    </View>
+    </SupprCard>
   );
 }
 

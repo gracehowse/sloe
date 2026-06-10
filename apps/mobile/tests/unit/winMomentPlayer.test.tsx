@@ -39,7 +39,7 @@ describe("WinMomentPlayer (mobile code celebration)", () => {
     expect(getByTestId("win-moment-pct")).toBeTruthy();
   });
 
-  it("paints the centre hero in the dedicated win GOLD token", () => {
+  it("paints the centre hero in the dedicated win DAMSON token", () => {
     const { getByTestId } = render(<WinMomentPlayer celebration="goal-hit" />);
     const pct = getByTestId("win-moment-pct");
     // Flatten the style array RN passes through.
@@ -47,7 +47,7 @@ describe("WinMomentPlayer (mobile code celebration)", () => {
       ? Object.assign({}, ...pct.props.style)
       : pct.props.style;
     expect(style.color).toBe(Accent.win);
-    expect(Accent.win).toBe("#9679D9"); // brand purple (spectrum win), not gold/amber
+    expect(Accent.win).toBe("#6A4B7A"); // Sloe damson (Phase 0), not gold/purple
   });
 
   it("fires onComplete exactly once after the celebration window", () => {

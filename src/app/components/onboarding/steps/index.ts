@@ -25,6 +25,7 @@
 import type { ComponentType } from "react";
 import type { StepId } from "@/lib/onboarding/state";
 import { WelcomeStep } from "./welcome";
+import { AppChoiceStep } from "./app-choice";
 import { SignupStep } from "./signup";
 import { GoalStep } from "./goal";
 import { SexStep } from "./sex";
@@ -49,6 +50,7 @@ export interface StepComponentProps {
 
 export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> = {
   welcome: WelcomeStep,
+  "app-choice": AppChoiceStep,
   signup: SignupStep,
   goal: GoalStep,
   sex: SexStep,
@@ -65,6 +67,7 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
 
 export {
   WelcomeStep,
+  AppChoiceStep,
   SignupStep,
   GoalStep,
   SexStep,

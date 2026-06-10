@@ -38,18 +38,100 @@ export function track(event: AnalyticsEventName, props?: Record<string, unknown>
  *  `NEXT_PUBLIC_FLAG_FORCE_REDESIGN_BRANDED_SHEETS`, and the hyphenated
  *  `log-sheet-slot-selector` → `NEXT_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
  *  Returns `null` when no override applies. */
+const FORCE_FLAGS_STORAGE_KEY = "__suppr_force_flags__";
+let forcedFlagsSeeded = false;
+
+/** Dev-only (ENG-840): hydrate `window.__SUPPR_FORCE_FLAGS__` from the
+ *  `?__force_flags=` query param and/or localStorage so a flag can be
+ *  forced for MANUAL browsing — not just Playwright's addInitScript.
+ *
+ *  Format: `?__force_flags=redesign_motion:on,today-status-pills:off`
+ *  (`on`/`true`/`1` → ON, `off`/`false`/`0` → OFF; a bare `flag` with no
+ *  state means ON). `?__force_flags=clear` wipes the persisted set. The
+ *  parsed set is persisted to localStorage so it survives client-side
+ *  navigation; clear it with `clear` or by removing the storage key.
+ *
+ *  Runs once per page load, lazily on the first flag read, so there's no
+ *  provider-ordering dependency — the override is present before any
+ *  component resolves a flag. Inert in production (the caller guards on
+ *  NODE_ENV). */
+function seedForcedFlagsFromLocation(): void {
+  if (forcedFlagsSeeded) return;
+  forcedFlagsSeeded = true;
+  if (typeof window === "undefined") return;
+  const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
+  let map: Record<string, boolean> = { ...(w.__SUPPR_FORCE_FLAGS__ ?? {}) };
+  // 1. localStorage — persisted from a prior load.
+  try {
+    const stored = window.localStorage.getItem(FORCE_FLAGS_STORAGE_KEY);
+    if (stored) {
+      map = { ...map, ...(JSON.parse(stored) as Record<string, boolean>) };
+    }
+  } catch {
+    /* private mode / storage denied / malformed — ignore */
+  }
+  // 2. Query-param overlay — highest precedence, also persisted.
+  try {
+    const raw = new URLSearchParams(window.location.search).get("__force_flags");
+    if (raw !== null) {
+      if (raw.trim() === "clear") {
+        map = {};
+        window.localStorage.removeItem(FORCE_FLAGS_STORAGE_KEY);
+      } else {
+        for (const part of raw.split(",")) {
+          const [rawFlag, rawState] = part.split(":");
+          const f = rawFlag?.trim();
+          if (!f) continue;
+          const state = rawState?.trim().toLowerCase();
+          if (state === "off" || state === "false" || state === "0") {
+            map[f] = false;
+          } else if (
+            state === undefined ||
+            state === "on" ||
+            state === "true" ||
+            state === "1"
+          ) {
+            map[f] = true;
+          }
+        }
+        try {
+          window.localStorage.setItem(
+            FORCE_FLAGS_STORAGE_KEY,
+            JSON.stringify(map),
+          );
+        } catch {
+          /* best-effort persistence */
+        }
+      }
+    }
+  } catch {
+    /* no URL / unsupported — ignore */
+  }
+  w.__SUPPR_FORCE_FLAGS__ = map;
+}
+
+/** Test-only: reset the once-per-load seed guard so a test can exercise
+ *  `seedForcedFlagsFromLocation` repeatedly with different query params /
+ *  localStorage state. No-op effect on production behaviour. */
+export function __resetForcedFlagSeedForTests(): void {
+  forcedFlagsSeeded = false;
+}
+
 function flagForceOverride(flag: string): boolean | null {
   if (process.env.NODE_ENV === "production") return null;
-  // Client-side override: Playwright (and any dev tool) seeds
-  // `window.__SUPPR_FORCE_FLAGS__` via addInitScript before the app loads (see
-  // tests/e2e/utils/visual.ts#forceFlagsOn). This is the CLIENT force path —
-  // Next.js does NOT inline a *computed* `process.env["NEXT_PUBLIC_" + key]`
-  // read into the browser bundle (only static `process.env.NEXT_PUBLIC_X` is
-  // replaced), so the env branch below is effective SSR/server-side only. The
-  // window hook is therefore the only way to force a flag for client-rendered
-  // components — which is most of the redesign-gated UI. Inert in production
-  // (guarded above) and whenever the global is unset.
+  // Client-side override: Playwright seeds `window.__SUPPR_FORCE_FLAGS__`
+  // via addInitScript (tests/e2e/utils/visual.ts#forceFlagsOn); for manual
+  // browsing, `seedForcedFlagsFromLocation` hydrates the same global from
+  // `?__force_flags=` + localStorage (ENG-840). This is the CLIENT force
+  // path — Next.js does NOT inline a *computed* `process.env["NEXT_PUBLIC_"
+  // + key]` read into the browser bundle (only static
+  // `process.env.NEXT_PUBLIC_X` is replaced), so the env branch below is
+  // effective SSR/server-side only. The window hook is therefore the only
+  // way to force a flag for client-rendered components — most of the
+  // redesign-gated UI. Inert in production (guarded above) and whenever the
+  // global is unset.
   if (typeof window !== "undefined") {
+    seedForcedFlagsFromLocation();
     const forced = (window as { __SUPPR_FORCE_FLAGS__?: Record<string, unknown> })
       .__SUPPR_FORCE_FLAGS__;
     if (forced && Object.prototype.hasOwnProperty.call(forced, flag)) {
@@ -87,6 +169,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_motion",
   "redesign_branded_sheets",
   "redesign_search_results",
+  "today-weekly-insight-mobile",
+  "today_meals_figma_654",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

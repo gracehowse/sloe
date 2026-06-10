@@ -20,6 +20,7 @@ import {
 } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   sanitizeOverrideInput,
   type IngredientOverride,
@@ -57,6 +58,9 @@ export default function OverrideIngredientSheet({
   onReset,
   colors,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the primary Save CTA.
+  // The destructive "Reset" button keeps `Accent.destructive`.
+  const accent = useAccent();
   const [cal, setCal] = useState("");
   const [p, setP] = useState("");
   const [c, setC] = useState("");
@@ -142,7 +146,7 @@ export default function OverrideIngredientSheet({
       justifyContent: "center",
       minWidth: 96,
     },
-    btnPrimary: { backgroundColor: Accent.primary },
+    btnPrimary: { backgroundColor: accent.primary },
     btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
     btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
     btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },

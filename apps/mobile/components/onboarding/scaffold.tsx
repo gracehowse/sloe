@@ -1,7 +1,8 @@
 import * as React from "react";
 import { ScrollView, Text, View, ViewStyle, StyleProp } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "./context";
 
@@ -35,26 +36,39 @@ export function MobileStepHeader({
   return (
     <View style={{ marginBottom: compact ? Spacing.xl : Spacing.xxl + 4 }}>
       {overline ? (
+        // Sloe reskin (Figma onboarding parity 2026-06-07): calm
+        // muted-ink overline. Clay is reserved for the footer CTA +
+        // selected states (Sloe three-role colour law) — mirrors the
+        // web scaffold's `text-foreground-tertiary` overline.
         <Text
           style={{
             fontSize: 11,
             fontWeight: "600",
             textTransform: "uppercase",
-            letterSpacing: 1.1,
-            color: Accent.primaryLight,
+            letterSpacing: 1.3,
+            color: colors.textTertiary,
             marginBottom: 10,
           }}
         >
           {overline}
         </Text>
       ) : null}
+      {/* Sloe reskin — step titles read in plum Newsreader serif
+          (`FontFamily.serifSemibold` + `colors.navPrimary` plum heading
+          ink), mirroring the web scaffold's `text-foreground-brand`
+          serif heads and matching the approved Figma onboarding frames.
+          `navPrimary` is theme-aware (light #3B2A4D / dark #815E91) so
+          the heading stays legible in dark mode — the fixed
+          `MacroColors.calories` plum would near-vanish on the dark
+          page. */}
       <Text
         style={{
-          fontSize: compact ? 24 : 28,
-          fontWeight: "700",
-          letterSpacing: -0.6,
-          color: colors.text,
-          lineHeight: compact ? 30 : 34,
+          fontFamily: FontFamily.serifSemibold,
+          fontSize: compact ? 26 : 30,
+          fontWeight: "500",
+          letterSpacing: -0.4,
+          color: colors.navPrimary,
+          lineHeight: compact ? 32 : 36,
           margin: 0,
         }}
       >
@@ -113,14 +127,18 @@ export function MobileMethodologyNote({
   children: React.ReactNode;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the methodology
+  // callout's tinted fill, hairline, and sparkles glyph. The note's body text
+  // keeps its own theme `textSecondary`.
+  const accent = useAccent();
   return (
     <View
       style={{
         marginTop: Spacing.lg,
         padding: Spacing.md,
-        backgroundColor: Accent.primary + "10",
+        backgroundColor: accent.primary + "10",
         borderWidth: 1,
-        borderColor: Accent.primary + "26",
+        borderColor: accent.primary + "26",
         borderRadius: Radius.md,
         flexDirection: "row",
         gap: 10,
@@ -130,7 +148,7 @@ export function MobileMethodologyNote({
       <Ionicons
         name="sparkles-outline"
         size={14}
-        color={Accent.primaryLight}
+        color={accent.primaryLight}
         style={{ marginTop: 1 }}
       />
       <Text

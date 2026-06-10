@@ -131,3 +131,45 @@ describe("TodayPlannedMealsCard — portion picker wiring", () => {
     expect(onLog).toHaveBeenCalledWith(meal, 1);
   });
 });
+
+describe("TodayPlannedMealsCard — Sloe TD3 re-skin", () => {
+  it("renders the 'Planned' section header and the recipe name", () => {
+    const { getByText } = render(
+      <TodayPlannedMealsCard
+        plannedMeals={PLANNED}
+        onLogPlannedMealWithPortion={() => undefined}
+        styles={STYLES}
+      />,
+    );
+    expect(getByText("Planned")).toBeTruthy();
+    expect(getByText("Greek yoghurt bowl")).toBeTruthy();
+  });
+
+  it("renders the kcal + per-macro grams (coloured P/C/F) for a planned row", () => {
+    const { getByText } = render(
+      <TodayPlannedMealsCard
+        plannedMeals={PLANNED}
+        onLogPlannedMealWithPortion={() => undefined}
+        styles={STYLES}
+      />,
+    );
+    // PLANNED[0] is 320 kcal / 22P / 30C / 9F.
+    expect(getByText("320 kcal")).toBeTruthy();
+    expect(getByText("22g P")).toBeTruthy();
+    expect(getByText("30g C")).toBeTruthy();
+    expect(getByText("9g F")).toBeTruthy();
+  });
+
+  it("still works without the optional `styles` prop (host-compat)", () => {
+    const onLog = vi.fn();
+    const { getByLabelText } = render(
+      <TodayPlannedMealsCard
+        plannedMeals={PLANNED}
+        onLogPlannedMealWithPortion={onLog}
+      />,
+    );
+    fireEvent.press(getByLabelText("Log Greek yoghurt bowl today"));
+    fireEvent.press(getByLabelText("1 × portion"));
+    expect(onLog).toHaveBeenCalledWith(PLANNED[0], 1);
+  });
+});

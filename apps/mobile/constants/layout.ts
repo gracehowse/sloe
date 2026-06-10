@@ -14,11 +14,29 @@ export const Layout = {
    * phone horizontal padding 20px). Tighter than the 2026-05-19 global
    * `Spacing.md` (16px) bump that made mobile Today feel airy vs web.
    */
-  todayScrollGap: 10,
+  /** Tight gap within the hero cluster (ring, coach, macro tiles).
+   *  `Spacing.sm` (8) — already on the 4pt scale; tokenised (was a bare 8) so
+   *  every Today gap reads from a `Spacing` token (audit gap 7). */
+  todayScrollGap: Spacing.sm,
+  /** Larger break before meals / insight / lower fold (ENG-871).
+   *  With `todayScrollGap` (8) yields 40px — matches Stitch `mb-10`. */
+  todaySectionBreak: Spacing.xxl,
+  /** Figma TD1/TD2 — `mb-5` between section header and first card. */
+  todaySectionHeaderGap: Spacing.lg,
+  /** Figma TD1/TD2 — `mb-5` between sibling cards inside a section. */
+  todaySectionCardGap: Spacing.lg,
   todayScreenPaddingX: Spacing.lg,
-  macroTileGridGap: 10,
-  /** Plan tab — same density bar as Today; day blocks are section + flat meal card. */
-  planScrollGap: 10,
+  /** Between-tile gap in the 2×2 macro grid. 12px — Sloe re-skin matches
+   *  Claude Design prototype density (`gap: 10–14`); picked as the midpoint
+   *  12px (ENG-871). Sits between Spacing.sm (8) and Spacing.md (16) — not
+   *  on the 4pt tokenised scale, but intentionally off-scale per the prototype
+   *  spec (same rationale as `planDayGap: 12`). Verified 48%/48% cells still
+   *  fit: ≈336px + 12px < ≈350px content width on a 390pt device. */
+  macroTileGridGap: 12,
+  /** Plan tab — same density bar as Today; day blocks are section + flat meal card.
+   *  `Spacing.sm` (8) — on the 4pt scale (audit gap 7; was a bare 10, fully off
+   *  the scale). Keeps Plan's scroll rhythm aligned with Today's `todayScrollGap`. */
+  planScrollGap: Spacing.sm,
   planScreenPaddingX: Spacing.lg,
   planDayGap: 12,
   /** Sticky tab chrome — title block padding. */

@@ -1,20 +1,14 @@
 import * as React from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  StatusBar,
-  Text,
-  useColorScheme,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, StatusBar, Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureDisabled, track } from "@/lib/analytics";
+import { isFeatureDisabled, isFeatureEnabled, track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { seedSaveTelemetry } from "@suppr/shared/onboarding/seedSaveTelemetry";
@@ -33,7 +27,7 @@ import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
 } from "@/lib/onboarding";
-import { useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
 void mapV2GoalToLegacy;
@@ -61,6 +55,10 @@ export function MobileFlow() {
     isRefreshPlan,
   } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the footer Continue
+  // CTA, its foreground, and the refresh-plan pill. The back chevron, progress
+  // track, and disabled-state surfaces keep their own theme tokens.
+  const accent = useAccent();
   // Debug audit 2026-05-04 (visual-qa): the welcome step uses a dark
   // gradient where `light-content` (white status-bar icons) is correct,
   // but every subsequent step renders on `colors.background` — light
@@ -122,6 +120,21 @@ export function MobileFlow() {
       go(1);
     }
   }, [isWelcome, isRefreshPlan, go]);
+
+  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
+  // when the flag is OFF, but a user whose persisted AsyncStorage `step`
+  // points at app-choice (reached it while the flag was ON, then it was
+  // ramped back to 0) would render it directly on remount. Defensive
+  // auto-skip, same shape as the signup already-authed skip above.
+  // `isFeatureEnabled` is cold-safe (false → skip), and we also skip it
+  // on refresh-plan (a returning user resetting their plan has no app to
+  // switch from).
+  const isAppChoice = currentStepId === "app-choice";
+  React.useEffect(() => {
+    if (isAppChoice && (!isFeatureEnabled(APP_CHOICE_FLAG) || isRefreshPlan === true)) {
+      go(1);
+    }
+  }, [isAppChoice, isRefreshPlan, go]);
 
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
@@ -286,6 +299,9 @@ export function MobileFlow() {
           used_default_seeds: usedDefaults,
           data_bridge_chosen: state.dataBridgeChosen,
           manual_targets_set: manualTargetsSet,
+          // ENG-990 — the app the user said they're switching from
+          // (`null` when the app-choice step was skipped / flag OFF).
+          app_choice: state.appChoice,
         });
       } catch {
         /* analytics is fire-and-forget */
@@ -520,9 +536,9 @@ export function MobileFlow() {
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 999,
-                backgroundColor: `${Accent.primaryLight}1f`,
+                backgroundColor: `${accent.primaryLight}1f`,
                 borderWidth: 1,
-                borderColor: `${Accent.primaryLight}40`,
+                borderColor: `${accent.primaryLight}40`,
               }}
               accessibilityLabel="Refreshing your plan"
             >
@@ -531,7 +547,7 @@ export function MobileFlow() {
                   fontSize: 11,
                   fontWeight: "700",
                   letterSpacing: 0.6,
-                  color: Accent.primaryLight,
+                  color: accent.primaryLight,
                 }}
               >
                 REFRESH PLAN
@@ -594,7 +610,7 @@ export function MobileFlow() {
               // `inputBg` sits between the two — clearly inert without
               // disappearing into the backdrop. (audit 2026-04-30 medium
               // polish.)
-              backgroundColor: isDisabled ? colors.inputBg : Accent.primary,
+              backgroundColor: isDisabled ? colors.inputBg : accent.primary,
               alignItems: "center",
               justifyContent: "center",
               opacity: isDisabled ? 1 : pressed ? 0.9 : 1,
@@ -602,13 +618,13 @@ export function MobileFlow() {
           }}
         >
           {completing ? (
-            <ActivityIndicator color={Accent.primaryForeground} />
+            <ActivityIndicator color={accent.primaryForeground} />
           ) : (
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "700",
-                color: !canAdvance ? colors.textTertiary : Accent.primaryForeground,
+                color: !canAdvance ? colors.textTertiary : accent.primaryForeground,
               }}
             >
               {isTerminal
@@ -627,6 +643,9 @@ export function MobileFlow() {
 
 function ProgressBar({ value, total }: { value: number; total: number }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the filled portion of
+  // the onboarding progress bar; the track stays the neutral `inputBg`.
+  const accent = useAccent();
   const pct = Math.max(4, (value / Math.max(1, total)) * 100);
   return (
     <View
@@ -645,7 +664,7 @@ function ProgressBar({ value, total }: { value: number; total: number }) {
           width: `${pct}%`,
           height: "100%",
           borderRadius: 2,
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
         }}
       />
     </View>

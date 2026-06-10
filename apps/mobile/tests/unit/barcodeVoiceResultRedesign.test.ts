@@ -50,11 +50,15 @@ describe("barcode result — redesign gate", () => {
     expect(BARCODE).toMatch(/<Check size=\{11\}/);
   });
 
-  it("paints the commit CTA blue (Accent.primary) under the flag", () => {
+  it("paints the commit CTA with the secondary accent under the flag", () => {
     // The default StyleSheet logBtn stays green (flag-off path); the call
-    // site overrides to Accent.primary when searchRedesign is on.
+    // site overrides to the secondary accent when searchRedesign is on.
+    // ENG-997: that read goes through `accent.primary` (from `useAccent()`),
+    // which is now the unconditional clay (the Frost secondary-colour
+    // exploration was retired 2026-06-08), rather than the static
+    // `Accent.primary`. The hook indirection is kept; it just always returns clay.
     expect(BARCODE).toMatch(
-      /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*Accent\.primary\s*\}/,
+      /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/,
     );
   });
 

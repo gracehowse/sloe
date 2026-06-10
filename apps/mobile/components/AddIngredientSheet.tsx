@@ -26,7 +26,8 @@ import {
 } from "react-native";
 import Constants from "expo-constants";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { authedFetch } from "@/lib/authedFetch";
 import {
   sanitizeOverrideInput,
@@ -96,6 +97,9 @@ function apiBase(): string {
 }
 
 export default function AddIngredientSheet({ visible, onClose, onAdd, colors, recipeId }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the active unit chip,
+  // the primary Save/Add CTA, the "Find match" button, and its link text.
+  const accent = useAccent();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("1");
   const [unit, setUnit] = useState<string>("g");
@@ -265,9 +269,9 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
       marginRight: Spacing.xs,
       backgroundColor: "transparent",
     },
-    chipActive: { backgroundColor: Accent.primary + "15", borderColor: Accent.primary },
+    chipActive: { backgroundColor: accent.primary + "15", borderColor: accent.primary },
     chipText: { fontSize: 12, color: colors.text, fontWeight: "500" },
-    chipTextActive: { color: Accent.primary, fontWeight: "700" },
+    chipTextActive: { color: accent.primary, fontWeight: "700" },
     footer: {
       flexDirection: "row",
       gap: Spacing.sm,
@@ -282,7 +286,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
       justifyContent: "center",
       minWidth: 96,
     },
-    btnPrimary: { backgroundColor: Accent.primary },
+    btnPrimary: { backgroundColor: accent.primary },
     btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
     btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
     btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
@@ -297,7 +301,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
     findBtn: {
       backgroundColor: "transparent",
       borderWidth: 1,
-      borderColor: Accent.primary,
+      borderColor: accent.primary,
       paddingVertical: 10,
       borderRadius: Radius.sm,
       alignItems: "center",
@@ -383,9 +387,9 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
               accessibilityLabel="Find match in food database"
             >
               {matching ? (
-                <ActivityIndicator size="small" color={Accent.primary} />
+                <ActivityIndicator size="small" color={accent.primary} />
               ) : (
-                <Text style={{ color: Accent.primary, fontWeight: "700" }}>Find match</Text>
+                <Text style={{ color: accent.primary, fontWeight: "700" }}>Find match</Text>
               )}
             </Pressable>
 
@@ -415,7 +419,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
               accessibilityRole="button"
               accessibilityLabel="Toggle manual macros"
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
                 {showOverride ? "Hide manual macros" : "Enter manual macros (from label)"}
               </Text>
             </Pressable>

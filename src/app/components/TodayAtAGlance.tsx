@@ -76,10 +76,10 @@ export function TodayAtAGlance({
 
   return (
     <section
-      className={`rounded-card border px-5 py-5 mb-6 transition-colors duration-300 ${
+      className={`rounded-card px-5 py-5 mb-6 transition-colors duration-300 ${
         allTargetsHit
-          ? "border-success/40 bg-success-soft"
-          : "border-border bg-card"
+          ? "bg-success-soft card-slab"
+          : "bg-card card-slab"
       }`}
       aria-label="Today at a glance"
     >

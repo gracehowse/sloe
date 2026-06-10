@@ -17,11 +17,21 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Barcode,
+  Camera,
+  CircleCheck,
+  CircleX,
+  ClipboardList,
+  Minus,
+  Plus,
+  Search,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { decode } from "base64-arraybuffer";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -33,7 +43,7 @@ import {
   mapPersistenceError,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -42,6 +52,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
 import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
 import MealTypePicker from "@/components/MealTypePicker";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
@@ -181,6 +192,23 @@ export default function CreateRecipeScreen() {
   const router = useRouter();
   const goBackOrCancel = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the header title,
+  // add-row affordance, and primary submit CTA. Threaded into the memoised
+  // StyleSheet via the dep array below. Macros keep `MacroColors`; errors keep
+  // `Accent.destructive`; success states keep `Accent.success`.
+  const accent = useAccent();
+  // Aubergine-on-surface ink (Sloe treatment system) — create-recipe primary
+  // CTAs are not conversion-critical, so they render as aubergine OUTLINES
+  // (treatment §1). Light/dark aware so the outline + label clear AA.
+  const accentInk =
+    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+  // Net-new structural blocks from the recipes redesign (§3.5 / recipes.md):
+  // the warm cover-hero placeholder, filled primary submit, serif per-serving
+  // totals, the boxed servings stepper, and the lifted photo quick-action all
+  // ship behind the surface flag, with the prior path alive in the `else`.
+  // Pure token swaps (serif title, on-scale spacing, lucide icons, radius bumps,
+  // eyebrow recolour) and the footer-overlap bug fix are NOT gated.
+  const redesignOn = isFeatureEnabled("recipes_redesign_v1");
   const { session } = useAuth();
   const userId = session?.user?.id;
   // 2026-05-12 (premium-bar audit #8): CreateRecipeActionSheet routes
@@ -198,6 +226,12 @@ export default function CreateRecipeScreen() {
   const [mealTags, setMealTags] = useState<string[]>([]);
   const [publish, setPublish] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  // Gap 1 (sev 5): the sticky footer is absolutely positioned, so on short
+  // forms it floated OVER scrollable rows (Ingredients header + quick-add
+  // buttons), occluding tappable content. We measure the footer height on
+  // layout and reserve exactly that much padding (+ safe area + Spacing.xl) at
+  // the bottom of the ScrollView so content can always clear it.
+  const [footerHeight, setFooterHeight] = useState(0);
 
   const [searchOpen, setSearchOpen] = useState(false);
   /** When set, the food search modal replaces this ingredient instead of appending. */
@@ -338,8 +372,8 @@ export default function CreateRecipeScreen() {
         Alert.alert(
           "Add matched ingredients",
           needsReview
-            ? "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods. Some matches are uncertain—review each row after adding."
-            : "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods.",
+            ? "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Sloe foods. Some matches are uncertain—review each row after adding."
+            : "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Sloe foods.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Append", onPress: () => apply("append") },
@@ -600,6 +634,16 @@ export default function CreateRecipeScreen() {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
+  // Gap 13 (sev 2): boxed −/[n]/+ servings stepper. Clamps to [1, 99] so the
+  // per-serving math (totals / srv) never divides by zero or a negative.
+  const adjustServings = useCallback((delta: number) => {
+    setServings((prev) => {
+      const next = Math.min(99, Math.max(1, (parseInt(prev, 10) || 1) + delta));
+      return String(next);
+    });
+    void Haptics.selectionAsync();
+  }, []);
+
   const pickImage = useCallback(async () => {
     if (!ImagePicker) {
       Alert.alert("Image picker unavailable", "Image upload requires a development build. It is not supported in Expo Go.");
@@ -726,6 +770,29 @@ export default function CreateRecipeScreen() {
       await supabase.from("recipe_ingredients").insert(ingRows);
       await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
 
+      // Sloe image system (2026-06-08) — when no cover image was uploaded,
+      // fire an on-brand hero generation in the BACKGROUND. Strictly
+      // fire-and-forget: never awaited, never blocks navigation, and the
+      // route no-ops cleanly (200 `skipped`) while fal.ai is unconfigured
+      // or out of balance. The recipe shows the calm placeholder until/if
+      // a real hero lands.
+      if (!imgUrl) {
+        const heroBase = getSupprApiBase();
+        if (heroBase) {
+          void authedFetch(`${heroBase}/api/recipe-import/image-hero`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipeId,
+              title: normalizeRecipeTitle(title.trim()),
+              ingredients: ingredients.map((ing) => ing.name).slice(0, 6),
+            }),
+          }).catch(() => {
+            // Best-effort only — a failed/locked generation is expected.
+          });
+        }
+      }
+
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/recipe/${recipeId}`);
     } catch {
@@ -742,13 +809,23 @@ export default function CreateRecipeScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
-    scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 120 },
-    label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
+    // Gap 2 (sev 5): real Fraunces/Newsreader display title (Type.title is the
+    // serif token wired to the loaded Newsreader face). Replaces the 13pt Inter
+    // 800 / letterSpacing 3 eyebrow that read as a caption, not a screen H1.
+    // Left-aligned 24pt serif below the Cancel bar — mirrors web's serif text-3xl.
+    topTitle: { ...Type.title, color: colors.text },
+    scroll: { padding: Spacing.xl, gap: Spacing.xxl },
+    // Gap 6 (sev 3): section eyebrow — sage (Accent.success) at +0.08em tracking
+    // (Type.label already carries the uppercase + 0.88 letterSpacing). Sage is
+    // the eyebrow role colour (§2.2 rule 6 / §10.11), not tertiary grey.
+    label: { ...Type.label, color: Accent.success },
+    // Gap 4 (sev 4): inputs move to Radius.xl (12pt) — 6pt read boxy/cheap.
+    // Gap 5 (sev 3): paddingVertical snaps to Spacing.md (16) so the field
+    // clears the 44pt touch target (16 + 16 text ≈ 48pt).
     input: {
-      backgroundColor: colors.card, borderRadius: Radius.md,
+      backgroundColor: colors.card, borderRadius: Radius.xl,
       borderWidth: 1, borderColor: colors.border,
-      paddingHorizontal: Spacing.lg, paddingVertical: 14,
+      paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
       color: colors.text, fontSize: 16,
     },
     multilineInput: { minHeight: 100, textAlignVertical: "top" as const },
@@ -756,65 +833,115 @@ export default function CreateRecipeScreen() {
 
     // Ingredients
     ingCard: {
-      backgroundColor: colors.card, borderRadius: Radius.md,
+      backgroundColor: colors.card, borderRadius: Radius.xl,
       borderWidth: 1, borderColor: colors.border,
       padding: Spacing.md, flexDirection: "row", alignItems: "center",
     },
     ingName: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text },
     ingDetail: { fontSize: 12, color: colors.textSecondary },
-    removeBtn: { padding: 4 },
+    removeBtn: { padding: Spacing.xs },
 
     addBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, paddingVertical: 14, borderRadius: Radius.md,
-      borderWidth: 1.5, borderColor: Accent.primary + "50", borderStyle: "dashed" as const,
+      gap: Spacing.sm, paddingVertical: Spacing.md, borderRadius: Radius.xl,
+      borderWidth: 1.5, borderColor: accent.primary + "50", borderStyle: "dashed" as const,
     },
-    addBtnText: { color: Accent.primary, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: accent.primary, fontWeight: "600", fontSize: 14 },
 
     // Totals
     totalsCard: {
-      backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Accent.primary + "30",
+      backgroundColor: colors.card, borderRadius: Radius.xl,
+      borderWidth: 1, borderColor: accent.primary + "30",
       padding: Spacing.lg,
     },
     totalsRow: { flexDirection: "row", justifyContent: "space-around" },
-    totalItem: { alignItems: "center", gap: 2 },
-    totalValue: { fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"] as any },
+    totalItem: { alignItems: "center", gap: Spacing.xs },
+    // Gap 11 (sev 2): per-serving hero values render in Newsreader (Type.heroValue)
+    // — these are achievement numbers, not dense tracker data. Inter caption below.
+    totalValue: { ...Type.heroValue, color: colors.text, fontVariant: ["tabular-nums"] as any },
+    totalValueLegacy: { fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"] as any },
     totalKey: { fontSize: 10, color: colors.textTertiary, fontWeight: "600" },
 
-    // Footer
+    // Footer — gap 1 (sev 5): stays a flex sibling below the ScrollView (NOT
+    // absolutely positioned) so it can never overlap scrollable rows. The
+    // ScrollView reserves `footerHeight + insets.bottom + Spacing.xl` of bottom
+    // padding (measured via onLayout) so short forms still clear it.
     footer: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      backgroundColor: colors.background + "f0",
+      backgroundColor: colors.background,
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
-    // 2026-04-26 polish: was Accent.success (green) — every other primary
-    // submit action in the app uses Accent.primary (purple/blue). The green
-    // save was a visual orphan; aligning to the canonical primary colour.
+    // Gap 7 (sev 3): redesign submit is a FILLED primary (dark #1B1814-style
+    // ink slab matching the Recipe Detail "Log all" footer), 52pt, serif label.
+    // A final-commit CTA must read as primary, not a ghost outline.
     saveBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Accent.primary,
-      borderRadius: Radius.md, paddingVertical: 16,
+      gap: Spacing.sm, backgroundColor: accentInk,
+      borderRadius: Radius.xl, minHeight: 52, paddingVertical: Spacing.md,
     },
-    saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    saveBtnText: { ...Type.headline, color: colors.primaryForeground, fontWeight: "600" },
+    // Legacy submit — aubergine OUTLINE (flag-off path).
+    saveBtnLegacy: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: Spacing.sm, backgroundColor: "transparent",
+      borderWidth: 1.5, borderColor: accentInk,
+      borderRadius: Radius.xl, paddingVertical: Spacing.md,
+    },
+    saveBtnTextLegacy: { color: accentInk, fontWeight: "700", fontSize: 16 },
 
     imagePicker: { alignItems: "center" },
-    imagePreview: { width: "100%", height: 200, borderRadius: Radius.lg },
+    imagePreview: { width: "100%", height: 200, borderRadius: Radius.xl },
+    // Gap 3 (sev 4): cover placeholder. Legacy = the cold grey dashed box.
+    // Redesign path renders the warm RecipeHeroFallback (sage→cream gradient +
+    // sage cookware glyph, §11.4) — same component Library/Discover use — with a
+    // tangible warm camera CTA. Radius bumped to 12pt outer clip.
     imagePlaceholder: {
-      width: "100%", height: 160, borderRadius: Radius.lg,
+      width: "100%", height: 160, borderRadius: Radius.xl,
       borderWidth: 1.5, borderColor: colors.border, borderStyle: "dashed" as const,
       justifyContent: "center", alignItems: "center",
       backgroundColor: colors.card,
     },
+    coverHero: {
+      width: "100%", height: 180, borderRadius: Radius.xl,
+      overflow: "hidden", justifyContent: "center", alignItems: "center",
+    },
+    coverHeroCta: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+      paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+      borderRadius: Radius.full, backgroundColor: colors.background + "E6",
+    },
     quickRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     quickBtn: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      paddingVertical: 10, paddingHorizontal: 12,
-      borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border,
+      flexDirection: "row", alignItems: "center", gap: Spacing.xs,
+      paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
+      borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.border,
       backgroundColor: colors.card,
     },
+    // Gap 9 (sev 2): the magic/viral photo path is lifted to a clay-filled
+    // quick-action so it reads as the primary import affordance, not one of
+    // three identical hairline pills. Flag-gated.
+    quickBtnPrimary: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.xs,
+      paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
+      borderRadius: Radius.xl, backgroundColor: accent.primary,
+    },
     quickBtnText: { fontSize: 13, fontWeight: "600", color: colors.text },
+    quickBtnTextPrimary: { fontSize: 13, fontWeight: "700", color: colors.primaryForeground },
+
+    // Gap 13 (sev 2): boxed servings stepper (−/[n]/+) shared shape with Recipe
+    // Detail. Flag-gated; legacy = the lone 80pt numeric input.
+    stepper: {
+      flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
+      backgroundColor: colors.card, borderRadius: Radius.xl,
+      borderWidth: 1, borderColor: colors.border, overflow: "hidden",
+    },
+    stepperBtn: {
+      width: 44, height: 44, justifyContent: "center", alignItems: "center",
+    },
+    stepperValue: {
+      ...Type.heroValue, color: colors.text, minWidth: 44, textAlign: "center",
+      fontVariant: ["tabular-nums"] as any,
+    },
     modalBackdrop: { flex: 1, backgroundColor: "#0007", justifyContent: "flex-end" },
     modalCard: {
       backgroundColor: colors.background,
@@ -830,7 +957,7 @@ export default function CreateRecipeScreen() {
       minHeight: 160,
       textAlignVertical: "top" as const,
       backgroundColor: colors.card,
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       padding: Spacing.md,
@@ -838,13 +965,13 @@ export default function CreateRecipeScreen() {
       fontSize: 15,
     },
     modalActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end" },
-    modalBtn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: Radius.md },
+    modalBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: Radius.xl },
     publishRow: {
       flexDirection: "row", alignItems: "center", gap: Spacing.md,
-      backgroundColor: colors.card, borderRadius: Radius.md,
+      backgroundColor: colors.card, borderRadius: Radius.xl,
       padding: Spacing.lg, borderWidth: 1, borderColor: colors.border,
     },
-  }), [colors]);
+  }), [colors, accent, accentInk]);
 
   return (
     <KeyboardAvoidingView
@@ -866,15 +993,43 @@ export default function CreateRecipeScreen() {
         <View style={{ width: 50 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Image */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.scroll,
+          // Gap 1 fix: reserve the measured footer height so content always
+          // clears the (flex-sibling) footer; fall back to a generous gutter
+          // until the first layout pass reports a height. With the footer now a
+          // flex sibling below this ScrollView (flex:1), short forms can never
+          // be occluded — the reserved padding keeps the last row scrollable
+          // clear of the footer rule even when content is shorter than the screen.
+          { paddingBottom: (footerHeight || 96) + insets.bottom + Spacing.xl },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Image — gap 3 (sev 4). Redesign: warm RecipeHeroFallback cover
+            placeholder (sage→cream gradient + sage cookware glyph, §11.4) with a
+            tangible warm camera CTA, never a cold grey dashed box. */}
         <Pressable onPress={() => void pickImage()} style={styles.imagePicker}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          ) : redesignOn ? (
+            <View style={styles.coverHero}>
+              <RecipeHeroFallback
+                id={title.trim() || "new-recipe"}
+                title={title.trim() || "New recipe"}
+                iconSize={36}
+              />
+              <View style={styles.coverHeroCta}>
+                <Camera size={18} color={accentInk} />
+                <Text style={[styles.label, { color: accentInk }]}>Add photo</Text>
+              </View>
+            </View>
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="camera-outline" size={28} color={colors.textTertiary} />
-              <Text style={[styles.label, { marginTop: Spacing.xs }]}>Add photo</Text>
+              <Camera size={28} color={colors.textTertiary} />
+              <Text style={[styles.label, { marginTop: Spacing.xs, color: colors.textTertiary }]}>Add photo</Text>
             </View>
           )}
         </Pressable>
@@ -897,10 +1052,36 @@ export default function CreateRecipeScreen() {
           />
         </View>
 
-        {/* Servings */}
+        {/* Servings — gap 13 (sev 2). Redesign: boxed −/[n]/+ stepper (shared
+            shape with Recipe Detail); legacy: lone 80pt numeric input. */}
         <View style={{ gap: Spacing.sm }}>
           <Text style={styles.label}>Servings</Text>
-          <TextInput style={[styles.input, { width: 80 }]} value={servings} onChangeText={setServings} keyboardType="number-pad" placeholder="1" placeholderTextColor={colors.textTertiary} />
+          {redesignOn ? (
+            <View style={styles.stepper}>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => adjustServings(-1)}
+                disabled={srv <= 1}
+                accessibilityRole="button"
+                accessibilityLabel="Decrease servings"
+                hitSlop={8}
+              >
+                <Minus size={18} color={srv <= 1 ? colors.textTertiary : accent.primary} />
+              </Pressable>
+              <Text style={styles.stepperValue}>{srv}</Text>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => adjustServings(1)}
+                accessibilityRole="button"
+                accessibilityLabel="Increase servings"
+                hitSlop={8}
+              >
+                <Plus size={18} color={accent.primary} />
+              </Pressable>
+            </View>
+          ) : (
+            <TextInput style={[styles.input, { width: 80 }]} value={servings} onChangeText={setServings} keyboardType="number-pad" placeholder="1" placeholderTextColor={colors.textTertiary} />
+          )}
         </View>
 
         {/* Meal type */}
@@ -913,22 +1094,29 @@ export default function CreateRecipeScreen() {
             Paste a list or scan a photo to pre-fill lines. Tap the search icon on any row to pick the correct food from
             the database if a match looks wrong.
           </Text>
+          {/* Quick-add row — gap 9 (sev 2): the redesign lifts the magic/viral
+              photo path to a clay-filled primary so it reads as THE import
+              affordance, not one of three identical hairline pills. Gap 10
+              (sev 2): lucide line icons across the row (one icon family). */}
           <View style={styles.quickRow}>
             <Pressable
               style={[styles.quickBtn, (bulkMatching || !session) && { opacity: 0.45 }]}
               onPress={() => setPasteModalOpen(true)}
               disabled={bulkMatching || !session}
             >
-              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+              <ClipboardList size={18} color={accent.primary} />
               <Text style={styles.quickBtnText}>Paste list</Text>
             </Pressable>
             <Pressable
-              style={[styles.quickBtn, (imageExtracting || !session) && { opacity: 0.45 }]}
+              style={[
+                redesignOn ? styles.quickBtnPrimary : styles.quickBtn,
+                (imageExtracting || !session) && { opacity: 0.45 },
+              ]}
               onPress={() => void importRecipeFromPhoto()}
               disabled={imageExtracting || !session}
             >
-              <Ionicons name="scan-outline" size={18} color={Accent.primary} />
-              <Text style={styles.quickBtnText}>Scan photo</Text>
+              <Camera size={18} color={redesignOn ? colors.primaryForeground : accent.primary} />
+              <Text style={redesignOn ? styles.quickBtnTextPrimary : styles.quickBtnText}>Scan photo</Text>
             </Pressable>
             <Pressable
               style={[styles.quickBtn, !session && { opacity: 0.45 }]}
@@ -937,13 +1125,13 @@ export default function CreateRecipeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Scan barcode to add ingredient"
             >
-              <Ionicons name="barcode-outline" size={18} color={Accent.primary} />
+              <Barcode size={18} color={accent.primary} />
               <Text style={styles.quickBtnText}>Scan barcode</Text>
             </Pressable>
           </View>
           {(bulkMatching || imageExtracting) && (
             <View style={styles.row}>
-              <ActivityIndicator color={Accent.primary} />
+              <ActivityIndicator color={accent.primary} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {imageExtracting ? "Reading recipe from photo…" : "Matching ingredients to database…"}
               </Text>
@@ -964,38 +1152,41 @@ export default function CreateRecipeScreen() {
                 accessibilityLabel="Search or change ingredient"
                 hitSlop={8}
               >
-                <Ionicons name="search-outline" size={22} color={Accent.primary} />
+                <Search size={20} color={accent.primary} />
               </Pressable>
               <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)} accessibilityLabel="Remove ingredient">
-                <Ionicons name="close-circle" size={22} color={Accent.destructive + "80"} />
+                <CircleX size={20} color={Accent.destructive + "B0"} />
               </Pressable>
             </View>
           ))}
           <Pressable style={styles.addBtn} onPress={openAddIngredientSearch}>
-            <Ionicons name="add" size={18} color={Accent.primary} />
+            <Plus size={18} color={accent.primary} />
             <Text style={styles.addBtnText}>Add ingredient</Text>
           </Pressable>
         </View>
 
-        {/* Totals */}
+        {/* Totals — gap 11 (sev 2): redesign renders the per-serving kcal +
+            macro values in Newsreader (Type.heroValue) — achievement numbers,
+            not dense tracker data — with Inter captions below. Legacy keeps the
+            Inter 800 18pt values. Macro colours unchanged. */}
         {ingredients.length > 0 && (
           <View style={styles.totalsCard}>
             <Text style={[styles.label, { marginBottom: Spacing.sm }]}>Per serving ({srv} serving{srv !== 1 ? "s" : ""})</Text>
             <View style={styles.totalsRow}>
               <View style={styles.totalItem}>
-                <Text style={styles.totalValue}>{perServing.calories}</Text>
+                <Text style={redesignOn ? styles.totalValue : styles.totalValueLegacy}>{perServing.calories}</Text>
                 <Text style={styles.totalKey}>kcal</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[styles.totalValue, { color: MacroColors.protein }]}>{perServing.protein}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.protein }]}>{perServing.protein}g</Text>
                 <Text style={styles.totalKey}>protein</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[styles.totalValue, { color: MacroColors.carbs }]}>{perServing.carbs}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.carbs }]}>{perServing.carbs}g</Text>
                 <Text style={styles.totalKey}>carbs</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[styles.totalValue, { color: MacroColors.fat }]}>{perServing.fat}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.fat }]}>{perServing.fat}g</Text>
                 <Text style={styles.totalKey}>fat</Text>
               </View>
             </View>
@@ -1028,28 +1219,42 @@ export default function CreateRecipeScreen() {
               Others can discover and save your recipe
             </Text>
           </View>
+          {/* Gap 12 (sev 2): the publish toggle is an active-control state, not
+              a success/verified state — track/thumb use the brand accent
+              (clay/aubergine), never Accent.success green. */}
           <Switch
             value={publish}
             onValueChange={setPublish}
-            trackColor={{ false: colors.border, true: Accent.success + "80" }}
-            thumbColor={publish ? Accent.success : colors.textTertiary}
+            trackColor={{ false: colors.border, true: accent.primary + "80" }}
+            thumbColor={publish ? accent.primary : colors.textTertiary}
           />
         </View>
       </ScrollView>
 
-      {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
+      {/* Footer — gap 1 (sev 5): rendered as a flex sibling BELOW the ScrollView
+          (not absolutely positioned) so it can never overlap scrollable rows.
+          We measure its height via onLayout so the ScrollView reserves matching
+          bottom padding. Gap 7 (sev 3): redesign submit is a FILLED primary
+          (dark ink slab matching Recipe Detail's "Log all" footer, serif label);
+          legacy is the aubergine outline. */}
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}
+        onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+      >
         <Pressable
-          style={[styles.saveBtn, (saving || !title.trim()) && { opacity: 0.5 }]}
+          style={[
+            redesignOn ? styles.saveBtn : styles.saveBtnLegacy,
+            (saving || !title.trim()) && { opacity: 0.5 },
+          ]}
           onPress={() => void onSave()}
           disabled={saving || !title.trim()}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={redesignOn ? colors.primaryForeground : accentInk} />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
-              <Text style={styles.saveBtnText}>Save Recipe</Text>
+              <CircleCheck size={20} color={redesignOn ? colors.primaryForeground : accentInk} />
+              <Text style={redesignOn ? styles.saveBtnText : styles.saveBtnTextLegacy}>Save Recipe</Text>
             </>
           )}
         </Pressable>
@@ -1060,7 +1265,7 @@ export default function CreateRecipeScreen() {
           <Pressable style={[styles.modalCard, { paddingBottom: insets.bottom + Spacing.lg }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.label, { letterSpacing: 0 }]}>Paste ingredient list</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-              One ingredient per line (amounts help). We match each line like MyFitnessPal: USDA, Open Food Facts, FatSecret, Edamam, then Suppr foods.
+              One ingredient per line (amounts help). We match each line like MyFitnessPal: USDA, Open Food Facts, FatSecret, Edamam, then Sloe foods.
             </Text>
             <TextInput
               style={styles.pasteInput}
@@ -1079,14 +1284,19 @@ export default function CreateRecipeScreen() {
                 <Text style={{ fontWeight: "600", color: colors.text }}>Close</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, { backgroundColor: Accent.primary }]}
+                style={[
+                  styles.modalBtn,
+                  // Aubergine OUTLINE (treatment §1) — primary paste-match
+                  // action, not a filled slab.
+                  { backgroundColor: "transparent", borderWidth: 1.5, borderColor: accentInk },
+                ]}
                 onPress={() => void matchPastedIngredients()}
                 disabled={bulkMatching}
               >
                 {bulkMatching ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={accentInk} />
                 ) : (
-                  <Text style={{ fontWeight: "700", color: "#fff" }}>Match</Text>
+                  <Text style={{ fontWeight: "700", color: accentInk }}>Match</Text>
                 )}
               </Pressable>
             </View>

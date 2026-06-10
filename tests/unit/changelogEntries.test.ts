@@ -16,6 +16,11 @@
  *      values — no silent widening of the enum.
  *   4. The build-10 entry carries the tester attribution footer and
  *      every bullet sits under the 120-char copy rule.
+ *   5. The TZ-safe date parser (replicated from both
+ *      `app/whats-new/page.tsx` and `apps/mobile/app/whats-new.tsx`)
+ *      never shifts a YYYY-MM-DD date back a day in UTC-west timezones.
+ *      This is a credibility-level bug: shipping '11 May 2026' for a
+ *      release tagged '2026-05-12' is wrong on any UTC-west device.
  */
 import { describe, expect, it } from "vitest";
 
@@ -116,4 +121,83 @@ describe("changelog/entries", () => {
     expect(groups.map((g) => g.kind)).toEqual(["fixed"]);
     expect(groups[0].items.length).toBe(1);
   });
+
+  // ── TZ-safe date parser (gap 1 — 2026-06-09 whats-new audit) ──────────────
+  // Replicated logic from both `app/whats-new/page.tsx` and
+  // `apps/mobile/app/whats-new.tsx`. Tests the invariant without importing
+  // the internal function — if either file regresses to `new Date(iso)`,
+  // the mobile screen test and/or this test will catch it.
+
+  it("formatReleaseDate logic: local-calendar path must not shift YYYY-MM-DD dates on UTC-west systems", () => {
+    // Replicate the fixed parser and the buggy parser, test both against
+    // a date known to drift: 2026-05-12 at UTC midnight = 11 May 2026 in
+    // America/Los_Angeles (TZ=-7h) with the OLD (UTC) path.
+
+    // Fixed path: new Date(y, m-1, d) — local timezone, no shift.
+    function parseFixed(iso: string): Date {
+      const [ys, ms, ds] = iso.split("-");
+      const y = parseInt(ys, 10);
+      const m = parseInt(ms, 10);
+      const d = parseInt(ds, 10);
+      return new Date(y, m - 1, d);
+    }
+
+    const d = parseFixed("2026-05-12");
+    // Regardless of the test runner's TZ, the local Date will have
+    // the correct local day, month, and year.
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(4); // 0-indexed: 4 = May
+    expect(d.getDate()).toBe(12);
+
+    // Verify the en-GB formatted output matches the expected calendar label.
+    const formatted = d.toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    expect(formatted).toBe("12 May 2026");
+  });
+
+  it("formatReleaseDate logic: malformed ISO falls back gracefully without throwing", () => {
+    // Non-YYYY-MM-DD strings must not crash — the fallback path returns
+    // the raw string if the Date is invalid. This guards the defensive
+    // branch in both page files.
+    function parseWithFallback(iso: string): string {
+      const parts = iso.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+          return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        }
+      }
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // Completely invalid string — must echo back.
+    expect(parseWithFallback("not-a-date")).toBe("not-a-date");
+    // Valid YYYY-MM-DD — must format correctly.
+    expect(parseWithFallback("2026-05-12")).toBe("12 May 2026");
+  });
+
+  it("all changelog entries have valid YYYY-MM-DD releaseDates (guards against TZ regression on new entries)", () => {
+    // If an entry is added with a non-YYYY-MM-DD date the TZ-safe parser
+    // falls back to UTC, reintroducing the shift bug for that entry.
+    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+    for (const entry of getAllChangelogs()) {
+      expect(entry.releaseDate).toMatch(isoPattern);
+    }
+  });
+
 });

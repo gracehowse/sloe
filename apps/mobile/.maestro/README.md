@@ -2,12 +2,14 @@
 
 These tests drive the real iOS Simulator or Android Emulator and verify user-visible behaviour.
 
+**Cursor agents (interactive UI checks):** use the **`ios-simulator` MCP** server + IDB instead of asking for dragged screenshots. Setup: `docs/testing/agent-eyes-and-hands.md`, navigation map: `sitemap.md`, verify: `npm run agent:verify-tools` from repo root.
+
 ## Mobile testing belt (belts and braces)
 
 Run these in order before a release or large mobile PR:
 
 1. **`npm run mobile:verify`** (repo root) — **ESLint** (errors fail), **TypeScript**, **Vitest** (`apps/mobile/tests/unit`), and **Maestro suite manifest** (every flow in `config.yaml` exists + `runFlow: shared/*.yaml` resolves). No Simulator required.
-2. **`npm run mobile:test:e2e`** — Full **Maestro** suite against a running dev client + Metro (see [Running](#running)). Requires `E2E_*` and optional silent auth env in `apps/mobile/.env`.
+2. **`npm run mobile:test:e2e`** — Full **Maestro** suite against a running dev client + Metro (see [Running](#running)). Requires `E2E_*` and optional silent auth env in repo-root **`.env.local`**.
 3. **`npm run mobile:test:screens:diff`** — Visual-regression layer over the suite. Compares `apps/mobile/screenshots/latest/` (produced by step 2) against the committed `screenshots/baseline/`. Catches layout shift, contrast drift, z-index regressions that text-only assertions miss. See [Visual regression — screenshot diff](#visual-regression--screenshot-diff). First-time setup needs `npm run mobile:test:screens:update-baseline` after a clean step-2 run.
 4. **Sub-page visual baseline** (not in `config.yaml`): `00z_sweep_deeplinks.yaml` — deeplinks + log sheet + recipe detail → `screenshots/latest/deeplink-*.png`. Run `npm run test:sweep:deeplinks` then `npm run test:screens:diff`. See [`docs/testing/VISUAL_REGRESSION.md`](../../docs/testing/VISUAL_REGRESSION.md).
 5. **Manual-only flows** (not in `config.yaml`): `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt` — run ad hoc when those surfaces change.
@@ -50,7 +52,7 @@ From **`apps/mobile`** (so `.maestro/` resolves), or from the **repo root** with
 
 ```bash
 # iOS Simulator + Metro on same machine (typical)
-# Put E2E_EMAIL / E2E_PASSWORD in repo-root `.env.local` (or `apps/mobile/.env`) — `npm run test:e2e` loads them into the Maestro process.
+# Put E2E_EMAIL / E2E_PASSWORD in repo-root `.env.local` — `npm run test:e2e` loads them into the Maestro process.
 # Optional: EXPO_DEV_SERVER_URL=exp://127.0.0.1:8081 if Metro is not on 8081
 
 # Terminal 1: Metro must be running before Maestro (script checks http://127.0.0.1:<port>/status)
@@ -140,7 +142,7 @@ A `FAIL` row means the diff exceeded the threshold — open the report and look 
 
 ## Authentication
 
-Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2E_PASSWORD`** are passed to Maestro via `-e` by **`scripts/run-maestro-e2e.mjs`** (values come from repo-root **`.env.local`**, then **`apps/mobile/.env`**, then your shell). Do not commit real passwords; use a dedicated Supabase test user and local env only.
+Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2E_PASSWORD`** are passed to Maestro via `-e` by **`scripts/run-maestro-e2e.mjs`** (values come from repo-root **`.env.local`**, then your shell). Do not commit real passwords; use a dedicated Supabase test user and local env only.
 
 ## Troubleshooting
 
@@ -148,8 +150,8 @@ Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2
 |--------|----------------|
 | **`[maestro-e2e] Metro not ready`** | Start Expo first; port in **`EXPO_DEV_SERVER_URL`** must match Metro (default **8081**). |
 | **`No development build … is installed`** (after pressing **i**) | Run **`npm run mobile:ios:simulator`** once to build/install the dev client on the Simulator (see Metro table above). |
-| **`[maestro-e2e] Missing E2E_EMAIL`** | Set credentials in **repo root `.env.local`** or **`apps/mobile/.env`**, or `export` them in the shell. |
-| **`login.yaml` times out** (`Today` never appears) | **`shared/login.yaml` now types into the login form** when `login-email` is visible (uses **`E2E_EMAIL` / `E2E_PASSWORD`** from Maestro `-e`). If you still see no typing: confirm Metro passed those env vars (`npm run test:e2e` loads `.env.local`). If login succeeds but timeout persists: Supabase user likely needs **`onboarding_completed=true`**. Optional: set **`EXPO_PUBLIC_E2E_AUTH_ENABLED`** + matching **`EXPO_PUBLIC_E2E_*`** in **`apps/mobile/.env`** so the app signs in **before** UI (no visible typing). |
+| **`[maestro-e2e] Missing E2E_EMAIL`** | Set credentials in **repo root `.env.local`**, or `export` them in the shell. |
+| **`login.yaml` times out** (`Today` never appears) | **`shared/login.yaml` now types into the login form** when `login-email` is visible (uses **`E2E_EMAIL` / `E2E_PASSWORD`** from Maestro `-e`). If you still see no typing: confirm Metro passed those env vars (`npm run test:e2e` loads `.env.local`). If login succeeds but timeout persists: Supabase user likely needs **`onboarding_completed=true`**. Optional: set **`EXPO_PUBLIC_E2E_AUTH_ENABLED`** + matching **`EXPO_PUBLIC_E2E_*`** in **repo-root `.env.local`** so the app signs in **before** UI (no visible typing). |
 | **Second `npm run test:e2e` “does nothing” / no new output** | Maestro still runs a full pass; output can look similar if the app state is unchanged. Use **`npm run test:e2e:watch`** to auto re-run after you save flow YAML under `.maestro/`. Only flows listed in **`.maestro/config.yaml`** run (not every YAML file). |
 | **`Continuous mode is not supported when running multiple flows`** | Expected for `maestro test .maestro/ --continuous`. Use **`npm run test:e2e:watch`** (file watcher + full suite) instead. |
 | **`ENOSPC`** during `expo prebuild` / install | Disk full — free space on the volume (`df -h .`); preflight warns when free space is very low. |

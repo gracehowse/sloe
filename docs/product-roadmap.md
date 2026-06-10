@@ -21,7 +21,7 @@ Authority: `docs/decisions/2026-04-27-strategic-direction.md` (17 binding decisi
 | Phase 2 | B1.3 — Pricing collapse Free + Pro (UI) | **Shipped — UI only** (2026-04-27) | Phase 5 Web `PricingTiersGrid` + mobile paywall hide Base; Stripe + RevenueCat reconfig still open with `monetisation-architect` (Base migration call) |
 | Phase 2.5 | Household demote behind Settings flag | **Open** | Deferred from B2 of strategic batch — next follow-up |
 | Phase 3 | B2.1 — Canonical Log FAB → unified `<LogSheet>` | **Shipped** (2026-04-27) | Web + mobile primitive with 6 sub-tabs; barcode 0-kcal manual entry closes Top Broken Journey #5; legacy TodayFabSheet migration done |
-| Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Shipped** (2026-04-27) | `northStarSuggestion` scorer + 4-kind block (default / library-empty / over-budget / no-fit); time-of-day CTA branching; mobile swipe-to-skip + reduce-motion fallback |
+| Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Shipped** (2026-04-27; scorer rebuilt 2026-06-08, ENG-995) | `northStarSuggestion` scorer + 4-kind block (default / library-empty / over-budget / no-fit); time-of-day CTA branching; mobile swipe-to-skip + reduce-motion fallback. ENG-995: actual servings only (no portion scaling) + score against a per-meal budget (`slotShare · dailyCalorieTarget`), never the whole remaining day |
 | Phase 3 / 5 | B2.3 — Onboarding produces first plan | **Shipped** (2026-04-27 Phase 5) | Phase 3 selection state + threshold parity → Phase 5 added `<RecipePickerGrid>` web + mobile, 15 hand-picked seed JSON, `onboardingSeedResolver` (title-match), `buildFirstWeekFromSeeds` (planner + `save_meal_plan` RPC), seed migration staged at `20260503110000_onboarding_seed_recipes.sql`. New step 15 = `recipes`. Journey doc at `docs/journeys/onboarding-final-step-2026-04-27.md`. |
 | Phase 3 | B2.4 — Trust posture sweep on every macro row | **Shipped** (2026-04-27) | Phase 3 wired SourceDot on diary rows + LogSheet result rows. Phase 4 widened to recipe detail hero, recipe ingredient rows, Library cards, Discover cards (web + mobile). Helper: `recipeTrust.ts` (`mapToTrustVariant` / `aggregateRecipeTrust` / `recipeLevelTrust`). |
 | Phase 4 | B3.1 — Adaptive TDEE Progress headline | **Shipped** (2026-04-27) | `progressCommentary.ts` shared lib (3 regimes: adjustment / calibrating / steady) + `<ProgressHeadline>` web + mobile primitives. Renders inline `<ConfidenceChip>` per D-2026-04-27-12. Hosted in `ProgressDashboard.tsx` (web) + `(tabs)/progress.tsx` (mobile). Tests: 16 commentary + 5 web headline + 4 mobile headline. |
@@ -33,6 +33,31 @@ Authority: `docs/decisions/2026-04-27-strategic-direction.md` (17 binding decisi
 | Phase 5 | B6 — Reduce-motion + reduce-transparency QA | **Shipped** (2026-04-27) | Mobile reduce-motion regression suite at `apps/mobile/tests/unit/reduceMotionQAPhase5.test.tsx` pins NorthStarBlock branch (X button vs swipe). Existing `useReduceMotion` hook unchanged. Web honours `@media (prefers-reduced-motion: reduce)` globally. |
 
 Detailed journey: [`docs/journeys/tab-collapse-2026-04-27.md`](journeys/tab-collapse-2026-04-27.md).
+
+---
+
+## Recipe import, AI imagery & creators (2026-06-03)
+
+Authority: `docs/decisions/2026-06-03-image-generation-strategy.md` · `docs/research/2026-06-03-recipe-import-competitive-posture.md` · `docs/decisions/2026-06-03-creator-content-model-two-plane.md` · `docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md` · `docs/brand/sloe-image-prompt-template.md`. Linear initiative **Recipe import, AI imagery & creators** (ENG-857→870). **Positioning: Julienne × MFP** — recipes fused with goals/tracking (tracker-first, not cookbook-first); borrowing Julienne's design polish is safe because the moat is the goals/tracking layer.
+
+| Workstream | Status | Notes |
+|---|---|---|
+| Import — stop verbatim creator prose (web/blog) + disclaimer | **Open — P0 LIVE** | ENG-857 launch-blocker; shipping in prod now |
+| Import — surface link-back + creator credit | **Open** | ENG-858 launch-blocker; data exists, render change |
+| DMCA designated-agent registration | **Open** | ENG-859 launch-blocker; depends on incorporation; Grace owns |
+| Import — user-as-actor / private-by-default framing (keep honest UA) | **Open** | ENG-860 |
+| AI image-gen engine (fal.ai + FLUX 2 Pro + locked Sloe template) | **Open — post-Today** | ENG-861; render-validate 10 outputs first |
+| `image_source` provenance column | **Open — post-Today** | ENG-862; prerequisite |
+| Runtime "Generate an image" on import (cache · label · decouple · removable) | **Open — post-Today** | ENG-863 |
+| AI-image precedence ladder + no gen on public/Discover | **Open — post-Today** | ENG-864 |
+| Image-gen monetisation (free-base vs Pro-polish) | **Open** | ENG-865; reconcile w/ monetisation-architect |
+| Design-time fal/FLUX batch generator | **Open** | ENG-866; replaces Stitch friction |
+| Julienne UX adopts (import loading · cook chips · Est. Cost · graceful load) | **Open — post-Today** | ENG-867 |
+| Creator model — two-plane + `content_origin` | **Open — post-Today** | ENG-869 |
+| Resolve `author_id` vs `creator_id` ownership | **Open** | ENG-868; blocks claim/merge |
+| Claim & merge | **Deferred — post-launch** | ENG-870; trigger = first real creator |
+
+Competitive intel: interrogated **17 import apps** (Julienne, ReciMe, Paprika, Mela, Crouton, Pestle, Honeydew, Flavorish, Saffron, Samsung Food, AnyList, Plan to Eat, RecipeKeeper, MFP, MacroFactor, Cronometer, Cal AI). Key reads: recipes-as-facts is the category's legal foundation; the **photo is the litigation-likely vector** (we block it — ahead of the field); image-gen is Julienne's recent (~5mo) differentiator and their **reliability is the soft spot = our wedge**.
 
 ---
 
@@ -173,7 +198,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Dietary requirements + preferences.** `profiles.dietary` stores `vegetarian / vegan / pescatarian / gluten-free / dairy-free / nut-free / halal / kosher` via the canonical `DIETARY_PREFERENCE_ENTRIES` set (`src/constants/dietaryPreferences.ts`). Recipe labeling and discovery filtering apply the same ids. **Coeliac-strict and allergen-ingredient-level filtering is still TBD**.
 - **Custom foods** (Batch 3.9). Homemade / local-only foods with any number of named serving shortcuts (`1 bowl = 80g`). Shared `scaleMacrosForGrams`. Owner-only RLS on `user_custom_foods`. **FoodSearch integration shipped 2026-04-18 (audit C1)** — `FoodSearch.tsx` + `FoodSearchModal.tsx` now list custom foods at top of results with a "Custom" badge, a "+ Create custom food" row always below results, portion chips for named servings, and edit/delete via overflow menu (web) / long-press (mobile). Primary log path on web NutritionTracker inline search still uses legacy USDA-only search (C1a backlog follow-up).
 - **Usual meals** (Batch 2.6 + Ship M1). 2+ logged items saved as a named bundle, re-logged in one tap from the **Usual meals** tab in Quick add. Parent `user_saved_meals` + child `user_saved_meal_items`.
-- **Favourites / Frequent / Recent Quick Add** (Batch 1.3). Tabbed picker; star any meal to one-tap re-log. "Eat again" clock-aware banner. `user_favorite_foods` with unique key on `user_id + lower(title) + round(cal)`.
+- **Favourites / Frequent / Recent Quick Add** (Batch 1.3). Tabbed picker; star any meal to one-tap re-log. `user_favorite_foods` with unique key on `user_id + lower(title) + round(cal)`. _(The clock-aware "Eat again" Today banner that shipped in this batch was later retired from Today on both platforms in the Figma 654:2 unification — re-logging now lives in the Recent/Frequent tabs.)_
 - **Copy meal / Duplicate day** (Batch 1.4). Per-meal and per-day copy to single day or inclusive range. Shared `copyMeals.ts`.
 - **Add ingredient + per-ingredient overrides** (Batch 2.7). Add a missed ingredient post-import or pin manual "label values" on one row without losing the match. `recipe_ingredients.override_macros` + `added_by_user`.
 - **Drag-drop meals between days, save-plan-as-template, leftovers-aware planning** (Batch 3.10). `user_plan_templates`; `meal_plan_meals.is_leftover` + `leftover_of_recipe_id`; auto-distribution of multi-serving recipes into matching next-day slots. **Mobile Move action shipped 2026-04-18 (audit C2)** — long-press a meal row → action sheet → `MoveMealSheet` destination picker → shared `moveMealInPlan` helper. No native drag-drop on mobile by design; parity is now real.

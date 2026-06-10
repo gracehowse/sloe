@@ -488,15 +488,10 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - EDGE signed-out user taps star → Alert "Sign in to save favourites."
 - PARITY: web `QuickAddPanel` shows the same four tabs inline above the Meals section on Today. Same prop contract (`byDay`, `activeSlot`, `supabase`, `userId`, `onLog`, `onLogSavedMeal`, `onOpenSaveCombo`, `savedMealsRefreshToken`, `defaultTab`), same tab order, same empty-state copy, same accessibility labels. **Divergent behaviour is a regression, not a style choice** (see `docs/product/web-mobile-parity-scope.md`).
 
-### 7.14b Eat again card
-- EXP: on Today (only when `isToday` is true), if `computeEatAgainForSlot(byDay, currentSlotFromTime, now)` returns a row, a banner appears **above the calorie hero** (between the date header and the hero ring). Header "EAT AGAIN", body shows title + `N kcal · Pg Cg Fg · into {slot}`. (B4 Phase 3a, 2026-04-27 — `docs/specs/2026-04-27-b4-today-screen-phase3.md`. Pre-fix the banner sat below streak/fasting/steps cards; the repositioning fronts the highest-value tap when the day's budget is met.)
-- EXP: `LOG` button logs the suggestion into the slot matching the current clock time (Breakfast < 10h, Lunch < 14h, Snacks < 17h, else Dinner).
-- EXP: `×` dismiss writes today's date-key to AsyncStorage `suppr-eat-again-dismissed`; banner stays hidden until the next local day.
-- NEG: no prior days with a matching slot → banner hidden; no zero-height placeholder.
-- NEG: budget remaining > 0 → banner hidden (existing pragmatic timing rule — eat-again is a "you've still room for X" surface).
-- NEG: only today has that slot → banner hidden (today is explicitly excluded so "eat again" doesn't suggest the meal the user just logged).
-- EDGE: viewing a past or future day (`isToday=false`) → banner hidden.
-- PARITY: web shows the same banner at the top of the Day view (`src/app/components/NutritionTracker.tsx` between `TodayDateHeader` and `TodayHeroStats`), dismissed state persisted in `localStorage` under the same key.
+### 7.14b Eat again card — RETIRED from Today (do not test as a Today surface)
+- The dedicated "Eat again" Today banner was **removed from both platforms** in the Sloe Figma 654:2 Today unification (mobile 2026-05-22 "v4"; web commit 664df1cb, 2026-06-04). Today shows at most the north-star / deficit prompt — there is no eat-again banner above the hero on either platform.
+- EXP: on Today, no "EAT AGAIN" banner renders in any state (any slot, any budget). If one appears, that is a **regression** (it must stay off — pinned by `journeyFixes20260427.test.ts` Fix 5 and `todayAboveMealsCap.test.ts` on both platforms).
+- The `TodayEatAgainBanner` component and `computeEatAgainForSlot` helper still exist and are unit-tested in isolation, but are not mounted on Today. Re-logging a prior meal now lives in the Quick Add picker's Recent / Frequent tabs (§7.14a). The web `NutritionTracker.tsx` eat-again dismiss/suggestion logic was removed as dead code (2026-06-07); mobile `(tabs)/index.tsx` retains the dismiss-state logic for analytics/tests only.
 
 ### 7.14d Usual meals (saved bundles — Batch 2.6 + Ship M1 copy)
 Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPanel`; mobile `SaveMealSheet.tsx` + `QuickAddPanel.tsx` (first-class component as of audit H1, 2026-04-18 — previously inline in `app/(tabs)/index.tsx`). Shared helpers: `src/lib/nutrition/savedMeals.ts`, `savedMealsLogic.ts`.
@@ -1029,17 +1024,14 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 
 ---
 
-## 13. Search (hidden tab) — `app/(tabs)/search.tsx`
+## 13. Search tab — REMOVED 2026-06-08
 
-USDA dev/debug screen.
-
-- Default query "apple". Search button.
-- NEG `apiBase` empty → "Food search isn't available in this build yet."
-- NEG empty → "Enter a food name."
-- NEG fetch non-ok → "Search failed."
-- NEG net err → "Network error."
-- EXP up to 15 results with FDC ID.
-- UAT FLAG: not production-linked; verify hidden in shipping build.
+The vestigial read-only "Food search" tab (`app/(tabs)/search.tsx`, a
+USDA dev/debug screen) was deleted per the nutrition-log spec §3.15.
+Food search now lives only in the Log sheet (`<LogSheet>` →
+`FoodSearchModal` / `FoodSearchPanel`) — see §32 (Food Logging) and the
+`32_food_search_modal.yaml` Maestro flow. No replacement screen; section
+number retained as a tombstone to keep downstream numbering stable.
 
 ---
 

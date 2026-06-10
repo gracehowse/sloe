@@ -65,9 +65,12 @@ export function NumberStepper({
       </button>
 
       <div className="text-center" style={{ minWidth: big ? 140 : 100 }}>
+        {/* SLOE Phase 0: the onboarding stepper hero value reads in the
+            Newsreader serif display face (mirrors mobile number-stepper); the
+            +/− glyphs + suffix stay sans. */}
         <div
           className={cn(
-            "font-extrabold tracking-tight tabular-nums leading-none text-foreground",
+            "font-[family-name:var(--font-display)] font-normal tracking-tight tabular-nums leading-none text-foreground",
             numSize,
           )}
           style={{ letterSpacing: "-0.03em" }}

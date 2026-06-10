@@ -7,9 +7,12 @@
 export {
   shouldRenderTimeStats,
   composeSubtitleParts,
+  composeRecipeMeta,
   computeFitsYourDayVerdict,
 } from "@suppr/shared/recipe/recipeDetailLayout";
 export type {
   FitsYourDayTone,
   FitsYourDayVerdict,
+  RecipeMetaIcon,
+  RecipeMetaStat,
 } from "@suppr/shared/recipe/recipeDetailLayout";

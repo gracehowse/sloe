@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sloe — Logo Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sloe:#3B2A4D; --sloe-deep:#241733; --damson:#6A4B7A; --frost:#C9C2D6;
+    --frost-mist:#EDEAF1; --clay:#C8794E; --amber:#C9892C; --sage:#5E7C5A;
+    --oat:#FBF8F3; --cream:#F6F5F2; --ink:#221B26; --ink-soft:#6A6072;
+    --ink-faint:#9B93A3; --line:#E8E2EC;
+    --serif:'Newsreader', Georgia, serif;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0d13;color:#EDEAF1;font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+  /* The whole gallery is wrapped in #cap so the capture pipeline can screenshot it. */
+  #cap{width:1180px;margin:0 auto;background:var(--oat);color:var(--ink);padding:56px 56px 80px;}
+
+  .masthead{margin-bottom:8px;}
+  .masthead .kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--clay);font-weight:600;}
+  .masthead h1{font-family:var(--serif);font-weight:420;font-size:46px;letter-spacing:-.02em;color:var(--ink);line-height:1.05;margin-top:10px;}
+  .masthead p{max-width:760px;color:var(--ink-soft);font-size:15px;margin-top:14px;}
+  .masthead .note{margin-top:10px;font-size:13px;color:var(--ink-faint);}
+
+  .concept{margin-top:52px;border-top:1px solid var(--line);padding-top:36px;}
+  .concept-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+  .concept-head .n{font-family:var(--serif);font-size:18px;color:var(--frost);background:var(--sloe);width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:500;flex-shrink:0;}
+  .concept-head h2{font-family:var(--serif);font-weight:460;font-size:27px;letter-spacing:-.01em;color:var(--ink);}
+  .concept-head .tag{font-size:11px;letter-spacing:.04em;font-weight:700;padding:4px 11px;border-radius:999px;text-transform:uppercase;}
+  .tag.rec{background:var(--sage);color:#fff;}
+  .tag.alt{background:var(--frost-mist);color:var(--sloe);}
+  .tag.full{background:var(--clay);color:#fff;}
+  .concept-desc{color:var(--ink-soft);font-size:14px;max-width:820px;margin-top:12px;}
+
+  .sizes{display:flex;align-items:flex-end;gap:48px;flex-wrap:wrap;margin-top:26px;}
+  .size{display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .size .label{font-size:12px;color:var(--ink-faint);letter-spacing:.03em;font-weight:600;text-align:center;}
+  .size .label b{display:block;color:var(--ink-soft);font-size:13px;font-weight:600;}
+
+  /* App-icon chrome: rounded-square mask (iOS) applied here, not baked into the SVG. */
+  .ios{border-radius:22.37%;overflow:hidden;box-shadow:0 22px 50px -24px rgba(36,23,51,.7), 0 0 0 1px rgba(36,23,51,.06);}
+  .ios.s1024{width:240px;height:240px;border-radius:53px;}
+  .ios.s180{width:180px;height:180px;border-radius:40px;}
+  .ios.s60{width:60px;height:60px;border-radius:13px;box-shadow:0 8px 18px -8px rgba(36,23,51,.7);}
+  .ios img{width:100%;height:100%;display:block;}
+
+  /* Circular avatar crop test */
+  .avatar{border-radius:50%;overflow:hidden;box-shadow:0 14px 34px -18px rgba(36,23,51,.7), 0 0 0 1px rgba(36,23,51,.06);}
+  .avatar.s120{width:120px;height:120px;}
+  .avatar img{width:100%;height:100%;display:block;}
+
+  /* Greyscale shrink test */
+  .grey img{filter:grayscale(1) contrast(1.02);}
+
+  /* Dock mock */
+  .dock{margin-top:28px;display:flex;align-items:center;gap:16px;background:linear-gradient(180deg,rgba(36,23,51,.04),rgba(36,23,51,.08));backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:28px;padding:16px 22px;width:max-content;}
+  .dock .di{width:60px;height:60px;border-radius:13px;box-shadow:0 8px 18px -10px rgba(36,23,51,.6);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:26px;}
+  .dock .di img{width:100%;height:100%;display:block;}
+  .dock .photos{background:linear-gradient(135deg,#f9c846,#ef5350 45%,#9c27b0 75%,#2196f3);}
+  .dock .messages{background:linear-gradient(180deg,#5ff076,#1faf3c);}
+  .dock .health{background:#fff;color:#fa5066;}
+  .dock .settings{background:linear-gradient(180deg,#9aa3ad,#5f6b76);}
+  .dock .caption{font-size:12px;color:var(--ink-faint);margin-left:6px;}
+
+  .ground-note{font-size:11.5px;color:var(--ink-faint);margin-top:8px;font-style:italic;}
+
+  /* Wordmark section */
+  .wordmark-block{margin-top:30px;}
+  .wm-row{display:flex;flex-direction:column;gap:26px;margin-top:22px;}
+  .wm-card{border:1px solid var(--line);border-radius:18px;padding:34px 40px;display:flex;flex-direction:column;gap:8px;}
+  .wm-card.oat{background:var(--oat);}
+  .wm-card.cream{background:var(--cream);}
+  .wm-card .wm-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;}
+  .wm-card img.lg{width:520px;max-width:100%;height:auto;display:block;}
+  .wm-card img.sm{width:230px;height:auto;display:block;}
+  .wm-sizes{display:flex;align-items:flex-end;gap:54px;flex-wrap:wrap;}
+  .wm-sizes .s{display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+  .wm-sizes .s .label{font-size:12px;color:var(--ink-faint);font-weight:600;}
+
+  .footer{margin-top:60px;border-top:1px solid var(--line);padding-top:24px;font-size:12.5px;color:var(--ink-faint);}
+  .footer code{background:var(--frost-mist);color:var(--sloe);padding:2px 7px;border-radius:5px;font-size:12px;}
+  .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;}
+  .legend span{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);}
+  .sw{width:15px;height:15px;border-radius:4px;border:1px solid rgba(0,0,0,.08);}
+</style>
+</head>
+<body>
+<div id="cap">
+
+  <div class="masthead">
+    <div class="kicker">Sloe · brand-mark exploration</div>
+    <h1>Logo concepts — render before we commit</h1>
+    <p>Three hand-authored vector directions on the 1024&times;1024 app-icon artboard, plus the wordmark
+       lockup and a monochrome cut. Each app-icon mark is shown at <b>1024</b>, <b>180</b> (home-screen)
+       and <b>60</b> (dock) under the iOS rounded-square mask, with a circular-avatar crop and a greyscale
+       shrink test. Per the brief, the make-or-break is whether the mark holds a clear silhouette and a
+       luminance gap at 60px and in greyscale.</p>
+    <p class="note">Colours are the canonical Sloe tokens (plum <b>#3B2A4D</b>, damson <b>#6A4B7A</b>,
+       frost <b>#C9C2D6</b>, sage <b>#5E7C5A</b>, clay <b>#C8794E</b>, amber <b>#C9892C</b>). The serif is
+       genuine Newsreader (outlines extracted from the shipped font). No rounded-corner mask is baked into
+       the SVGs — iOS applies it; the mask shown here is page chrome only.</p>
+    <div class="legend">
+      <span><span class="sw" style="background:#3B2A4D"></span>Plum #3B2A4D</span>
+      <span><span class="sw" style="background:#241733"></span>Sloe&nbsp;Deep #241733</span>
+      <span><span class="sw" style="background:#6A4B7A"></span>Damson #6A4B7A</span>
+      <span><span class="sw" style="background:#C9C2D6"></span>Frost #C9C2D6</span>
+      <span><span class="sw" style="background:#5E7C5A"></span>Sage #5E7C5A</span>
+      <span><span class="sw" style="background:#C8794E"></span>Clay #C8794E</span>
+      <span><span class="sw" style="background:#C9892C"></span>Amber #C9892C</span>
+    </div>
+  </div>
+
+  <!-- ============ CONCEPT 1 — BLOOM BERRY ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="n">1</span>
+      <h2>Bloom Berry</h2>
+      <span class="tag rec">Recommended</span>
+    </div>
+    <p class="concept-desc">A single deep-plum berry with one off-centre frosted-bloom highlight (upper-left) —
+       the bloom is the legibility engine and the asset no competitor owns. No leaf or stem in the icon cut.
+       Two background fields: the cooler <b>brand gradient</b> (Damson&rarr;Sloe&rarr;Sloe&nbsp;Deep, the default)
+       and the warmer <b>AccentWin field</b> (plum&rarr;clay&rarr;amber, the B-option).</p>
+
+    <!-- Variant A: brand gradient field -->
+    <p style="margin-top:24px;font-weight:700;color:var(--ink);font-size:14px;">A · Brand gradient field <span style="font-weight:500;color:var(--ink-faint);">(default — cooler, calmer)</span></p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024"><img src="assets/logo-bloomberry-gradient.svg" alt=""></div><div class="label"><b>1024</b>master</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-bloomberry-gradient.svg" alt=""></div><div class="label"><b>180</b>home screen</div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-bloomberry-gradient.svg" alt=""></div><div class="label"><b>60</b>dock</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-bloomberry-gradient.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+      <div class="size"><div class="ios s60 grey"><img src="assets/logo-bloomberry-gradient.svg" alt=""></div><div class="label"><b>60 grey</b>silhouette test</div></div>
+    </div>
+
+    <!-- Variant B: AccentWin field -->
+    <p style="margin-top:30px;font-weight:700;color:var(--ink);font-size:14px;">B · AccentWin field <span style="font-weight:500;color:var(--ink-faint);">(plum &rarr; clay &rarr; amber — warmer)</span></p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024"><img src="assets/logo-bloomberry-winfield.svg" alt=""></div><div class="label"><b>1024</b>master</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-bloomberry-winfield.svg" alt=""></div><div class="label"><b>180</b>home screen</div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-bloomberry-winfield.svg" alt=""></div><div class="label"><b>60</b>dock</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-bloomberry-winfield.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+      <div class="size"><div class="ios s60 grey"><img src="assets/logo-bloomberry-winfield.svg" alt=""></div><div class="label"><b>60 grey</b>silhouette test</div></div>
+    </div>
+
+    <!-- Dock test -->
+    <div class="dock">
+      <div class="di photos"></div>
+      <div class="di messages"></div>
+      <div class="di health">&#10084;</div>
+      <div class="di"><img src="assets/logo-bloomberry-gradient.svg" alt="Sloe"></div>
+      <div class="di settings">&#9881;</div>
+      <span class="caption">Sloe (brand gradient) in a mock dock — should read as the calm, deep-plum jewel</span>
+    </div>
+  </section>
+
+  <!-- ============ CONCEPT 2 — SERIF S ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="n">2</span>
+      <h2>Serif &ldquo;S&rdquo; monogram</h2>
+      <span class="tag alt">Alternate to test</span>
+    </div>
+    <p class="concept-desc">A capital &ldquo;S&rdquo; cut from genuine <b>Newsreader</b> (Medium / 500) — the editorial
+       thick/thin contrast and spur terminals are the mark. Plum on cream, and an inverse cream on the plum gradient.
+       Ties the brand-mark to the wordmark's own DNA; a serif monogram is a different register from the lane's
+       geometric letters, but a letter-in-a-square is a more common icon shape than the berry.</p>
+
+    <p style="margin-top:24px;font-weight:700;color:var(--ink);font-size:14px;">A · Plum on cream</p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024"><img src="assets/logo-serif-s.svg" alt=""></div><div class="label"><b>1024</b>master</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-serif-s.svg" alt=""></div><div class="label"><b>180</b>home screen</div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-serif-s.svg" alt=""></div><div class="label"><b>60</b>dock</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-serif-s.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+      <div class="size"><div class="ios s60 grey"><img src="assets/logo-serif-s.svg" alt=""></div><div class="label"><b>60 grey</b>silhouette test</div></div>
+    </div>
+
+    <p style="margin-top:30px;font-weight:700;color:var(--ink);font-size:14px;">B · Cream on plum (inverse)</p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024"><img src="assets/logo-serif-s-inverse.svg" alt=""></div><div class="label"><b>1024</b>master</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-serif-s-inverse.svg" alt=""></div><div class="label"><b>180</b>home screen</div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-serif-s-inverse.svg" alt=""></div><div class="label"><b>60</b>dock</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-serif-s-inverse.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+      <div class="size"><div class="ios s60 grey"><img src="assets/logo-serif-s-inverse.svg" alt=""></div><div class="label"><b>60 grey</b>silhouette test</div></div>
+    </div>
+
+    <div class="dock">
+      <div class="di photos"></div>
+      <div class="di messages"></div>
+      <div class="di health">&#10084;</div>
+      <div class="di"><img src="assets/logo-serif-s-inverse.svg" alt="Sloe"></div>
+      <div class="di settings">&#9881;</div>
+      <span class="caption">Serif-S (inverse) in a mock dock</span>
+    </div>
+  </section>
+
+  <!-- ============ CONCEPT 3 — BERRY ON BRANCH ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="n">3</span>
+      <h2>Berry on the branch</h2>
+      <span class="tag full">Botanical · social / lockup</span>
+    </div>
+    <p class="concept-desc">The fuller botanical stamp — plum berry + one sage leaf + a calm stem, on the warm Oat
+       marketing ground. Richer and more characterful for social avatars and the wordmark lockup; the leaf adds
+       detail that muddies at dock scale, so this is the <b>marketing</b> mark, not the app icon (shown small here
+       only to demonstrate that exact trade-off).</p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024" style="border-radius:53px"><img src="assets/logo-berry-branch.svg" alt=""></div><div class="label"><b>1024</b>master</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-berry-branch.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-berry-branch.svg" alt=""></div><div class="label"><b>180</b>home screen</div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-berry-branch.svg" alt=""></div><div class="label"><b>60</b>dock (note detail loss)</div></div>
+      <div class="size"><div class="ios s60 grey"><img src="assets/logo-berry-branch.svg" alt=""></div><div class="label"><b>60 grey</b>silhouette test</div></div>
+    </div>
+    <p class="ground-note">Ground is Oat #FBF8F3 (marketing/avatar), not a plum app-icon field — per the brief's
+       ground-by-surface split.</p>
+  </section>
+
+  <!-- ============ MONOCHROME ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="n">&#9679;</span>
+      <h2>Monochrome cut</h2>
+      <span class="tag alt">Single ink</span>
+    </div>
+    <p class="concept-desc">The Bloom Berry reduced to a pure solid plum disc — no gradient, no bloom. The clean
+       filled circle reads as a considered berry / dot and never as a ring, so it survives one-colour print,
+       embossing, 16px favicons and the <code>--brand-mark-ring</code> token (invert the fill to white on dark).</p>
+    <div class="sizes">
+      <div class="size"><div class="ios s1024" style="border-radius:53px"><img src="assets/logo-mono.svg" alt=""></div><div class="label"><b>1024</b>plum on light</div></div>
+      <div class="size"><div class="ios s180"><img src="assets/logo-mono.svg" alt=""></div><div class="label"><b>180</b></div></div>
+      <div class="size"><div class="ios s60"><img src="assets/logo-mono.svg" alt=""></div><div class="label"><b>60</b></div></div>
+      <div class="size"><div class="ios s60" style="width:40px;height:40px;border-radius:9px"><img src="assets/logo-mono.svg" alt=""></div><div class="label"><b>40</b>favicon</div></div>
+      <div class="size"><div class="avatar s120"><img src="assets/logo-mono.svg" alt=""></div><div class="label"><b>avatar</b>circular crop</div></div>
+    </div>
+  </section>
+
+  <!-- ============ WORDMARK LOCKUP ============ -->
+  <section class="concept wordmark-block">
+    <div class="concept-head">
+      <span class="n">aa</span>
+      <h2>Wordmark lockup</h2>
+      <span class="tag full">Horizontal</span>
+    </div>
+    <p class="concept-desc">The Bloom Berry glyph + lowercase <b>sloe</b> in Newsreader (Medium / 500), generous
+       tracking, the berry centred on the x-height midline. Lowercase in product and most marketing; clear-space
+       equals the berry's diameter on all sides.</p>
+    <div class="wm-row">
+      <div class="wm-card oat">
+        <span class="wm-label">On Oat · full lockup</span>
+        <img class="lg" src="assets/wordmark-lockup.svg" alt="sloe wordmark">
+      </div>
+      <div class="wm-card cream">
+        <span class="wm-label">Small-size legibility</span>
+        <div class="wm-sizes">
+          <div class="s"><img class="sm" src="assets/wordmark-lockup.svg" alt="sloe wordmark small"><div class="label">230px wide</div></div>
+          <div class="s"><img src="assets/wordmark-lockup.svg" alt="sloe wordmark tiny" style="width:140px;height:auto;display:block"><div class="label">140px wide</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    Hand-authored vector concepts &mdash; design exploration only, not wired into app code. Assets in
+    <code>docs/brand/sloe/assets/</code>. The serif glyphs are genuine Newsreader outlines extracted from the
+    shipped font. The chosen direction is built properly in Figma after Grace's pick, gated on Sloe TM clearance.
+  </div>
+
+</div>
+</body>
+</html>

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BookmarkCheck,
   Camera,
+  Check,
   ChevronRight,
   Clock,
   Copy,
@@ -29,6 +30,7 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
@@ -307,6 +309,29 @@ export interface LogSheetProps {
     options: readonly string[];
     onChange: (slot: string) => void;
   };
+  /** S13 logged-confirmation (Figma 202:2). Presentation-only success
+   *  state shown AFTER the host has committed a log. The host owns all
+   *  logging + persistence; this is purely the confirming surface. When
+   *  set, the sheet content is replaced by a calm "Logged" confirmation
+   *  card (item title, estimated kcal, slot) with a primary "Done" and an
+   *  optional "Undo". When `null`/undefined the sheet shows its normal
+   *  search-first composition. Mirror of the web `LogSheet`
+   *  `confirmation` prop. */
+  confirmation?: {
+    /** What was logged — e.g. the food/meal title. */
+    title: string;
+    /** Estimated kcal of the logged item (always "estimated" copy). */
+    kcal: number;
+    /** Slot it landed in (Breakfast / Lunch / Dinner / Snacks). */
+    slot?: string;
+    /** Provenance dot for the logged item. */
+    source?: SourceDotSource;
+    /** Dismiss the confirmation (host closes the sheet / resets state). */
+    onDone: () => void;
+    /** Optional undo — host reverses the just-committed log. Hidden when
+     *  undefined. */
+    onUndo?: () => void;
+  } | null;
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -324,9 +349,12 @@ export function LogSheet({
   onAddManually,
   copyYesterday,
   slot,
+  confirmation,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active slot pill.
+  const accent = useAccent();
 
   // Pill toggle defaults to Recent. Resets on every fresh open so a
   // returning user doesn't land on Saved if they last left the sheet
@@ -337,6 +365,7 @@ export function LogSheet({
   }, [visible]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
+  const inConfirmationMode = !!confirmation;
 
   return (
     <Modal
@@ -378,9 +407,11 @@ export function LogSheet({
             {/* Drag handle */}
             <View style={[styles.handle, { backgroundColor: colors.border }]} accessible={false} />
 
-            {/* Header */}
+            {/* Header — Sloe DS: Newsreader serif title in brand plum
+                (`navPrimary`), the editorial-heading grammar shared with
+                the Today section headers. */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <Text style={[Type.headline, { color: colors.text }]}>Log a meal</Text>
+              <Text style={[Type.title, { color: colors.navPrimary }]}>Log a meal</Text>
               <Pressable
                 onPress={onClose}
                 accessibilityRole="button"
@@ -397,8 +428,9 @@ export function LogSheet({
 
             {/* ENG-773 — log-time meal-slot selector. The slot the item
                 will land in is now visible and tappable here, instead of
-                a hidden clock guess only fixable via long-press edit. */}
-            {slot ? (
+                a hidden clock guess only fixable via long-press edit.
+                Hidden in confirmation mode (the log already committed). */}
+            {slot && !inConfirmationMode ? (
               <View
                 style={styles.slotRow}
                 accessibilityRole="radiogroup"
@@ -425,9 +457,9 @@ export function LogSheet({
                           // primary text on the tint is only ~3.34:1 and
                           // would fail WCAG AA 4.5:1 for this 12px label,
                           // whereas foreground clears it comfortably.
-                          borderColor: active ? Accent.primary : colors.border,
+                          borderColor: active ? accent.primary : colors.border,
                           backgroundColor: active
-                            ? Accent.primarySoft
+                            ? accent.primarySoft
                             : "transparent",
                         },
                       ]}
@@ -448,7 +480,9 @@ export function LogSheet({
               </View>
             ) : null}
 
-            {inManualEntryMode ? (
+            {inConfirmationMode ? (
+              <LoggedConfirmation confirmation={confirmation!} />
+            ) : inManualEntryMode ? (
               <BarcodeManualEntry
                 entry={barcode!.manualEntry!}
                 onConfirm={barcode?.onConfirmManual}
@@ -473,6 +507,114 @@ export function LogSheet({
         </KeyboardAvoidingView>
       </View>
     </Modal>
+  );
+}
+
+/* -------------------------- Logged confirmation (S13) -------------------------- */
+
+/**
+ * S13 logged-confirmation (Figma 202:2) — the calm success state shown
+ * after a log commits. Presentation-only: the host has already persisted
+ * the log; this surface just confirms it and offers Done / Undo. Trust
+ * posture: nutrition is always "estimated" (never an absolute claim).
+ * Mirror of the web `LoggedConfirmation`.
+ */
+function LoggedConfirmation({
+  confirmation,
+}: {
+  confirmation: NonNullable<LogSheetProps["confirmation"]>;
+}) {
+  const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Done CTA. The
+  // success check keeps `Accent.successSolid`.
+  const accent = useAccent();
+  const { title, kcal, slot, source, onDone, onUndo } = confirmation;
+  return (
+    <View
+      style={styles.confirmWrap}
+      accessibilityLiveRegion="polite"
+      testID="log-sheet-confirmation"
+    >
+      {/* Success mark — Sloe sage success tint, calm not loud. */}
+      <View style={[styles.confirmMark, { backgroundColor: "rgba(94, 124, 90, 0.12)" }]}>
+        <Check size={32} color={Accent.successSolid} strokeWidth={2.5} />
+      </View>
+
+      <Text style={[Type.title, { color: colors.navPrimary, marginTop: Spacing.md, textAlign: "center" }]}>
+        {slot ? `Logged to ${slot}` : "Logged"}
+      </Text>
+
+      {/* Logged-item card — cream slab, 12px corner, hairline. */}
+      <View
+        style={[
+          styles.confirmCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+            {source ? <SourceDot source={source} size={6} /> : null}
+            <Text
+              style={[
+                Type.caption,
+                {
+                  color: colors.textSecondary,
+                  marginLeft: source ? 6 : 0,
+                  fontVariant: ["tabular-nums"],
+                },
+              ]}
+            >
+              Est. {kcal} kcal
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
+          system (2026-06-08): the primary inline CTA is AUBERGINE
+          OUTLINE (transparent fill + 1.5px primarySolid border +
+          primarySolid label), not a filled slab. */}
+      <View style={{ width: "100%", marginTop: Spacing.lg, gap: Spacing.sm }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Done"
+          onPress={() => {
+            if (process.env.EXPO_OS === "ios") {
+              void Haptics.selectionAsync();
+            }
+            onDone();
+          }}
+          style={({ pressed }) => [
+            styles.confirmPrimary,
+            {
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
+              opacity: pressed ? 0.6 : 1,
+            },
+          ]}
+        >
+          <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
+            Done
+          </Text>
+        </Pressable>
+        {onUndo ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Undo log"
+            onPress={onUndo}
+            style={({ pressed }) => [styles.confirmUndo, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "600" }}>
+              Undo
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -710,6 +852,9 @@ function BrowseAndFooter({
   onAddManually?: () => void;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the saved-tab
+  // indicator dot.
+  const accent = useAccent();
   // The active tab can become stale if a host removes one of its
   // sources mid-flight (rare). Snap back to the first visible tab to
   // keep the content area legible.
@@ -778,7 +923,11 @@ function BrowseAndFooter({
                   <Text
                     style={[
                       styles.browsePillLabel,
-                      { color: active ? colors.text : colors.textSecondary },
+                      // Sloe treatment system (2026-06-08): segmented
+                      // control active segment = white lift (the pill
+                      // bg above) + primarySolid label; inactive =
+                      // textSecondary on the warm-grey rail.
+                      { color: active ? accent.primarySolid : colors.textSecondary },
                     ]}
                   >
                     {baseLabel}
@@ -790,7 +939,7 @@ function BrowseAndFooter({
                         width: 6,
                         height: 6,
                         borderRadius: 3,
-                        backgroundColor: Accent.primary,
+                        backgroundColor: accent.primary,
                       }}
                     />
                   ) : null}
@@ -1027,6 +1176,9 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the empty-state
+  // "Browse recipes" CTA.
+  const accent = useAccent();
   const { recipes, onPick, onBrowseRecipes, state } = library;
 
   if (state?.loading) {
@@ -1056,12 +1208,15 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
             style={({ pressed }) => [
               styles.libraryEmptyCta,
               {
-                backgroundColor: Accent.primary,
-                opacity: pressed ? 0.85 : 1,
+                // Sloe treatment system (2026-06-08): "Browse" is a
+                // SECONDARY action → off-white fill (colors.card
+                // #F6F5F2) + ink label, no accent. Mirror of web.
+                backgroundColor: colors.card,
+                opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
-            <Text style={styles.libraryEmptyCtaText}>Browse recipes</Text>
+            <Text style={[styles.libraryEmptyCtaText, { color: colors.text }]}>Browse recipes</Text>
           </Pressable>
         ) : null}
       </View>
@@ -1227,6 +1382,8 @@ function BarcodeManualEntry({
   onConfirm?: NonNullable<NonNullable<LogSheetProps["barcode"]>["onConfirmManual"]>;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Log it" CTA.
+  const accent = useAccent();
   const [portion, setPortion] = React.useState("100");
   const [kcal, setKcal] = React.useState("");
   const [protein, setProtein] = React.useState("");
@@ -1362,13 +1519,19 @@ function BarcodeManualEntry({
         }}
         style={{
           height: 44,
-          borderRadius: Radius.md,
-          backgroundColor: Accent.primary,
+          // Sloe DS — pill-soft CTA (mirrors web `rounded-xl`).
+          borderRadius: Radius.xl,
+          // Sloe treatment system (2026-06-08): primary inline CTA →
+          // aubergine outline (transparent fill + 1.5px primarySolid
+          // border + primarySolid label), not a filled slab.
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Log it</Text>
+        <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>Log it</Text>
       </Pressable>
     </ScrollView>
   );
@@ -1385,8 +1548,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: "92%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    // Sloe DS — 24px sheet corner (matches web `rounded-t-[24px]` /
+    // `--radius-card-lg`), warm sheet shadow.
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.18,
@@ -1439,7 +1604,8 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.md,
     paddingRight: Spacing.xs,
     height: 48,
-    borderRadius: Radius.md,
+    // Sloe DS — pill-soft search slab (mirrors web `rounded-xl`).
+    borderRadius: Radius.xl,
   },
   rightEdgeIcons: {
     flexDirection: "row",
@@ -1458,10 +1624,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 4,
     right: 4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Accent.primary,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    // Sloe DS — Pro gate badge in damson (`Accent.purple`), the canonical
+    // Pro / achievement accent, distinct from the clay primary CTA.
+    // Mirrors web's `var(--accent-win)` lock badge.
+    backgroundColor: Accent.purple,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1470,13 +1639,14 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     marginTop: Spacing.md,
     padding: 3,
-    borderRadius: Radius.md,
+    // Sloe DS — pill-soft browse toggle (mirrors web `rounded-xl`).
+    borderRadius: Radius.xl,
   },
   browsePill: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 8,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.lg,
   },
   browsePillLabel: {
     fontSize: 13,
@@ -1529,7 +1699,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   libraryEmptyCtaText: {
-    color: "#fff",
+    // Colour is set inline to colors.text (secondary off-white-fill
+    // treatment) — overridden by the caller.
     fontSize: 14,
     fontWeight: "700",
   },
@@ -1560,6 +1731,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  // S13 logged-confirmation (Figma 202:2).
+  confirmWrap: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.lg,
+  },
+  confirmMark: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmCard: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  confirmPrimary: {
+    height: 48,
+    borderRadius: Radius.xl,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmUndo: {
+    height: 48,
+    borderRadius: Radius.xl,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

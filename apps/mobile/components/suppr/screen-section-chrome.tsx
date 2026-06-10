@@ -73,10 +73,11 @@ export function ScreenSectionChrome({
           textTransform: "uppercase",
         },
         title: {
+          fontFamily: "Newsreader_400Regular",
           fontSize: compact ? 22 : Layout.titleSize,
-          fontWeight: "800",
-          color: colors.text,
-          letterSpacing: compact ? -0.4 : Layout.titleTracking,
+          fontWeight: "500",
+          color: colors.navPrimary,
+          letterSpacing: compact ? -0.3 : -0.3,
         },
         subtitle: {
           fontSize: Layout.subtitleSize,

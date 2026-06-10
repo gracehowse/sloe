@@ -9,7 +9,7 @@
 
 import { Text, View } from "react-native";
 
-import { MacroColors, Radius } from "@/constants/theme";
+import { FontFamily, MacroColors, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Goal } from "@suppr/shared/nutrition/goalEditorPace";
 import { MobileMiniSlider } from "../onboarding/slider";
@@ -69,10 +69,14 @@ export function GoalPaceSlider({
         Rate
       </Text>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+        {/* SLOE Phase 0: the kg/week pace hero numeral reads in Newsreader
+            serif (big numerals are a serif moment). Family carries the weight,
+            so the sans `fontWeight: 800` is dropped; the `kg / week` unit stays
+            sans below. */}
         <Text
           style={{
+            fontFamily: FontFamily.serifRegular,
             fontSize: 34,
-            fontWeight: "800",
             letterSpacing: -1,
             color: colors.text,
             fontVariant: ["tabular-nums"],

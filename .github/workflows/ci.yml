@@ -31,6 +31,10 @@ jobs:
       # which makes verify-production-env exit 1 under VERIFY_STRICT=1 (see scripts/verify-production-env.ts).
       # Run VERIFY_STRICT=1 locally or in deploy pipelines when you want a hard gate.
       VERIFY_STRICT: "0"
+      # Gate the optional food-search smoke step here — the `secrets` context is
+      # NOT allowed in a step-level `if:` (fails workflow validation), but a
+      # job-level env that reads the secret is, and `env.` IS allowed in `if:`.
+      SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -70,6 +74,20 @@ jobs:
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
           npm run test:e2e
+      - name: Food search provider smoke (optional — F-05)
+        if: ${{ env.SUPPR_TEST_AUTH_BEARER != '' }}
+        env:
+          SUPPR_TEST_API_BASE: http://127.0.0.1:3100
+          SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
+          FATSECRET_CLIENT_ID: ${{ secrets.FATSECRET_CLIENT_ID }}
+          FATSECRET_CLIENT_SECRET: ${{ secrets.FATSECRET_CLIENT_SECRET }}
+          USDA_FDC_API_KEY: ${{ secrets.USDA_FDC_API_KEY }}
+          EDAMAM_APP_ID: ${{ secrets.EDAMAM_APP_ID }}
+          EDAMAM_APP_KEY: ${{ secrets.EDAMAM_APP_KEY }}
+        run: |
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+          npm run test -- --run tests/unit/foodSearchProviderIntegration.test.ts
       - name: Upload Playwright HTML report (on failure)
         if: failure()
         uses: actions/upload-artifact@v7
@@ -90,6 +108,12 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: apps/mobile/package-lock.json
+      # Shared src/lib/* is type-checked by mobile tsc via the @suppr/shared/*
+      # alias; those files import react etc. which resolve from ROOT node_modules.
+      # Without this, mobile typecheck can't resolve `react` (e.g. useImportQueue.ts).
+      - name: Install root deps (for shared-lib types in mobile typecheck)
+        working-directory: ${{ github.workspace }}
+        run: npm ci
       - name: Install mobile deps
         run: npm ci
       - name: Mobile ESLint (errors fail; warnings allowed)

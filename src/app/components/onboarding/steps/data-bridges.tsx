@@ -30,9 +30,21 @@ import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 import { track } from "@/lib/analytics/track";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { MfpCsvImportCard } from "@/app/components/imports/MfpCsvImportCard";
+import { appChoiceDisplayName } from "@/lib/onboarding/appChoiceOptions";
 
 export function DataBridgesStep() {
   const overline = useStepOverline();
+  const { state } = useOnboarding();
+  // ENG-990 — if the user told us upstream (app-choice step) they're
+  // switching from an app we can import, lead the importer card with
+  // their app's name. `null` for "other" / "none" / no choice keeps the
+  // generic multi-app copy.
+  const highlightApp = appChoiceDisplayName(state.appChoice);
+  // When the user is switching from an importable app, the CSV import IS
+  // their primary next action — float it to the top of the card stack.
+  const csvCard = (
+    <MfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
+  );
 
   return (
     <StepBody>
@@ -43,10 +55,11 @@ export function DataBridgesStep() {
       />
 
       <div className="flex flex-col gap-3">
+        {highlightApp ? csvCard : null}
         <ManualTargetsCard />
         <NotificationsCard />
         <RecipeUrlCard />
-        <MfpCsvImportCard surface="onboarding" />
+        {highlightApp ? null : csvCard}
       </div>
 
       {/*

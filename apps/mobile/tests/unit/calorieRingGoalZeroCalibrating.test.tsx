@@ -90,6 +90,14 @@ describe("CalorieRing — R03 goal<=0 calibrating-empty state", () => {
       />,
     );
     expect(queryByText("Start your day")).toBeNull();
-    expect(queryByText("REMAINING")).not.toBeNull();
+    // Sloe redesign (2026-06-04, "match Figma exactly"): in REMAINING mode
+    // the centre sub-label is now the budget line "of {goal} kcal" (Figma
+    // `01 · Today`), replacing the old uppercase "REMAINING" status word.
+    // The common case (goal>0, under budget) must render this budget anchor
+    // — and must NOT show the "of 0 kcal" cold-start anchor or the empty
+    // copy. Asserting the real "of 2,000 kcal" centre line keeps this a
+    // meaningful no-regression check on the populated ring.
+    expect(queryByText("of 2,000 kcal")).not.toBeNull();
+    expect(queryByText(/of\s+0\s+kcal/i)).toBeNull();
   });
 });

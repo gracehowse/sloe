@@ -24,8 +24,19 @@ import {
   traceParsing,
   traceNutritionLookup,
   traceCaptionNutrition,
+  traceAcquisition,
 } from "@/lib/analytics/recipeImportPipelineTrace";
 import { isAllowedUrl, followWithSsrfGuard } from "@/lib/recipe-import/ssrfGuard";
+import {
+  acquireScrapedHtmlRecipe,
+  acquireTranscriptCaption,
+} from "@/lib/server/supadata/wireAcquisition";
+
+// Supadata acquisition (ENG-994) — the swappable acquisition adapter runs as
+// stage 0 (BEFORE the existing extraction) when the `supadata-acquisition`
+// flag is on. On any failure the existing path below runs unchanged (old path
+// alive in the else). The key is server-only (`SUPADATA_KEY`, no public prefix)
+// and lives in `src/lib/server/supadata/` — never in a client bundle.
 
 // SSRF guard (isPrivateHost / isAllowedUrl / followWithSsrfGuard) is shared in
 // @/lib/recipe-import/ssrfGuard so both the importer loop and the Pinterest
@@ -198,7 +209,37 @@ export async function POST(req: Request) {
         );
       }
 
-      const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
+      let captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
+
+      // ENG-994 — Supadata acquisition stage 0 (transcript) for video posts.
+      // Behind the `supadata-acquisition` flag. For YouTube this fetches the
+      // real transcript (far richer than the oEmbed title alone) and appends it
+      // to the caption text the EXISTING extractor already consumes — extraction
+      // is unchanged. For TikTok/Instagram the adapter returns `blocked_by_policy`
+      // (legal posture 2026-04-30) unless `IG_TT_IMPORT_ENABLED` is on, so this
+      // is a no-op fall-through there. Never throws / hangs; on any failure we
+      // proceed with the caption-only text below exactly as before.
+      if (await isServerFeatureEnabled("supadata-acquisition")) {
+        const acq = await acquireTranscriptCaption(trimmed);
+        if (acq.ok) {
+          traceAcquisition(userId, {
+            outcome: "acquired",
+            adapter: acq.acquisition.source,
+            kind: "transcript",
+            platform: acq.acquisition.platform,
+            contentChars: acq.data.content.length,
+          });
+          captionText = [captionText, "--- Transcript ---", acq.data.content].filter(Boolean).join("\n\n");
+        } else {
+          traceAcquisition(userId, {
+            outcome: "fallback",
+            adapter: "supadata",
+            platform: socialPlatform,
+            reason: acq.result.reason,
+          });
+        }
+      }
+
       let recipe = await extractRecipeFromCaption(captionText, meta.imageUrl, userId);
 
       // Tier 2: Try augmenting with Instagram comments from embedded HTML
@@ -496,6 +537,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
     }
 
+    let currentUrl = effectiveUrl;
+
+    // ENG-994 — Supadata acquisition stage 0 (scrape) for general URLs.
+    // Behind the `supadata-acquisition` flag. Supadata scrapes the page and the
+    // EXISTING `parseRecipeFromHtml` JSON-LD parser runs against its content
+    // (extraction unchanged). We short-circuit the manual fetch below ONLY when
+    // Supadata's content yields a parseable recipe; if it scraped but found no
+    // schema.org Recipe, we fall through to the existing fetch + parse so the
+    // live page still gets a shot (old path alive in the else). Never throws /
+    // hangs (the client bounds every call with a timeout + bounded retries).
+    let supadataHtml: string | null = null;
+    if (await isServerFeatureEnabled("supadata-acquisition")) {
+      const acq = await acquireScrapedHtmlRecipe(currentUrl);
+      if (acq.ok && acq.data.parsed) {
+        supadataHtml = acq.data.content;
+        traceAcquisition(userId, {
+          outcome: "acquired",
+          adapter: acq.acquisition.source,
+          kind: "scrape",
+          platform: acq.acquisition.platform,
+          contentChars: acq.data.content.length,
+        });
+      } else {
+        traceAcquisition(userId, {
+          outcome: "fallback",
+          adapter: "supadata",
+          platform: acq.ok ? acq.acquisition.platform : detectSocialPlatform(currentUrl) ?? "blog",
+          reason: acq.ok ? "empty" : acq.result.reason,
+        });
+      }
+    }
+
     // Declared, honest User-Agent: identifies Suppr and links to a public-facing
     // bot page so site operators can contact us or block us cleanly. We do not
     // rotate UAs or impersonate another crawler — that would be evidence of
@@ -505,32 +578,34 @@ export async function POST(req: Request) {
       "Accept-Language": "en-US,en;q=0.9",
       "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
     };
-    // Follow redirects manually to re-validate each hop against the SSRF allowlist
-    let currentUrl = effectiveUrl;
+    // Follow redirects manually to re-validate each hop against the SSRF allowlist.
+    // Skipped entirely when Supadata already supplied page content above.
     let res: Response | undefined;
-    for (let hop = 0; hop < 5; hop++) {
-      res = await fetch(currentUrl, {
-        signal: ac.signal,
-        headers: fetchHeaders,
-        redirect: "manual",
-      });
-      const location = res.headers.get("location");
-      if (res.status >= 300 && res.status < 400 && location) {
-        const resolved = new URL(location, currentUrl).href;
-        if (!isAllowedUrl(resolved)) {
-          return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
+    if (!supadataHtml) {
+      for (let hop = 0; hop < 5; hop++) {
+        res = await fetch(currentUrl, {
+          signal: ac.signal,
+          headers: fetchHeaders,
+          redirect: "manual",
+        });
+        const location = res.headers.get("location");
+        if (res.status >= 300 && res.status < 400 && location) {
+          const resolved = new URL(location, currentUrl).href;
+          if (!isAllowedUrl(resolved)) {
+            return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
+          }
+          currentUrl = resolved;
+          continue;
         }
-        currentUrl = resolved;
-        continue;
+        break;
       }
-      break;
+      if (!res) {
+        return NextResponse.json({ ok: false, error: "Failed to fetch URL." }, { status: 502 });
+      }
     }
-    if (!res) {
-      return NextResponse.json({ ok: false, error: "Failed to fetch URL." }, { status: 502 });
-    }
-    const contentType = res.headers.get("content-type") ?? "";
-    const isHtml = contentType.toLowerCase().includes("text/html");
-    const html = isHtml ? await res.text() : "";
+    const contentType = res?.headers.get("content-type") ?? "";
+    const isHtml = supadataHtml != null || contentType.toLowerCase().includes("text/html");
+    const html = supadataHtml ?? (res && isHtml ? await res.text() : "");
     const parsed = parseRecipeFromHtml(html);
     // Some sites respond with 404/403 while still serving real HTML (geo, bot-mitigation, A/B).
     // If we can extract a Recipe JSON-LD anyway, treat as success.
@@ -662,7 +737,10 @@ export async function POST(req: Request) {
         },
       });
     }
-    if (!res.ok) {
+    // `res` is undefined only when Supadata supplied content above — but that
+    // path sets `supadataHtml` solely when `parsed` is truthy, so we never
+    // reach this tail without a live `res`. Guard anyway for type-safety.
+    if (res && !res.ok) {
       return NextResponse.json(
         {
           ok: false,

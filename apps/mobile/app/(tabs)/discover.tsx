@@ -16,13 +16,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
+import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, Elevation, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
@@ -30,6 +32,11 @@ import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "@suppr/shared/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
+import {
+  DISCOVER_CATEGORY_PILLS,
+  matchesRecipeCategory,
+  type RecipeCategoryId,
+} from "@suppr/shared/recipes/recipeCategoryFilters";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
@@ -39,10 +46,21 @@ import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 
-// B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
-// to recipes whose creator_id is in the set the user follows. Empty
-// when the user follows nobody yet — copy points them at the next step.
-const FILTERS = ["For You", "Following", "Popular", "Quick", "High Protein", "Low Carb"];
+// ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
+// "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
+// secondary feed-scope toggle that LEADS the row, then the shared
+// category set follows. Web parity: `src/app/components/DiscoverFeed.tsx`.
+
+/**
+ * Sloe seamless recipe-card corner. The Figma recipe cards (`528:2`
+ * Discover) sit at 20–24px; we use 24 to match the canonical Sloe
+ * warm-slab corner already shared by the Today tiles (`CARD_RADIUS`/
+ * `TILE_RADIUS = 24` on mobile, `var(--radius-card-lg)` on web) so every
+ * cream slab reads with one corner language. The DS `Radius` ladder tops
+ * out at 12 (`xl`), hence this local const. Web parity: `radius="lg"`
+ * (24px) on the `SupprCard` in `DiscoverFeed.tsx` / `Library.tsx`.
+ */
+const RECIPE_CARD_RADIUS = 24;
 
 /* ── Icon Box (local helper matching prototype) ── */
 function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -128,9 +146,14 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
 }
 
 export default function DiscoverScreen() {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  // Seamless recipe slab: soft plum lift off the page in light, tonal lift +
+  // hairline in dark (RN renders shadows poorly on dark). Mirrors the Library
+  // card so the two recipe surfaces stay in lockstep across schemes.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -148,7 +171,9 @@ export default function DiscoverScreen() {
   // survives tab switches (ENG-53, 2026-05-16). Variable names kept
   // so all downstream filter/search-debounce logic stays untouched.
   const { query: search, setQuery: setSearch } = useLibrarySearchStore();
-  const [filter, setFilter] = useState("For You");
+  // ENG-921 — category (Figma `528:2`) + Following feed-scope toggle.
+  const [category, setCategory] = useState<RecipeCategoryId | "trending" | "from-reels">("all");
+  const [following, setFollowing] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // V10 (2026-05-11 visual sweep): the cold-load spinner could spin
@@ -336,49 +361,45 @@ export default function DiscoverScreen() {
     ) {
       return false;
     }
-    // Pill filter
-    if (filter === "For You") return true;
-    // B5 Phase 2c (2026-04-27) — Following filters to recipes whose
-    // creator_id is in the user's follow set. Recipes without a
-    // curated creator_id (imports, user-created) never match this
-    // filter, which is correct — Following is creator-scoped.
-    if (filter === "Following") {
-      // D1 (2026-04-28): mirror web — match creatorId OR authorId.
+    // Following feed scope (B5 Phase 2c follow-graph) — match creatorId
+    // OR authorId against the user's follow set. Mirrors web.
+    if (following) {
       const cid = r.creatorId ?? null;
       const aid = (r as { authorId?: string | null }).authorId ?? null;
       if (cid && followedCreatorIds.has(cid)) return true;
       if (aid && followedAuthorIds.has(aid)) return true;
       return false;
     }
-    // Popular — real filter (was `|| true`, which silently disabled
-    // the gate; ui-critic flagged 2026-04-20).
-    if (filter === "Popular") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
-    if (filter === "Quick") {
-      // GW-06 (audit 2026-04-28): pre-fix any recipe with
-      // `cookTimeMin == null` passed through as "Quick" — most legacy
-      // imports don't carry cook time, so the pill silently behaved
-      // like "All". Now requires a real cook-time signal to qualify.
-      const cm = r.cookTimeMin;
-      const pm = (r as { prepTimeMin?: number | null }).prepTimeMin;
-      const cookOk = typeof cm === "number" && cm > 0;
-      const prepOk = typeof pm === "number" && pm > 0;
-      if (!cookOk && !prepOk) return false;
-      const total = (cookOk ? cm : 0) + (prepOk ? pm : 0);
-      return total <= 30;
+    // Category filter (Figma `528:2`). Trending / From Reels are
+    // Discover-only signals; everything else routes through the shared
+    // predicate (web ↔ mobile parity).
+    if (category === "all") return true;
+    if (category === "trending") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
+    if (category === "from-reels") {
+      const sp = (r as { sourcePlatform?: string | null; source?: string | null }).sourcePlatform
+        ?? (r as { source?: string | null }).source ?? null;
+      const s = String(sp ?? "").toLowerCase();
+      return s.includes("instagram") || s.includes("tiktok") || s.includes("youtube");
     }
-    if (filter === "High Protein") return r.protein >= 25;
-    if (filter === "Low Carb") return r.carbs <= 30;
-    return true;
+    return matchesRecipeCategory(category, r);
   });
 
   const t = {
-    accent: Accent.primary,
+    accent: accent.primary,
     green: Accent.success,
     amber: Accent.warning,
     protein: MacroColors.protein,
     carbs: MacroColors.carbs,
     fat: MacroColors.fat,
   };
+
+  // Aubergine-on-surface tokens (Sloe treatment system) — selected filter
+  // pills get a SOFT TINT fill + aubergine `primarySolid` label, NOT a solid
+  // accent slab (treatment §7). Light/dark aware so the accent clears AA on the
+  // dark card.
+  const isLight = colors.background === "#FFFFFF";
+  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
+  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
 
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped
@@ -401,13 +422,21 @@ export default function DiscoverScreen() {
       void computeRecipeFitPercent;
       void targets;
       return (
+        // Sloe Figma `528:2` seamless recipe slab: a `#F6F5F2` cream card
+        // lifted off the `#FFFFFF` page by a SOFT plum drop shadow (NOT a
+        // 1pt border — that read as the "double-frame" box; Grace 2026-06-07),
+        // 24px radius, image full-bleed to the top corners. The shadow rides
+        // an OUTER wrapper because the inner Pressable clips the image with
+        // `overflow: 'hidden'`, and RN clips iOS shadows on clipping views.
+        // Light → soft shadow, no border; dark → tonal lift + hairline (via
+        // `cardElevation`) so the card never blends in either scheme.
+        <View key={item.id} style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
         <Pressable
-          key={item.id}
           onPress={() => router.push(`/recipe/${item.id}`)}
           style={{
-            borderRadius: 14,
-            backgroundColor: colors.card,
-            borderWidth: 1,
+            borderRadius: RECIPE_CARD_RADIUS,
+            backgroundColor: cardElevation.liftBg ?? colors.card,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: colors.cardBorder,
             overflow: "hidden",
           }}
@@ -422,7 +451,8 @@ export default function DiscoverScreen() {
               2026-05-03 — failed remote URLs use the same fallback and
               collapse aspect ratio via `DiscoverHeroMedia`. */}
           <DiscoverHeroMedia item={item} />
-          <View style={{ padding: 14 }}>
+          {/* Gap-3 fix (2026-06-09): card body padding 14 → Spacing.md (16) — on-scale. */}
+          <View style={{ padding: Spacing.md }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
             {/* F-45 (2026-04-22): fit-percent pill removed per repeated
@@ -432,8 +462,12 @@ export default function DiscoverScreen() {
                 otherwise, so it read as decorative noise. Keeping the
                 computation available via `computeRecipeFitPercent` in
                 case a future ranking pass wants it. */}
+            {/* Gap-1 fix (2026-06-09): recipe titles ALWAYS Newsreader serif per
+                design-system §2.3 rule 2. Was `{ ...Type.body, fontWeight: '700' }`
+                (Inter 14pt bold). Now `Type.headline` (Newsreader_500Medium 17pt)
+                + fontWeight '600' for card-scale legibility. */}
             <Text
-              style={{ ...Type.body, fontWeight: '700', color: colors.text, paddingRight: 48 }}
+              style={{ ...Type.headline, fontWeight: '600', color: colors.text, paddingRight: 48 }}
               numberOfLines={2}
             >
               {decodeEntities(item.title)}
@@ -469,8 +503,12 @@ export default function DiscoverScreen() {
                 discover should display like this"). Was 60 lines of
                 inline duplicate; component owns the icon/colour/letter
                 grammar so any palette token shift cascades cleanly. */}
+            {/* Gap-3 fix (2026-06-09): marginTop 10 → Spacing.sm (8) — on-scale.
+                Gap-6 fix: iconSize bumped 11→13 + emphasiseProtein active so protein
+                reads unmistakably heavier at card scale. `proteinTextColor` = full
+                ink (`colors.text`) vs secondary for all other macros. */}
             <MacroIconRow
-              kcal={kcal}
+              kcal={kcal > 0 ? kcal : null}
               protein={protein}
               carbs={carbs}
               fat={fat}
@@ -478,7 +516,10 @@ export default function DiscoverScreen() {
               cookTime={item.cookTime}
               textColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
-              style={{ marginTop: 10 }}
+              emphasiseProtein
+              proteinTextColor={colors.text}
+              iconSize={13}
+              style={{ marginTop: Spacing.sm }}
             />
             {/* GW-08 (audit 2026-04-28): pre-fix this card rendered a
                 TrustChip whose source was fabricated from `item.isVerified`
@@ -492,9 +533,10 @@ export default function DiscoverScreen() {
                 column (P1/P2 work in the GW-08 audit). */}
           </View>
         </Pressable>
+        </View>
       );
     },
-    [router, colors, heroColor, t.accent, targets],
+    [router, colors, heroColor, t.accent, targets, cardElevation],
   );
 
   // 2026-05-03 — mobile Discover uses one layout for every filter:
@@ -519,8 +561,10 @@ export default function DiscoverScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
-            padding: 12,
+            // Gap-3 fix (2026-06-09): row gap 12 → Spacing.md (16) — on-scale.
+            gap: Spacing.md,
+            // Gap-3 fix: row padding 12 → Spacing.md (16) — on-scale.
+            padding: Spacing.md,
             borderTopWidth: idx > 0 ? 1 : 0,
             borderTopColor: colors.cardBorder,
           }}
@@ -528,19 +572,24 @@ export default function DiscoverScreen() {
           {/* F-55 (2026-04-22): use real thumbnail when the recipe has
               an image_url (social-feed parity — tester flagged "the
               more you might like is wrong - this is supposed to be
-              like a social media feed"). Chef-hat glyph box stays as
-              the fallback for image-less rows. */}
+              like a social media feed").
+              2026-06-08 (§11.4): image-less / broken rows now fall back
+              to the warm sage→cream RecipeHeroFallback (same calm tile as
+              the hero card + Library), not a flat inputBg chef-hat box —
+              so the row never reads as an empty grey/lilac thumbnail. */}
           <DiscoverCoverImage
             uri={item.image}
             style={{ width: 56, height: 56, borderRadius: 10 }}
             fallback={
-              <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-                <ChefHat size={20} color={colors.textSecondary} />
+              <View style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
+                <RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />
               </View>
             }
           />
           <View style={{ flex: 1 }}>
-            <Text style={{ ...Type.body, color: colors.text }} numberOfLines={1}>
+            {/* Gap-1 fix (2026-06-09): recipe names ALWAYS Newsreader serif per
+                design-system §2.3 rule 2. Was Type.body (Inter 14pt). */}
+            <Text style={{ ...Type.headline, fontWeight: '600', color: colors.text }} numberOfLines={1}>
               {decodeEntities(item.title)}
             </Text>
             <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
@@ -571,23 +620,26 @@ export default function DiscoverScreen() {
           <RefreshControl
             refreshing={loading}
             onRefresh={() => void refresh()}
-            tintColor={Accent.primary}
+            tintColor={accent.primary}
           />
         }
         keyboardShouldPersistTaps="handled"
       >
-        {/* Search bar — title + Library/Discover tabs live in RecipesTabChrome. */}
+        {/* Search bar — title + Library/Discover tabs live in RecipesTabChrome.
+            Gap-3 fix (2026-06-09): paddingHorizontal/paddingVertical 14 → Spacing.md
+            (16); marginBottom 14 → Spacing.md (16); borderRadius 12 → Radius.xl (12)
+            — Radius.xl is the on-scale token for this size. gap 10 → Spacing.sm (8). */}
         <View style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
-          paddingHorizontal: 14,
-          paddingVertical: 14,
-          borderRadius: 12,
+          gap: Spacing.sm,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.xl,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.cardBorder,
-          marginBottom: 14,
+          marginBottom: Spacing.md,
         }}>
           <Search size={16} color={colors.textTertiary} />
           <TextInput
@@ -623,45 +675,104 @@ export default function DiscoverScreen() {
             instead of clipping at the bottom border. paddingRight:32
             on the contentContainer keeps the trailing pill from
             sitting flush against the screen edge. */}
+        {/* Category filter pills — ENG-921 / Figma `528:2`. Aubergine SOFT-TINT
+            active (treatment §7), line-border inactive. "Following" leads as a
+            secondary feed-scope toggle. Web parity: DiscoverFeed.tsx.
+            Gap-3 fix (2026-06-09): pill ScrollView marginBottom 12 → Spacing.sm (8).
+            paddingHorizontal: 13 is intentional for descender clearance ("Q" in
+            Quick, "g" in High-Protein) — kept as a chip-specific carve-out, not
+            drift. Documented here so it never reads as an untracked gap.
+            Gap-5 fix: pill label upgraded from Type.caption (11pt) to Type.body
+            (14pt Inter Medium) so filter pills read as deliberate controls. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: Spacing.sm }}
           contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
         >
-          {FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setFilter(f)}
-              style={{
-                paddingHorizontal: 13,
-                paddingVertical: 8,
-                minHeight: 36,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: filter === f ? t.accent : colors.cardBorder,
-                backgroundColor: filter === f ? t.accent + "10" : "transparent",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+          <Pressable
+            key="following"
+            testID="discover-category-following"
+            onPress={() => {
+              setFollowing(true);
+              setCategory("all");
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: following }}
+            style={{
+              paddingHorizontal: 13,
+              paddingVertical: 8,
+              minHeight: 36,
+              borderRadius: 20,
+              borderWidth: 1,
+              // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+              borderColor: following ? accentSoft : colors.cardBorder,
+              backgroundColor: following ? accentSoft : "transparent",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{ ...Type.body, fontWeight: "600", color: following ? accentInk : colors.textSecondary }}
             >
-              <Text
-                numberOfLines={1}
-                style={{ ...Type.caption, fontWeight: '600', lineHeight: 18, color: filter === f ? t.accent : colors.textSecondary }}
+              Following
+            </Text>
+          </Pressable>
+          {DISCOVER_CATEGORY_PILLS.map((f) => {
+            const active = !following && category === f.id;
+            return (
+              <Pressable
+                key={f.id}
+                testID={`discover-category-${f.id}`}
+                onPress={() => {
+                  setFollowing(false);
+                  setCategory(f.id);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Category: ${f.label}`}
+                style={{
+                  paddingHorizontal: 13,
+                  paddingVertical: 8,
+                  minHeight: 36,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  // Selected = aubergine SOFT TINT (treatment §7), not a solid slab.
+                  borderColor: active ? accentSoft : colors.cardBorder,
+                  backgroundColor: active ? accentSoft : "transparent",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
               >
-                {f}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  numberOfLines={1}
+                  style={{ ...Type.body, fontWeight: "600", color: active ? accentInk : colors.textSecondary }}
+                >
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
+
+        {/* DEFERRED — Figma-only builds (not built this pass, per the
+            Recipes Figma-parity brief):
+              · "Popular collections" carousel (Figma `528:61`) — ENG-907
+              · "Recipes in action" Reels rail (Figma `528:105`) — ENG-908
+            No wired data source yet (curated collections + short-form
+            video); tracked as net-new builds. See
+            `docs/ux/redesign/figma-migration-tracker.md`. */}
 
         {/* Eating out — Edamam restaurant + branded meals. Only renders
             when the user has typed at least 3 characters; collapsed
             when no hits so we don't waste vertical space. TestFlight
             `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
+        {/* Gap-3 fix (2026-06-09): eating-out section marginBottom 14 → Spacing.md (16);
+            header row marginBottom 6 → Spacing.xs (4) — nearest on-scale. */}
         {(eatingOutLoading || eatingOut.length > 0) && (
-          <View style={{ marginBottom: 14 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <View style={{ marginBottom: Spacing.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.xs }}>
               <Text style={{ ...Type.label, color: colors.textSecondary }}>
                 Eating out
               </Text>
@@ -694,7 +805,8 @@ export default function DiscoverScreen() {
                   onPress={() => router.push("/(tabs)" as any)}
                   style={{
                     width: 160,
-                    padding: 10,
+                    // Gap-3 fix (2026-06-09): card padding 10 → Spacing.sm (8).
+                    padding: Spacing.sm,
                     borderRadius: Radius.md,
                     backgroundColor: colors.card,
                     borderWidth: 1,
@@ -706,13 +818,14 @@ export default function DiscoverScreen() {
                       {m.brand.toUpperCase()}
                     </Text>
                   ) : null}
-                  <Text style={{ ...Type.caption, fontWeight: '600', color: colors.text, marginBottom: 6 }} numberOfLines={2}>
+                  {/* Gap-3 fix (2026-06-09): marginBottom 6 → Spacing.xs (4). */}
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: colors.text, marginBottom: Spacing.xs }} numberOfLines={2}>
                     {m.label}
                   </Text>
                   <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </Text>
-                  <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
+                  <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: Spacing.xs }}>per 100 g</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -733,20 +846,23 @@ export default function DiscoverScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
-            padding: 14,
+            // Gap-3 fix (2026-06-09): gap 12 → Spacing.md (16); padding 14 →
+            // Spacing.md (16); marginBottom 14 → Spacing.md (16).
+            gap: Spacing.md,
+            padding: Spacing.md,
             borderRadius: Radius.lg,
             backgroundColor: t.accent + "08",
             borderWidth: 1,
             borderColor: t.accent + "22",
-            marginBottom: 14,
+            marginBottom: Spacing.md,
           }}
         >
           <IconBox color={t.accent} size={36}>
             <LinkIcon size={18} color={t.accent} />
           </IconBox>
           <View style={{ flex: 1 }}>
-            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram...</Text>
+            {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis. */}
+            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram & YouTube</Text>
             <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
           </View>
           <ChevronRight size={16} color={colors.textTertiary} />
@@ -773,9 +889,12 @@ export default function DiscoverScreen() {
 
         {loading && filtered.length === 0 ? (
           <View style={{ paddingTop: Spacing.md }}>
+            {/* Gap-2 fix (2026-06-09): "Recipe ideas" loading-state header
+                Type.headline → Type.title (24pt Newsreader serif) for
+                section-divider weight per recipes.md §0 / design-system §2.2. */}
             <Text
               style={{
-                ...Type.headline,
+                ...Type.title,
                 color: colors.text,
                 marginBottom: Spacing.sm,
               }}
@@ -806,12 +925,12 @@ export default function DiscoverScreen() {
                     paddingVertical: 8,
                     borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: Accent.primary,
-                    backgroundColor: Accent.primary + "10",
+                    borderColor: accent.primary,
+                    backgroundColor: accent.primary + "10",
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ ...Type.caption, fontWeight: '600', color: Accent.primary }}>
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: accent.primary }}>
                     Retry
                   </Text>
                 </Pressable>
@@ -840,24 +959,28 @@ export default function DiscoverScreen() {
                 "everything should be like the bottom one". Single
                 consistent grammar across the whole Discover stream;
                 no special-case treatment for the first card. */}
+            {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
+                (24pt Newsreader serif) for editorial section-divider weight. */}
             <Text
               style={{
-                ...Type.headline,
+                ...Type.title,
                 color: colors.text,
                 marginBottom: Spacing.sm,
               }}
             >
               Recipe ideas
             </Text>
-            <View style={{ gap: 12 }}>
+            {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
+            <View style={{ gap: Spacing.md }}>
               {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
             {filtered.length > 3 ? (
               <>
+                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title. */}
                 <Text
                   style={{
-                    ...Type.headline,
+                    ...Type.title,
                     color: colors.text,
                     marginTop: Spacing.xl,
                     marginBottom: Spacing.sm,
@@ -865,16 +988,23 @@ export default function DiscoverScreen() {
                 >
                   More ideas
                 </Text>
-                <View
-                  style={{
-                    borderRadius: Radius.lg,
-                    backgroundColor: colors.card,
-                    borderWidth: 1,
-                    borderColor: colors.cardBorder,
-                    overflow: "hidden",
-                  }}
-                >
-                  {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                {/* "More ideas" list slab — same seamless cream card as the
+                    hero cards (24px radius, soft plum lift in light, tonal
+                    lift + hairline in dark, no light-mode border). The shadow
+                    rides an outer wrapper because the inner View clips its row
+                    dividers with `overflow: 'hidden'`. */}
+                <View style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
+                  <View
+                    style={{
+                      borderRadius: RECIPE_CARD_RADIUS,
+                      backgroundColor: cardElevation.liftBg ?? colors.card,
+                      borderWidth: cardElevation.useBorder ? 1 : 0,
+                      borderColor: colors.cardBorder,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                  </View>
                 </View>
               </>
             ) : null}
@@ -886,17 +1016,18 @@ export default function DiscoverScreen() {
             sections (2026-05-12 audit). Always renders so users can
             navigate to their saved recipes from the discovery feed
             even when the feed is empty. */}
-        <Text style={{ ...Type.headline, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
+        {/* Gap-2 fix (2026-06-09): "My Library" header Type.headline → Type.title. */}
+        <Text style={{ ...Type.title, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
           My Library
         </Text>
 
-        {/* My Library CTA */}
+        {/* My Library CTA — Gap-3 fix (2026-06-09): gap 12 → Spacing.md (16). */}
         <Pressable
           onPress={() => router.push("/(tabs)/library" as Href)}
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
+            gap: Spacing.md,
             padding: Spacing.md,
             borderRadius: Radius.lg,
             backgroundColor: colors.card,

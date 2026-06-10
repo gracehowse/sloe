@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Sex } from "@/lib/tdee";
 import { useOnboarding } from "../context";
@@ -30,6 +30,10 @@ export function MobileSexStep() {
   const overline = useStepOverline();
   const [helpOpen, setHelpOpen] = React.useState(false);
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the help-toggle glyph
+  // and the expanded explainer's tinted box + overline. The OptionCards flip via
+  // their own `useAccent`; the privacy-shield footer keeps `textTertiary`.
+  const accent = useAccent();
   // 2026-05-14 (premium-bar audit B cross-cutting #6): auto-advance
   // after 200ms when the user picks a sex. Same pattern as Goal +
   // Activity — single-choice steps should never strand the user
@@ -86,7 +90,7 @@ export function MobileSexStep() {
         <Ionicons
           name="information-circle-outline"
           size={14}
-          color={Accent.primaryLight}
+          color={accent.primaryLight}
         />
         <Text
           style={{
@@ -104,8 +108,8 @@ export function MobileSexStep() {
           style={{
             marginTop: 12,
             padding: 14,
-            backgroundColor: Accent.primary + "10",
-            borderColor: Accent.primary + "33",
+            backgroundColor: accent.primary + "10",
+            borderColor: accent.primary + "33",
             borderWidth: 1,
             borderRadius: 12,
           }}
@@ -116,11 +120,11 @@ export function MobileSexStep() {
               fontWeight: "700",
               textTransform: "uppercase",
               letterSpacing: 1.2,
-              color: Accent.primaryLight,
+              color: accent.primaryLight,
               marginBottom: 8,
             }}
           >
-            What Suppr does with this
+            What Sloe does with this
           </Text>
           <Text
             style={{
@@ -157,7 +161,7 @@ export function MobileSexStep() {
             }}
           >
             For best results, consult your doctor. You can change this at any
-            time — Suppr also re-calibrates from your actual logs.
+            time — Sloe also re-calibrates from your actual logs.
           </Text>
         </View>
       ) : null}
@@ -184,7 +188,7 @@ export function MobileSexStep() {
             lineHeight: 17,
           }}
         >
-          Stored privately on your device and synced only to your Suppr
+          Stored privately on your device and synced only to your Sloe
           account. Never shared.
         </Text>
       </View>

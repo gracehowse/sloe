@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from "react-native";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -11,7 +12,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * upgrade. The previous primitive surfaced empty tabs as 13pt bold
  * over a tiny gap — too quiet to read as a state. The new primitive:
  *   - Optional `illustration` slot rendered inside a 72pt circular
- *     `Accent.primary + "10"` (6.25% alpha) primary-tinted disc.
+ *     `accent.primary + "10"` (6.25% alpha) primary-tinted disc (scheme-resolved).
  *   - Title routed through `Type.headline` (17pt / 22 lh).
  *   - Description routed through `Type.body` (14pt / 20 lh).
  *   - 12pt rhythm between elements; 20pt paddingTop/Bottom.
@@ -37,7 +38,7 @@ export interface EmptyStateProps {
    *  New callers should prefer `illustration` for the 72pt disc. */
   icon?: React.ReactNode;
   /** Optional ~32pt lucide glyph rendered inside a 72pt
-   *  `Accent.primary + "10"` tinted disc. */
+   *  `accent.primary + "10"` tinted disc (scheme-resolved via `useAccent()`). */
   illustration?: React.ReactNode;
   /** Short title — typically a plain string, but accepts any React
    *  node so callers can preserve existing inline emphasis. */
@@ -70,6 +71,9 @@ export function EmptyState({
   descriptionStyle,
 }: EmptyStateProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the illustration
+  // disc's tinted backing.
+  const accent = useAccent();
   const isStringTitle = typeof title === "string";
   const isStringDescription = typeof description === "string";
   // `cta` wins when both are passed — keeps the API forward-looking
@@ -86,7 +90,7 @@ export function EmptyState({
             // `bg-primary/10` which is the Tailwind 10% alpha). Visual
             // parity is close enough that any drift is captured by
             // visual-qa, not numeric tests.
-            { backgroundColor: Accent.primary + "10" },
+            { backgroundColor: accent.primary + "10" },
           ]}
         >
           {illustration}

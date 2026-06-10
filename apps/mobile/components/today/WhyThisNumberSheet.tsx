@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   buildWhyThisNumber,
   type WhyThisNumberInput,
@@ -56,6 +57,7 @@ export function WhyThisNumberSheet({
   textTertiaryColor,
   ...input
 }: WhyThisNumberSheetProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const result = buildWhyThisNumber(input);
 
@@ -209,7 +211,7 @@ export function WhyThisNumberSheet({
                 paddingVertical: Spacing.md,
                 paddingHorizontal: Spacing.lg,
                 borderRadius: Radius.md,
-                backgroundColor: pressed ? `${Accent.primary}30` : `${Accent.primary}18`,
+                backgroundColor: pressed ? `${accent.primary}30` : `${accent.primary}18`,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -219,12 +221,12 @@ export function WhyThisNumberSheet({
                 style={{
                   fontSize: 14,
                   fontWeight: "700",
-                  color: Accent.primary,
+                  color: accent.primary,
                 }}
               >
                 Adjust target
               </Text>
-              <ChevronRight size={18} color={Accent.primary} strokeWidth={2.25} />
+              <ChevronRight size={18} color={accent.primary} strokeWidth={2.25} />
             </Pressable>
           ) : null}
         </View>

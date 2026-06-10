@@ -141,7 +141,10 @@ export function GoalPaceEditorDialog({
                 <p className={sectionCls}>Pace</p>
                 <div className="bg-background border border-border rounded-xl p-4">
                   <div className="flex items-baseline gap-1.5 mb-2.5">
-                    <span className="text-[28px] font-extrabold tracking-tight tabular-nums leading-none text-foreground">
+                    {/* SLOE Phase 0: the pace kg/week hero numeral reads in the
+                        Newsreader serif display face; the unit stays sans.
+                        Mirrors mobile GoalPaceSlider. */}
+                    <span className="font-[family-name:var(--font-headline)] text-[28px] font-medium tracking-tight tabular-nums leading-none text-foreground">
                       {e.pace.toFixed(e.pace < 0.1 ? 3 : 2)}
                     </span>
                     <span className="text-sm font-semibold text-muted-foreground">
@@ -256,8 +259,11 @@ export function GoalPaceEditorDialog({
                 data-testid="goal-pace-editor-preview"
                 className="rounded-xl border border-border bg-background p-4"
               >
-                <p className="text-[22px] font-bold text-foreground tabular-nums leading-none">
-                  {e.preview.target_calories.toLocaleString()} kcal
+                {/* SLOE Phase 0: the recomputed-target hero kcal reads in the
+                    Newsreader serif display face; the `kcal` unit stays sans. */}
+                <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-foreground tabular-nums leading-none">
+                  {e.preview.target_calories.toLocaleString()}
+                  <span className="font-sans text-[13px] font-semibold text-muted-foreground"> kcal</span>
                 </p>
                 <p className="text-[11px] text-muted-foreground tabular-nums mt-1.5">
                   Protein {e.preview.target_protein}g · Carbs {e.preview.target_carbs}g
@@ -317,11 +323,17 @@ export function GoalPaceEditorDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={e.saving}>
             Cancel
           </Button>
+          {/* Save (goal & pace) — aubergine OUTLINE (Sloe treatment #1,
+              2026-06-08). The everyday primary CTA is an accent line, not a
+              filled slab; we override the default filled Button with a
+              transparent fill + 1.5px aubergine border + solid label so it
+              matches the mobile goal/pace Save. */}
           <Button
             onClick={e.handleSave}
             disabled={!e.dirty || e.saving || e.loading}
             aria-disabled={!e.dirty || e.saving || e.loading}
             data-testid="goal-pace-editor-save"
+            className="bg-transparent border-[1.5px] border-[var(--accent-primary-solid)] text-primary-solid hover:bg-[var(--accent-primary-soft)] hover:text-primary-solid"
           >
             {e.saving ? "Saving…" : "Save"}
           </Button>

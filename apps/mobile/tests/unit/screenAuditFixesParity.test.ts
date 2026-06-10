@@ -111,9 +111,22 @@ describe("F-82 — macro split gates on data confidence", () => {
   });
 });
 
-describe("F-83 — 7-day avg below 50 kcal noise floor hidden", () => {
-  it("TodayDeficitInsight uses Math.abs(avgDeficit) >= 50 floor", () => {
-    expect(SRC.deficit).toMatch(/Math\.abs\(avgDeficit\)\s*>=\s*50/);
+describe("F-83 — under-ring line is forward 'Room for {meal}', not backward deficit", () => {
+  // SLOE 2026-06-04 (Grace "room for dinner is missing"): the under-ring
+  // line flipped from the backward "deficit so far today" + rolling-avg
+  // sub-line to the forward `todayRoomForMeal` coach line. The backward
+  // energy-balance trend (today's net + the rolling avg with its ≥50 kcal
+  // noise floor) now lives ONLY in `TodayActivityBonusCard` below the ring
+  // — `todayDeficitAverageLoggedDays.test.tsx` pins that calc. This file
+  // now asserts the deficit insight is the forward line and no longer
+  // re-computes the backward trend (so the two surfaces can't duplicate).
+  it("TodayDeficitInsight renders the shared forward coach line", () => {
+    expect(SRC.deficit).toMatch(/todayRoomForMeal\(/);
+    expect(SRC.deficit).toMatch(/nextUnloggedMealSlot\(/);
+  });
+  it("TodayDeficitInsight no longer re-computes the backward deficit trend", () => {
+    expect(SRC.deficit).not.toMatch(/avgDeficit/);
+    expect(SRC.deficit).not.toMatch(/so far today/);
   });
 });
 
@@ -153,8 +166,18 @@ describe("F-85 — recipe title de-CAPS + per-ingredient macro bars removed", ()
   });
 
   it("mobile recipe screen uses normaliseRecipeDisplayTitle on every title render", () => {
+    // After the Figma 332:2 redesign, the three inline calls were consolidated
+    // into a single `displayTitle` constant (computed once, used in multiple
+    // render sites). The minimum call count is 2: one for the share handler
+    // and one for the `displayTitle` declaration. The constant must then be
+    // threaded to at least 2 JSX title render sites (RecipeDetailHero +
+    // RecipeTitleBlock) — equivalent protection, no weaker contract.
     const matches = SRC.recipe.match(/normaliseRecipeDisplayTitle\(/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // `displayTitle` is the computed normalised value and must appear in
+    // at least 2 title= prop sites so every hero/title render is covered.
+    const titlePropMatches = SRC.recipe.match(/title=\{displayTitle\}/g) ?? [];
+    expect(titlePropMatches.length).toBeGreaterThanOrEqual(2);
   });
 
   it("web recipe detail uses normaliseRecipeDisplayTitle (parity)", () => {

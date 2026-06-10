@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Suppr — Full App View (Stitch)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400..500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1B1814;--soft:#6E6457;--clay:#C2683E;--line:#ECEAE4;--serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#EDEBE7;font-family:var(--sans);color:var(--ink);padding:40px 44px 80px;}
+  header{margin-bottom:34px;}
+  .logo{font-family:var(--serif);font-size:26px;font-weight:500}
+  .pill{display:inline-block;background:#F4E2D2;color:var(--clay);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;margin-left:10px;vertical-align:middle}
+  h1{font-family:var(--serif);font-weight:340;font-size:38px;letter-spacing:-.01em;margin:14px 0 8px;}
+  h1 em{font-style:italic;color:var(--clay)}
+  .sub{color:var(--soft);font-size:14.5px;max-width:78ch}
+  .grid{display:flex;flex-wrap:wrap;gap:34px 30px;margin-top:8px}
+  .card{width:257px}
+  .cap{font-family:var(--serif);font-size:17px;margin:0 2px 9px;}
+  .cap span{font-family:var(--sans);font-size:11.5px;color:var(--soft);font-weight:500;margin-left:6px}
+  .frame{width:257px;height:520px;border-radius:24px;overflow:hidden;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.12);border:1px solid var(--line);position:relative}
+  .frame iframe{width:390px;height:788px;border:0;transform:scale(0.659);transform-origin:top left;}
+  footer{margin-top:36px;font-size:12.5px;color:var(--soft)}
+</style>
+</head>
+<body>
+  <header>
+    <span class="logo">Suppr</span><span class="pill">Full app view · Stitch · exploring</span>
+    <h1>The whole app, <em>in the vibe</em></h1>
+    <p class="sub">Live Stitch screens from the warm-editorial design system — white base, Newsreader serif, terracotta accent, stylised-photoreal imagery. Showing the top screenful of each. Still rendering: Paywall, Log-meal sheet, Ask.</p>
+  </header>
+  <div class="grid">
+    <div class="card"><div class="cap">Today <span>home · retention</span></div><div class="frame"><iframe src="./stitch/today.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Cookbook <span>library</span></div><div class="frame"><iframe src="./stitch/cookbook.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Add a recipe <span>viral hook</span></div><div class="frame"><iframe src="./stitch/import.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Progress <span>story not dashboard</span></div><div class="frame"><iframe src="./stitch/progress.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Onboarding <span>intent-first</span></div><div class="frame"><iframe src="./stitch/onboarding.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Recipe detail <span>photoreal</span></div><div class="frame"><iframe src="./stitch/recipe.html" scrolling="no"></iframe></div></div>
+  </div>
+  <footer>Stitch project 8020514740857471151 · docs/prototypes/suppr-app-view.html</footer>
+</body>
+</html>

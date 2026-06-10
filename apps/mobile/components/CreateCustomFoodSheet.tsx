@@ -39,6 +39,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import KeyboardSafeView from "./KeyboardSafeView";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   CUSTOM_FOOD_NAME_MAX,
   convertMacrosBetweenBases,
@@ -128,6 +129,10 @@ export default function CreateCustomFoodSheet({
   onSave,
   colors,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the swap/add links and
+  // the Save CTA. The macro-source toggle keeps `Accent.success`, and validation
+  // errors keep `Accent.destructive`.
+  const accent = useAccent();
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [servingLabel, setServingLabel] = useState("");
@@ -686,8 +691,8 @@ export default function CreateCustomFoodSheet({
                     marginBottom: 4,
                   }}
                 >
-                  <Ionicons name="swap-horizontal" size={16} color={Accent.primary} />
-                  <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>
+                  <Ionicons name="swap-horizontal" size={16} color={accent.primary} />
+                  <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>
                     Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
                   </Text>
                 </Pressable>
@@ -775,8 +780,8 @@ export default function CreateCustomFoodSheet({
                   marginBottom: 4,
                 }}
               >
-                <Ionicons name="add" size={16} color={Accent.primary} />
-                <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>
+                <Ionicons name="add" size={16} color={accent.primary} />
+                <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>
                   Add another serving
                 </Text>
               </Pressable>
@@ -881,7 +886,7 @@ export default function CreateCustomFoodSheet({
                         flex: 1,
                         paddingVertical: 8,
                         borderRadius: Radius.md - 2,
-                        backgroundColor: selected ? Accent.primary : "transparent",
+                        backgroundColor: selected ? accent.primary : "transparent",
                         opacity: opt.disabled ? 0.4 : 1,
                         alignItems: "center",
                       }}
@@ -1213,7 +1218,7 @@ export default function CreateCustomFoodSheet({
                   paddingVertical: 12,
                   alignItems: "center",
                   borderRadius: Radius.md,
-                  backgroundColor: canSave ? Accent.primary : colors.cardBorder,
+                  backgroundColor: canSave ? accent.primary : colors.cardBorder,
                   opacity: canSave ? 1 : 0.6,
                 }}
                 accessibilityRole="button"

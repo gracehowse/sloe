@@ -1,0 +1,35 @@
+# Paths Claude Code should skip when searching/reading — generated artefacts,
+# build output, and capture dumps that only add noise to context. Mirrors the
+# heavy generated paths in .gitignore. NOT a security boundary — for that, use
+# permissions.deny in .claude/settings.json.
+
+# Dependencies & build output
+node_modules/
+.next/
+dist/
+storybook-static/
+build-storybook.log
+.expo/
+apps/mobile/ios/build/
+apps/mobile/android/
+
+# Test / coverage / report output
+coverage/
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# Type-check caches
+*.tsbuildinfo
+
+# Screenshot & capture dumps (regenerated; never the source of truth)
+screenshots/
+docs/screenshots/
+apps/mobile/screenshots/latest/
+apps/mobile/screenshots/diff/
+apps/mobile/screenshots/agent/
+apps/mobile/screenshots/agent-check/
+apps/mobile/.maestro/capture/
+
+# Fetched TestFlight feedback (may contain tester PII)
+docs/testflight-feedback/data/

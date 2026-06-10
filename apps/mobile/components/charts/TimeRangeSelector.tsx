@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, Text } from "react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * 2026-04-26 polish (round 2): trimmed to 4 visible ranges. Pre-fix this
@@ -37,6 +38,10 @@ type Props = {
   cardColor: string;
   textColor: string;
   secondaryColor: string;
+  /** Gap 8 §3.2: ranges that lack sufficient data are greyed out and
+   *  non-interactive. Long-press accessible tooltip is provided via
+   *  accessibilityHint on the disabled pill. */
+  disabledRanges?: Set<TimeRange>;
 };
 
 export function daysForRange(range: TimeRange): number {
@@ -64,7 +69,13 @@ export default function TimeRangeSelector({
   cardColor,
   textColor,
   secondaryColor,
+  disabledRanges,
 }: Props) {
+  // Sloe treatment system (2026-06-08, §7): selected range pill = aubergine
+  // soft-tint fill + primarySolid label (was a solid accent fill + white text).
+  // Mirrors the Progress-tab range picker so the two weight-range surfaces read
+  // identically (F-125).
+  const accent = useAccent();
   return (
     <ScrollView
       horizontal
@@ -78,29 +89,41 @@ export default function TimeRangeSelector({
         alignItems: "center",
       }}
     >
-      {RANGES.map((r) => (
-        <Pressable
-          key={r}
-          onPress={() => onSelect(r)}
-          style={{
-            paddingVertical: 6,
-            paddingHorizontal: 10,
-            borderRadius: Radius.sm - 2,
-            alignItems: "center",
-            backgroundColor: selected === r ? Accent.primary : "transparent",
-          }}
-        >
-          <Text
+      {RANGES.map((r) => {
+        const isDisabled = disabledRanges?.has(r) ?? false;
+        return (
+          <Pressable
+            key={r}
+            onPress={() => !isDisabled && onSelect(r)}
+            disabled={isDisabled}
+            accessibilityHint={
+              isDisabled ? "Log more weigh-ins to unlock this view" : undefined
+            }
             style={{
-              fontSize: 11,
-              fontWeight: "700",
-              color: selected === r ? "#fff" : secondaryColor,
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              borderRadius: Radius.sm - 2,
+              alignItems: "center",
+              backgroundColor: selected === r ? accent.primarySoft : "transparent",
+              opacity: isDisabled ? 0.38 : 1,
             }}
           >
-            {rangeLabel(r)}
-          </Text>
-        </Pressable>
-      ))}
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: isDisabled
+                  ? secondaryColor
+                  : selected === r
+                    ? accent.primarySolid
+                    : secondaryColor,
+              }}
+            >
+              {rangeLabel(r)}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }

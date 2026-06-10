@@ -11,7 +11,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import {
@@ -74,6 +75,9 @@ export default function DuplicateDaySheet({
   onConfirm,
   colors,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the active range
+  // selection (start/end + in-range tint) and the Duplicate CTA.
+  const accent = useAccent();
   const defaultStart = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
   const defaultEnd = useMemo(() => addDays(sourceDayKey, 7), [sourceDayKey]);
   const [mode, setMode] = useState<Mode>("single");
@@ -181,7 +185,7 @@ export default function DuplicateDaySheet({
                     flex: 1,
                     paddingVertical: 10,
                     alignItems: "center",
-                    backgroundColor: isActive ? Accent.primary : "transparent",
+                    backgroundColor: isActive ? accent.primary : "transparent",
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: "700", color: isActive ? "#fff" : colors.textSecondary }}>
@@ -260,9 +264,9 @@ export default function DuplicateDaySheet({
                         alignItems: "center",
                         justifyContent: "center",
                         backgroundColor: isHighlighted
-                          ? Accent.primary
+                          ? accent.primary
                           : inRange
-                            ? Accent.primary + "22"
+                            ? accent.primary + "22"
                             : "transparent",
                         opacity: disabled ? 0.28 : 1,
                       }}
@@ -331,7 +335,7 @@ export default function DuplicateDaySheet({
                 paddingVertical: 12,
                 alignItems: "center",
                 borderRadius: Radius.md,
-                backgroundColor: canConfirm ? Accent.primary : colors.cardBorder,
+                backgroundColor: canConfirm ? accent.primary : colors.cardBorder,
               }}
               accessibilityRole="button"
               accessibilityLabel="Duplicate"

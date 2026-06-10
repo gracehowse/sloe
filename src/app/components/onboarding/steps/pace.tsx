@@ -153,9 +153,12 @@ export function PaceStep() {
           </span>
         </div>
         <div className="flex items-baseline gap-1.5 mb-2.5">
+          {/* Sloe reskin (Figma pace 191:2): the rate hero numeral reads
+              in the Newsreader serif display face + plum heading ink,
+              matching the warm-coaching numeral treatment. */}
           <span
-            className="text-[36px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
-            style={{ letterSpacing: "-0.02em" }}
+            className="font-[family-name:var(--font-display)] text-[36px] font-normal tracking-tight tabular-nums leading-none text-foreground-brand"
+            style={{ letterSpacing: "-0.01em" }}
           >
             {pace.toFixed(pace < 0.1 ? 3 : 2)}
           </span>
@@ -241,25 +244,30 @@ function ProjectionTile({
     >
       <div>
         <div className="section-label mb-1">Daily target</div>
+        {/* SLOE Phase 0: the Daily-target hero numeral reads in the Newsreader
+            serif display face (matching the rate numeral above + mobile pace);
+            the `kcal` unit stays sans. */}
         <div
-          className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+          className="font-[family-name:var(--font-display)] text-[22px] font-normal tracking-tight tabular-nums leading-none text-foreground"
           style={{ letterSpacing: "-0.02em" }}
         >
           {Math.round(tweenedTarget).toLocaleString()}
-          <span className="text-xs text-muted-foreground font-medium ml-1">
+          <span className="font-sans text-xs text-muted-foreground font-medium ml-1">
             kcal
           </span>
         </div>
       </div>
       <div>
         <div className="section-label mb-1">vs. your TDEE</div>
+        {/* SLOE Phase 0: the vs-TDEE hero numeral reads in the Newsreader serif
+            display face; the `kcal / day` unit stays sans. */}
         <div
-          className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none"
+          className="font-[family-name:var(--font-display)] text-[22px] font-normal tracking-tight tabular-nums leading-none"
           style={{ letterSpacing: "-0.02em", color: accent }}
         >
           {sign}
           {Math.round(tweenedDelta).toLocaleString()}
-          <span className="text-xs text-muted-foreground font-medium ml-1">
+          <span className="font-sans text-xs text-muted-foreground font-medium ml-1">
             kcal / day
           </span>
         </div>

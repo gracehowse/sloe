@@ -11,11 +11,24 @@
  */
 
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { NorthStarBlockHost } from "../../components/today/NorthStarBlockHost";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { NorthStarRecipe } from "@suppr/shared/nutrition/northStarSuggestion";
+
+// The NorthStar render path reads ONE flag — `today_meals_figma_654` (in
+// `NorthStarBlock`). Default it ON (the production default: Figma 654:2 hero),
+// matching how these tests ran against the real module; the why-line test
+// flips it OFF to reach the legacy hero where the detailed why-line lives.
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn((flag: string) => flag === "today_meals_figma_654"),
+  isFeatureDisabled: vi.fn(() => false),
+}));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
@@ -39,15 +52,15 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     inputBg: "#f4f4f4",
-    sourceUsda: "#56A775",
-    sourceOff: "#588CE4",
-    sourceFatsecret: "#F78A32",
+    sourceUsda: "#5E7C5A",
+    sourceOff: "#4A7878",
+    sourceFatsecret: "#C9892C",
     sourceManual: "#94a3b8",
-    sourceAi: "#DF5EBC",
+    sourceAi: "#6A4B7A",
     northStarBgFrom: "rgba(88,140,228,0.08)",
     northStarBgTo: "rgba(223,94,188,0.04)",
     northStarBorder: "rgba(88,140,228,0.18)",
-    overBudgetFg: "#F78A32",
+    overBudgetFg: "#C0533F",
     overBudgetSoft: "rgba(247,138,50,0.08)",
   }),
 }));
@@ -66,6 +79,13 @@ const lib6: readonly NorthStarRecipe[] = Array.from({ length: 6 }, (_, i) => ({
 }));
 
 describe("NorthStarBlockHost branching", () => {
+  beforeEach(() => {
+    // Reset to the production default (Figma 654:2 hero) before each test.
+    vi.mocked(isFeatureEnabled).mockImplementation(
+      (flag: string) => flag === "today_meals_figma_654",
+    );
+  });
+
   it("renders nothing when viewMode='week'", () => {
     const tree = render(
       <NorthStarBlockHost
@@ -75,6 +95,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -92,6 +113,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={10}
         remainingCarbs={20}
         remainingFat={5}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -109,6 +131,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={50}
         remainingCarbs={120}
         remainingFat={35}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -126,6 +149,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -148,6 +172,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={onPrimaryCta}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"
@@ -181,6 +206,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-30"
@@ -210,6 +236,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-30"
@@ -224,6 +251,9 @@ describe("NorthStarBlockHost branching", () => {
     // the protein variants) below the title so the user sees WHICH
     // macro the algorithm is fitting. Pre-fix, only the band chip
     // ("Close fit") rendered, which read as black-box.
+    // The detailed why-line lives in the LEGACY hero — the Figma 654:2 hero
+    // uses a generic "Fits your day" badge — so force the legacy branch.
+    vi.mocked(isFeatureEnabled).mockReturnValue(false);
     const tree = render(
       <NorthStarBlockHost
         viewMode="day"
@@ -232,6 +262,7 @@ describe("NorthStarBlockHost branching", () => {
         remainingProtein={20}
         remainingCarbs={40}
         remainingFat={15}
+        dailyCalorieTarget={2000}
         onPrimaryCta={() => {}}
         onBrowseLibrary={() => {}}
         selectedDateKey="2026-04-27"

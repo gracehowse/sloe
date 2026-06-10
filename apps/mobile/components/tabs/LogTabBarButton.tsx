@@ -2,7 +2,8 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
-import { Elevation } from "@/constants/theme";
+import { Accent, Elevation } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
@@ -22,10 +23,14 @@ import { useHaptics } from "@/hooks/useHaptics";
  *
  * Visual:
  *   - 56pt diameter circle (matches the legacy LogFab).
- *   - Theme `colors.tint` (warm ink) background.
+ *   - Aubergine `accent.primary` (#5B3B6E) background — the brand accent fill.
+ *     The FAB is the ONE filled-accent moment in the system (2026-06-08
+ *     aubergine review); everyday inline CTAs are an aubergine OUTLINE.
+ *     (Supersedes the 2026-06-04 plum-FAB / clay-CTA split.)
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
  *   - Raised 16pt above the tab bar fill line via `top: -16`.
- *   - `Elevation.floatPrimary` (primary-blue glow drop-shadow).
+ *   - `Elevation.floatPrimary` glow, re-tinted to the plum nav primary so the
+ *     drop-shadow matches the fill (floatPrimary's base shadowColor is clay).
  *
  * Interaction:
  *   - Medium haptic on iOS (matches the legacy LogFab) — heavier than
@@ -50,6 +55,7 @@ export interface LogTabBarButtonProps {
 }
 
 export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const haptics = useHaptics();
   const handlePress = () => {
@@ -85,12 +91,14 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: colors.tint,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.94 : 1 }],
           },
           Elevation.floatPrimary,
+          // Re-tint the glow to the aubergine accent fill.
+          { shadowColor: accent.primary },
         ]}
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />

@@ -50,45 +50,70 @@
    *  to match Linear / Stripe / Things 3 / Notion premium tier.
    *  --radius-sm/md/lg/xl derive from these below. */
   --radius: 0.375rem;         /* 6px base */
-  --radius-card: 0.5rem;       /* 8px cards — matches mobile Radius.lg */
+  --radius-card: 0.5rem;       /* 8px — the tight ladder radius (skeletons etc.) */
+  /* SupprCard resting-card corner. Decoupled from --radius-card on 2026-06-04:
+   * the Figma chosen Today rounds cards AND tiles to 24 (borderless warm slabs),
+   * which is rounder than the tight 8px ladder. Mirrors mobile
+   * `CARD_RADIUS`/`TILE_RADIUS = 24` in apps/mobile/components/ui/SupprCard.tsx
+   * (also a SupprCard-local constant, not the shared Radius token). */
+  --radius-card-lg: 1.5rem;    /* 24px ↔ mobile CARD_RADIUS / TILE_RADIUS */
 
-  /** ── LIGHT MODE PALETTE — Canonical 2026-05-22 v2 (chroma pull) ──
-   *  v1 (warmed paper + beige secondary) read as "khaki cottage" not
-   *  "premium publication". Pulled chroma down ~40% on secondary
-   *  surfaces while keeping the warm hue. Now: page is warm white,
-   *  cards are pure white, secondary surfaces are *barely* warmer
-   *  than card. The warmth lives in the INK (`--foreground` warm
-   *  chocolate) and HAIRLINES (`--border`), not in the fills.
-   *  Reference: Notion bg `#f7f6f3`, Things 3 `#fafafa`, Cron pure
-   *  white. Warm without yoghurt-pot vibes. */
-  --background: #fbfaf6;
-  --background-secondary: #f5f3ec;
-  --foreground: #1a1714;
-  --foreground-secondary: #5b554b;
-  --foreground-tertiary: #8a8377;
-  --card: #ffffff;
-  --card-elevated: #fbf8f0;
-  --card-foreground: #1a1714;
-  --popover: #ffffff;
-  --popover-foreground: #1a1714;
+  /** ── SLOE LIGHT PALETTE — Phase 0 token foundation (2026-06-03) ──
+   *  Values-only re-skin: every token NAME is unchanged so no component
+   *  breaks; only the hexes move from the blue "8-slot lock" to the warm
+   *  Sloe family (plum / clay / sage / amber / damson / teal) validated
+   *  across the 44 approved Figma frames. The warmth lives in the INK
+   *  (`--foreground` aubergine-ink) and the page (`--background` oat); cards
+   *  are pure white. Mirrors mobile `Colors.light` in
+   *  `apps/mobile/constants/theme.ts`. Spec:
+   *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
+  --background: #FFFFFF;
+  --background-secondary: #F6F5F2;
+  --foreground: #221B26;
+  --foreground-secondary: #6A6072;
+  --foreground-tertiary: #9B93A3;
+  /** Brand-tinted heading ink — Sloe plum (#3B2A4D, the chrome hue). The
+   *  Newsreader card titles (prototype `text-plum` in
+   *  `docs/prototypes/stitch-sloe/today-*.html`) render in this, NOT clay.
+   *  11.9:1 on the #F6F5F2 card — AA PASS. Mirrors mobile `MacroColors.calories`
+   *  (same plum hue), which the mobile Today card titles already use. The web
+   *  card titles were the ONLY surface still using clay `text-primary`
+   *  (3.06:1 — AA FAIL); this is the parity + contrast fix. */
+  --foreground-brand: #3B2A4D;
+  --card: #F6F5F2;
+  --card-elevated: #F6F5F2;
+  --card-foreground: #221B26;
+  --popover: #FFFFFF;
+  --popover-foreground: #221B26;
 
-  /** 8-slot palette lock — 2026-05-22 evening. Every accent hue in
-   *  the app maps to one of: Red #F16264 / Magenta #DF5EBC /
-   *  Purple #9679D9 / Blue #588CE4 / Green #56A775 / Lime #81BE38 /
-   *  Yellow #F3C336 / Orange #F78A32. Anchored on the Apple Photos
-   *  wheel tonal family (saturated mid-bright). Water and cyan-snack
-   *  folded into Blue per Grace 2026-05-22.
+  /** Sloe 6-hue family (Phase 0). Replaces the blue 8-slot lock. The
+   *  smaller, harmonious palette is intentional — distinguishability is
+   *  handled by icon + label + position (dossier D-4), not by 8 saturated
+   *  hues. The hues, in role order:
+   *    plum   #3B2A4D — chrome / brand / info / calorie ring
+   *    clay   #C8794E — primary / CTA / carbs
+   *    sage   #5E7C5A — success
+   *    amber  #C9892C — warning / fat
+   *    damson #6A4B7A — win / celebration (persistent)
+   *    teal   #4A7878 — fiber / water / snack slot
    *
-   *  Single accent (action) family. `--accent-primary` is the only
-   *  hue you should reach for outside semantic states (success /
-   *  warning / destructive) and macro tokens. Selected segmented
-   *  controls + filter chips use `--accent-primary-soft`, never
-   *  solid. */
-  --accent-primary: #588CE4;
+   *  CONTRAST — every accent used as TEXT or ICON on a light surface must
+   *  clear WCAG AA (4.5:1 on the white page #FFFFFF). The base
+   *  hues (clay 3.33:1, amber 2.96:1, sage 4.40:1 on white) are kept as the
+   *  FILL token (buttons, arcs, dots — 3:1 graphical) and a darkened
+   *  `-solid` variant carries text/icon usage. Computed ratios are listed
+   *  beside each `-solid` below. */
+
+  /** Primary / CTA — deep plum #3B2A4D (2026-06-08; darker = more premium, Grace).
+   *  White on #3B2A4D ≈ 12:1 (filled FAB / conversion CTA). `-solid` (#3B2A4D)
+   *  is the text/icon/link/outline-border variant — ≈12:1 on white, AA PASS.
+   *  `-lift` (#5B3B6E) is the gradient top / active-tab tint. */
+  --accent-primary: #3B2A4D;
+  --accent-primary-lift: #5B3B6E;
   --accent-primary-foreground: #ffffff;
-  --accent-primary-solid: #3a6ec6;
-  --accent-primary-soft: rgba(88, 140, 228, 0.10);
-  --accent-primary-ring: rgba(88, 140, 228, 0.22);
+  --accent-primary-solid: #3B2A4D;
+  --accent-primary-soft: rgba(91, 59, 110, 0.12);
+  --accent-primary-ring: rgba(91, 59, 110, 0.24);
 
   /** Legacy aliases — old token names still resolve to new values so
    *  callers can be migrated in passes without breaking compile. */
@@ -103,45 +128,50 @@
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
 
-  /** Semantic states (palette-locked, 8-slot). */
-  --accent-success: #56A775;
-  --accent-success-soft: rgba(86, 167, 117, 0.12);
-  --accent-warning: #F78A32;
-  --accent-warning-soft: rgba(247, 138, 50, 0.12);
-  --accent-destructive: #F16264;
+  /** Semantic states (Sloe palette).
+   *  - success → sage. Fill 4.66:1 on white but 4.40:1 on oat (text fails),
+   *    so `--accent-success-solid` (#466046) carries text: 6.95/6.56 PASS.
+   *  - warning → amber. Fill 2.96:1 (text fails), `--accent-warning-solid`
+   *    (#956619) carries text: 5.01/4.73 PASS.
+   *  - destructive → warm brick. The base hue is the TEXT token in practice
+   *    (`text-destructive` resolves here), so it must clear AA 4.5:1 as text.
+   *    Darkened #C0533F → #B04434 (2026-06-09, a11y): 5.64:1 on white,
+   *    5.17:1 on card #F6F5F2, 4.86:1 on the cream `bg-destructive/5` composite
+   *    #F3EDE9 — PASS as text; still 5.64:1 as a fill (well over the 3:1
+   *    graphical floor). `--accent-destructive-solid` (#9E3F2E) stays the
+   *    darkest text variant: 6.55/6.19 PASS. */
+  --accent-success: #5E7C5A;
+  --accent-success-solid: #466046;
+  --accent-success-soft: rgba(94, 124, 90, 0.12);
+  --accent-warning: #C9892C;
+  --accent-warning-solid: #956619;
+  --accent-warning-soft: rgba(201, 137, 44, 0.12);
+  --accent-destructive: #B04434;
   --accent-destructive-foreground: #ffffff;
-  --accent-destructive-solid: #ce3f41;
-  --accent-destructive-soft: rgba(241, 98, 100, 0.12);
-  --accent-info: #588CE4;
+  --accent-destructive-solid: #9E3F2E;
+  --accent-destructive-soft: rgba(176, 68, 52, 0.12);
+  --accent-info: #6A4B7A;
+  /** Damson-lilac wash — the PRO column highlight on the paywall
+   *  comparison matrix (Figma `284:2`). Soft enough to read as a
+   *  recommended-column band, not a fill. */
+  --accent-info-soft: rgba(106, 75, 122, 0.08);
 
-  /** Win / celebration GOLD — ENG-795 (Redesign — Design Direction 2026,
-   *  2026-06-01). A landmark-only role, intentionally OUTSIDE the 8-slot
-   *  action palette. Gated behind `design_system_colours` at the call site —
-   *  never used in the flag-off path. Three-role colour law:
-   *  PRIMARY (blue) = commit CTA; SUCCESS (green) = calorie ring + macro
-   *  identity; WIN (this gold) = landmark celebration ONLY (goal hit, streak
-   *  milestone, win-moment).
-   *
-   *  BRAND SPECTRUM (chosen 2026-06-01, superseding the interim gold/amber):
-   *  the celebration lights up in Suppr's own colours — most ownable, ties to
-   *  the brandmark + empty-ring gradient, collision-free with the macro/warning
-   *  hues. `--accent-win` is a single calm brand-purple for PERSISTENT
-   *  achievement bits (streak chip, milestone badge); `--accent-win-gradient`
-   *  is the celebration MOMENT fill (ring sweep / glow / pulse). Mirrors mobile
-   *  `Accent.win` / `Accent.winSoft` / `AccentWinGradient`
-   *  in `apps/mobile/constants/theme.ts`. */
-  --accent-win: #9679D9;
-  --accent-win-soft: rgba(150, 121, 217, 0.12);
-  --accent-win-gradient: linear-gradient(120deg, #588CE4 0%, #9679D9 50%, #DF5EBC 100%);
+  /** Win / celebration — Sloe (Phase 0, dossier D-3). The persistent
+   *  achievement bits (streak chip, milestone badge) use damson
+   *  `--accent-win` (7.24:1 on white — AA PASS as text). The celebration
+   *  MOMENT fill (ring sweep / glow / pulse) uses the warm Sloe brand
+   *  gradient plum → clay → amber — most ownable, ties to the brandmark.
+   *  Landmark-only role; the three-role colour law is unchanged (PRIMARY =
+   *  clay CTA; SUCCESS = sage ring/macro; WIN = damson landmark). Mirrors
+   *  mobile `Accent.win` / `Accent.winSoft` / `AccentWinGradient`. */
+  --accent-win: #6A4B7A;
+  --accent-win-soft: rgba(106, 75, 122, 0.12);
+  --accent-win-gradient: linear-gradient(120deg, #3B2A4D 0%, #5B3B6E 50%, #7E5C92 100%);
 
-  /** Estimated-confidence chip — warm-amber. ENG P5 parity (gap #11,
-   *  2026-05-31). Mirrors the mobile chip exactly
-   *  (apps/mobile/components/ui/SearchResultConfidenceChip.tsx:60:
-   *  fg `#BF8324` on `rgba(191,131,36,0.14)`). Intentionally NOT the
-   *  orange `--warning` slot (which reads as "over-budget" and already
-   *  paints the over-budget fat macro in the same search row), and NOT
-   *  `--accent-win` (a celebration-landmark-only role, `design_system_colours`
-   *  gated). Gated at the call site behind `redesign_search_results`. */
+  /** Estimated-confidence chip — warm honey-amber, already on-palette.
+   *  Kept at #BF8324 (matches the mobile chip). 3.24:1 on white as a chip
+   *  it sits on its own soft tint, not bare white text. Gated at the call
+   *  site behind `redesign_search_results`. */
   --chip-estimated: #BF8324;
   --chip-estimated-soft: rgba(191, 131, 36, 0.14);
 
@@ -151,17 +181,17 @@
   --destructive-solid: var(--accent-destructive-solid);
   --destructive-soft: var(--accent-destructive-soft);
 
-  --border: #ebe7dc;
-  --border-strong: #ddd6c5;
+  --border: #E8E2EC;
+  --border-strong: #C9C2D6;
   --input: transparent;
-  --input-background: #f0ece4;
-  --switch-background: #ddd6c5;
+  --input-background: #F6F5F2;
+  --switch-background: #C9C2D6;
   --ring: var(--accent-primary);
 
-  /** Brand mark — paper-on-paper (light) per 2026-05-22 lock. The mark
-   *  is a glyph, not a logo lockup with a tile. */
-  --brand-mark-bg: #fbfaf6;
-  --brand-mark-ring: #1a1714;
+  /** Brand mark — paper-on-paper (light). The mark is a glyph; the ring is
+   *  the Sloe plum on the white plate. */
+  --brand-mark-bg: #FFFFFF;
+  --brand-mark-ring: #3B2A4D;
 
   /** Legacy semantic aliases — route to new accent tokens. */
   --success: var(--accent-success);
@@ -171,107 +201,128 @@
   --warning-foreground: #ffffff;
   --warning-soft: var(--accent-warning-soft);
 
-  /** Macro colours — 8-slot palette (2026-05-22 evening lock).
-   *  Each macro maps to one of the 8 canonical slots. Sugar folds into
-   *  Yellow (sugar IS a carb). Water folds into Blue (cyan dropped from
-   *  the 8 per Grace 2026-05-22). Sodium = Orange (alert family).
-   *  Calories stays as success-green via the state token. */
-  --macro-protein: #588CE4;
-  --macro-protein-soft: rgba(88, 140, 228, 0.10);
-  --macro-carbs: #E8721E;
-  --macro-carbs-soft: rgba(232, 114, 30, 0.12);
-  --macro-fat: #DF5EBC;
-  --macro-fat-soft: rgba(223, 94, 188, 0.10);
-  --macro-calories: #56A775;
-  --macro-fiber: #56A775;
-  --macro-fiber-soft: rgba(86, 167, 117, 0.10);
-  --macro-sugar: #E8721E;
-  --macro-sugar-soft: rgba(232, 114, 30, 0.10);
-  --macro-sodium: #F78A32;
-  --macro-sodium-soft: rgba(247, 138, 50, 0.08);
-  --macro-water: #588CE4;
-  --macro-water-soft: rgba(88, 140, 228, 0.08);
+  /** Macro colours — Sloe palette (Phase 0).
+   *  calories → plum (calorie ring), protein → olive-sage, carbs → clay,
+   *  fat → amber, fiber → teal. Sugar follows carbs; sodium → amber;
+   *  water → teal. The `-solid` variants exist for the macros used as small
+   *  TEXT on light (protein olive 3.93:1 → #5F6650 5.99:1; others read fine
+   *  as arcs/dots at 3:1 graphical). */
+  --macro-protein: #7C8466;
+  --macro-protein-solid: #5F6650;
+  --macro-protein-soft: rgba(124, 132, 102, 0.12);
+  --macro-carbs: #C8794E;
+  --macro-carbs-soft: rgba(200, 121, 78, 0.12);
+  --macro-fat: #C9892C;
+  --macro-fat-soft: rgba(201, 137, 44, 0.12);
+  --macro-calories: #3B2A4D;
+  /** Calorie ring over-budget second lap (lifted plum) + leading-cap glow. */
+  --ring-overage-lap: #6A4B7A;
+  --ring-overage-glow: #9A7BAA;
+  --macro-fiber: #4A7878;
+  --macro-fiber-soft: rgba(74, 120, 120, 0.12);
+  --macro-sugar: #C8794E;
+  --macro-sugar-soft: rgba(200, 121, 78, 0.12);
+  --macro-sodium: #C9892C;
+  --macro-sodium-soft: rgba(201, 137, 44, 0.08);
+  --macro-water: #4A7878;
+  --macro-water-soft: rgba(74, 120, 120, 0.08);
 
-  /** Meal-slot tints — 8-slot palette (2026-05-22 evening lock).
-   *  Breakfast → Yellow (frees orange for activity/bonus semantics).
-   *  Lunch → Green. Dinner → Blue. Snack → Purple (cyan dropped from
-   *  the 8; Purple is the only remaining slot that doesn't collide
-   *  with a macro). Mirrors mobile `SlotColors` in
-   *  `apps/mobile/constants/theme.ts`. */
-  --slot-breakfast: #F3C336;         /* yellow  ↔ palette slot */
-  --slot-breakfast-soft: #F3C33612;
-  --slot-lunch: #56A775;              /* green   ↔ palette slot */
-  --slot-lunch-soft: #56A77512;
-  --slot-dinner: #588CE4;             /* blue    ↔ palette slot */
-  --slot-dinner-soft: #588CE41a;
-  --slot-snack: #9679D9;              /* purple  ↔ palette slot */
-  --slot-snack-soft: #9679D912;
+  /** Meal-slot tints — Sloe palette (dossier D-4).
+   *  Breakfast → amber, Lunch → sage, Dinner → damson, Snack → teal.
+   *  Distinguishable by hue + icon + position. Mirrors mobile `SlotColors`. */
+  --slot-breakfast: #C9892C;         /* amber  */
+  --slot-breakfast-soft: #C9892C12;
+  --slot-lunch: #5E7C5A;             /* sage   */
+  --slot-lunch-soft: #5E7C5A12;
+  --slot-dinner: #6A4B7A;            /* damson */
+  --slot-dinner-soft: #6A4B7A12;
+  --slot-snack: #4A7878;             /* teal   */
+  --slot-snack-soft: #4A787812;
 
-  /** Stimulant tracker colours — 8-slot palette.
-   *  Caffeine → Purple (matches its previous violet semantic).
-   *  Alcohol → Orange (warning-family, "approaching limit"). */
-  --stimulant-caffeine: #9679D9;
-  --stimulant-alcohol: #F78A32;
+  /** Stimulant tracker colours — Sloe palette.
+   *  Caffeine → damson, Alcohol → amber ("approaching weekly limit"). */
+  --stimulant-caffeine: #6A4B7A;
+  --stimulant-alcohol: #C9892C;
 
-  /** Confidence colours — 8-slot palette */
-  --confidence-high: #56A775;
-  --confidence-med: #F78A32;
-  --confidence-low: #F16264;
-  /** Confidence chip — neutral grey base used for adaptive TDEE display
-   *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm. */
-  --confidence-neutral: #8c8378;
+  /** Confidence colours — Sloe palette.
+   *  high → sage, med → amber, low → destructive. */
+  --confidence-high: #5E7C5A;
+  --confidence-med: #C9892C;
+  --confidence-low: #B04434;
+  /** Confidence chip — neutral grey for adaptive TDEE display
+   *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm.
+   *  Uses the Sloe `ink-soft` token (readable + calm). */
+  --confidence-neutral: #6A6072;
 
-  /** Source / provenance dots — 8-slot palette.
-   *  USDA = Green, OFF = Blue, FatSecret = Orange, Manual = grey,
-   *  AI = Magenta (paired with sparkle glyph). */
-  --source-usda: #56A775;
-  --source-off: #588CE4;
-  --source-fatsecret: #F78A32;
-  --source-manual: #8c8378;
-  --source-ai: #DF5EBC;
+  /** Source / provenance dots — Sloe palette (dossier D-4).
+   *  USDA → sage, OFF → teal, FatSecret → amber, Manual → warm grey,
+   *  AI → damson (paired with sparkle glyph). */
+  --source-usda: #5E7C5A;
+  --source-off: #4A7878;
+  --source-fatsecret: #C9892C;
+  --source-manual: #9B93A3;
+  --source-ai: #6A4B7A;
 
   /** North-star block — gradient SupprCard on Today. Spec §1.4.
-   *  Blue → Magenta gradient (both in the 8-slot palette). */
-  --north-star-bg-from: rgba(88, 140, 228, 0.10);
-  --north-star-bg-to: rgba(223, 94, 188, 0.05);
-  --north-star-border: rgba(88, 140, 228, 0.22);
+   *  Sloe plum → clay tints. */
+  --north-star-bg-from: rgba(59, 42, 77, 0.08);
+  --north-star-bg-to: rgba(200, 121, 78, 0.05);
+  --north-star-border: rgba(59, 42, 77, 0.18);
 
-  /** Over-budget — Orange default. Per project memory + spec §1.4.
-   *  Traffic-light mode (opt-in Settings toggle) substitutes Red. */
-  --over-budget-fg: #F78A32;
-  --over-budget-soft: rgba(247, 138, 50, 0.08);
+  /** Over-budget — Sloe destructive red (dossier D-2). Fat now owns amber,
+   *  so over-budget moves to red to stay distinct. Traffic-light mode
+   *  (opt-in Settings toggle) still substitutes red — same hue now. */
+  --over-budget-fg: #B04434;
+  --over-budget-soft: rgba(176, 68, 52, 0.08);
 
-  /** Activity / burn / earned-bonus — Yellow slot (vacated by carbs,
-   *  which moved to amber-orange). Ring bonus arc, activity cards,
-   *  burn-detail bonus. Distinct from warning (Orange) so "earned via
-   *  exercise" never reads as an over-budget alert. */
-  --activity: #F3C336;
-  --activity-soft: rgba(243, 195, 54, 0.14);
+  /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
+   *  cards, burn-detail bonus. Distinct from warning (amber) + over-budget
+   *  (red) so "earned via exercise" never reads as an alert. Used as an
+   *  arc/fill (3:1 graphical), not small text. */
+  --activity: #D6A24A;
+  --activity-soft: rgba(214, 162, 74, 0.16);
+  /** Deep honey — the TEXT/icon-on-light variant of `--activity` (mirrors the
+   *  `-solid` pattern). The base honey is fill-only: #D6A24A is 2.3:1 even on
+   *  pure white, so it can NEVER pass as text at any size. This solid clears AA
+   *  on the honey `--activity-soft` tint it sits on (4.9:1 on the composited
+   *  #F1E8D7) and on white (5.9:1). Use for the burn-detail "Bonus earned"
+   *  label/value + workout-kcal text. Mirrors mobile `Accent.activitySolid`. */
+  --activity-solid: #8A5A14;
 
   /** Depth ladder — production design spec §1.3.
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
    *  FloatPrimary = FAB (primary tint underneath). */
-  --elev-card: 0 1px 3px rgba(28, 25, 22, 0.06);
-  /** Soft resting-card shadow — ENG-795 (Redesign — Design Direction 2026,
-   *  2026-05-31). Applied only when `design_system_elevation` is on; the flat
-   *  `--elev-card` above stays as the flag-OFF fallback. Mirrors mobile
-   *  `Elevation.cardSoft` in `apps/mobile/constants/theme.ts`. */
-  --elev-card-soft: 0 4px 12px rgba(28, 25, 22, 0.07);
+  --elev-card: 0 1px 3px rgba(34, 27, 38, 0.06);
+  /** Soft resting-card shadow — ENG-795. The blessed resting-card lift, routed
+   *  through <SupprCard>. Mirrors mobile `Elevation.cardSoft` EXACTLY:
+   *  aubergine Sloe ink (#221B26 == rgba(34,27,38)) at 0.16 opacity, 18px
+   *  radius, y+6. 2026-06-04 (Grace "push it to 10%"): bumped 0.07 → 0.10 +
+   *  12px → 14px. 2026-06-04 (Grace "cards still blend on-device"): bumped again
+   *  0.10 → 0.16 + 14px → 18px + y+4 → y+6, in lockstep with mobile. Edge-pixel
+   *  sampling on the sim PROVED the shadow rendered but was too weak — the
+   *  #F6F5F2 fill sits only ~10 lum below the #FFFFFF page, so the shadow must
+   *  do all the lifting; a 10%/14px halo read lighter than the card at its
+   *  outer reach. 0.16/18px/y+6 is a confident-but-still-soft plum penumbra
+   *  (wide radius keeps it ambient, not a hard Material drop shadow). The flat
+   *  `--elev-card` above stays as the explicit flat fallback. */
+  --elev-card-soft: 0 6px 18px rgba(34, 27, 38, 0.16);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --elev-float-primary: 0 4px 16px rgba(88, 140, 228, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(200, 121, 78, 0.40);
 
-  /** Chart colours — 8-slot palette. */
-  --chart-1: #56A775;
-  --chart-2: #56A775;
-  --chart-3: #F78A32;
-  --chart-4: #DF5EBC;
-  --chart-5: #9679D9;
+  /** Chart colours — Sloe palette: plum / sage / clay / amber / teal. */
+  --chart-1: #3B2A4D;
+  --chart-2: #5E7C5A;
+  --chart-3: #C8794E;
+  --chart-4: #C9892C;
+  --chart-5: #4A7878;
 
-  /** Ring empty track — 8-slot Blue tint (readable on white hero; parity mobile `ringTrack`). */
-  --ring-bg: #D6E0F5;
-  /** Alias of `--ring-bg`; progress arc uses `--success` / `--over-budget-fg`. */
-  --ring-track: #D6E0F5;
+  /** Ring empty track — Sloe frost-mist (readable on white hero; parity
+   *  mobile `ringTrack`). */
+  --ring-bg: #EDEAF1;
+  /** Alias of `--ring-bg`; progress arc uses `--macro-calories` (plum) /
+   *  `--destructive` (over). */
+  --ring-track: #EDEAF1;
 
   /** Font weights */
   --font-weight-normal: 400;
@@ -279,21 +330,22 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /** Sidebar — 8-slot palette */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1c1916;
-  --sidebar-primary: #588CE4;
+  /** Sidebar — Sloe palette. Sidebar bg stays card; the primary uses plum
+   *  (Sloe chrome hue); the focus ring uses clay (the CTA accent). */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #221B26;
+  --sidebar-primary: #3B2A4D;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0ebe3;
-  --sidebar-accent-foreground: #1c1916;
-  --sidebar-border: #e3dccc;
-  --sidebar-ring: #588CE4;
+  --sidebar-accent: #EDEAF1;
+  --sidebar-accent-foreground: #221B26;
+  --sidebar-border: #E8E2EC;
+  --sidebar-ring: #5B3B6E;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
-  --accent-muted: rgba(88, 140, 228, 0.12);
+  --accent-muted: rgba(91, 59, 110, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.04);
@@ -303,27 +355,38 @@
 }
 
 .dark {
-  /** ── DARK MODE PALETTE — Canonical 2026-05-22 lock ──
-   *  Warm-dark, not cool-dark. All neutrals shifted toward warm graphite
-   *  (ivory text, not cool slate). Single accent stays in the same
-   *  periwinkle family as light, lifted for OLED contrast. */
-  --background: #0f0e12;
-  --background-secondary: #16151a;
-  --foreground: #ece8df;
-  --foreground-secondary: #a39d92;
-  --foreground-tertiary: #6e695f;
-  --card: #1a181f;
-  --card-elevated: #221f29;
-  --card-foreground: #ece8df;
-  --popover: #221f29;
-  --popover-foreground: #ece8df;
+  /** ── SLOE DARK PALETTE — Phase 0 token foundation (2026-06-03) ──
+   *  Warm-dark aubergine graphite. All neutrals shifted toward warm plum-ink
+   *  (ivory text, not cool slate). Accents lifted for OLED contrast. Mirrors
+   *  mobile `Colors.dark` in `apps/mobile/constants/theme.ts`. */
+  --background: #19181C;
+  --background-secondary: #232126;
+  --foreground: #F5F3F4;
+  --foreground-secondary: #B7B2BA;
+  --foreground-tertiary: #857F8B;
+  /** Brand-tinted heading ink — Sloe dark plum. Newsreader card titles on dark.
+   *  This is the TEXT lift of the plum hue (5.4:1 on the dark #232126 card — AA
+   *  PASS), distinct from the #815E91 FILL lift used by the calorie ring /
+   *  `--macro-calories` (only 2.99:1 as text — a fill, not text). Lifted one
+   *  step past the dark win/info damson #9A7BAA (4.39:1, just under AA). Light
+   *  counterpart is #3B2A4D. (Mobile's fixed `MacroColors.calories` #3B2A4D is
+   *  a separate dark-contrast bug — ENG ticket, not this light-theme fix.) */
+  --foreground-brand: #A98CB8;
+  --card: #232126;
+  --card-elevated: #2A2730;
+  --card-foreground: #F5F3F4;
+  --popover: #2A2730;
+  --popover-foreground: #F5F3F4;
 
-  /** Dark mode 8-slot palette — same hues, lifted ~10% for OLED contrast. */
-  --accent-primary: #7BA3EA;
+  /** Sloe dark accents — aubergine lifted for OLED contrast. Primary fill
+   *  #7E5C92 (white label ≈4.5:1 — AA); `-solid` (text/icon/link on dark) is
+   *  the light aubergine #C4ACD0 (AA on the dark card). */
+  --accent-primary: #7E5C92;
+  --accent-primary-lift: #9A7BAA;
   --accent-primary-foreground: #ffffff;
-  --accent-primary-solid: #5a8fd8;
-  --accent-primary-soft: rgba(123, 163, 234, 0.16);
-  --accent-primary-ring: rgba(123, 163, 234, 0.30);
+  --accent-primary-solid: #C4ACD0;
+  --accent-primary-soft: rgba(154, 123, 170, 0.18);
+  --accent-primary-ring: rgba(154, 123, 170, 0.30);
 
   --primary: var(--accent-primary);
   --primary-foreground: var(--accent-primary-foreground);
@@ -336,29 +399,33 @@
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
 
-  --accent-success: #7ABE93;
-  --accent-success-soft: rgba(122, 190, 147, 0.18);
-  --accent-warning: #FAA45F;
-  --accent-warning-soft: rgba(250, 164, 95, 0.18);
-  --accent-destructive: #F58385;
+  /** Sloe dark states — sage / amber / brick lifted. The lifted fills clear
+   *  AA as text on the dark card (sage 5.81:1, amber 6.93:1, brick 4.77:1),
+   *  so the `-solid` variants equal the lifted fill in dark mode. */
+  --accent-success: #83A57E;
+  --accent-success-solid: #83A57E;
+  --accent-success-soft: rgba(131, 165, 126, 0.18);
+  --accent-warning: #D6A24A;
+  --accent-warning-solid: #D6A24A;
+  --accent-warning-soft: rgba(214, 162, 74, 0.18);
+  --accent-destructive: #DC6B55;
   --accent-destructive-foreground: #ffffff;
-  --accent-destructive-solid: #d65558;
-  --accent-destructive-soft: rgba(245, 131, 133, 0.18);
-  --accent-info: #7BA3EA;
+  --accent-destructive-solid: #DC6B55;
+  --accent-destructive-soft: rgba(220, 107, 85, 0.18);
+  --accent-info: #9A7BAA;
+  /** Damson-lilac wash (dark) — PRO column highlight, lifted for OLED. */
+  --accent-info-soft: rgba(154, 123, 170, 0.16);
 
-  /** Win / celebration BRAND SPECTRUM — dark (2026-06-01). Same brand-spectrum
-   *  as light; the persistent solid lifts to brand-purple-light for legible
-   *  contrast on the dark OLED hero, while the gradient (celebration fill) lifts
-   *  its stops to match. Landmark-only role, gated behind `design_system_colours`.
-   *  Mirrors mobile `Accent.win` / `Accent.winSoft` / `AccentWinGradient`. */
-  --accent-win: #AC93E2;
-  --accent-win-soft: rgba(172, 147, 226, 0.16);
-  --accent-win-gradient: linear-gradient(120deg, #7BA3EA 0%, #AC93E2 50%, #E689CB 100%);
+  /** Win / celebration — Sloe dark (dossier D-3). Persistent damson lifts to
+   *  #9A7BAA (OLED-readable); the celebration gradient lifts its stops
+   *  (plum → clay → honey). Landmark-only; mirrors mobile `Accent.win` /
+   *  `AccentWinGradient`. */
+  --accent-win: #9A7BAA;
+  --accent-win-soft: rgba(154, 123, 170, 0.16);
+  --accent-win-gradient: linear-gradient(120deg, #815E91 0%, #D58A5E 50%, #D6A24A 100%);
 
-  /** Estimated-confidence chip — dark. ENG P5 parity (gap #11). Same
-   *  `#BF8324` hue as light, matching the mobile chip (single value for
-   *  both themes); it clears AA on the dark card surface (~5.2:1).
-   *  Gated at the call site behind `redesign_search_results`. */
+  /** Estimated-confidence chip — dark. Same warm honey hue as light; clears
+   *  AA on the dark card surface. Gated behind `redesign_search_results`. */
   --chip-estimated: #BF8324;
   --chip-estimated-soft: rgba(191, 131, 36, 0.14);
 
@@ -367,15 +434,15 @@
   --destructive-solid: var(--accent-destructive-solid);
   --destructive-soft: var(--accent-destructive-soft);
 
-  --border: #2a2630;
-  --border-strong: #3a3640;
+  --border: #35323A;
+  --border-strong: #47424F;
   --input: var(--border);
-  --input-background: #1f1c25;
-  --switch-background: #3a3640;
+  --input-background: #232126;
+  --switch-background: #47424F;
   --ring: var(--accent-primary);
 
   /** Brand mark — ivory on near-black in dark mode. */
-  --brand-mark-bg: #0f0e12;
+  --brand-mark-bg: #19181C;
   --brand-mark-ring: #ffffff;
 
   /** Legacy semantic aliases — dark. */
@@ -386,62 +453,69 @@
   --warning-foreground: #ffffff;
   --warning-soft: var(--accent-warning-soft);
 
-  /** Macro colours — dark. 8-slot palette, OLED-lifted. */
-  --macro-protein: #7BA3EA;
-  --macro-protein-soft: rgba(123, 163, 234, 0.16);
-  --macro-carbs: #F2904A;
-  --macro-carbs-soft: rgba(242, 144, 74, 0.16);
-  --macro-fat: #E689CB;
-  --macro-fat-soft: rgba(230, 137, 203, 0.16);
-  --macro-calories: #7ABE93;
-  --macro-fiber: #7ABE93;
-  --macro-fiber-soft: rgba(122, 190, 147, 0.14);
-  --macro-sugar: #F2904A;
-  --macro-sugar-soft: rgba(242, 144, 74, 0.16);
-  --macro-sodium: #FAA45F;
-  --macro-sodium-soft: rgba(250, 164, 95, 0.16);
-  --macro-water: #7BA3EA;
-  --macro-water-soft: rgba(123, 163, 234, 0.16);
+  /** Macro colours — Sloe dark, OLED-lifted. */
+  --macro-protein: #A2AE88;
+  --macro-protein-solid: #A2AE88;
+  --macro-protein-soft: rgba(162, 174, 136, 0.16);
+  --macro-carbs: #D58A5E;
+  --macro-carbs-soft: rgba(213, 138, 94, 0.16);
+  --macro-fat: #D6A24A;
+  --macro-fat-soft: rgba(214, 162, 74, 0.16);
+  --macro-calories: #815E91;
+  --ring-overage-lap: #9A7BAA;
+  --ring-overage-glow: #C4ACD0;
+  --macro-fiber: #6FA3A3;
+  --macro-fiber-soft: rgba(111, 163, 163, 0.16);
+  --macro-sugar: #D58A5E;
+  --macro-sugar-soft: rgba(213, 138, 94, 0.16);
+  --macro-sodium: #D6A24A;
+  --macro-sodium-soft: rgba(214, 162, 74, 0.16);
+  --macro-water: #6FA3A3;
+  --macro-water-soft: rgba(111, 163, 163, 0.16);
 
-  /** Meal-slot tints — dark. 8-slot palette, OLED-lifted. */
-  --slot-breakfast: #F5D162;         /* yellow-light  ↔ palette slot */
-  --slot-breakfast-soft: #F5D16215;
-  --slot-lunch: #7ABE93;              /* green-light   ↔ palette slot */
-  --slot-lunch-soft: #7ABE9315;
-  --slot-dinner: #7BA3EA;             /* blue-light    ↔ palette slot */
-  --slot-dinner-soft: #7BA3EA18;
-  --slot-snack: #AC93E2;              /* purple-light  ↔ palette slot */
-  --slot-snack-soft: #AC93E215;
+  /** Meal-slot tints — Sloe dark, OLED-lifted (dossier D-4). */
+  --slot-breakfast: #D6A24A;         /* amber-light  */
+  --slot-breakfast-soft: #D6A24A15;
+  --slot-lunch: #83A57E;             /* sage-light   */
+  --slot-lunch-soft: #83A57E15;
+  --slot-dinner: #9A7BAA;            /* damson-light */
+  --slot-dinner-soft: #9A7BAA15;
+  --slot-snack: #6FA3A3;             /* teal-light   */
+  --slot-snack-soft: #6FA3A315;
 
-  /** Stimulant tracker — dark, 8-slot palette. */
-  --stimulant-caffeine: #AC93E2;
-  --stimulant-alcohol: #FAA45F;
+  /** Stimulant tracker — Sloe dark. */
+  --stimulant-caffeine: #9A7BAA;
+  --stimulant-alcohol: #D6A24A;
 
-  /** Confidence colours — dark, 8-slot palette */
-  --confidence-high: #7ABE93;
-  --confidence-med: #FAA45F;
-  --confidence-low: #F58385;
-  --confidence-neutral: #706c7c;
+  /** Confidence colours — Sloe dark (lifted). */
+  --confidence-high: #83A57E;
+  --confidence-med: #D6A24A;
+  --confidence-low: #DC6B55;
+  --confidence-neutral: #857F8B;
 
-  /** Source / provenance dots — dark, 8-slot palette. */
-  --source-usda: #7ABE93;
-  --source-off: #7BA3EA;
-  --source-fatsecret: #FAA45F;
-  --source-manual: #706c7c;
-  --source-ai: #E689CB;
+  /** Source / provenance dots — Sloe dark (lifted). */
+  --source-usda: #83A57E;
+  --source-off: #6FA3A3;
+  --source-fatsecret: #D6A24A;
+  --source-manual: #857F8B;
+  --source-ai: #9A7BAA;
 
-  /** North-star block — dark. Blue → Magenta gradient (8-slot). */
-  --north-star-bg-from: rgba(123, 163, 234, 0.14);
-  --north-star-bg-to: rgba(230, 137, 203, 0.05);
-  --north-star-border: rgba(123, 163, 234, 0.28);
+  /** North-star block — Sloe dark. plum → clay tints (lifted). */
+  --north-star-bg-from: rgba(129, 94, 145, 0.16);
+  --north-star-bg-to: rgba(213, 138, 94, 0.06);
+  --north-star-border: rgba(129, 94, 145, 0.28);
 
-  /** Over-budget — dark, Orange default. */
-  --over-budget-fg: #FAA45F;
-  --over-budget-soft: rgba(250, 164, 95, 0.14);
+  /** Over-budget — Sloe dark destructive (dossier D-2). */
+  --over-budget-fg: #DC6B55;
+  --over-budget-soft: rgba(220, 107, 85, 0.14);
 
-  /** Activity / burn / earned-bonus — dark, Yellow slot (OLED-lifted). */
-  --activity: #F5D162;
-  --activity-soft: rgba(245, 209, 98, 0.18);
+  /** Activity / burn / earned-bonus — Sloe dark honey (OLED-lifted). */
+  --activity: #E0B25E;
+  --activity-soft: rgba(224, 178, 94, 0.18);
+  /** Deep honey text variant — dark. On the dark card the OLED-lifted honey
+   *  already clears AA as text (6.9:1), so the solid equals the lifted base
+   *  here (same rule the other `-solid` variants follow in dark mode). */
+  --activity-solid: #E0B25E;
 
   /** Depth ladder — dark.
    *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
@@ -451,51 +525,74 @@
    *  highlight via the SupprCard primitive. Sheet drops box-shadow,
    *  keeps backdrop blur. */
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-  /** Soft resting-card shadow — dark. ENG-795. Applied only when
-   *  `design_system_elevation` is on; `--elev-card` above stays the flag-OFF
-   *  fallback. Dark cards lean on tonal lift (`--card-elevated`) more than
-   *  shadow, but this gives a slightly deeper drop for the elevated tier.
-   *  Mirrors mobile `Elevation.cardSoft`. */
-  --elev-card-soft: 0 4px 12px rgba(0, 0, 0, 0.45);
+  /** Soft resting-card shadow — dark. ENG-795. On dark the lift is a near-black
+   *  shadow (a different regime to light's plum tint — RN renders dark shadows
+   *  poorly, so MOBILE dark uses a tonal `cardElevated` lift + hairline instead;
+   *  this token is web-dark only). Radius widened 12 → 14 → 18 + y+4 → y+6 on
+   *  2026-06-04 to track the light token's softer/deeper penumbra; the 0.45
+   *  opacity is kept (a light-mode lever — 0.16 would be invisible on a dark
+   *  surface, so the dark opacity stays high and only the geometry tracks). */
+  --elev-card-soft: 0 6px 18px rgba(0, 0, 0, 0.45);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --elev-float-primary: 0 4px 16px rgba(123, 163, 234, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(213, 138, 94, 0.45);
 
-  /** Chart colours — dark, 8-slot palette */
-  --chart-1: #7ABE93;
-  --chart-2: #7ABE93;
-  --chart-3: #FAA45F;
-  --chart-4: #E689CB;
-  --chart-5: #AC93E2;
+  /** Chart colours — Sloe dark (lifted). */
+  --chart-1: #815E91;
+  --chart-2: #83A57E;
+  --chart-3: #D58A5E;
+  --chart-4: #D6A24A;
+  --chart-5: #6FA3A3;
 
-  /** Ring empty track — dark, 8-slot Blue at low alpha. */
-  --ring-bg: rgba(123, 163, 234, 0.35);
-  --ring-track: rgba(123, 163, 234, 0.35);
+  /** Ring empty track — Sloe dark plum-mist. */
+  --ring-bg: #372F44;
+  --ring-track: #372F44;
 
-  /** Sidebar — dark, 8-slot palette */
-  --sidebar: #18181c;
-  --sidebar-foreground: #e8e7ed;
-  --sidebar-primary: #7BA3EA;
+  /** Sidebar — Sloe dark. */
+  --sidebar: #19181C;
+  --sidebar-foreground: #F5F3F4;
+  --sidebar-primary: #815E91;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #202028;
-  --sidebar-accent-foreground: #e8e7ed;
-  --sidebar-border: #32313c;
-  --sidebar-ring: #7BA3EA;
+  --sidebar-accent: #232126;
+  --sidebar-accent-foreground: #F5F3F4;
+  --sidebar-border: #35323A;
+  --sidebar-ring: #D58A5E;
 
   /** Glass / surface tokens — dark */
-  --glass: rgba(24, 24, 28, 0.72);
+  --glass: rgba(25, 24, 28, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --accent-muted: rgba(123, 163, 234, 0.15);
+  --accent-muted: rgba(213, 138, 94, 0.15);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
+/* The Frost secondary-colour exploration (`brand_frost_secondary`, ENG-997) was
+ * RETIRED 2026-06-08 (brand-manager): Clay is the unconditional functional
+ * accent on web + mobile, Damson reverts to a scarce brand-identity role. The
+ * light + dark damson cascade overrides that used to live here (gated on an
+ * html class), the FrostFlagToggle that added that class, and the mobile
+ * AccentFrost / context/theme.tsx flag wiring were all removed in the same
+ * change — the clay tokens in `:root` / `.dark` above are now the only path. */
+
 @theme inline {
+  /* Fonts — Sloe (Phase 0). Newsreader (serif, --font-newsreader) carries
+     headlines + display + ring numerals; Inter (--font-inter) carries body +
+     labels. Both wired in `app/layout.tsx` via next/font/google. */
+  --font-headline: var(--font-newsreader), Newsreader, Georgia, serif;
+  --font-display: var(--font-newsreader), Newsreader, Georgia, serif;
+  --font-body: var(--font-inter), Inter, system-ui, sans-serif;
+  --font-label: var(--font-inter), Inter, system-ui, sans-serif;
+
   /* Core */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Sloe ink scale — Figma `ink` / `ink-soft` / `ink-faint`. */
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-tertiary: var(--foreground-tertiary);
+  /* Brand-tinted heading ink (plum) — Newsreader card titles. `text-foreground-brand`. */
+  --color-foreground-brand: var(--foreground-brand);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -522,14 +619,17 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-soft: var(--success-soft);
+  --color-success-solid: var(--accent-success-solid);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-solid: var(--accent-warning-solid);
   --color-destructive-soft: var(--destructive-soft);
 
   /* Macros */
   --color-macro-protein: var(--macro-protein);
   --color-macro-protein-soft: var(--macro-protein-soft);
+  --color-macro-protein-solid: var(--macro-protein-solid);
   --color-macro-carbs: var(--macro-carbs);
   --color-macro-carbs-soft: var(--macro-carbs-soft);
   --color-macro-fat: var(--macro-fat);
@@ -571,9 +671,11 @@
   --color-over-budget-fg: var(--over-budget-fg);
   --color-over-budget-soft: var(--over-budget-soft);
 
-  /* Activity / burn / earned-bonus (Yellow) */
+  /* Activity / burn / earned-bonus (honey) */
   --color-activity: var(--activity);
   --color-activity-soft: var(--activity-soft);
+  /* Deep honey TEXT variant — `text-activity-solid` (base honey is fill-only). */
+  --color-activity-solid: var(--activity-solid);
 
   /* North-star (gradient bounds + border) */
   --color-north-star-bg-from: var(--north-star-bg-from);
@@ -597,6 +699,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-card: var(--radius-card);
+  --radius-card-lg: var(--radius-card-lg);
 
   /* Sidebar */
   --color-sidebar: var(--sidebar);
@@ -642,10 +745,12 @@
 
   body {
     @apply bg-background text-foreground;
-    /** Production design spec §1.2 — tabular-nums + stylistic set 01
-     *  shipped globally so every numeric inherits Inter's tnum + ss01
-     *  glyphs (calorie totals, macro grams, dates, durations, etc).
-     *  cv02/03/04/11 stay for character-variant alignment. */
+    /** Body text — Inter (Sloe Phase 0). Production design spec §1.2 —
+     *  tabular-nums + stylistic set 01 shipped globally so every numeric
+     *  inherits Inter's tnum + ss01 glyphs (calorie totals, macro grams,
+     *  dates, durations, etc). cv02/03/04/11 stay for character-variant
+     *  alignment. */
+    font-family: var(--font-body);
     font-feature-settings: "tnum" 1, "ss01" 1, "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -676,21 +781,26 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /** Headlines — Newsreader serif (Sloe Phase 0). The editorial serif that
+   *  carries the warm-coaching direction; numerals keep tabular-nums. */
   h1 {
+    font-family: var(--font-headline);
     font-size: var(--text-2xl);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.3;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 
   h2 {
+    font-family: var(--font-headline);
     font-size: var(--text-xl);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.3;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 
   h3 {
+    font-family: var(--font-headline);
     font-size: var(--text-lg);
     font-weight: var(--font-weight-semibold);
     line-height: 1.4;
@@ -719,12 +829,67 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  /** Display + ring numerals — Newsreader serif (Sloe Phase 0). The big hero
+   *  numbers (calorie ring centre, display headings) read in the serif to
+   *  match the approved Figma frames; tabular-nums preserved so digits don't
+   *  jitter as values count up. Opt-in via `.font-display` / the ring
+   *  numeral classes — components that already render at display size pick
+   *  this up. */
+  .font-display,
+  [data-display-numeral] {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer utilities {
-  .card-elevated {
-    box-shadow: var(--shadow);
+  /**
+   * Resting Sloe card shell — #F6F5F2 on white, soft lift in light,
+   * tonal lift + hairline in dark (mirrors mobile useCardElevation).
+   */
+  .card-slab {
+    background-color: var(--card);
+    box-shadow: var(--elev-card-soft);
     border-color: transparent;
+    border-width: 0;
+  }
+
+  /** Figma Today `654:2` — warm slab on white, tonal separation only. */
+  .card-slab-flat {
+    background-color: var(--card);
+    box-shadow: none;
+    border-color: transparent;
+    border-width: 0;
+  }
+
+  .dark .card-slab-flat {
+    background-color: var(--card);
+    box-shadow: none;
+    border-width: 0;
+    border-color: transparent;
+  }
+
+  .dark .card-slab {
+    background-color: var(--card-elevated);
+    box-shadow: none;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--border);
+  }
+
+  .card-elevated {
+    box-shadow: var(--elev-card-soft);
+    border-color: transparent;
+    border-width: 0;
+  }
+
+  .dark .card-elevated {
+    background-color: var(--card-elevated);
+    box-shadow: none;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--border);
   }
 
   .card-elevated-hero {

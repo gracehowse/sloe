@@ -28,6 +28,7 @@ import {
 import { Mail, Plus, Trash2, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import {
@@ -69,6 +70,9 @@ export function HouseholdInviteSheet({
   onClose,
 }: HouseholdInviteSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Send CTA and the
+  // pending-invites spinner. Revoke actions keep `Accent.destructive`.
+  const accent = useAccent();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [invites, setInvites] = useState<HouseholdInvite[]>([]);
@@ -199,7 +203,7 @@ export function HouseholdInviteSheet({
                     paddingVertical: 12,
                     paddingHorizontal: Spacing.lg,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary,
+                    backgroundColor: accent.primary,
                     opacity: sending || email.trim().length === 0 ? 0.5 : 1,
                   }}
                 >
@@ -211,7 +215,7 @@ export function HouseholdInviteSheet({
                 </Pressable>
               </View>
               <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 16 }}>
-                {"They'll see an Accept / Decline prompt the next time they open Suppr."}
+                {"They'll see an Accept / Decline prompt the next time they open Sloe."}
               </Text>
             </View>
 
@@ -222,7 +226,7 @@ export function HouseholdInviteSheet({
               </Text>
               {loading ? (
                 <View style={{ paddingVertical: Spacing.lg, alignItems: "center" }}>
-                  <ActivityIndicator color={Accent.primary} />
+                  <ActivityIndicator color={accent.primary} />
                 </View>
               ) : invites.length === 0 ? (
                 <Text style={{ fontSize: 13, color: colors.textTertiary, paddingVertical: Spacing.sm }}>

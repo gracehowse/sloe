@@ -45,14 +45,23 @@ export function StepHeader({
   return (
     <div className={cn(compact ? "mb-5" : "mb-7")}>
       {overline && (
-        <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-primary mb-2.5">
+        // Sloe reskin (Figma onboarding parity 2026-06-07): the step
+        // overline is a calm muted-ink label, not a primary-tinted
+        // shout. The clay accent is reserved for the CTA + selected
+        // states per the Sloe three-role colour law.
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
           {overline}
         </div>
       )}
+      {/* Sloe reskin — step titles read in plum Newsreader serif
+          (`--font-headline` / `text-foreground-brand`), matching the
+          approved Figma onboarding frames (285:2 / 189:2 / 191:2 /
+          269:2 / 273:2). The old bold-sans treatment was the last
+          onboarding surface still on the pre-Sloe display idiom. */}
       <h1
         className={cn(
-          "font-bold tracking-tight text-foreground leading-tight m-0",
-          compact ? "text-2xl" : "text-[28px]",
+          "font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand leading-tight m-0",
+          compact ? "text-[24px]" : "text-[28px]",
         )}
         style={{ textWrap: "balance" } as React.CSSProperties}
       >
@@ -60,7 +69,7 @@ export function StepHeader({
       </h1>
       {subtitle && (
         <p
-          className="text-sm text-muted-foreground mt-2 leading-relaxed m-0"
+          className="text-sm text-muted-foreground mt-2.5 leading-relaxed m-0"
           style={{ textWrap: "pretty" } as React.CSSProperties}
         >
           {subtitle}

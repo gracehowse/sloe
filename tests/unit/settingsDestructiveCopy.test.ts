@@ -122,14 +122,27 @@ describe("Settings — page header (P1-5)", () => {
     // a plain text-foreground heading.
     expect(SRC).not.toMatch(/<h1[^>]*bg-clip-text/);
     expect(SRC).not.toMatch(/<h1[^>]*text-transparent/);
-    expect(SRC).toMatch(/<h1 className="text-foreground font-bold tracking-tight"[^>]*>Settings<\/h1>/);
+    expect(SRC).toMatch(
+      /<h1 className="font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand"[^>]*>Settings<\/h1>/,
+    );
   });
 
-  it("page-header cog uses a neutral muted background, not bg-primary/30", () => {
-    // Old: `<div className="p-2 bg-primary/30 rounded-xl">` — stuck
-    // out against the rest of the chrome. New: bg-muted, in step with
-    // the section-heading icon treatment used everywhere else.
+  it("page-header cog sits on a plum-tinted Sloe plate, not bg-primary/30 or grey bg-muted", () => {
+    // History: the cog plate started as `bg-primary/30` (stuck out),
+    // was flattened to `bg-muted` in the 2026-04-30 audit, then moved
+    // to the Sloe DS plum-tinted plate in the Settings reskin (Figma 09
+    // Settings `335:2`) so the glyph reads in step with the plum serif
+    // title instead of as orphaned grey chrome. The plate fill is
+    // `--foreground-brand` at 10% and the glyph ink is the same token.
     expect(SRC).not.toMatch(/p-2 bg-primary\/30 rounded-xl/);
-    expect(SRC).toMatch(/p-2 bg-muted rounded-xl/);
+    expect(SRC).not.toMatch(/p-2 bg-muted rounded-xl/);
+    // Plate: plum at 10% via color-mix on --foreground-brand.
+    expect(SRC).toMatch(
+      /color-mix\(in srgb, var\(--foreground-brand\) 10%, transparent\)/,
+    );
+    // Glyph: the settings cog inks in the plum brand token.
+    expect(SRC).toMatch(
+      /<Icons\.settings[\s\S]*?color: "var\(--foreground-brand\)"/,
+    );
   });
 });

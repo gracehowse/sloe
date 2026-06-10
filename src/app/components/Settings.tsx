@@ -49,6 +49,7 @@ import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTarget
 import { backfillDailyTargetsFromProfile } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { recordGoalHistory } from "../../lib/nutrition/goalHistory.ts";
 import { nukeAllUserAppData } from "../../lib/account/nukeAccountData.ts";
+import { saveDisplayName } from "../../lib/account/displayName.ts";
 import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults.ts";
 import {
   DEFAULT_TRACKING_EXTRAS,
@@ -518,7 +519,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       }
       toast.success("Targets reset to defaults", {
         description:
-          "Your calorie and macro goals are back to Suppr defaults.",
+          "Your calorie and macro goals are back to Sloe defaults.",
         action: {
           label: "Edit targets",
           onClick: () => {
@@ -573,6 +574,66 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     if (error) toast.error(error.message);
     else toast.success("Password reset email sent — check your inbox.");
   }, [authEmail]);
+
+  // "Your name" — personalises the Today greeting ("Good morning, Grace").
+  // Mirrors the mobile Settings field
+  // (`apps/mobile/components/settings/SettingsBundleContent.tsx`): the
+  // source of truth is the Supabase auth user's `user_metadata.full_name`
+  // (NOT `profiles.display_name` — that stays the Profile editor's domain,
+  // and writing entitlement-adjacent profile columns risks the
+  // tier-lockdown trigger). The Today greeting reads it back via
+  // `firstNameFromMetadata`. An empty value clears the name so the greeting
+  // falls back to the time-of-day word alone.
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  // The name as currently stored in auth metadata — drives the "no change"
+  // no-op guard and re-seeds the input after a save.
+  const [storedName, setStoredName] = useState("");
+  const nameDirtyRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+      const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      let current = "";
+      for (const key of ["full_name", "name", "first_name", "preferred_name"] as const) {
+        const v = meta[key];
+        if (typeof v === "string" && v.trim()) { current = v.trim(); break; }
+      }
+      setStoredName(current);
+      if (!nameDirtyRef.current) setNameInput(current);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveName = useCallback(async () => {
+    if (nameSaving) return;
+    setNameSaving(true);
+    try {
+      const result = await saveDisplayName(supabase, nameInput, storedName);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      nameDirtyRef.current = false;
+      setStoredName(result.value);
+      setNameInput(result.value);
+      if (result.changed) {
+        // Refresh the in-memory session so any Today greeting reading
+        // `user_metadata` re-renders without a reload. `getSession()`
+        // re-emits via the auth context's onAuthStateChange listener.
+        try {
+          await supabase.auth.getSession();
+        } catch {
+          // Non-fatal — updateUser already fired USER_UPDATED.
+        }
+        toast.success(result.value ? "Name saved." : "Name cleared.");
+      }
+    } finally {
+      setNameSaving(false);
+    }
+  }, [nameSaving, nameInput, storedName]);
 
   /**
    * CSV export runner — extracted 2026-05-02 (PR replaces #43) so
@@ -638,9 +699,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   ).toUpperCase();
   const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
   const profileDisplayLabel =
+    // Prefer the name the user set (profileDisplayName, then the resolved
+    // storedName — same metadata the greeting + "Your name" field use) before
+    // the email local-part, so the header isn't an ugly lowercase handle.
     profileDisplayName?.trim()?.length
       ? profileDisplayName
-      : authEmail?.split("@")[0] ?? "Your profile";
+      : storedName?.trim()?.length
+        ? storedName
+        : authEmail?.split("@")[0] ?? "Your profile";
 
   return (
     <div className="product-shell py-8">
@@ -653,10 +719,23 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           rest of the section headings use. */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-muted rounded-xl">
-            <Icons.settings className="w-5 h-5 text-muted-foreground" />
+          {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
+              a plum-tinted plate (`--foreground-brand` at 10%), not the
+              neutral grey `bg-muted` box, so the icon reads in step with
+              the plum serif title rather than as orphaned grey chrome. */}
+          <div
+            className="p-2 rounded-xl"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
+            }}
+          >
+            <Icons.settings
+              className="w-5 h-5"
+              style={{ color: "var(--foreground-brand)" }}
+            />
           </div>
-          <h1 className="text-foreground font-bold tracking-tight" style={{ fontSize: 24, letterSpacing: "-0.4px" }}>Settings</h1>
+          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
         </div>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
@@ -682,24 +761,28 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           {profileAvatarInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-foreground leading-tight truncate">
+          {/* Sloe DS (Figma 09 Settings `335:2`): the user's name is an
+              editorial identity header — it reads in the Newsreader serif
+              display face (plum-ink), not sans. */}
+          <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
             {profileDisplayLabel}
           </p>
-          {/* Audit 2026-04-30 visual-qa P1 #9 — when "Free tier · email"
-              shared a single truncated line, the tier label got chopped
-              before the email did, leaving "Free t…". Split into two
-              lines: tier label is short and never needs truncating;
-              email gets its own line with `truncate` so the dot-and-tld
-              doesn't run under the avatar. */}
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase mt-1 ${
+          {/* Plan label — Sloe DS (Figma `335:2`) shows "Free plan" /
+              "Pro plan" under the name. Pro keeps the clay-tint pill (a
+              reward signal); Free reads as a quiet grey label. The
+              `profileTierLabel` source ("Pro" / "Free") is pinned by
+              settingsProfileHeaderCardParity.test.ts. Email gets its own
+              line with `truncate` so the dot-and-tld doesn't run under
+              the avatar (audit 2026-04-30 visual-qa P1 #9). */}
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
             userTier === "pro"
               ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
           }`}>
-            {profileTierLabel}
+            {profileTierLabel} plan
           </span>
           {authEmail ? (
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate mt-1">
               {authEmail}
             </p>
           ) : null}
@@ -715,11 +798,47 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </Link>
       </SupprCard>
 
+      {/* Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2` /
+          `335:23`). Full-width soft peach/clay-tint rounded card: sparkle
+          + "Sloe Pro" (clay) on the left, "Manage" (clay) on the right.
+          Mirrors the mobile banner in
+          `apps/mobile/components/settings/SettingsBundleContent.tsx`. Free
+          users route to /pricing (web upgrade); Pro users route to
+          /account/billing (the Stripe portal shell). The detailed plan
+          state + manage/cancel flow still live in the "Your plan" card +
+          SubscriptionCard below — this banner is the at-a-glance entry. */}
+      <Link
+        href={userTier === "pro" ? "/account/billing" : "/pricing"}
+        data-testid="settings-sloe-pro-banner"
+        aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}
+        className="mb-6 flex items-center justify-between rounded-[var(--radius-card-lg)] px-4 py-4 transition-colors"
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--primary) 16%, transparent)",
+        }}
+      >
+        <span className="flex items-center gap-2.5">
+          <Icons.sparkles className="w-[18px] h-[18px]" style={{ color: "var(--accent-primary-solid)" }} aria-hidden />
+          <span className="text-[15px] font-semibold" style={{ color: "var(--accent-primary-solid)" }}>
+            Sloe Pro
+          </span>
+        </span>
+        {/* Manage — aubergine OUTLINE pill (Sloe treatment #1, 2026-06-08).
+            The banner stays a soft aubergine tint (Pro = the brand accent);
+            "Manage" reads as a button (1.5px outline + solid label), not
+            flat coloured text. Mirrors the mobile Pro-banner Manage pill. */}
+        <span
+          className="text-sm font-semibold rounded-full border-[1.5px] px-3.5 py-1.5"
+          style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
+        >
+          Manage
+        </span>
+      </Link>
+
       {/* Current plan */}
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Your plan</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Your plan</h3>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -748,13 +867,79 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </SupprCard>
 
-      {/* Account Section */}
+      {/* Personal Section — the user's identity + personal preferences
+          group (name, email, display name, account actions). Renamed from
+          "Account" 2026-06-04 so the group name matches the mobile
+          "Personal" section in
+          `apps/mobile/components/settings/SettingsBundleContent.tsx`. The
+          "Your name" field is the first row here so the greeting-name
+          control sits naturally among the user's personal settings rather
+          than as a lone card. */}
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Account</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Personal</h3>
         </div>
         <div className="space-y-4">
+          {/* Your name — personalises the Today greeting. Writes the auth
+              user's `user_metadata.full_name` via `supabase.auth.updateUser`;
+              Today reads it back through `firstNameFromMetadata`. Empty
+              clears the name → greeting falls back to "Good morning". Mobile
+              mirror in `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
+          <div>
+            <label
+              htmlFor="settings-name-input"
+              className="block mb-2 text-sm font-medium text-foreground"
+            >
+              Your name
+            </label>
+            <div className="flex gap-3">
+              {/* PostHog session replay masks ALL inputs at capture on web
+                  (`maskAllInputs: true` in AnalyticsProvider) — same posture
+                  as the email / display-name inputs below, no per-field prop
+                  needed. */}
+              <input
+                id="settings-name-input"
+                data-testid="settings-name-input"
+                type="text"
+                value={nameInput}
+                onChange={(e) => {
+                  nameDirtyRef.current = true;
+                  setNameInput(e.target.value);
+                }}
+                onBlur={() => void handleSaveName()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSaveName();
+                  }
+                }}
+                placeholder="Your name"
+                autoComplete="name"
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              {/* Save name — aubergine OUTLINE (Sloe treatment #1,
+                  2026-06-08). The everyday primary CTA is an accent line,
+                  not a filled slab: transparent fill, 1.5px border +
+                  label in `--accent-primary-solid` (AA on the page).
+                  Mirrors the mobile Settings name-save button. */}
+              <button
+                type="button"
+                data-testid="settings-name-save"
+                onClick={() => void handleSaveName()}
+                disabled={nameSaving || nameInput.trim() === storedName}
+                className="px-5 py-3 bg-transparent rounded-xl text-sm font-semibold border-[1.5px] transition-all hover:bg-[var(--accent-primary-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
+              >
+                {nameSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Used to greet you on Today (&ldquo;Good morning,{" "}
+              {nameInput.trim().split(/\s+/)[0] || "Grace"}&rdquo;). Leave blank
+              to keep it name-free.
+            </p>
+          </div>
           <div>
             <label className="block mb-2 text-sm font-medium text-foreground">Email</label>
             <input
@@ -796,7 +981,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Preferences</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Preferences</h3>
         </div>
         <div className="space-y-6">
           {/* Measurement system — P1-7 (audit 2026-04-30) consolidated
@@ -1074,11 +1259,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
                 carries a one-line helper so the user knows what
                 enabling it does. Mirror of mobile settings. */}
-            {/* Nested list-card inside the Preferences card. ENG-823: when soft
-                elevation is on, the parent card already carries the ambient
-                shadow — this inner group keeps only its border (no shadow-on-
-                shadow). Flag OFF → today's `card-elevated`. */}
-            <div className={`rounded-xl border border-border bg-card divide-y divide-border ${isFeatureEnabled("design_system_elevation") ? "" : "card-elevated"}`}>
+            {/* Nested list-card inside the Preferences SupprCard. One-treatment
+                elevation (Grace 2026-06-09): a card nested in another card stays
+                FLAT (`card-slab-flat`) so it never double-shadows — the parent
+                Preferences card already carries the soft lift. (ENG-823.) */}
+            <div className="rounded-xl bg-card divide-y divide-border card-slab-flat">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm text-foreground">Track caffeine</span>
@@ -1245,7 +1430,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               different (no bundle, no search) so the lightest-touch
               parity is a single Link inside the existing Preferences
               card. /fasting renders the FastingTimer with the
-              16:8 / 18:6 / 20:4 / 14:10 preset chips already. */}
+              16:8 / 18:6 / 20:4 / 14:10 / OMAD preset chips already. */}
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Intermittent fasting</label>
             <Link
@@ -1255,7 +1440,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             >
               <p className="font-medium">Fasting timer & window</p>
               <p className="text-xs mt-0.5 text-muted-foreground">
-                Pick your fast / eat window (16:8, 18:6, 20:4, 14:10), start a fast, see history.
+                Pick your fast / eat window (16:8, 18:6, 20:4, 14:10, OMAD), start a fast, see history.
               </p>
             </Link>
           </div>
@@ -1266,7 +1451,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Notifications</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Notifications</h3>
         </div>
         <div className="space-y-4">
           {/* P1-8 (audit 2026-04-30) — notification toggles use the
@@ -1385,7 +1570,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">About</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">About</h3>
         </div>
         <div className="space-y-3">
           <Link
@@ -1393,7 +1578,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             data-testid="settings-whats-new-link"
             className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
-            What&rsquo;s new in Suppr
+            What&rsquo;s new in Sloe
           </Link>
         </div>
       </SupprCard>
@@ -1407,7 +1592,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       >
         <div className="flex items-center gap-2 mb-4">
           <Icons.ticket className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Promo code</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Promo code</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Redeem a code to upgrade your plan (one use per account per code).
@@ -1462,7 +1647,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Privacy & Security</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Privacy & Security</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Download your nutrition log in a spreadsheet-friendly CSV, or take a full JSON backup for developers and migrations.
@@ -1781,7 +1966,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         open={clearLocalOpen}
         onOpenChange={setClearLocalOpen}
         title="Delete local data & sign out?"
-        description="This will sign you out and remove Suppr data stored on this device."
+        description="This will sign you out and remove Sloe data stored on this device."
         confirmLabel="Delete & sign out"
         onConfirm={async () => {
           for (const k of LOCAL_CLEAR_KEYS) {

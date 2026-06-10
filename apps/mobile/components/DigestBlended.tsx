@@ -31,7 +31,8 @@ import { Share2, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -66,6 +67,9 @@ export function DigestBlended(props: DigestProps) {
     blendedExtras,
   } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Adjust pace"
+  // link. Positive/win beats keep `Accent.success`; misses keep destructive.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   const shownRef = useRef<string | null>(null);
@@ -286,9 +290,11 @@ export function DigestBlended(props: DigestProps) {
                   />
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <Text testID="digest-hero-calories" style={{ fontSize: 28, fontWeight: "800", color: heroColor, fontVariant: ["tabular-nums"] }}>
+                  {/* SLOE Phase 0: the closest-day hero kcal reads in Newsreader
+                      serif (family carries the weight; the `kcal` unit stays sans). */}
+                  <Text testID="digest-hero-calories" style={{ fontFamily: FontFamily.serifRegular, fontSize: 28, color: heroColor, fontVariant: ["tabular-nums"] }}>
                     {Math.round(closest.calories).toLocaleString()}
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: heroColor }}> kcal</Text>
+                    <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: heroColor }}> kcal</Text>
                   </Text>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                     {Math.round(closestTarget!).toLocaleString()} target
@@ -300,9 +306,9 @@ export function DigestBlended(props: DigestProps) {
                 </View>
               </>
             ) : (
-              <Text testID="digest-hero-calories" style={{ fontSize: 28, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+              <Text testID="digest-hero-calories" style={{ fontFamily: FontFamily.serifRegular, fontSize: 28, color: colors.text, fontVariant: ["tabular-nums"] }}>
                 {Math.round(closest.calories).toLocaleString()}
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}> kcal</Text>
+                <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.text }}> kcal</Text>
               </Text>
             )}
             <Text testID="digest-hero-protein" style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>
@@ -404,7 +410,7 @@ export function DigestBlended(props: DigestProps) {
             </Text>
             {onAdjustPace ? (
               <Pressable onPress={onAdjustPace} testID="digest-adjust-pace" hitSlop={8}>
-                <Text style={{ fontSize: 11.5, fontWeight: "600", color: Accent.primary }}>Adjust pace →</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: "600", color: accent.primary }}>Adjust pace →</Text>
               </Pressable>
             ) : null}
           </View>
@@ -496,12 +502,14 @@ function PatternBar({
   value: string;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the pattern-bar fill.
+  const accent = useAccent();
   const clamped = Math.min(100, Math.max(0, widthPct));
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 5 }}>
       <Text style={{ fontSize: 11, color: colors.textSecondary, width: 30 }}>{label}</Text>
       <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.cardBorder, overflow: "hidden" }}>
-        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: Accent.primary + "3D" }} />
+        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: accent.primary + "3D" }} />
       </View>
       <Text style={{ fontSize: 11, color: colors.textTertiary, width: 46, textAlign: "right", fontVariant: ["tabular-nums"] }}>
         {value}

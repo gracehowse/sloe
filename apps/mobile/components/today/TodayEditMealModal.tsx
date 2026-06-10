@@ -1,4 +1,5 @@
 import React from "react";
+import { useAccent } from "@/context/theme";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -106,6 +107,7 @@ function parsePortion(raw: string): number {
  * `useThemeColors()` itself; ignores the legacy color props.
  */
 function EditEntryV2(props: TodayEditMealModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const card = useCardElevation();
@@ -261,8 +263,8 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                       style={[
                         v2.slotPill,
                         {
-                          borderColor: active ? Accent.primary : colors.border,
-                          backgroundColor: active ? Accent.primarySoft : "transparent",
+                          borderColor: active ? accent.primary : colors.border,
+                          backgroundColor: active ? accent.primarySoft : "transparent",
                         },
                       ]}
                     >
@@ -347,9 +349,11 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 haptic={motionEnabled ? "confirm" : "none"}
                 accessibilityRole="button"
                 accessibilityLabel="Save changes"
-                style={v2.saveBtn}
+                style={[v2.saveBtn, { borderColor: accent.primarySolid }]}
               >
-                <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>Save changes</Text>
+                {/* Sloe treatment system (2026-06-08): primary inline CTA
+                    → aubergine outline; label in primarySolid. */}
+                <Text style={{ color: accent.primarySolid, ...Type.headline }}>Save changes</Text>
               </PressableScale>
             </View>
             </View>
@@ -426,7 +430,10 @@ const v2 = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   deleteBtn: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, borderWidth: 1, height: 48 },
-  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: Accent.primary, height: 48 },
+  // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+  // outline (transparent fill + 1.5px primarySolid border + primarySolid
+  // label), not a filled slab.
+  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: "transparent", borderWidth: 1.5, height: 48 },
 });
 
 /**
@@ -435,6 +442,7 @@ const v2 = StyleSheet.create({
  * delete once V2 has held 100% for two weeks with no regression.
  */
 function EditEntryLegacy(props: TodayEditMealModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const {
     editingMeal,
@@ -526,12 +534,16 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                   paddingVertical: 6,
                   borderRadius: Radius.sm,
                   alignItems: "center",
-                  backgroundColor: editSlot === s ? Accent.primary : borderColor + "30",
+                  // Sloe treatment system (2026-06-08): filter pill selected
+                  // = aubergine soft-tint + primarySolid label, NOT a solid
+                  // fill; unselected = transparent (legacy modal has no `colors`
+                  // hook in scope — prop-based theming).
+                  backgroundColor: editSlot === s ? accent.primarySoft : "transparent",
                 }}
               >
                 <Text
                   numberOfLines={1}
-                  style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : textSecondaryColor }}
+                  style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? accent.primarySolid : textSecondaryColor }}
                 >
                   {s}
                 </Text>

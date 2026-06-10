@@ -29,9 +29,13 @@ tsconfig.tsbuildinfo
 
 # Claude Code local scheduler lock (machine-specific)
 .claude/scheduled_tasks.lock
-# Per-user Claude Code skills — installed on demand from the marketplace,
-# not part of the repo. CLAUDE.md (project rules) IS tracked.
-.claude/skills/
+# Overnight-run guard state (machine-/run-specific). See
+# docs/runbooks/overnight-unattended-runs.md.
+.claude/overnight/
+# Marketplace-installed Claude Code skills are per-user (not tracked); our own
+# committed project skills (suppr-*) ARE tracked. CLAUDE.md is tracked too.
+.claude/skills/*
+!.claude/skills/suppr-*/
 # Local patch bundles / git worktrees created by tooling (machine-specific).
 .claude/patches/
 .claude/worktrees/
@@ -62,6 +66,8 @@ apps/mobile/screenshots/latest/
 apps/mobile/screenshots/diff/
 # Ad-hoc agent sim screenshots — local debugging artefacts, never committed.
 apps/mobile/screenshots/agent-check/
+apps/mobile/screenshots/agent/*
+!apps/mobile/screenshots/agent/.gitkeep
 # Local archived snapshot outputs from visual-check.mjs etc.
 apps/mobile/screenshots/archived-*/
 apps/mobile/screenshots/pre-fix-*/
@@ -98,3 +104,9 @@ docs/design-explorations/
 # to local scope; project .mcp.json is empty). File-scoped so docs/workflows/
 # stays open for any genuinely-tracked workflow docs later.
 docs/workflows/stitch-claude-code.md
+
+# Generated brand-asset exploration (AI images — kept local, too heavy for git)
+docs/brand/sloe/assets/gen/
+.playwright-mcp/
+tmp/
+*.tsbuildinfo

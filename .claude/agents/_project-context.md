@@ -106,6 +106,104 @@ The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboardin
 
 ---
 
+## Design craft contract (adopted 2026-06-09)
+
+Method adopted from the logic behind the Claude Design prototypes (the system
+prompt that generated `docs/ux/claude-design-bundles/` — public reconstruction:
+github.com/Trystan-SA/claude-design-system-prompt). Adopted because the fleet's
+impressionistic reviews repeatedly passed surfaces Grace then faulted for
+spacing and consistency. Falsifiable checks, censused before any verdict,
+enforced at write time as well as review time.
+
+### Canonical scales — the only legal values
+
+- **Spacing:** 4 / 8 / 16 / 20 / 24 / 32 / 40 (`Spacing`,
+  `apps/mobile/constants/theme.ts`; same rhythm on web). An 18px padding or
+  10px gap is a bug even if it "looks fine".
+- **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
+  "kids' tablet").
+- **Type:** the `Type` ramp on mobile (programmatic gate pending ENG-1002);
+  type-scale-gated classes on web (25-snap gate, green).
+- **Colour:** every value traces to a semantic token (`theme.ts` /
+  `src/styles/theme.css`). A literal hex in a component is a finding.
+- **Elevation:** one-card treatment — page-ground = soft lift, nested = flat
+  (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`).
+
+### Census before verdict (review-time rule)
+
+A review may only issue a tier/quality verdict AFTER producing value-level
+censuses — spacing, colour, radius, type — listing **every** off-scale /
+off-token instance (file:line from code, or capture + measured px). Report
+every violation including uncertain and low-severity ones, each with
+confidence + severity. **Coverage is the reviewing agent's job; filtering
+happens at aggregation — never at detection.** A tier verdict without the
+census attached is invalid.
+
+Verdict-grade capture walls must include scrolled states, key sheets/modals,
+dark mode, and a populated account. Top-of-screen captures of a sparse account
+do not support a verdict (this exact gap produced a disputed "Premium" call on
+2026-06-09).
+
+### Near-duplicate rule (consistency)
+
+The same element rendered two subtly-different ways — chips, pills, rows,
+section headers, dividers, icon sizes, radii, card paddings — is always a
+finding: **either make them identical or make them deliberately different and
+documented.** "Multiple styles fighting" is the canonical Suppr failure mode;
+hunt it explicitly, screen-by-screen pairs included.
+
+### Interaction-state completeness
+
+Every interactive element ships its full state set:
+
+- **Mobile:** pressed (`PressableScale` with the correct `haptic` weight),
+  disabled, loading on async commits (disable + progress — no double-submit).
+- **Web:** hover, `:focus-visible` (never remove the ring without replacement),
+  active, disabled, loading.
+
+Silent success and silent failure after a user action are findings, not polish.
+
+### Write-time discipline
+
+Prevention beats review: whoever writes UI code (Claude or Cursor) follows the
+scales and token rule at write time — see "UI write discipline" in root
+`CLAUDE.md` and `apps/mobile/CLAUDE.md`. Review sweeps catch the residue; they
+are not the system.
+
+### Calibration note — the editorial-warm convergence
+
+Cream + serif + warm-accent editorial is now the default look of AI-generated
+UI (the Claude Design prompt itself flags the `#F4F1EA`-family + serif-display
++ terracotta combination as today's purple-gradient). The look alone no longer
+reads premium. Premium is earned in the layers a template can't fake:
+photography, ring/data-viz craft, motion, haptics, measured spacing rhythm.
+Judge those hardest; never accept "cream + serif present, therefore premium."
+
+**The warm-editorial direction itself is under active challenge (Grace,
+2026-06-10)** — see the direction-question note in
+`docs/planning/sloe-polish-handoff-2026-06-09.md`. Do not treat "it matches
+the committed direction" as a defence against a slop-convergence finding.
+
+### Decisions are challengeable (Grace's standing mandate, 2026-06-10)
+
+A documented decision or carve-out suppresses **re-filing the same settled
+finding** — it does NOT suppress a **new, evidence-backed challenge**. Grace:
+"Even though I've made decisions, I don't want the app to look like AI slop —
+if my design decisions are going to make it look like that we need to
+challenge." This includes her own decisions and the warm-editorial direction.
+
+Rules of engagement:
+- A challenge must be **named and evidenced** (which decision, what changed —
+  e.g. convergence references, rendered comparisons), never "I'd have chosen
+  differently."
+- Route the challenge **to Grace as a decision item** — never silently
+  implement against a decision, and never silently respect a decision the
+  evidence now undermines. Both silences are failures.
+- Locked components stay locked **pending her call** — challenging is
+  flagging, not unilaterally rebuilding.
+
+---
+
 ## Cross-platform parity rules
 
 **Default:** web and mobile must match in feature presence, flow shape, naming, microcopy, event names, states.

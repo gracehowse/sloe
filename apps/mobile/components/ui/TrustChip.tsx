@@ -11,6 +11,12 @@ import type { TrustChipVariant } from "@suppr/shared/types/trust";
  * `src/app/components/ui/trust-chip.tsx`.
  *
  * Geometry: 22pt height, padding 3 x 8, radius `Radius.full`.
+ *
+ * Every variant fg — including `off-adjusted`'s `Accent.primary` — is a SOURCE /
+ * provenance / confidence signal, not a CTA, so it reads the static clay
+ * `Accent.primary` directly and is intentionally NOT routed through
+ * `useAccent()`. (The Frost secondary-colour exploration was retired 2026-06-08,
+ * ENG-997 — clay is now the unconditional accent regardless.)
  */
 
 export type { TrustChipVariant } from "@suppr/shared/types/trust";

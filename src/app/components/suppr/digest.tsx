@@ -255,7 +255,7 @@ function DigestLegacy(props: DigestProps) {
     return (
       <section
         className={cn(
-          "rounded-card border border-border bg-card p-5 mb-5 text-sm text-muted-foreground card-elevated",
+          "rounded-card bg-card card-slab p-5 mb-5 text-sm text-muted-foreground",
           className,
         )}
         data-testid="digest-error"
@@ -283,7 +283,7 @@ function DigestLegacy(props: DigestProps) {
         aria-busy="true"
         aria-live="polite"
         className={cn(
-          "rounded-card border border-border bg-card p-5 mb-5 animate-pulse card-elevated",
+          "rounded-card bg-card card-slab p-5 mb-5 animate-pulse",
           className,
         )}
         data-testid="digest-skeleton"
@@ -332,7 +332,7 @@ function DigestLegacy(props: DigestProps) {
     <section
       aria-labelledby="digest-heading"
       className={cn(
-        "relative rounded-card border border-border bg-card p-5 mb-5 card-elevated",
+        "relative rounded-card bg-card card-slab p-5 mb-5",
         className,
       )}
       data-testid="digest"

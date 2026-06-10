@@ -9,6 +9,10 @@
  * the route handler invokes (jsdom keeps a separate `window.fetch`).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  clearIntegrationAiKeys,
+  isolateAiBudgetForIntegrationTest,
+} from "../helpers/aiRouteTestEnv";
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
@@ -48,6 +52,7 @@ const mockTier = getUserTier as ReturnType<typeof vi.fn>;
 describe("POST /api/recipe-import/image", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isolateAiBudgetForIntegrationTest();
     vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
   });
 
@@ -86,6 +91,8 @@ describe("POST /api/recipe-import/image", () => {
 
   it("returns 503 when OPENAI_API_KEY is unset", async () => {
     vi.unstubAllEnvs();
+    isolateAiBudgetForIntegrationTest();
+    clearIntegrationAiKeys();
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
     const fd = new FormData();

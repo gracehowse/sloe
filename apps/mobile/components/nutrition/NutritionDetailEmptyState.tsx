@@ -2,6 +2,7 @@ import { Text, View, type ViewStyle } from "react-native";
 import { type LucideIcon } from "lucide-react-native";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -26,7 +27,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
  *     (`useCardElevation`) with the modern `Radius.xl` corner + an icon
  *     chip, so the empty state reads as a designed surface, not a dead end.
  *     OFF → the legacy flat, card-less centred layout (no surface chrome).
- *   - `design_system_colours` ON  → the CTA fills BLUE (`Accent.primary`,
+ *   - `design_system_colours` ON  → the CTA fills BLUE (`accent.primary`,
  *     the single commit-action colour) via `PressableScale`. OFF → the
  *     caller's legacy `ctaColorLegacy` fill (e.g. the saturated macro hue
  *     on macro-detail) on a `PressableScale` — the scale press is a pure
@@ -48,7 +49,7 @@ export interface NutritionDetailEmptyStateProps {
   onPress?: () => void;
   /**
    * Legacy CTA fill colour for the flag-OFF (`design_system_colours`) path —
-   * e.g. the saturated macro hue on macro-detail, or `Accent.primary` on the
+   * e.g. the saturated macro hue on macro-detail, or `accent.primary` on the
    * meal-nutrition error states (which were already blue). When the flag is
    * ON the CTA always fills BLUE regardless of this value.
    */
@@ -67,18 +68,19 @@ export function NutritionDetailEmptyState({
   subtitle,
   ctaLabel,
   onPress,
-  ctaColorLegacy = Accent.primary,
+  ctaColorLegacy,
   ctaIcon: CtaIcon,
   ctaA11yLabel,
   testID,
   style,
 }: NutritionDetailEmptyStateProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const elevation = useCardElevation();
   const softElevation = isFeatureEnabled("design_system_elevation");
   const redesignColours = isFeatureEnabled("design_system_colours");
 
-  const ctaColor = redesignColours ? Accent.primary : ctaColorLegacy;
+  const ctaColor = redesignColours ? accent.primary : (ctaColorLegacy ?? accent.primary);
 
   const body = (
     <View style={{ alignItems: "center", gap: Spacing.sm }}>

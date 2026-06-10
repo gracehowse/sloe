@@ -64,8 +64,14 @@ type ImportFailure = {
 
 export function MfpCsvImportCard({
   surface = "onboarding",
+  highlightApp = null,
 }: {
   surface?: "onboarding" | "settings";
+  /** ENG-990 — when the user picked an importable app on the app-choice
+   *  step, the data-bridges step passes its display name (e.g.
+   *  "MyFitnessPal") so this card leads with their app and reads as the
+   *  pre-selected next step. `null` keeps the generic multi-app copy. */
+  highlightApp?: string | null;
 }) {
   const [phase, setPhase] = React.useState<Phase>({ kind: "idle" });
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -160,11 +166,28 @@ export function MfpCsvImportCard({
     [surface],
   );
 
+  // ENG-990 — lead with the user's app when they told us they're
+  // switching from one we can import. `highlightApp` is `null` on the
+  // generic Settings surface and when no importable app was chosen.
+  const highlighted = highlightApp != null;
+  const title = highlighted
+    ? `Bring your ${highlightApp} history`
+    : "Import from another app";
+  const body = highlighted
+    ? `Upload your ${highlightApp} CSV export and we'll bring your meal history into Suppr — your numbers stay exactly as you logged them.`
+    : "MyFitnessPal, Lose It, or Cronometer — upload the CSV export and we'll bring your meal history into Suppr without changing the macros you already logged.";
+
   return (
     <SupprCard
       padding="lg"
       radius="xl"
-      tone={phase.kind === "success" ? "success" : "neutral"}
+      tone={
+        phase.kind === "success"
+          ? "success"
+          : highlighted && phase.kind === "idle"
+            ? "primary"
+            : "neutral"
+      }
     >
       <input
         ref={inputRef}
@@ -188,7 +211,7 @@ export function MfpCsvImportCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="flex-1 text-sm font-bold text-foreground tracking-tight">
-              Import from another app
+              {title}
             </h3>
             {phase.kind === "success" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-success-soft)] px-2 py-0.5 text-[10px] font-bold text-success">
@@ -198,9 +221,7 @@ export function MfpCsvImportCard({
             ) : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-            MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
-            we&rsquo;ll bring your meal history into Suppr without changing the
-            macros you already logged.
+            {body}
           </p>
 
           {phase.kind === "idle" && (

@@ -10,7 +10,8 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -47,6 +48,10 @@ export interface CreateRecipeActionSheetProps {
 export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeActionSheetProps) {
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the clipboard-paste
+  // card + the link/cookbook action-row glyphs. The Photo row keeps
+  // `Accent.success` (sage); manual/cancel keep theme text.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
   const insets = useSafeAreaInsets();
 
@@ -142,8 +147,8 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
         <View
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
             paddingTop: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,
@@ -161,9 +166,8 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
           />
           <Text
             style={{
-              fontSize: 17,
-              fontWeight: "700",
-              color: colors.text,
+              ...Type.title,
+              color: colors.navPrimary,
               marginBottom: Spacing.md,
             }}
           >
@@ -184,22 +188,22 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
                 gap: 12,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
-                borderRadius: Radius.md,
-                backgroundColor: `${Accent.primary}14`,
+                borderRadius: 16,
+                backgroundColor: `${accent.primary}14`,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
-                borderColor: `${Accent.primary}40`,
+                borderColor: `${accent.primary}40`,
                 marginBottom: Spacing.md,
                 opacity: pressed ? 0.7 : 1,
                 ...(cardElevation.shadowStyle ?? {}),
               })}
             >
-              <ClipboardIcon size={16} color={Accent.primary} strokeWidth={2} />
+              <ClipboardIcon size={16} color={accent.primary} strokeWidth={2} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
                   style={{
                     fontSize: 13,
                     fontWeight: "700",
-                    color: Accent.primary,
+                    color: accent.primary,
                   }}
                 >
                   Paste from {clipboardHost}
@@ -221,7 +225,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
           <ActionRow
             testID="create-action-sheet-link"
             Icon={LinkIcon}
-            iconColor={Accent.primary}
+            iconColor={accent.primary}
             title="Paste a link"
             subtitle="TikTok, Instagram, YouTube, blog post — anywhere on the web."
             onPress={() => go("/import-shared")}
@@ -240,7 +244,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             <ActionRow
               testID="create-action-sheet-cookbook"
               Icon={BookOpen}
-              iconColor={Accent.primary}
+              iconColor={accent.primary}
               title="Import cookbook (PDF)"
               subtitle="One scanned book → many recipes in Library, tagged by book name."
               onPress={() => go("/cookbook-import")}

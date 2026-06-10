@@ -47,8 +47,11 @@ describe("mobile source card — widened render gate (E-4)", () => {
   it("gates the source card on (source_url || source_name), not source_url alone", () => {
     // The gate must explicitly allow through rows where only
     // `source_name` is set — that's the whole point of the fix.
+    // The source expresses this as a ternary (`source_url || source_name ? (`)
+    // which is semantically equivalent to the `&&` short-circuit form.
+    // Match the logical OR gate regardless of whether it uses && or ternary.
     expect(MOBILE_SRC).toMatch(
-      /\(\s*recipe\.source_url\s*\|\|\s*recipe\.source_name\s*\)\s*&&/,
+      /recipe\.source_url\s*\|\|\s*recipe\.source_name/,
     );
   });
 

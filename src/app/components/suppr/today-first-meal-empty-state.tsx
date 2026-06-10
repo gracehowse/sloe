@@ -33,7 +33,9 @@ export function TodayFirstMealEmptyState({
     <section
       role="region"
       aria-label="Ready to log your first meal?"
-      className="mb-6 flex flex-col items-center gap-3 rounded-card border border-border bg-card p-5 text-center card-elevated"
+      // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+      // lift (`card-slab`). Was flat slab.
+      className="mb-6 flex flex-col items-center gap-3 rounded-card bg-card card-slab p-5 text-center"
     >
       <h2 className="text-base font-bold text-foreground">
         Ready to log your first meal?
@@ -50,10 +52,14 @@ export function TodayFirstMealEmptyState({
       >
         No pressure — log when you&apos;re ready.
       </p>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primary-solid border
+          + primary-solid label/glyph), not a filled slab. Mirror of
+          mobile `TodayFirstMealEmptyState`. */}
       <button
         type="button"
         onClick={onLogMeal}
-        className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-1 inline-flex items-center gap-1.5 rounded-md border-[1.5px] border-primary-solid bg-transparent px-4 py-2 text-xs font-bold text-primary-solid hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label="Log a meal"
       >
         <Plus className="h-4 w-4" aria-hidden="true" />

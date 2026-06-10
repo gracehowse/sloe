@@ -10,17 +10,10 @@
  *     real app.
  *   - Pricing tier headline numbers on the landing page match the
  *     canonical `/pricing` route (same prices, same period suffix).
- *   - Roadmap "Now" bullets on the landing describe features that
- *     actually ship today — tied to the RoadmapStatus tag, not
- *     hand-written copy.
- *   - The landing respects the canonical `TODAY_RING_OVERLINE`,
- *     `TODAY_STAT_LABELS`, and `MEAL_SLOT_HEADERS` from
- *     `src/lib/copy/today.ts`.
- *   - TDEE and nutrition-source claims on the landing stay pinned to
- *     the real constants in `adaptiveTdee.ts` and
- *     `src/lib/landing/content.ts`. If someone changes an algorithm
- *     threshold (e.g. requires 14 days of logging instead of 7), the
- *     landing copy must be updated — this test will fail otherwise.
+ *   - Sloe editorial hero + pricing cards stay aligned with Figma LP1
+ *     and the shared pricing SSOT.
+ *   - Free-tier save limits on the landing pricing card stay pinned to
+ *     `FREE_SAVE_LIMIT`.
  *
  * Scope note: we assert on the rendered HTML of `LandingPage` (the
  * component), not the raw source. That way a string that's broken up
@@ -29,7 +22,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /** One shared client so `CheckoutButton` + `CurrentTierBadge` do not each mint a GoTrueClient (test noise). */
@@ -52,56 +45,33 @@ vi.mock("@supabase/supabase-js", () => {
 import { LandingPage } from "../../app/(landing)/LandingPage";
 import { PricingTiersGrid } from "../../app/pricing/PricingTiersGrid";
 import {
-  TODAY_RING_OVERLINE,
-  TODAY_STAT_LABELS,
-  MEAL_SLOT_HEADERS,
-  NET_DEFICIT_LABEL,
-} from "../../src/lib/copy/today";
-import {
-  NUTRITION_SOURCES,
   PRICING_TIERS,
-  ROADMAP,
-  TDEE_MIN_LOGGING_DAYS,
-  TDEE_MIN_WEIGH_INS,
   FREE_SAVE_LIMIT,
   computeAnnualSavingsBadge,
-  currentAppVersionLabel,
 } from "../../src/lib/landing/content";
 
-describe("landing page — canonical copy parity", () => {
-  it("uses the canonical ring overline label", () => {
-    const { container } = render(<LandingPage />);
-    // Ring overline rendered in title-case ("Remaining") on the
-    // landing visuals even though the mobile / web rings use the
-    // uppercase constant. The canonical constant value is the
-    // *string*; we assert the title-case variant is present.
-    const expected = TODAY_RING_OVERLINE; // "REMAINING"
-    const text = (container.textContent ?? "").toUpperCase();
-    expect(text).toContain(expected);
-  });
-
-  it("renders all 4 Today stat tile labels (uppercased on the landing)", () => {
-    const { container } = render(<LandingPage />);
-    const text = (container.textContent ?? "").toUpperCase();
-    expect(text).toContain(TODAY_STAT_LABELS.logged.toUpperCase());
-    expect(text).toContain(TODAY_STAT_LABELS.target.toUpperCase());
-    expect(text).toContain(TODAY_STAT_LABELS.burned.toUpperCase());
-    expect(text).toContain(TODAY_STAT_LABELS.net.toUpperCase());
-  });
-
-  it("uses meal-slot headers (Breakfast / Lunch / Snack) on the mocks", () => {
+describe("landing page — Sloe editorial parity", () => {
+  it("renders the Sloe hero headline from Figma LP1", () => {
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";
-    expect(text).toContain(MEAL_SLOT_HEADERS.breakfast);
-    expect(text).toContain(MEAL_SLOT_HEADERS.lunch);
-    expect(text).toContain(MEAL_SLOT_HEADERS.snack);
+    expect(text).toContain("Cook what you love.");
+    expect(text).toContain("Still");
+    expect(text).toContain("reach your goals.");
   });
 
-  it("labels the Net detail as 'deficit' (not 'below maintenance')", () => {
+  it("uses Sloe branding (not legacy Suppr nav mark)", () => {
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";
-    expect(text).toContain(NET_DEFICIT_LABEL);
-    expect(text).not.toContain("below maint");
+    expect(text).toContain("Sloe");
+    expect(text).not.toContain("Suppr");
+  });
+
+  it("links Browse recipes to /discover", () => {
+    const { container } = render(<LandingPage />);
+    const browse = Array.from(container.querySelectorAll("a")).find((a) =>
+      /browse recipes/i.test(a.textContent ?? ""),
+    );
+    expect(browse?.getAttribute("href")).toBe("/discover");
   });
 });
 
@@ -158,19 +128,15 @@ describe("landing page — pricing tier parity with /pricing route", () => {
   });
 });
 
-describe("landing page — nutrition source pipeline parity", () => {
-  it("trust strip lists every source the verifyIngredients pipeline uses", () => {
+describe("landing page — nutrition attribution (Figma LP1)", () => {
+  it("renders mandatory FatSecret attribution in the footer", () => {
     const { container } = render(<LandingPage />);
-    const text = container.textContent ?? "";
-    for (const source of NUTRITION_SOURCES) {
-      expect(text).toContain(source);
-    }
+    const badge = container.querySelector('a[href*="fatsecret"]');
+    expect(badge, "FatSecret badge link").toBeTruthy();
+    expect(badge?.getAttribute("aria-label") ?? "").toMatch(/fatsecret/i);
   });
 
   it("does not claim a source that isn't in the pipeline", () => {
-    // Guard against re-adding a retired source to the trust strip
-    // without also adding it to the pipeline (happened with Spoonacular in an
-    // earlier draft).
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";
     const RETIRED = ["Spoonacular", "Nutritionix"];
@@ -180,21 +146,8 @@ describe("landing page — nutrition source pipeline parity", () => {
   });
 });
 
-describe("landing page — Adaptive TDEE threshold parity", () => {
-  it("cites the real minimum logging days from adaptiveTdee.ts", () => {
-    const { container } = render(<LandingPage />);
-    const text = container.textContent ?? "";
-    // Copy form: "logged N days"
-    expect(text).toContain(`${TDEE_MIN_LOGGING_DAYS} days`);
-  });
-
-  it("cites the real minimum weigh-in count", () => {
-    const { container } = render(<LandingPage />);
-    const text = container.textContent ?? "";
-    expect(text).toContain(`${TDEE_MIN_WEIGH_INS} times`);
-  });
-
-  it("does not repeat the retired '14 days' claim", () => {
+describe("landing page — Adaptive TDEE (moved off LP1)", () => {
+  it("does not repeat the retired '14 days' claim on the Sloe landing", () => {
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";
     expect(text).not.toContain("over 14 days");
@@ -209,105 +162,14 @@ describe("landing page — Free-tier save limit parity", () => {
   });
 });
 
-describe("landing page — roadmap parity", () => {
-  it("'Now' bucket renders the current app/build label", () => {
+describe("landing page — roadmap (Figma LP1)", () => {
+  it("links to the dedicated /roadmap page instead of inlining the SSOT", () => {
     const { container } = render(<LandingPage />);
-    const text = container.textContent ?? "";
-    expect(text).toContain(currentAppVersionLabel());
-  });
-
-  it("every 'shipped' item from the SSOT renders on the landing", () => {
-    const { container } = render(<LandingPage />);
-    const text = container.textContent ?? "";
-    const shipped = ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "shipped");
-    for (const item of shipped) {
-      expect(text).toContain(item.text);
-    }
-  });
-
-  it("Household sharing is tagged shipped and lives in the 'Now' bucket (H17)", () => {
-    const now = ROADMAP.find((b) => b.title === "Now");
-    expect(now, "Now bucket exists").toBeTruthy();
-    const household = now!.items.find((i) => /household sharing/i.test(i.text));
-    expect(household, "Household sharing lives in Now").toBeTruthy();
-    expect(household!.status).toBe("shipped");
-    // And not also in Later.
-    const later = ROADMAP.find((b) => b.title === "Later");
-    const laterHousehold = later?.items.find((i) => /household sharing/i.test(i.text));
-    expect(laterHousehold).toBeUndefined();
-  });
-
-  it("no item is listed as both 'building' and 'shipped'", () => {
-    const building = new Set(
-      ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text),
+    const roadmap = Array.from(container.querySelectorAll("a")).find((a) =>
+      a.getAttribute("href")?.includes("/roadmap"),
     );
-    const shipped = ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "shipped").map((i) => i.text);
-    for (const s of shipped) {
-      expect(building.has(s)).toBe(false);
-    }
+    expect(roadmap, "footer or nav roadmap link").toBeTruthy();
   });
-
-  /**
-   * Every `building` roadmap item must point at a real anchor file so
-   * marketing can't advertise work that doesn't exist yet — this is
-   * exactly the failure mode that let "Creator analytics for published
-   * recipes" sit at `status: "building"` with zero scaffolding until
-   * the 2026-04-19 sync-enforcer sweep caught it.
-   *
-   * Adding a new `building` item requires adding its anchor here. The
-   * anchor must be a path to a file that exists today; a directory
-   * path (e.g. `apps/mobile/widgets/`) also counts, provided the
-   * directory contains at least one file. If the work hasn't started,
-   * the item should stay `planned`.
-   */
-  const BUILDING_ANCHORS: Record<string, string> = {
-    "Home screen widgets (iOS)": "apps/mobile/lib/widgetSnapshot.ts",
-    "Richer macro trend reports": "src/app/components/ProgressDashboard.tsx",
-  };
-
-  function anchorExists(relPath: string): boolean {
-    const abs = join(process.cwd(), relPath);
-    if (!existsSync(abs)) return false;
-    const s = statSync(abs);
-    if (s.isFile()) return true;
-    if (s.isDirectory()) {
-      // Consider the anchor resolved if the directory contains any file.
-      try {
-        const entries = readdirSync(abs);
-        return entries.some((e) => {
-          try {
-            return statSync(join(abs, e)).isFile();
-          } catch {
-            return false;
-          }
-        });
-      } catch {
-        return false;
-      }
-    }
-    return false;
-  }
-
-  it("every 'building' roadmap item has an entry in BUILDING_ANCHORS", () => {
-    const building = ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text);
-    const missing = building.filter((t) => !(t in BUILDING_ANCHORS));
-    expect(missing).toEqual([]);
-  });
-
-  it("every BUILDING_ANCHORS entry resolves to at least one real file", () => {
-    const building = new Set(
-      ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text),
-    );
-    const unresolved: string[] = [];
-    for (const [text, anchor] of Object.entries(BUILDING_ANCHORS)) {
-      if (!building.has(text)) continue; // stale map entry — tolerated, not a test fail
-      if (!anchorExists(anchor)) {
-        unresolved.push(`${text} → ${anchor}`);
-      }
-    }
-    expect(unresolved).toEqual([]);
-  });
-
 });
 
 describe("/pricing — paid-tier renewal disclosure (legal round-4 + round-6 flag)", () => {

@@ -117,7 +117,19 @@ describe("Today above-meals cap (mobile) — folded primitives", () => {
 });
 
 describe("Today branding row (mobile)", () => {
-  it("does not duplicate brand wordmark in Today scroll (tab title is enough)", () => {
+  // SLOE redesign (2026-06-03, `01 · Today` frame, Grace decision): the
+  // Today scroll now opens with a "Sloe" wordmark + avatar header in
+  // place of the old "< Today >" date-nav row. This supersedes the
+  // earlier "tab title is enough, no wordmark" posture — the wordmark IS
+  // the intended top-of-Today identity now. We still forbid the legacy
+  // standalone <TodayBrandBar> component (the wordmark is a lightweight
+  // inline row, not that retired block).
+  it("renders the Sloe wordmark header (intentional, SLOE redesign 2026-06-03)", () => {
+    expect(HOST_SRC).toMatch(/<SloeHeaderWordmark[\s/]/);
+    expect(HOST_SRC).toMatch(/testID="today-wordmark"/);
+  });
+
+  it("does not use the legacy standalone <TodayBrandBar> block", () => {
     expect(HOST_SRC).not.toMatch(/<TodayBrandBar[\s/]/);
   });
 });
@@ -168,9 +180,10 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
     expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
   });
 
-  it("NorthStarBlockHost does not render between macro tiles and meals", () => {
+  it("NorthStarBlockHost renders between macro tiles and meals (Figma 654:2)", () => {
     const between = macroGridToMealsSlice(HOST_SRC);
-    expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/<NorthStarBlockHost[\s/]/);
+    expect(between).toMatch(/showAboveMealsNorthStar/);
   });
 });
 
@@ -178,16 +191,22 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
   it("uses shared below-meals prompt cap (max 2, ENG-585)", () => {
     expect(HOST_SRC).toMatch(/belowMealsPromptSelection/);
     expect(HOST_SRC).toMatch(/isBelowMealsPromptVisible/);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar/);
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("NorthStarBlockHost below meals is gated by showBelowMealsNorthStar (ENG-690 empty-day-only)", () => {
+  it("North Star above meals uses remaining > 0 without empty-day meals gate", () => {
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*=/);
+    expect(HOST_SRC).toMatch(/remaining\s*>\s*0/);
+    expect(HOST_SRC).not.toMatch(/showBelowMealsNorthStar/);
+  });
+
+  it("NorthStarBlockHost above meals is gated by showAboveMealsNorthStar", () => {
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
-    const northStarBelowIdx = HOST_SRC.indexOf("<NorthStarBlockHost", mealsIdx);
+    const northStarAboveIdx = HOST_SRC.indexOf("<NorthStarBlockHost");
     expect(mealsIdx).toBeGreaterThan(-1);
-    expect(northStarBelowIdx).toBeGreaterThan(mealsIdx);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
+    expect(northStarAboveIdx).toBeGreaterThan(-1);
+    expect(northStarAboveIdx).toBeLessThan(mealsIdx);
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {

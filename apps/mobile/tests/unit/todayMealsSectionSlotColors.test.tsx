@@ -11,19 +11,30 @@
  *
  * The component renders the wrapper as
  *   `<View style={{ backgroundColor: col + "18", ... }}>`
- * where `col = SLOT_COLOR[slot]`. Post 2026-05-22 8-slot palette,
- * snack tint is Purple (`#9679D9`); Fat macro is Magenta (`#DF5EBC`).
- * We assert the snack wrapper's bg uses the Purple prefix and is
- * explicitly NOT the magenta hex prefix.
+ * where `col = SLOT_COLOR[slot]`. Sloe Phase 0 (dossier D-4): snack tint is
+ * teal (`#4A7878`); Fat macro is amber (`#C9892C`). We assert the snack
+ * wrapper's bg uses the teal prefix and is explicitly NOT the fat-macro hue —
+ * that snack↔fat collision (the original 2026-05-01 bug) must never regress.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 import { View } from "react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { MacroColors, SlotColors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
+
+// Per-slot icon TINTS, the micros-fibre chip, and the collapse/add affordances
+// pinned here live in the LEGACY TD4 slot layout, which renders when
+// `today_meals_figma_654` is OFF. The Figma 654:2 layout (default-on) replaced
+// them with neutral utensil tiles + a consolidated CTA. Force the legacy branch
+// so these still-live (flag-gated fallback) invariants stay covered — same mock
+// as `todayMealsSectionTd4.test.tsx`.
+vi.mock("../../lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+}));
 
 void React;
 
@@ -101,20 +112,18 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
     expect(tree.getByText("Snacks")).toBeTruthy();
   });
 
-  it("includes the Purple Snacks tint (SlotColors.snack), NOT the Magenta MacroColors.fat tint", () => {
+  it("includes the teal Snacks tint (SlotColors.snack), distinct from MacroColors.fat", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
-    // The Purple snack tint MUST be present (8-slot palette).
+    // The teal snack tint MUST be present (Sloe D-4).
     expect(tints).toContain(`${SlotColors.snack.toLowerCase()}18`);
-    // The Magenta fat-macro tint MUST NOT be present anywhere in the
-    // rendered Today meal section. This is the regression-pin: if
-    // someone re-points Snacks back at `MacroColors.fat`, the magenta
-    // bg appears here and the test fails.
-    expect(tints).not.toContain(`${MacroColors.fat.toLowerCase()}18`);
-    // Defence-in-depth — neither the new nor the legacy magenta hex
-    // must bleed in via any other code path.
+    // The original 2026-05-01 bug was Snacks borrowing MacroColors.fat — so
+    // the invariant is that the snack tint is NOT the fat hue. In Sloe snack
+    // is teal and fat is amber, so they're distinct by construction.
+    expect(SlotColors.snack.toLowerCase()).not.toBe(MacroColors.fat.toLowerCase());
+    // Legacy magenta fat hexes must never bleed back in via any code path.
     for (const t of tints) {
-      expect(t).not.toContain("df5ebc"); // new magenta (fat)
+      expect(t).not.toContain("df5ebc"); // legacy 8-slot magenta (fat)
       expect(t).not.toContain("e04888"); // legacy TF49 magenta
     }
   });

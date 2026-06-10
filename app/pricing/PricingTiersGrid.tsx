@@ -153,7 +153,8 @@ export function PricingTiersGrid({
       {regionNote ? (
         <div
           data-testid="pricing-region-note"
-          className="mb-6 mx-auto max-w-xl text-center text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2"
+          className="mb-6 mx-auto max-w-xl text-center text-xs font-medium text-muted-foreground border border-border rounded-full px-4 py-2"
+          style={{ background: "var(--background-secondary)" }}
         >
           {regionNote}
         </div>
@@ -195,23 +196,28 @@ export function PricingTiersGrid({
               }
             >
               {tier.highlighted && (
-                // Audit 2026-05-04 #23: full-width ribbon spans the
-                // card top edge — industry-standard "recommended tier"
-                // signal, unambiguous vs. the previous centred pill.
-                <div className="absolute -top-px left-0 right-0 h-8 flex items-center justify-center rounded-t-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold tracking-wide">
+                // SLOE DS: the recommended-tier ribbon is the clay action
+                // hue (the Sloe "best value" signal in the Figma paywall),
+                // replacing the violet→indigo gradient.
+                <div
+                  className="absolute -top-px left-0 right-0 h-8 flex items-center justify-center rounded-t-2xl text-white text-xs font-bold tracking-wide"
+                  style={{ background: "var(--accent-primary)" }}
+                >
                   Most popular
                 </div>
               )}
 
               <div className="flex items-center gap-2 mb-1">
-                <h3 className={`text-lg font-semibold text-foreground`}>
+                {/* SLOE DS: plum serif tier name (the brand display voice). */}
+                <h3 className="text-lg font-medium font-[family-name:var(--font-newsreader)] tracking-tight text-foreground-brand">
                   {tier.name}
                 </h3>
                 <CurrentTierBadge tierName={tier.name} />
               </div>
 
               <div className="mb-2 flex items-baseline gap-2">
-                <span className={`text-4xl font-bold text-foreground`}>
+                {/* SLOE DS: plum serif price numeral. */}
+                <span className="text-4xl font-medium font-[family-name:var(--font-newsreader)] tracking-tight text-foreground-brand">
                   {price}
                 </span>
                 <span className={`text-sm text-muted-foreground`}>
@@ -224,8 +230,15 @@ export function PricingTiersGrid({
                   // set (none today).
                   const badge = computeAnnualSavingsBadge(tier);
                   if (!badge) return null;
+                  // SLOE DS: savings badge in the sage "on-track" hue.
                   return (
-                    <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <span
+                      className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        background: "var(--accent-success-soft)",
+                        color: "var(--accent-success-solid)",
+                      }}
+                    >
                       {badge}
                     </span>
                   );
@@ -255,9 +268,11 @@ export function PricingTiersGrid({
                   on tiers that actually have an annual SKU + savings
                   string to substantiate the claim. */}
               {!showAnnual && tier.annualPrice && tier.annualSavings ? (
+                // SLOE DS: annual-savings nudge in the sage "on-track" hue.
                 <p
                   data-testid={`pricing-monthly-savings-nudge-${tier.name.toLowerCase()}`}
-                  className={`-mt-1 mb-2 text-xs ${tier.name === "Pro" ? "text-emerald-300" : "text-emerald-700 dark:text-emerald-400"}`}
+                  className="-mt-1 mb-2 text-xs"
+                  style={{ color: "var(--accent-success-solid)" }}
                 >
                   {tier.annualSavings} with annual — {tier.annualPrice}
                   {tier.annualPeriod ? `${tier.annualPeriod}` : ""}
@@ -291,28 +306,38 @@ export function PricingTiersGrid({
                     key={feature}
                     className={`flex items-start gap-2 text-sm text-foreground`}
                   >
+                    {/* SLOE DS: feature checks — sage on highlighted/Pro
+                        (the "included" tick in the Figma paywall table),
+                        muted on the Free tier. */}
                     <Check
-                      className={`w-4 h-4 shrink-0 mt-0.5 ${
-                        tier.highlighted
-                          ? "text-violet-600 dark:text-violet-400"
-                          : tier.name === "Pro"
-                            ? "text-violet-400"
-                            : "text-slate-400 dark:text-slate-500"
-                      }`}
+                      className="w-4 h-4 shrink-0 mt-0.5"
+                      style={{
+                        color:
+                          tier.highlighted || tier.name === "Pro"
+                            ? "var(--accent-success-solid)"
+                            : "var(--foreground-tertiary)",
+                      }}
                     />
                     {feature}
                   </li>
                 ))}
               </ul>
 
+              {/* SLOE DS: nutrition note pill — cream slab with plum
+                  text on the Pro/highlighted tier, muted on Free. */}
               <div
-                className={`text-xs font-medium mb-4 px-2.5 py-1.5 rounded-md inline-block ${
-                  tier.name === "Pro"
-                    ? "bg-violet-500/20 text-violet-300"
-                    : tier.highlighted
-                      ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                }`}
+                className="text-xs font-medium mb-4 px-2.5 py-1.5 rounded-md inline-block"
+                style={
+                  tier.highlighted || tier.name === "Pro"
+                    ? {
+                        background: "var(--background-secondary)",
+                        color: "var(--foreground-brand)",
+                      }
+                    : {
+                        background: "var(--background-secondary)",
+                        color: "var(--muted-foreground)",
+                      }
+                }
               >
                 {tier.nutritionNote}
               </div>
@@ -364,21 +389,18 @@ function BillingToggle({
           the "Save 37%" badge was advertising a generic discount
           rather than a billing-period switch. The BILLING eyebrow
           anchors the toggle's purpose. */}
-      <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500 dark:text-slate-400">
+      {/* SLOE DS: billing eyebrow + segmented toggle on the cream rail
+          (`--background-secondary`); selected tab lifts to the white page
+          surface. Sage savings badge. Replaces the slate/emerald set. */}
+      <span className="text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
         BILLING
       </span>
       <div
         role="tablist"
         aria-label="Billing period"
-        className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+        className="inline-flex items-center p-1 rounded-full border border-border"
+        style={{ background: "var(--background-secondary)" }}
       >
-        {/* 2026-05-12 (premium-bar audit #7 dark-mode fix): active-tab
-            background was `dark:bg-slate-900` which is DARKER than the
-            wrapper's `dark:bg-slate-800` — selected tab read as
-            recessed/invisible against the rail. Convention is selected
-            = raised/lighter. Switched to `dark:bg-slate-700` so the
-            active tab sits visibly above the rail in dark mode while
-            light mode keeps its white-on-slate-100 lift. */}
         <button
           type="button"
           role="tab"
@@ -386,8 +408,8 @@ function BillingToggle({
           onClick={() => onChange("monthly")}
           className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
             billing === "monthly"
-              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Monthly
@@ -399,13 +421,19 @@ function BillingToggle({
           onClick={() => onChange("annual")}
           className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
             billing === "annual"
-              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Annual
           {annualBadge ? (
-            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            <span
+              className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+              style={{
+                background: "var(--accent-success-soft)",
+                color: "var(--accent-success-solid)",
+              }}
+            >
               {annualBadge}
             </span>
           ) : null}
@@ -453,19 +481,21 @@ function BillingDisclosure({
   // law. Rest of world unchanged. See
   // docs/decisions/2026-04-25-uk-eu-statutory-cancellation.md.
   const isUkEu = regionVatNote.length > 0;
+  // SLOE DS: disclosure body + links read on the muted-foreground hue
+  // across both tiers (the cream Pro card no longer needs a bespoke slate
+  // ramp). `isProDark` retained in the signature for caller compatibility;
+  // colour is now token-driven and identical across tiers. Copy is
+  // UNCHANGED (legal-sensitive).
+  void isProDark;
   return (
     <p
-      className={`mt-2 text-xs leading-snug text-center ${
-        isProDark ? "text-slate-300" : "text-slate-600 dark:text-slate-300"
-      }`}
+      className="mt-2 text-xs leading-snug text-center text-muted-foreground"
       data-testid="billing-disclosure"
     >
       {`${price}${period}, charged today and automatically renews each ${periodNoun} until you cancel. Cancel anytime in `}
       <a
         href="/account/billing"
-        className={`underline underline-offset-2 ${
-          isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
-        }`}
+        className="underline underline-offset-2 hover:text-foreground"
       >
         account settings
       </a>
@@ -479,9 +509,7 @@ function BillingDisclosure({
           </span>
           <a
             href="/terms#refunds"
-            className={`underline underline-offset-2 ${
-              isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
-            }`}
+            className="underline underline-offset-2 hover:text-foreground"
           >
             7-day goodwill refund policy
           </a>
@@ -491,9 +519,7 @@ function BillingDisclosure({
         <>
           <a
             href="/terms#refunds"
-            className={`underline underline-offset-2 ${
-              isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
-            }`}
+            className="underline underline-offset-2 hover:text-foreground"
           >
             7-day refund policy
           </a>

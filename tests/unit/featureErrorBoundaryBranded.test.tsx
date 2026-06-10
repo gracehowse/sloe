@@ -57,7 +57,7 @@ describe("FeatureErrorBoundary branded fallback (ENG-799)", () => {
     expect(screen.getByText("Progress ran into a problem")).toBeInTheDocument();
     // Legacy path: no branded surface, no brand mark.
     expect(screen.queryByTestId("feature-error-boundary-branded")).toBeNull();
-    expect(screen.queryByRole("img", { name: "Suppr" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "Sloe" })).toBeNull();
   });
 
   it("renders the branded fallback (brand mark + brand surface) when the flag is ON", () => {
@@ -74,7 +74,7 @@ describe("FeatureErrorBoundary branded fallback (ENG-799)", () => {
     expect(branded).toBeInTheDocument();
     expect(branded.className).toContain("bg-background");
     // Brand mark present (mirrors mobile InlineBrandMark).
-    expect(screen.getByRole("img", { name: "Suppr" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
     // Calm parity copy.
     expect(screen.getByText(/team has been notified/i)).toBeInTheDocument();
     // Primary CTA preserved.

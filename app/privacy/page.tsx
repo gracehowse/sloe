@@ -156,6 +156,7 @@ export default function PrivacyPage() {
                 <tr><td>RevenueCat</td><td>iOS IAP receipt verification</td><td>IAP receipt, user id</td><td>US</td></tr>
                 <tr><td>Expo / EAS</td><td>Mobile OTA updates, push tokens, crash logs</td><td>Device id, push token</td><td>US</td></tr>
                 <tr><td>OpenAI</td><td>AI features (photo / text meal logging, recipe parsing)</td><td>Uploaded image, caption / URL text (no account data)</td><td>US</td></tr>
+                <tr><td>Supadata</td><td>Recipe-import content acquisition (web page scrape / video transcript)</td><td>The URL you import + the public page/transcript content it returns (no account data)</td><td>US</td></tr>
                 <tr><td>Edamam</td><td>Food database lookups</td><td>Ingredient text query (no account data)</td><td>US</td></tr>
                 <tr><td>FatSecret</td><td>Food database lookups</td><td>Ingredient text query (no account data)</td><td>US</td></tr>
                 <tr><td>USDA FoodData Central</td><td>Public-domain food database</td><td>Ingredient text query (no account data)</td><td>US (public sector)</td></tr>

@@ -12,9 +12,10 @@
  *   1. The bundle's Goals & targets section now renders a Fasting
  *      row that routes to /fasting (testID
  *      `settings-bundle-fasting-row`).
- *   2. /fasting renders an in-app window picker (16:8 / 18:6 /
- *      20:4 / 14:10) that persists to `profiles.fasting_window`,
- *      matching web parity with `src/app/components/FastingTimer.tsx`.
+ *   2. /fasting renders an in-app window picker (all five Sloe presets:
+ *      16:8 / 18:6 / 20:4 / 14:10 / OMAD — ENG-922) that persists to
+ *      `profiles.fasting_window`, matching web parity with
+ *      `src/app/components/FastingTimer.tsx`.
  *   3. The Settings search index includes the literal user query
  *      ("fast") as a keyword for the Fasting entry.
  *   4. The Settings screen renders search results when the query
@@ -60,15 +61,16 @@ describe("Settings → Fasting findability (Build 40 fix)", () => {
     expect(BUNDLE).toMatch(/setFastingWindow/);
   });
 
-  it("/fasting renders a window picker with all four web-parity presets", () => {
+  it("/fasting renders a window picker driven by the shared 5-preset list (incl. OMAD)", () => {
     expect(FASTING_SCREEN).toContain('testID="fasting-window-picker"');
-    // Pin the four presets via the WINDOW_PRESETS constant — the
-    // testIDs themselves are template-literal interpolations
-    // (`fasting-window-preset-${w}`) so we check the source presets
-    // rather than the rendered IDs.
+    // The screen now maps over the shared FASTING_WINDOW_PRESETS list
+    // (ENG-922: all five windows incl. OMAD) rather than a local const.
+    // Pin the import + the per-preset testID interpolation; the canonical
+    // 5-preset list is pinned in `tests/unit/fastingMilestones.test.ts`.
     expect(FASTING_SCREEN).toMatch(
-      /WINDOW_PRESETS\s*=\s*\[\s*"16:8",\s*"18:6",\s*"20:4",\s*"14:10"/,
+      /FASTING_WINDOW_PRESETS[\s\S]*?from "@suppr\/shared\/fasting\/milestones"/,
     );
+    expect(FASTING_SCREEN).toMatch(/FASTING_WINDOW_PRESETS\.map/);
     expect(FASTING_SCREEN).toContain("testID={`fasting-window-preset-${w}`}");
   });
 

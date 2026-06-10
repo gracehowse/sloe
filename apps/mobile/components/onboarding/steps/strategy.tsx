@@ -1,8 +1,8 @@
 import * as React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { mapGoalToStrategy } from "@/lib/onboarding";
 import type { NutritionStrategy } from "@/lib/tdee";
@@ -58,6 +58,9 @@ export function MobileStrategyStep() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the selected option's
+  // icon tint + the "RECOMMENDED" pill. The card chrome flips via `OptionCard`.
+  const accent = useAccent();
   const recommended = state.goal ? mapGoalToStrategy(state.goal) : "balanced";
   const selected = state.nutritionStrategy ?? recommended;
 
@@ -81,7 +84,7 @@ export function MobileStrategyStep() {
                 <Ionicons
                   name={s.icon}
                   size={20}
-                  color={isSelected ? Accent.primaryLight : colors.icon}
+                  color={isSelected ? accent.primaryLight : colors.icon}
                 />
               }
               title={
@@ -104,7 +107,7 @@ export function MobileStrategyStep() {
                   {isRecommended && (
                     <View
                       style={{
-                        backgroundColor: `${Accent.primaryLight}26`,
+                        backgroundColor: `${accent.primaryLight}26`,
                         paddingHorizontal: 6,
                         paddingVertical: 2,
                         borderRadius: 4,
@@ -112,7 +115,7 @@ export function MobileStrategyStep() {
                     >
                       <Text
                         style={{
-                          color: Accent.primaryLight,
+                          color: accent.primaryLight,
                           fontSize: 10,
                           fontWeight: "700",
                           letterSpacing: 1,
@@ -130,7 +133,7 @@ export function MobileStrategyStep() {
         })}
       </View>
       <MobileMethodologyNote>
-        Macro ratios are a starting point. Suppr recalibrates protein and carbs
+        Macro ratios are a starting point. Sloe recalibrates protein and carbs
         as you log and weigh in.
       </MobileMethodologyNote>
     </MobileStepBody>

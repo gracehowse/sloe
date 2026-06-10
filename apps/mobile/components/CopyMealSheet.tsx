@@ -10,7 +10,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import {
@@ -81,6 +82,9 @@ export default function CopyMealSheet({
   onConfirm,
   colors,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the selected calendar
+  // day, active quick-range chips, and the Copy CTA.
+  const accent = useAccent();
   const defaultTarget = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
   const [targetKey, setTargetKey] = useState(defaultTarget);
   const [quickRange, setQuickRange] = useState<QuickRange>("none");
@@ -207,7 +211,7 @@ export default function CopyMealSheet({
                         borderRadius: 17,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: isSel ? Accent.primary : "transparent",
+                        backgroundColor: isSel ? accent.primary : "transparent",
                         opacity: disabled ? 0.28 : 1,
                       }}
                     >
@@ -248,8 +252,8 @@ export default function CopyMealSheet({
                     paddingVertical: 6,
                     borderRadius: 999,
                     borderWidth: 1,
-                    borderColor: isActive ? Accent.primary : colors.cardBorder,
-                    backgroundColor: isActive ? Accent.primary : "transparent",
+                    borderColor: isActive ? accent.primary : colors.cardBorder,
+                    backgroundColor: isActive ? accent.primary : "transparent",
                   }}
                 >
                   <Text
@@ -310,7 +314,7 @@ export default function CopyMealSheet({
                 paddingVertical: 12,
                 alignItems: "center",
                 borderRadius: Radius.md,
-                backgroundColor: canConfirm ? Accent.primary : colors.cardBorder,
+                backgroundColor: canConfirm ? accent.primary : colors.cardBorder,
               }}
               accessibilityRole="button"
               accessibilityLabel="Copy"

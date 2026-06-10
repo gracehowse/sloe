@@ -23,6 +23,8 @@ export interface TodayDateHeaderProps {
   onOpenSettings: () => void;
   hideViewModeToggle?: boolean;
   hideDayStrip?: boolean;
+  /** Sloe Today — week strip only (no chevrons / title / avatar). */
+  stripOnly?: boolean;
   dayGreeting?: string;
   streakDays?: number;
   freezeProtected?: boolean;
@@ -52,6 +54,7 @@ export function TodayDateHeader({
   onOpenSettings,
   hideViewModeToggle = false,
   hideDayStrip = false,
+  stripOnly = false,
   dayGreeting,
   streakDays,
   freezeProtected,
@@ -59,6 +62,26 @@ export function TodayDateHeader({
 }: TodayDateHeaderProps) {
   const calmDateNav = hideDayStrip && viewMode === "day";
   const isToday = selectedDateKey === todayKey();
+
+  if (stripOnly) {
+    // Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
+    // (`mb-7` ≈ 28px between the week strip and the ring hero). `mb-5`
+    // (20px) + the host `space-y-3` (12px) ≈ the frame's strip→hero gap;
+    // replaces the cramped `mb-2`. Mirrors the mobile `marginBottom`
+    // bump in `(tabs)/index.tsx`.
+    return (
+      <div className="mb-5 flex flex-col gap-1">
+        <DayStrip
+          selectedDateKey={selectedDateKey}
+          weekStartDay={weekStartDay}
+          loggedDays={loggedDays}
+          protectedDateKeys={protectedDateKeys}
+          onSelectDateKey={onSelectDateKey}
+          onOpenCalendar={onOpenCalendar}
+        />
+      </div>
+    );
+  }
   const showStreakPip =
     viewMode === "day" &&
     isToday &&
@@ -125,7 +148,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground shrink-0"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white shrink-0"
             aria-label="Open settings"
           >
             {avatarLetter}
@@ -183,6 +206,10 @@ export function TodayDateHeader({
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Sloe treatment system (2026-06-08): segmented control
+              active segment = soft-tint lift (bg-primary/10) + primary-solid
+              icon; inactive = muted glyph on the warm-grey rail. Mirror
+              of mobile `TodayDateHeader`. */}
           {!hideViewModeToggle ? (
             <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
               <button
@@ -192,7 +219,7 @@ export function TodayDateHeader({
                 aria-pressed={viewMode === "day"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   viewMode === "day"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary/10 text-primary-solid shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -205,7 +232,7 @@ export function TodayDateHeader({
                 aria-pressed={viewMode === "week"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   viewMode === "week"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary/10 text-primary-solid shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -216,7 +243,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white"
             aria-label="Open settings"
           >
             {avatarLetter}

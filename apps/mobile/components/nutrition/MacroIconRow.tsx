@@ -1,16 +1,17 @@
 import React from "react";
 import { Text, View, type StyleProp, type ViewStyle, type TextStyle } from "react-native";
 import {
-  Beef,
   Clock,
-  Droplets,
+  Droplet,
+  Dumbbell,
   Flame,
-  Leaf,
+  Sprout,
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
 
-import { Accent, MacroColors } from "@/constants/theme";
+import { MacroColors } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * MacroIconRow — canonical at-a-glance macro display.
@@ -21,12 +22,12 @@ import { Accent, MacroColors } from "@/constants/theme";
  * calories). Compact, no card chrome — designed to drop into any row.
  *
  * Icon set (matches `feedback_prototype_icons_exact.md`):
- *   - Flame  → calories (`MacroColors.calories`)
- *   - Beef   → protein  (`MacroColors.protein`)
- *   - Wheat  → carbs    (`MacroColors.carbs`)
- *   - Droplets → fat    (`MacroColors.fat`)
- *   - Leaf   → fiber    (`MacroColors.fiber`)
- *   - Clock  → cook time (optional, `Accent.primary`)
+ *   - Flame    → calories (`MacroColors.calories`)
+ *   - Dumbbell → protein  (`MacroColors.protein`) — Figma `654:101`
+ *   - Wheat    → carbs    (`MacroColors.carbs`)
+ *   - Droplet  → fat      (`MacroColors.fat`)
+ *   - Sprout   → fibre    (`MacroColors.fiber`)
+ *   - Clock  → cook time (optional, `accent.primary` via `useAccent()`)
  *
  * Macro letter labels ("P", "C", "F") render at tertiary opacity so
  * the row is self-explanatory without the icon row reading as "memorise
@@ -50,6 +51,16 @@ export interface MacroIconRowProps {
   showMacroLetters?: boolean;
   /** Icon + text glyph size. Default 11 (Library/Discover); use 12 for hero rows. */
   iconSize?: number;
+  /**
+   * Give protein a slightly heavier weight + ink colour than the other
+   * macros, so the row reads "this is a tracker" with one visual accent
+   * (recipes.md §3.1 — "one visual emphasis per card"). Off by default
+   * so Today / Discover hero rows keep their even weighting. The Library
+   * card opts in. Pass `proteinTextColor` to set the emphasised ink.
+   */
+  emphasiseProtein?: boolean;
+  /** Ink colour used for the protein value when `emphasiseProtein`. */
+  proteinTextColor?: string;
   /** Optional override for the outer container style (gap, flexWrap, etc.). */
   style?: StyleProp<ViewStyle>;
   /** Optional override for the inner value-text style. */
@@ -101,9 +112,14 @@ export function MacroIconRow({
   textTertiaryColor,
   showMacroLetters = true,
   iconSize = 11,
+  emphasiseProtein = false,
+  proteinTextColor,
   style,
   textStyle,
 }: MacroIconRowProps) {
+  // Clock icon uses the scheme-resolved accent primary so it stays
+  // legible on dark (deep plum `#3B2A4D` is invisible on near-black).
+  const accent = useAccent();
   return (
     <View
       style={[{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }, style]}
@@ -121,14 +137,14 @@ export function MacroIconRow({
       ) : null}
       {typeof protein === "number" && Number.isFinite(protein) ? (
         <Chunk
-          Icon={Beef}
+          Icon={Dumbbell}
           iconColor={MacroColors.protein}
           value={`${Math.round(protein)}g`}
           letter={showMacroLetters ? "P" : undefined}
-          textColor={textColor}
+          textColor={emphasiseProtein ? (proteinTextColor ?? textColor) : textColor}
           textTertiaryColor={textTertiaryColor}
           iconSize={iconSize}
-          textStyle={textStyle}
+          textStyle={[textStyle, emphasiseProtein ? { fontWeight: "700" } : null]}
         />
       ) : null}
       {typeof carbs === "number" && Number.isFinite(carbs) ? (
@@ -145,7 +161,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fat === "number" && Number.isFinite(fat) ? (
         <Chunk
-          Icon={Droplets}
+          Icon={Droplet}
           iconColor={MacroColors.fat}
           value={`${Math.round(fat)}g`}
           letter={showMacroLetters ? "F" : undefined}
@@ -157,7 +173,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fiber === "number" && Number.isFinite(fiber) && fiber > 0 ? (
         <Chunk
-          Icon={Leaf}
+          Icon={Sprout}
           iconColor={MacroColors.fiber}
           value={`${Math.round(fiber * 10) / 10}g`}
           textColor={textColor}
@@ -169,7 +185,7 @@ export function MacroIconRow({
       {cookTime ? (
         <Chunk
           Icon={Clock}
-          iconColor={Accent.primary}
+          iconColor={accent.primary}
           value={cookTime}
           textColor={textColor}
           textTertiaryColor={textTertiaryColor}

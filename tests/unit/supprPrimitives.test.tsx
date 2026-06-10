@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe("SupprCard", () => {
-  it("renders children with default neutral tone + card elevation", () => {
+  it("renders children with default neutral tone + flat slab elevation (system contract)", () => {
     render(
       <SupprCard data-testid="card">
         <span>hello</span>
@@ -59,8 +59,16 @@ describe("SupprCard", () => {
     );
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-tone", "neutral");
-    expect(card).toHaveAttribute("data-elevation", "card");
-    expect(card.style.boxShadow).toContain("var(--elev-card)");
+    // SupprCard DEFAULT stays flat. The one-treatment rule (Grace 2026-06-09,
+    // `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`) is a
+    // per-call-site decision — page-ground cards opt INTO `elevation="card"`;
+    // the primitive default (and the `useCardElevation` hook default) is
+    // unchanged. Flat borderless slab — no shadow, no hairline; painted via
+    // `.card-slab-flat`, not inline boxShadow.
+    expect(card).toHaveAttribute("data-elevation", "slab-flat");
+    expect(card.getAttribute("data-flat-slab")).toBe("true");
+    expect(card.className.split(/\s+/)).toContain("card-slab-flat");
+    expect(card.style.boxShadow).toBe("");
   });
 
   it("applies the gradient bg only for tone=primary + gradient=true", () => {
@@ -87,10 +95,10 @@ describe("SupprCard", () => {
     expect(screen.getByTestId("flat").style.boxShadow).toBe("");
   });
 
-  it("uses --radius-card by default (lg)", () => {
+  it("uses --radius-card-lg (24px, the Sloe warm-slab corner) by default (lg)", () => {
     render(<SupprCard data-testid="card" />);
     expect(screen.getByTestId("card").className).toMatch(
-      /rounded-\[var\(--radius-card\)\]/,
+      /rounded-\[var\(--radius-card-lg\)\]/,
     );
   });
 

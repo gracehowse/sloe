@@ -17,6 +17,18 @@
  * Posture: same calm rules as the Digest. No emoji, no celebration, no
  * "Don't break your streak" copy. The banner is a quiet pointer.
  *
+ * ── Card chrome (Figma 654:2 unification 2026-06-08; one-treatment 2026-06-09) ──
+ * Renders the SAME `<SupprCard lift="soft">` cream slab as every other
+ * page-ground Today card (`TodayActivityCard`, `WeeklyInsightCard`, planned
+ * meals, …) — soft because it sits directly on the Today scroll ground
+ * (one-treatment rule, Grace 2026-06-09). It used to be the lone bordered card
+ * — an inline `<View>` with a peach `${Accent.primary}08` tint + a clay
+ * `${Accent.primary}30` hairline — which read as inconsistent next to
+ * the other slabs (Grace, 2026-06-08). The nudge semantics now ride
+ * the CONTENT (the clay "WEEKLY CHECK-IN" eyebrow + the clay "OPEN"
+ * button), never the card surface — the same rule the rest of Today
+ * follows (eyebrows/icons/CTAs carry meaning, the slab is neutral).
+ *
  * Mobile-only — web does not surface this banner because the Digest
  * card already lives on the web Progress dashboard (the Sunday cadence
  * is built into the Digest's `shouldShowRecap` gate).
@@ -25,7 +37,9 @@
 import { Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface WeeklyCheckinBannerProps {
   textColor: string;
@@ -40,28 +54,30 @@ export function WeeklyCheckinBanner({
   onOpen,
   onDismiss,
 }: WeeklyCheckinBannerProps) {
+  // Secondary accent (Frost flag → damson, else clay) for the eyebrow + the
+  // OPEN CTA. The nudge accent rides the content, not the (neutral) card.
+  const accent = useAccent();
   return (
-    <View
+    <SupprCard
+      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+      lift="soft"
+      padding="md"
       testID="weekly-checkin-banner"
-      style={{
-        marginBottom: Spacing.md,
-        backgroundColor: `${Accent.primary}08`,
-        borderWidth: 1,
-        borderColor: `${Accent.primary}30`,
-        borderRadius: Radius.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
+      style={{ marginBottom: Spacing.md }}
+      innerStyle={{
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
       }}
     >
       <View style={{ flex: 1 }}>
+        {/* Accent eyebrow — the nudge accent now lives in the CONTENT, not a
+            card border (the slab is neutral cream like every Today card). */}
         <Text
           style={{
             fontSize: 10,
             fontWeight: "700",
-            color: Accent.primary,
+            color: accent.primary,
             letterSpacing: 1,
           }}
         >
@@ -88,23 +104,30 @@ export function WeeklyCheckinBanner({
           See last week&rsquo;s intake, weight delta, and adjust your goal pace.
         </Text>
       </View>
+      {/* Sloe treatment system (2026-06-08): primary inline CTA →
+          aubergine outline (transparent fill + 1.5px primarySolid border
+          + primarySolid label), not a filled slab. Mobile-only banner
+          (no web mirror — web surfaces the Digest on Progress instead). */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open weekly check-in"
         onPress={onOpen}
         testID="weekly-checkin-banner-open"
-        style={{
+        style={({ pressed }) => ({
           paddingHorizontal: 12,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          backgroundColor: Accent.primary,
-        }}
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
         <Text
           style={{
             fontSize: 11,
             fontWeight: "700",
-            color: "#fff",
+            color: accent.primarySolid,
             letterSpacing: 0.5,
           }}
         >
@@ -121,7 +144,7 @@ export function WeeklyCheckinBanner({
       >
         <X size={18} color={textSecondaryColor} />
       </Pressable>
-    </View>
+    </SupprCard>
   );
 }
 

@@ -17,6 +17,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Mail } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import {
@@ -31,6 +32,7 @@ export interface ReceivedInvitesBannerProps {
 }
 
 export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const [invites, setInvites] = useState<HouseholdInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,13 +109,13 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
         padding: Spacing.lg,
         borderRadius: Radius.md,
         borderWidth: 1,
-        borderColor: Accent.primary + "40",
-        backgroundColor: Accent.primary + "10",
+        borderColor: accent.primary + "40",
+        backgroundColor: accent.primary + "10",
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Mail size={16} color={Accent.primary} />
-        <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 0.5 }}>
+        <Mail size={16} color={accent.primary} />
+        <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 0.5 }}>
           {invites.length === 1 ? "Household invitation" : `${invites.length} household invitations`}
         </Text>
       </View>
@@ -133,7 +135,7 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
                 flex: 1,
                 paddingVertical: 10,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: accent.primary,
                 alignItems: "center",
                 opacity: busyId === inv.id ? 0.5 : 1,
               }}

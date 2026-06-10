@@ -32,7 +32,11 @@ export const CssCheck: Story = {
   args: { children: "Submit" },
   play: async ({ canvas }) => {
     const button = canvas.getByRole("button", { name: /submit/i });
-    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(58, 110, 198)");
+    // Sloe: the default Button bg is `--primary-solid` = `--accent-primary-solid`.
+    // The 2026-06-08 aubergine accent system set the light-theme value to deep
+    // plum #3B2A4D = rgb(59, 42, 77) (was clay #A0552E; the accent moved off the
+    // crowded warm-orange recipe lane). Keep in sync with src/styles/theme.css.
+    await expect(getComputedStyle(button).backgroundColor).toBe("rgb(59, 42, 77)");
   },
 };
 

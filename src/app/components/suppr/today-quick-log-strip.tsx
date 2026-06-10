@@ -41,7 +41,7 @@ export function TodayQuickLogStrip({
       <button
         type="button"
         onClick={onOpenSearch}
-        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-xl bg-card hover:bg-card/80 transition-colors flex"
+        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-card bg-card hover:bg-card/80 transition-colors flex"
       >
         <IconBox size="md" tone="warning">
           <Icons.search />
@@ -54,7 +54,7 @@ export function TodayQuickLogStrip({
         type="button"
         onClick={onOpenVoiceLog}
         aria-label={userTier === "pro" ? "Open voice log" : "Voice log — Pro feature"}
-        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-xl bg-card hover:bg-card/80 transition-colors flex relative"
+        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-card bg-card hover:bg-card/80 transition-colors flex relative"
       >
         <IconBox size="md" tone="success">
           <Icons.mic />
@@ -70,7 +70,7 @@ export function TodayQuickLogStrip({
         type="button"
         onClick={onOpenPhotoLog}
         aria-label={userTier === "pro" ? "Open AI photo log" : "AI photo log — Pro feature"}
-        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-xl bg-card hover:bg-card/80 transition-colors flex relative"
+        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-card bg-card hover:bg-card/80 transition-colors flex relative"
       >
         <IconBox size="md" tone="primary">
           <Icons.camera />
@@ -85,7 +85,7 @@ export function TodayQuickLogStrip({
       <button
         type="button"
         onClick={onOpenBarcode}
-        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-xl bg-card hover:bg-card/80 transition-colors flex"
+        className="flex-1 min-h-14 flex-col items-center justify-center gap-1.5 px-1 py-2 rounded-card bg-card hover:bg-card/80 transition-colors flex"
       >
         <IconBox size="md" tone="fat">
           <Icons.scan />

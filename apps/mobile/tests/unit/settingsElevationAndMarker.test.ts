@@ -3,10 +3,14 @@
  * review) — Settings soft-elevation + dev-marker gating, source-level pins.
  *
  * ENG-823: every resting section card in the bundle renders through the shared
- * `<SettingsCard>` wrapper, which routes through `useCardElevation` (flag-aware
- * soft shadow / tonal lift, gated behind `design_system_elevation`). The pin
+ * `<SettingsCard>` wrapper, which routes through `useCardElevation`. Per the
+ * 2026-06-09 one-card-treatment decision
+ * (docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md), every section
+ * card sits directly on the page ground, so the wrapper opts into the SOFT lift
+ * (`useCardElevation({ variant: "soft" })`) rather than the flat default. The pin
  * guards against a future edit re-introducing a hand-rolled `bg-card +
- * hairline-border` card that drifts off the one-elevation-model spine rule.
+ * hairline-border` card that drifts off the one-elevation-model spine rule, AND
+ * against the wrapper silently reverting to the flat slab.
  *
  * ENG-801: the Build row is `__DEV__`-gated (never ships) AND no longer carries
  * the stale internal capture token (`MARKER F50-...`). The pin fails CI if
@@ -26,10 +30,12 @@ const BUNDLE_PATH = resolve(
 const bundle = readFileSync(BUNDLE_PATH, "utf8");
 
 describe("Settings soft elevation (ENG-823)", () => {
-  it("defines a SettingsCard wrapper that consumes useCardElevation", () => {
+  it("defines a SettingsCard wrapper that consumes useCardElevation with the soft variant", () => {
     expect(bundle).toContain("function SettingsCard");
     expect(bundle).toMatch(/import \{ useCardElevation \} from "@\/hooks\/useCardElevation"/);
-    expect(bundle).toMatch(/useCardElevation\(\)/);
+    // One-card-treatment (2026-06-09): page-ground section cards take the SOFT
+    // lift — the wrapper must opt in, not use the flat no-arg default.
+    expect(bundle).toMatch(/useCardElevation\(\{ variant: "soft" \}\)/);
   });
 
   it("the elevation flag is the only gate — the wrapper never hardcodes a shadow", () => {

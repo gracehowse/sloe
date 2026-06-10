@@ -16,6 +16,8 @@ export function GradientAvatar({
   borderColor,
   gradientIdSuffix,
   variant = "ink",
+  fill,
+  textColor,
 }: {
   size: number;
   initial: string;
@@ -23,6 +25,15 @@ export function GradientAvatar({
   borderColor?: string;
   gradientIdSuffix: string;
   variant?: "ink" | "brand";
+  /**
+   * Optional solid fill override for the `ink` variant. Used by the
+   * Sloe Today header (Figma `654:6` — plum `#6a4b7a`) without
+   * affecting other ink-avatar consumers, which fall back to the
+   * default `colors.icon` ink. No effect on the `brand` gradient.
+   */
+  fill?: string;
+  /** Optional initial-text colour override (pairs with `fill`). */
+  textColor?: string;
 }) {
   const colors = useThemeColors();
 
@@ -35,7 +46,7 @@ export function GradientAvatar({
           borderRadius: size / 2,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: colors.icon,
+          backgroundColor: fill ?? colors.icon,
           borderWidth: borderColor ? 1 : 0,
           borderColor,
         }}
@@ -45,7 +56,7 @@ export function GradientAvatar({
           style={{
             fontSize,
             fontWeight: "700",
-            color: colors.primaryForeground,
+            color: textColor ?? colors.primaryForeground,
           }}
         >
           {initial}

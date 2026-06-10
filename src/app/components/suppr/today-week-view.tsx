@@ -174,7 +174,9 @@ export function TodayWeekView({
 
   return (
     <div className="flex flex-col gap-4 mb-4">
-      <div className="rounded-card bg-card border border-border p-4 card-elevated">
+      {/* One-treatment elevation (Grace 2026-06-09): each week-view card sits
+          on the page ground → soft lift (`card-slab`). Was flat slab. */}
+      <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-1">Weekly calories</p>
         {/* Above-chart summary — only when at least one day was logged. */}
         {loggedDaysInWeek > 0 && (
@@ -311,7 +313,7 @@ export function TodayWeekView({
         </p>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4 card-elevated">
+      <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-2">Steps & water</p>
         {/* 2026-05-08 ui-critic F8 web parity: kept the legend (it disambiguates
             two stacked metrics that share columns); dropped the "Tap a day to open
@@ -364,17 +366,20 @@ export function TodayWeekView({
         </div>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4 card-elevated">
+      <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-3">Weekly summary</p>
         <div className="flex justify-around text-center">
+          {/* SLOE Phase 0: the weekly-summary big stat numerals read in the
+              Newsreader serif display face (the design system reserves big
+              numerals for serif); labels stay sans. Mirrors mobile TodayWeekView. */}
           <div>
-            <p className="text-2xl font-extrabold text-foreground tabular-nums">
+            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground tabular-nums">
               {Math.round(weekTotals.calories)}
             </p>
             <p className="text-[11px] text-muted-foreground">Total kcal</p>
           </div>
           <div>
-            <p className="text-2xl font-extrabold text-primary tabular-nums">
+            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary tabular-nums">
               {Math.round(weekAvg.calories)}
             </p>
             <p className="text-[11px] text-muted-foreground">Daily avg</p>
@@ -388,7 +393,7 @@ export function TodayWeekView({
                 avoidance; "deficit"/"surplus" reads as observation,
                 not judgment. Green for under-target, red for
                 over-target — clear at-a-glance signal. */}
-            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-destructive"}`}>
+            <p className={`font-[family-name:var(--font-headline)] text-2xl font-medium tabular-nums ${under ? "text-success" : "text-destructive"}`}>
               {diff}
             </p>
             <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>
@@ -396,7 +401,7 @@ export function TodayWeekView({
         </div>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4 card-elevated">
+      <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-1">Daily averages</p>
         <p className="text-[11px] text-muted-foreground mb-3">
           Based on {loggedDaysInWeek} day{loggedDaysInWeek !== 1 ? "s" : ""} with logged food
@@ -406,7 +411,7 @@ export function TodayWeekView({
         <MacroBarRowWeb label="FATS" current={weekAvg.fat} goal={fatTarget} colorVar="var(--macro-fat)" />
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4 card-elevated">
+      <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-2">Macro breakdown</p>
         <div className="flex flex-col gap-2 mt-2">
           {days.map((day) => (

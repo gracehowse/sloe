@@ -87,6 +87,22 @@ export type {
 } from "./pricingTiers";
 export { PRICING_TIERS, computeAnnualSavingsBadge } from "./pricingTiers";
 
+/**
+ * Paywall value-prop grid + Free-vs-Pro comparison matrix (Figma
+ * `284:2`). Like `pricingTiers`, these live in a leaf module
+ * (`./paywallValueProps`) so the mobile paywall imports them directly;
+ * re-exported here for web's single entry-point.
+ */
+export type {
+  PaywallValueProp,
+  PaywallComparisonRow,
+} from "./paywallValueProps";
+export {
+  PAYWALL_VALUE_PROPS,
+  PAYWALL_COMPARISON_ROWS,
+  PAYWALL_FREE_LIMITS,
+} from "./paywallValueProps";
+
 /* ─────────────── How-it-works ─────────────── */
 
 export type HowItWorksStep = { n: number; title: string; body: string };

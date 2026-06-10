@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Targets</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+<div id="cap" class="mx-auto bg-surface" style="width:500px;position:relative">
+  <header class="w-full bg-surface border-b border-line flex items-center justify-between px-4 h-16">
+<button onclick="history.back()" class="p-1 -ml-1 text-plum"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<h1 class="font-headline text-xl text-plum">Your targets</h1>
+<div class="w-8 flex items-center justify-end text-ink-soft"></div>
+</header>
+  <main class="pb-10"><section class="px-5 pt-5 pb-3">
+  <span class="font-label text-[10px] uppercase tracking-[0.12em] text-ink-faint font-semibold">Daily target</span>
+  <h2 class="font-headline text-[44px] leading-none text-plum mt-1.5">1,840<span class="font-body text-xl text-ink-soft"> kcal</span></h2>
+  <p class="font-body text-sm text-ink-soft mt-2 leading-relaxed">Set for losing about 0.4 kg a week — steady, and sustainable.</p>
+</section><section class="px-5 mb-5">
+  <div class="bg-surface-card border border-line rounded-xl p-5">
+    <div class="flex items-center justify-between py-1">
+      <div><p class="font-body text-sm text-ink font-medium">Maintenance energy</p><p class="font-body text-[12px] text-ink-faint">what your body burns on an average day</p></div>
+      <span class="font-headline text-lg text-ink tabular-nums shrink-0">2,250</span>
+    </div>
+    <div class="flex items-center justify-between py-1 mt-1">
+      <div><p class="font-body text-sm text-ink font-medium">For your goal</p><p class="font-body text-[12px] text-ink-faint">a gentle deficit to lose 0.4 kg / week</p></div>
+      <span class="font-headline text-lg text-clay tabular-nums shrink-0">−410</span>
+    </div>
+    <div class="flex items-center justify-between border-t border-line mt-3 pt-3.5">
+      <p class="font-body text-[15px] text-ink font-semibold">Daily target</p>
+      <span class="font-headline text-2xl text-plum tabular-nums shrink-0">1,840</span>
+    </div>
+  </div>
+</section><section class="px-5 mb-5">
+  <h3 class="font-headline text-xl text-plum mb-4">How we got to this number</h3>
+  <div class="flex gap-3.5">
+    <div class="flex flex-col items-center shrink-0">
+      <span class="w-7 h-7 rounded-full bg-plum text-white flex items-center justify-center font-headline text-sm">1</span>
+      <span class="w-px flex-1 bg-line my-1.5"></span>
+    </div>
+    <div class="pb-6">
+      <h4 class="font-body text-[15px] font-semibold text-ink">We learned what you burn</h4>
+      <p class="font-body text-[13px] text-ink-soft leading-relaxed mt-1">From your stats and 28 days of logs, your body burns about <span class="text-ink font-medium">2,250 kcal</span> on an average day. This number adapts each week as your weight and logging change — it's measured, not guessed.</p>
+    </div>
+  </div>
+  <div class="flex gap-3.5">
+    <div class="flex flex-col items-center shrink-0">
+      <span class="w-7 h-7 rounded-full bg-plum text-white flex items-center justify-center font-headline text-sm">2</span>
+      <span class="w-px flex-1 bg-line my-1.5"></span>
+    </div>
+    <div class="pb-6">
+      <h4 class="font-body text-[15px] font-semibold text-ink">We applied your goal</h4>
+      <p class="font-body text-[13px] text-ink-soft leading-relaxed mt-1">You're aiming to lose 0.4 kg a week, so we set a <span class="text-ink font-medium">410 kcal</span> daily deficit — enough to make real progress without leaving you hungry or run-down.</p>
+    </div>
+  </div>
+  <div class="flex gap-3.5">
+    <div class="flex flex-col items-center shrink-0">
+      <span class="w-7 h-7 rounded-full bg-plum text-white flex items-center justify-center font-headline text-sm">3</span>
+      
+    </div>
+    <div class="pb-1">
+      <h4 class="font-body text-[15px] font-semibold text-ink">We split your macros</h4>
+      <p class="font-body text-[13px] text-ink-soft leading-relaxed mt-1">Protein is set high to protect muscle while you lose. The rest balances carbs for training energy and fat for fullness.</p>
+    </div>
+  </div>
+</section><section class="px-5 mb-5">
+  <div class="flex items-baseline justify-between px-1 mb-2"><span class="font-label text-[10px] uppercase tracking-[0.12em] text-ink-faint font-semibold">Your macro split</span><span class="font-body text-[11px] text-ink-faint">grams per day</span></div>
+  <div class="bg-surface-card border border-line rounded-xl px-4 divide-y divide-line">
+    <div class="py-3.5">
+    <div class="flex items-baseline justify-between mb-2">
+      <span class="font-body text-sm font-medium text-ink flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#7C8466"></span>Protein</span>
+      <span class="font-body text-[13px] text-ink-soft"><span class="font-headline text-base text-ink tabular-nums">140</span> g · 30% of calories</span>
+    </div>
+    <div class="h-1.5 bg-line rounded-full overflow-hidden mb-2"><div class="h-full rounded-full" style="width:30%;background:#7C8466"></div></div>
+    <p class="font-body text-[12px] text-ink-faint leading-relaxed">Set high to protect muscle while you're in a deficit.</p>
+  </div>
+    <div class="py-3.5">
+    <div class="flex items-baseline justify-between mb-2">
+      <span class="font-body text-sm font-medium text-ink flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#C8794E"></span>Carbs</span>
+      <span class="font-body text-[13px] text-ink-soft"><span class="font-headline text-base text-ink tabular-nums">200</span> g · 44% of calories</span>
+    </div>
+    <div class="h-1.5 bg-line rounded-full overflow-hidden mb-2"><div class="h-full rounded-full" style="width:44%;background:#C8794E"></div></div>
+    <p class="font-body text-[12px] text-ink-faint leading-relaxed">Your main fuel for training and day-to-day energy.</p>
+  </div>
+    <div class="py-3.5">
+    <div class="flex items-baseline justify-between mb-2">
+      <span class="font-body text-sm font-medium text-ink flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#C9892C"></span>Fat</span>
+      <span class="font-body text-[13px] text-ink-soft"><span class="font-headline text-base text-ink tabular-nums">68</span> g · 26% of calories</span>
+    </div>
+    <div class="h-1.5 bg-line rounded-full overflow-hidden mb-2"><div class="h-full rounded-full" style="width:26%;background:#C9892C"></div></div>
+    <p class="font-body text-[12px] text-ink-faint leading-relaxed">Keeps you full and supports your hormones.</p>
+  </div>
+  </div>
+</section><section class="px-5">
+  <div class="flex items-center gap-2.5 bg-frost-mist/60 border border-line rounded-xl px-4 py-3 mb-4">
+    <span class="text-plum shrink-0"><svg class="sloe-ico text-[16px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span>
+    <p class="font-body text-[13px] text-ink-soft leading-relaxed">Recalculates every week from your weight trend and what you log. You're always on a current number.</p>
+  </div>
+  <div class="flex gap-2.5">
+    <button class="flex-1 border border-line rounded-full py-3 font-body text-sm font-semibold text-ink">Change goal</button>
+    <button class="flex-1 border border-line rounded-full py-3 font-body text-sm font-semibold text-ink">Set manually</button>
+  </div>
+</section></main>
+</div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

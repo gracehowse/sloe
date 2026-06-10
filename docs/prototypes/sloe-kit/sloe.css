@@ -1,0 +1,121 @@
+/* ============================================================
+   SLOE — unified component kit (single source of truth)
+   One file. Locked fonts, tokens, components. Every screen
+   links this; nothing is restyled per-screen. This is the
+   Code-to-Canvas seed for Figma variables + components.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400..500&family=Inter:wght@400;500;600&display=swap');
+
+:root{
+  /* ---- Sloe palette (brand identity) ---- */
+  --plum:#3B2A4D;        /* wordmark, mark, heading ink tint */
+  --plum-deep:#241733;
+  --damson:#6A4B7A;      /* active, gradient */
+  --frost:#C9C2D6;       /* ownable accent */
+  --frost-mist:#EDEAF1;
+  /* ---- warm coaching accents ---- */
+  --clay:#C8794E;        /* primary CTA / Pro / encouragement */
+  --clay-soft:#F4E2D2;
+  --honey:#D6A24A;       /* best-day star */
+  /* ---- semantic ---- */
+  --sage:#5E7C5A;        /* success / under / on-track */
+  --amber:#C9892C;       /* macros/sodium over (not ring) */
+  --destructive:#C0533F; /* calorie ring over-budget ONLY */
+  /* ---- ink + surfaces ---- */
+  --ink:#221B26;
+  --ink-soft:#6A6072;
+  --ink-faint:#9B93A3;
+  --line:#E8E2EC;
+  --white:#FFFFFF;       /* APP ground */
+  --card:#F6F5F2;        /* soft warm-grey card */
+  --oat:#FBF8F3;         /* MARKETING ground only */
+  /* ---- macro colours (immutable, data-only) ---- */
+  --macro-protein:#7C8466;
+  --macro-carbs:#C8794E;
+  --macro-fat:#C9892C;
+  /* ---- type ---- */
+  --serif:'Fraunces', Georgia, 'Times New Roman', serif;   /* LOCKED display */
+  --sans:'Inter', system-ui, -apple-system, sans-serif;    /* LOCKED body */
+  /* ---- radius / shadow / space ---- */
+  --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:26px;
+  --shadow-card:0 1px 2px rgba(34,27,38,.04);
+  --shadow-pop:0 12px 30px rgba(59,42,77,.12);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+.s-app{font-family:var(--sans);color:var(--ink);background:var(--white);-webkit-font-smoothing:antialiased;}
+.serif{font-family:var(--serif)}
+.muted{color:var(--ink-soft)} .faint{color:var(--ink-faint)}
+
+/* ---- device frame ---- */
+.device{width:390px;height:844px;background:#000;border-radius:54px;padding:11px;box-shadow:0 40px 90px rgba(36,23,51,.30);position:relative}
+.screen{width:100%;height:100%;background:var(--white);border-radius:43px;overflow:hidden;position:relative}
+.scroll{height:100%;overflow-y:auto}.scroll::-webkit-scrollbar{display:none}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:34px;background:#000;border-radius:20px;z-index:40}
+.statusbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;font-size:14px;font-weight:600;position:relative;z-index:30}
+.statusbar .r{display:flex;gap:6px;align-items:center;font-size:12px}
+
+/* ---- TOP BAR (approved: centred Sloe wordmark + hamburger + avatar) ---- */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px;border-bottom:1px solid var(--line)}
+.topbar .wordmark{font-family:var(--serif);font-weight:500;font-size:23px;color:var(--plum);letter-spacing:-.01em;position:absolute;left:50%;transform:translateX(-50%)}
+.topbar .iconbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+.avatar{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,var(--damson),var(--plum));display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600}
+.topbar-wrap{position:relative}
+
+/* ---- icons (line, lucide-style) ---- */
+.ico{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.ico-sm{width:18px;height:18px;stroke-width:1.9}
+.ico.on{stroke:var(--clay)}
+
+/* ---- TAB BAR (approved: Today · Plan · + · Recipes · Progress) ---- */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:88px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-around;padding:12px 14px 0;z-index:35}
+.tab{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;font-size:10.5px;letter-spacing:.04em;color:var(--ink-faint);text-transform:uppercase;font-weight:600}
+.tab.on{color:var(--clay)} .tab.on .ico{stroke:var(--clay)}
+.tab .ico{width:23px;height:23px}
+.fab{width:54px;height:54px;border-radius:50%;background:var(--plum);display:flex;align-items:center;justify-content:center;margin-top:-10px;box-shadow:var(--shadow-pop)}
+.fab .ico{stroke:#fff;width:26px;stroke-width:2}
+
+/* ---- buttons / chips / pills ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14.5px;padding:13px 22px;border-radius:999px;border:0;cursor:default}
+.btn-clay{background:var(--clay);color:#fff} .btn-ink{background:var(--plum);color:#fff}
+.btn-ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:9px 15px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.chip.on{background:var(--clay);color:#fff;border-color:var(--clay);font-weight:600}
+.pill-toggle{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.pill-toggle span{font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:999px;color:var(--ink-soft)}
+.pill-toggle span.on{background:var(--plum);color:#fff}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px}
+.badge-sage{background:var(--frost-mist);color:var(--sage)} .badge-clay{background:var(--clay-soft);color:var(--clay)}
+
+/* ---- cards / rows ---- */
+.card-el{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
+.h-screen-title{font-family:var(--serif);font-weight:380;font-size:30px;color:var(--plum);letter-spacing:-.01em}
+.sec{font-family:var(--serif);font-weight:420;font-size:21px;color:var(--ink);margin:26px 2px 12px}
+.row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+.row .thumb{width:52px;height:52px;border-radius:12px;object-fit:cover;background:var(--card);flex:none}
+.row .nm{font-family:var(--serif);font-size:17px;color:var(--ink);line-height:1.15}
+.row .meta{font-size:12.5px;color:var(--ink-faint)}
+.addbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-left:auto}
+
+/* ---- calorie multi-ring ---- */
+.ringwrap{position:relative;width:230px;height:230px;margin:6px auto}
+.ringwrap .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ringwrap .kcal{font-family:var(--serif);font-size:52px;line-height:1;color:var(--ink)}
+.ringwrap .kcal-sub{font-size:13px;color:var(--ink-faint);margin-top:4px}
+
+/* ---- sheet ---- */
+.sheet-dim{position:absolute;inset:0;background:rgba(36,23,51,.34);z-index:50}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--white);border-radius:26px 26px 0 0;padding:18px 20px 28px;z-index:51;box-shadow:0 -10px 40px rgba(36,23,51,.18)}
+.sheet .grip{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.searchbar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--ink-faint)}
+.modegrid{display:flex;justify-content:space-between;margin:18px 4px 8px}
+.mode{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft)}
+.mode .circle{width:54px;height:54px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.mode.active .circle{border-color:var(--clay)} .mode.active .ico{stroke:var(--clay)}
+.segtabs{display:flex;gap:22px;border-bottom:1px solid var(--line);margin-top:6px}
+.segtabs span{font-size:14px;color:var(--ink-faint);padding:12px 0;font-weight:500}
+.segtabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--ink)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--plum);padding:2px 6px;border-radius:5px}
+
+.coach{font-family:var(--serif);font-style:italic;font-size:16px;line-height:1.4;color:var(--ink);text-align:center;margin:16px 18px}

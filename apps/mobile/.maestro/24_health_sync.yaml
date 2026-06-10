@@ -45,6 +45,11 @@ name: "Health Sync — screen layout, feature list, connect button"
 - assertVisible: ".*Nutrition Sync.*"
 - assertVisible: ".*Import meals from Health.*"
 - assertVisible: ".*Share meals to Health.*"
+- assertVisible: ".*Check meal import.*"
+
+# HS-03 / HS-04 (ENG-874): when E2E device has live MFP → Health samples,
+# tap Sync Now and assert lastResult mentions import count — not automatable
+# in CI without HK fixtures; run manually per docs/testing/health-sync-functionality-matrix.md
 
 # Verify "Clear all imported data" destructive action
 - scrollUntilVisible:

@@ -7,10 +7,8 @@
  * `apps/mobile/app/(tabs)/index.tsx` and
  * `src/app/components/NutritionTracker.tsx`.
  *
- * The banner is calm and supportive — no CTA, no destructive
- * tone — so the rules err on the side of NOT showing rather than
- * showing in awkward states (past-day view, brand-new account,
- * week boundary, etc.).
+ * F-07 (2026-06-05): Banner retired — always hidden; copy export kept
+ * for wiring tests and a possible future narrower variant.
  */
 import { describe, expect, it } from "vitest";
 
@@ -19,10 +17,6 @@ import {
   shouldShowMissedYesterday,
 } from "../../src/lib/nutrition/missedYesterday";
 
-// Tuesday is the canonical "boring midweek day" — neither
-// Mon (Monday-start first-day-of-week) nor Sun (Sunday-start
-// first-day-of-week), so it passes the week-boundary gate for
-// both prefs.
 const TUE = 2;
 const MON = 1;
 const SUN = 0;
@@ -31,13 +25,14 @@ const okBase = {
   isToday: true,
   hasAnyJournalHistory: true,
   mealsYesterdayCount: 0,
+  mealsTodayCount: 2,
   todayDayOfWeek: TUE,
   weekStartDay: "monday" as const,
 };
 
-describe("shouldShowMissedYesterday (DC12)", () => {
-  it("shows on a midweek day when prior history exists and yesterday is empty", () => {
-    expect(shouldShowMissedYesterday(okBase)).toBe(true);
+describe("shouldShowMissedYesterday (DC12, F-07 retired)", () => {
+  it("never shows — banner retired (F-07)", () => {
+    expect(shouldShowMissedYesterday(okBase)).toBe(false);
   });
 
   it("hides when the user is viewing a past day (not isToday)", () => {
@@ -55,16 +50,25 @@ describe("shouldShowMissedYesterday (DC12)", () => {
     ).toBe(false);
   });
 
+  it("hides on an empty today (ENG-872 Fresh start chip)", () => {
+    expect(
+      shouldShowMissedYesterday({ ...okBase, mealsTodayCount: 0 }),
+    ).toBe(false);
+  });
+
+  it("hides when today has meals (F-07 — user already logging)", () => {
+    expect(
+      shouldShowMissedYesterday({ ...okBase, mealsTodayCount: 3 }),
+    ).toBe(false);
+  });
+
   it("hides when yesterday had at least one meal logged", () => {
     expect(
       shouldShowMissedYesterday({ ...okBase, mealsYesterdayCount: 1 }),
     ).toBe(false);
-    expect(
-      shouldShowMissedYesterday({ ...okBase, mealsYesterdayCount: 5 }),
-    ).toBe(false);
   });
 
-  it("hides on Monday for Monday-start users (first day of fresh week)", () => {
+  it("hides on Monday for Monday-start users", () => {
     expect(
       shouldShowMissedYesterday({
         ...okBase,
@@ -74,17 +78,7 @@ describe("shouldShowMissedYesterday (DC12)", () => {
     ).toBe(false);
   });
 
-  it("shows on Monday for Sunday-start users (Monday is NOT week-1)", () => {
-    expect(
-      shouldShowMissedYesterday({
-        ...okBase,
-        todayDayOfWeek: MON,
-        weekStartDay: "sunday",
-      }),
-    ).toBe(true);
-  });
-
-  it("hides on Sunday for Sunday-start users (first day of fresh week)", () => {
+  it("hides on Sunday for Sunday-start users", () => {
     expect(
       shouldShowMissedYesterday({
         ...okBase,
@@ -92,16 +86,6 @@ describe("shouldShowMissedYesterday (DC12)", () => {
         weekStartDay: "sunday",
       }),
     ).toBe(false);
-  });
-
-  it("shows on Sunday for Monday-start users (Sunday is end-of-week)", () => {
-    expect(
-      shouldShowMissedYesterday({
-        ...okBase,
-        todayDayOfWeek: SUN,
-        weekStartDay: "monday",
-      }),
-    ).toBe(true);
   });
 
   it("exports the canonical copy string used by both mobile + web", () => {

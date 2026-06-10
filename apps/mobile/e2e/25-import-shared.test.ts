@@ -27,27 +27,32 @@ describe('Import shared recipe', () => {
     }
   });
 
-  it('shows paste card', async () => {
+  it('shows the import header', async () => {
+    // recipe-import-redesign (ENG-997): redesigned idle leads with the serif
+    // "Import a recipe" H1; legacy flag-OFF idle shows "Paste a recipe link".
     try {
-      await expect(element(by.text('Paste a recipe link'))).toBeVisible();
+      await expect(element(by.text('Import a recipe'))).toBeVisible();
     } catch {
       try {
-        await expect(element(by.text('Looking for a link'))).toBeVisible();
+        await expect(element(by.text('Paste a recipe link'))).toBeVisible();
       } catch {
-        // Import screen may not be open
+        try {
+          await expect(element(by.text('Looking for a link'))).toBeVisible();
+        } catch {
+          // Import screen may not be open
+        }
       }
     }
   });
 
-  it('shows source grid buttons', async () => {
+  it('shows the WORKS WITH trust-chip row', async () => {
+    // The old "IMPORT FROM" tinted icon-box grid (a fake four-way router that
+    // all routed to clipboard-paste) was demoted to a non-tappable trust row
+    // of platform monograms — gap #2/#6/ENG-997.
     try {
-      await expect(element(by.text('IMPORT FROM'))).toBeVisible();
-      await expect(element(by.text('TikTok'))).toBeVisible();
-      await expect(element(by.text('Instagram'))).toBeVisible();
-      await expect(element(by.text('YouTube'))).toBeVisible();
-      await expect(element(by.text('Website'))).toBeVisible();
+      await expect(element(by.text('WORKS WITH'))).toBeVisible();
     } catch {
-      // Source grid not visible — may not have IMPORT FROM section
+      // Trust row not visible — idle state may not have rendered
     }
   });
 

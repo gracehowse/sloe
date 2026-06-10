@@ -1,8 +1,8 @@
 import * as React from "react";
 import { View } from "react-native";
 import { Activity, Armchair, Dumbbell, Flame, Footprints, type LucideIcon } from "lucide-react-native";
-import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { ActivityLevel } from "@/lib/tdee";
 import { useOnboarding } from "../context";
@@ -25,6 +25,9 @@ export function MobileActivityStep() {
   const { state, set, go } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the selected option's
+  // icon tint. The card chrome itself flips via `OptionCard`'s own `useAccent`.
+  const accent = useAccent();
   // 2026-05-14 (premium-bar audit B cross-cutting #6): auto-advance
   // after 200ms when the user picks an activity level. Same pattern
   // as Goal + Sex — single-choice steps should never strand the user
@@ -43,7 +46,7 @@ export function MobileActivityStep() {
       <MobileStepHeader
         overline={overline}
         title="How active are you?"
-        subtitle="Rough estimate — Suppr will refine this using your activity data over ~2 weeks."
+        subtitle="Rough estimate — Sloe will refine this using your activity data over ~2 weeks."
       />
       <View style={{ gap: 8 }}>
         {ACTIVITIES.map((a) => {
@@ -66,7 +69,7 @@ export function MobileActivityStep() {
               icon={
                 <a.Icon
                   size={18}
-                  color={selected ? Accent.primaryLight : colors.icon}
+                  color={selected ? accent.primaryLight : colors.icon}
                   strokeWidth={1.75}
                 />
               }

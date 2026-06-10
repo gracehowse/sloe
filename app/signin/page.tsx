@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginClient } from "../login/ui";
 
 export const metadata: Metadata = {
-  title: "Suppr — Sign in",
+  title: "Sloe — Sign in",
   robots: { index: false, follow: false },
 };
 

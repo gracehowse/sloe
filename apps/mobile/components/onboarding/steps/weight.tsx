@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { Accent } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RulerSlider } from "@/components/RulerSlider";
 import { useOnboarding } from "../context";
@@ -17,6 +17,10 @@ export function MobileWeightStep() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // Secondary accent (Frost flag → damson, else clay) for the "Actually, I'll
+  // enter it" link on the skipped path. The unit toggle flips via
+  // `MobileSegmented`; the ruler + "Prefer not to enter" keep neutral tokens.
+  const accent = useAccent();
   const metric = state.unitSystem === "metric";
 
   if (state.weightSkipped) {
@@ -47,7 +51,7 @@ export function MobileWeightStep() {
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: Accent.primaryLight,
+              color: accent.primaryLight,
             }}
           >
             Actually, I&apos;ll enter it
@@ -152,6 +156,9 @@ export function MobileWeightStep() {
  * semantic meaning for screen readers — no double-announce.
  */
 function WeightSkippedIllustration() {
+  // Secondary accent (Frost flag → damson, else clay) for the pulsing
+  // calibration glyph + its tinted circle.
+  const accent = useAccent();
   const pulse = React.useRef(new Animated.Value(0.6)).current;
   React.useEffect(() => {
     const loop = Animated.loop(
@@ -190,13 +197,13 @@ function WeightSkippedIllustration() {
           width: 80,
           height: 80,
           borderRadius: 40,
-          backgroundColor: `${Accent.primary}1A`,
+          backgroundColor: `${accent.primary}1A`,
           alignItems: "center",
           justifyContent: "center",
           opacity: pulse,
         }}
       >
-        <Scale size={48} color={Accent.primaryLight} strokeWidth={1.75} />
+        <Scale size={48} color={accent.primaryLight} strokeWidth={1.75} />
       </Animated.View>
     </View>
   );

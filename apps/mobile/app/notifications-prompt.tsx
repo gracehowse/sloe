@@ -82,7 +82,7 @@ export default function NotificationsPromptScreen() {
       } else {
         Alert.alert(
           "Notifications are off",
-          "You can turn them on any time in Settings → Suppr → Notifications.",
+          "You can turn them on any time in Settings → Sloe → Notifications.",
           [
             { text: "Skip", style: "cancel" },
             { text: "Open Settings", onPress: () => void Linking.openSettings() },
@@ -92,7 +92,7 @@ export default function NotificationsPromptScreen() {
     } catch {
       Alert.alert(
         "Not available here",
-        "System notifications require a full Suppr install (not Expo Go).",
+        "System notifications require a full Sloe install (not Expo Go).",
       );
     }
     // Whether the user granted, denied, or hit a missing-native-module

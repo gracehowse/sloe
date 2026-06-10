@@ -51,36 +51,30 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       });
     });
 
-    it("snack tint is purple (#9679D9), distinct from MacroColors.fat", () => {
-      // 2026-05-22 evening: 8-slot palette. Snack swapped from cyan
-      // (#06b6d4) to Purple (#9679D9) — cyan was dropped from the 8.
-      // Fat stays Magenta (#DF5EBC).
-      expect(SlotColors.snack.toLowerCase()).toBe("#9679d9");
-      expect(MacroColors.fat.toLowerCase()).toBe("#df5ebc");
+    it("snack tint is teal (#4A7878), distinct from MacroColors.fat", () => {
+      // Sloe Phase 0 (dossier D-4): snack → teal. Fat is amber (#C9892C);
+      // teal keeps the snack slot collision-free with every macro hue.
+      expect(SlotColors.snack.toLowerCase()).toBe("#4a7878");
+      expect(MacroColors.fat.toLowerCase()).toBe("#c9892c");
       expect(SlotColors.snack.toLowerCase()).not.toBe(
         MacroColors.fat.toLowerCase(),
       );
     });
 
-    it("breakfast/lunch/dinner map to Yellow/Green/Blue (8-slot palette)", () => {
-      // 8-slot palette (2026-05-22 evening): meal slots map to their own
-      // palette positions, not to semantic Accents. Breakfast was
-      // Accent.warning (amber) — now Yellow so Orange stays reserved
-      // for activity/bonus semantics.
-      expect(SlotColors.breakfast.toLowerCase()).toBe("#f3c336");
-      expect(SlotColors.lunch).toBe(Accent.success); // Green — same token still
-      expect(SlotColors.dinner).toBe(Accent.primary); // Blue — same token still
+    it("breakfast/lunch/dinner map to amber/sage/damson (Sloe D-4)", () => {
+      // Sloe Phase 0 (dossier D-4): breakfast amber, lunch sage, dinner damson.
+      expect(SlotColors.breakfast.toLowerCase()).toBe("#c9892c");
+      expect(SlotColors.lunch).toBe(Accent.success);   // sage — same token still
+      expect(SlotColors.dinner).toBe(Accent.purple);   // damson
     });
 
-    it("Accent.activity owns the Yellow slot, distinct from carbs", () => {
-      // 2026-05-25: carbs vacated Yellow for amber-orange; the dedicated
-      // activity/burn token now owns Yellow (#F3C336). Breakfast shares
-      // the Yellow hue with activity by design — different namespaces
-      // (slot vs accent) that never co-occur on the same surface.
-      expect(Accent.activity.toLowerCase()).toBe("#f3c336");
+    it("Accent.activity is Sloe honey, distinct from warning + carbs", () => {
+      // Sloe Phase 0: activity/burn → honey (#D6A24A), distinct from the amber
+      // warning/fat hue and from clay carbs. Breakfast slot is amber (not
+      // honey), so activity no longer shares the breakfast hue.
+      expect(Accent.activity.toLowerCase()).toBe("#d6a24a");
       expect(Accent.activity).not.toBe(Accent.carbs);
-      // Breakfast slot intentionally shares the Yellow hue with activity.
-      expect(Accent.activity.toLowerCase()).toBe(SlotColors.breakfast.toLowerCase());
+      expect(Accent.activity).not.toBe(Accent.warning);
     });
   });
 
@@ -116,34 +110,37 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
   });
 
   describe("web — --slot-* tokens", () => {
-    it("theme.css declares --slot-* tokens with the canonical hexes (light)", () => {
+    it("theme.css declares --slot-* tokens with the canonical Sloe hexes (light)", () => {
       const src = read("src/styles/theme.css");
       // Light-mode block — match against the first `:root` definitions.
       const rootStart = src.indexOf(":root");
       const darkStart = src.indexOf(".dark {");
       const lightBlock = src.slice(rootStart, darkStart);
-      // 8-slot palette (2026-05-22 evening): Breakfast Yellow, Lunch
-      // Green, Dinner Blue, Snack Purple.
-      expect(lightBlock).toMatch(/--slot-breakfast:\s*#F3C336/i);
-      expect(lightBlock).toMatch(/--slot-lunch:\s*#56A775/i);
-      expect(lightBlock).toMatch(/--slot-dinner:\s*#588CE4/i);
-      expect(lightBlock).toMatch(/--slot-snack:\s*#9679D9/i);
+      // Sloe Phase 0 (dossier D-4): Breakfast amber, Lunch sage, Dinner damson,
+      // Snack teal.
+      expect(lightBlock).toMatch(/--slot-breakfast:\s*#C9892C/i);
+      expect(lightBlock).toMatch(/--slot-lunch:\s*#5E7C5A/i);
+      expect(lightBlock).toMatch(/--slot-dinner:\s*#6A4B7A/i);
+      expect(lightBlock).toMatch(/--slot-snack:\s*#4A7878/i);
       // Soft variants exist for tinted backgrounds (`bg-slot-snack-soft`).
-      expect(lightBlock).toMatch(/--slot-snack-soft:\s*#9679D912/i);
+      // Sloe Phase 0 (dossier A): light slot softs use the `12` alpha suffix.
+      expect(lightBlock).toMatch(/--slot-snack-soft:\s*#4A787812/i);
     });
 
-    it("theme.css declares --slot-* tokens for dark mode (cyan family)", () => {
+    it("theme.css declares --slot-* tokens for dark mode (Sloe lifted)", () => {
       const src = read("src/styles/theme.css");
       const darkStart = src.indexOf(".dark {");
       const themeStart = src.indexOf("@theme inline", darkStart);
       const darkBlock = src.slice(darkStart, themeStart);
-      // 8-slot palette dark — OLED-lifted variants of light hexes.
-      expect(darkBlock).toMatch(/--slot-breakfast:\s*#F5D162/i);
-      expect(darkBlock).toMatch(/--slot-lunch:\s*#7ABE93/i);
-      expect(darkBlock).toMatch(/--slot-dinner:\s*#7BA3EA/i);
-      // Dark snack is lifted purple, NOT magenta or cyan.
-      expect(darkBlock).toMatch(/--slot-snack:\s*#AC93E2/i);
-      expect(darkBlock).not.toMatch(/--slot-snack:\s*#(ff7eb3|e04888|22d3ee)/i);
+      // Sloe Phase 0 dark — OLED-lifted variants of the light hexes. The
+      // damson-accent family (dinner) lifts to #9A7BAA (mirrors web dark
+      // --accent-win / --slot-dinner).
+      expect(darkBlock).toMatch(/--slot-breakfast:\s*#D6A24A/i);
+      expect(darkBlock).toMatch(/--slot-lunch:\s*#83A57E/i);
+      expect(darkBlock).toMatch(/--slot-dinner:\s*#9A7BAA/i);
+      // Dark snack is lifted teal, NOT magenta / cyan / purple.
+      expect(darkBlock).toMatch(/--slot-snack:\s*#6FA3A3/i);
+      expect(darkBlock).not.toMatch(/--slot-snack:\s*#(ff7eb3|e04888|22d3ee|ac93e2)/i);
     });
 
     it("theme.css exposes --color-slot-* in @theme inline so Tailwind picks them up", () => {

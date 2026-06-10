@@ -73,6 +73,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -292,15 +293,19 @@ export default function FoodSearchPanel({
   recentFoods,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
+  // the "Add custom"/barcode affordances, and the segmented/tab active state.
+  // Source/confidence chrome and `MacroColors` stay warm.
+  const accent = useAccent();
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): the single
-  // commit-action colour is blue (`Accent.primary`). The "Use this" log
+  // commit-action colour is the secondary accent. The "Use this" log
   // commit CTA below historically painted `Accent.success` (green) — but
   // green is now reserved strictly for the calorie-ring state + macro
   // identity, never a commit-button fill. Gate behind `design_system_colours`:
-  //   flag ON  → blue commit CTA
+  //   flag ON  → accent commit CTA (damson under Frost, else clay)
   //   flag OFF → existing green (old path stays alive in the `else`).
   const commitCtaColor = isFeatureEnabled("design_system_colours")
-    ? Accent.primary
+    ? accent.primary
     : Accent.success;
   // 2026-05-31 design-direction (LANE: search-results UI — ENG-814).
   // Gate the redesigned results body behind `redesign_search_results`:
@@ -1161,7 +1166,7 @@ export default function FoodSearchPanel({
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
           ) : null}
           {isLoading ? (
-            <ActivityIndicator size="small" color={Accent.primary} />
+            <ActivityIndicator size="small" color={accent.primary} />
           ) : (
             <ChevronRight size={16} color={colors.textTertiary} />
           )}
@@ -1361,7 +1366,7 @@ export default function FoodSearchPanel({
             </View>
           ) : null}
           {isLoading ? (
-            <ActivityIndicator size="small" color={Accent.primary} />
+            <ActivityIndicator size="small" color={accent.primary} />
           ) : (
             <ChevronRight size={16} color={colors.textTertiary} />
           )}
@@ -1730,13 +1735,13 @@ export default function FoodSearchPanel({
               justifyContent: "center",
               gap: Spacing.sm,
               borderWidth: 1,
-              borderColor: Accent.primary,
+              borderColor: accent.primary,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary + "10",
+              backgroundColor: accent.primary + "10",
             }}
           >
-            <Plus size={16} color={Accent.primary} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+            <Plus size={16} color={accent.primary} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
               Add as custom food
             </Text>
           </Pressable>
@@ -1829,7 +1834,7 @@ export default function FoodSearchPanel({
               backgroundColor: colors.card,
             }}
           >
-            <Barcode size={20} color={Accent.primary} />
+            <Barcode size={20} color={accent.primary} />
             <Text style={{ flex: 1, fontSize: 14, color: colors.text }}>
               Brand not found? Try a barcode scan — works for UK &amp; EU products
             </Text>
@@ -1843,7 +1848,7 @@ export default function FoodSearchPanel({
     <View>
       {loadingMore ? (
         <View style={{ paddingVertical: Spacing.md, alignItems: "center" }}>
-          <ActivityIndicator size="small" color={Accent.primary} />
+          <ActivityIndicator size="small" color={accent.primary} />
         </View>
       ) : null}
       {customEnabled ? (
@@ -1867,8 +1872,8 @@ export default function FoodSearchPanel({
             borderRadius: Radius.md,
           }}
         >
-          <Plus size={16} color={Accent.primary} />
-          <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+          <Plus size={16} color={accent.primary} />
+          <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
             Create custom food
           </Text>
         </Pressable>
@@ -1930,8 +1935,8 @@ export default function FoodSearchPanel({
                     paddingVertical: 8,
                     borderRadius: Radius.md,
                     borderWidth: 1,
-                    borderColor: isActive ? Accent.primary : colors.cardBorder,
-                    backgroundColor: isActive ? Accent.primary : colors.card,
+                    borderColor: isActive ? accent.primary : colors.cardBorder,
+                    backgroundColor: isActive ? accent.primary : colors.card,
                   },
                   liftStyle,
                 ]}
@@ -1940,7 +1945,7 @@ export default function FoodSearchPanel({
                   style={{
                     fontSize: 13,
                     fontWeight: "700",
-                    color: isActive ? Accent.primaryForeground : colors.textSecondary,
+                    color: isActive ? accent.primaryForeground : colors.textSecondary,
                     letterSpacing: 0.2,
                   }}
                 >
@@ -1963,15 +1968,15 @@ export default function FoodSearchPanel({
                 paddingVertical: 6,
                 borderRadius: 999,
                 borderWidth: 1,
-                borderColor: isActive ? Accent.primary : colors.border,
-                backgroundColor: isActive ? Accent.primary : "transparent",
+                borderColor: isActive ? accent.primary : colors.border,
+                backgroundColor: isActive ? accent.primary : "transparent",
               }}
             >
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: "700",
-                  color: isActive ? Accent.primaryForeground : colors.textSecondary,
+                  color: isActive ? accent.primaryForeground : colors.textSecondary,
                   letterSpacing: 0.2,
                 }}
               >
@@ -2112,7 +2117,7 @@ export default function FoodSearchPanel({
 
       {loading && results.length === 0 ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
           <Text style={styles.hint}>Searching...</Text>
         </View>
       ) : redesignSearch ? (

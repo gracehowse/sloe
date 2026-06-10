@@ -122,7 +122,7 @@ function Row({
           >
             {icon}
           </span>
-          <span className="text-xs font-semibold text-foreground">{label}</span>
+          <span className="text-xs font-medium text-foreground">{label}</span>
         </div>
         <div className="flex-1 min-w-0 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ function Row({
           {overTarget ? (
             <span
               className="text-[10px] font-semibold tabular-nums"
-              style={{ color: overlay }}
+              style={{ color: "var(--warning-solid)" }}
             >
               {overCopy}
             </span>
@@ -257,20 +257,19 @@ export function HydrationStimulantsCard({
   );
 
   return (
-    <section
-      className={cn(
-        "rounded-card bg-card border border-border p-3 mb-4 card-elevated",
-        className,
-      )}
+    <div
+      className={cn("flex flex-col gap-5", className)}
       aria-label="Hydration and stimulants"
     >
-      <header className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
-          Hydration & stimulants
+      <section
+        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+        // lift (`card-slab`). Was flat slab.
+        className="rounded-card bg-card card-slab p-4"
+        data-testid="today-hydration-card"
+      >
+        <h3 className="mb-3 font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">
+          Hydration
         </h3>
-      </header>
-
-      {/* Water */}
       <Row
         tone="water"
         label="Water"
@@ -305,72 +304,87 @@ export function HydrationStimulantsCard({
           </button>
         ))}
       </Row>
+      </section>
 
-      {/* Caffeine — hidden when target == 0 (parity with alcohol) */}
-      {showCaffeine ? (
-        <Row
-          tone="caffeine"
-          label="Caffeine"
-          icon={caffeineIcon}
-          valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
-          pct={caffeinePct}
-          overTarget={caffeineOver}
-          overCopy={`Over ${targets.caffeineMg} mg`}
-          onReset={() => onReset("caffeine")}
+      {showCaffeine || showAlcohol ? (
+        <section
+          // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+          // lift (`card-slab`). Was flat slab.
+          className="rounded-card bg-card card-slab p-4"
+          data-testid="today-stimulants-card"
         >
-          {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => handleAddCaffeine(preset.mg, preset.label)}
-              aria-label={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
-              style={{
-                backgroundColor:
-                  "color-mix(in oklab, var(--stimulant-caffeine) 15%, transparent)",
-                color: "var(--stimulant-caffeine)",
-                borderColor:
-                  "color-mix(in oklab, var(--stimulant-caffeine) 30%, transparent)",
-              }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
-            >
-              +{preset.label} ({preset.mg}mg)
-            </button>
-          ))}
-        </Row>
-      ) : null}
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">
+              Stimulants
+            </h3>
+            <span className="text-xs text-muted-foreground">This week</span>
+          </div>
 
-      {/* Alcohol — hidden when target == 0 */}
-      {showAlcohol ? (
-        <Row
-          tone="alcohol"
-          label="Alcohol"
-          icon={alcoholIcon}
-          valueLine={`${weeklyAlcohol} / ${targets.alcoholGWeekly} g this week`}
-          pct={alcoholPct}
-          overTarget={alcoholOver}
-          overCopy="Over limit"
-          onReset={() => onReset("alcohol")}
-        >
-          {ALCOHOL_QUICK_ADDS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => handleAddAlcohol(preset.grams, preset.label)}
-              aria-label={`Add ${preset.label}: ${preset.grams} grams alcohol`}
-              style={{
-                backgroundColor:
-                  "color-mix(in oklab, var(--stimulant-alcohol) 15%, transparent)",
-                color: "var(--stimulant-alcohol)",
-                borderColor:
-                  "color-mix(in oklab, var(--stimulant-alcohol) 30%, transparent)",
-              }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
+          {showCaffeine ? (
+            <Row
+              tone="caffeine"
+              label="Caffeine"
+              icon={caffeineIcon}
+              valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
+              pct={caffeinePct}
+              overTarget={caffeineOver}
+              overCopy={`Over ${targets.caffeineMg} mg`}
+              onReset={() => onReset("caffeine")}
             >
-              +{preset.label} ({preset.grams}g)
-            </button>
-          ))}
-        </Row>
+              {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => handleAddCaffeine(preset.mg, preset.label)}
+                  aria-label={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
+                  style={{
+                    backgroundColor:
+                      "color-mix(in oklab, var(--stimulant-caffeine) 15%, transparent)",
+                    color: "var(--stimulant-caffeine)",
+                    borderColor:
+                      "color-mix(in oklab, var(--stimulant-caffeine) 30%, transparent)",
+                  }}
+                  className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors hover:brightness-110"
+                >
+                  +{preset.label} ({preset.mg}mg)
+                </button>
+              ))}
+            </Row>
+          ) : null}
+
+          {showAlcohol ? (
+            <Row
+              tone="alcohol"
+              label="Alcohol"
+              icon={alcoholIcon}
+              valueLine={`${weeklyAlcohol} / ${targets.alcoholGWeekly} g this week`}
+              pct={alcoholPct}
+              overTarget={alcoholOver}
+              overCopy="Over limit"
+              onReset={() => onReset("alcohol")}
+            >
+              {ALCOHOL_QUICK_ADDS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => handleAddAlcohol(preset.grams, preset.label)}
+                  aria-label={`Add ${preset.label}: ${preset.grams} grams alcohol`}
+                  style={{
+                    backgroundColor:
+                      "color-mix(in oklab, var(--stimulant-alcohol) 15%, transparent)",
+                    color: "var(--stimulant-alcohol)",
+                    borderColor:
+                      "color-mix(in oklab, var(--stimulant-alcohol) 30%, transparent)",
+                  }}
+                  className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors hover:brightness-110"
+                >
+                  +{preset.label} ({preset.grams}g)
+                </button>
+              ))}
+            </Row>
+          ) : null}
+        </section>
       ) : null}
-    </section>
+    </div>
   );
 }

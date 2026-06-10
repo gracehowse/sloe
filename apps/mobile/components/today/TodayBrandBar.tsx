@@ -1,12 +1,10 @@
 import React from "react";
 import { View } from "react-native";
-import { SupprPlateMark } from "@/components/SupprMark";
+import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { Spacing } from "@/constants/theme";
 
 /**
- * Reserved branding row at the top of Today — plate mark only.
- * Serif wordmark removed here so "Today" stays the single display
- * headline (see `docs/ux/color-direction-noom-lifesum-2026-05.md`).
+ * Reserved branding row at the top of Today — Sloe wordmark only.
  */
 export function TodayBrandBar() {
   return (
@@ -17,7 +15,7 @@ export function TodayBrandBar() {
         justifyContent: "center",
       }}
     >
-      <SupprPlateMark size={24} />
+      <SloeHeaderWordmark fontSize={22} />
     </View>
   );
 }

@@ -2,7 +2,8 @@ import React, { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Sparkles, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * AiFirstLogTooltip — one-time inline bubble shown beneath the user's
@@ -31,9 +32,9 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
  * row above it does not need any layout reorganisation; the host
  * places it directly below the meal row in the JSX tree.
  *
- * Theming: tokens from `@/constants/theme`. Background uses
- * `Accent.primary + "0F"` (8% opacity) for a subtle tint that reads
- * as info, not warning.
+ * Theming: the secondary accent comes from `useAccent()` (Frost flag →
+ * damson, else clay). Background uses `accent.primary + "0F"` (8% opacity)
+ * for a subtle tint that reads as info, not warning.
  *
  * Web parity: web has no equivalent surface yet — the AI sentinel
  * never shipped on `today-hero-ring.tsx`, so there is nothing to
@@ -56,6 +57,10 @@ const DEFAULT_AUTO_FADE_MS = 6000;
 
 export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
   const { visible, onDismiss, autoFadeMs = DEFAULT_AUTO_FADE_MS } = props;
+  // Secondary accent (Frost flag → damson, else clay) for the tooltip tint,
+  // icon, text, and dismiss glyph. Read before the early return so the hook
+  // is stable.
+  const accent = useAccent();
 
   useEffect(() => {
     if (!visible) return;
@@ -80,9 +85,9 @@ export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.md,
         borderRadius: Radius.md,
-        backgroundColor: Accent.primary + "0F",
+        backgroundColor: accent.primary + "0F",
         borderWidth: 1,
-        borderColor: Accent.primary + "30",
+        borderColor: accent.primary + "30",
         // Subtle elevation so the bubble lifts off the meal row
         // beneath it without dominating the card.
         shadowColor: "#000",
@@ -92,13 +97,13 @@ export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
         elevation: 1,
       }}
     >
-      <Sparkles size={14} color={Accent.primary} strokeWidth={2.25} />
+      <Sparkles size={14} color={accent.primary} strokeWidth={2.25} />
       <Text
         style={{
           flex: 1,
           fontSize: 12,
           lineHeight: 16,
-          color: Accent.primary,
+          color: accent.primary,
           fontWeight: "500",
         }}
       >
@@ -117,7 +122,7 @@ export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
           borderRadius: 11,
         }}
       >
-        <X size={14} color={Accent.primary} strokeWidth={2.25} />
+        <X size={14} color={accent.primary} strokeWidth={2.25} />
       </Pressable>
     </View>
   );

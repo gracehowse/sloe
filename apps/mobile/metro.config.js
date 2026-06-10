@@ -1,3 +1,5 @@
+require("./scripts/load-repo-env.cjs");
+
 const path = require("path");
 const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 

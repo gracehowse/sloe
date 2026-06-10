@@ -2,7 +2,8 @@ import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, TrendingUp } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import type { WeeklyCheckinContent } from "@/lib/weeklyCheckin";
 
 /**
@@ -53,6 +54,7 @@ export function WeeklyCheckinModal({
   textSecondaryColor,
   borderColor,
 }: WeeklyCheckinModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   if (!content) return null;
 
@@ -105,13 +107,13 @@ export function WeeklyCheckinModal({
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: Accent.primary + "18",
+              backgroundColor: accent.primary + "18",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 12,
             }}
           >
-            <TrendingUp size={24} color={Accent.primary} strokeWidth={2.25} />
+            <TrendingUp size={24} color={accent.primary} strokeWidth={2.25} />
           </View>
 
           <Text
@@ -198,8 +200,8 @@ export function WeeklyCheckinModal({
           <View
             style={{
               borderWidth: 1,
-              borderColor: Accent.primary + "55",
-              backgroundColor: Accent.primary + "10",
+              borderColor: accent.primary + "55",
+              backgroundColor: accent.primary + "10",
               borderRadius: Radius.md,
               paddingVertical: Spacing.md,
               paddingHorizontal: Spacing.md,
@@ -232,12 +234,16 @@ export function WeeklyCheckinModal({
               >
                 {Math.round(currentTargetKcal).toLocaleString("en-GB")}
               </Text>
+              {/* SLOE Phase 0: the suggested-target hero numeral reads in
+                  Newsreader serif (big numerals are a serif moment). Family
+                  carries the weight, so the sans `fontWeight: 800` is dropped;
+                  the struck-out prior value + `kcal/day` unit stay sans. */}
               <Text
                 style={[
                   {
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 22,
-                    fontWeight: "800",
-                    color: Accent.primary,
+                    color: accent.primary,
                   },
                   tabularStyle,
                 ]}
@@ -288,20 +294,27 @@ export function WeeklyCheckinModal({
             </Text>
           ) : null}
 
+          {/* Sloe treatment system (2026-06-08): primary inline CTA →
+              aubergine outline (transparent fill + 1.5px primarySolid
+              border + primarySolid label). The "Keep current" tertiary
+              below keeps its neutral grey outline so the hierarchy reads. */}
           <Pressable
             onPress={onAccept}
             accessibilityRole="button"
             accessibilityLabel="Accept new target"
-            style={{
+            style={({ pressed }) => ({
               width: "100%",
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               marginBottom: 10,
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
               Accept new target
             </Text>
           </Pressable>

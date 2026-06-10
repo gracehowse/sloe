@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
-import Svg, { Circle, G, Defs, Pattern, Line, LinearGradient, Stop } from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -103,18 +105,21 @@ function useAnimatedNumber(
   return value;
 }
 
-// TF49 ring diameter (140). Hero box padding is separate from ring size.
-const SIZE = 140;
-const STROKE = 8;
-// 2026-05-22 (multi-ring revival A1): inner macro arc stroke = 6 (was 6.5).
-// HTML prototype A1 trim to keep the centre kcal value as the focal point
-// while preserving the multi-ring identity that MFP-defectors expect. The
-// 6.5 → 6 step is small but the diff at three concentric arcs is
-// perceptible; calmer hero, macros still readable.
-const MACRO_STROKE = 6;
+// SLOE redesign (2026-06-04, Grace "ring too small"): the hero ring scales to
+// ~46% of screen width to match the Figma 01 frame. The Sloe prototype draws
+// `multiRing` at size 220 in a 500px frame (44%); the old fixed 140 read ~36%
+// on an iPhone 17 — noticeably smaller than the Figma. Geometry uses the
+// prototype's exact ratios (calorie radius 0.44·S, calorie stroke 0.05·S,
+// macro arcs 0.028·S at radii 0.368/0.314/0.259·S) so the arcs keep the
+// prototype's weight at the larger size. Capped so it can't get silly on a
+// large device.
+const SCREEN_W = Dimensions.get("window").width;
+const SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
+const STROKE = Math.round(SIZE * 0.05);
+const MACRO_STROKE = Math.max(4, Math.round(SIZE * 0.028));
 const CX = SIZE / 2;
-const R = (SIZE - STROKE) / 2 - 2;
-const MACRO_R = [R - 12, R - 22, R - 32];
+const R = Math.round(SIZE * 0.44);
+const MACRO_R = [SIZE * 0.368, SIZE * 0.314, SIZE * 0.259];
 const CIRC = (r: number) => 2 * Math.PI * r;
 
 type DisplayMode = "remaining" | "consumed";
@@ -259,14 +264,43 @@ export default function CalorieRing({
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
   const colorScheme = useColorScheme();
-  const palette = colorScheme === "dark" ? Colors.dark : Colors.light;
-  /** Centre + outer ring colour. 2026-05-22 evening lock (Grace call):
-   *  own the green-under / red-over treatment — no toggle, no brand
-   *  mode. The earlier `Accent.warning` (orange) treatment was the
-   *  bonus colour, so going over read as "all bonus" instead of "you
-   *  went past." Red on the over arc makes the state unambiguous and
-   *  keeps a different colour from the bonus segment. */
-  const ringStateColor = isOver ? Accent.destructive : Accent.success;
+  const isDark = colorScheme === "dark";
+  /** Calorie ring colour. SLOE redesign (2026-06-03, `01 · Today` frame +
+   *  `_gen.mjs multiRing`): the calorie ring is ALWAYS plum — under-budget
+   *  AND over-budget. Dark mode lifts plum to #815E91 per the Sloe dark
+   *  token row. */
+  const calorieRingColor = isDark ? "#815E91" : MacroColors.calories;
+  const ringStateColor = calorieRingColor;
+  /** Over-budget treatment — Apple-Watch wrap (2026-06-04, Grace decision +
+   *  Mobbin field scan: Lifesum / Any Distance / MacroFactor / Bevel all KEEP
+   *  the ring hue when over and show overage as a SECOND lap wrapping past
+   *  100%, never a red switch). Supersedes the 2026-06-03 separate red overage
+   *  ARC (`overArcColor`/`overBudgetFg`), which Grace read as odd ("one end of
+   *  the line curved in and one out"). The overage lap stays in the plum family
+   *  but is LIFTED one step lighter than the base ring so the two laps are
+   *  distinguishable despite sharing the hue — same direction (lighter) in both
+   *  modes:
+   *    - light: base #3B2A4D → overage lap #6A4B7A (damson, an existing token)
+   *    - dark:  base #815E91 → overage lap #9A7BAA (the dark `sourceAi` damson,
+   *      which is LIGHTER than the lifted-plum base — #6A4B7A would read darker
+   *      than the dark base and look like the base lap, so dark lifts up). */
+  const overageLapColor = isDark ? "#9A7BAA" : "#6A4B7A";
+  /** Leading-cap glow — the Apple "overflow" highlight at the wrap's end. A
+   *  soft, even-lighter semi-opaque dot sitting on the overage lap's leading
+   *  cap. */
+  const overageGlowColor = isDark ? "#C4ACD0" : "#9A7BAA";
+  // Empty-state track contrast (audit gap 1, 2026-06-09). On a cold open the
+  // ring is the largest object on the screen, but the default frost-mist track
+  // (#EDEAF1 light) sits only ~10 luminance below the #F6F5F2 card — the ring's
+  // defining shape was nearly invisible and read as an unfinished placeholder.
+  // When empty, lift the track to `borderStrong` (#C9C2D6 light / #47424F dark)
+  // so the circle is unmistakable geometry. The FILLED-state track stays the
+  // soft frost-mist so the plum arc keeps maximum contrast against it. Mirrors
+  // web `--ring-bg-empty` on the empty-state branch of `DailyRing`.
+  const emptyTrackColor = isDark
+    ? Colors.dark.borderStrong
+    : Colors.light.borderStrong;
+  const outerTrackColor = isEmpty ? emptyTrackColor : trackColor;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);
@@ -350,47 +384,46 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
-          {/* MFP-style diagonal hash pattern. Layered over the red over-
-              budget arc to mark the portion past goal. Hue matches
-              Accent.destructive so the pattern reads as part of the red
-              arc, not a separate colour layer. Grace 2026-05-22:
-              "mfp used to make it a hashed colour like this". */}
-          <Defs>
-            <Pattern
-              id="overHash"
-              patternUnits="userSpaceOnUse"
-              width={6}
-              height={6}
-              patternTransform="rotate(45)"
-            >
-              <Line
-                x1={0}
-                y1={0}
-                x2={0}
-                y2={6}
-                stroke={Accent.destructive}
-                strokeWidth={3}
-              />
-            </Pattern>
-            {/* ENG-826 — calm idle/"calibrating" gradient for the empty ring:
-                a soft brand-blue tonal arc instead of a flat grey track (web
-                parity: daily-ring.tsx #ringIdle). Not the win spectrum. */}
-            <LinearGradient id="ringIdle" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#588CE4" stopOpacity={0.5} />
-              <Stop offset="100%" stopColor="#7BA3EA" stopOpacity={0.22} />
-            </LinearGradient>
-          </Defs>
-          {/* Outer calorie ring track — calm idle gradient when empty
-              ("calibrating"), neutral track once logging starts. ENG-826. */}
+          {/* SLOE redesign (2026-06-03): the MFP-style diagonal hash that
+              previously marked the over-budget portion is replaced by a
+              clean red overage ARC (see the over-budget segment below) to
+              match the `01 · Today` Figma frame + `_gen.mjs multiRing`. The
+              `overHash` Pattern is gone. */}
+          {/* SLOE 2026-06-03 (Grace decision): removed the blue "ringIdle"
+              calibrating gradient too — the empty ring now uses the Sloe
+              grey track per the S5 empty-Today frame. No Svg <Defs> remain
+              on this ring: every state strokes a plain `Circle`. */}
+          {/* Outer calorie ring track — Sloe grey track in ALL states incl.
+              empty (Grace 2026-06-03: empty ring = grey track per the S5
+              frame, not the old blue "calibrating" gradient). On the EMPTY
+              state the track lifts to `borderStrong` (audit gap 1) so the
+              ring's shape reads on a cold open instead of disappearing into
+              the near-tonal card; the filled state keeps the soft frost-mist
+              so the plum arc holds contrast. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={isEmpty ? "url(#ringIdle)" : trackColor}
+            stroke={outerTrackColor}
             strokeWidth={STROKE}
             opacity={1}
           />
+          {/* Empty-state inner hairline (audit gap 1) — a 1px ring just inside
+              the track so the empty circle reads as intentional geometry, not
+              a faint outline. Sits at the track's inner edge. Hidden the moment
+              anything is logged (the plum arc then carries the shape). */}
+          {isEmpty ? (
+            <Circle
+              cx={CX}
+              cy={CX}
+              r={R - STROKE / 2 - 1}
+              fill="none"
+              stroke={emptyTrackColor}
+              strokeWidth={1}
+              opacity={0.7}
+            />
+          ) : null}
           {/* Bonus calorie segment (orange). Canonical 2026-05-22 v4
               multi-ring revival: when exercise has bumped the daily
               goal above the base target, render the "earned" territory
@@ -426,17 +459,19 @@ export default function CalorieRing({
               );
             })()
           ) : null}
-          {/* Food progress: green under budget, warning amber over.
-              Empty = no visible arc. Renders ON TOP of the bonus
-              segment so the green arc visibly "eats into" the orange
-              when consumption exceeds the base goal. */}
+          {/* Food progress: the PLUM calorie arc (Sloe redesign — plum
+              under AND over). When over, this is a FULL plum ring (offset 0)
+              and the Apple-Watch overage LAP below wraps on top of it to carry
+              the over-budget signal. Empty = no visible arc. Renders ON TOP of
+              the bonus segment so the plum arc visibly "eats into" the honey
+              bonus when consumption exceeds the base goal. */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
             r={R}
             stroke={
               isEmpty
-                ? trackColor
+                ? outerTrackColor
                 : ringStateColor
             }
             strokeWidth={STROKE}
@@ -447,29 +482,69 @@ export default function CalorieRing({
             rotation="-90"
             origin={`${CX},${CX}`}
           />
-          {/* Hashed overage segment — only renders when consumed > goal.
-              Sits ON TOP of the solid red food arc, starting at 12
-              o'clock and going clockwise for `(over / goal) * mainCirc`.
-              Capped at one full lap so going 2x over doesn't render a
-              full lap twice (the centre digit carries the magnitude). */}
+          {/* Over-budget OVERAGE LAP — Apple-Watch wrap (2026-06-04). The
+              calorie ring itself stays plum (full, drawn above). The portion
+              past 100% is drawn as a SECOND lap wrapping clockwise from 12
+              o'clock for `overFrac = min(consumed/goal - 1, 1)` of the circle,
+              ON TOP of the full base ring — exactly the Apple Activity / Lifesum
+              / Any Distance overflow grammar. NO red. The lap is a lighter plum
+              (`overageLapColor`) so it reads against the base lap despite the
+              shared hue, with ROUNDED caps (both caps clean — the prior "one in,
+              one out" red-arc oddness is gone) and a soft glow on the LEADING
+              cap (the Apple overflow highlight). Capped at a single extra lap
+              (overFrac ≤ 1, i.e. up to 2× goal); the centre digit carries
+              magnitude beyond that.
+
+              Depth note: react-native-svg 15.x does NOT render RN `shadow*`
+              props on individual SVG primitives, so the lap relies on the
+              lighter hue + the leading-cap glow for separation rather than a
+              (non-rendering) drop-shadow — honest depth, no dead props. */}
           {!isEmpty && isOver && goal > 0 ? (
             (() => {
-              const overFraction = Math.min((consumed - goal) / goal, 1);
-              const overLen = mainCirc * overFraction;
+              const overFrac = Math.min(consumed / goal - 1, 1);
+              const overLen = mainCirc * overFrac;
+              // Leading-cap centre point. Both arcs start at 12 o'clock and
+              // sweep clockwise (the `rotation="-90"` puts the dash origin at
+              // top). The leading cap therefore sits `overFrac` of a full turn
+              // clockwise from 12 o'clock. In SVG coords (0° = 3 o'clock, y
+              // grows downward) that angle is `-90° + overFrac·360°`.
+              const capAngle = (-90 + overFrac * 360) * (Math.PI / 180);
+              const capX = CX + R * Math.cos(capAngle);
+              const capY = CX + R * Math.sin(capAngle);
               return (
-                <Circle
-                  cx={CX}
-                  cy={CX}
-                  r={R}
-                  fill="none"
-                  stroke="url(#overHash)"
-                  strokeWidth={STROKE}
-                  strokeDasharray={`${overLen} ${mainCirc}`}
-                  strokeDashoffset={0}
-                  strokeLinecap="butt"
-                  rotation="-90"
-                  origin={`${CX},${CX}`}
-                />
+                <G>
+                  <Circle
+                    cx={CX}
+                    cy={CX}
+                    r={R}
+                    fill="none"
+                    stroke={overageLapColor}
+                    strokeWidth={STROKE}
+                    strokeDasharray={`${overLen} ${mainCirc}`}
+                    strokeDashoffset={0}
+                    strokeLinecap="round"
+                    rotation="-90"
+                    origin={`${CX},${CX}`}
+                  />
+                  {/* Apple overflow GLOW — a soft, even-lighter semi-opaque dot
+                      on the leading cap. Two stacked circles (a wide faint halo
+                      + a tighter brighter core) read as a glow without a
+                      blur filter, keeping the no-`<Defs>` Sloe ring rule. */}
+                  <Circle
+                    cx={capX}
+                    cy={capY}
+                    r={STROKE * 0.95}
+                    fill={overageGlowColor}
+                    opacity={0.28}
+                  />
+                  <Circle
+                    cx={capX}
+                    cy={capY}
+                    r={STROKE * 0.5}
+                    fill={overageGlowColor}
+                    opacity={0.65}
+                  />
+                </G>
               );
             })()
           ) : null}
@@ -559,9 +634,13 @@ export default function CalorieRing({
           // generic UI copy. See
           // `docs/operations/session-replay-masking-audit.md`.
           <PostHogMaskView>
+            {/* SLOE redesign (2026-06-03): the centre kcal value reads in
+                Newsreader (serif `Type.ringValue`) to match the
+                `01 · Today` frame's `font-headline text-5xl` ring numeral.
+                Was Inter (`Type.macroValue`). */}
             <Text
               style={{
-                ...Type.macroValue,
+                ...Type.ringValue,
                 color: textColor,
                 fontVariant: ["tabular-nums"],
               }}
@@ -570,18 +649,27 @@ export default function CalorieRing({
             </Text>
           </PostHogMaskView>
         )}
-        {/* Center label ("REMAINING" / "LOGGED" / "OVER"). Grace
-            2026-04-28: the 10pt size + letterSpacing 0.8 ran ~54px
-            wide, which clipped the inner-most macro ring (r=32) at
-            the label's y position. Solution: shrink + tighten when
-            expanded so the text fits cleanly inside the inner-most
-            ring band. At fontSize 8 with no extra tracking the word
-            "REMAINING" is ~38px wide → ±19 from CX, well inside the
-            inner ring's ~±27 band at y. Collapsed mode keeps the
-            original 10pt + tracking for readability.
-            Hidden in empty state — the "Start your day" copy above
-            already invites action; LOGGED beneath would be redundant. */}
-        {!isEmpty && (
+        {/* Centre sub-label. SLOE redesign (2026-06-04, Grace "match Figma
+            exactly"): in REMAINING mode the centre reads the Figma 01
+            "of {goal} kcal left" budget line (shown even when the multi-ring
+            is expanded — it replaces the uppercase status word, so there's
+            no inner-arc clipping concern). CONSUMED keeps "LOGGED" + a
+            collapsed "of {goal} kcal"; OVER keeps "OVER". Hidden in the
+            empty state — the "Start your day" copy above already leads. */}
+        {!isEmpty && displayMode === "remaining" && !isOver && goal > 0 ? (
+          <PostHogMaskView>
+            <Text
+              style={{
+                ...Type.caption,
+                color: secondaryColor,
+                marginTop: 2,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              of {Math.round(goal).toLocaleString()} kcal
+            </Text>
+          </PostHogMaskView>
+        ) : !isEmpty ? (
           <Text
             style={{
               ...Type.label,
@@ -591,13 +679,10 @@ export default function CalorieRing({
           >
             {centerLabel}
           </Text>
-        )}
-        {/* Budget line shows under the centre label only when collapsed.
-            Multi-ring revival 2026-05-22 v4: when expanded, the budget
-            line conflicts visually with the innermost macro arc; the
-            stats row below the ring (Goal / Food / Exercise) carries
-            the explicit numbers in that case. */}
-        {goal > 0 && !expanded && !isEmpty ? (
+        ) : null}
+        {/* Consumed-mode budget line — collapsed only. When the ring is
+            expanded the stats row below carries the explicit goal. */}
+        {goal > 0 && !expanded && !isEmpty && displayMode === "consumed" ? (
           <PostHogMaskView>
             <Text
               style={{

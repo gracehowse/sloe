@@ -560,14 +560,122 @@ describe("createRecipeWizard — Library entry-point pin", () => {
   const LIBRARY_PATH = resolve(__dirname, "../../app/(tabs)/library.tsx");
   const LIBRARY_SRC = readFileSync(LIBRARY_PATH, "utf8");
 
-  it("Library exposes a + Create button that routes to /recipe/create", () => {
-    // Header pill — primary affordance from the Library tab.
-    expect(LIBRARY_SRC).toMatch(/router\.push\("\/recipe\/create"\)/);
+  it("Library exposes a + Create header button (multi-source action sheet)", () => {
+    // Header pill — primary create affordance from the Library tab.
+    // ENG-921: the create flow opens the multi-source action sheet
+    // (paste-link / photo / manual) rather than hard-routing to the
+    // manual wizard; the wizard is still reachable from that sheet.
     expect(LIBRARY_SRC).toMatch(/createBtn/);
+    expect(LIBRARY_SRC).toMatch(/setCreateSheetOpen\(true\)/);
+    expect(LIBRARY_SRC).toMatch(/CreateRecipeActionSheet/);
   });
 
-  it("the empty state surfaces 'Create a recipe' as the primary CTA", () => {
-    expect(LIBRARY_SRC).toMatch(/Create a recipe/);
+  it("the empty state surfaces 'Import a recipe' as the primary CTA (Figma S7)", () => {
+    // ENG-921 / Figma `529:2`: the empty-state primary CTA leads with
+    // Import (the Reel/TikTok save loop, matching Sloe positioning),
+    // paired with an "Explore Discover" secondary. Create stays
+    // reachable via the header + Create button above.
+    expect(LIBRARY_SRC).toMatch(/Import a recipe/);
+    expect(LIBRARY_SRC).toMatch(/Explore Discover/);
+  });
+});
+
+// -----------------------------------------------------------------------
+// Premium parity pins — ENG-1011 (2026-06-09 recipe-create premium sweep)
+// These assert the load-bearing style + structural choices that bring the
+// wizard to editorial-luxury parity (Julienne / Crouton benchmark).
+// Vitest/jsdom can't render the RN screen, so we pin the source text.
+// -----------------------------------------------------------------------
+describe("createRecipeWizard — premium parity pins (ENG-1011)", () => {
+  const COMPONENT_PATH = resolve(
+    __dirname,
+    "../../components/recipe/CreateRecipeWizard.tsx",
+  );
+  const COMPONENT_SRC = readFileSync(COMPONENT_PATH, "utf8");
+
+  it("imports Type and FontFamily design tokens (no bespoke inline sizes)", () => {
+    // Gap 1+2: the entire type ramp must use canonical tokens.
+    expect(COMPONENT_SRC).toMatch(
+      /import\s*\{[^}]*\bType\b[^}]*\bFontFamily\b[^}]*\}\s*from\s*"@\/constants\/theme"/,
+    );
+  });
+
+  it("step H1 sectionTitle uses FontFamily.serifSemibold (Newsreader display)", () => {
+    // Gap 1: editorial serif for every step question.
+    expect(COMPONENT_SRC).toMatch(/FontFamily\.serifSemibold/);
+    // The serifSemibold token must appear specifically inside the sectionTitle block,
+    // not just anywhere in the file.
+    expect(COMPONENT_SRC).toMatch(/sectionTitle[\s\S]*?serifSemibold/);
+  });
+
+  it("photo fallback renders RecipeHeroFallback (warm sage→cream tile, not cold dashed box)", () => {
+    // Gap 3: warm fallback — banish the cold grey dashed border.
+    expect(COMPONENT_SRC).toMatch(/import\s*\{\s*RecipeHeroFallback\s*\}\s*from\s*"@\/components\/RecipeHeroFallback"/);
+    expect(COMPONENT_SRC).toMatch(/<RecipeHeroFallback/);
+    // photoFallback style definition must not carry a dashed border — the warm
+    // RecipeHeroFallback tile is the fallback, not a cold dashed box.
+    // The dashed border is intentional on `addBtn` (a different control),
+    // but must NOT appear in the `photoFallback:` StyleSheet block.
+    // We check by matching the photoFallback block (lines between
+    // `photoFallback:` and the closing `},`) and asserting no `dashed` there.
+    const photoFallbackBlock = COMPONENT_SRC.match(/photoFallback:\s*\{[^}]+\}/)?.[0] ?? "";
+    expect(photoFallbackBlock).not.toMatch(/borderStyle.*dashed/);
+  });
+
+  it("servings value renders inside a servingsValueBox (boxed stepper, not raw text)", () => {
+    // Gap 4: the count is inside a boxed container.
+    expect(COMPONENT_SRC).toMatch(/servingsValueBox/);
+    expect(COMPONENT_SRC).toMatch(/<View style=\{styles\.servingsValueBox\}/);
+  });
+
+  it("servings numeral uses Type.heroValue (Newsreader serif)", () => {
+    // Gap 4+2: big numerals are serif.
+    expect(COMPONENT_SRC).toMatch(/\.\.\.Type\.heroValue/);
+  });
+
+  it("does not use off-scale paddingVertical: 14 or padding: 10 (Gap 5 — must be Spacing tokens)", () => {
+    // Gap 5: raw 14 and 10 are off the canonical 4/8/16/20/24 Spacing scale.
+    // All input and button padding must use Spacing.* tokens.
+    expect(COMPONENT_SRC).not.toMatch(/paddingVertical:\s*14\b/);
+    expect(COMPONENT_SRC).not.toMatch(/padding:\s*10\b/);
+  });
+
+  it("disabled Continue CTA opacity floor is ≥ 0.65 (not 0.45)", () => {
+    // Gap 6: 0.45 reads as 'broken/dead'; 0.65 reads as 'not yet'.
+    // The source must NOT contain the old 0.45 on the Continue CTA.
+    expect(COMPONENT_SRC).not.toMatch(/!advanceEnabled[\s\S]*?opacity:\s*0\.45/);
+    expect(COMPONENT_SRC).toMatch(/!advanceEnabled[\s\S]*?opacity:\s*0\.6[5-9]/);
+  });
+
+  it("inline helper copy explains why Continue is disabled on the title step", () => {
+    // Gap 6: user-visible guidance instead of a ghost button.
+    expect(COMPONENT_SRC).toMatch(/Add a name to continue/);
+  });
+
+  it("progress-bar gap uses Spacing.xs token (not raw 4)", () => {
+    // Gap 9: on-scale token.
+    expect(COMPONENT_SRC).toMatch(/gap:\s*Spacing\.xs/);
+  });
+
+  it("eyebrow letterSpacing uses Type.label tracking (≈ 0.88, not 2)", () => {
+    // Gap 10: system eyebrow tracking is 0.88em; raw 2 is over-tracked.
+    expect(COMPONENT_SRC).toMatch(/\.\.\.Type\.label[\s\S]*?topTitle|topTitle[\s\S]*?\.\.\.Type\.label/);
+    expect(COMPONENT_SRC).not.toMatch(/letterSpacing:\s*2[^.]/);
+  });
+
+  it("char counter is conditionally rendered only near the TITLE_MAX_LENGTH limit", () => {
+    // Gap 11: counter hidden at 0 chars; only appears within 20 chars of the limit.
+    expect(COMPONENT_SRC).toMatch(/title\.length\s*>\s*TITLE_MAX_LENGTH\s*-\s*20/);
+  });
+
+  it("description null deferral has a Linear ticket reference (no-silent-deferral rule)", () => {
+    // Gap 12: every deferred work item must have a Linear reference (ENG-NNN).
+    expect(COMPONENT_SRC).toMatch(/deferred:[\s\S]*?ENG-\d+[\s\S]*?description/);
+  });
+
+  it("inputs use Radius.xl (12) not Radius.md (6) — warm recipe radius per spec", () => {
+    // Gap 13: recipe-surface warmth — 12pt radius on inputs/cards.
+    expect(COMPONENT_SRC).toMatch(/borderRadius:\s*Radius\.xl/);
   });
 });
 

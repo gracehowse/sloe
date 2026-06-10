@@ -6,6 +6,7 @@ import type PostHog from "posthog-react-native";
 import {
   getPostHogClient,
   persistSessionReplaySampleRate,
+  primeForcedFlags,
   primeSessionReplaySampleRate,
   track,
 } from "../lib/analytics";
@@ -42,6 +43,11 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       // module-level `initialSampleRate` with the previous session's
       // flag payload value.
       await primeSessionReplaySampleRate();
+      // ENG-840 — hydrate the dev/QA forced-flag overrides from
+      // AsyncStorage before the first flag read so a flag forced in a
+      // previous session is honoured on first paint. No-op in release
+      // builds (dropped by Hermes DCE).
+      await primeForcedFlags();
       if (!active) return;
       const c = getPostHogClient();
       setClient(c);

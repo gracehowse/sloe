@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sloe — Today's Meals imagery options A/B/C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Sloe tokens (mobile theme.ts + web theme.css) */
+    --cream:      #f6f5f2;   /* card / surface */
+    --page:       #efece6;   /* warm oat page behind cards */
+    --plum:       #3b2a4d;   /* chrome / titles / calorie hue */
+    --clay:       #c8794e;   /* primary accent */
+    --clay-solid: #a0552e;   /* clay as small text/icon on light (AA) */
+    --ink:        #2a2330;   /* warm body ink */
+    --ink-2:      #6a6072;   /* secondary */
+    --ink-3:      #948c9e;   /* tertiary */
+    --hairline:   rgba(59,42,77,0.08);
+    --tile-bg:    #ece8e2;   /* fallback tile fill (warm) */
+    --serif: "Newsreader", Georgia, serif;
+    --sans:  "Inter", -apple-system, BlinkMacInsystemFont, sans-serif;
+  }
+
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #e7e2da;
+    font-family: var(--sans);
+    color: var(--ink);
+    padding: 40px 28px 56px;
+  }
+
+  .deck-head { max-width: 1240px; margin: 0 auto 30px; }
+  .deck-head h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 30px;
+    letter-spacing: -0.3px;
+    color: var(--plum);
+    margin: 0 0 6px;
+  }
+  .deck-head p {
+    font-size: 14px;
+    line-height: 21px;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 760px;
+  }
+
+  .row {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .col { width: 390px; }
+  .col-label {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .col-label .tag {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--clay-solid);
+  }
+  .col-label .name {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 19px;
+    color: var(--plum);
+    margin-top: 3px;
+  }
+  .col-label .sub {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink-2);
+    margin-top: 4px;
+    padding: 0 18px;
+  }
+
+  /* ---- iPhone frame (390px logical) ---- */
+  .phone {
+    width: 390px;
+    border-radius: 46px;
+    background: #ffffff;
+    padding: 11px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 30px 60px -22px rgba(40,30,48,0.42),
+      0 0 0 1px rgba(40,30,48,0.06);
+  }
+  .screen {
+    border-radius: 36px;
+    overflow: hidden;
+    background: var(--page);
+    position: relative;
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 132px; height: 26px;
+    background: #fff;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    z-index: 5;
+  }
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 24px 6px;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+  }
+
+  .app {
+    padding: 8px 18px 28px;
+  }
+
+  /* ---- section header (mirrors TodayMealsFigmaLayout) ---- */
+  .sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 10px 2px 14px;
+  }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 24px;
+    letter-spacing: -0.3px;
+    color: var(--plum);
+    margin: 0;
+  }
+  .sec-head .total {
+    font-size: 11px; font-weight: 500; color: var(--ink-3);
+  }
+
+  /* ---- meal card (flat slab, 24px radius, cream) ---- */
+  .meal-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .meal {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--cream);
+    border-radius: 24px;
+    padding: 12px;
+  }
+  .thumb {
+    width: 64px; height: 64px; flex: 0 0 64px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--tile-bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.icon svg { width: 26px; height: 26px; }
+
+  .meal-body { flex: 1; min-width: 0; }
+  .overline {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .slot {
+    font-family: var(--sans);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .logged {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--ink-3);
+  }
+  .logged svg { width: 13px; height: 13px; }
+  .title {
+    font-family: var(--serif);
+    font-weight: 500; font-size: 17px; line-height: 21px;
+    letter-spacing: -0.1px;
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .macros {
+    font-size: 11px; font-weight: 500; color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .dot { color: var(--ink-3); }
+
+  /* ---- Log next CTA (mirrors live) ---- */
+  .log-cta {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--cream);
+    border-radius: 24px;
+    min-height: 58px;
+    margin-top: 12px;
+  }
+  .log-cta svg { width: 19px; height: 19px; }
+  .log-cta span { font-family: var(--sans); font-weight: 500; font-size: 14px; color: var(--ink-2); }
+
+  .note {
+    text-align: center; font-size: 11px; line-height: 16px;
+    color: var(--ink-2); margin-top: 12px; padding: 0 8px;
+  }
+  .note b { color: var(--plum); font-weight: 600; }
+
+  .legend {
+    max-width: 1240px; margin: 38px auto 0;
+    font-size: 12px; line-height: 18px; color: var(--ink-2);
+    border-top: 1px solid rgba(40,30,48,0.12); padding-top: 16px;
+  }
+  .legend b { color: var(--plum); }
+</style>
+</head>
+<body>
+  <div class="deck-head">
+    <h1>Today&rsquo;s Meals — row imagery, three options</h1>
+    <p>The same logged day rendered three ways. All imagery is real, generated with FLUX&nbsp;2&nbsp;Pro via the
+       locked Sloe prompt template (Template&nbsp;A finished dishes, Template&nbsp;B single ingredients). Sloe tokens:
+       cream cards, plum titles, clay accent, Newsreader titles, Inter body, flat 24px slabs.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- ============ OPTION A — consistent icon ============ -->
+    <div class="col">
+      <div class="col-label">
+        <div class="tag">Option A</div>
+        <div class="name">Consistent icon</div>
+        <div class="sub">Every row is the same calm utensils tile. Quiet, uniform, zero photo dependency.</div>
+      </div>
+      <div class="phone"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;&#9679;</span></div>
+        <div class="app">
+          <div class="sec-head"><h2>Today&rsquo;s Meals</h2><span class="total">1,420 kcal total</span></div>
+          <div class="meal-list" id="listA"></div>
+        </div>
+      </div></div>
+      <div class="note">Calmest, most uniform. But a row of identical glyphs reads as a flat list — nothing to draw the eye to what you ate.</div>
+    </div>
+
+    <!-- ============ OPTION B — photo when recipe (current) ============ -->
+    <div class="col">
+      <div class="col-label">
+        <div class="tag">Option B</div>
+        <div class="name">Photo when recipe &middot; current</div>
+        <div class="sub">Library recipes show the meal photo; single foods (coffee, apple) fall back to the icon tile.</div>
+      </div>
+      <div class="phone"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;&#9679;</span></div>
+        <div class="app">
+          <div class="sec-head"><h2>Today&rsquo;s Meals</h2><span class="total">1,420 kcal total</span></div>
+          <div class="meal-list" id="listB"></div>
+        </div>
+      </div></div>
+      <div class="note">Mixed rhythm: rich on recipe rows, bare on logged foods. The <b>inconsistency</b> is the problem — the list looks half-finished.</div>
+    </div>
+
+    <!-- ============ OPTION C — universal imagery ============ -->
+    <div class="col">
+      <div class="col-label">
+        <div class="tag">Option C</div>
+        <div class="name">Universal imagery</div>
+        <div class="sub">Every row has a real image — recipes use the dish photo, single foods use the ingredient image. One clean fallback for the rare miss.</div>
+      </div>
+      <div class="phone"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;&#9679;</span></div>
+        <div class="app">
+          <div class="sec-head"><h2>Today&rsquo;s Meals</h2><span class="total">1,420 kcal total</span></div>
+          <div class="meal-list" id="listC"></div>
+        </div>
+      </div></div>
+      <div class="note"><b>Every row earns its image.</b> Consistent rhythm, appetising, and the food does the work. The bottom row shows the long-tail fallback tile.</div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <b>Imagery source.</b> Real FLUX&nbsp;2&nbsp;Pro generations (<code>fal-ai/flux-2-pro</code>) per
+    <code>docs/brand/sloe-image-prompt-template.md</code>. Template&nbsp;A: Chicken Frittata, Tahini Grain Bowl,
+    Chicken&nbsp;&amp; Avocado Salad. Template&nbsp;B: eggs, black coffee, apple, banana, milk, grilled chicken breast.
+    No on-image text, people, or hands; warm muted palette; clean white for single foods. See the universal-food-imagery
+    decision: <code>docs/decisions/2026-06-07-universal-food-imagery.md</code>.
+  </div>
+
+<script>
+  // Reusable Sloe stroke glyphs (lucide-equivalent, matching the live layout).
+  const ICON_UTENSILS =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="%PLUM%" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/></svg>'
+      .replace(/%PLUM%/g, '#948c9e');
+  const ICON_CHECK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#948c9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  const ICON_PLUS =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#c8794e" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
+
+  // IMG = relative path from this HTML to the generated PNGs.
+  const IMG = '../../screenshots/imagery-proto/';
+
+  // The realistic logged day. `img` = the Template-A/B asset for that row.
+  const ROWS = [
+    { slot: 'Breakfast', title: 'Chicken Frittata', kcal: 340, p: 26, img: 'chicken-frittata.png',     recipe: true  },
+    { slot: 'Breakfast', title: 'Three eggs',        kcal: 215, p: 18, img: 'eggs.png',                recipe: false },
+    { slot: 'Breakfast', title: 'Black coffee',      kcal: 5,   p: 0,  img: 'coffee.png',              recipe: false },
+    { slot: 'Lunch',     title: 'Chicken & Avocado Salad', kcal: 430, p: 38, img: 'chicken-avocado-salad.png', recipe: true },
+    { slot: 'Lunch',     title: 'An apple',          kcal: 95,  p: 1,  img: 'apple.png',               recipe: false },
+    { slot: 'Snack',     title: 'A banana',          kcal: 105, p: 1,  img: 'banana.png',              recipe: false },
+    { slot: 'Snack',     title: 'A glass of milk',   kcal: 120, p: 8,  img: 'milk.png',                recipe: false, fallback: true },
+  ];
+
+  function mealHTML(row, mode) {
+    // mode: 'icon'  -> always the utensils tile
+    //       'photo' -> recipe rows get image, single foods get icon (current B)
+    //       'all'   -> every row gets its image; `fallback` row uses the icon tile
+    let thumb;
+    if (mode === 'icon') {
+      thumb = '<div class="thumb icon">' + ICON_UTENSILS + '</div>';
+    } else if (mode === 'photo') {
+      thumb = row.recipe
+        ? '<div class="thumb"><img src="' + IMG + row.img + '" alt=""></div>'
+        : '<div class="thumb icon">' + ICON_UTENSILS + '</div>';
+    } else { // 'all'
+      thumb = row.fallback
+        ? '<div class="thumb icon">' + ICON_UTENSILS + '</div>'
+        : '<div class="thumb"><img src="' + IMG + row.img + '" alt=""></div>';
+    }
+    return (
+      '<div class="meal">' +
+        thumb +
+        '<div class="meal-body">' +
+          '<div class="overline">' +
+            '<span class="slot">' + row.slot + '</span>' +
+            '<span class="logged">' + ICON_CHECK + 'Logged</span>' +
+          '</div>' +
+          '<div class="title">' + row.title + '</div>' +
+          '<div class="macros">' + row.kcal.toLocaleString() + ' kcal <span class="dot">&middot;</span> ' + row.p + 'g P</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function render(id, mode) {
+    document.getElementById(id).innerHTML =
+      ROWS.map(r => mealHTML(r, mode)).join('') +
+      '<div class="log-cta">' + ICON_PLUS + '<span>Log Dinner</span></div>';
+  }
+
+  render('listA', 'icon');
+  render('listB', 'photo');
+  render('listC', 'all');
+</script>
+</body>
+</html>

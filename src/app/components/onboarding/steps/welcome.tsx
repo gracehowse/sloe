@@ -54,23 +54,27 @@ export function WelcomeStep() {
           <div className="mb-7 md:mb-10">
             <SupprWordmark size={24} />
           </div>
+          {/* Sloe reskin (Figma welcome 285:2): the cold-open hero
+              headline reads in plum Newsreader serif, matching the
+              warm-coaching brand. Copy moves off "Suppr Club" to the
+              Sloe positioning line ("love food AND have goals"). */}
           <h1
-            className="m-0 mb-4 md:mb-5 text-[40px] md:text-[64px] font-extrabold leading-[1.05] md:leading-[1.0] text-foreground"
+            className="font-[family-name:var(--font-headline)] m-0 mb-4 md:mb-5 text-[40px] md:text-[56px] font-normal leading-[1.06] md:leading-[1.04] text-foreground-brand"
             style={{
-              letterSpacing: "-0.04em",
+              letterSpacing: "-0.02em",
               textWrap: "balance",
             } as React.CSSProperties}
           >
-            Join the
+            Eat well,
             <br />
-            Suppr Club.
+            on your terms.
           </h1>
           <p
             className="m-0 mb-7 md:mb-9 max-w-[520px] text-[15px] md:text-[18px] leading-[1.55] text-muted-foreground"
           >
-            Eat well. Cook what you want. Know what&apos;s in it. Import recipes
-            from the sites you already use — Suppr breaks down the macros and
-            calibrates targets to you.
+            Cook what you love and still hit your goals. Import recipes from the
+            sites you already use — Sloe breaks down the macros and calibrates
+            targets to you.
           </p>
 
           <div className="mb-8 md:mb-10 flex flex-col sm:flex-row gap-3 md:gap-3.5">
@@ -86,21 +90,21 @@ export function WelcomeStep() {
               }}
               className="h-12 md:h-14 px-6 md:px-7 text-base font-bold"
             >
-              Join the club — free
+              Get started — free
             </Button>
             <Button
               size="lg"
               variant="ghost"
               onClick={() => {
-                // "I'm already a member" — send returning visitors to
-                // the canonical sign-in entry point (Grace 2026-04-20).
+                // "I already have an account" — send returning visitors
+                // to the canonical sign-in entry point (Grace 2026-04-20).
                 if (typeof window !== "undefined") {
                   window.location.href = "/login";
                 }
               }}
               className="h-12 md:h-14 px-6 md:px-7 text-base font-semibold text-foreground hover:bg-muted/50"
             >
-              I&apos;m already a member
+              I already have an account
             </Button>
           </div>
 

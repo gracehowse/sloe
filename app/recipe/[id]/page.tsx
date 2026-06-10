@@ -166,25 +166,34 @@ export default async function RecipePage({ params }: Props) {
     low: "Estimated",
   } as const;
 
+  // Sloe confidence tokens — sage (high) / amber (medium) / brick (low). The
+  // `-solid` text variants clear AA on their soft tints; dot colours are set
+  // inline at the render site from the matching `--confidence-*` token.
   const confidenceColor = {
-    high: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
-    medium: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
-    low: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800",
+    high: "text-success-solid bg-success-soft border-success/30",
+    medium: "text-warning-solid bg-warning-soft border-warning/30",
+    low: "text-destructive-solid bg-destructive-soft border-destructive/30",
   } as const;
 
-  const macroCards = [
-    { label: "Calories", value: `${Math.round(recipe.calories)}`, unit: "kcal" },
-    { label: "Protein", value: `${Math.round(recipe.protein)}`, unit: "g" },
-    { label: "Carbs", value: `${Math.round(recipe.carbs)}`, unit: "g" },
-    { label: "Fat", value: `${Math.round(recipe.fat)}`, unit: "g" },
+  // Figma 332:2 macro strip — flat 4-up (CAL / PRO / CARB / FAT) in one cream
+  // card. The four core macros are the strip; fibre/sugar/sodium (when present)
+  // continue below the strip as a secondary chip row so no nutrition VALUE is
+  // dropped from the page (the strip layout is Figma-fixed at four columns).
+  const macroStrip = [
+    { label: "CAL", value: `${Math.round(recipe.calories)}`, unit: "" },
+    { label: "PRO", value: `${Math.round(recipe.protein)}`, unit: "g" },
+    { label: "CARB", value: `${Math.round(recipe.carbs)}`, unit: "g" },
+    { label: "FAT", value: `${Math.round(recipe.fat)}`, unit: "g" },
+  ];
+  const microChips = [
     ...(recipe.fiberG != null && recipe.fiberG > 0
-      ? [{ label: "Fibre", value: `${Math.round(recipe.fiberG)}`, unit: "g" as const }]
+      ? [{ label: "Fibre", value: `${Math.round(recipe.fiberG)}g` }]
       : []),
     ...(recipe.sugarG != null && recipe.sugarG > 0
-      ? [{ label: "Sugar", value: `${recipe.sugarG}`, unit: "g" as const }]
+      ? [{ label: "Sugar", value: `${recipe.sugarG}g` }]
       : []),
     ...(recipe.sodiumMg != null && recipe.sodiumMg > 0
-      ? [{ label: "Sodium", value: `${recipe.sodiumMg}`, unit: "mg" as const }]
+      ? [{ label: "Sodium", value: `${recipe.sodiumMg}mg` }]
       : []),
   ];
 
@@ -216,22 +225,27 @@ export default async function RecipePage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    // Figma 332:2 — Sloe cream page (#f6f5f2 surface) replaces the slate base.
+    <div className="min-h-screen bg-background-secondary">
       <PageViewTracker event={AnalyticsEvents.recipe_page_viewed} properties={{ recipeId: recipe.id, title: recipe.title }} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
-      {/* Nav bar */}
-      <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+      {/* Nav bar — Sloe palette: plum wordmark, clay CTA pill. */}
+      <header className="sticky top-0 z-10 bg-background-secondary/90 backdrop-blur-xl border-b border-border px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+          <Link
+            href="/"
+            className="text-lg font-semibold text-foreground-brand"
+            style={{ fontFamily: "var(--font-headline)" }}
+          >
             Suppr
           </Link>
           <Link
             href="/login"
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+            className="px-5 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-95 transition-all"
           >
             Plan your week free
           </Link>
@@ -245,7 +259,7 @@ export default async function RecipePage({ params }: Props) {
             mirrors the mobile RecipeHeroFallback. Photo case stays
             full aspect-video. */}
         {recipe.image ? (
-          <div className="rounded-2xl overflow-hidden shadow-xl mb-8">
+          <div className="rounded-3xl overflow-hidden shadow-xl mb-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={recipe.image}
@@ -260,7 +274,7 @@ export default async function RecipePage({ params }: Props) {
           // deterministic per-recipe gradient + glyph). Aspect ratio
           // matches the photo case via aspect-video.
           <div
-            className="relative rounded-2xl overflow-hidden shadow-xl mb-8 aspect-video"
+            className="relative rounded-3xl overflow-hidden shadow-xl mb-8 aspect-video"
             aria-label={`${recipe.title} — no photo available`}
           >
             <RecipeHeroFallback
@@ -271,15 +285,24 @@ export default async function RecipePage({ params }: Props) {
           </div>
         )}
 
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+        {/* H1 — Figma 332:2: Newsreader serif, plum, normal weight, 36/45. */}
+        <h1
+          className="text-foreground-brand mb-2"
+          style={{
+            fontFamily: "var(--font-headline)",
+            fontSize: "36px",
+            lineHeight: "45px",
+            fontWeight: 400,
+          }}
+        >
           {recipe.title}
         </h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">
+        <p className="text-foreground-secondary mb-6">
           By{" "}
           {recipe.creatorId ? (
             <Link
               href={`/creator/${recipe.creatorId}`}
-              className="font-medium text-violet-600 dark:text-violet-400 hover:underline"
+              className="font-medium text-primary-solid hover:underline"
             >
               {recipe.authorName}
             </Link>
@@ -290,32 +313,70 @@ export default async function RecipePage({ params }: Props) {
         </p>
 
         {recipe.description && (
-          <p className="text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">{recipe.description}</p>
+          <p className="text-foreground mb-8 leading-relaxed">{recipe.description}</p>
         )}
 
-        {/* Macro cards */}
-        <div className="grid gap-3 mb-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4" role="list" aria-label="Nutrition per serving">
-          {macroCards.map((m) => (
+        {/* Macro summary — Figma 332:2: ONE flat cream card, four equal columns,
+            serif value + small-caps label (CAL / PRO / CARB / FAT). */}
+        <div
+          className="mb-4 grid grid-cols-4 rounded-2xl bg-card border border-border"
+          role="list"
+          aria-label="Nutrition per serving"
+        >
+          {macroStrip.map((m, idx) => (
             <div
               key={m.label}
               role="listitem"
-              className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm"
+              className={`flex flex-col items-center justify-center py-5 ${
+                idx > 0 ? "border-l border-border" : ""
+              }`}
             >
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{m.label}</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
+              <p
+                className="text-foreground-brand tabular-nums"
+                style={{ fontFamily: "var(--font-headline)", fontSize: "24px", fontWeight: 400 }}
+              >
                 {m.value}
-                <span className="text-sm font-normal text-slate-500 ml-0.5">{m.unit}</span>
+                {m.unit ? (
+                  <span className="text-base font-normal text-foreground-secondary">{m.unit}</span>
+                ) : null}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground-secondary">
+                {m.label}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Nutrition confidence badge */}
+        {/* Micro chips — fibre / sugar / sodium when present. Kept below the
+            four-column Figma strip so no nutrition value is dropped. */}
+        {microChips.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2" aria-label="Additional nutrition per serving">
+            {microChips.map((m) => (
+              <span
+                key={m.label}
+                className="inline-flex items-baseline gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-xs text-foreground"
+              >
+                <span className="text-foreground-secondary">{m.label}</span>
+                <span className="font-semibold tabular-nums">{m.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Nutrition confidence badge — Sloe confidence tokens (sage/amber/brick). */}
         {confidenceTier && (
-          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium mb-8 ${confidenceColor[confidenceTier]}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              confidenceTier === "high" ? "bg-green-500" : confidenceTier === "medium" ? "bg-amber-500" : "bg-red-500"
-            }`} />
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium mb-8 ${confidenceColor[confidenceTier]}`}>
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                backgroundColor:
+                  confidenceTier === "high"
+                    ? "var(--confidence-high)"
+                    : confidenceTier === "medium"
+                      ? "var(--confidence-med)"
+                      : "var(--confidence-low)",
+              }}
+            />
             Nutrition: {confidenceLabel[confidenceTier]}
             {recipe.verifiedConfidence != null && (
               <span className="opacity-60">({Math.round(recipe.verifiedConfidence * 100)}%)</span>
@@ -323,32 +384,62 @@ export default async function RecipePage({ params }: Props) {
           </div>
         )}
         {!confidenceTier && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-8">
+          <p className="text-xs text-foreground-secondary mb-8">
             Nutrition values are from the recipe source and have not been independently verified.
           </p>
         )}
 
-        {/* Ingredients */}
+        {/* Ingredients — Figma 332:2 photo-card grid. Each card is a cream
+            tile (radius 24) with an image area on top + name + amount below.
+            The public-share recipe_ingredients rows carry NO per-ingredient
+            image (only the recipe-level hero exists), so the image area uses
+            the EXISTING deterministic RecipeHeroFallback glyph keyed per
+            ingredient — never an empty grey box, and no new imagery is wired. */}
         {ingredients.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 mb-6 shadow-sm">
-            <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Ingredients</h2>
-            <ul className="space-y-2">
+          <div className="mb-6">
+            <h2
+              className="text-foreground-brand mb-4"
+              style={{ fontFamily: "var(--font-headline)", fontSize: "20px", fontWeight: 400 }}
+            >
+              Ingredients
+            </h2>
+            <ul
+              className="grid grid-cols-3 sm:grid-cols-4 gap-3"
+              aria-label="Ingredients"
+            >
               {ingredients.map((ing, idx) => {
                 const microBits: string[] = [];
                 if ((ing.fiberG ?? 0) > 0) microBits.push(`Fibre ${ing.fiberG}g`);
                 if ((ing.sugarG ?? 0) > 0) microBits.push(`Sugar ${ing.sugarG}g`);
                 if ((ing.sodiumMg ?? 0) > 0) microBits.push(`Sodium ${ing.sodiumMg}mg`);
+                const amountLine = [ing.amount, ing.unit].filter(Boolean).join(" ");
                 return (
-                  <li key={idx} className="flex items-baseline gap-2 text-slate-700 dark:text-slate-300">
-                    <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0 mt-1.5" />
-                    <span>
-                      <span className="font-medium">{ing.amount} {ing.unit}</span> {ing.name}
+                  <li
+                    key={idx}
+                    className="overflow-hidden rounded-3xl bg-card border border-border"
+                  >
+                    <div className="relative h-[86px] w-full">
+                      <RecipeHeroFallback
+                        id={`${recipe.id}-ing-${idx}`}
+                        title={ing.name}
+                        iconSize={28}
+                      />
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">
+                        {ing.name}
+                      </p>
+                      {amountLine ? (
+                        <p className="mt-0.5 text-[11px] text-foreground-secondary tabular-nums">
+                          {amountLine}
+                        </p>
+                      ) : null}
                       {microBits.length > 0 && (
-                        <span className="block text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                        <p className="mt-0.5 text-[10px] text-foreground-tertiary leading-snug">
                           {microBits.join(" · ")}
-                        </span>
+                        </p>
                       )}
-                    </span>
+                    </div>
                   </li>
                 );
               })}
@@ -358,15 +449,20 @@ export default async function RecipePage({ params }: Props) {
 
         {/* Instructions */}
         {instructions.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 mb-8 shadow-sm">
-            <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Instructions</h2>
+          <div className="bg-card rounded-3xl border border-border p-6 mb-8 shadow-sm">
+            <h2
+              className="text-foreground-brand mb-4"
+              style={{ fontFamily: "var(--font-headline)", fontSize: "20px", fontWeight: 400 }}
+            >
+              Instructions
+            </h2>
             <ol className="space-y-4">
               {instructions.map((step, idx) => (
                 <li key={idx} className="flex gap-4">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-sm font-semibold">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
                     {idx + 1}
                   </span>
-                  <p className="text-slate-700 dark:text-slate-300 pt-0.5">{step}</p>
+                  <p className="text-foreground pt-0.5">{step}</p>
                 </li>
               ))}
             </ol>
@@ -374,20 +470,23 @@ export default async function RecipePage({ params }: Props) {
         )}
 
         {/* CTA */}
-        <div className="text-center py-10 border-t border-slate-200 dark:border-slate-800">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+        <div className="text-center py-10 border-t border-border">
+          <h3
+            className="text-foreground-brand mb-2"
+            style={{ fontFamily: "var(--font-headline)", fontSize: "24px", fontWeight: 400 }}
+          >
             Add this to a meal plan that hits your macros
           </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
+          <p className="text-foreground-secondary mb-6 max-w-md mx-auto">
             Suppr plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
           </p>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-lg hover:shadow-xl hover:shadow-violet-500/30 transition-all"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:brightness-95 transition-all"
           >
             Start planning free
           </a>
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">No credit card required</p>
+          <p className="mt-3 text-xs text-foreground-tertiary">No credit card required</p>
         </div>
       </main>
     </div>

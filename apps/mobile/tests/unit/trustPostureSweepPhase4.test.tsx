@@ -55,8 +55,11 @@ describe("Trust posture sweep — mobile source pins (post-GW-08, 2026-04-28)", 
   // populated by the importer as `(m?.calories ?? 0) > 0`) is fabricated.
   // Mirror of `tests/unit/trustPostureSweepPhase4.test.tsx`.
 
-  it("recipe/[id].tsx keeps SourceDot + mapMealSourceToDot for ingredient rows", () => {
-    const src = read("app/recipe/[id].tsx");
+  it("RecipeIngredientGrid keeps SourceDot + mapMealSourceToDot for ingredient rows", () => {
+    // Ingredient row rendering moved from app/recipe/[id].tsx into the
+    // RecipeIngredientGrid sub-component during the reconcile sweep.
+    // The test follows the rendering to its canonical location.
+    const src = read("components/recipe/RecipeIngredientGrid.tsx");
     expect(src).toMatch(/import\s*\{\s*SourceDot\s*\}/);
     expect(src).toMatch(/mapMealSourceToDot/);
   });
@@ -73,8 +76,10 @@ describe("Trust posture sweep — mobile source pins (post-GW-08, 2026-04-28)", 
     expect(src).toMatch(/testID="recipe-detail-gluten-chip"/);
   });
 
-  it("recipe/[id].tsx still renders SourceDot per ingredient row at size=6", () => {
-    const src = read("app/recipe/[id].tsx");
+  it("RecipeIngredientGrid still renders SourceDot per ingredient row at size=6", () => {
+    // Ingredient row rendering moved from app/recipe/[id].tsx into the
+    // RecipeIngredientGrid sub-component during the reconcile sweep.
+    const src = read("components/recipe/RecipeIngredientGrid.tsx");
     expect(src).toMatch(/<SourceDot[\s\S]+?size=\{6\}/);
   });
 

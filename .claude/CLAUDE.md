@@ -2,15 +2,23 @@
 
 This is one product across web and mobile.
 
-## Decision framework — before answering
+## Decision framework
 
-Before answering any non-trivial question or implementing a change:
+Match the rigour to the stakes — a light touch on the obvious, full weight on
+anything consequential or hard to reverse. The goal is a well-reasoned, decisive
+answer, not a fixed ritual.
 
-1. List the top 3 ways this could fail in production or real-world usage.
-2. Give 3 alternative approaches with trade-offs.
-3. Rate your confidence from 1-10 and explain what you are uncertain about.
+For anything non-trivial, before you land:
 
-Then provide your recommended approach.
+- **Pressure-test it.** How would this actually fail in production or real use?
+  Name the failure modes that are genuinely real — not a quota of three.
+- **Weigh the alternatives worth weighing**, and say why the others lose. No
+  strawmen; and never float a quick or temporary fix as a live option — propose
+  the correct one and state its cost.
+- **Be honest about what's uncertain.** Add a confidence read (1–10) when it
+  changes how much to trust the answer; skip it when it would just be noise.
+
+Then commit to one recommendation — don't hand back a menu.
 
 ## Non-negotiable rules
 - Web and mobile must stay in sync at all times
@@ -35,6 +43,35 @@ Then provide your recommended approach.
 - Clear user journeys
 - No accidental divergence between platforms
 - **No screen file over 400 lines.** If a component grows past 400 lines, extract a `use<Screen>()` hook or break child components into their own files. The 3,400-line `(tabs)/index.tsx` and 2,671-line `NutritionTracker.tsx` are legacy — every new touch should move toward the 400-line target, not away from it. (ENG-621)
+
+## UI write discipline — non-negotiable
+
+Design drift is prevented at write time, not caught in review. Review sweeps
+kept passing surfaces Grace then faulted for spacing/consistency because the
+rules only existed in review agents — nobody writing UI code had them. They
+apply to EVERY line of UI code, whoever writes it (Claude or Cursor). Full
+contract: "Design craft contract" in `.claude/agents/_project-context.md`.
+
+- **Tokens only.** Colour, spacing, radius, type, and shadow values come from
+  `apps/mobile/constants/theme.ts` (mobile) / `src/styles/theme.css` + the
+  Tailwind theme (web). No literal hexes, no off-scale numbers. If the value
+  you need doesn't exist, add the token first, then use it.
+- **Spacing snaps to the scale:** 4 / 8 / 16 / 20 / 24 / 32 / 40. An 18px
+  padding or 10px gap is a bug even if it looks fine.
+- **Radius snaps to:** 4 / 6 / 8 / 12 / full.
+- **Type comes from the ramp** (`Type` on mobile; type-scale-gated classes on
+  web) — no ad-hoc font sizes or weights.
+- **States ship with the element, not as polish.** Interactive = pressed
+  (mobile, via `PressableScale` with the right `haptic` weight) / hover +
+  `:focus-visible` + active (web), plus disabled, plus loading on async
+  commits (disable + progress — no double-submit, no silent success/failure).
+- **One filled CTA per screen** (FAB + conversion surfaces excepted — see the
+  2026-06-09 CTA decision). Secondary = outline, tertiary = ghost.
+- **Elevation per the one-card decision:** page-ground cards soft lift,
+  nested cards flat — one treatment per surface.
+- **Same element, same treatment.** Before styling a chip/pill/row/header,
+  check how the nearest existing sibling renders it and match exactly — or
+  document why this one is deliberately different.
 
 ## Required workflow
 For any meaningful feature, fix, or change:
@@ -106,7 +143,7 @@ visual changes blind. Two complementary rules from now on:
 ## CI hygiene — non-negotiable
 
 CI runs more gates than a single `npm test` does. Failures are
-visible to Grace + waste deploy slots. Two rules:
+visible to Grace + waste deploy slots. Three rules:
 
 1. **Run `npm run ci` locally before every push.** Mirrors the CI
    workflow — verify-production-env + web typecheck + web vitest +
@@ -118,6 +155,14 @@ visible to Grace + waste deploy slots. Two rules:
    or `gh run list --limit 3` to confirm the latest is green. If
    the most recent run is red, fix it BEFORE moving to the next
    task. A red main blocks all collaborators.
+3. **Scope your checks to what you touched.** Don't run the full
+   `npm run ci` after a one-surface change — it wastes time and
+   context on irrelevant output, and the CPU contention flakes
+   timing-sensitive tests (see `feedback_no_concurrent_full_suites_with_workflow`).
+   Touched only mobile → `npm run mobile:lint && npm run
+   mobile:typecheck && npm run mobile:test`. Touched only web →
+   `npm run typecheck && npm run lint && npm run test`. Run the full
+   `npm run ci` once at the end, before the final push.
 
 Common reasons local-vs-CI diverge:
 - TypeScript build cache. Local `.tsbuildinfo` may carry stale
@@ -217,5 +262,28 @@ Audit cadence: run the `code-quality` silent-deferral sweep at each milestone re
 ```bash
 git config core.hooksPath scripts/git-hooks
 ```
+
+## Mobile (iOS) work
+
+Mobile-specific conventions (bundle id, tabs, auth, iOS-only target) live in
+**`apps/mobile/CLAUDE.md`**, loaded automatically when you work under
+`apps/mobile/`.
+
+To drive the iOS simulator — test/verify a mobile UI change, capture pixels,
+reproduce a TestFlight report — the full MCP playbook is the
+**`suppr-ios-sim-testing`** skill, which loads on demand. The rule that stays
+here because it's behavioural, not how-to: **never ask Grace to drag simulator
+screenshots into chat** — drive the sim yourself and Read the PNG.
+
+## Web app work
+
+To drive the web app — test web or mobile-web, check web↔mobile parity,
+capture pixels — the full `scripts/web-drive.mjs` playbook is the
+**`suppr-web-testing`** skill, which loads on demand. The rule that stays here
+because it's behavioural: **never ask Grace to paste browser screenshots** —
+drive + screenshot it yourself, and SEE the PNG (don't claim a pass from the
+ARIA tree alone).
+
+## Git hooks
 
 Hooks live under `scripts/git-hooks/` (see `prepare-commit-msg`). New machines need the same `core.hooksPath` setting.

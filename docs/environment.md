@@ -2,6 +2,22 @@
 
 Reference for **local dev**, **CI**, and **production** (e.g. Vercel). Values are examples—use your own secrets.
 
+## Local development — one `.env.local`
+
+| File | Use |
+|------|-----|
+| **Repo root** `.env.local` | **Canonical** — Next.js, Expo/Metro, scripts, Playwright, Maestro |
+| `supabase/.env` | Local Supabase CLI only (Apple OAuth secret, etc.) |
+| ~~`apps/mobile/.env.local`~~ | **Do not create** — `npm run env:doctor` fails if present |
+
+Expo loads root env via `apps/mobile/scripts/load-repo-env.cjs` (wired in `app.config.ts` + `metro.config.js`). Copy `.env.example` → `.env.local` at the **repo root**.
+
+**FatSecret:** set `FATSECRET_CONSUMER_KEY` + `FATSECRET_CLIENT_SECRET` (or legacy `FATSECRET_CONSUMER_SECRET`) — `serverEnv.ts` accepts either secret name.
+
+```bash
+npm run env:doctor   # verify single-file setup
+```
+
 ## Required for core app (browser + server)
 
 | Variable | Where | Purpose |
@@ -44,7 +60,7 @@ If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 
 | Variable | Purpose |
 |----------|---------|
-| `FATSECRET_CONSUMER_KEY` / `FATSECRET_CONSUMER_SECRET` | FatSecret Platform API for `/api/nutrition/verify-recipe` (OAuth consumer pair from [FatSecret](https://platform.fatsecret.com)) |
+| `FATSECRET_CONSUMER_KEY` + `FATSECRET_CLIENT_SECRET` (or legacy `FATSECRET_CONSUMER_SECRET`) | FatSecret Platform API — search + verify ([FatSecret](https://platform.fatsecret.com)) |
 | USDA FDC env (see `serverEnv.ts`) | USDA FoodData Central |
 | `OPENAI_API_KEY` | Recipe import from image (`/api/recipe-import/image`) |
 

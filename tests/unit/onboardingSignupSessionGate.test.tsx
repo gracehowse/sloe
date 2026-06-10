@@ -27,7 +27,14 @@ void React;
 
 const signUpMock = vi.fn();
 
-vi.mock("../../src/lib/analytics/track.ts", () => ({ track: vi.fn() }));
+// ENG-990 — the onboarding context now reads the `onboarding-app-choice`
+// flag via `isFeatureEnabled` on render, so the track mock must expose it.
+// Returning `false` keeps the app-choice step OFF (auto-skipped), so this
+// signup-gate test sees the same flow it always did.
+vi.mock("../../src/lib/analytics/track.ts", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: () => false,
+}));
 vi.mock("posthog-js", () => ({ default: { identify: vi.fn() } }));
 vi.mock("../../src/lib/supabase/browserClient", () => ({
   supabase: { auth: { signUp: (...args: unknown[]) => signUpMock(...args) } },

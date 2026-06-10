@@ -105,7 +105,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { creator } = data;
   const desc = creator.bio
     ? creator.bio.slice(0, 200)
-    : `${creator.display_name} on Suppr — recipes by @${creator.handle}.`;
+    : `${creator.display_name} on Sloe — recipes by @${creator.handle}.`;
   return {
     title: `${creator.display_name} (@${creator.handle}) — Suppr`,
     description: desc,

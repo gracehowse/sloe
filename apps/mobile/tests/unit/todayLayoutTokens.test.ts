@@ -6,9 +6,13 @@ import { Layout } from "../../constants/layout";
 import { Spacing } from "../../constants/theme";
 
 describe("Today layout tokens", () => {
-  it("uses 10px block gaps (not the global 16px md bump)", () => {
-    expect(Layout.todayScrollGap).toBe(10);
-    expect(Layout.macroTileGridGap).toBe(10);
+  it("uses tight hero-cluster gaps (ENG-871)", () => {
+    expect(Layout.todayScrollGap).toBe(8);
+    expect(Layout.macroTileGridGap).toBe(12);
+  });
+
+  it("section break + scroll gap matches Stitch mb-10 (40px)", () => {
+    expect(Layout.todayScrollGap + Layout.todaySectionBreak).toBe(40);
   });
 
   it("uses 20px horizontal padding (prototype phone gutter)", () => {

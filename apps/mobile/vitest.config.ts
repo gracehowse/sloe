@@ -9,6 +9,14 @@ import path from "path";
 import { readFileSync } from "node:fs";
 
 const RN_SHIM = path.resolve(__dirname, "./tests/shims/react-native.cjs");
+// Static image imports have no Metro asset pipeline under vitest, so any
+// component that loads an image (e.g. SloeLaunchWordmark) would throw "Cannot
+// find module" and fail every test that transitively imports it. Two forms are
+// handled: static `import x from "./a.png"` (via resolveId → a virtual stub
+// module) and runtime `require(".../a.png")` (via the transform hook, since
+// runtime requires bypass the plugin resolveId chain). (2026-06-04)
+const IMAGE_ASSET_RE = /\.(png|jpe?g|gif|webp|bmp)(\?.*)?$/;
+const VIRTUAL_ASSET_ID = "\0virtual:static-asset";
 
 function reactNativeShimPlugin() {
   const normalise = (p: string) => p.replace(/\\/g, "/");
@@ -17,9 +25,11 @@ function reactNativeShimPlugin() {
     enforce: "pre" as const,
     async resolveId(source: string, importer: string | undefined) {
       if (process.env.VITEST_RN_SHIM_DEBUG) {
-         
+
         console.log("[rn-shim] resolveId:", source, "from", importer);
       }
+      // Static image asset (ESM import) — resolve to a virtual stub module.
+      if (IMAGE_ASSET_RE.test(source)) return VIRTUAL_ASSET_ID;
       // Bare specifier — standard alias path.
       if (source === "react-native") return RN_SHIM;
       // Already-resolved path: the installed RN entry. Remap to shim so
@@ -34,6 +44,10 @@ function reactNativeShimPlugin() {
       return null;
     },
     async load(id: string) {
+      // Virtual stub for static image imports (resolved above).
+      if (id === VIRTUAL_ASSET_ID) {
+        return 'export default { uri: "test-asset", width: 1, height: 1 };';
+      }
       // Belt-and-braces: even if the resolver lets the real RN path
       // through, rewrite its contents to re-export the shim.
       const ns = normalise(id);
@@ -42,12 +56,32 @@ function reactNativeShimPlugin() {
         !ns.endsWith(".map")
       ) {
         if (process.env.VITEST_RN_SHIM_DEBUG) {
-           
+
           console.log("[rn-shim] load redirect:", id);
         }
         return readFileSync(RN_SHIM, "utf8");
       }
       return null;
+    },
+    transform(code: string, id: string) {
+      // Rewrite runtime image `require(".../foo.png")` calls to an inline stub.
+      // vite-node leaves literal `require()` calls untouched (they bypass the
+      // plugin resolveId chain and hit Node's resolver, which has no `.png`
+      // loader → "Cannot find module"). Doing it at transform time catches every
+      // image require regardless of the runtime require mechanism. Only app
+      // source (.ts/.tsx) under the workspace — never node_modules. (2026-06-04)
+      if (
+        !/\.(t|j)sx?$/.test(id) ||
+        normalise(id).includes("/node_modules/") ||
+        !/require\(\s*["'][^"']+\.(png|jpe?g|gif|webp|bmp)["']\s*\)/.test(code)
+      ) {
+        return null;
+      }
+      const out = code.replace(
+        /require\(\s*["'][^"']+\.(?:png|jpe?g|gif|webp|bmp)["']\s*\)/g,
+        '({ uri: "test-asset", width: 1, height: 1 })',
+      );
+      return { code: out, map: null };
     },
   };
 }

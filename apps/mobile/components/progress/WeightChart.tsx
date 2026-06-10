@@ -18,6 +18,7 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 import { Accent, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
 
@@ -250,6 +251,9 @@ function buildXAxisTicks(
 
 export function WeightChart({ trend, goalKg, isImperial = false, range }: Props) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the weight line.
+  // The over-goal caution band keeps `Accent.warning`.
+  const accent = useAccent();
   const [chartWidth, setChartWidth] = useState(300);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
 
@@ -295,7 +299,7 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
   // Swapping the line colour mid-display also broke the user's
   // mental model — they learn the colour as "this is my weight",
   // not as a verdict. Drop the swap; line stays primary.
-  const lineColor = Accent.primary;
+  const lineColor = accent.primary;
 
   // 2026-05-11 (mockup signed off): 4 gridlines + their Y-axis
   // labels, evenly spaced from yMax to yMin so the user has a finer

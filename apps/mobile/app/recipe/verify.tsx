@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -73,6 +74,12 @@ export default function VerifyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the verify header
+  // title, action-button borders/labels, add-ingredient affordance, search/
+  // barcode glyphs, and the matching spinner. Threaded into the memoised
+  // StyleSheet via the dep array below. Plausibility status keeps
+  // success/warning/destructive; macros keep `MacroColors`.
+  const accent = useAccent();
   const { session } = useAuth();
   const recipeId = typeof id === "string" ? id : "";
 
@@ -609,7 +616,7 @@ export default function VerifyScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+    topTitle: { color: accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, paddingBottom: 120, gap: Spacing.sm },
     recipeName: { fontSize: 22, fontWeight: "700", color: colors.text },
     subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md },
@@ -641,7 +648,7 @@ export default function VerifyScreen() {
     // Totals card
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Accent.primary + "30",
+      borderWidth: 1, borderColor: accent.primary + "30",
       padding: Spacing.lg, marginBottom: Spacing.sm,
     },
     totalsLabel: { fontSize: 12, color: colors.textTertiary, fontWeight: "600", marginBottom: Spacing.sm },
@@ -668,7 +675,7 @@ export default function VerifyScreen() {
     // Expanded section
     expandedSection: {
       backgroundColor: colors.card, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: Accent.primary + "40",
+      borderWidth: 1, borderColor: accent.primary + "40",
       padding: Spacing.lg, marginTop: -1, gap: Spacing.md,
     },
     sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
@@ -694,9 +701,9 @@ export default function VerifyScreen() {
     actionBtn: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, paddingVertical: 12, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: Accent.primary + "40",
+      borderWidth: 1, borderColor: accent.primary + "40",
     },
-    actionBtnText: { color: Accent.primary, fontSize: 13, fontWeight: "600" },
+    actionBtnText: { color: accent.primary, fontSize: 13, fontWeight: "600" },
 
     // Footer
     footer: {
@@ -705,17 +712,17 @@ export default function VerifyScreen() {
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
-    footerLabel: { fontSize: 12, color: Accent.primary, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
+    footerLabel: { fontSize: 12, color: accent.primary, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
     // P2-35 (2026-04-25 ui-critic): Save/Confirm CTAs were green
     // (Accent.success), fighting the brand blue accent. Green is
     // reserved for confirmed-success states; primary actions are blue.
     confirmBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Accent.primary,
+      gap: Spacing.sm, backgroundColor: accent.primary,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  }), [colors]);
+  }), [colors, accent]);
 
   if (loading) {
     return (
@@ -1063,7 +1070,7 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Search alternative for ${displayName}`}
                     >
-                      <Ionicons name="search" size={16} color={Accent.primary} />
+                      <Ionicons name="search" size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Search alternative</Text>
                     </Pressable>
                     <Pressable
@@ -1072,7 +1079,7 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Scan barcode for ${displayName}`}
                     >
-                      <Ionicons name="barcode-outline" size={16} color={Accent.primary} />
+                      <Ionicons name="barcode-outline" size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Scan</Text>
                     </Pressable>
                   </View>
@@ -1087,7 +1094,7 @@ export default function VerifyScreen() {
                       <Ionicons
                         name={rowHasOverride ? "create" : "create-outline"}
                         size={16}
-                        color={Accent.primary}
+                        color={accent.primary}
                       />
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit values" : "Edit nutrition"}
@@ -1118,14 +1125,14 @@ export default function VerifyScreen() {
             borderRadius: Radius.md,
             borderWidth: 1,
             borderStyle: "dashed",
-            borderColor: Accent.primary + "80",
-            backgroundColor: Accent.primary + "10",
+            borderColor: accent.primary + "80",
+            backgroundColor: accent.primary + "10",
             alignItems: "center",
           }}
           accessibilityRole="button"
           accessibilityLabel="Add an ingredient the importer missed"
         >
-          <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
+          <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2, textAlign: "center" }}>
             Missed an ingredient during import? Add it here and totals update live.
           </Text>
@@ -1322,6 +1329,10 @@ function VerifyLoadingSkeleton({
   styles: Record<string, never> | { [k: string]: never } | { [k: string]: object };
   onCancel: () => void;
 }) {
+  // Secondary accent (Frost flag → damson, else clay) for the loading status
+  // pill (tint, border, spinner, label). Bound here because this sub-component
+  // is rendered outside the main screen's scope.
+  const accent = useAccent();
   // Status narration cycle. Stages match the actual stages the
   // back-end runs (fetch → match → scale) so the copy stays honest
   // even though we can't read which stage the back-end is on in
@@ -1402,19 +1413,19 @@ function VerifyLoadingSkeleton({
             gap: 10,
             padding: 14,
             borderRadius: Radius.md,
-            backgroundColor: `${Accent.primary}10`,
+            backgroundColor: `${accent.primary}10`,
             borderWidth: 1,
-            borderColor: `${Accent.primary}26`,
+            borderColor: `${accent.primary}26`,
             marginBottom: Spacing.md,
           }}
         >
-          <ActivityIndicator size="small" color={Accent.primary} />
+          <ActivityIndicator size="small" color={accent.primary} />
           <Text
             style={{
               flex: 1,
               fontSize: 13,
               fontWeight: "600",
-              color: Accent.primary,
+              color: accent.primary,
             }}
             accessibilityLiveRegion="polite"
             testID="verify-status-narration"

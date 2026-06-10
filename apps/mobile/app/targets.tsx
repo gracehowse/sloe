@@ -28,7 +28,8 @@ import Svg, {
 } from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -58,7 +59,18 @@ import { isFeatureEnabled } from "@/lib/analytics";
  */
 export default function TargetsScreen() {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Secondary accent (Frost flag → damson, else clay) for the calorie target
+  // ring's SVG gradient stops (primaryLight → primary), the loading spinners,
+  // and the help affordance. Threaded into the memoised StyleSheet via the dep
+  // array below. Macros keep `MacroColors`; status keeps success/warning/destructive.
+  const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): the hero calorie card, the Goal card, and the 2×2 macro
+  // tiles all sit directly on the page ground, so they take the SOFT lift. Was
+  // `useCardElevation()` (flat). The small header "Edit" pill is a control, not a
+  // page-ground card, so it keeps the flat treatment via `controlElevation`.
+  const cardElevation = useCardElevation({ variant: "soft" });
+  const controlElevation = useCardElevation({ variant: "flat" });
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)");
@@ -405,10 +417,10 @@ export default function TargetsScreen() {
           paddingHorizontal: Spacing.md,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderWidth: controlElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          ...(cardElevation.shadowStyle ?? {}),
+          backgroundColor: controlElevation.liftBg ?? colors.card,
+          ...(controlElevation.shadowStyle ?? {}),
         },
         editText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
         scroll: {
@@ -431,11 +443,14 @@ export default function TargetsScreen() {
           letterSpacing: 1.5,
           marginBottom: 6,
         },
+        // SLOE Phase 0: the hero calorie numeral reads in Newsreader serif
+        // (the design system reserves big numerals for serif). Reuse the
+        // `Type.ringValue` token the Today calorie ring uses so the two hero
+        // numbers stay byte-identical in face/size/weight. fontVariant kept
+        // for tabular alignment as the value count-changes on recalculate.
         bigNumber: {
-          fontSize: 48,
-          fontWeight: "800",
+          ...Type.ringValue,
           color: colors.text,
-          letterSpacing: -1.2,
           fontVariant: ["tabular-nums"],
         },
         kcalUnit: {
@@ -483,10 +498,19 @@ export default function TargetsScreen() {
           color: colors.textSecondary,
           letterSpacing: 1.2,
         },
+        // SLOE Phase 0: macro target numerals read in Newsreader serif on the
+        // Targets review surface (the design system reserves big numerals for
+        // serif). This is the documented override of `Type.macroValue` (which
+        // stays sans on the tiny Today ring tiles for tabular alignment); on
+        // the Targets tiles the serif hero treatment is intended. fontVariant
+        // keeps the digits tabular so the value column doesn't jitter.
         macroValue: {
+          fontFamily: FontFamily.serifRegular,
           fontSize: 22,
-          fontWeight: "800",
+          lineHeight: 26,
+          fontWeight: "400",
           color: colors.text,
+          letterSpacing: -0.4,
           fontVariant: ["tabular-nums"],
         },
         macroValueUnit: {
@@ -546,7 +570,7 @@ export default function TargetsScreen() {
         },
         center: { flex: 1, justifyContent: "center", alignItems: "center" },
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, controlElevation],
   );
 
   const statusPillStyle = (status: string | undefined) => {
@@ -566,7 +590,7 @@ export default function TargetsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Accent.primary} />
+          <ActivityIndicator size="large" color={accent.primary} />
         </View>
       </View>
     );
@@ -624,8 +648,8 @@ export default function TargetsScreen() {
             >
               <Defs>
                 <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor={Accent.primaryLight} />
-                  <Stop offset="1" stopColor={Accent.primary} />
+                  <Stop offset="0" stopColor={accent.primaryLight} />
+                  <Stop offset="1" stopColor={accent.primary} />
                 </SvgLinearGradient>
               </Defs>
               <Circle
@@ -709,6 +733,13 @@ export default function TargetsScreen() {
               </View>
             </PostHogMaskView>
           ) : null}
+          {/* Recalculate — aubergine OUTLINE button (Sloe treatment #1,
+              2026-06-08). The everyday primary CTA is an accent LINE, not a
+              filled slab: transparent fill, 1.5px border in
+              `accent.primarySolid` (#4E3260, ≈8.7:1 on the white card — AA),
+              label in the same. Pressed state lifts a faint aubergine wash.
+              The FAB + conversion CTAs keep the fill; this everyday recompute
+              reads as the calm outline. */}
           <Pressable
             onPress={() => void onRecalculate()}
             disabled={recalculating}
@@ -719,22 +750,21 @@ export default function TargetsScreen() {
               marginTop: Spacing.md,
               alignSelf: "center",
               paddingHorizontal: Spacing.lg,
-              paddingVertical: 8,
-              borderRadius: Radius.sm,
-              borderWidth: cardElevation.useBorder ? 1 : 0,
-              borderColor: colors.border,
-              backgroundColor: cardElevation.liftBg ?? colors.card,
-              opacity: pressed || recalculating ? 0.6 : 1,
+              paddingVertical: 9,
+              borderRadius: Radius.full,
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
+              backgroundColor: pressed ? accent.primarySoft : "transparent",
+              opacity: recalculating ? 0.6 : 1,
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
-              ...(cardElevation.shadowStyle ?? {}),
             })}
           >
             {recalculating ? (
-              <ActivityIndicator size="small" color={Accent.primary} />
+              <ActivityIndicator size="small" color={accent.primarySolid} />
             ) : null}
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid }}>
               {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
             </Text>
           </Pressable>
@@ -868,12 +898,12 @@ export default function TargetsScreen() {
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: Accent.primary + "1A",
+              backgroundColor: accent.primary + "1A",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <HelpCircle size={14} color={Accent.primary} strokeWidth={2} />
+            <HelpCircle size={14} color={accent.primary} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
@@ -902,7 +932,7 @@ export default function TargetsScreen() {
          */}
         <Text style={styles.disclaimer}>
           Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference
-          NIH/NHS guidance. Suppr is not a substitute for medical advice — consult
+          NIH/NHS guidance. Sloe is not a substitute for medical advice — consult
           your doctor before any significant dietary change, especially if you&apos;re
           pregnant, under 18, or managing a medical condition.
         </Text>

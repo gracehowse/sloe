@@ -12,6 +12,11 @@
  * the contribution actually persists.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  clearIntegrationAiKeys,
+  isolateAiBudgetForIntegrationTest,
+  stubClaudeMessagesFetch,
+} from "../helpers/aiRouteTestEnv";
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
@@ -51,16 +56,13 @@ function pngFormBody(barcode = "1234567890123") {
  *  test fixture before wrapping. */
 function stubClaude(content: string) {
   const stripped = content.replace(/^\{/, "");
-  const fakeResp = new Response(
-    JSON.stringify({ content: [{ type: "text", text: stripped }] }),
-    { status: 200, headers: { "content-type": "application/json" } },
-  );
-  vi.stubGlobal("fetch", vi.fn(async () => fakeResp));
+  stubClaudeMessagesFetch({ content: [{ type: "text", text: stripped }] });
 }
 
 describe("POST /api/nutrition/scan-label", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isolateAiBudgetForIntegrationTest();
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
   });
 
@@ -109,6 +111,8 @@ describe("POST /api/nutrition/scan-label", () => {
 
   it("returns 503 when no AI key is configured", async () => {
     vi.unstubAllEnvs();
+    isolateAiBudgetForIntegrationTest();
+    clearIntegrationAiKeys();
     mockUserId.mockResolvedValue("u1");
     const res = await POST(
       new Request("http://localhost/api/nutrition/scan-label", {

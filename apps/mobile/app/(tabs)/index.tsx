@@ -20,6 +20,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
@@ -56,7 +57,8 @@ import {
   CloudOff,
   X,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -91,15 +93,20 @@ import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
 import {
-  MISSED_YESTERDAY_COPY,
-  shouldShowMissedYesterday,
-} from "@suppr/shared/nutrition/missedYesterday";
+  todayGreeting,
+  todayLongDateSubline,
+  todayPastDayGreetingLines,
+} from "@suppr/shared/copy/today";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { getYesterdayMeals } from "@suppr/shared/nutrition/copyYesterdayMeals";
+import {
+  MISSED_YESTERDAY_COPY,
+  shouldShowMissedYesterday,
+} from "@suppr/shared/nutrition/missedYesterday";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
@@ -215,6 +222,7 @@ import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { WeeklyInsightCard } from "@/components/today/WeeklyInsightCard";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
+import { TodayScrollSectionHeader } from "@/components/today/TodayScrollSectionHeader";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
 // Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
 // rebuild of #26). MacroFactor-style soft prompt that surfaces the
@@ -235,6 +243,8 @@ import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet"
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
+import { GradientAvatar } from "@/components/GradientAvatar";
+import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
 import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
@@ -405,8 +415,37 @@ export default function TrackerScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
+  // SLOE redesign (2026-06-03): the Today hero greeting uses the user's
+  // first name when a REAL one is available on the auth session's
+  // `user_metadata` (already loaded — no extra `profiles` read, which
+  // would touch the data-flow this re-skin must not change). We do NOT
+  // guess a name from the email local-part: a raw local-part like
+  // "gracemturner" reads worse than a clean, name-free "Good evening".
+  // So: real metadata name → "Morning, {first}"; otherwise → "Good
+  // morning" (handled by `todayGreeting` when name is undefined).
+  const greetingName = useMemo(() => {
+    const meta = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+    const raw =
+      (typeof meta.full_name === "string" && meta.full_name) ||
+      (typeof meta.name === "string" && meta.name) ||
+      (typeof meta.first_name === "string" && meta.first_name) ||
+      (typeof meta.preferred_name === "string" && meta.preferred_name) ||
+      "";
+    const first = raw.trim().split(/\s+/)[0];
+    return first || undefined;
+  }, [session?.user?.user_metadata]);
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Secondary accent (Frost flag → damson, else clay) for the Today CTAs:
+  // the add-food submit, the offline pill (border + icon), Complete Day, and
+  // the Quick-add "Logging to <slot>" caption. The plum Log FAB, meal-slot
+  // tints, macro/status hues, and source/confidence dots keep their own
+  // tokens. Threaded into the `styles` useMemo (deps include `accent`) so the
+  // StyleSheet members that paint the accent flip with the flag.
+  const accent = useAccent();
+  // `styles.card` is the Today top-level resting-card style — it sits on the
+  // page (scroll) ground, so it takes the soft lift (one-treatment, Grace
+  // 2026-06-09). Nested/inset surfaces draw their own hairline, never this.
+  const cardElevation = useCardElevation({ variant: "soft" });
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -573,13 +612,20 @@ export default function TrackerScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   // Canonical 2026-05-22 C1: multi-ring removed entirely. Inner macro
-  // arcs are no longer rendered by CalorieRing — the ring is now a
-  // single outer calorie ring + macro bars below. The `ringExpanded`
-  // state stays for backwards compat with downstream callers (and the
-  // long-press toggle hook) but no longer drives any inner-arc visual.
-  // Set to false to keep the centre + label clean.
-  const [ringExpanded, setRingExpanded] = useState(false);
-  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
+  // SLOE redesign (2026-06-03): the canonical Sloe `01 · Today` hero is a
+  // MULTI-ring — calories (outer plum) + protein/carbs/fat concentric
+  // arcs. `ringExpanded` drives whether the inner macro arcs render, so
+  // it now defaults to TRUE to match the frame (the macros are part of
+  // the hero, not an opt-in reveal). The long-press still toggles it
+  // (coupled with the display-mode flip) for users who want the calmer
+  // calories-only view.
+  const [ringExpanded, setRingExpanded] = useState(true);
+  // SLOE redesign (2026-06-04, Grace "ring sub-label → budget left"): the
+  // ring opens in *remaining* mode so the centre reads the budget left
+  // ("1,633 / of 2,040 kcal", REMAINING) like the Figma 01 frame, not the
+  // backward-looking "379 LOGGED". The Remaining/Consumed toggle still lets
+  // the user flip to consumed.
+  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
   // removed in this phase — TodayHero is now a thin wrapper around
@@ -2728,6 +2774,9 @@ export default function TrackerScreen() {
         fat: r.fat ?? 0,
         thumbnail: r.image,
         mealType: r.mealSlots,
+        // Figma `654:2` hero meta — optional cook-time chip. Mirror of
+        // web. Absent for recipes with no recorded time (chip degrades).
+        cookTimeMin: r.cookTimeMin ?? undefined,
       })),
     [savedLibraryRecipes],
   );
@@ -2740,6 +2789,9 @@ export default function TrackerScreen() {
   const remainingCarbs = Math.max(0, effectiveMacroTargets.carbs - totals.carbs);
   const remainingFat = Math.max(0, effectiveMacroTargets.fat - totals.fat);
 
+  const showAboveMealsNorthStar =
+    viewMode === "day" && isToday && remaining > 0;
+
   const belowMealsPromptEligible = useMemo(
     () => ({
       checkin:
@@ -2747,8 +2799,6 @@ export default function TrackerScreen() {
         isToday &&
         isCheckinBannerDay &&
         checkinBannerDismissed === false,
-      northStar:
-        viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0,
       snap: viewMode === "day" && isToday && mealsToday.length === 0,
       nudge: viewMode === "day" && isToday && mealsToday.length > 0,
     }),
@@ -2757,17 +2807,12 @@ export default function TrackerScreen() {
       isToday,
       isCheckinBannerDay,
       checkinBannerDismissed,
-      remaining,
       mealsToday.length,
     ],
   );
 
   const showBelowMealsCheckin = isBelowMealsPromptVisible(
     "checkin",
-    belowMealsPromptEligible,
-  );
-  const showBelowMealsNorthStar = isBelowMealsPromptVisible(
-    "northStar",
     belowMealsPromptEligible,
   );
   const showBelowMealsSnap = isBelowMealsPromptVisible("snap", belowMealsPromptEligible);
@@ -2891,23 +2936,17 @@ export default function TrackerScreen() {
   const hasAnyJournalHistory = useMemo(() => loggedDays.size > 0, [loggedDays]);
 
   /**
-   * DC12 (2026-05-14, premium-bar audit) — "missed-day" supportive
-   * banner. High-emotion surface per the audit: a returning user
-   * who skipped yesterday and is now back on Today shouldn't be
-   * met with silent shame or a streak-broken stamp. We render one
-   * calm sub-line at the top of the meals area.
-   *
-   * Visibility rules:
-   *  - User is on today's view (selecting a past day is itself a
-   *    catch-up, not a miss).
-   *  - User has previously logged something at some point
-   *    (`hasAnyJournalHistory`) — brand-new accounts get the
-   *    first-meal empty state, not this.
-   *  - Yesterday's meal count is exactly zero.
-   *  - Today is not the first day of a fresh week (Mon for
-   *    Monday-start users, Sun for Sunday-start users) — a week
-   *    boundary already reads as a reset, and Sundays already
-   *    carry the weekly-checkin nudge.
+   * DC12 (2026-05-14, premium-bar audit) — Today "missed yesterday"
+   * supportive banner visibility. Pure rule + copy live in the shared
+   * `@suppr/shared/nutrition/missedYesterday` helper (single regression
+   * home, pinned by `tests/unit/missedYesterday.test.ts`; cross-platform
+   * wiring pinned by `tests/unit/todayMissedYesterdayWiring.test.ts`).
+   * Renders only when the user (a) is on today's view, (b) has prior
+   * history, (c) logged nothing yesterday, and (d) it's not the first
+   * day of a fresh week. Re-wired into the Sloe `01 · Today` layout
+   * after the 2026-06-04 re-skin dropped it alongside the old date-nav
+   * header — web (`NutritionTracker.tsx`) never dropped it, so this
+   * keeps the two platforms in parity.
    */
   const missedYesterdayVisible = useMemo(() => {
     const yesterday = new Date();
@@ -2918,10 +2957,11 @@ export default function TrackerScreen() {
       isToday,
       hasAnyJournalHistory,
       mealsYesterdayCount: mealsYesterday.length,
+      mealsTodayCount: mealsToday.length,
       todayDayOfWeek: new Date().getDay(),
       weekStartDay,
     });
-  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay]);
+  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay, mealsToday.length]);
 
   /**
    * Feature 5 / Feature 9 (2026-05-14, premium-bar audit) — subtle
@@ -3595,8 +3635,11 @@ export default function TrackerScreen() {
 
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: CARD_RADIUS,
+          // Sloe: hairline (≈1 physical px), not 1pt (3px on @3x) — a 1pt
+          // border read "boxed" vs the prototype's subtle `border border-line`
+          // (1px-in-a-500px-frame). The Sloe `line` colour is already used.
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
@@ -3670,13 +3713,20 @@ export default function TrackerScreen() {
           ...Type.body,
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
+        // Sloe treatment system (2026-06-08): the quick-add submit is a
+        // primary inline CTA → aubergine OUTLINE (transparent fill + 1.5px
+        // primarySolid border + primarySolid label). Used only by
+        // <TodayAddFoodForm>; the sibling "Search" button overrides to the
+        // off-white secondary fill there.
         submitBtn: {
-          backgroundColor: Accent.primary,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          borderColor: accent.primarySolid,
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
         },
-        submitBtnText: { color: "#fff", ...Type.headline },
+        submitBtnText: { color: accent.primarySolid, ...Type.headline },
 
         // Audit 2026-05-04 #34: previously a full-card offline banner
         // crowded the Today top and looked like a content row. Slim pill
@@ -3691,13 +3741,13 @@ export default function TrackerScreen() {
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.primary + "30",
+          borderColor: accent.primary + "30",
           alignSelf: "flex-start",
         },
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
 
       }),
-    [colors, cardElevation],
+    [colors, cardElevation, accent],
   );
 
   const loadJournal = useCallback(async () => {
@@ -4583,10 +4633,10 @@ export default function TrackerScreen() {
             <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
             <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
           </View>
-          <Shimmer style={{ height: 160, borderRadius: Radius.lg }} />
-          <Shimmer style={{ height: 80, borderRadius: Radius.lg }} />
+          <Shimmer style={{ height: 160, borderRadius: CARD_RADIUS }} />
+          <Shimmer style={{ height: 80, borderRadius: CARD_RADIUS }} />
           {[1, 2, 3, 4].map((i) => (
-            <Shimmer key={i} style={{ height: 64, borderRadius: Radius.lg }} />
+            <Shimmer key={i} style={{ height: 64, borderRadius: CARD_RADIUS }} />
           ))}
         </View>
       </View>
@@ -4644,15 +4694,99 @@ export default function TrackerScreen() {
           />
         }
       >
-        {/* Date navigation header.
-            2026-05-14 (premium-bar audit DC8 polish): the standalone
-            StreakPip block that previously floated above this header
-            was inlined into `TodayDateHeader` next to the "Today"
-            pill. The header gates the pip on day view + isToday +
-            ≥2-day streak internally; the host owns the analytics-fire
-            transition state via `streakResetCopyVisible`. */}
-        <View>
+        {/* SLOE redesign (2026-06-03, `01 · Today` frame, Grace decision):
+            the Today screen opens with a "Sloe" wordmark (left) + profile
+            avatar (right) header — replacing the old "< Today >" date-nav
+            row. The week strip below (rendered via the stripOnly date
+            header) owns day-selection (taps); the calendar icon in the
+            strip covers far dates. Order top→bottom is now: wordmark
+            header → greeting → week strip → ring card. */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: Spacing.xs,
+            marginBottom: Spacing.sm,
+          }}
+        >
+          <SloeHeaderWordmark testID="today-wordmark" />
+          <Pressable
+            onPress={() => router.push("/(tabs)/settings")}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <GradientAvatar
+              size={36}
+              initial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
+              fontSize={13}
+              gradientIdSuffix="today-wordmark-header"
+              // Figma `654:6` — damson fill + white initial (not the grey ink default).
+              fill="#6a4b7a"
+              textColor="#ffffff"
+            />
+          </Pressable>
+        </View>
+
+        {/* SLOE redesign (2026-06-03, `01 · Today` frame): the hero opens
+            with a centered Newsreader greeting + the long date, above the
+            week strip + ring. On day view we greet by time-of-day + first
+            name; on a historic day we show the day's date as the heading
+            so the section still anchors which day is in view. The greeting
+            revives the time-of-day opener the 2026-05-22 calm pass had
+            dropped — reinstated as the warm-coaching hero per the Sloe
+            direction. */}
+        {viewMode === "day" ? (() => {
+          const { headline, subline } = isToday
+            ? {
+                headline: todayGreeting(new Date().getHours(), greetingName),
+                subline: todayLongDateSubline(selectedDate),
+              }
+            : todayPastDayGreetingLines(selectedDate);
+          return (
+          <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.lg }}>
+            <Text
+              testID="today-hero-greeting"
+              style={{ ...Type.title, fontWeight: "500", color: MacroColors.calories, textAlign: "center" }}
+              numberOfLines={2}
+            >
+              {headline}
+            </Text>
+            {subline ? (
+              <Text
+                testID="today-hero-greeting-subline"
+                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.textSecondary, marginTop: 4, textAlign: "center" }}
+                numberOfLines={1}
+              >
+                {subline}
+              </Text>
+            ) : null}
+          </View>
+          );
+        })() : null}
+
+        {/* Week strip (SLOE redesign 2026-06-03, `01 · Today` frame):
+            the date header is now `stripOnly` — only the 7-day week
+            strip renders here. The "< Today >" chevrons, the "Today"
+            title, the avatar, and the day/week toggle have all moved
+            out: app identity + Settings live in the Sloe wordmark
+            header above, and day-selection lives in the strip (taps)
+            + the strip's calendar icon (far dates). The nav callbacks
+            (`onNavigatePrev`/`onNavigateNext`/`onTapTitle`) are still
+            passed so the day/week helpers stay wired — they're now
+            reachable only via the strip + calendar, which is intended.
+            The header still owns the supportive streak-reset copy
+            (rendered under the strip in `stripOnly` mode). */}
+        {/* Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
+            (`mb-7` ≈ 28px between the week strip and the ring hero). The
+            parent scroll `gap` (8) was leaving the strip cramped against the
+            hero card; the extra bottom margin restores the frame's breathing
+            room. */}
+        <View style={{ marginBottom: Spacing.lg }}>
           <TodayDateHeader
+          stripOnly
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           selectedDate={selectedDate}
@@ -4696,7 +4830,7 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <CloudOff size={14} color={Accent.primary} strokeWidth={1.75} />
+            <CloudOff size={14} color={accent.primary} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
@@ -4722,7 +4856,9 @@ export default function TrackerScreen() {
             day of a fresh week (see `missedYesterdayVisible` memo
             for the full rule). No CTA, no destructive tone — the
             calm sub-line just reframes the gap and gets out of
-            the way. */}
+            the way. Re-wired into the Sloe `01 · Today` layout
+            (the 2026-06-04 re-skin dropped it with the old date-nav
+            header); web keeps it, so this restores parity. */}
         {missedYesterdayVisible && (
           <Text
             testID="today-missed-yesterday-copy"
@@ -4891,32 +5027,17 @@ export default function TrackerScreen() {
               //    analytics + tests continue to pass; only the
               //    render is suppressed.
               // 3. North-star moved below meals (Today premium sprint 2026-05-19).
-              // 4. Remaining > 0 with logs already today — deficit
-              //    insight summarises pace.
+              // 4. Remaining budget today — the forward "Room for {meal}"
+              //    coach line (Sloe 01 · Today). The component self-guards
+              //    the ≥50 kcal honesty floor and picks the next unlogged
+              //    slot from `byDay`; the backward energy-balance trend
+              //    lives in the Energy balance section below, not here.
               if (isToday && remaining > 0) {
                 return (
                   <TodayDeficitInsight
                     remaining={remaining}
-                    weekSummaryMode={weekSummaryMode}
                     selectedDate={selectedDate}
-                    weekStartDay={weekStartDay}
                     byDay={byDay}
-                    targetCalories={targets.calories}
-                    preferActivityAdjustedCalories={preferActivityAdjustedCalories}
-                    activityBonusCaloriesOnly={activityBonusCaloriesOnly}
-                    activityBurnByDay={activityBurnByDay}
-                    basalBurnByDay={basalBurnByDay}
-                    maintenanceKcal={maintenanceKcal}
-                    dayActivityBudgetAddon={dayActivityBudgetAddon}
-                    textSecondaryColor={colors.textSecondary}
-                    // 2026-04-30 visual-qa: Today was 4-5 blue-tinted cards
-                    // stacked (hero ring, fasting pill, duplicate-day chip,
-                    // deficit banner). Banner is informational so its
-                    // chrome is now neutral; the leading "~X kcal" line
-                    // still carries the primary blue so the number reads
-                    // as the focal point.
-                    surfaceBackgroundColor={colors.card}
-                    surfaceBorderColor={colors.border}
                   />
                 );
               }
@@ -5019,8 +5140,32 @@ export default function TrackerScreen() {
             vs deficit insight via the `!(remaining > 0)` gate, which we
             kept. Web parallel ships in NutritionTracker.tsx. */}
 
+        {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
+        {showAboveMealsNorthStar && (
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary}
+            remainingCalories={Math.max(0, remaining)}
+            remainingProtein={remainingProtein}
+            remainingCarbs={remainingCarbs}
+            remainingFat={remainingFat}
+            dailyCalorieTarget={effectiveCalorieGoal}
+            onPrimaryCta={(recipeId) => {
+              router.push(`/recipe/${recipeId}` as any);
+            }}
+            onBrowseLibrary={() => {
+              router.push("/(tabs)/library" as any);
+            }}
+            selectedDateKey={dayKey}
+            userCreatedAt={session?.user?.created_at ?? null}
+            hasEverLoggedAnyMeal={hasAnyJournalHistory}
+          />
+        )}
+
         {viewMode === "day" && (
-          <ReAnimated.View style={mealsEntrance.style}>
+          <ReAnimated.View
+            style={[mealsEntrance.style, { marginTop: Layout.todaySectionBreak }]}
+          >
           <TodayMealsSection
             slots={MEAL_SLOTS}
             mealGroups={mealGroups}
@@ -5096,6 +5241,7 @@ export default function TrackerScreen() {
             data layer exposes it. Every other figure is derived from
             `weekData` (already on screen). */}
         {viewMode === "day" && (
+          <View style={{ marginTop: Layout.todaySectionBreak }}>
           <WeeklyInsightCard
             householdSize={1}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
@@ -5111,33 +5257,9 @@ export default function TrackerScreen() {
             cardBackgroundColor={colors.card}
             borderColor={colors.cardBorder}
           />
+          </View>
         )}
 
-        {/* D-02 (ENG-690): NorthStar block — empty-day-only. Shows
-            "what to eat next" / "log your first meal" prompts only
-            when the user hasn't logged anything yet today. Once the
-            first meal lands, showBelowMealsNorthStar flips false and
-            the block disappears so it never reads as stale clutter on
-            a populated Today screen. */}
-        {showBelowMealsNorthStar && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary}
-            remainingCalories={Math.max(0, remaining)}
-            remainingProtein={remainingProtein}
-            remainingCarbs={remainingCarbs}
-            remainingFat={remainingFat}
-            onPrimaryCta={(recipeId) => {
-              router.push(`/recipe/${recipeId}` as any);
-            }}
-            onBrowseLibrary={() => {
-              router.push("/(tabs)/library" as any);
-            }}
-            selectedDateKey={dayKey}
-            userCreatedAt={session?.user?.created_at ?? null}
-            hasEverLoggedAnyMeal={hasAnyJournalHistory}
-          />
-        )}
         {showBelowMealsCheckin && (
             <WeeklyCheckinBanner
               textColor={colors.text}
@@ -5220,49 +5342,46 @@ export default function TrackerScreen() {
           />
         )}
 
-        {/* Steps, active energy — per selected day (historic via header / DayStrip).
-            Water + stimulants live in the `HydrationStimulantsCard` at the
-            bottom of Today (post-TestFlight build 7 feedback, 2026-04-18).
-            Audit M4 (2026-04-18): gated until Apple Health / Google Fit has
-            synced at least once (steps map OR activity burn map non-empty).
-            First-run fallback is a small "Connect health" link that opens
-            the existing Health Sync screen. */}
-        {viewMode === "day" && showStepsCard && (
-          <TodayActivityCard
-            dayLabel={isToday ? "Today" : formatDateLabel(selectedDate)}
-            stepsCount={stepsCount}
-            dailyStepsGoal={dailyStepsGoal}
-            activityBurnKcal={activityBurnKcal}
-            onShowProvenance={() => {
-              // Pattern #9: load the last-sync timestamp lazily on
-              // first open so the AsyncStorage read doesn't run on
-              // every Today render.
-              void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
-              setProvenanceContext("activity");
-            }}
-            styles={styles}
-            textColor={colors.text}
-            textSecondaryColor={colors.textSecondary}
-            textTertiaryColor={colors.textTertiary}
-            borderColor={colors.border}
-          />
-        )}
-        {viewMode === "day" && !showStepsCard && (
-          <Pressable
-            onPress={() => router.push("/health-sync" as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Connect health"
-            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
+        {/* Figma TD1 — Activity & energy: plum section header + flat sibling cards. */}
+        {viewMode === "day" && (
+          <View
+            testID="today-activity-section"
+            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
           >
-            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
-              Connect health
-            </Text>
-          </Pressable>
-        )}
-
-        {/* Activity Bonus — show on Today even before Health fills burn maps, so prefs are discoverable */}
-        {viewMode === "day" && userId && (hasBurnData || isToday) && (
-          <TodayActivityBonusCard
+            <TodayScrollSectionHeader
+              title="Activity & energy"
+              testID="today-activity-section-header"
+            />
+            {showStepsCard ? (
+              <TodayActivityCard
+                dayLabel={isToday ? "Today" : formatDateLabel(selectedDate)}
+                stepsCount={stepsCount}
+                dailyStepsGoal={dailyStepsGoal}
+                activityBurnKcal={activityBurnKcal}
+                onShowProvenance={() => {
+                  void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
+                  setProvenanceContext("activity");
+                }}
+                styles={styles}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                borderColor={colors.border}
+              />
+            ) : (
+              <Pressable
+                onPress={() => router.push("/health-sync" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Connect health"
+                style={{ paddingVertical: 4 }}
+              >
+                <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                  Connect health
+                </Text>
+              </Pressable>
+            )}
+            {userId && (hasBurnData || isToday) ? (
+              <TodayActivityBonusCard
             isToday={isToday}
             hasBurnData={hasBurnData}
             totalBurnKcal={totalBurnKcal}
@@ -5308,19 +5427,23 @@ export default function TrackerScreen() {
             borderColor={colors.border}
             cardColor={colors.card}
             cardBorderColor={colors.cardBorder}
-          />
+              />
+            ) : null}
+          </View>
         )}
 
-        {/* Batch 2.5 — hydration & stimulants (water + caffeine + alcohol).
-            Position (2026-04-18, post-TestFlight build 7 feedback): sits at
-            the bottom of Today — primary water quick-add lives in the macro
-            tile row up top; this card is detail + caffeine/alcohol quick-add.
-            Gating: visible once water target > 0 OR any water/caffeine/
-            alcohol logged. Caffeine + alcohol rows additionally self-hide
-            when their individual target is 0. First-run fallback is a tiny
-            "Track hydration?" link. */}
-        {viewMode === "day" && showHydrationCard && (
-          <HydrationStimulantsCard
+        {/* Figma TD2 — Hydration & stimulants: section header + sibling flat cards. */}
+        {viewMode === "day" && (
+          <View
+            testID="today-hydration-section"
+            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
+          >
+            <TodayScrollSectionHeader
+              title="Hydration & stimulants"
+              testID="today-hydration-section-header"
+            />
+            {showHydrationCard ? (
+              <HydrationStimulantsCard
             selectedDateKey={dayKey}
             weekStartDay={weekStartDay}
             targets={{
@@ -5344,22 +5467,26 @@ export default function TrackerScreen() {
             onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}
             onAddAlcohol={(g, preset) => void addAlcoholG(g, preset ?? null)}
             onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
-          />
-        )}
-        {viewMode === "day" && !showHydrationCard && (
-          <Pressable
-            onPress={() => setHydrationManualExpanded(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Track hydration"
-            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
-          >
-            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
-              Track hydration?
-            </Text>
-          </Pressable>
+              />
+            ) : (
+              <Pressable
+                onPress={() => setHydrationManualExpanded(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Track hydration"
+                style={{ paddingVertical: 4 }}
+              >
+                <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                  Track hydration?
+                </Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
-        {/* Complete Day button — only when viewing today and there are logged meals */}
+        {/* Complete Day button — only when viewing today and there are logged meals.
+            Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+            outline (transparent fill + 1.5px primarySolid border + primarySolid
+            label), not a filled slab. Mirror of web NutritionTracker. */}
         {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
           <Pressable
             onPress={async () => {
@@ -5376,15 +5503,18 @@ export default function TrackerScreen() {
                 } catch {}
               }
             }}
-            style={{
+            style={({ pressed }) => ({
               marginTop: Spacing.lg,
               paddingVertical: 16,
               borderRadius: Radius.md,
-              backgroundColor: Accent.primary,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
               alignItems: "center",
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: "#fff", ...Type.headline }}>Complete Day</Text>
+            <Text style={{ color: accent.primarySolid, ...Type.headline }}>Complete Day</Text>
           </Pressable>
         )}
 
@@ -6031,7 +6161,7 @@ export default function TrackerScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
             <View>
               <Text style={{ ...Type.headline, color: colors.text }}>Quick add</Text>
-              <Text style={{ ...Type.caption, color: Accent.primary, fontWeight: "600", marginTop: 2 }}>
+              <Text style={{ ...Type.caption, color: accent.primary, fontWeight: "600", marginTop: 2 }}>
                 Logging to {activeMealSlot}
               </Text>
             </View>

@@ -4,6 +4,7 @@ import { Stack, usePathname, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react-native';
 
@@ -94,6 +95,7 @@ import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForw
 import { initErrorTracking } from '@/lib/errorTracking';
 import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
+import { FontGate } from '@/components/FontGate';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
@@ -124,6 +126,14 @@ import * as Sentry from '@sentry/react-native';
 initErrorTracking();
 configurePurchases();
 configureNotificationPresentation();
+
+// Sloe Phase 0 (2026-06-03) — keep the native splash up until the Newsreader +
+// Inter fonts have loaded so the first paint never flashes the System font /
+// faux-glyphs before the serif/sans swap in. `RootLayoutInner` hides the splash
+// once `useFonts` resolves (success OR error — a font load failure must not
+// strand the user on the splash; the System fallback in `Fonts`/`Type` covers
+// it). Safe to call at module scope; the hide is best-effort.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -566,9 +576,11 @@ export default Sentry.wrap(function RootLayout() {
     <RootErrorBoundary>
       <AuthProvider>
         <AnalyticsProvider>
-          <SupprThemeProvider>
-            <RootLayoutInner />
-          </SupprThemeProvider>
+          <FontGate>
+            <SupprThemeProvider>
+              <RootLayoutInner />
+            </SupprThemeProvider>
+          </FontGate>
         </AnalyticsProvider>
       </AuthProvider>
     </RootErrorBoundary>

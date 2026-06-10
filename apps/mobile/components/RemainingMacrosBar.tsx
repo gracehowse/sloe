@@ -111,7 +111,8 @@ export function RemainingMacrosBar({
         {
           backgroundColor: cardElevation.liftBg ?? colors.card,
           borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
+          // Sloe: hairline (≈1 physical px), not a 1pt (3px on @3x) boxed edge.
+          borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         cardElevation.shadowStyle,
         style,

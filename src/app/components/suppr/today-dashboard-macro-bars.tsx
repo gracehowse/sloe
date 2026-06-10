@@ -133,6 +133,7 @@ export function TodayDashboardMacroBars({
     // border-drop under `design_system_elevation`, flat byte-for-byte when OFF.
     // `rounded-2xl` → radius="xl"; `p-3` → padding="md".
     <SupprCard
+      elevation="card"
       radius="xl"
       padding="md"
       className="mb-2 flex flex-col gap-3"

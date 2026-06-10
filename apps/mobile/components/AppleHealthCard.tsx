@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -63,7 +64,14 @@ export function AppleHealthCard({
   onRetry,
 }: AppleHealthCardProps) {
   const colors = useThemeColors();
-  const cardElev = useCardElevation();
+  // Secondary accent (Frost flag → damson, else clay) for the sync spinner,
+  // Retry, and manage link. The not-authorised caution keeps `Accent.warning`.
+  const accent = useAccent();
+  // One-card-treatment soft lift (2026-06-09): the Apple Health card sits
+  // directly on the Progress page ground, so it takes the soft elevation like
+  // every sibling content card. Spread onto the OUTER shell View. Mirrors web's
+  // page-ground cards getting `elevation="card"`.
+  const cardElev = useCardElevation({ variant: "soft" });
   const t = {
     text: colors.text,
     sub: colors.textSecondary,
@@ -124,7 +132,7 @@ export function AppleHealthCard({
             <View style={{ width: 60, height: 10, borderRadius: 4, backgroundColor: t.border }} />
           </View>
         ))}
-        <ActivityIndicator size="small" color={Accent.primary} style={{ marginTop: 8 }} />
+        <ActivityIndicator size="small" color={accent.primary} style={{ marginTop: 8 }} />
       </View>,
     );
   }
@@ -142,7 +150,7 @@ export function AppleHealthCard({
             onPress={onRetry}
             style={{ alignSelf: "flex-start" }}
           >
-            <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>Retry</Text>
+            <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>Retry</Text>
           </Pressable>
         ) : null}
       </View>,
@@ -254,7 +262,7 @@ export function AppleHealthCard({
                 // still reach Settings manually.
               });
             }}
-            style={{ color: Accent.primary, fontWeight: "600" }}
+            style={{ color: accent.primary, fontWeight: "600" }}
           >
             Open Settings
           </Text>

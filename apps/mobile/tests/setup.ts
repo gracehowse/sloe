@@ -1,3 +1,5 @@
+require("../scripts/load-repo-env.cjs");
+
 /**
  * Vitest global setup for the mobile workspace.
  *
@@ -35,6 +37,9 @@ const RN_SHIM_PATH = pathResolve(__dirname, "shims", "react-native.cjs");
 const RN_SVG_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-svg.cjs");
 const RN_GH_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-gesture-handler.cjs");
 const LUCIDE_SHIM_PATH = pathResolve(__dirname, "shims", "lucide-react-native.cjs");
+// NOTE: static image `require(".../foo.png")` calls are handled by the
+// `transform` hook in vitest.config.ts (rewritten to an inline stub), not here —
+// vite-node's runtime `require` bypasses this resolver patch.
 
 type RequireInternal = typeof require & {
   resolve: RequireResolve;
@@ -125,6 +130,15 @@ const originalCreateRequire = Module.createRequire;
 
 process.env.RNTL_SKIP_DEPS_CHECK = "1";
 process.env.RNTL_SKIP_AUTO_DETECT_FAKE_TIMERS = "1";
+
+// React Native injects the `__DEV__` global via Metro's transform; vitest does
+// not, so any component that reads `__DEV__` (e.g. the dev-only prebuild hint on
+// health-sync.tsx) throws "__DEV__ is not defined" at render. Pin it to `false`
+// so tests exercise the PRODUCTION / user-facing branch (matches the
+// healthSyncPremiumBarVisual assertion that dev-only instructions are hidden).
+if (typeof (globalThis as unknown as { __DEV__?: boolean }).__DEV__ === "undefined") {
+  (globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
+}
 
 // Silences React 19 / RTR warnings about missing act env.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

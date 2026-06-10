@@ -216,4 +216,24 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).toContain("import { LogSheet }");
     expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
+
+  it("SLOE redesign (2026-06-03): Today opens with a Sloe wordmark + avatar header, and the date header is stripOnly", () => {
+    // Grace decision: the "< Today >" date-nav row is replaced by a
+    // "Sloe" wordmark (left) + GradientAvatar (right) header above the
+    // greeting; the week strip (rendered via <TodayDateHeader
+    // stripOnly>) owns day-selection. Pin both halves so a future
+    // sweep can't silently revert to the chevron date-nav header.
+    expect(indexSrc).toContain(
+      'import { GradientAvatar } from "@/components/GradientAvatar"',
+    );
+    // The wordmark text + its testID.
+    expect(indexSrc).toMatch(/testID="today-wordmark"/);
+    expect(indexSrc).toContain("SloeHeaderWordmark");
+    // The avatar in the wordmark header routes to Settings.
+    expect(indexSrc).toMatch(
+      /gradientIdSuffix="today-wordmark-header"/,
+    );
+    // The date header is now stripOnly (week strip only).
+    expect(indexSrc).toMatch(/<TodayDateHeader\s+stripOnly/);
+  });
 });

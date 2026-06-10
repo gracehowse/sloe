@@ -71,7 +71,7 @@ function MacroCard({
   return (
     <div
       className={cn(
-        "flex-1 flex flex-col rounded-card bg-card p-2.5 border border-border card-elevated",
+        "flex-1 flex flex-col rounded-card bg-card card-slab p-2.5",
         className,
       )}
       {...props}

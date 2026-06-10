@@ -186,11 +186,11 @@ describe("DailyRing — centre value", () => {
       expect(container.textContent).toContain("of 1,707 kcal");
     });
 
-    it("hides 'of X kcal' when expanded=true (macro rings visible)", () => {
+    it("still shows 'of X kcal' in remaining mode when expanded (mobile parity)", () => {
       const { container } = render(
-        <DailyRing consumed={1664} target={1707} expanded={true} />,
+        <DailyRing consumed={500} target={1707} expanded={true} displayMode="remaining" />,
       );
-      expect(container.textContent).not.toMatch(/of\s+1,707\s+kcal/i);
+      expect(container.textContent).toContain("of 1,707 kcal");
     });
   });
 });

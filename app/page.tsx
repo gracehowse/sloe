@@ -22,9 +22,9 @@ import type { Metadata } from "next";
 import { LandingPage } from "./(landing)/LandingPage.tsx";
 
 export const metadata: Metadata = {
-  title: "Suppr — The recipe and nutrition platform for people who actually cook",
+  title: "Sloe — The recipe and nutrition platform for people who actually cook",
   description:
-    "Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases.",
+    "Paste a link from Instagram, TikTok, or any recipe blog — Sloe parses every ingredient and matches it against USDA FoodData Central and other public food databases.",
 };
 
 // 2026-05-15: dropped `force-dynamic` + `revalidate = 0`. The original

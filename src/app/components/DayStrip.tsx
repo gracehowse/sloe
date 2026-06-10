@@ -11,6 +11,8 @@ import {
   journalRangeBounds,
 } from "../../lib/nutrition/journalNavigation.ts";
 import { parseDateKey } from "../../lib/nutrition/trackerDate.ts";
+import { dayStripIndicator } from "../../lib/today/dayStripIndicator.ts";
+import { weekdayInitials } from "../../lib/today/weekdayLabels.ts";
 
 type Props = {
   selectedDateKey: string;
@@ -38,15 +40,13 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   const selectedDk = selectedDateKey;
   const todayDk = dateKeyFromDate(new Date());
 
-  // 2026-05-14 — reverted F5/F9 stacked-tile treatment back to
-  // day-label-above-circle. Web parity with mobile DayStrip; Grace's
-  // call that the stacked pills read as ovals and felt heavier than
-  // the clean 30x30 circles.
+  // Sloe redesign (2026-06-08) — single-letter weekday labels to match the
+  // canonical Figma `654:2` Today frame (`S M T W T F S`), replacing the
+  // 2026-05-14 three-letter `Mon/Tue/Wed` treatment. The day NUMBER below the
+  // letter disambiguates the date. Shared with mobile `DayStrip` via
+  // `weekdayInitials` so the two surfaces can't drift.
   const dowLabels = useMemo(
-    () =>
-      weekStartDay === "monday"
-        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    () => weekdayInitials(weekStartDay),
     [weekStartDay],
   );
 
@@ -152,6 +152,24 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                   const hasLogs = loggedDays.has(dk);
                   const isProtected = protectedDateKeys?.has(dk) ?? false;
                   const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
+                  // Minimal current-day treatment (2026-06-03, Grace's
+                  // feedback — the filled clay circle read as clunky). Web
+                  // parity with mobile `DayStrip`: the active day is a clay
+                  // (`text-primary`) bold NUMBER with a small clay DOT beneath,
+                  // NO filled background. Logged days carry a sage dot; the
+                  // clay (selected) indicator takes precedence on the both-case.
+                  // The state→treatment rule is shared via `dayStripIndicator`.
+                  const { dotKind, isActive } = dayStripIndicator({
+                    isSelected,
+                    isToday,
+                    hasLogs,
+                  });
+                  const dotClass =
+                    dotKind === "clay"
+                      ? "bg-primary"
+                      : dotKind === "sage"
+                        ? "bg-success"
+                        : "bg-transparent";
                   return (
                     <button
                       key={dk}
@@ -159,40 +177,32 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       disabled={outOfRange}
                       onClick={() => onSelectDateKey(dateKeyFromDate(clampJournalDate(date)))}
                       aria-label={isProtected ? `Freeze used on ${dk}` : undefined}
-                      className={`flex-1 flex flex-col items-center gap-1 py-1 ${outOfRange ? "opacity-35" : ""}`}
+                      data-testid={`daystrip-dot-minimal-${dotKind}`}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 ${outOfRange ? "opacity-35" : ""}`}
                     >
-                      <span
-                        className={`text-[10px] font-semibold tracking-wide leading-none ${
-                          isSelected ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      >
+                      <span className="text-[10px] font-semibold uppercase tracking-wide leading-none text-foreground-tertiary">
                         {label}
                       </span>
-                      <div
-                        className={[
-                          "relative w-[30px] h-[30px] rounded-full flex items-center justify-center border-2 transition-colors",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-transparent"
-                            : hasLogs
-                              ? "bg-success/15 border-transparent text-foreground"
-                              : "bg-transparent text-foreground border-transparent",
-                          isToday && !isSelected ? "border-primary/40" : "",
-                        ].join(" ")}
-                      >
-                        {hasLogs && !isSelected ? (
-                          <Icons.check className="w-4 h-4 text-success" aria-hidden />
-                        ) : (
-                          <span className="text-[13px] font-bold tabular-nums">
-                            {date.getDate()}
-                          </span>
-                        )}
+                      <div className="relative">
+                        <span
+                          className={[
+                            "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",
+                            isActive ? "font-semibold text-primary" : "font-normal text-foreground",
+                          ].join(" ")}
+                        >
+                          {date.getDate()}
+                        </span>
                         {isProtected ? (
                           <Icons.streakFreeze
                             aria-hidden
-                            className="absolute -top-1 -right-1 w-3 h-3 text-[color:var(--macro-water)] drop-shadow"
+                            className="absolute -top-1.5 -right-2.5 w-3 h-3 text-[color:var(--macro-water)] drop-shadow"
                           />
                         ) : null}
                       </div>
+                      <span
+                        className={`block w-1 h-1 rounded-full ${dotClass}`}
+                        aria-hidden
+                      />
                     </button>
                   );
                 })}

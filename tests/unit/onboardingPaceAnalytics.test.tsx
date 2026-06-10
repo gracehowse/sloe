@@ -51,7 +51,17 @@ import {
 } from "../../src/app/components/onboarding/context";
 import { PaceStep } from "../../src/app/components/onboarding/steps/pace";
 import { WebFlow } from "../../src/app/components/onboarding/web-flow";
-import type { OnboardingState } from "../../src/lib/onboarding/state";
+import {
+  STEP_IDS,
+  type OnboardingState,
+} from "../../src/lib/onboarding/state";
+
+// Index-relative step positions so these survive step reordering
+// (ENG-990 shifted pace/activity by one when `app-choice` landed after
+// Welcome). The app-choice step is auto-skipped (flag OFF in tests), so
+// its slot stays in STEP_IDS but the navigation jumps past it.
+const PACE_INDEX = STEP_IDS.indexOf("pace");
+const ACTIVITY_INDEX = STEP_IDS.indexOf("activity");
 
 function withProvider(
   ui: React.ReactNode,
@@ -162,7 +172,7 @@ describe("PaceStep — `shown` event", () => {
 describe("WebFlow — `advanced` event", () => {
   it("fires onboarding_pace_below_safety_floor with acted=advanced when Continue is tapped from the Pace step with a danger warning + acknowledgement", () => {
     withProvider(<WebFlow />, {
-      step: 8, // pace step (after auto-skip math)
+      step: PACE_INDEX, // pace step
       goal: "lose",
       sex: "female",
       age: 25,
@@ -193,7 +203,7 @@ describe("WebFlow — `advanced` event", () => {
 
   it("does not fire `advanced` when Continue is tapped on a non-pace step", () => {
     withProvider(<WebFlow />, {
-      step: 7, // activity step
+      step: ACTIVITY_INDEX, // activity step
       goal: "lose",
       sex: "female",
       age: 25,

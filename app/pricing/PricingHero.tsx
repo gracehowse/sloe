@@ -1,61 +1,67 @@
+import Image from "next/image";
+
 /**
- * Gradient hero panel for `/pricing`.
+ * Photo hero panel for `/pricing` — Sloe Pro paywall (Figma `284:2`).
  *
- * D13 (design-system sweep 2026-04-21) — brand gradient background,
- * "The full meal planning loop" title, value prop, and TestFlight
- * disclosure line.
+ * 2026-06-08 (Figma `284:2` rebuild): replaced the old brand-gradient
+ * banner (`#588CE4 → #DF5EBC`, flagged as palette drift in
+ * `docs/ux/redesign/paywall.md` §3c) with the frame's full-bleed
+ * finished-dish food photograph + soft fade into the page, the
+ * "SLOE PRO" clay eyebrow, and the editorial positioning headline
+ * "Cook what you love. / *Still* reach your goals." (Newsreader serif,
+ * "Still" italic). This is the emotional, desire-first opener the
+ * Julienne benchmark uses — food before a single word of feature copy.
  *
- * 2026-05-14 (premium-sweep-v2 P0 rows 3.1 + 3.3 + 4.1): removed the
- * "SUPPR" pill from the hero (duplicates the top-bar wordmark 60px
- * above) and compressed vertical padding further so the Monthly/Annual
- * toggle reaches the first 900px viewport without scroll on desktop
- * and the £7.99 Pro price renders in the first mobile viewport.
+ * Kept as its own server component so `/pricing/page.tsx` stays
+ * readable. No client interactivity — rendered directly in the RSC
+ * tree. The headline / eyebrow are the same strings the mobile paywall
+ * hero renders (`apps/mobile/app/paywall.tsx`) so the two surfaces
+ * read identically.
  *
- * Kept as its own server component so `/pricing/page.tsx` stays readable
- * and the gradient + copy can be shared if the paywall route ever needs
- * a sibling surface. No client interactivity — rendered directly in the
- * RSC tree.
- *
- * The gradient hex pair (`#588CE4` → `#DF5EBC`) matches the wordmark in
- * the header and the prototype's paywall banner one-to-one. Do not
- * replace with a token — this is the fixed brand gradient.
+ * The hero photo (`/paywall/paywall-hero.jpg`) is a licensed editorial
+ * finished-dish image per the IMAGERY RULE — ceramic-bowl, natural
+ * light, shallow DoF — not a generic gradient. It is decorative
+ * (`alt=""`) — the headline carries the meaning for screen readers.
  */
 export function PricingHero() {
   return (
-    <div
-      // 2026-05-14 (premium-sweep-v2 rows 3.1 + 4.1): py-8 sm:py-14
-      // → py-6 sm:py-10. Compresses the hero ~30% so the toggle is
-      // reachable in 900px desktop viewport and the Pro price reads
-      // in the first mobile viewport. Prior V15 reduction was a step
-      // in this direction; this finishes the job.
-      className="relative rounded-3xl px-8 py-6 sm:py-10 mb-12 text-white overflow-hidden"
-      style={{
-        backgroundImage:
-          "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)",
-      }}
-    >
-      <div className="max-w-2xl mx-auto text-center">
-        {/* 2026-05-14 (premium-sweep-v2 row 3.3): "SUPPR" Sparkles pill
-            removed — duplicated the top-bar Suppr wordmark 60px above,
-            which made the brand-mark appear twice in the same viewport
-            with no functional reason for the second instance. */}
-        <h1 className="text-4xl font-bold tracking-tight leading-tight mb-3">
-          The full meal planning loop
+    <div className="relative mb-10 -mx-6 sm:mx-0 sm:rounded-3xl overflow-hidden">
+      {/* Full-bleed food photograph — the frame's hero image. Fades
+          softly into the page background at the bottom so the eyebrow +
+          headline read as overlaid on the fade, matching `284:2`. */}
+      <div className="relative h-[260px] sm:h-[320px] w-full">
+        <Image
+          src="/paywall/paywall-hero.jpg"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 768px"
+          className="object-cover"
+        />
+        {/* Soft fade to the page background. The bottom third dissolves
+            into `--background` so the headline sits on the fade, not on
+            the photo — the calm Sloe treatment, not a hard scrim. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0) 30%, var(--background) 100%)",
+          }}
+        />
+      </div>
+
+      {/* Eyebrow + headline — overlaid on the fade, bottom-anchored.
+          Left-aligned per the frame. */}
+      <div className="absolute inset-x-0 bottom-0 px-6 sm:px-8 pb-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent-primary-solid)] mb-2">
+          Sloe Pro
+        </p>
+        <h1 className="text-3xl sm:text-4xl font-medium font-[family-name:var(--font-newsreader)] tracking-tight leading-[1.1] text-foreground-brand">
+          Cook what you love.
+          <br />
+          <em className="italic font-normal">Still</em> reach your goals.
         </h1>
-        <p className="text-base opacity-85 leading-relaxed">
-          Plans that hit your macros, one-tap shopping lists, cook mode
-          with timers. Pick the plan that fits your goals.
-        </p>
-        {/* V13 (2026-05-11 visual sweep): the old subtitle was all-caps
-            "WEB WORKS EVERYWHERE · MOBILE APP IS IPHONE ONLY (TESTFLIGHT)"
-            which read as internal-team copy on a marketing surface.
-            Same disclosure (per customer-lens P1 #30 / project memory
-            `project_ios_only_no_android.md`), but written in sentence
-            case so it reads as customer-facing context rather than a
-            console log. */}
-        <p className="mt-3 text-xs opacity-80 leading-relaxed">
-          Web works on every device. Mobile app is iPhone-only via TestFlight today.
-        </p>
       </div>
     </div>
   );

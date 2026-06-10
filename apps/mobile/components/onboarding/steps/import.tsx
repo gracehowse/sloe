@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import type { ImportSource } from "@/lib/onboarding";
@@ -34,7 +35,7 @@ export function MobileImportStep() {
       <MobileStepHeader
         overline={overline}
         title="Try importing a recipe"
-        subtitle="Paste a link or pick a source — Suppr parses ingredients and matches each against USDA / Open Food Facts."
+        subtitle="Paste a link or pick a source — Sloe parses ingredients and matches each against USDA / Open Food Facts."
       />
 
       {phase === "idle" ? (
@@ -181,6 +182,10 @@ function SourceTile({
 
 function ImportParsing() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the parsing spinner
+  // and the in-progress step marker. Completed steps keep `Accent.successLight`
+  // (green status), and the matched-macro stats keep their `MacroColors`.
+  const accent = useAccent();
   const steps = [
     "Fetching recipe…",
     "Parsing ingredients with natural-language model",
@@ -207,7 +212,7 @@ function ImportParsing() {
         alignItems: "center",
       }}
     >
-      <ActivityIndicator size="large" color={Accent.primaryLight} />
+      <ActivityIndicator size="large" color={accent.primaryLight} />
       <Text
         style={{
           fontSize: 15,
@@ -240,9 +245,9 @@ function ImportParsing() {
                   borderRadius: 7,
                   borderWidth: 1.5,
                   borderColor:
-                    i === cur ? Accent.primaryLight : colors.cardBorder,
+                    i === cur ? accent.primaryLight : colors.cardBorder,
                   backgroundColor:
-                    i === cur ? Accent.primary + "33" : "transparent",
+                    i === cur ? accent.primary + "33" : "transparent",
                 }}
               />
             )}

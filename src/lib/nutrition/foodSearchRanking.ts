@@ -19,6 +19,11 @@
  * computed match score — never from source alone (see `searchRowConfidenceTier`).
  */
 
+import {
+  foodNameIncludesUkRetailer,
+  queryLeadingUkRetailer,
+} from "./foodSearchLocale";
+
 export type FoodSearchTrustSource =
   | "USDA"
   | "OFF"
@@ -270,6 +275,207 @@ export function foodSearchTrustWeight(input: {
  */
 export const RECENTLY_LOGGED_BOOST = 0.05;
 
+/** Boost when the user typed a chain/grocery brand and the row is that brand's product. */
+export const BRANDED_CHAIN_QUERY_BOOST = 0.18;
+
+function normalizeBrandToken(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[''´`]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Multi-word queries like "starbucks latte" or "tesco chicken" should prefer
+ * FatSecret/OFF branded rows over a terse USDA generic that only matches the
+ * food noun ("Latte, coffee").
+ */
+export function brandedChainQueryBoost(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+}): number {
+  if (input.source !== "FatSecret" && input.source !== "OFF") return 0;
+  const sep = input.name.indexOf("·");
+  if (sep < 0) return 0;
+  const brandPart = input.name.slice(0, sep).trim();
+  if (!brandPart) return 0;
+
+  const qTokens = input.query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 1 && !MATCH_STOPWORDS.has(t));
+  if (qTokens.length < 2) return 0;
+
+  const brandNorm = normalizeBrandToken(brandPart);
+  const firstNorm = normalizeBrandToken(qTokens[0]!);
+  if (!firstNorm || !brandNorm.includes(firstNorm) && !firstNorm.includes(brandNorm)) return 0;
+
+  const productPart = input.name.slice(sep + 1).toLowerCase();
+  const tailTokens = qTokens.slice(1);
+  const FOOD_SPELLING_ALIASES: Record<string, string[]> = {
+    hummus: ["houmous", "humus"],
+    houmous: ["hummus"],
+  };
+  const tailTokenHits = (t: string): boolean => {
+    if (productPart.includes(t)) return true;
+    for (const alias of FOOD_SPELLING_ALIASES[t] ?? []) {
+      if (productPart.includes(alias)) return true;
+    }
+    const stemmed = stem(t);
+    return productPart.split(/\s+/).some((w) => stem(w) === stemmed);
+  };
+  const tailQuery = tailTokens.join(" ");
+  const tailMatch = searchMatchScore(tailQuery, productPart) * 0.08;
+  if (tailTokens.every(tailTokenHits)) return BRANDED_CHAIN_QUERY_BOOST + 0.06 + tailMatch;
+  if (tailTokens.some(tailTokenHits)) return BRANDED_CHAIN_QUERY_BOOST + tailMatch;
+  return 0;
+}
+
+/** Fast-food / chain-restaurant brands — not grocery (Tropicana, Chobani, Tesco). */
+const CHAIN_RESTAURANT_BRAND_RE =
+  /\b(mcdonald|burger\s*king|wendy|subway|kfc|chipotle|starbucks|taco\s*bell|domino|pizza\s*hut|five\s*guys|panda\s*express|panera|dunkin|nandos|pret)\b/i;
+
+function brandSegmentIsChainRestaurant(brandPart: string): boolean {
+  const norm = normalizeBrandToken(brandPart);
+  if (!norm) return false;
+  if (CHAIN_RESTAURANT_BRAND_RE.test(brandPart)) return true;
+  // normalizeBrandToken strips spaces — "burgerking" still matches substring checks
+  const CHAIN_NORMS = [
+    "mcdonald",
+    "burgerking",
+    "wendy",
+    "subway",
+    "kfc",
+    "chipotle",
+    "starbucks",
+    "tacobell",
+    "dominos",
+    "pizzahut",
+    "fiveguys",
+    "pandaexpress",
+    "panera",
+    "dunkin",
+    "nandos",
+    "pret",
+  ];
+  return CHAIN_NORMS.some((c) => norm.includes(c) || c.includes(norm));
+}
+
+/**
+ * Menu-item queries without a brand token ("big mac", "egg mcmuffin") — boost
+ * FatSecret/OFF when the product segment exactly matches the query and the row
+ * is from a chain restaurant (not grocery branded SKUs like "Orange Juice").
+ */
+export function brandedMenuProductBoost(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+}): number {
+  if (input.source !== "FatSecret" && input.source !== "OFF") return 0;
+  const sep = input.name.indexOf("·");
+  if (sep < 0) return 0;
+  const brandPart = input.name.slice(0, sep).trim();
+  if (!brandSegmentIsChainRestaurant(brandPart)) return 0;
+  const productPart = input.name.slice(sep + 1).trim();
+  if (!productPart) return 0;
+  const q = input.query.trim().toLowerCase();
+  if (q.split(/\s+/).filter((t) => t.length > 1).length < 2) return 0;
+  if (brandedChainQueryBoost(input) > 0) return 0;
+  // Exact menu-item match only — "Greek Yogurt Strawberry" must not beat USDA.
+  if (normalize(q) !== normalize(productPart)) return 0;
+  return BRANDED_CHAIN_QUERY_BOOST + 0.06;
+}
+
+/**
+ * Demote USDA Branded scrapes that match a menu-item query but aren't the
+ * authoritative branded row ("Big Mac (McDonalds)" losing to FS).
+ */
+export function usdaBrandedMenuPenalty(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+  verified?: boolean;
+}): number {
+  if (input.source !== "USDA") return 0;
+  const qNorm = normalizeBrandToken(input.query);
+  if (qNorm.length < 4) return 0;
+  const raw = input.name.trim();
+  const head = raw.split(/[,(]/)[0]?.trim() ?? "";
+  if (!head || normalizeBrandToken(head) !== qNorm) return 0;
+  const hasParenBrand = /\([^)]{3,}\)/.test(raw);
+  const hasChainInName = /\b(mcdonald|burger king|wendy|subway|kfc|chipotle|starbucks)\b/i.test(
+    raw,
+  );
+  if (!hasParenBrand && !hasChainInName) return 0;
+  return input.verified ? -0.28 : -0.18;
+}
+
+/**
+ * Penalise generic FatSecret rows when the user named a UK retailer
+ * ("tesco chicken" → plain "Chicken" without Tesco in the name).
+ */
+export function ukRetailerGenericRowPenalty(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+}): number {
+  const retailer = queryLeadingUkRetailer(input.query);
+  if (!retailer) return 0;
+  if (input.source !== "FatSecret" && input.source !== "OFF") return 0;
+  if (/·/.test(input.name) && foodNameIncludesUkRetailer(input.name, retailer)) return 0;
+  if (foodNameIncludesUkRetailer(input.name, retailer)) return 0;
+  return -0.35;
+}
+
+/**
+ * When the user typed a multi-word query whose first token looks like a brand
+ * ("starbucks latte"), demote verified USDA generics that don't mention that
+ * brand ("Latte, coffee") so FatSecret/OFF branded rows can win honestly.
+ */
+export function genericBrandQueryPenalty(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+  verified?: boolean;
+}): number {
+  if (input.source !== "USDA") return 0;
+  const qTokens = input.query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 1 && !MATCH_STOPWORDS.has(t));
+  if (qTokens.length < 2) return 0;
+  const brandish = normalizeBrandToken(qTokens[0]!);
+  if (!brandish || brandish.length < 3) return 0;
+  const segments = input.name.split(",").map((s) => normalizeBrandToken(s.trim()));
+  const firstSeg = segments[0] ?? "";
+  if (firstSeg.includes(brandish)) return 0;
+
+  // "Bowl, chipotle, with chicken" for query "chipotle bowl" — chipotle is a
+  // trailing qualifier on a dish row, not the Chipotle restaurant brand.
+  const DISH_HEADS = new Set([
+    "bowl",
+    "salad",
+    "sandwich",
+    "wrap",
+    "burger",
+    "pizza",
+    "coffee",
+    "latte",
+    "soup",
+    "taco",
+    "burrito",
+  ]);
+  const trailingOnly = segments.slice(1).some((s) => s.includes(brandish));
+  if (trailingOnly && DISH_HEADS.has(firstSeg)) return -0.38;
+
+  // "Latte, coffee" for query "starbucks latte" — brand token absent entirely.
+  if (!trailingOnly) return -0.16;
+  return 0;
+}
+
 /** Combined rank score used when sorting merged search rows. */
 export function foodSearchRankScore(input: {
   query: string;
@@ -279,10 +485,43 @@ export function foodSearchRankScore(input: {
   /** True when this exact food appears in the user's recent-log history. */
   recentlyLogged?: boolean;
 }): number {
+  const brandBoost = brandedChainQueryBoost({
+    query: input.query,
+    name: input.name,
+    source: input.source,
+  });
+  const menuBoost = brandedMenuProductBoost({
+    query: input.query,
+    name: input.name,
+    source: input.source,
+  });
+  const brandedLift = Math.max(brandBoost, menuBoost);
   const base =
     searchMatchScore(input.query, input.name) +
-    foodSearchTrustWeight({ source: input.source, verified: input.verified, name: input.name });
-  const boosted = input.recentlyLogged ? base + RECENTLY_LOGGED_BOOST : base;
+    foodSearchTrustWeight({ source: input.source, verified: input.verified, name: input.name }) +
+    brandBoost +
+    menuBoost +
+    genericBrandQueryPenalty({
+      query: input.query,
+      name: input.name,
+      source: input.source,
+      verified: input.verified,
+    }) +
+    usdaBrandedMenuPenalty({
+      query: input.query,
+      name: input.name,
+      source: input.source,
+      verified: input.verified,
+    }) +
+    ukRetailerGenericRowPenalty({
+      query: input.query,
+      name: input.name,
+      source: input.source,
+    });
+  // Branded grocery/chain rows must not lose to a generic USDA row when the
+  // user's query names the brand explicitly (houmous/hummus spelling drift).
+  const floored = brandedLift > 0 ? Math.max(base, 0.62 + brandedLift * 0.25) : base;
+  const boosted = input.recentlyLogged ? floored + RECENTLY_LOGGED_BOOST : floored;
   return Math.max(0, boosted);
 }
 

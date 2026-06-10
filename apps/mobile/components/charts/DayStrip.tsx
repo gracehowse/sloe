@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
-import { Calendar, Check, Snowflake } from "lucide-react-native";
+import { Calendar, Snowflake } from "lucide-react-native";
 
-import { Accent, IconSize, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import {
   addDaysLocal,
   clampJournalDate,
@@ -11,6 +12,8 @@ import {
   journalRangeBounds,
 } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { dayStripIndicatorStyle } from "@suppr/shared/today/dayStripIndicator";
+import { weekdayInitials } from "@suppr/shared/today/weekdayLabels";
 
 type Props = {
   selectedDate: Date;
@@ -51,6 +54,10 @@ export default function DayStrip({
   textColor,
   secondaryColor,
 }: Props) {
+  // Secondary accent (Frost flag → damson, else clay) for the selected/today
+  // day pip + the "Today" jump label + calendar glyph. The "sage" logged-day
+  // marker stays `Accent.success` (held).
+  const accent = useAccent();
   const flatRef = useRef<FlatList<Date>>(null);
   const [pagerW, setPagerW] = useState(0);
   const { min, max } = useMemo(() => journalRangeBounds(), []);
@@ -58,16 +65,13 @@ export default function DayStrip({
   const selectedDk = dateKeyFromDate(selectedDate);
   const todayDk = dateKeyFromDate(new Date());
 
-  // 2026-05-14 — reverted F5/F9 stacked-tile treatment back to
-  // day-label-above-circle. Grace's call: the stacked 32x44 pills
-  // read as ovals and felt heavier than the clean 30x30 circles.
-  // Three-letter labels also restored for readability ("Mon" beats
-  // "M" at a glance).
+  // Sloe redesign (2026-06-08) — single-letter weekday labels to match the
+  // canonical Figma `654:2` Today frame (`S M T W T F S`), replacing the
+  // 2026-05-14 three-letter `Mon/Tue/Wed` treatment. The day NUMBER below the
+  // letter disambiguates the date. Shared with web `DayStrip` via
+  // `weekdayInitials` so the two surfaces can't drift.
   const dowLabels = useMemo(
-    () =>
-      weekStartDay === "monday"
-        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    () => weekdayInitials(weekStartDay),
     [weekStartDay],
   );
 
@@ -121,56 +125,61 @@ export default function DayStrip({
           const hasLogs = loggedDays.has(dk);
           const isProtected = protectedDateKeys?.has(dk) ?? false;
           const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
+          // SLOE redesign — minimal current-day treatment (2026-06-03,
+          // Grace's feedback: the filled clay pill read as clunky). The design
+          // rule (clay number + clay dot for the active day, sage dot for
+          // logged days, NO filled background, clay precedence on the both-
+          // case) lives in the pure `dayStripIndicator` helper so the
+          // component and its unit test share one source of truth.
+          const { dotKind, dotColor, numberColor, isActive } = dayStripIndicatorStyle(
+            { isSelected, isToday, hasLogs },
+            { clay: accent.primary, sage: Accent.success, text: textColor },
+          );
           return (
             <Pressable
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
               onPress={() => onSelectDate(clampJournalDate(date))}
               accessibilityLabel={isProtected ? `Freeze used on ${dk}` : undefined}
-              style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: 4, opacity: outOfRange ? 0.35 : 1 }}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                gap: 5,
+                paddingVertical: 8,
+                marginHorizontal: 1,
+                opacity: outOfRange ? 0.35 : 1,
+              }}
             >
               <Text
                 style={{
                   fontSize: 10,
                   fontWeight: "600",
-                  color: isSelected ? Accent.primary : secondaryColor,
-                  letterSpacing: 0.2,
+                  textTransform: "uppercase",
+                  color: secondaryColor,
+                  letterSpacing: 0.4,
                 }}
               >
                 {label}
               </Text>
-              <View
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isSelected ? Accent.primary : hasLogs ? Accent.success + "22" : "transparent",
-                  borderWidth: isToday && !isSelected ? 2 : 0,
-                  borderColor: Accent.primary + "55",
-                }}
-              >
-                {hasLogs && !isSelected ? (
-                  <Check size={IconSize.md} color={Accent.success} strokeWidth={2.5} />
-                ) : (
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: isSelected || isToday ? "800" : "600",
-                      color: isSelected ? "#fff" : textColor,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {date.getDate()}
-                  </Text>
-                )}
+              <View style={{ position: "relative" }}>
+                <Text
+                  style={{
+                    ...Type.headline,
+                    fontSize: 16,
+                    lineHeight: 20,
+                    fontWeight: isActive ? "700" : "600",
+                    color: numberColor,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {date.getDate()}
+                </Text>
                 {isProtected ? (
                   <View
                     pointerEvents="none"
                     style={{
                       position: "absolute",
-                      top: -4,
-                      right: -4,
+                      top: -6,
+                      right: -10,
                       width: 14,
                       height: 14,
                       borderRadius: 7,
@@ -183,12 +192,21 @@ export default function DayStrip({
                   </View>
                 ) : null}
               </View>
+              <View
+                testID={`daystrip-dot-minimal-${dotKind}`}
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: dotColor,
+                }}
+              />
             </Pressable>
           );
         })}
       </View>
     ),
-    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate],
+    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate, accent],
   );
 
   // 2026-05-12 (premium-bar audit, Today header upgrade): only render
@@ -207,10 +225,10 @@ export default function DayStrip({
             hitSlop={8}
             style={{ paddingVertical: 8, paddingHorizontal: 4 }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>Today</Text>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>Today</Text>
           </Pressable>
         ) : null}
-        <View style={{ flex: 1 }} onLayout={onPagerLayout}>
+        <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
             <FlatList<Date>
               ref={flatRef}
@@ -245,7 +263,7 @@ export default function DayStrip({
           hitSlop={10}
           style={{ padding: 8 }}
         >
-          <Calendar size={IconSize.lg} color={Accent.primary} strokeWidth={1.75} />
+          <Calendar size={IconSize.lg} color={accent.primary} strokeWidth={1.75} />
         </Pressable>
       </View>
     </View>

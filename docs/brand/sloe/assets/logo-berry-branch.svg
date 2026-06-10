@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Sloe — berry on the branch, botanical stamp">
+  <defs>
+    <radialGradient id="bbBerry" cx="38%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#7E5C92"/>
+      <stop offset="48%" stop-color="#553D6C"/>
+      <stop offset="100%" stop-color="#2C1E40"/>
+    </radialGradient>
+    <radialGradient id="bbBloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#EDEAF1" stop-opacity="0.90"/>
+      <stop offset="44%" stop-color="#C9C2D6" stop-opacity="0.58"/>
+      <stop offset="80%" stop-color="#C9C2D6" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#C9C2D6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bbLeaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6E8C63"/>
+      <stop offset="100%" stop-color="#5E7C5A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Oat marketing/avatar ground (NOT the app-icon field) -->
+  <rect width="1024" height="1024" fill="#FBF8F3"/>
+
+  <!-- Stem: a calm hair-thin arc, plum-brown, rising from the berry crown -->
+  <path d="M512 388 C 506 318 522 276 552 250" fill="none" stroke="#5A4A48" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- Leaf: one sage blade, clean botanical, set to the upper-right of the stem -->
+  <path d="M548 258 C 612 210 700 210 742 236 C 700 286 624 300 568 282 Z" fill="url(#bbLeaf)"/>
+  <!-- Leaf midrib -->
+  <path d="M572 270 C 624 256 684 244 736 238" fill="none" stroke="#46603F" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Berry: optically centred, a touch low of the stem -->
+  <circle cx="500" cy="592" r="312" fill="url(#bbBerry)"/>
+
+  <!-- Frosted bloom, upper-left, defined -->
+  <ellipse cx="404" cy="498" rx="158" ry="134" fill="url(#bbBloom)"/>
+
+  <!-- Hair-thin cool rim, bottom-right, lifts the berry off the warm oat ground -->
+  <path d="M500 904 A312 312 0 0 0 812 592" fill="none" stroke="#C9C2D6" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+</svg>

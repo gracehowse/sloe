@@ -2541,6 +2541,14 @@ export type Database = {
         Args: { p_plan: Json; p_slot_id: string; p_start_date: string }
         Returns: undefined
       }
+      save_verified_ingredients: {
+        Args: {
+          p_ingredient_updates: Json
+          p_recipe_id: string
+          p_recipe_update: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

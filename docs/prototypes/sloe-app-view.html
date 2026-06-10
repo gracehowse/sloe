@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sloe — Full App View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400..500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#221B26;--soft:#6A6072;--plum:#3B2A4D;--clay:#C8794E;--frost:#C9C2D6;--line:#E8E2EC;--oat:#FBF8F3;--serif:'Newsreader',Georgia,serif;--sans:'Inter',system-ui,sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  /* OAT marketing ground (this is a marketing/overview surface, so oat is correct) */
+  body{background:var(--oat);font-family:var(--sans);color:var(--ink);padding:40px 44px 80px;}
+  header{margin-bottom:34px;}
+  .logo{font-family:var(--serif);font-size:28px;font-weight:500;color:var(--plum);letter-spacing:-.01em}
+  .pill{display:inline-block;background:#EDEAF1;color:var(--plum);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;margin-left:10px;vertical-align:middle}
+  h1{font-family:var(--serif);font-weight:340;font-size:40px;letter-spacing:-.01em;margin:14px 0 8px;color:var(--plum)}
+  h1 em{font-style:italic;color:var(--clay)}
+  .sub{color:var(--soft);font-size:14.5px;max-width:80ch}
+  .grid{display:flex;flex-wrap:wrap;gap:36px 30px;margin-top:10px}
+  .card{width:257px}
+  .cap{font-family:var(--serif);font-size:17px;margin:0 2px 9px;color:var(--plum)}
+  .cap span{font-family:var(--sans);font-size:11.5px;color:var(--soft);font-weight:500;margin-left:6px}
+  .frame{width:257px;height:520px;border-radius:26px;overflow:hidden;background:#fff;box-shadow:0 20px 44px rgba(59,42,77,.16);border:1px solid var(--line);position:relative}
+  .frame iframe{width:390px;height:788px;border:0;transform:scale(0.659);transform-origin:top left;}
+  footer{margin-top:40px;font-size:12.5px;color:var(--soft)}
+</style>
+</head>
+<body>
+  <header>
+    <span class="logo">sloe</span><span class="pill">Full app view · Stitch · candidate rebrand</span>
+    <h1>The whole app, <em>in Sloe</em></h1>
+    <p class="sub">Live Stitch screens — white app UI, plum + Frost identity, clay CTAs, hyperreal meal photography, warm object images, line-icon controls. (This overview sheet sits on the Oat marketing ground; the app screens inside are pure white.) Showing the top screenful of each.</p>
+  </header>
+  <div class="grid">
+    <div class="card"><div class="cap">Today <span>home · retention</span></div><div class="frame"><iframe src="./stitch-sloe/today.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Cookbook <span>library</span></div><div class="frame"><iframe src="./stitch-sloe/cookbook.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Recipe detail <span>viral hook</span></div><div class="frame"><iframe src="./stitch-sloe/recipe.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Add a recipe <span>import</span></div><div class="frame"><iframe src="./stitch-sloe/import.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Log a meal <span>sheet</span></div><div class="frame"><iframe src="./stitch-sloe/logmeal.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Plan <span>meal planner</span></div><div class="frame"><iframe src="./stitch-sloe/planner.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Progress <span>story not dashboard</span></div><div class="frame"><iframe src="./stitch-sloe/progress.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Ask <span>AI coach</span></div><div class="frame"><iframe src="./stitch-sloe/ask.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Onboarding <span>intent-first</span></div><div class="frame"><iframe src="./stitch-sloe/onboarding.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Paywall <span>Pro</span></div><div class="frame"><iframe src="./stitch-sloe/paywall.html" scrolling="no"></iframe></div></div>
+    <div class="card"><div class="cap">Settings <span>account</span></div><div class="frame"><iframe src="./stitch-sloe/settings.html" scrolling="no"></iframe></div></div>
+  </div>
+  <footer>Sloe · Stitch project 8020514740857471151 · docs/prototypes/sloe-app-view.html</footer>
+</body>
+</html>

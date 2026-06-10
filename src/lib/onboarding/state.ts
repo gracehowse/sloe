@@ -58,21 +58,38 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  step (was: reveal); reveal becomes "show targets, then advance".
  *  Step files for the legacy `permissions.tsx` / `import.tsx` /
  *  `recipes.tsx` are kept on disk — building blocks for the post-launch
- *  nudge queue follow-up. */
+ *  nudge queue follow-up.
+ *
+ *  Add `app-choice` (2026-06-08, ENG-990): a Yazio-style "Coming from
+ *  another app?" capture placed immediately after Welcome — the
+ *  earliest credible moment to ask an MFP refugee which tracker they're
+ *  leaving (see `docs/research/2026-06-08-yazio-teardown.md`: Yazio's
+ *  `calorie_counting.app_choice.{mfp,…}` quiz screen). The chosen app
+ *  is recorded in `appChoice` and emitted as `onboarding_app_choice`;
+ *  when the user picks an app that has a live CSV adapter
+ *  (`src/lib/imports/csv/adapters/`), the terminal data-bridges step
+ *  pre-highlights the importer so the switch lands in our existing CSV
+ *  pipeline instead of bouncing. The step is flag-gated behind
+ *  `onboarding-app-choice`: when the flag is OFF, both flow shells
+ *  auto-skip it (same mechanism as the maintain/weight pace auto-skip)
+ *  and drop it from `displayTotal`, so the live flow is unchanged until
+ *  the flag ramps. Only apps with a registered adapter are surfaced —
+ *  no dead options. */
 export const STEP_IDS = [
   "welcome", // 01
-  "signup", // 02
-  "goal", // 03
-  "sex", // 04
-  "age", // 05
-  "height", // 06
-  "weight", // 07
-  "activity", // 08
-  "pace", // 09 — auto-skipped when goal = maintain
-  "diet", // 10
-  "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
-  "reveal", // 12 — penultimate aha
-  "data-bridges", // 13 — terminal: bring your data with you (Build-40)
+  "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
+  "signup", // 03
+  "goal", // 04
+  "sex", // 05
+  "age", // 06
+  "height", // 07
+  "weight", // 08
+  "activity", // 09
+  "pace", // 10 — auto-skipped when goal = maintain
+  "diet", // 11
+  "strategy", // 12 — macro split (parity with legacy nutrition_strategy)
+  "reveal", // 13 — penultimate aha
+  "data-bridges", // 14 — terminal: bring your data with you (Build-40)
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -80,6 +97,7 @@ export type StepId = (typeof STEP_IDS)[number];
 /** Display labels mirrored on web + mobile. */
 export const STEP_LABELS: Record<StepId, string> = {
   welcome: "Welcome",
+  "app-choice": "Switching apps",
   signup: "Account",
   goal: "Goal",
   sex: "Sex",
@@ -108,6 +126,36 @@ export type PermissionGrant = boolean | null;
 
 /** Recipe import source picked in step 13. Demo-only state for v2 launch. */
 export type ImportSource = "instagram" | "tiktok" | "blog" | null;
+
+/**
+ * ENG-990 (2026-06-08) — the app a switcher picked on the `app-choice`
+ * step ("Coming from another app?").
+ *
+ *   - one of the CSV-adapter `source` IDs (`"mfp"`, `"lose-it"`,
+ *     `"cronometer"`, `"macrofactor"`) — the user is migrating from a
+ *     tracker we can import from, so the data-bridges importer
+ *     pre-highlights for them
+ *   - `"other"`  — switching from an app we don't have an adapter for
+ *     (still useful signal; no importer pre-highlight)
+ *   - `"none"`   — starting fresh / not coming from another app
+ *   - `null`     — hasn't reached / answered the step yet
+ *
+ * The value is emitted with the `onboarding_app_choice` event and
+ * persisted so the terminal data-bridges step can read it. The set of
+ * *importable* app IDs is derived at render time from
+ * `REGISTERED_ADAPTERS` (the single source of truth) — this union is
+ * deliberately wider (it also carries `other` / `none`) so the analytics
+ * + tailoring layer can branch on every outcome. Keep the adapter IDs in
+ * sync with `src/lib/imports/csv/adapters/registry.ts`.
+ */
+export type AppChoice =
+  | "mfp"
+  | "lose-it"
+  | "cronometer"
+  | "macrofactor"
+  | "other"
+  | "none"
+  | null;
 
 /**
  * Build-40 (2026-05-01) — which data-bridge card the user actioned on
@@ -218,6 +266,14 @@ export interface OnboardingState {
    * payload + future post-launch nudge sequencing.
    */
   dataBridgeChosen: DataBridgeOption;
+  /**
+   * ENG-990 (2026-06-08) — the app the user said they're switching from
+   * on the `app-choice` step. See `AppChoice`. Drives the
+   * `onboarding_app_choice` event and the data-bridges importer
+   * pre-highlight. `null` when the step was skipped (flag OFF) or not
+   * yet answered.
+   */
+  appChoice: AppChoice;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -301,27 +357,89 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   manualTargetsCarbsG: null,
   manualTargetsFatG: null,
   dataBridgeChosen: null,
+  appChoice: null,
 };
 
+/** Options that change which steps `resolveNextStep` skips. Kept as an
+ *  object so call sites read clearly and future skip-toggles don't grow
+ *  the positional arg list.
+ *
+ *  ENG-990 — `appChoiceEnabled` is the resolved `onboarding-app-choice`
+ *  feature-flag value, threaded in by each flow shell's platform
+ *  `isFeatureEnabled`. When `false` (the live default until the flag
+ *  ramps) the `app-choice` step is auto-skipped on both forward and
+ *  back navigation, exactly like the pace auto-skip — so the step is
+ *  invisible until the flag turns on. Defaults to `false` (skip) so any
+ *  caller that doesn't thread the flag keeps the pre-ENG-990 flow. */
+export interface ResolveStepOptions {
+  appChoiceEnabled?: boolean;
+}
+
 /** Resolve the step index a navigation should land on, accounting for
- *  the two auto-skips of `pace`:
- *   - `goal === "maintain"` — no kcal delta to set (decision-doc default)
- *   - `weightSkipped` — no body data to compute a safe floor against
- *     (Stage F diversity-inclusion update)
- *  Returns a clamped index inside [0, TOTAL_STEPS - 1]. */
+ *  the auto-skips:
+ *   - `pace` when `goal === "maintain"` (no kcal delta to set) or
+ *     `weightSkipped` (no body data for a safe floor — Stage F).
+ *   - `app-choice` when the `onboarding-app-choice` flag is OFF
+ *     (ENG-990 — keeps the step out of the live flow until it ramps).
+ *  Skips compose: stepping from `welcome` forward with the flag OFF
+ *  lands on `signup`, never the hidden `app-choice`. Returns a clamped
+ *  index inside [0, TOTAL_STEPS - 1]. */
 export function resolveNextStep(
   current: number,
   delta: number,
   state: Pick<OnboardingState, "goal" | "weightSkipped">,
+  options?: ResolveStepOptions,
 ): number {
   let next = current + delta;
-  const skipPace =
-    (state.goal === "maintain" || state.weightSkipped) &&
-    STEP_IDS[next] === "pace";
-  if (skipPace) {
-    next += delta > 0 ? 1 : -1;
+  const dir = delta > 0 ? 1 : -1;
+  // Loop because skips can chain (e.g. app-choice is adjacent to no
+  // other skip today, but keeping the loop means a future adjacent skip
+  // pair can't strand the user on a hidden step). Bounded by TOTAL_STEPS.
+  for (let guard = 0; guard < TOTAL_STEPS; guard++) {
+    const id = STEP_IDS[next];
+    const skipPace =
+      (state.goal === "maintain" || state.weightSkipped) && id === "pace";
+    const skipAppChoice = options?.appChoiceEnabled !== true && id === "app-choice";
+    if (skipPace || skipAppChoice) {
+      next += dir;
+      continue;
+    }
+    break;
   }
   return Math.max(0, Math.min(TOTAL_STEPS - 1, next));
+}
+
+/**
+ * ENG-990 — the 1-based display position of `stepIndex` among the steps
+ * that are actually *visible* for this flow, and the total visible count.
+ *
+ * The progress bar and "Step N of M" overline must count only the steps
+ * the user can reach. Today the sole conditionally-hidden step is
+ * `app-choice` (gated by `onboarding-app-choice`). When the flag is OFF
+ * it sits at index 1 and every later step's display position is one less
+ * than its raw index. Centralised here so web + mobile compute identical
+ * numbers and a flag flip can never desync the bar from the flow.
+ *
+ * Note: the pace auto-skip (maintain / weightSkipped) is intentionally
+ * NOT discounted here — it has always been counted in the displayed
+ * total (the bar simply jumps past it), matching the pre-ENG-990
+ * behaviour. Only the flag-hidden step is removed from the count.
+ */
+export function displayPosition(
+  stepIndex: number,
+  options?: ResolveStepOptions,
+): { index: number; total: number } {
+  const hideAppChoice = options?.appChoiceEnabled !== true;
+  let total = 0;
+  let index = 1;
+  for (let i = 0; i < TOTAL_STEPS; i++) {
+    if (hideAppChoice && STEP_IDS[i] === "app-choice") continue;
+    total++;
+    if (i < stepIndex) index++;
+  }
+  // Clamp: if `stepIndex` itself points at a hidden step (shouldn't
+  // happen via `resolveNextStep`, but defend), index stays within total.
+  return { index: Math.min(index, total), total };
 }
 
 /** Optional context for `canAdvance` — provider passes the live
@@ -359,6 +477,14 @@ export function canAdvance(
 ): boolean {
   switch (stepId) {
     case "welcome":
+      return true;
+    case "app-choice":
+      // ENG-990 — optional capture step. Advancing without picking an
+      // app is a first-class choice (the footer "Continue" / the
+      // "I'm starting fresh" tile both move on). Recording the choice
+      // is the goal, not gating on it — a refugee who skips still gets
+      // a clean flow. Mirrors the welcome / data-bridges always-advance
+      // policy.
       return true;
     case "signup":
       // ENG-672 (2026-05-26) — advancing past Signup is gated on a REAL

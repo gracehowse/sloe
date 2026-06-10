@@ -15,16 +15,16 @@ import { useMacroDetail, type Meal } from "./useMacroDetail";
 
 // 2026-05-14 (premium-bar audit Group H #4): brand-colour mapping for
 // all 4 macros + fibre + water. Protein/carbs/fat → MacroColors token
-// set. Calories → Accent.primary (canonical "energy" colour across the
-// app — calorie ring, paywall hero, etc.). Fibre → Accent.success
-// (green for plant fibre, distinct from the macro trio). Water →
-// Accent.info (blue, same as Today's water tile).
+// set. Calories → MacroColors.calories (plum — consistent with the
+// calorie ring). Fibre → Accent.success (green for plant fibre, distinct
+// from the macro trio). Water → Accent.info (blue, same as Today's
+// water tile). ENG-997: calories reconciled from Accent.primary → plum.
 const MACRO_CONFIG: Record<string, { label: string; color: string; unit: string; field: keyof Meal }> = {
   protein: { label: "Protein", color: MacroColors.protein, unit: "g", field: "protein" },
   carbs: { label: "Carbs", color: MacroColors.carbs, unit: "g", field: "carbs" },
   fat: { label: "Fat", color: MacroColors.fat, unit: "g", field: "fat" },
   fiber: { label: "Fiber", color: Accent.success, unit: "g", field: "fiberG" },
-  calories: { label: "Calories", color: Accent.primary, unit: "kcal", field: "calories" },
+  calories: { label: "Calories", color: MacroColors.calories, unit: "kcal", field: "calories" },
   water: { label: "Water", color: Accent.info, unit: "ml", field: "waterMl" },
 };
 

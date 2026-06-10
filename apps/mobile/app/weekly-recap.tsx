@@ -47,6 +47,9 @@
  * web routes to Settings → Targets (already shipped). Mobile gets
  * the dedicated route + sheet because the entry point (StreakPip)
  * and the modal-sheet pattern are mobile-native idioms.
+ * The standalone day-dot grid, closest-to-target card, and streak/freeze
+ * ledger are mobile-only today — deferred: see ENG-1001 (web recap
+ * rollups parity) for bringing these to the web Progress surface.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -59,12 +62,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
+import { CalendarDays } from "lucide-react-native";
+
+import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import {
   dateKeyFromDate,
@@ -111,7 +119,16 @@ const DEFAULT_TARGETS = {
 export default function WeeklyRecapScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the active week-dot
+  // selection and the recap CTAs/links.
+  const accent = useAccent();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): every recap rollup card sits directly on the page ground, so
+  // it takes the SOFT lift, routed through the elevation system (was a hand-rolled
+  // `Elevation.cardSoft` + an always-on hairline — light → shadow only now).
+  const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
+  const router = useRouter();
   const userId = session?.user?.id ?? null;
 
   const [state, setState] = useState<LoadState>("loading");
@@ -600,14 +617,16 @@ export default function WeeklyRecapScreen() {
   // that's the most conservative empty signal.
   const isEmpty = state === "empty" || daysLogged === 0;
 
+  // Section eyebrow — design system §2.2: Inter 11pt 600, +0.08em tracking
+  // (11 * 0.08 = 0.88), colour --secondary (sage, textSecondary token),
+  // ALL-CAPS. Uses Type.label which is already wired to Inter 11pt 700 + 0.88
+  // tracking + uppercase. Weight bump 600→700 is within the spec tolerance;
+  // the family + tracking + case are the load-bearing parts.
   const sectionLabel = (txt: string) => (
     <Text
       style={{
-        fontSize: 11,
-        fontWeight: "700",
-        color: colors.textTertiary,
-        letterSpacing: 0.88,
-        textTransform: "uppercase",
+        ...Type.label,
+        color: colors.textSecondary,
         marginBottom: Spacing.sm,
       }}
     >
@@ -615,19 +634,40 @@ export default function WeeklyRecapScreen() {
     </Text>
   );
 
+  // Card — primary card treatment per design system §5 + §6.1:
+  //   - Radius.xl (12pt) instead of Radius.lg (8pt) — closer to the spec's
+  //     intended 16pt primary-card radius (Radius token caps at xl:12; a 16pt
+  //     literal would require a theme edit which is locked). Moving from 8→12
+  //     is the maximum safe token step. See deferred ENG gap for full 16pt.
+  //   - Elevation.cardSoft on the OUTER wrapper (RN overflow:hidden clips iOS
+  //     shadows, so the shadow wrapper must be separate from the overflow:hidden
+  //     inner). Inner wrapper carries border + clip.
+  //   - Inter-card gap: Spacing.xl (24pt) for breathing room between rollup
+  //     cards, matching design system §3.1 "between card sections = 2xl (24pt)".
   const card = (children: React.ReactNode, testID?: string) => (
     <View
-      testID={testID}
-      style={{
-        backgroundColor: colors.card,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        padding: Spacing.lg,
-        marginBottom: Spacing.md,
-      }}
+      style={[
+        cardElevation.shadowStyle ?? {},
+        {
+          borderRadius: Radius.xl,
+          marginBottom: Spacing.xl,
+        },
+      ]}
     >
-      {children}
+      <View
+        testID={testID}
+        style={{
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderRadius: Radius.xl,
+          // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderColor: colors.cardBorder,
+          padding: Spacing.lg,
+          overflow: "hidden",
+        }}
+      >
+        {children}
+      </View>
     </View>
   );
 
@@ -637,42 +677,46 @@ export default function WeeklyRecapScreen() {
       testID="weekly-recap-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingHorizontal: Spacing.xl,
+        // Screen-edge margin: design system §3.1 sets mobile screen-edge at 16pt.
+        // Spacing.md = 16 matches the canonical mobile margin and aligns with
+        // Today/Progress surfaces which also use Spacing.md horizontally.
+        paddingHorizontal: Spacing.md,
         paddingTop: Spacing.lg,
         paddingBottom: insets.bottom + Spacing.xxxl,
       }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header — calm, observational. */}
-      <View style={{ marginBottom: Spacing.xl }}>
+      <View style={{ marginBottom: Spacing.xxl }}>
+        {/* Eyebrow: Inter 11pt 700, sage, ALL-CAPS, on-grid margin. */}
         <Text
           style={{
-            fontSize: 11,
-            fontWeight: "700",
-            color: colors.textTertiary,
-            letterSpacing: 0.88,
-            textTransform: "uppercase",
-            marginBottom: 6,
+            ...Type.label,
+            color: colors.textSecondary,
+            marginBottom: Spacing.sm,
           }}
         >
           This week
         </Text>
+        {/* H1: Newsreader serif (Type.title = 24pt, the screen title role per §2.2
+            display-title). letterSpacing from the token. */}
         <Text
           style={{
-            fontSize: 24,
-            fontWeight: "700",
+            ...Type.title,
             color: colors.text,
-            letterSpacing: -0.5,
           }}
         >
           {weekLabel}
         </Text>
-        {/* Pip headline — same component, larger, non-tappable here
-            (we're already on the destination). Sits inline with the
-            range so the user sees the streak as part of the frame. */}
-        <View style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}>
-          <StreakPip days={streakDays} size="lg" />
-        </View>
+        {/* Pip — inactive at 0 days: suppress the pip to avoid showing a greyed-out
+            "Start streak" badge on the recap header. The empty card below already
+            explains the streak state. Active pip (≥1 day) stays as a calm informational
+            badge. Non-tappable here since we are already on the recap destination. */}
+        {streakDays > 0 ? (
+          <View style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}>
+            <StreakPip days={streakDays} size="lg" />
+          </View>
+        ) : null}
       </View>
 
       {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor
@@ -685,11 +729,9 @@ export default function WeeklyRecapScreen() {
               <Text
                 testID="weekly-checkin-headline"
                 style={{
-                  fontSize: 17,
-                  fontWeight: "700",
+                  ...Type.headline,
                   color: colors.text,
-                  marginBottom: 4,
-                  letterSpacing: -0.2,
+                  marginBottom: Spacing.xs,
                 }}
               >
                 {checkin.headline}
@@ -781,7 +823,7 @@ export default function WeeklyRecapScreen() {
                     paddingHorizontal: Spacing.md,
                     borderRadius: Radius.md,
                     borderWidth: 1.5,
-                    borderColor: Accent.primary,
+                    borderColor: accent.primary,
                     alignSelf: "flex-start",
                   }}
                 >
@@ -789,7 +831,7 @@ export default function WeeklyRecapScreen() {
                     style={{
                       fontSize: 13,
                       fontWeight: "700",
-                      color: Accent.primary,
+                      color: accent.primary,
                       letterSpacing: 0.2,
                     }}
                   >
@@ -803,46 +845,82 @@ export default function WeeklyRecapScreen() {
         : null}
 
       {isEmpty ? (
-        // Empty state — explainer per audit Step 1. Calm copy, no
-        // pressure language. Pinned by test
-        // "weekly-recap empty state explains how the streak starts".
-        card(
-          <>
+        // Empty state — design system §6.3 + §10.7: NO card chrome.
+        // Full-width editorial: sage lucide icon + Newsreader italic headline
+        // + Inter body + plum text-link CTA. No bordered card wrapper.
+        <View
+          testID="weekly-recap-empty-card"
+          style={{
+            alignItems: "center",
+            paddingVertical: Spacing.xxl,
+            paddingHorizontal: Spacing.md,
+          }}
+        >
+          <CalendarDays
+            size={28}
+            color={Accent.success}
+            strokeWidth={1.5}
+            accessibilityLabel="Calendar icon"
+          />
+          <Text
+            testID="weekly-recap-empty-headline"
+            style={{
+              ...Type.coach,
+              color: colors.text,
+              textAlign: "center",
+              marginTop: Spacing.md,
+              marginBottom: Spacing.sm,
+            }}
+          >
+            Your streak starts here.
+          </Text>
+          <Text
+            style={{
+              fontFamily: FontFamily.sansRegular,
+              fontSize: 14,
+              color: colors.textSecondary,
+              lineHeight: 20,
+              textAlign: "center",
+              marginBottom: Spacing.lg,
+            }}
+          >
+            A streak begins when you log on two different days in the same
+            week. There&apos;s nothing to recap yet — come back after your first
+            meal.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log a meal"
+            onPress={() => router.push("/(tabs)?openLog=1")}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Text
-              testID="weekly-recap-empty-headline"
               style={{
-                fontSize: 17,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: Spacing.sm,
-              }}
-            >
-              Your streak starts here.
-            </Text>
-            <Text
-              style={{
+                fontFamily: FontFamily.sansSemibold,
                 fontSize: 14,
-                color: colors.textSecondary,
-                lineHeight: 20,
+                color: accent.primary,
+                letterSpacing: 0.1,
               }}
             >
-              A streak begins when you log on two different days in the same
-              week. There&rsquo;s nothing to recap yet — log a meal today and
-              come back to see it grow.
+              Log a meal
             </Text>
-          </>,
-          "weekly-recap-empty-card",
-        )
+          </Pressable>
+        </View>
       ) : (
         <>
           {/* DAYS LOGGED — small dot grid + plain summary. */}
           {card(
             <>
               {sectionLabel("Days logged")}
+              {/* Hero numeral: Type.heroValue = Newsreader serif 20pt 500.
+                  Bump fontSize to 22pt per the display-subtitle role for hero
+                  numbers on this card (design system §2.2 display-subtitle:
+                  22–28pt 600). */}
               <Text
                 style={{
-                  fontSize: 17,
-                  fontWeight: "700",
+                  ...Type.heroValue,
+                  fontSize: 22,
+                  fontWeight: "600",
                   color: colors.text,
                   marginBottom: Spacing.sm,
                 }}
@@ -853,7 +931,7 @@ export default function WeeklyRecapScreen() {
                 testID="weekly-recap-day-grid"
                 style={{
                   flexDirection: "row",
-                  gap: 8,
+                  gap: Spacing.sm,
                   marginTop: Spacing.xs,
                 }}
               >
@@ -867,7 +945,8 @@ export default function WeeklyRecapScreen() {
                       style={{
                         flex: 1,
                         alignItems: "center",
-                        gap: 6,
+                        // On-grid: Spacing.xs (4pt) dot-to-label gap, not 6pt.
+                        gap: Spacing.xs,
                       }}
                     >
                       <View
@@ -876,10 +955,10 @@ export default function WeeklyRecapScreen() {
                           height: 14,
                           borderRadius: 7,
                           backgroundColor: filled
-                            ? Accent.primary
+                            ? accent.primary
                             : "transparent",
                           borderWidth: 1.5,
-                          borderColor: filled ? Accent.primary : colors.cardBorder,
+                          borderColor: filled ? accent.primary : colors.cardBorder,
                         }}
                       />
                       <Text
@@ -906,10 +985,11 @@ export default function WeeklyRecapScreen() {
               {sectionLabel("Average daily calories")}
               <Text
                 style={{
-                  fontSize: 17,
-                  fontWeight: "700",
+                  ...Type.heroValue,
+                  fontSize: 22,
+                  fontWeight: "600",
                   color: colors.text,
-                  marginBottom: 4,
+                  marginBottom: Spacing.xs,
                   fontVariant: ["tabular-nums"],
                 }}
               >
@@ -947,10 +1027,11 @@ export default function WeeklyRecapScreen() {
               {sectionLabel("Protein")}
               <Text
                 style={{
-                  fontSize: 17,
-                  fontWeight: "700",
+                  ...Type.heroValue,
+                  fontSize: 22,
+                  fontWeight: "600",
                   color: colors.text,
-                  marginBottom: 4,
+                  marginBottom: Spacing.xs,
                   fontVariant: ["tabular-nums"],
                 }}
               >
@@ -978,10 +1059,11 @@ export default function WeeklyRecapScreen() {
                   {sectionLabel("Closest to target")}
                   <Text
                     style={{
-                      fontSize: 17,
-                      fontWeight: "700",
+                      ...Type.heroValue,
+                      fontSize: 22,
+                      fontWeight: "600",
                       color: colors.text,
-                      marginBottom: 4,
+                      marginBottom: Spacing.xs,
                     }}
                   >
                     {closestToTarget.label}
@@ -1014,10 +1096,11 @@ export default function WeeklyRecapScreen() {
               {sectionLabel("Streak")}
               <Text
                 style={{
-                  fontSize: 17,
-                  fontWeight: "700",
+                  ...Type.heroValue,
+                  fontSize: 22,
+                  fontWeight: "600",
                   color: colors.text,
-                  marginBottom: 4,
+                  marginBottom: Spacing.xs,
                   fontVariant: ["tabular-nums"],
                 }}
               >

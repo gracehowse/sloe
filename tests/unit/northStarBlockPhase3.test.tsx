@@ -16,13 +16,21 @@
  */
 
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import {
   NorthStarBlock,
   type NorthStarBlockSuggestion,
 } from "../../src/app/components/suppr/north-star-block";
+
+let figmaMealsLayout = true;
+
+vi.mock("../../src/lib/analytics/track", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) =>
+    flag === "today_meals_figma_654" ? figmaMealsLayout : false,
+}));
 
 const baseSuggestion: NorthStarBlockSuggestion = {
   recipeId: "rec-1",
@@ -35,16 +43,72 @@ const baseSuggestion: NorthStarBlockSuggestion = {
   bandTight: true,
 };
 
-describe("NorthStarBlock (web) — default kind", () => {
+describe("NorthStarBlock (web) — Figma 654 hero", () => {
+  beforeEach(() => {
+    figmaMealsLayout = true;
+  });
+
+  it("renders section title, recipe hero, slot eyebrow, and kcal", () => {
+    render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={baseSuggestion}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(screen.getByText("What to eat next")).toBeDefined();
+    expect(screen.getByText("Tofu poke bowl")).toBeDefined();
+    expect(screen.getByText("Dinner suggestion")).toBeDefined();
+    expect(screen.getByText("Fits your day")).toBeDefined();
+    expect(screen.getByText(/520 kcal/)).toBeDefined();
+  });
+
+  it("hero tap fires onPrimaryCta", () => {
+    const onPrimaryCta = vi.fn();
+    render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={baseSuggestion}
+        slotEyebrow="Dinner suggestion"
+        onPrimaryCta={onPrimaryCta}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Dinner suggestion: Tofu poke bowl, 520 kcal/,
+      }),
+    );
+    expect(onPrimaryCta).toHaveBeenCalledTimes(1);
+  });
+
+  it("skip button fires onSkip without opening hero", () => {
+    const onSkip = vi.fn();
+    const onPrimaryCta = vi.fn();
+    render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={baseSuggestion}
+        slotEyebrow="Dinner suggestion"
+        onSkip={onSkip}
+        onPrimaryCta={onPrimaryCta}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Skip this suggestion" }));
+    expect(onSkip).toHaveBeenCalledTimes(1);
+    expect(onPrimaryCta).not.toHaveBeenCalled();
+  });
+});
+
+describe("NorthStarBlock (web) — compact default kind", () => {
+  beforeEach(() => {
+    figmaMealsLayout = false;
+  });
+
   it("renders the eyebrow, title, band chip and macro caption", () => {
     render(<NorthStarBlock kind="default" suggestion={baseSuggestion} ctaLabel="Log it" />);
     expect(screen.getByText("What to eat next")).toBeDefined();
     expect(screen.getByText("Tofu poke bowl")).toBeDefined();
     expect(screen.getByText("Hits within 3%")).toBeDefined();
-    // 2026-05-12 (premium-bar audit cross-cutting): macro format
-    // unified to `520 kcal · 38g P · 42g C · 18g F` across Today
-    // surfaces (NorthStarBlock + EatAgain). Was slash-separated
-    // `38P / 42C / 18F`.
     expect(screen.getByText(/520 kcal · 38g P · 42g C · 18g F/)).toBeDefined();
     expect(screen.getByRole("button", { name: "Log it" })).toBeDefined();
   });
@@ -130,6 +194,76 @@ describe("NorthStarBlock (web) — default kind", () => {
     );
     const img = document.querySelector("img");
     expect(img?.getAttribute("src")).toBe("https://example.com/x.jpg");
+  });
+});
+
+describe("NorthStarBlock (web) — whyLine + macro row do not overlap", () => {
+  beforeEach(() => {
+    figmaMealsLayout = false;
+  });
+
+  // Parity mirror of the mobile regression guard for the 2026-06-04
+  // "Fits your remaining N kcal" overlap report. The card lays the
+  // whyLine and the macro caption out as plain flex-column siblings
+  // (the only absolutely-positioned element is the skip × button), so
+  // they cannot overlap. These tests pin that structure so a future
+  // refactor can't reintroduce an overlap. Web renders the whyLine as
+  // a clamp-to-2-lines-equivalent <button>; mobile uses <Text
+  // numberOfLines={1}> — both flow in the same column.
+  const suggestionWithWhyLine: NorthStarBlockSuggestion = {
+    ...baseSuggestion,
+    whyLine: "Fits your remaining 740 kcal",
+  };
+
+  it("renders the whyLine and the macro caption as two distinct elements", () => {
+    render(<NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />);
+    const whyLine = screen.getByRole("button", {
+      name: /Fits your remaining 740 kcal/,
+    });
+    const macro = screen.getByText(/520 kcal · 38g P · 42g C · 18g F/);
+    expect(whyLine).toBeDefined();
+    expect(macro).toBeDefined();
+    expect(whyLine).not.toBe(macro);
+    // The macro row is not nested inside the whyLine button (and vice
+    // versa) — they are independent nodes.
+    expect(whyLine.contains(macro)).toBe(false);
+    expect(macro.contains(whyLine)).toBe(false);
+  });
+
+  it("keeps the whyLine in normal flow (not absolutely positioned)", () => {
+    render(<NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />);
+    const whyLine = screen.getByRole("button", {
+      name: /Fits your remaining 740 kcal/,
+    });
+    const macro = screen.getByText(/520 kcal · 38g P · 42g C · 18g F/);
+    // The only `absolute` element in the card is the skip button. If
+    // the whyLine or macro row picked up `absolute` it could lift out
+    // of column flow and stack over a sibling — the reported failure.
+    expect(whyLine.className).not.toMatch(/\babsolute\b/);
+    expect(macro.className).not.toMatch(/\babsolute\b/);
+    // The macro row's wrapping flex container must not be absolute
+    // either.
+    const macroRow = macro.parentElement;
+    expect(macroRow?.className ?? "").not.toMatch(/\babsolute\b/);
+  });
+
+  it("stacks the whyLine BEFORE the macro row in document order", () => {
+    render(<NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />);
+    const whyLine = screen.getByRole("button", {
+      name: /Fits your remaining 740 kcal/,
+    });
+    const macro = screen.getByText(/520 kcal · 38g P · 42g C · 18g F/);
+    // In normal flow, DOM order is paint/stack order. whyLine must
+    // precede the macro row so they read top-to-bottom, never overlaid.
+    const order = whyLine.compareDocumentPosition(macro);
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders the whyLine exactly once (no duplicate stacked subtitle)", () => {
+    render(<NorthStarBlock kind="default" suggestion={suggestionWithWhyLine} />);
+    expect(
+      screen.getAllByRole("button", { name: /Fits your remaining 740 kcal/ }),
+    ).toHaveLength(1);
   });
 });
 

@@ -25,8 +25,9 @@
  */
 
 import * as React from "react";
-import { Sparkles, X } from "lucide-react";
+import { Check, Clock, Flame, Sparkles, X } from "lucide-react";
 
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import {
@@ -73,6 +74,13 @@ export interface NorthStarBlockSuggestion {
    * `northStarSuggestion.ts` and passed in by the host.
    */
   whyLine?: string;
+  /**
+   * Figma `654:2` hero meta row — optional cook time in minutes. When
+   * present a "· {n} min" chip with a Clock glyph renders after the
+   * kcal span. Sourced from the recipe (`cookTimeMin`) by the host;
+   * absent for recipes with no recorded time — the chip degrades away.
+   */
+  cookTimeMin?: number;
 }
 
 export interface NorthStarBlockProps {
@@ -90,6 +98,8 @@ export interface NorthStarBlockProps {
   onBrowse?: () => void;
   /** Open Library — used on `library-empty`. */
   onOpenLibrary?: () => void;
+  /** Figma `654:2` slot overline — "Dinner suggestion", etc. */
+  slotEyebrow?: string;
   /** Test override for skipping rendering (used in tests). */
   testID?: string;
 }
@@ -102,6 +112,7 @@ export function NorthStarBlock({
   onSkip,
   onBrowse,
   onOpenLibrary,
+  slotEyebrow = "Meal suggestion",
   testID,
 }: NorthStarBlockProps) {
   if (kind === "over-budget") {
@@ -117,6 +128,7 @@ export function NorthStarBlock({
   if (kind === "new-user") {
     return (
       <SupprCard
+        elevation="card"
         data-slot="north-star-new-user"
         data-testid={testID}
         tone="primary"
@@ -137,6 +149,7 @@ export function NorthStarBlock({
   if (kind === "library-empty") {
     return (
       <SupprCard
+        elevation="card"
         data-slot="north-star-library-empty"
         data-testid={testID}
         tone="primary"
@@ -154,7 +167,7 @@ export function NorthStarBlock({
           type="button"
           onClick={onOpenLibrary}
           className={cn(
-            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
+            "shrink-0 rounded-md bg-primary-solid px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >
@@ -167,6 +180,7 @@ export function NorthStarBlock({
   if (kind === "no-fit") {
     return (
       <SupprCard
+        elevation="card"
         data-slot="north-star-no-fit"
         data-testid={testID}
         tone="neutral"
@@ -179,7 +193,7 @@ export function NorthStarBlock({
         <button
           type="button"
           onClick={onBrowse}
-          className="shrink-0 text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+          className="shrink-0 text-[11px] font-semibold text-primary-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           Browse →
         </button>
@@ -192,6 +206,18 @@ export function NorthStarBlock({
     return null;
   }
 
+  if (isFeatureEnabled("today_meals_figma_654")) {
+    return (
+      <NorthStarFigmaHeroBlock
+        suggestion={suggestion}
+        slotEyebrow={slotEyebrow}
+        onPrimaryCta={onPrimaryCta}
+        onSkip={onSkip}
+        testID={testID}
+      />
+    );
+  }
+
   return (
     <NorthStarDefaultBlock
       suggestion={suggestion}
@@ -200,6 +226,120 @@ export function NorthStarBlock({
       onSkip={onSkip}
       testID={testID}
     />
+  );
+}
+
+function NorthStarFigmaHeroBlock({
+  suggestion,
+  slotEyebrow,
+  onPrimaryCta,
+  onSkip,
+  testID,
+}: {
+  suggestion: NorthStarBlockSuggestion;
+  slotEyebrow: string;
+  onPrimaryCta?: () => void;
+  onSkip?: () => void;
+  testID?: string;
+}) {
+  const showFitsBadge = suggestion.bandTight || suggestion.bandLabel.toLowerCase().includes("close");
+  const cookMin =
+    typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
+      ? suggestion.cookTimeMin
+      : null;
+
+  return (
+    <section className="mb-10" data-testid={testID ?? "north-star-figma-hero"}>
+      <h3 className="font-[family-name:var(--font-headline)] text-2xl text-foreground-brand mb-4">
+        What to eat next
+      </h3>
+      <button
+        type="button"
+        onClick={onPrimaryCta}
+        className={cn(
+          "relative block w-full h-80 rounded-2xl overflow-hidden text-left",
+          "shadow-[0_4px_14px_rgba(34,27,38,0.10)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )}
+        aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+      >
+        <div className="absolute inset-0 z-0">
+          {suggestion.thumbnail ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={suggestion.thumbnail}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <RecipeHeroFallback
+              id={suggestion.recipeId}
+              title={suggestion.title}
+              iconSize={48}
+              className="h-full w-full"
+            />
+          )}
+        </div>
+        {/* Two-layer scrim per Figma 654:165-166: a flat base overlay
+            (z-5) under the bottom-up gradient (z-10) so the footer text
+            keeps contrast even where the photo is light at the bottom. */}
+        <div className="absolute inset-0 z-[5] bg-[rgba(34,27,38,0.2)]" aria-hidden />
+        <div
+          className="absolute inset-0 z-10 bg-gradient-to-t from-[#221B26]/90 via-[#221B26]/20 to-transparent"
+          aria-hidden
+        />
+        {showFitsBadge ? (
+          <span className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-success/90 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+            <Check width={14} height={14} aria-hidden />
+            Fits your day
+          </span>
+        ) : null}
+        {onSkip ? (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Skip this suggestion"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSkip();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onSkip();
+              }
+            }}
+            className="absolute right-3 top-3 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 hover:bg-black/45"
+          >
+            <X width={14} height={14} aria-hidden />
+          </span>
+        ) : null}
+        <div className="absolute bottom-0 left-0 z-20 w-full p-5 text-white">
+          <p className="text-[10px] uppercase tracking-[1px] text-[rgba(201,194,214,0.9)] mb-1 font-medium">
+            {slotEyebrow}
+          </p>
+          <h4 className="font-[family-name:var(--font-headline)] text-2xl mb-1 text-white line-clamp-2">
+            {suggestion.title}
+          </h4>
+          <div className="flex items-center gap-2 text-sm text-white/80">
+            <span className="inline-flex items-center gap-1">
+              <Flame width={14} height={14} aria-hidden />
+              {suggestion.predictedCalories} kcal
+            </span>
+            {cookMin !== null ? (
+              <>
+                <span className="inline-block h-1 w-1 rounded-full bg-white/40" aria-hidden />
+                <span className="inline-flex items-center gap-1">
+                  <Clock width={14} height={14} aria-hidden />
+                  {cookMin} min
+                </span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </button>
+    </section>
   );
 }
 
@@ -226,6 +366,7 @@ function NorthStarDefaultBlock({
     // `prefers-reduced-motion: reduce` via the existing theme.css
     // reduce-motion override.
     <SupprCard
+      elevation="card"
       data-slot="north-star-default"
       data-testid={testID}
       tone="primary"
@@ -264,7 +405,7 @@ function NorthStarDefaultBlock({
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>
@@ -329,19 +470,20 @@ function NorthStarDefaultBlock({
           </span>
         </div>
 
-        {/* Premium-feel papercut #3 (audit 2026-04-29): the CTA used
-            solid `bg-primary`, matching the persistent Today FAB and
-            creating two competing same-colour buttons within a thumb's
-            reach. Demoted to a subtle-fill variant (8% primary +
-            primary text) so the FAB stays the loudest pixel and this
-            card reads as a suggestion, not a demand. Mirror of the
-            same change in mobile `NorthStarBlock.tsx`. */}
+        {/* Sloe treatment system (2026-06-08): the everyday primary
+            inline CTA is AUBERGINE OUTLINE — transparent fill, 1.5px
+            primary-solid border, primary-solid label — never a filled
+            slab. Keeps the FAB as the one filled moment (the premium-bar
+            papercut #3 intent: the outline is quieter than both a fill
+            and the old 10% tint, so the FAB stays the loudest pixel)
+            while matching the approved ladder. Mirror of the same change
+            in mobile `NorthStarBlock.tsx`. */}
         <button
           type="button"
           onClick={onPrimaryCta}
           className={cn(
-            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md bg-primary/10 px-3 text-[13px] font-semibold text-primary",
-            "hover:bg-primary/15",
+            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md border-[1.5px] border-primary-solid bg-transparent px-3 text-[13px] font-semibold text-primary-solid",
+            "hover:bg-primary/5",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >

@@ -14,9 +14,20 @@ export interface AuthSessionValue {
    * ≥5). Null when no session is loaded.
    */
   authUserCreatedAt: string | null;
+  /**
+   * The auth user's `user_metadata` bag. Carries the display name the
+   * Today greeting personalises from (`full_name`, set by the "Your
+   * name" Settings field via `supabase.auth.updateUser`). Re-emitted on
+   * `USER_UPDATED` so the greeting refreshes without a reload. Empty
+   * object when no session is loaded. Mirror of mobile, where the
+   * greeting reads the same metadata off the auth session.
+   */
+  authUserMetadata: Record<string, unknown>;
 }
 
 const AuthSessionContext = createContext<AuthSessionValue | null>(null);
+
+const EMPTY_METADATA: Record<string, unknown> = {};
 
 /**
  * Supabase session only (user id + email + created_at). Profile tier / display name stay in {@link AppDataProvider}.
@@ -25,6 +36,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const [authedUserId, setAuthedUserId] = useState<string | null>(null);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authUserCreatedAt, setAuthUserCreatedAt] = useState<string | null>(null);
+  const [authUserMetadata, setAuthUserMetadata] =
+    useState<Record<string, unknown>>(EMPTY_METADATA);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +49,10 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       setAuthedUserId(userId);
       setAuthEmail(email);
       setAuthUserCreatedAt(createdAt);
+      setAuthUserMetadata(
+        (data.session?.user.user_metadata as Record<string, unknown>) ??
+          EMPTY_METADATA,
+      );
       // Stitch any pre-login anonymous events to this user on page load.
       if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
         posthog.identify(userId, email ? { email } : undefined);
@@ -52,6 +69,10 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       setAuthedUserId(userId);
       setAuthEmail(email);
       setAuthUserCreatedAt(createdAt);
+      setAuthUserMetadata(
+        (session?.user.user_metadata as Record<string, unknown>) ??
+          EMPTY_METADATA,
+      );
       if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
         posthog.identify(userId, email ? { email } : undefined);
       } else if (!userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
@@ -67,8 +88,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ authedUserId, authEmail, authUserCreatedAt }),
-    [authedUserId, authEmail, authUserCreatedAt],
+    () => ({ authedUserId, authEmail, authUserCreatedAt, authUserMetadata }),
+    [authedUserId, authEmail, authUserCreatedAt, authUserMetadata],
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
@@ -93,5 +114,12 @@ export function useAuthSession(): AuthSessionValue {
  */
 export function useAuthSessionOptional(): AuthSessionValue {
   const ctx = useContext(AuthSessionContext);
-  return ctx ?? { authedUserId: null, authEmail: null, authUserCreatedAt: null };
+  return (
+    ctx ?? {
+      authedUserId: null,
+      authEmail: null,
+      authUserCreatedAt: null,
+      authUserMetadata: EMPTY_METADATA,
+    }
+  );
 }

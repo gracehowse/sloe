@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Weight</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<header class="w-full bg-surface border-b border-line flex items-center justify-between px-4 h-16">
+<button onclick="history.back()" class="p-1 -ml-1 text-plum"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<h1 class="font-headline text-xl text-plum">Weight</h1>
+<div class="w-8 flex items-center justify-end text-ink-soft"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+</header>
+<main class="px-5 pt-6 pb-10 max-w-2xl mx-auto space-y-7">
+  <div class="inline-flex bg-surface-card border border-line rounded-full p-1 w-full"><span class="flex-1 text-center font-label text-[13px] font-semibold py-1.5 rounded-full text-ink-faint">7d</span><span class="flex-1 text-center font-label text-[13px] font-semibold py-1.5 rounded-full bg-surface text-ink shadow-sm">30d</span><span class="flex-1 text-center font-label text-[13px] font-semibold py-1.5 rounded-full text-ink-faint">90d</span><span class="flex-1 text-center font-label text-[13px] font-semibold py-1.5 rounded-full text-ink-faint">All</span></div>
+  <section class="bg-surface-card border border-line rounded-2xl p-6">
+    <div class="flex items-end justify-between">
+      <div><div class="flex items-baseline gap-2"><span class="font-headline text-5xl text-ink">74.2</span><span class="font-body text-lg text-ink-soft">kg</span></div>
+      <p class="inline-flex items-center gap-1 font-body text-[13px] text-sage mt-1"><svg class="sloe-ico text-[15px]" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg> 0.4 kg this week</p></div>
+      <span class="font-body text-[13px] text-ink-faint">Goal 72.0</span>
+    </div>
+    <svg viewBox="0 0 480 100" class="w-full mt-4" style="height:120px">
+      <line x1="0" y1="86" x2="480" y2="86" stroke="#E8E2EC" stroke-dasharray="3 4"/>
+      <polyline points="20,70 75,64 130,66 185,52 240,55 295,44 350,46 405,38 460,40" fill="none" stroke="#C8794E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="20" cy="70" r="2.5" fill="#C8794E"/><circle cx="75" cy="64" r="2.5" fill="#C8794E"/><circle cx="130" cy="66" r="2.5" fill="#C8794E"/><circle cx="185" cy="52" r="2.5" fill="#C8794E"/><circle cx="240" cy="55" r="2.5" fill="#C8794E"/><circle cx="295" cy="44" r="2.5" fill="#C8794E"/><circle cx="350" cy="46" r="2.5" fill="#C8794E"/><circle cx="405" cy="38" r="2.5" fill="#C8794E"/><circle cx="460" cy="40" r="2.5" fill="#C8794E"/>
+    </svg>
+  </section>
+  <section class="flex gap-2">
+    <div class="flex-1"><p class="font-label text-[10px] uppercase tracking-[0.06em] text-ink-faint">Start</p><p class="font-headline text-xl text-ink mt-1">76.0 kg</p></div><div class="flex-1"><p class="font-label text-[10px] uppercase tracking-[0.06em] text-ink-faint">Current</p><p class="font-headline text-xl text-ink mt-1">74.2 kg</p></div><div class="flex-1"><p class="font-label text-[10px] uppercase tracking-[0.06em] text-ink-faint">Goal</p><p class="font-headline text-xl text-ink mt-1">72.0 kg</p></div><div class="flex-1"><p class="font-label text-[10px] uppercase tracking-[0.06em] text-ink-faint">Rate</p><p class="font-headline text-xl text-sage mt-1">−0.4/wk</p></div>
+  </section>
+  <section>
+    <h2 class="font-headline text-xl text-ink mb-1">Recent entries</h2>
+    <div>
+      <div class="flex items-center justify-between py-3 border-b border-line last:border-0"><span class="font-body text-sm text-ink-soft">Today</span><span class="font-body text-sm font-semibold text-ink">74.2 kg</span></div><div class="flex items-center justify-between py-3 border-b border-line last:border-0"><span class="font-body text-sm text-ink-soft">Sun</span><span class="font-body text-sm font-semibold text-ink">74.4 kg</span></div><div class="flex items-center justify-between py-3 border-b border-line last:border-0"><span class="font-body text-sm text-ink-soft">Fri</span><span class="font-body text-sm font-semibold text-ink">74.6 kg</span></div><div class="flex items-center justify-between py-3 border-b border-line last:border-0"><span class="font-body text-sm text-ink-soft">Wed</span><span class="font-body text-sm font-semibold text-ink">74.5 kg</span></div>
+    </div>
+  </section>
+</main>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

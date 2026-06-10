@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Suppr - Cookbook</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        white: "#FFFFFF",
+                        ink: "#1B1814",
+                        terracotta: "#C2683E",
+                        sage: "#7C8466",
+                        amber: "#C9892C",
+                        card: "#F6F5F2",
+                        border: "#ECEAE4",
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        lg: "1rem",
+                        xl: "1.5rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Newsreader", "serif"],
+                        display: ["Newsreader", "serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-white text-ink font-body h-full flex flex-col antialiased selection:bg-terracotta selection:text-white">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 py-4 bg-white dark:bg-white border-b border-[#ECEAE4] top-0 z-40 sticky">
+<div class="flex items-center gap-4">
+<button class="text-[#1B1814] hover:opacity-80 transition-opacity scale-95 duration-150 flex items-center justify-center p-2 -ml-2 rounded-full focus:outline-none focus:ring-2 focus:ring-terracotta/50">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<span class="font-headline text-2xl italic text-[#1B1814]">Suppr</span>
+</div>
+<button class="text-[#1B1814] hover:opacity-80 transition-opacity scale-95 duration-150 flex items-center justify-center p-2 -mr-2 rounded-full focus:outline-none focus:ring-2 focus:ring-terracotta/50">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 0;">share</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto pb-[90px]"> <!-- padding bottom for bottom nav -->
+<!-- Header Section -->
+<section class="px-6 pt-8 pb-4 flex justify-between items-start">
+<div>
+<h1 class="font-headline text-4xl font-medium tracking-tight mb-1 text-ink">Cookbook</h1>
+<p class="font-body text-sm text-ink/70">Your recipes &amp; shopping list</p>
+</div>
+<span class="bg-[#FCD8CD] text-terracotta font-body text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-widest mt-1">Pro</span>
+</section>
+<!-- Tabs -->
+<nav class="flex px-6 border-b border-border w-full">
+<button class="flex-1 pb-3 text-center border-b-2 border-terracotta text-terracotta font-label text-sm font-medium transition-colors">Recipes</button>
+<button class="flex-1 pb-3 text-center border-b-2 border-transparent text-ink/50 hover:text-ink font-label text-sm transition-colors">Shopping List</button>
+</nav>
+<!-- Filter Chips -->
+<section class="px-6 py-5 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+<button class="flex-shrink-0 bg-ink text-white font-label text-sm px-5 py-2 rounded-full whitespace-nowrap transition-transform active:scale-95">All</button>
+<button class="flex-shrink-0 bg-card text-ink hover:bg-card/80 font-label text-sm px-5 py-2 rounded-full whitespace-nowrap border border-border/50 transition-transform active:scale-95">Breakfast</button>
+<button class="flex-shrink-0 bg-card text-ink hover:bg-card/80 font-label text-sm px-5 py-2 rounded-full whitespace-nowrap border border-border/50 transition-transform active:scale-95">Dinner</button>
+<button class="flex-shrink-0 flex items-center gap-1 bg-white text-terracotta hover:bg-card/50 font-label text-sm px-4 py-2 rounded-full whitespace-nowrap border border-terracotta/30 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[16px]">add</span> Add collection
+            </button>
+</section>
+<!-- Recipe List -->
+<section class="px-6 flex flex-col gap-6 pt-2 pb-8">
+<!-- Recipe Item 1 -->
+<article class="flex items-center gap-4 group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 border border-border shadow-sm">
+<img alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtcXWEj4pj_pa0T4dcxGd_M63TH9FkW0kFQNvIROeg0XGyyaUX80QZS7x-JmePXx5BHOGiV7vL3t2orR-7PdOoxePeYKAHTamhF12kuhY0nAaJYxtutjDHZZiEHrXN4rDAJrA9AnBWG4Myuf3vUiBQPKC1hxvxd91ToYtc2KCLlhIho-dfk3MjlJkBUMvAQQNKMUkxqXZXL_PCGVfUAYgsq5RJg0G0Ayg7iIF3JpQDktOEjeea_d5wJD4A"/>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1.5">
+<div class="flex justify-between items-start gap-2">
+<h2 class="font-headline text-xl font-medium text-ink truncate leading-tight">Mediterranean Grain Bowl</h2>
+<span class="font-body text-xs text-ink/60 mt-1 whitespace-nowrap">30m</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-card border border-border/50 px-2 py-1 rounded-md self-start">
+<span class="material-symbols-outlined text-[14px] text-sage" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label text-xs text-ink/80">fits your macros</span>
+</div>
+</div>
+</article>
+<!-- Recipe Item 2 -->
+<article class="flex items-center gap-4 group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 border border-border shadow-sm">
+<img alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtjA7m_mKq0T6wZQL3KQO7Ae3-6LVvPyWHRD8r0TyWy8wST3MHQ_hYnXmlVcuZo-pwVidrrKiirV4rPH0mxF4-jvjzbiR1sgJE_BV-ZzfaOqJ1W2ikmndCHh5oeE49zBJJMt5K8dp_rR8ORr-KrslsZywU1H2tEJGmnCAx6AEFu3EKiKB_ArOrMkqMe4XmxSNiqi1ssZV3-jnrKL8FZQLU3SBHXzxF-SeLdpsUcxlzZlkWgjCxR08WCagg"/>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1.5">
+<div class="flex justify-between items-start gap-2">
+<h2 class="font-headline text-xl font-medium text-ink truncate leading-tight">Blueberry Baked Oats</h2>
+<span class="font-body text-xs text-ink/60 mt-1 whitespace-nowrap">15m</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-card border border-border/50 px-2 py-1 rounded-md self-start">
+<span class="material-symbols-outlined text-[14px] text-sage" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label text-xs text-ink/80">fits your macros</span>
+</div>
+</div>
+</article>
+<!-- Recipe Item 3 (Placeholder for varied content) -->
+<article class="flex items-center gap-4 group cursor-pointer opacity-70">
+<div class="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 border border-border bg-card flex items-center justify-center text-ink/20">
+<span class="material-symbols-outlined text-3xl">local_pizza</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1.5">
+<div class="flex justify-between items-start gap-2">
+<h2 class="font-headline text-xl font-medium text-ink truncate leading-tight">Artisan Sourdough Pizza</h2>
+<span class="font-body text-xs text-ink/60 mt-1 whitespace-nowrap">45m</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-card/50 border border-border/30 px-2 py-1 rounded-md self-start">
+<span class="font-label text-xs text-ink/60 italic">Needs planning</span>
+</div>
+</div>
+</article>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-8 pb-6 pt-2 bg-white/90 dark:bg-white/90 border-t border-[#ECEAE4] backdrop-blur-md shadow-lg rounded-t-xl font-body text-xs uppercase tracking-widest text-[#C2683E]">
+<button class="flex flex-col items-center justify-center text-[#1B1814] p-3 hover:text-[#C2683E] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">restaurant_menu</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-[#C2683E] text-white rounded-full p-3 scale-90 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#1B1814] p-3 hover:text-[#C2683E] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">auto_awesome</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#1B1814] p-3 hover:text-[#C2683E] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">chat_bubble</span>
+</button>
+</nav>
+</body></html>

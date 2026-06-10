@@ -59,6 +59,51 @@ export const Lunch: Story = { args: { slot: slot("Lunch") } };
 export const Dinner: Story = { args: { slot: slot("Dinner") } };
 export const Snacks: Story = { args: { slot: slot("Snacks") } };
 
+/** Sloe DS reskin proof — full entry sheet with Recent / Saved browse +
+ *  Pro-locked voice/photo right-edge icons. Pins the plum serif header,
+ *  cream search slab, and damson Pro badges for pixel review. */
+export const SloeEntrySheet: Story = {
+  args: {
+    slot: slot("Lunch"),
+    recent: {
+      entries: [
+        { id: "r1", title: "Greek yogurt", kcal: 130, source: "off", bucket: "today" },
+        { id: "r2", title: "Oats with banana", kcal: 320, source: "usda", bucket: "week" },
+      ],
+      onPick: () => {},
+    },
+    saved: {
+      meals: [{ id: "m1", title: "My usual oatmeal", kcal: 380, source: "manual" }],
+      onPick: () => {},
+    },
+    voice: { onStart: () => {}, locked: true },
+    photo: { onCapture: () => {}, locked: true },
+    onAddManually: () => {},
+  },
+};
+
+/** S13 logged-confirmation (Figma 202:2) — the calm success state after a
+ *  log commits. Presentation-only; the host owns persistence. */
+export const LoggedConfirmation: Story = {
+  // The confirmation state REPLACES the slot-selector row, so the meta-level
+  // `a11y.context` ([data-slot="log-sheet-slot-row"]) matches nothing here and
+  // axe errors with "No elements found for include in frame Context". Re-scope
+  // the a11y run to the confirmation card this story actually renders.
+  parameters: {
+    a11y: { context: '[data-slot="log-sheet-confirmation"]' },
+  },
+  args: {
+    confirmation: {
+      title: "Greek yogurt",
+      kcal: 130,
+      slot: "Breakfast",
+      source: "off",
+      onDone: () => {},
+      onUndo: () => {},
+    },
+  },
+};
+
 /** Dark theme — confirms the soft tint + foreground label survives the
  *  dark surface (the active label switches to the dark foreground). */
 export const LunchDark: Story = {

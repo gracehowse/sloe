@@ -71,15 +71,15 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     inputBg: "#f4f4f4",
-    sourceUsda: "#56A775",
-    sourceOff: "#588CE4",
-    sourceFatsecret: "#F78A32",
+    sourceUsda: "#5E7C5A",
+    sourceOff: "#4A7878",
+    sourceFatsecret: "#C9892C",
     sourceManual: "#94a3b8",
-    sourceAi: "#DF5EBC",
+    sourceAi: "#6A4B7A",
     northStarBgFrom: "rgba(88,140,228,0.08)",
     northStarBgTo: "rgba(223,94,188,0.04)",
     northStarBorder: "rgba(88,140,228,0.18)",
-    overBudgetFg: "#F78A32",
+    overBudgetFg: "#C0533F",
     overBudgetSoft: "rgba(247,138,50,0.08)",
   }),
 }));
@@ -552,6 +552,73 @@ describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
       carbs: 5,
       fat: 16,
     });
+  });
+});
+
+describe("LogSheet (mobile) — S13 logged-confirmation (Figma 202:2)", () => {
+  // Presentation-only success state shown AFTER the host commits a log.
+  // The LogSheet never persists anything; it confirms what the host
+  // already logged and offers Done / Undo.
+  const confirmation = {
+    title: "Greek yogurt",
+    kcal: 130,
+    slot: "Breakfast",
+    source: "off" as const,
+  };
+
+  it("renders the confirmation card with slot-aware headline + estimated kcal", () => {
+    const { getByTestId, getByText } = open({
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    expect(getByTestId("log-sheet-confirmation")).toBeTruthy();
+    expect(getByText("Logged to Breakfast")).toBeTruthy();
+    expect(getByText("Greek yogurt")).toBeTruthy();
+    // Trust posture — nutrition is always an estimate, never absolute.
+    expect(getByText("Est. 130 kcal")).toBeTruthy();
+  });
+
+  it("falls back to a bare 'Logged' headline when no slot is supplied", () => {
+    const { getByText } = open({
+      confirmation: { title: "Greek yogurt", kcal: 130, onDone: () => {} },
+    });
+    expect(getByText("Logged")).toBeTruthy();
+  });
+
+  it("suppresses the search + browse composition while confirming", () => {
+    const { queryByLabelText, queryByText } = open({
+      recent: { entries: [], onPick: () => {} },
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    // The normal search-first content is hidden by the confirmation.
+    expect(queryByLabelText("Search foods")).toBeNull();
+    expect(queryByText("Your recent foods will appear here")).toBeNull();
+  });
+
+  it("Done fires onDone", () => {
+    const onDone = vi.fn();
+    const { getByLabelText } = open({
+      confirmation: { ...confirmation, onDone },
+    });
+    fireEvent.press(getByLabelText("Done"));
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders Undo only when onUndo is wired, and tapping it fires onUndo", () => {
+    const onUndo = vi.fn();
+    const { getByLabelText, queryByLabelText, rerender } = open({
+      confirmation: { ...confirmation, onDone: () => {} },
+    });
+    // No onUndo → no Undo affordance.
+    expect(queryByLabelText("Undo log")).toBeNull();
+    rerender(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        confirmation={{ ...confirmation, onDone: () => {}, onUndo }}
+      />,
+    );
+    fireEvent.press(getByLabelText("Undo log"));
+    expect(onUndo).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -20,7 +20,11 @@ import {
 } from "../../lib/nutrition/fatsecretCacheGuard.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useImportQueue } from "../../lib/recipes/useImportQueue.ts";
+import { ImportRunnerError } from "../../lib/recipes/recipeImportScheduler.ts";
+import { importJobIdForUrl } from "../../lib/recipes/importProgressMachine.ts";
+import { RecipeImportQueueDrawer } from "./suppr/recipe-import-queue-drawer.tsx";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
@@ -170,6 +174,11 @@ function amountToNumeric(raw: string): number | null {
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
+  // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
+  // Flag-gated per CLAUDE.md; the legacy inline-skeleton path stays live in
+  // the `else`. Resolved once at mount (PostHog reads are imperative).
+  const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [servings, setServings] = useState(1);
@@ -495,88 +504,154 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     }
   };
 
+  /** Shape returned by the URL importer + applied to the editor form. */
+  type ImportedUrlRecipe = {
+    title: string;
+    description: string | null;
+    ingredients: string[];
+    instructions: string[];
+    servings: number | null;
+    prepTimeMin: number | null;
+    cookTimeMin: number | null;
+    imageUrl: string | null;
+    sourceUrl?: string | null;
+    sourceName?: string | null;
+  };
+
+  /**
+   * Populate the editor form from a parsed imported recipe. Extracted so
+   * BOTH the legacy inline import path and the new queued path
+   * (`import-progress-v2`) apply the result identically — no drift between
+   * "imported inline" and "imported via the queue then reviewed".
+   */
+  const applyImportedRecipeToForm = useCallback((r: ImportedUrlRecipe, sourceUrl: string) => {
+    setTitle(r.title);
+    setDescription(r.description ?? "");
+    if (r.servings && r.servings > 0) setServings(r.servings);
+    if (r.prepTimeMin != null && r.prepTimeMin > 0) setPrepTime(r.prepTimeMin);
+    if (r.cookTimeMin != null && r.cookTimeMin > 0) setCookTime(r.cookTimeMin);
+    if (r.imageUrl) setCoverImageUrl(r.imageUrl);
+    if (r.ingredients.length) {
+      setIngredients(
+        r.ingredients.map((line, idx) => {
+          const p = parseIngredientLine(line);
+          const name = p.name.trim() || line.trim();
+          return { id: `imp-${idx}`, name, amount: p.amount, unit: p.unit };
+        }),
+      );
+    }
+    if (r.instructions.length) {
+      setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
+    }
+    // Persist URL + name at the write boundary via `normaliseSource` so the
+    // imported-state values are cleaned before they reach `saveRecipe`.
+    const attribution = normaliseSource({ url: r.sourceUrl ?? sourceUrl, name: r.sourceName ?? null });
+    setImportedSourceUrl(attribution.source_url);
+    setImportedSourceName(attribution.source_name);
+    let importHost: string;
+    try {
+      importHost = new URL(sourceUrl).hostname;
+    } catch {
+      importHost = "invalid";
+    }
+    track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
+  }, []);
+
+  /**
+   * Fetch + parse one URL import. Shared by inline + queued paths. Accepts an
+   * optional AbortSignal so the queue can cancel an in-flight import. Throws
+   * `ImportRunnerError` with a stable code on failure so the queue can map it
+   * to retry-eligible copy via `importErrorCopy`.
+   */
+  const fetchImportedRecipe = useCallback(
+    async (u: string, signal?: AbortSignal): Promise<ImportedUrlRecipe> => {
+      let res: Response;
+      try {
+        res = await fetch("/api/recipe-import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: u }),
+          signal,
+        });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+        throw new ImportRunnerError("network_error");
+      }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        recipe?: ImportedUrlRecipe;
+        message?: string;
+        error?: string;
+      };
+      if (!data.ok || !data.recipe) {
+        // Prefer the server's stable error code so retry-eligibility is honest.
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return data.recipe;
+    },
+    [],
+  );
+
   const runImportFromUrl = async () => {
     const u = importUrl.trim();
     if (!u) {
       toast.error("Paste a recipe URL first.");
       return;
     }
+
+    // import-progress-v2 — enqueue into the shared scheduler so the import
+    // runs with live per-stage progress + queue position in the persistent
+    // drawer, and multiple URLs can import concurrently. The legacy inline
+    // path below stays alive in the `else` (flag OFF).
+    if (importProgressV2) {
+      // Deterministic id so a duplicate concurrent import of the SAME url is a
+      // scheduler no-op (idempotency dedupe).
+      const id = importJobIdForUrl("url", u);
+      let seedTitle = "Recipe";
+      try {
+        seedTitle = new URL(u).hostname.replace(/^www\./, "");
+      } catch {
+        /* keep default */
+      }
+      const enqueued = importQueue.enqueue({
+        id,
+        kind: "url",
+        title: seedTitle,
+        run: async (controls) => {
+          controls.setStage("extracting");
+          const recipe = await fetchImportedRecipe(u, controls.signal);
+          if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+          controls.setStage("organizing");
+          controls.setTitle(recipe.title);
+          // The most-recently-finished import populates the editor form for
+          // review; all imports are listed in the drawer regardless.
+          applyImportedRecipeToForm(recipe, u);
+          return { title: recipe.title };
+        },
+      });
+      if (enqueued) {
+        setImportUrl("");
+        setImportHint(null);
+      }
+      return;
+    }
+
     setImportBusy(true);
     setImportHint(null);
     try {
-      const res = await fetch("/api/recipe-import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        recipe?: {
-          title: string;
-          description: string | null;
-          ingredients: string[];
-          instructions: string[];
-          servings: number | null;
-          prepTimeMin: number | null;
-          cookTimeMin: number | null;
-          imageUrl: string | null;
-          sourceUrl?: string | null;
-          sourceName?: string | null;
-        };
-        message?: string;
-      };
-      if (!data.ok || !data.recipe) {
-        toast.error(data.message ?? "Could not import this URL");
-        setImportHint(
-          data.message ??
-            "No structured recipe found. Paste a screenshot into the photo area and type ingredients manually.",
-        );
-        return;
-      }
-      const r = data.recipe;
-      setTitle(r.title);
-      setDescription(r.description ?? "");
-      if (r.servings && r.servings > 0) setServings(r.servings);
-      if (r.prepTimeMin != null && r.prepTimeMin > 0) setPrepTime(r.prepTimeMin);
-      if (r.cookTimeMin != null && r.cookTimeMin > 0) setCookTime(r.cookTimeMin);
-      if (r.imageUrl) setCoverImageUrl(r.imageUrl);
-      if (r.ingredients.length) {
-        setIngredients(
-          r.ingredients.map((line, idx) => {
-            const p = parseIngredientLine(line);
-            const name = p.name.trim() || line.trim();
-            return {
-              id: `imp-${idx}`,
-              name,
-              amount: p.amount,
-              unit: p.unit,
-            };
-          }),
-        );
-      }
-      if (r.instructions.length) {
-        setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
-      }
-      // Persist URL + name at the write boundary via `normaliseSource`. We run
-      // the helper here so the imported-state values are already cleaned before
-      // they reach `saveRecipe` (and so a tester inspecting React state sees
-      // exactly what will hit Supabase).
-      const attribution = normaliseSource({ url: r.sourceUrl ?? u, name: r.sourceName ?? null });
-      setImportedSourceUrl(attribution.source_url);
-      setImportedSourceName(attribution.source_name);
+      const r = await fetchImportedRecipe(u);
+      applyImportedRecipeToForm(r, u);
       toast.success("Imported — review amounts and nutrition before publishing");
-      {
-        let importHost: string;
-        try {
-          importHost = new URL(u).hostname;
-        } catch {
-          importHost = "invalid";
-        }
-        track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
-      }
-    } catch {
-      toast.error("Import failed — check the URL or paste a screenshot.");
-      setImportHint("Try another URL, or paste a screenshot into the recipe photo area and fill fields manually.");
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      // Prefer the server's specific message (carried on the thrown
+      // ImportRunnerError) over the generic per-code copy, sanitised via the
+      // central mapper — preserves the actionable "No Recipe JSON-LD found…"
+      // hint the old inline path surfaced.
+      const msg = userFacingImportError(e);
+      toast.error(msg);
+      setImportHint(msg);
     } finally {
       setImportBusy(false);
     }
@@ -1181,6 +1256,30 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
       ensureRecipeInLibraryWithKind(id, mode === "create" ? "created" : "imported");
+
+      // Sloe image system (2026-06-08) — when the recipe saved with the
+      // default cover (no user upload, no imported/YouTube thumbnail),
+      // fire an on-brand hero generation in the BACKGROUND. Strictly
+      // fire-and-forget: never awaited, never blocks the save, and the
+      // route no-ops cleanly (200 `skipped`) while fal.ai is unconfigured
+      // or out of balance. The recipe already shows the calm placeholder
+      // until/if a real hero lands; a later detail-view load picks up the
+      // generated `image_url`.
+      if ((finalImageUrl || DEFAULT_COVER_IMAGE) === DEFAULT_COVER_IMAGE) {
+        void fetch("/api/recipe-import/image-hero", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipeId: id,
+            title: trimmedTitle,
+            ingredients: cleanedIngredients.map((i) => i.name).slice(0, 6),
+          }),
+        }).catch(() => {
+          // Best-effort only — a failed/locked generation is expected and
+          // must never surface to the user mid-save.
+        });
+      }
+
       toast.success(
         effectivePublished ? "Recipe published" : mode === "import" ? "Saved to your library" : "Draft saved",
         {
@@ -1205,7 +1304,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 <Icons.chef className="w-5 h-5 text-white" />
               )}
             </div>
-            <h1 className="text-foreground">
+            <h1 className="font-[family-name:var(--font-headline)] text-3xl text-foreground-brand">
               {mode === "import" ? "Import recipe" : "Create recipe"}
             </h1>
           </div>
@@ -1254,7 +1353,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           <button
             type="button"
             onClick={onSwitchToImport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
           >
             <Icons.import className="w-4 h-4" />
             Open Import recipe
@@ -1279,7 +1378,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Paste ingredient list</DialogTitle>
+            <DialogTitle className="font-[family-name:var(--font-headline)] text-foreground-brand">Paste ingredient list</DialogTitle>
             <DialogDescription>
               One line per ingredient. We run the same database match as the mobile create screen (USDA, Open Food Facts,
               FatSecret, Edamam, then estimation only if needed).
@@ -1305,7 +1404,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               type="button"
               disabled={verifying}
               onClick={() => void applyPasteListMatch()}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+              className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-40"
             >
               {verifying ? "Matching…" : "Match to database"}
             </button>
@@ -1313,11 +1412,17 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         </DialogContent>
       </Dialog>
 
-      {/* Import from URL (import flow only — matches mobile prototype) */}
+      {/* Import from URL (import flow only — matches mobile prototype).
+          Sloe DS reskin (2026-06-07): cream slabs (`bg-card`), 24px radii
+          (`rounded-[var(--radius-card-lg)]`), plum serif headings
+          (`font-[family-name:var(--font-headline)] text-foreground-brand`).
+          Presentation only — paste-link / URL-parse logic unchanged. */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
-          {/* Source Grid — matches mobile "Import from" 2x2 grid */}
-          <div className="bg-card border border-border rounded-2xl p-4">
+          {/* Source tiles — 3-method input grid (the app's canonical input
+              methods, reskinned to the Sloe language; NOT restructured to
+              the old Figma source-platform layout). */}
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Import from</p>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -1329,7 +1434,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 <button
                   key={source.label}
                   type="button"
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-muted/60 transition-colors"
+                  className="flex flex-col items-center gap-2 p-3 rounded-[var(--radius-card)] hover:bg-muted/40 transition-colors"
                 >
                   <IconBox tone="primary" size="md">
                     <source.icon className="w-4 h-4" />
@@ -1340,38 +1445,47 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
           </div>
 
-          {/* URL input */}
-          <div className="bg-card border border-border rounded-2xl p-5">
+          {/* Paste-link pill — the import CTA panel. */}
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
             {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
-            <SupprMark size={44} className="mx-auto mb-3" />
-            <div className="flex items-center gap-2 mb-3">
-              <Icons.web className="w-5 h-5 text-primary" />
-              <h3 className="text-foreground text-sm font-semibold">Paste a recipe link</h3>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <SupprMark size={48} className="mx-auto mb-4" />
+            <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-1">
+              Paste a recipe link
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+              From Instagram, TikTok, YouTube, or any recipe site — we&apos;ll save it to your library.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 text-left">
               <input
                 type="url"
                 value={importUrl}
                 onChange={(e) => setImportUrl(e.target.value)}
-                placeholder="https://example.com/recipe"
-                className="flex-1 px-4 py-3 rounded-xl border border-border bg-muted/40 text-foreground text-sm"
+                placeholder="https://…"
+                className="flex-1 px-4 py-3 rounded-[var(--radius-card)] border border-border bg-muted/30 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
                 type="button"
                 disabled={importBusy}
                 onClick={() => void runImportFromUrl()}
-                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                className="px-6 py-3 rounded-[var(--radius-card)] bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold disabled:opacity-50 hover:bg-primary/5 transition-colors"
               >
                 {importBusy ? "Importing…" : "Import"}
               </button>
             </div>
-            {importHint ? <p className="text-xs text-destructive mt-2">{importHint}</p> : null}
+            {importHint ? (
+              <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+            ) : null}
 
-            {importBusy ? <ImportLoadingSkeleton phase="importing" className="mt-4" /> : null}
+            {/* import-progress-v2 OFF → legacy inline skeleton. ON → the
+                persistent queue drawer (mounted at component root) shows
+                live per-stage progress instead. */}
+            {importBusy && !importProgressV2 ? (
+              <ImportLoadingSkeleton phase="importing" className="mt-4" />
+            ) : null}
           </div>
 
           {/* Recent Imports placeholder */}
-          <div className="bg-card border border-border rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
             <p className="text-xs text-muted-foreground">No recent imports</p>
           </div>
@@ -1379,7 +1493,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
         <label className="block mb-3 text-sm font-medium text-foreground">Recipe photo</label>
         <p className="text-xs text-muted-foreground mb-3">
           {mode === "import"
@@ -1440,8 +1554,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Basic Info */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-foreground mb-6">Basic Information</h3>
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+        <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
           <div>
             <label className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
@@ -1518,8 +1632,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     key={tag}
                     onClick={() => setDietary(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-all capitalize ${
+                      // Selected dietary tag = aubergine SOFT-TINT + aubergine
+                      // `primary-solid` label (Sloe treatment §7), not a solid slab.
                       dietary.includes(tag)
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary/10 text-primary-solid"
                         : "bg-muted text-foreground hover:hover:bg-muted"
                     }`}
                   >
@@ -1533,9 +1649,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Ingredients */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
-          <h3 className="text-foreground">Ingredients</h3>
+          <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -1554,7 +1670,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             <button
               type="button"
               onClick={addIngredient}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:hover:bg-primary/90 transition-all flex items-center gap-2 text-sm font-medium"
+              className="px-4 py-2 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <Icons.add className="w-4 h-4" />
               Add Ingredient
@@ -2126,8 +2242,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Instructions */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-foreground mb-4">Cooking Instructions</h3>
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+        <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-4">Cooking instructions</h3>
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
@@ -2148,7 +2264,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             type="button"
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-[var(--radius-card)] hover:bg-primary/5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
           </button>
@@ -2179,7 +2295,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               type="button"
               disabled={saving !== null}
               onClick={() => void saveRecipe(true)}
-              className="flex-1 px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-xl hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icons.upload className="w-5 h-5" />
               {saving === "publish" ? "Publishing…" : "Publish recipe"}
@@ -2187,6 +2303,18 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           </div>
         </div>
       )}
+
+      {/* import-progress-v2 — persistent, non-blocking queue drawer. Renders
+          nothing until there's import activity; safe to always mount when the
+          flag is on. */}
+      {importProgressV2 ? (
+        <RecipeImportQueueDrawer
+          queue={importQueue}
+          onOpenRecipe={(id) => {
+            window.location.assign(`/recipe/${id}`);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

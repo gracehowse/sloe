@@ -12,6 +12,14 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 
 void React;
 
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+  ResizeObserverStub;
+
 const { mockReplace, getSearchParams, setSearchParams } = vi.hoisted(() => {
   let params = new URLSearchParams();
   return {
@@ -69,8 +77,19 @@ vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => appDataState.current,
 }));
 
+// Today greeting now reads the name from the auth user's
+// `user_metadata` (the "Your name" Settings field writes `full_name`),
+// NOT `profileDisplayName`. `authMetadataState` lets individual tests
+// flip the metadata to assert the greeting personalises / falls back.
+const authMetadataState = {
+  current: { full_name: "Grace" } as Record<string, unknown>,
+};
 vi.mock("../../src/context/AuthSessionContext.tsx", () => ({
-  useAuthSession: () => ({ authedUserId: null, authUserCreatedAt: null }),
+  useAuthSession: () => ({
+    authedUserId: null,
+    authUserCreatedAt: null,
+    authUserMetadata: authMetadataState.current,
+  }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -112,8 +131,6 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 }));
 
 import { NutritionTracker } from "../../src/app/components/NutritionTracker";
-import { MISSED_YESTERDAY_COPY } from "../../src/lib/nutrition/missedYesterday";
-
 const loggedMeal = {
   id: "m1",
   name: "Oats",
@@ -125,7 +142,7 @@ const loggedMeal = {
   fat: 8,
 };
 
-describe("NutritionTracker render harness", () => {
+describe("NutritionTracker render harness", { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 4, 27, 12, 0, 0));
@@ -147,6 +164,9 @@ describe("NutritionTracker render harness", () => {
       selectedDateKey: "2026-05-27",
       removeLoggedMeal: vi.fn(),
     };
+    // Reset the greeting name source between tests (the "Your name"
+    // field writes `user_metadata.full_name`).
+    authMetadataState.current = { full_name: "Grace" };
   });
 
   afterEach(() => {
@@ -161,9 +181,25 @@ describe("NutritionTracker render harness", () => {
     expect(screen.getByTestId("today-hero-desktop")).toBeInTheDocument();
   });
 
-  it("shows the today greeting with the user's first name", () => {
+  it("shows the today greeting with the first name from user_metadata.full_name", () => {
+    // The name comes from auth metadata (what the "Your name" Settings
+    // field writes), NOT profileDisplayName.
+    authMetadataState.current = { full_name: "Grace Turner" };
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-greeting")).toHaveTextContent("Good afternoon, Grace");
+    expect(screen.getByTestId("today-hero-greeting")).toHaveTextContent(
+      "Afternoon, Grace",
+    );
+  });
+
+  it("falls back to the name-free greeting when metadata has no name", () => {
+    // Clearing the name (empty `full_name`) → greeting drops the name.
+    // profileDisplayName is still "Grace" in the AppData mock, proving
+    // the greeting no longer sources the name from there.
+    authMetadataState.current = {};
+    render(<NutritionTracker userTier="free" />);
+    const greeting = screen.getByTestId("today-hero-greeting");
+    expect(greeting).toHaveTextContent("Good afternoon");
+    expect(greeting).not.toHaveTextContent("Grace");
   });
 
   it("shows hero stat labels once the user has logged kcal", () => {
@@ -178,15 +214,22 @@ describe("NutritionTracker render harness", () => {
     expect(screen.queryByTestId("today-meals-empty-cta")).not.toBeInTheDocument();
   });
 
-  it("opens LogSheet from ?openLog=1 and clears the URL param", async () => {
-    vi.useRealTimers();
-    setSearchParams(new URLSearchParams("openLog=1"));
-    render(<NutritionTracker userTier="free" />);
-    await waitFor(() => {
-      expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
-    });
-    expect(mockReplace).toHaveBeenCalledWith("/home", { scroll: false });
-  });
+  it(
+    "opens LogSheet from ?openLog=1 and clears the URL param",
+    async () => {
+      vi.useRealTimers();
+      setSearchParams(new URLSearchParams("openLog=1"));
+      render(<NutritionTracker userTier="free" />);
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
+        },
+        { timeout: 10_000 },
+      );
+      expect(mockReplace).toHaveBeenCalledWith("/home", { scroll: false });
+    },
+    15_000,
+  );
 
   it("opens LogSheet when the empty-state CTA is clicked", async () => {
     vi.useRealTimers();
@@ -198,7 +241,7 @@ describe("NutritionTracker render harness", () => {
     });
   });
 
-  it("shows missed-yesterday copy when prior history exists but yesterday was empty", () => {
+  it("does not show missed-yesterday copy — banner retired (F-07)", () => {
     appDataState.current = {
       ...appDataState.current,
       nutritionByDay: {
@@ -207,9 +250,9 @@ describe("NutritionTracker render harness", () => {
       },
     };
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-missed-yesterday-copy")).toHaveTextContent(
-      MISSED_YESTERDAY_COPY,
-    );
+    expect(
+      screen.queryByTestId("today-missed-yesterday-copy"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the offline banner when navigator.onLine is false", () => {

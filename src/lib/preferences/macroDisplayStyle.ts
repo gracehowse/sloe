@@ -29,11 +29,14 @@ export const MACRO_DISPLAY_STYLES: readonly MacroDisplayStyle[] = [
   "bars",
 ] as const;
 
-// Canonical 2026-05-22 C1: default flipped from "tiles" → "bars".
-// Single-ring Today hero + 4 horizontal macro bars is now the canonical
-// layout. Tiles preference still available in Settings for users who
-// prefer the grid; default is bars.
-export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "bars";
+// SLOE redesign (2026-06-03): default flipped back "bars" → "tiles".
+// The canonical Sloe `01 · Today` frame renders the 2×2 macro TILE grid
+// (Protein / Carbs / Fat / Fibre, each with a progress bar) below the
+// multi-ring hero — so tiles is the redesign default. The 2026-05-22 C1
+// bars default belonged to the single-ring layout that the Sloe
+// multi-ring supersedes. The `bars` treatment stays available in
+// Settings → Display for users who prefer the denser list.
+export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "tiles";
 
 export const MACRO_DISPLAY_STORAGE_KEY = "suppr.prefs.macro_display";
 

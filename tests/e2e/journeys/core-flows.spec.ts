@@ -41,15 +41,20 @@ test.describe("Public pages", () => {
     await expect(page.getByText(/pro/i).first()).toBeVisible();
   });
 
-  test("unauthenticated root shows landing page with a sign-in path", async ({ page }) => {
+  test("unauthenticated root shows landing page with a log-in path", async ({ page }) => {
     await page.goto("/");
     await expectNoSeriousA11yViolations(page);
     // LandingPage renders server-side for unauthenticated users (see app/page.tsx).
     // Previously `/` middleware-redirected to /login; it now shows the marketing
-    // landing page with a Sign in CTA that opens /login?mode=signin.
-    await expect(page.getByRole("link", { name: /sign in/i }).first()).toBeVisible();
-    await page.getByRole("link", { name: /sign in/i }).first().click();
+    // landing page with a Log in CTA that opens /login.
+    // Sloe LP1 redesign changed CTA from "Sign in" to "Log in".
+    await expect(page.getByRole("link", { name: /log in/i }).first()).toBeVisible();
+    await page.getByRole("link", { name: /log in/i }).first().click();
     await page.waitForURL("**/login**");
+    // Chooser-first /login (2026-06-08 Sloe redesign): the email/password form
+    // is disclosed behind "Continue with email" — reveal it before asserting
+    // the field.
+    await page.getByRole("button", { name: "Continue with email" }).click();
     await expect(page.getByPlaceholder("you@domain.com")).toBeVisible();
   });
 });

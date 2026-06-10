@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Suppr - Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Inter:wght@300..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            white: '#FFFFFF',
+                            ink: '#1B1814',
+                            terracotta: '#C2683E',
+                            sage: '#7C8466',
+                            amber: '#C9892C',
+                            surface: '#F6F5F2',
+                            border: '#ECEAE4'
+                        }
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "display": ["Newsreader", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Custom radio button styles to hide the default input but make the card clickable */
+        .choice-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .choice-card input[type="radio"]:checked + .card-content {
+            border-color: #C2683E;
+            background-color: #FFF;
+            box-shadow: 0 4px 12px rgba(194, 104, 62, 0.1);
+        }
+        
+        .choice-card input[type="radio"]:checked + .card-content .check-icon {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .card-content {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-brand-white text-brand-ink font-body min-h-screen flex flex-col antialiased selection:bg-brand-terracotta selection:text-white">
+<!-- Progress Bar (Thin Terracotta at very top) -->
+<div class="fixed top-0 left-0 w-full h-1 bg-brand-surface z-50">
+<div class="h-full bg-brand-terracotta w-1/4 transition-all duration-500 ease-out"></div>
+</div>
+<!-- Navigation Header (Suppressed Bottom Nav for Transactional Flow, Minimal Top Nav) -->
+<header class="w-full flex items-center justify-between px-6 py-4 pt-8 shrink-0">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-brand-surface hover:bg-brand-border transition-colors group cursor-pointer" onclick="window.history.back()">
+<span class="material-symbols-outlined text-brand-ink group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+</button>
+<!-- Logo or Step indicator could go here, keeping minimal for focus -->
+<span class="font-body text-sm text-brand-ink/60 tracking-wider uppercase">Step 1 of 4</span>
+<div class="w-10 h-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-2xl mx-auto px-6 pt-8 pb-32 flex flex-col">
+<!-- Headers -->
+<div class="mb-10 text-center md:text-left">
+<h1 class="font-headline text-4xl md:text-5xl font-medium tracking-tight mb-4 text-brand-ink">
+                What brings you to Suppr?
+            </h1>
+<p class="font-body text-lg text-brand-ink/70 max-w-md">
+                We'll tailor everything to you.
+            </p>
+</div>
+<!-- Choice Grid -->
+<form class="flex-1 flex flex-col" id="onboarding-form">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+<!-- Option 1: Lose weight -->
+<label class="choice-card relative cursor-pointer group">
+<input name="goal" type="radio" value="lose_weight"/>
+<div class="card-content h-full border border-brand-border bg-brand-surface rounded-xl overflow-hidden hover:border-brand-terracotta/50 flex flex-col group-hover:shadow-sm">
+<div class="relative w-full aspect-[4/3] bg-brand-border/50 overflow-hidden">
+<img alt="Lose weight while still eating what I love" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4eVND3RQHWHie93em3XR6i46zloDstPucBMhC1WulSw2_2xSi_g9OSVpNm5oBbu_5-82kYWpV4EzNrkeoPtMjqcRmm1lgwy21MXOGGvZpirJBDsArTrc_BDwntRqkzsUuQzPd006DMp-slEBz5G1Lv4BhR40DryOFLMiDdvL6du39GPCO5W5exSDvsSH_WywjxXd2iAP3E5Z6lXtjjYaDCYPFiA1SMvJgPZgbxQdQ6qpvOZlnSQpsYVZp_FZ19wTYflXtSrCDXZc"/>
+</div>
+<div class="p-5 flex items-start justify-between">
+<span class="font-body font-medium text-base text-brand-ink pr-4">Lose weight while still eating what I love</span>
+<div class="check-icon w-6 h-6 rounded-full bg-brand-terracotta text-white flex items-center justify-center opacity-0 scale-75 transition-all duration-200 shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+</div>
+</div>
+</label>
+<!-- Option 2: Build muscle -->
+<label class="choice-card relative cursor-pointer group">
+<input name="goal" type="radio" value="build_muscle"/>
+<div class="card-content h-full border border-brand-border bg-brand-surface rounded-xl overflow-hidden hover:border-brand-terracotta/50 flex flex-col group-hover:shadow-sm">
+<div class="relative w-full aspect-[4/3] bg-brand-border/50 overflow-hidden">
+<img alt="Build muscle" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCN0nkQILtKx7o6EliEzzteJ3y6yhyZUnS1-ez5o8awNP-fHThDnP9BiyNwW6KhyxwlFTiqKU4jzswzMCxtTQmYOUuet_9-QGY7L82Yk2cl8iDEDVhSAkToCBKeTpoc1oSGL1zFt2YUbBOj-acqteinYbJWEFeV19sS8WS8npu_sxCGC1Mhe6SK6hdHpAbKtVB4eUKXOxusIEgTQnoOQxn6FNKMrRnIquwOp9O7_mfnY2-J1sOdrEYN_sqFNTN3BbNpQepj6b0ZtX4"/>
+</div>
+<div class="p-5 flex items-start justify-between">
+<span class="font-body font-medium text-base text-brand-ink pr-4">Build muscle</span>
+<div class="check-icon w-6 h-6 rounded-full bg-brand-terracotta text-white flex items-center justify-center opacity-0 scale-75 transition-all duration-200 shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+</div>
+</div>
+</label>
+<!-- Option 3: Eat healthier at home -->
+<label class="choice-card relative cursor-pointer group">
+<input name="goal" type="radio" value="eat_healthier"/>
+<div class="card-content h-full border border-brand-border bg-brand-surface rounded-xl overflow-hidden hover:border-brand-terracotta/50 flex flex-col group-hover:shadow-sm">
+<div class="relative w-full aspect-[4/3] bg-brand-border/50 overflow-hidden">
+<img alt="Eat healthier at home" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AP1WRLtcXWEj4pj_pa0T4dcxGd_M63TH9FkW0kFQNvIROeg0XGyyaUX80QZS7x-JmePXx5BHOGiV7vL3t2orR-7PdOoxePeYKAHTamhF12kuhY0nAaJYxtutjDHZZiEHrXN4rDAJrA9AnBWG4Myuf3vUiBQPKC1hxvxd91ToYtc2KCLlhIho-dfk3MjlJkBUMvAQQNKMUkxqXZXL_PCGVfUAYgsq5RJg0G0Ayg7iIF3JpQDktOEjeea_d5wJD4A"/>
+</div>
+<div class="p-5 flex items-start justify-between">
+<span class="font-body font-medium text-base text-brand-ink pr-4">Eat healthier at home</span>
+<div class="check-icon w-6 h-6 rounded-full bg-brand-terracotta text-white flex items-center justify-center opacity-0 scale-75 transition-all duration-200 shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+</div>
+</div>
+</label>
+<!-- Option 4: Just track what I cook -->
+<label class="choice-card relative cursor-pointer group">
+<input name="goal" type="radio" value="track_cooking"/>
+<div class="card-content h-full border border-brand-border bg-brand-surface rounded-xl overflow-hidden hover:border-brand-terracotta/50 flex flex-col group-hover:shadow-sm">
+<div class="relative w-full aspect-[4/3] bg-brand-border/50 overflow-hidden">
+<img alt="Just track what I cook" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBfgImUk3AKoGHSKACp0OCo0s4qp7L74-Y77ceQJdqr7T4T9j1Zvi8eVd_5fw_1QdCNC4kZx9mmwbc6KmF58I5CokeJRq4Qo842g7UKvtguezOkfRq-xFrM-zMAC5Cvk8lMpLMLOmP2WEmr2SvihuaKf93vVPD8HLrFifOS_2WSmtX03_7i8YDdayFikiqS9TX4go1s8Fzm3RzA7ndGp0SQHn1u3cGzWg8c1fFD0rfSZX0paDrIueMNYJXI5BhKogBbbmopSm7aqI"/>
+</div>
+<div class="p-5 flex items-start justify-between">
+<span class="font-body font-medium text-base text-brand-ink pr-4">Just track what I cook</span>
+<div class="check-icon w-6 h-6 rounded-full bg-brand-terracotta text-white flex items-center justify-center opacity-0 scale-75 transition-all duration-200 shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+</div>
+</div>
+</label>
+</div>
+<!-- Spacer to push button down if content is short -->
+<div class="flex-1"></div>
+</form>
+</main>
+<!-- Fixed Footer Action -->
+<div class="fixed bottom-0 left-0 w-full bg-gradient-to-t from-brand-white via-brand-white to-transparent pt-12 pb-8 px-6 z-40">
+<div class="max-w-2xl mx-auto">
+<button class="w-full bg-brand-ink text-white font-body font-medium text-lg py-4 px-6 rounded-full hover:bg-brand-ink/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled="" id="continue-btn" type="button">
+                Continue
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<script>
+        // Simple logic to enable 'Continue' button only when a selection is made
+        document.addEventListener('DOMContentLoaded', () => {
+            const radioButtons = document.querySelectorAll('input[name="goal"]');
+            const continueBtn = document.getElementById('continue-btn');
+
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (document.querySelector('input[name="goal"]:checked')) {
+                        continueBtn.removeAttribute('disabled');
+                        // Optional: Add a pulse animation to draw attention
+                        continueBtn.classList.add('animate-pulse-once');
+                        setTimeout(() => continueBtn.classList.remove('animate-pulse-once'), 1000);
+                    }
+                });
+            });
+
+            // Simulate form submission visually
+            continueBtn.addEventListener('click', (e) => {
+                if(!continueBtn.disabled) {
+                    const progressBar = document.querySelector('.bg-brand-terracotta');
+                    progressBar.style.width = '50%';
+                    continueBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span>';
+                    
+                    // Simulate loading next page
+                    setTimeout(() => {
+                        console.log('Moving to next step');
+                        continueBtn.innerHTML = 'Continue <span class="material-symbols-outlined text-[20px]">arrow_forward</span>';
+                    }, 800);
+                }
+            });
+        });
+    </script>
+<style>
+        @keyframes pulse-once {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .animate-pulse-once {
+            animation: pulse-once 0.3s ease-in-out;
+        }
+    </style>
+</body></html>

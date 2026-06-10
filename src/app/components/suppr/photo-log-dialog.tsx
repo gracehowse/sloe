@@ -380,10 +380,13 @@ export function PhotoLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border max-w-lg">
+      <DialogContent className="bg-card border-border max-w-lg rounded-[24px]">
         <DialogHeader>
-          <DialogTitle className="text-foreground flex items-center gap-2">
-            <Icons.camera className="size-5 text-primary" aria-hidden />
+          {/* Sloe DS — photo is a Pro feature; the camera carries the damson
+              Pro accent and the title reads in the Newsreader serif plum
+              (`text-foreground-brand`), matching the LogSheet header. */}
+          <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
+            <Icons.camera className="size-5" style={{ color: "var(--accent-win)" }} aria-hidden />
             Photo log
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">

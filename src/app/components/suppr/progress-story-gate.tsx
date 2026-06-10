@@ -22,6 +22,8 @@ import {
   STORY_DATA_FLOOR_DAYS,
 } from "../../../lib/nutrition/progressStoryGate";
 import { SupprCard } from "../ui/suppr-card";
+import { Icons } from "../ui/icons";
+import { PROGRESS_INSIGHT_LILAC_STYLE } from "./progress-headline";
 
 export interface ProgressStoryGateProps {
   /** Days with ≥1 logged meal in the rolling window. */
@@ -43,18 +45,30 @@ export function ProgressStoryGate({
   const STROKE = 3;
   const radius = (RING_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - placeholder.ringFraction);
+  // ENG-1006 — visible-arc floor (mirror of mobile). At 0 / 3 logged the
+  // bare track read as a dead grey circle. Clamp the FILL fraction (not
+  // the label) to ≥0.06 so even an unstarted ring shows a small clay tick.
+  const ringFill = Math.max(0.06, placeholder.ringFraction);
+  const dashOffset = circumference * (1 - ringFill);
 
   return (
     <SupprCard
       data-slot="progress-story-gate"
       data-testid="progress-story-gate"
       padding="xl"
-      radius="xl"
+      /* ENG-1006 — radius="lg" (var(--radius-card-lg) = 24px) matches the
+         cream sibling cards (AVERAGE ADHERENCE / weight / daily-calories)
+         so the lilac THIS WEEK card shares one corner radius with the
+         stack below it. Was radius="xl" (16px), a detectable 8px mismatch. */
+      radius="lg"
       className={className}
+      style={PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+      {/* Sloe Figma 492:2 — sparkle glyph by the clay eyebrow, matching the
+          live THIS WEEK headline so the slot reads identically pre/post-unlock. */}
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <Icons.sparkles className="h-3.5 w-3.5" aria-hidden />
         {placeholder.eyebrow}
       </p>
       <div className="mt-1.5 flex items-center justify-between gap-3">
@@ -95,7 +109,10 @@ export function ProgressStoryGate({
           />
         </svg>
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+      {/* ENG-1006 — 13px label-secondary floor (was 11px, below the spec's
+          13–14px body floor and small under the serif headline). Mirror of
+          mobile ProgressStoryGate body bump. */}
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
         {placeholder.body}
       </p>
       <p

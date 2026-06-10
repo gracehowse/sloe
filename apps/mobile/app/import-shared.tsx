@@ -13,6 +13,12 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  Clipboard as ClipboardIcon,
+  Camera as CameraIcon,
+  Lock,
+  Share2,
+} from "lucide-react-native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -21,7 +27,8 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
@@ -34,6 +41,11 @@ import {
   IMPORT_ERROR_COPY,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
+import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
+import { importJobIdForUrl } from "@suppr/shared/recipes/importProgressMachine";
+import { ImportProgressDrawer } from "@/components/import/ImportProgressDrawer";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
@@ -153,12 +165,33 @@ type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the import CTAs,
+  // outline/text-link buttons, source/share callouts, and the various entry-
+  // point glyphs (search, restaurant, clipboard, camera, person, bookmark).
+  // Threaded into the memoised StyleSheet via the dep array below. Macros keep
+  // `MacroColors`; success/warning/destructive states keep their own tokens.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/discover");
   const params = useLocalSearchParams();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
+  // Flag-gated per CLAUDE.md; the legacy single-`importing`-state +
+  // ImportLoadingSkeleton path stays live in the `else`. Resolved once at
+  // mount (PostHog reads are imperative; the screen doesn't re-mount mid-import).
+  const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  const importQueue = useImportQueue("mobile", track);
+
+  // recipe-import-redesign (ENG-997 import surface, 2026-06-09) — unboxes the
+  // idle state into header + paste-field + trust-chip row + recent-imports
+  // sections on the white page ground (design-system §3.2). Flag-gated per
+  // CLAUDE.md; the legacy monolithic `panelCard` slab stays live in the `else`.
+  // Resolved once at mount (PostHog reads are imperative; the screen doesn't
+  // re-mount mid-flow).
+  const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
 
   const [state, setState] = useState<ImportState>("idle");
   const [title, setTitle] = useState<string | null>(null);
@@ -281,6 +314,44 @@ export default function ImportSharedScreen() {
     return () => { cancelled = true; };
   }, [userId]);
 
+  // User tier for the photo-import Pro gate (gap #3, 2026-06-09). Photo OCR is
+  // Pro-gated server-side (`/api/recipe-import/image` → 403 `pro_required` for
+  // free), so we surface the gate BEFORE the tap: Free users get a Lock badge +
+  // route to the paywall; Pro users get the picker. Hydrate synchronously from
+  // the cached tier to avoid a gate flash for paid users (mirrors the planner
+  // pattern, F-91), then reconcile against the live profile read.
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { loadCachedUserTier } = await import("@/lib/cachedUserTier");
+      const cached = await loadCachedUserTier();
+      if (!cancelled) setUserTier(cached);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const tier = (data?.user_tier as string | null) ?? null;
+      const resolved: "free" | "base" | "pro" =
+        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      setUserTier(resolved);
+      void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
+        saveCachedUserTier(resolved),
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+  const isFreeTier = userTier === "free";
+
   // Animate progress steps during import
   useEffect(() => {
     if (state !== "importing") return;
@@ -309,6 +380,80 @@ export default function ImportSharedScreen() {
     retryAfterAt != null ? Math.max(0, Math.ceil((retryAfterAt - retryNow) / 1000)) : 0;
   const retryDisabled = retrySecondsLeft > 0;
 
+  /**
+   * Apply a successful `/api/recipe-import` response into the review state
+   * (meal-type classification, normalised recipe, title). Extracted so the
+   * legacy inline path AND the queued `import-progress-v2` path land a
+   * finished import identically — no drift between "imported inline" and
+   * "imported via the queue then reviewed".
+   */
+  const applyImportedRecipeResult = useCallback(
+    (recipe: ApiImportedRecipe, imageUsedFlag?: boolean) => {
+      setImageUsed(imageUsedFlag);
+      const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(String) : [];
+      const fromApi = recipe.mealType;
+      const allowed = /^(breakfast|lunch|dinner|snack)$/;
+      const fromApiNorm =
+        Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
+          ? fromApi.map((x) => String(x).toLowerCase().trim()).filter((x) => allowed.test(x))
+          : [];
+      const autoTags =
+        fromApiNorm.length > 0
+          ? fromApiNorm
+          : classifyMealType({
+              title: recipe.title ?? "",
+              ingredients,
+              caloriesPerServing: recipe.calories ?? null,
+            });
+      setMealTags(autoTags);
+      const normalized = normalizeApiImportedRecipe(recipe as Record<string, unknown>);
+      setPendingRecipe(normalized);
+      setTitle(decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"));
+      setState("review");
+    },
+    [],
+  );
+
+  /**
+   * Fetch + parse one URL import. Shared by the inline + queued paths.
+   * Accepts an optional AbortSignal so the queue can cancel an in-flight
+   * import. Throws `ImportRunnerError` (stable code) on failure so the queue
+   * maps it to retry-eligible copy; resolves with the parsed recipe so the
+   * caller decides how to surface it (inline → review; queued → drawer +
+   * last-wins review).
+   */
+  const fetchImportedRecipe = useCallback(
+    async (url: string, signal?: AbortSignal): Promise<{ recipe: ApiImportedRecipe; imageUsed?: boolean }> => {
+      const res = await authedFetch(`${base}/api/recipe-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+        signal,
+      });
+      // F-121: read Retry-After before the body so a 429 can drive a countdown.
+      const retryAfterHeader = res.headers.get("Retry-After");
+      const data = (await res.json()) as {
+        ok?: boolean;
+        recipe?: ApiImportedRecipe;
+        message?: string;
+        imageUsed?: boolean;
+        error?: string;
+      };
+      if (!data.ok || !data.recipe) {
+        if (res.status === 429 || data.error === "ai_rate_limited") {
+          const sec = retryAfterHeader
+            ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
+            : 30;
+          setRetryAfterAt(Date.now() + sec * 1000);
+        }
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return { recipe: data.recipe, imageUsed: data.imageUsed };
+    },
+    [base],
+  );
+
   const runImport = useCallback(
     async (url: string) => {
       const trimmed = url.trim();
@@ -331,82 +476,64 @@ export default function ImportSharedScreen() {
         return;
       }
 
+      // import-progress-v2 — enqueue into the shared scheduler so the import
+      // runs with live per-stage progress + queue position in the persistent
+      // drawer, and multiple shares can import concurrently. The screen stays
+      // on `idle` (the drawer carries progress); the legacy inline
+      // `importing` path below stays alive when the flag is OFF.
+      if (importProgressV2) {
+        setError(null);
+        setSavedRecipeId(null);
+        // Deterministic id so a duplicate concurrent share/clipboard/deep-link
+        // of the SAME url is a scheduler no-op (mirrors the legacy
+        // `importInFlightRef` dedupe).
+        const id = importJobIdForUrl("url", trimmed);
+        let seedTitle = "Recipe";
+        try {
+          seedTitle = new URL(trimmed).hostname.replace(/^www\./, "");
+        } catch {
+          /* keep default */
+        }
+        importQueue.enqueue({
+          id,
+          kind: "url",
+          title: seedTitle,
+          run: async (controls) => {
+            controls.setStage("extracting");
+            const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed, controls.signal);
+            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+            controls.setStage("organizing");
+            controls.setTitle(recipe.title ?? seedTitle);
+            // Last-wins: the most recent finished import populates the review
+            // form; all imports remain listed in the drawer.
+            applyImportedRecipeResult(recipe, used);
+            return { title: recipe.title ?? seedTitle };
+          },
+        });
+        return;
+      }
+
       setState("importing");
       setError(null);
       setSavedRecipeId(null);
       setCompletedSteps([]);
 
       try {
-        const res = await authedFetch(`${base}/api/recipe-import`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: trimmed }),
-        });
-
-        // F-121: pull `Retry-After` BEFORE consuming the body so we can
-        // surface a countdown to the user when OpenAI is rate-limited.
-        const retryAfterHeader = res.headers.get("Retry-After");
-
-        const data = (await res.json()) as {
-          ok?: boolean;
-          recipe?: ApiImportedRecipe;
-          message?: string;
-          imageUsed?: boolean;
-          error?: string;
-        };
-
-        if (!data.ok || !data.recipe) {
-          setState("error");
-          setError(userFacingImportError(data));
-          if (res.status === 429 || data.error === "ai_rate_limited") {
-            const sec = retryAfterHeader
-              ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
-              : 30;
-            setRetryAfterAt(Date.now() + sec * 1000);
-          }
-          return;
-        }
-        // Audit I05 (2026-05-05) — record the imageUsed signal so the
-        // preview can flag silent text-only fallback to the user.
-        setImageUsed(data.imageUsed);
-
-        console.log("[import] API response - calories:", data.recipe.calories,
-          "ingredientMacros:", data.recipe.ingredientMacros?.length,
-          "first:", JSON.stringify(data.recipe.ingredientMacros?.[0])?.substring(0, 100));
-
-        // Auto-classify meal type as default, let user edit
-        const ingredients = Array.isArray(data.recipe.ingredients)
-          ? data.recipe.ingredients.map(String)
-          : [];
-        const fromApi = data.recipe.mealType;
-        const allowed = /^(breakfast|lunch|dinner|snack)$/;
-        const fromApiNorm =
-          Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
-            ? fromApi
-                .map((x) => String(x).toLowerCase().trim())
-                .filter((x) => allowed.test(x))
-            : [];
-        const autoTags =
-          fromApiNorm.length > 0
-            ? fromApiNorm
-            : classifyMealType({
-                title: data.recipe.title ?? "",
-                ingredients,
-                caloriesPerServing: data.recipe.calories ?? null,
-              });
-        setMealTags(autoTags);
-        const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
-        setPendingRecipe(normalized);
-        setTitle(
-          decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"),
-        );
-        setState("review");
-      } catch {
+        const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed);
+        console.log("[import] API response - calories:", recipe.calories,
+          "ingredientMacros:", recipe.ingredientMacros?.length,
+          "first:", JSON.stringify(recipe.ingredientMacros?.[0])?.substring(0, 100));
+        applyImportedRecipeResult(recipe, used);
+      } catch (e) {
         setState("error");
-        setError(IMPORT_ERROR_COPY.network_error);
+        if (e instanceof ImportRunnerError) {
+          setError(IMPORT_ERROR_COPY[e.code]);
+        } else {
+          setError(IMPORT_ERROR_COPY.network_error);
+        }
       }
     },
-    [base, userId],
+    [base, userId, importProgressV2, importQueue, fetchImportedRecipe, applyImportedRecipeResult],
   );
 
   /**
@@ -609,6 +736,20 @@ export default function ImportSharedScreen() {
     // `manualUrl` is read for attribution (ENG-748 #13) — keep it in deps so
     // the handler captures the latest pasted value rather than a stale closure.
   }, [base, userId, manualUrl]);
+
+  /**
+   * Photo-import entry point (gap #3, 2026-06-09). Photo OCR is Pro-gated
+   * server-side (403 `pro_required`). Surface the gate before the tap: Free
+   * users route to the paywall; Pro users open the picker. Stops the
+   * tap-then-fail-at-request-time dead end for free users.
+   */
+  const onPhotoImportPress = useCallback(() => {
+    if (isFreeTier) {
+      router.push("/paywall?from=import_photo" as any);
+      return;
+    }
+    void runImageImport();
+  }, [isFreeTier, router, runImageImport]);
 
   useEffect(() => {
     if (!pendingRecipe || state !== "review") return;
@@ -947,11 +1088,12 @@ export default function ImportSharedScreen() {
     },
     backHit: { paddingVertical: 6, paddingHorizontal: 6 },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
+    // Top-bar title = section-eyebrow token (design-system §2.2): Inter 11pt,
+    // weight 600, +0.08em tracking, sage. The old 800/3px-tracking read as a
+    // shouty label rather than the calm editorial eyebrow used elsewhere.
     topTitle: {
-      color: Accent.primary,
-      fontSize: 13,
-      fontWeight: "800",
-      letterSpacing: 3,
+      ...Type.label,
+      color: colors.textSecondary,
     },
     scroll: {
       paddingHorizontal: Spacing.xl,
@@ -961,13 +1103,20 @@ export default function ImportSharedScreen() {
     },
     scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: 0 },
 
+    // SLOE DS reskin (2026-06-07): the import panel is a cream `surface-card`
+    // slab at the 24px Sloe radius (Radius.xl * 2); the panel title moves to
+    // the plum serif voice. Presentation only — the paste / parse / save logic
+    // is unchanged.
     panelCard: {
       alignSelf: "stretch",
       backgroundColor: colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl * 2,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: Spacing.xxxl,
+      // gap #8 — was Spacing.xxxl (40), far looser than the system card
+      // padding; the dead cream amplified the placeholder feel. Tightened to
+      // Spacing.xl (24) — the max the audit allows for any retained slab.
+      padding: Spacing.xl,
       alignItems: "center",
       gap: Spacing.md,
     },
@@ -976,10 +1125,11 @@ export default function ImportSharedScreen() {
     // pre-rebrand). See `apps/mobile/components/SupprMark.tsx`.
     loaderGap: { marginVertical: Spacing.sm },
     panelTitle: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: colors.text,
+      fontFamily: FontFamily.serifSemibold,
+      fontSize: 22,
+      color: colors.navPrimary,
       textAlign: "center",
+      letterSpacing: -0.3,
     },
     panelSub: {
       fontSize: 14,
@@ -992,7 +1142,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Accent.primary + "18",
+      backgroundColor: accent.primary + "18",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1004,22 +1154,26 @@ export default function ImportSharedScreen() {
       marginBottom: Spacing.sm,
     },
 
+    // SLOE DS (M6 import-success, frame 304:2): the success surface is a
+    // cream `surface-card` slab with the 24px Sloe radius and a soft
+    // plum-tinted lift. Sage check + sage kicker keep the "saved / on
+    // track" semantic; the recipe title moves to the plum serif voice.
     successSheet: {
       width: "100%",
       maxWidth: 400,
       alignSelf: "center",
       backgroundColor: colors.card,
-      borderRadius: Radius.xl,
+      borderRadius: Radius.xl * 2,
       borderWidth: 1,
       borderColor: Accent.success + "35",
       paddingVertical: Spacing.xxxl,
       paddingHorizontal: Spacing.xxl,
       alignItems: "center",
       gap: Spacing.md,
-      // subtle "sheet" depth
-      shadowColor: Accent.primary,
+      // subtle "sheet" depth — Sloe ink (plum) penumbra, not a cheap drop.
+      shadowColor: "#221B26",
       shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.16,
       shadowRadius: 24,
       elevation: 8,
     },
@@ -1033,12 +1187,14 @@ export default function ImportSharedScreen() {
       letterSpacing: 3,
       marginTop: Spacing.xs,
     },
+    // Plum serif recipe title — the Sloe display voice.
     successRecipeTitle: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.text,
+      fontFamily: FontFamily.serifSemibold,
+      fontSize: 24,
+      color: colors.navPrimary,
       textAlign: "center",
-      lineHeight: 28,
+      lineHeight: 30,
+      letterSpacing: -0.3,
       paddingHorizontal: Spacing.sm,
     },
     libraryChip: {
@@ -1060,14 +1216,17 @@ export default function ImportSharedScreen() {
       color: Accent.success,
     },
 
+    // Paste-link field — cream fill, Radius.xl (12) per spec §3.2 (was the
+    // orphan 16, off the sm4/md6/lg8/xl12/full scale). ~52px tall on the 4pt
+    // grid (paddingVertical Spacing.md + 16pt text).
     input: {
       alignSelf: "stretch",
       backgroundColor: colors.inputBg,
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: Spacing.lg,
-      paddingVertical: 14,
+      paddingVertical: Spacing.md,
       color: colors.text,
       fontSize: 16,
     },
@@ -1077,9 +1236,9 @@ export default function ImportSharedScreen() {
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      backgroundColor: Accent.primary,
-      borderRadius: Radius.md,
-      paddingVertical: 16,
+      backgroundColor: accent.primary,
+      borderRadius: Radius.xl,
+      paddingVertical: Spacing.md,
       marginTop: Spacing.xs,
     },
     btnPressed: { opacity: 0.88 },
@@ -1089,14 +1248,14 @@ export default function ImportSharedScreen() {
       alignSelf: "stretch",
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: 14,
-      borderRadius: Radius.md,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.xl,
       borderWidth: 1,
-      borderColor: Accent.primary + "55",
+      borderColor: accent.primary + "55",
       marginTop: Spacing.xs,
     },
-    outlineBtnPressed: { backgroundColor: Accent.primary + "12" },
-    outlineBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
+    outlineBtnPressed: { backgroundColor: accent.primary + "12" },
+    outlineBtnText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
       flexDirection: "row",
@@ -1105,60 +1264,113 @@ export default function ImportSharedScreen() {
       gap: 8,
       paddingVertical: Spacing.md,
     },
-    textLinkLabel: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
+    textLinkLabel: { color: accent.primary, fontWeight: "600", fontSize: 15 },
 
-    // Import from grid
-    importSourcesSection: {
-      gap: Spacing.sm,
-      marginBottom: Spacing.lg,
-    },
-    importSourcesLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-      letterSpacing: 0.5,
+    // Inline platform hint (gap #13) — calm advisory note, NOT a clay box.
+    // Design-system §6.2 'recovery / note' variant: white-on-card fill +
+    // 2pt sage left-border, Inter 12pt sage. Stops two clay elements (the old
+    // tinted hint + the Import CTA below it) stacking.
+    platformHint: {
+      alignSelf: "stretch",
+      marginTop: -Spacing.xs,
       marginBottom: Spacing.xs,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      backgroundColor: colors.card,
+      borderLeftWidth: 2,
+      borderLeftColor: Accent.success,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: Spacing.sm,
     },
-    importSourcesGrid: {
+    platformHintText: {
+      flex: 1,
+      color: Accent.successSolid,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+
+    // Section eyebrow (gap #5) — the design-system §2.2 section-eyebrow role:
+    // Inter 11pt, weight 600, +0.08em tracking, uppercase, sage. Shared by
+    // 'WORKS WITH' and 'RECENT IMPORTS' so all-caps labels read identically.
+    sectionEyebrow: {
+      ...Type.label,
+      color: colors.textSecondary,
+    },
+
+    // ── recipe-import-redesign: unboxed idle (design-system §3.2) ──
+    // The idle state renders header + paste-field + trust-chip row +
+    // recent-imports as DISTINCT sections on the white page ground. No outer
+    // panelCard slab. Sections are separated by Spacing.xxl via the scroll
+    // container's `gap`.
+    idleHeader: {
+      gap: Spacing.sm,
+    },
+    idleTitle: {
+      ...Type.title,
+      color: colors.navPrimary,
+    },
+    idleSub: {
+      ...Type.bodyMuted,
+      color: colors.textSecondary,
+    },
+    idlePasteSection: {
+      gap: Spacing.sm,
+    },
+    // Tertiary affordance rows below the field (clipboard / photo). Left-
+    // aligned text-link rows, not boxed buttons.
+    tertiaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm,
+    },
+    tertiaryLabel: {
+      ...Type.body,
+      color: accent.primary,
+    },
+    // Pro pill on the photo affordance (gap #3) — amber lock + "(Pro)" so the
+    // gate is visible before the tap. Amber background tint keeps the amber
+    // off white-text (accessibility: amber as fill, not text).
+    proPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.xs,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.warning + "1F",
+    },
+    proPillText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: Accent.warningSolid,
+    },
+
+    // Trust-affordance row (gap #2 + #9) — non-tappable "WORKS WITH" chips:
+    // small cream chips holding only the platform monogram. NOT buttons (the
+    // old tinted-icon grid was a fake four-way router). Calm + honest.
+    trustSection: {
+      gap: Spacing.sm,
+    },
+    trustChipsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: Spacing.md,
-    },
-    sourceButton: {
-      // Audit 2026-04-29 papercut #7: Instagram / YouTube labels were
-      // wrapping mid-word ("Instagr/am", "YouTu/be") because the
-      // button was too narrow at horizontal padding 14 + icon 32 +
-      // gap 8 (effective text width < label intrinsic width). Switch
-      // to `flex: 1` with a `minWidth` so 4 buttons distribute evenly
-      // across the row, drop horizontal padding from 14 to 8 to give
-      // the label more breathing room. Combined with `numberOfLines:
-      // 1` on the label, "Instagram" + "YouTube" fit cleanly.
-      flex: 1,
-      minWidth: 64,
-      backgroundColor: colors.card,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 8,
-      paddingVertical: 14,
-      alignItems: "center",
       gap: Spacing.sm,
     },
-    sourceButtonPressed: { opacity: 0.7 },
-    sourceIconBox: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      backgroundColor: Accent.primary + "22",
+    trustChip: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      gap: Spacing.xs,
+      height: 24,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.lg,
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
     },
-    sourceLabel: {
-      // Audit 2026-05-04 #35: at 13pt the "Instagram" label still
-      // truncated to "Instagr…" on narrower iPhones (16 Pro at 390pt
-      // gives ~80pt per button after grid gaps). Drop one step to
-      // 12pt — tighter than ideal but unambiguous, and the icon
-      // already carries the brand identity.
+    trustChipText: {
       fontSize: 12,
       fontWeight: "600",
       color: colors.text,
@@ -1168,12 +1380,6 @@ export default function ImportSharedScreen() {
     recentSection: {
       gap: Spacing.sm,
       marginBottom: Spacing.lg,
-    },
-    recentLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.textSecondary,
-      letterSpacing: 0.5,
     },
     recentItem: {
       flexDirection: "row",
@@ -1186,19 +1392,24 @@ export default function ImportSharedScreen() {
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
     },
+    // Neutral mono source badge (gap #10) — one calm treatment for all four
+    // source types (TT/IG/YT/W) per spec §3.2: cream fill, ink text, hairline
+    // border, 6px radius. Replaces the loud solid-black / IG-pink raw-brand
+    // hexes that sat outside the palette.
     recentBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.md,
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
     },
-    recentBadgeTT: { backgroundColor: "#000" },
-    recentBadgeIG: { backgroundColor: "#E4405F" },
     recentBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#fff",
+      color: colors.text,
     },
     recentInfo: { flex: 1 },
     recentTitle: {
@@ -1241,10 +1452,15 @@ export default function ImportSharedScreen() {
       color: colors.text,
     },
 
-    // Macro impact card
+    // Macro-check reassurance card (Figma 177:81) — the "how this fits your
+    // day" sage slab. Sloe 24px radius keeps it consistent with the cream
+    // panel it sits inside.
     macroCardContainer: {
+      alignSelf: "stretch",
       backgroundColor: Accent.success + "18",
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl * 2,
+      borderWidth: 1,
+      borderColor: Accent.success + "30",
       padding: Spacing.lg,
       marginBottom: Spacing.lg,
       gap: Spacing.sm,
@@ -1343,7 +1559,33 @@ export default function ImportSharedScreen() {
       color: colors.textSecondary,
       marginTop: 2,
     },
-  }), [colors]);
+  }), [colors, accent]);
+
+  /**
+   * Inline platform hint (audit I08, restyled gap #13). When the pasted URL is
+   * IG/TT/YouTube, surface a calm sage note pointing the user at the share-sheet
+   * caption flow (which respects the IG/TT legal posture in
+   * docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md by only
+   * feeding the LLM text the user actually shared). Detection runs live on
+   * every keystroke via the derived platform token. Shared by the redesigned
+   * + legacy idle paths so the hint stays identical across the flag.
+   */
+  const renderPlatformHint = () => {
+    const trimmed = manualUrl.trim();
+    if (!trimmed) return null;
+    const platform = detectSourcePlatform(trimmed);
+    if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
+    const platformLabel =
+      platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
+    return (
+      <View testID={`import-platform-hint-${platform}`} style={styles.platformHint}>
+        <Share2 size={16} color={Accent.success} style={{ marginTop: 1 }} />
+        <Text style={styles.platformHintText}>
+          {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Sloe — that captures the caption text directly.
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -1376,7 +1618,10 @@ export default function ImportSharedScreen() {
           </View>
         )}
 
-        {state === "importing" && (
+        {/* import-progress-v2 OFF → inline skeleton. ON → the persistent
+            ImportProgressDrawer (mounted below the ScrollView) carries
+            live per-stage progress + queue position instead. */}
+        {state === "importing" && !importProgressV2 && (
           <View style={styles.panelCard}>
             <Text style={[styles.panelTitle, { fontSize: 15, marginBottom: Spacing.xs }]}>
               Extracting recipe…
@@ -1403,7 +1648,7 @@ export default function ImportSharedScreen() {
                     : "logo-instagram"
               }
               size={36}
-              color={Accent.primary}
+              color={accent.primary}
             />
             <Text style={styles.panelTitle}>
               Import from {captionPlatform === "tiktok"
@@ -1489,7 +1734,7 @@ export default function ImportSharedScreen() {
 
         {(state === "review" || state === "saving") && pendingRecipe && (
           <View style={styles.panelCard}>
-            <Ionicons name="restaurant-outline" size={36} color={Accent.primary} />
+            <Ionicons name="restaurant-outline" size={36} color={accent.primary} />
             <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
@@ -1526,7 +1771,7 @@ export default function ImportSharedScreen() {
                     Per-serving macros scale when you change portions.
                   </Text>
                 </View>
-                <Ionicons name="create-outline" size={22} color={Accent.primary} />
+                <Ionicons name="create-outline" size={22} color={accent.primary} />
               </Pressable>
             ) : (
               <View style={{ alignSelf: "stretch", marginBottom: Spacing.md, gap: Spacing.sm }}>
@@ -1559,10 +1804,10 @@ export default function ImportSharedScreen() {
                     paddingVertical: 8,
                     paddingHorizontal: 14,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary + "18",
+                    backgroundColor: accent.primary + "18",
                   }}
                 >
-                  <Text style={{ color: Accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
+                  <Text style={{ color: accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
                 </Pressable>
               </View>
             )}
@@ -1749,7 +1994,7 @@ export default function ImportSharedScreen() {
               {decodeEntities(title)}
             </Text>
             <View style={styles.libraryChip}>
-              <Ionicons name="bookmark" size={18} color={Accent.primary} />
+              <Ionicons name="bookmark" size={18} color={accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
             </View>
             <Pressable
@@ -1763,7 +2008,7 @@ export default function ImportSharedScreen() {
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
             >
-              <Ionicons name="nutrition-outline" size={18} color={Accent.primary} style={{ marginRight: 6 }} />
+              <Ionicons name="nutrition-outline" size={18} color={accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
           </View>
@@ -1772,7 +2017,7 @@ export default function ImportSharedScreen() {
         {!authLoading && !userId && state === "idle" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="person-outline" size={40} color={Accent.primary} />
+              <Ionicons name="person-outline" size={40} color={accent.primary} />
             </View>
             <Text style={styles.panelTitle}>Sign in to import</Text>
             <Text style={styles.panelSub}>
@@ -1828,147 +2073,194 @@ export default function ImportSharedScreen() {
               </Text>
             </Pressable>
             <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+              <ClipboardIcon size={18} color={accent.primary} />
               <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
             </Pressable>
           </View>
         )}
 
         {!authLoading && userId && state === "idle" && (
-          <>
-            <View style={styles.panelCard}>
-              <SupprMark size={56} />
-              <Text style={styles.panelTitle}>Paste a recipe link</Text>
-              <Text style={styles.panelSub}>
-                From Instagram, TikTok, or any recipe site. If you just shared to Suppr, the link may already be on
-                your clipboard — tap below.
-              </Text>
-              <TextInput
-                value={manualUrl}
-                onChangeText={setManualUrl}
-                placeholder="https://…"
-                placeholderTextColor={colors.textTertiary}
-                style={styles.input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-              {/* Audit I08 (2026-05-05) — when the pasted URL is
-                  Instagram / TikTok / YouTube, surface an inline hint
-                  pointing the user at the share-sheet flow. The
-                  legacy URL importer still works (server scrapes
-                  og:title / og:description), but the share-sheet
-                  caption flow respects the IG/TT legal posture in
-                  docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md
-                  by only feeding the LLM text the user actually shared.
-                  Detection runs live on every keystroke via the derived
-                  platform token. */}
-              {(() => {
-                const trimmed = manualUrl.trim();
-                if (!trimmed) return null;
-                const platform = detectSourcePlatform(trimmed);
-                if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
-                const platformLabel =
-                  platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
-                return (
-                  <View
-                    testID={`import-platform-hint-${platform}`}
-                    style={{
-                      marginTop: -Spacing.xs,
-                      marginBottom: Spacing.xs,
-                      padding: Spacing.sm,
-                      borderRadius: Radius.sm,
-                      backgroundColor: Accent.primary + "12",
-                      borderWidth: 1,
-                      borderColor: Accent.primary + "33",
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 8,
-                    }}
-                  >
-                    <Ionicons name="share-outline" size={16} color={Accent.primary} style={{ marginTop: 2 }} />
-                    <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
-                      {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Suppr — that captures the caption text directly.
-                    </Text>
-                  </View>
-                );
-              })()}
-              <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-                <Text style={styles.primaryBtnText}>Import</Text>
-              </Pressable>
-              <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-                <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
-                <Text style={styles.textLinkLabel}>Use clipboard</Text>
-              </Pressable>
-              {ImagePicker && (
-                <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
-                  <Ionicons name="camera-outline" size={18} color={Accent.primary} />
-                  <Text style={styles.textLinkLabel}>Import from photo</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Import from sources */}
-            <View style={styles.importSourcesSection}>
-              <Text style={styles.importSourcesLabel}>IMPORT FROM</Text>
-              <View style={styles.importSourcesGrid}>
-                {[
-                  { icon: "logo-tiktok", label: "TikTok" },
-                  { icon: "logo-instagram", label: "Instagram" },
-                  { icon: "logo-youtube", label: "YouTube" },
-                  { icon: "globe-outline", label: "Website" },
-                ].map((source) => (
-                  <Pressable
-                    key={source.label}
-                    style={({ pressed }) => [
-                      styles.sourceButton,
-                      pressed && styles.sourceButtonPressed,
-                    ]}
-                    onPress={() => {
-                      // These trigger the paste/import flow
-                      onPasteFromClipboard();
-                    }}
-                  >
-                    <View style={styles.sourceIconBox}>
-                      <Ionicons
-                        name={source.icon as any}
-                        size={24}
-                        color={Accent.primary}
-                      />
-                    </View>
-                    <Text style={styles.sourceLabel} numberOfLines={1}>
-                      {source.label}
-                    </Text>
-                  </Pressable>
-                ))}
+          importRedesign ? (
+            /* ── recipe-import-redesign: unboxed editorial idle (§3.2) ──
+               Header + paste field + tertiary affordances + 'WORKS WITH'
+               trust-chip row + RECENT IMPORTS, each a distinct section on the
+               white page ground (sections separated by the scroll `gap`,
+               Spacing.xxl). No outer panelCard slab — that was the dominant
+               reason the surface read as a placeholder modal (gap #1). */
+            <>
+              {/* Header — serif H1 + sub-copy. The 'IMPORT' eyebrow already
+                  lives in the top bar, so the in-card wordmark is dropped on
+                  this sub-screen (gap #11). */}
+              <View style={styles.idleHeader}>
+                <Text style={styles.idleTitle}>Import a recipe</Text>
+                <Text style={styles.idleSub}>From any link, social post or website.</Text>
               </View>
-            </View>
 
-            {/* Recent imports */}
-            {recentImports.length > 0 && <View style={styles.recentSection}>
-              <Text style={styles.recentLabel}>RECENT IMPORTS</Text>
-              {recentImports.map((item, idx) => (
-                <View key={idx} style={styles.recentItem}>
-                  <View
-                    style={[
-                      styles.recentBadge,
-                      item.source === "tiktok"
-                        ? styles.recentBadgeTT
-                        : styles.recentBadgeIG,
-                    ]}
+              {/* Paste field + inline platform hint + Import + tertiary rows */}
+              <View style={styles.idlePasteSection}>
+                <TextInput
+                  value={manualUrl}
+                  onChangeText={setManualUrl}
+                  placeholder="https://…"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                {renderPlatformHint()}
+                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
+                  <Text style={styles.primaryBtnText}>Import</Text>
+                </Pressable>
+
+                {/* Tertiary affordances — left-aligned text-link rows below the
+                    field (gap #1). Lucide glyphs for the abstract controls
+                    (gap #6); brand monograms stay only on the trust chips. */}
+                <Pressable style={styles.tertiaryRow} onPress={onPasteFromClipboard} accessibilityRole="button">
+                  <ClipboardIcon size={18} color={accent.primary} />
+                  <Text style={styles.tertiaryLabel}>Use clipboard</Text>
+                </Pressable>
+                {ImagePicker && (
+                  <Pressable
+                    style={styles.tertiaryRow}
+                    onPress={onPhotoImportPress}
+                    accessibilityRole="button"
+                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                    testID="import-photo-affordance"
                   >
-                    <Text style={styles.recentBadgeText}>
-                      {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
-                    </Text>
-                  </View>
-                  <View style={styles.recentInfo}>
-                    <Text style={styles.recentTitle}>{item.name}</Text>
-                    <Text style={styles.recentTime}>{item.time}</Text>
-                  </View>
+                    <CameraIcon size={18} color={accent.primary} />
+                    <Text style={styles.tertiaryLabel}>Import from photo</Text>
+                    {isFreeTier && (
+                      <View style={styles.proPill}>
+                        <Lock size={12} color={Accent.warningSolid} />
+                        <Text style={styles.proPillText}>Pro</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Trust-affordance row (gap #2 + #9) — non-tappable. Honest:
+                  these are sources we work with, not four separate routes. */}
+              <View style={styles.trustSection}>
+                <Text style={styles.sectionEyebrow}>WORKS WITH</Text>
+                <View style={styles.trustChipsRow}>
+                  {[
+                    { mono: "TT", label: "TikTok" },
+                    { mono: "IG", label: "Instagram" },
+                    { mono: "YT", label: "YouTube" },
+                    { mono: "W", label: "Website" },
+                  ].map((s) => (
+                    <View key={s.label} style={styles.trustChip} accessibilityLabel={`Works with ${s.label}`}>
+                      <Text style={styles.trustChipText}>{s.mono}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>}
-          </>
+              </View>
+
+              {recentImports.length > 0 && (
+                <View style={styles.recentSection}>
+                  <Text style={styles.sectionEyebrow}>RECENT IMPORTS</Text>
+                  {recentImports.map((item, idx) => (
+                    <View key={idx} style={styles.recentItem}>
+                      <View style={styles.recentBadge}>
+                        <Text style={styles.recentBadgeText}>
+                          {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                        </Text>
+                      </View>
+                      <View style={styles.recentInfo}>
+                        <Text style={styles.recentTitle}>{item.name}</Text>
+                        <Text style={styles.recentTime}>{item.time}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            /* Legacy boxed idle (flag OFF) — kept alive until
+               recipe-import-redesign holds 100% for two weeks (CLAUDE.md). */
+            <>
+              <View style={styles.panelCard}>
+                <SupprMark size={56} />
+                <Text style={styles.panelTitle}>Paste a recipe link</Text>
+                <Text style={styles.panelSub}>
+                  From Instagram, TikTok, or any recipe site. If you just shared to Sloe, the link may already be on
+                  your clipboard — tap below.
+                </Text>
+                <TextInput
+                  value={manualUrl}
+                  onChangeText={setManualUrl}
+                  placeholder="https://…"
+                  placeholderTextColor={colors.textTertiary}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                {renderPlatformHint()}
+                <Pressable style={styles.primaryBtn} onPress={onManualImport}>
+                  <Text style={styles.primaryBtnText}>Import</Text>
+                </Pressable>
+                <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
+                  <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
+                  <Text style={styles.textLinkLabel}>Use clipboard</Text>
+                </Pressable>
+                {ImagePicker && (
+                  <Pressable
+                    style={styles.textLinkBtn}
+                    onPress={onPhotoImportPress}
+                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                  >
+                    <Ionicons name="camera-outline" size={18} color={accent.primary} />
+                    <Text style={styles.textLinkLabel}>Import from photo</Text>
+                    {isFreeTier && (
+                      <View style={styles.proPill}>
+                        <Lock size={12} color={Accent.warningSolid} />
+                        <Text style={styles.proPillText}>Pro</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Works-with trust chips (legacy path now shares the calm,
+                  non-tappable chip row + sage eyebrow — gap #2/#5/#9/#10). */}
+              <View style={[styles.trustSection, { marginBottom: Spacing.lg }]}>
+                <Text style={styles.sectionEyebrow}>WORKS WITH</Text>
+                <View style={styles.trustChipsRow}>
+                  {[
+                    { mono: "TT", label: "TikTok" },
+                    { mono: "IG", label: "Instagram" },
+                    { mono: "YT", label: "YouTube" },
+                    { mono: "W", label: "Website" },
+                  ].map((s) => (
+                    <View key={s.label} style={styles.trustChip} accessibilityLabel={`Works with ${s.label}`}>
+                      <Text style={styles.trustChipText}>{s.mono}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Recent imports */}
+              {recentImports.length > 0 && <View style={styles.recentSection}>
+                <Text style={styles.sectionEyebrow}>RECENT IMPORTS</Text>
+                {recentImports.map((item, idx) => (
+                  <View key={idx} style={styles.recentItem}>
+                    <View style={styles.recentBadge}>
+                      <Text style={styles.recentBadgeText}>
+                        {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                      </Text>
+                    </View>
+                    <View style={styles.recentInfo}>
+                      <Text style={styles.recentTitle}>{item.name}</Text>
+                      <Text style={styles.recentTime}>{item.time}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>}
+            </>
+          )
         )}
       </ScrollView>
 
@@ -2047,6 +2339,15 @@ export default function ImportSharedScreen() {
         onReset={() => setOverrideIngredientIdx(null)}
         colors={colors}
       />
+
+      {/* import-progress-v2 — persistent, non-blocking queue drawer anchored
+          above the footer. Renders nothing until there's import activity. */}
+      {importProgressV2 ? (
+        <ImportProgressDrawer
+          queue={importQueue}
+          onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

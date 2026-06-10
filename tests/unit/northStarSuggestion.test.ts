@@ -10,7 +10,7 @@
  *     - library is empty
  *     - remaining calories <= 0 (over-budget — caller renders calm caption)
  *     - all candidates are excluded
- *   - Returns the closest-fit recipe at a clamped portion multiplier.
+ *   - Returns the closest-fit recipe at its ACTUAL single serving.
  *   - Asymmetric calorie penalty (over > under).
  *   - Slot filter excludes recipes whose mealType doesn't match.
  *   - `detectSlotForHour` time-of-day branching matches spec §A-northstar.
@@ -18,6 +18,15 @@
  *   - `bandLabel` returns the spec copy for each band.
  *   - `NORTH_STAR_LIBRARY_MIN === 5` and `isLibraryEligibleForNorthStar`
  *     gates correctly (V-6 default).
+ *
+ * ENG-995 rebuild (2026-06-08) — three load-bearing correctness pins:
+ *   (a) a 573-kcal/serving recipe suggestion shows 573 (one serving),
+ *       identical to the recipe detail — no portion scaling;
+ *   (b) with a large morning `remaining`, the per-meal target is a
+ *       meal-sized share of the day (~slotShare · dayTarget), NOT the
+ *       whole day, and the chosen recipe is a sensible single meal;
+ *   (c) the suggestion is never more than one serving (portionMultiplier
+ *       is always 1).
  */
 
 import { describe, it, expect } from "vitest";
@@ -32,9 +41,12 @@ import {
   NORTH_STAR_LIBRARY_MIN,
   NORTH_STAR_LIBRARY_MIN_ACTIVATION,
   NORTH_STAR_ACTIVATION_WINDOW_DAYS,
+  NORTH_STAR_SLOT_SHARE,
+  NORTH_STAR_NO_SLOT_SHARE,
   isLibraryEligibleForNorthStar,
   isWithinNorthStarActivationWindow,
   type NorthStarRecipe,
+  type NorthStarRemaining,
 } from "../../src/lib/nutrition/northStarSuggestion";
 
 const mkRecipe = (over: Partial<NorthStarRecipe> = {}): NorthStarRecipe => ({
@@ -48,22 +60,37 @@ const mkRecipe = (over: Partial<NorthStarRecipe> = {}): NorthStarRecipe => ({
   mealType: over.mealType,
 });
 
+/**
+ * Build a `NorthStarRemaining`. ENG-995 added the required
+ * `dailyCalorieTarget` field; this helper defaults it to the remaining
+ * calories so legacy tests that model "the whole remaining day is the
+ * meal budget" (no slot) keep their exact semantics. Tests that need a
+ * morning-with-a-full-day case pass `dailyCalorieTarget` explicitly.
+ */
+const rem = (
+  r: Omit<NorthStarRemaining, "dailyCalorieTarget"> &
+    Partial<Pick<NorthStarRemaining, "dailyCalorieTarget">>,
+): NorthStarRemaining => ({
+  ...r,
+  dailyCalorieTarget: r.dailyCalorieTarget ?? r.calories,
+});
+
 describe("pickNorthStarSuggestion", () => {
   it("returns null on empty library", () => {
-    const result = pickNorthStarSuggestion([], { calories: 800, protein: 40, carbs: 100, fat: 30 });
+    const result = pickNorthStarSuggestion([], rem({ calories: 800, protein: 40, carbs: 100, fat: 30 }));
     expect(result).toBeNull();
   });
 
   it("returns null when remaining calories <= 0 (over-budget signal)", () => {
     const result = pickNorthStarSuggestion(
       [mkRecipe()],
-      { calories: 0, protein: 40, carbs: 100, fat: 30 },
+      rem({ calories: 0, protein: 40, carbs: 100, fat: 30 }),
     );
     expect(result).toBeNull();
 
     const result2 = pickNorthStarSuggestion(
       [mkRecipe()],
-      { calories: -50, protein: 40, carbs: 100, fat: 30 },
+      rem({ calories: -50, protein: 40, carbs: 100, fat: 30 }),
     );
     expect(result2).toBeNull();
   });
@@ -71,7 +98,7 @@ describe("pickNorthStarSuggestion", () => {
   it("returns null when remaining macros are not finite", () => {
     const result = pickNorthStarSuggestion(
       [mkRecipe()],
-      { calories: NaN, protein: 0, carbs: 0, fat: 0 },
+      rem({ calories: NaN, protein: 0, carbs: 0, fat: 0 }),
     );
     expect(result).toBeNull();
   });
@@ -82,26 +109,17 @@ describe("pickNorthStarSuggestion", () => {
       mkRecipe({ id: "b", calories: 800, protein: 50, carbs: 80, fat: 30 }),
       mkRecipe({ id: "c", calories: 200, protein: 10, carbs: 25, fat: 6 }),
     ];
-    const result = pickNorthStarSuggestion(recipes, {
+    // No slot → per-meal target = remaining (510), so band is the
+    // per-serving fit to 510. Recipe a (500) is within 5%.
+    const result = pickNorthStarSuggestion(recipes, rem({
       calories: 510,
       protein: 30,
       carbs: 55,
       fat: 18,
-    });
+    }));
     expect(result).not.toBeNull();
     expect(result!.recipe.id).toBe("a");
     expect(result!.band).toBe("tight");
-  });
-
-  it("scores 1× portion better than 2× when 1× already fits", () => {
-    const recipes = [mkRecipe({ id: "a", calories: 500, protein: 30, carbs: 50, fat: 18 })];
-    const result = pickNorthStarSuggestion(recipes, {
-      calories: 500,
-      protein: 30,
-      carbs: 50,
-      fat: 18,
-    });
-    expect(result!.portionMultiplier).toBe(1.0);
   });
 
   it("penalises over-shooting harder than under-shooting (asymmetric)", () => {
@@ -110,12 +128,12 @@ describe("pickNorthStarSuggestion", () => {
       mkRecipe({ id: "over", calories: 550, protein: 30, carbs: 50, fat: 18 }),
       mkRecipe({ id: "under", calories: 450, protein: 30, carbs: 50, fat: 18 }),
     ];
-    const result = pickNorthStarSuggestion(recipes, {
+    const result = pickNorthStarSuggestion(recipes, rem({
       calories: 500,
       protein: 30,
       carbs: 50,
       fat: 18,
-    });
+    }));
     expect(result!.recipe.id).toBe("under");
   });
 
@@ -126,7 +144,7 @@ describe("pickNorthStarSuggestion", () => {
     ];
     const result = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18 }),
       { excludeIds: new Set(["a"]) },
     );
     expect(result!.recipe.id).toBe("b");
@@ -139,7 +157,7 @@ describe("pickNorthStarSuggestion", () => {
     ];
     const result = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18, dailyCalorieTarget: 2000 }),
       { slot: "breakfast" },
     );
     expect(result!.recipe.id).toBe("breakfast");
@@ -149,7 +167,7 @@ describe("pickNorthStarSuggestion", () => {
     const recipes = [mkRecipe({ id: "untagged", calories: 500, mealType: null })];
     const result = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18, dailyCalorieTarget: 2000 }),
       { slot: "lunch" },
     );
     expect(result).not.toBeNull();
@@ -162,14 +180,14 @@ describe("pickNorthStarSuggestion", () => {
     ];
     const lunch = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18, dailyCalorieTarget: 2000 }),
       { slot: "lunch" },
     );
     expect(lunch?.recipe.id).toBe("multi");
 
     const breakfast = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18, dailyCalorieTarget: 2000 }),
       { slot: "breakfast" },
     );
     expect(breakfast).toBeNull();
@@ -179,9 +197,128 @@ describe("pickNorthStarSuggestion", () => {
     const recipes = [mkRecipe({ id: "bad", calories: 0 })];
     const result = pickNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18 }),
     );
     expect(result).toBeNull();
+  });
+});
+
+/* ───────────────── ENG-995 — actual servings + per-meal budget ──────── */
+
+describe("ENG-995: actual servings only (no portion scaling)", () => {
+  it("(a) shows the recipe's REAL per-serving calories — a 573-kcal recipe reads 573, not a scaled 860", () => {
+    // The founder bug: a 573-kcal/serving recipe displayed as 860 kcal
+    // (1.5× scaling). The card must now show exactly what the recipe
+    // detail shows — one serving.
+    const recipe = mkRecipe({
+      id: "steak-bowl",
+      calories: 573,
+      protein: 42,
+      carbs: 35,
+      fat: 28,
+    });
+    const result = pickNorthStarSuggestion(
+      [recipe],
+      // Plenty of room left, full day ahead — the old scorer would
+      // have scaled UP toward the remaining envelope.
+      rem({ calories: 1800, protein: 130, carbs: 200, fat: 60, dailyCalorieTarget: 2000 }),
+      { slot: "dinner" },
+    );
+    expect(result).not.toBeNull();
+    // Predicted == recipe per-serving, identical to recipe detail.
+    expect(result!.predictedCalories).toBe(573);
+    expect(result!.predictedProtein).toBe(42);
+    expect(result!.predictedCarbs).toBe(35);
+    expect(result!.predictedFat).toBe(28);
+    // And it is exactly one serving.
+    expect(result!.portionMultiplier).toBe(1);
+  });
+
+  it("(c) never produces a portion greater than one serving, even with a huge remaining envelope", () => {
+    // Spread a range of recipe sizes; whichever wins, it must be a
+    // single serving. Pre-ENG-995 this could return a 2× portion.
+    const recipes = [
+      mkRecipe({ id: "small", calories: 220, protein: 12, carbs: 24, fat: 7 }),
+      mkRecipe({ id: "mid", calories: 540, protein: 35, carbs: 48, fat: 20 }),
+      mkRecipe({ id: "large", calories: 760, protein: 50, carbs: 70, fat: 30 }),
+    ];
+    const result = pickNorthStarSuggestion(
+      recipes,
+      // 2,400 kcal left at the start of the day — the whole-day scorer
+      // would have reached for a double portion to "fill" it.
+      rem({ calories: 2400, protein: 180, carbs: 260, fat: 80, dailyCalorieTarget: 2400 }),
+      { slot: "lunch" },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.portionMultiplier).toBe(1);
+    // Predicted calories equal the chosen recipe's single serving.
+    expect(result!.predictedCalories).toBe(result!.recipe.calories);
+  });
+
+  it("(b) in the morning with a full day left, picks a meal-sized recipe, not the recipe nearest the whole day", () => {
+    // The decisive behaviour fix. Day target 2,400; nothing logged, so
+    // the whole 2,400 is remaining. A normal lunch should be ~35% of
+    // that (~840 kcal), NOT a 1,900-kcal mega-meal sized to the day.
+    const normalMeal = mkRecipe({ id: "salad-bowl", calories: 620, protein: 38, carbs: 55, fat: 22 });
+    const megaMeal = mkRecipe({ id: "mega-roast", calories: 1900, protein: 90, carbs: 150, fat: 95 });
+    const result = pickNorthStarSuggestion(
+      [normalMeal, megaMeal],
+      rem({ calories: 2400, protein: 180, carbs: 260, fat: 80, dailyCalorieTarget: 2400 }),
+      { slot: "lunch" },
+    );
+    expect(result).not.toBeNull();
+    // The normal meal must win — it sits near the per-meal budget
+    // (0.35 · 2400 = 840), whereas the mega-meal blows ~2.3× past it.
+    expect(result!.recipe.id).toBe("salad-bowl");
+  });
+
+  it("(b) per-meal budget tracks slotShare · dayTarget when the day is wide open", () => {
+    // White-box check on the band: with a single recipe sitting exactly
+    // on the lunch budget (0.35 · 2000 = 700), the band must read tight
+    // even though remaining (2000) is far larger than the recipe.
+    const onBudget = mkRecipe({ id: "on", calories: 700, protein: 45, carbs: 60, fat: 24 });
+    const result = pickNorthStarSuggestion(
+      [onBudget],
+      rem({ calories: 2000, protein: 150, carbs: 220, fat: 70, dailyCalorieTarget: 2000 }),
+      { slot: "lunch" },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.recipe.id).toBe("on");
+    // Lands on the per-meal target → tight, NOT measured against 2000.
+    expect(result!.band).toBe("tight");
+    // calorieDelta is distance from the per-meal target (700), so ~0 —
+    // proving the score is vs the meal budget, not the 2000 remaining.
+    expect(Math.abs(result!.calorieDelta)).toBeLessThanOrEqual(35);
+  });
+
+  it("(b) late in the day with little left, the per-meal budget caps at remaining", () => {
+    // Only 300 kcal left. Even a normally lunch-sized recipe is too big;
+    // the small one wins because the budget is capped at remaining (300),
+    // not slotShare · dayTarget (which would be 700).
+    const small = mkRecipe({ id: "small", calories: 290, protein: 22, carbs: 24, fat: 9 });
+    const lunchSized = mkRecipe({ id: "lunchy", calories: 680, protein: 42, carbs: 58, fat: 22 });
+    const result = pickNorthStarSuggestion(
+      [small, lunchSized],
+      rem({ calories: 300, protein: 30, carbs: 30, fat: 10, dailyCalorieTarget: 2000 }),
+      { slot: "lunch" },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.recipe.id).toBe("small");
+    // Within 5% of the capped 300 budget → tight.
+    expect(result!.band).toBe("tight");
+  });
+});
+
+describe("slot-share constants (ENG-995 — tunable)", () => {
+  it("default slot shares match the documented split", () => {
+    expect(NORTH_STAR_SLOT_SHARE.breakfast).toBe(0.25);
+    expect(NORTH_STAR_SLOT_SHARE.lunch).toBe(0.35);
+    expect(NORTH_STAR_SLOT_SHARE.dinner).toBe(0.35);
+    expect(NORTH_STAR_SLOT_SHARE.snack).toBe(0.1);
+  });
+
+  it("no-slot share is the whole remaining day", () => {
+    expect(NORTH_STAR_NO_SLOT_SHARE).toBe(1.0);
   });
 });
 
@@ -194,7 +331,7 @@ describe("pickNextNorthStarSuggestion (skip flow)", () => {
     ];
     const next = pickNextNorthStarSuggestion(
       recipes,
-      { calories: 500, protein: 30, carbs: 50, fat: 18 },
+      rem({ calories: 500, protein: 30, carbs: 50, fat: 18 }),
       new Set(["first"]),
     );
     expect(next!.recipe.id).toBe("second");
@@ -388,9 +525,9 @@ describe("activation-window threshold (audit 2026-04-30 leak fix #5)", () => {
 
 describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
   it("returns the protein+calorie why-line when both fit", () => {
-    // Picking a recipe at 480 kcal vs 500 remaining → cal delta 20
-    // (4% — calorieFits=true). Protein 32g vs remaining 35g → 91%
-    // filled (proteinFits=true).
+    // Picking a recipe at 480 kcal vs 500 remaining → per-meal target
+    // 500 (no slot), cal delta 20 (4% — band tight, calorieFits=true).
+    // Protein 32g vs remaining 35g → 91% filled (proteinFits=true).
     const recipes: NorthStarRecipe[] = [
       {
         id: "a",
@@ -401,7 +538,7 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
         fat: 18,
       },
     ];
-    const remaining = { calories: 500, protein: 35, carbs: 60, fat: 20 };
+    const remaining = rem({ calories: 500, protein: 35, carbs: 60, fat: 20 });
     const suggestion = pickNorthStarSuggestion(recipes, remaining);
     expect(suggestion).not.toBeNull();
     const line = whyLineForSuggestion(suggestion!, remaining);
@@ -409,8 +546,10 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
   });
 
   it("returns the protein-only why-line when calorie fit is loose", () => {
-    // 600 cal vs 500 remaining → cal delta 100 (20% — calorieFits=false).
+    // 600 cal vs 500 remaining → per-meal target 500 (no slot), cal
+    // delta 100 (20% — band loose, calorieFits=false).
     // 35g protein vs 35g remaining → 100% filled (proteinFits=true).
+    const remaining = rem({ calories: 500, protein: 35, carbs: 60, fat: 20 });
     const suggestion = pickNorthStarSuggestion(
       [
         {
@@ -422,22 +561,19 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
           fat: 22,
         },
       ],
-      { calories: 500, protein: 35, carbs: 60, fat: 20 },
+      remaining,
     );
     expect(suggestion).not.toBeNull();
-    const line = whyLineForSuggestion(suggestion!, {
-      calories: 500,
-      protein: 35,
-      carbs: 60,
-      fat: 20,
-    });
+    const line = whyLineForSuggestion(suggestion!, remaining);
     expect(line).toBe("Fits your remaining 35g protein");
   });
 
   it("falls back to the calorie why-line when protein fit is weak", () => {
-    // 500 cal vs 500 remaining → cal delta 0 (0% — calorieFits=true).
+    // 500 cal vs 500 remaining → per-meal target 500, cal delta 0 (band
+    // tight, calorieFits=true).
     // 5g protein vs 35g remaining → 14% filled (proteinFits=false because
     // remaining.protein >= 10 but filledProteinFraction < 0.8).
+    const remaining = rem({ calories: 500, protein: 35, carbs: 60, fat: 20 });
     const suggestion = pickNorthStarSuggestion(
       [
         {
@@ -449,15 +585,10 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
           fat: 18,
         },
       ],
-      { calories: 500, protein: 35, carbs: 60, fat: 20 },
+      remaining,
     );
     expect(suggestion).not.toBeNull();
-    const line = whyLineForSuggestion(suggestion!, {
-      calories: 500,
-      protein: 35,
-      carbs: 60,
-      fat: 20,
-    });
+    const line = whyLineForSuggestion(suggestion!, remaining);
     expect(line).toBe("Fits your remaining 500 kcal");
   });
 
@@ -465,6 +596,7 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
     // The protein-fits gate requires remaining.protein >= 10 — so a user
     // with only 5g of protein left should never see the protein why-line
     // even if the suggestion's protein delivery is close to that gap.
+    const remaining = rem({ calories: 500, protein: 5, carbs: 60, fat: 20 });
     const suggestion = pickNorthStarSuggestion(
       [
         {
@@ -476,15 +608,10 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
           fat: 18,
         },
       ],
-      { calories: 500, protein: 5, carbs: 60, fat: 20 },
+      remaining,
     );
     expect(suggestion).not.toBeNull();
-    const line = whyLineForSuggestion(suggestion!, {
-      calories: 500,
-      protein: 5,
-      carbs: 60,
-      fat: 20,
-    });
+    const line = whyLineForSuggestion(suggestion!, remaining);
     expect(line).toBe("Fits your remaining 500 kcal");
   });
 
@@ -501,7 +628,7 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
         carbs: 50,
         fat: 18,
       },
-      portionMultiplier: 1.0,
+      portionMultiplier: 1,
       predictedCalories: 500,
       predictedProtein: 30,
       predictedCarbs: 50,
@@ -510,18 +637,19 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
       band: "tight" as const,
       score: 0,
     };
-    const line = whyLineForSuggestion(fakeSuggestion, {
+    const line = whyLineForSuggestion(fakeSuggestion, rem({
       calories: 0,
       protein: 30,
       carbs: 50,
       fat: 18,
-    });
+    }));
     expect(line).toBe("Fits your remaining macros");
   });
 
   it("never returns an empty string", () => {
     // Brittleness check — every branch must return a non-empty,
     // user-readable string.
+    const remaining = rem({ calories: 1000, protein: 50, carbs: 120, fat: 30 });
     const suggestion = pickNorthStarSuggestion(
       [
         {
@@ -533,15 +661,10 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
           fat: 4,
         },
       ],
-      { calories: 1000, protein: 50, carbs: 120, fat: 30 },
+      remaining,
     );
     expect(suggestion).not.toBeNull();
-    const line = whyLineForSuggestion(suggestion!, {
-      calories: 1000,
-      protein: 50,
-      carbs: 120,
-      fat: 30,
-    });
+    const line = whyLineForSuggestion(suggestion!, remaining);
     expect(line.length).toBeGreaterThan(0);
   });
 });

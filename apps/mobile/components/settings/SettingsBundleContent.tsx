@@ -51,15 +51,16 @@ import {
   Square,
   Sun,
   Timer,
-  Trash2,
+  User,
   Users,
   Wine,
   type LucideIcon,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { GradientAvatar } from "@/components/GradientAvatar";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -72,6 +73,7 @@ import {
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
 import { supabase } from "@/lib/supabase";
+import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
@@ -83,6 +85,7 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { saveDisplayName } from "@suppr/shared/account/displayName";
 import { track } from "@/lib/analytics";
 import {
   nutritionLogToCsv,
@@ -129,6 +132,15 @@ type Context = "more" | "settings";
 
 const HOUSEHOLD_ROW_TEST_ID = "settings-household-row";
 
+/**
+ * Sloe warm-slab corner radius for every Settings section card — the
+ * canonical `CARD_RADIUS` (24) from `SupprCard`, mirroring web
+ * `var(--radius-card-lg)`. Bumped from the legacy 14 in the Settings
+ * reskin so the cards carry the same rounded slab silhouette as the
+ * Today / Recipes cards (Figma 09 Settings `335:2`).
+ */
+const SETTINGS_CARD_RADIUS = CARD_RADIUS;
+
 function IconBox({
   color,
   size = 36,
@@ -138,13 +150,23 @@ function IconBox({
   size?: number;
   children: React.ReactNode;
 }) {
+  const colors = useThemeColors();
+  // Sloe DS (Figma 09 Settings `335:2`): every settings-row glyph sits
+  // in a WHITE circle with a hairline outline (not a colour-tinted
+  // rounded square). The circle reads as a quiet container; the glyph
+  // itself carries any semantic colour the caller passes (e.g. clay
+  // for nav rows, sage for Apple Health, red for delete). `color` is
+  // intentionally NOT used as a fill any more — the frame's plates are
+  // uniform white with a `cardBorder` ring.
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
-        backgroundColor: color + "18",
+        borderRadius: size / 2,
+        backgroundColor: colors.background,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -155,16 +177,29 @@ function IconBox({
 }
 
 function SectionHeading({ title }: { title: string }) {
+  const accent = useAccent();
   const colors = useThemeColors();
+  // Sloe DS (Figma 09 Settings `335:2`): section headers are small
+  // ALL-CAPS grey eyebrows (GOALS & TARGETS / DISPLAY / CONNECTIONS /
+  // REMINDERS / ACCOUNT), letter-spaced — the iOS-grouped-list pattern
+  // in the frame. Was Newsreader serif plum 19px; the uppercase eyebrow
+  // groups more aggressively + reads faster (design-system §2.2
+  // `section-eyebrow`: Inter 10–11pt, +0.08em tracking, muted). The
+  // serif plum is reserved for the screen title + profile name.
   return (
     <Text
+      accessibilityRole="header"
       style={{
-        fontSize: 14,
-        fontWeight: "700",
-        color: colors.text,
-        letterSpacing: -0.1,
-        marginTop: 22,
-        marginBottom: 10,
+        fontFamily: FontFamily.sansSemibold,
+        fontSize: 11,
+        lineHeight: 14,
+        fontWeight: "600",
+        color: colors.textSecondary,
+        letterSpacing: 0.9,
+        textTransform: "uppercase",
+        marginTop: 24,
+        marginBottom: 8,
+        marginLeft: 2,
       }}
     >
       {title}
@@ -205,7 +240,14 @@ function SettingsCard({
   flashStyle?: import("react-native").ViewStyle;
 }) {
   const colors = useThemeColors();
-  const { shadowStyle, useBorder, liftBg } = useCardElevation();
+  // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
+  // soft-elevation.md): every Settings section card sits directly on the page
+  // ground, so it takes the SOFT lift (light → cardSoft penumbra; dark → tonal
+  // lift + hairline) rather than the flat slab. Was `useCardElevation()` (flat,
+  // the 2026-06-04 slabs era) — flat re-introduced the "cards blend into the
+  // page" read on the near-tonal #F6F5F2-on-#FFFFFF pairing. Mirrors web
+  // `.card-slab` on the Settings section cards.
+  const { shadowStyle, useBorder, liftBg } = useCardElevation({ variant: "soft" });
 
   const inner = (
     <View
@@ -213,7 +255,10 @@ function SettingsCard({
       style={[
         {
           backgroundColor: liftBg ?? colors.card,
-          borderRadius: 14,
+          // Sloe warm-slab corner — 24px (mirrors web
+          // `var(--radius-card-lg)` + mobile `CARD_RADIUS`/`TILE_RADIUS`).
+          // Was 14 (the IA + palette drift the Settings reskin closes).
+          borderRadius: SETTINGS_CARD_RADIUS,
           borderWidth: useBorder ? 1 : 0,
           borderColor: colors.cardBorder,
           overflow: "hidden",
@@ -229,7 +274,11 @@ function SettingsCard({
   // Light soft-elevation: shadow must live on a non-clipping outer wrapper so
   // iOS doesn't clip it. Dark / flag-off: no shadow → render the card directly.
   if (shadowStyle) {
-    return <View style={[shadowStyle, { borderRadius: 14 }]}>{inner}</View>;
+    return (
+      <View style={[shadowStyle, { borderRadius: SETTINGS_CARD_RADIUS }]}>
+        {inner}
+      </View>
+    );
   }
   return inner;
 }
@@ -260,6 +309,7 @@ function SegmentedRow({
   colors: ReturnType<typeof useThemeColors>;
   testID?: string;
 }) {
+  const accent = useAccent();
   return (
     <View
       style={{
@@ -321,6 +371,8 @@ function SegmentedRow({
                 flex: 1,
                 paddingVertical: 6,
                 borderRadius: 6,
+                // Active segment — white lift on the warm-grey rail (Sloe
+                // treatment #8, 2026-06-08).
                 backgroundColor: active ? colors.card : "transparent",
                 alignItems: "center",
               }}
@@ -329,7 +381,9 @@ function SegmentedRow({
                 style={{
                   fontSize: 12,
                   fontWeight: active ? "700" : "500",
-                  color: active ? colors.text : colors.textSecondary,
+                  // Active label reads in `accent.primarySolid` (aubergine);
+                  // inactive stays muted on the rail (treatment #8).
+                  color: active ? accent.primarySolid : colors.textSecondary,
                 }}
               >
                 {opt.label}
@@ -441,6 +495,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const router = useRouter();
   const { session } = useAuth();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the Pro/upgrade
+  // affordances, settings-toggle switch tracks, section accents, and primary
+  // CTAs. Destructive actions (sign out / delete) keep `Accent.destructive`;
+  // status keeps success/warning; macros keep `MacroColors`.
+  const accent = useAccent();
+  // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
+  // tiles (Recipes / Streak), matching the SettingsCard sections around them.
+  const statTileElevation = useCardElevation({ variant: "soft" });
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -674,6 +736,86 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     };
   }, [userId]);
 
+  // "Your name" — personalises the Today greeting ("Morning, Grace").
+  // Source of truth is the Supabase auth user's
+  // `user_metadata.full_name`; the greeting (`apps/mobile/app/(tabs)/index.tsx`)
+  // reads it via `firstNameFromMetadata`. We pre-fill the input from the
+  // CURRENT metadata (full name, not just the first token, so the user can
+  // edit "Grace Turner" rather than losing the surname) and write back on
+  // commit via `supabase.auth.updateUser`. Allowing an empty value clears
+  // the name so the greeting falls back to "Good morning".
+  const metadataFullName = (() => {
+    const meta = (session?.user?.user_metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+    for (const key of [
+      "full_name",
+      "name",
+      "first_name",
+      "preferred_name",
+    ] as const) {
+      const v = meta[key];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return "";
+  })();
+  const [nameInput, setNameInput] = useState(metadataFullName);
+  const [nameSaving, setNameSaving] = useState(false);
+  // Re-seed the input when the session metadata changes underneath us
+  // (e.g. another device updated it, or the post-save session refresh
+  // lands) — but never clobber an in-flight edit the user is mid-typing.
+  const nameDirtyRef = useRef(false);
+  useEffect(() => {
+    if (nameDirtyRef.current) return;
+    setNameInput(metadataFullName);
+  }, [metadataFullName]);
+
+  /**
+   * Persist the display name to the auth user's `user_metadata.full_name`
+   * (NOT a `profiles` column — the tier-lockdown trigger rejects rows that
+   * touch entitlement columns, and the greeting reads metadata anyway).
+   * Trims input; an empty/whitespace value clears the name so the greeting
+   * falls back to "Good morning". After a successful write we force a
+   * session refresh so the Today greeting re-renders without an app
+   * restart (the auth context's `onAuthStateChange` re-emits the session).
+   * No-ops when the trimmed value already matches what's stored.
+   */
+  const handleSaveName = useCallback(async () => {
+    if (!userId) return;
+    if (nameSaving) return;
+    setNameSaving(true);
+    try {
+      const result = await saveDisplayName(
+        supabase,
+        nameInput,
+        metadataFullName,
+      );
+      if (!result.ok) {
+        Alert.alert("Couldn't save your name", result.message);
+        return;
+      }
+      nameDirtyRef.current = false;
+      // Normalise the visible value (strip trailing spaces) regardless of
+      // whether a write happened.
+      setNameInput(result.value);
+      if (result.changed) {
+        // Refresh the in-memory session so the greeting picks up the new
+        // metadata immediately. `getSession()` re-reads from local storage
+        // (which updateUser has already written), and the auth context's
+        // listener fans the fresh session out to Today.
+        try {
+          await supabase.auth.getSession();
+        } catch {
+          // Non-fatal: updateUser fired USER_UPDATED which the auth context
+          // also listens for, so the greeting still refreshes.
+        }
+      }
+    } finally {
+      setNameSaving(false);
+    }
+  }, [userId, nameSaving, nameInput, metadataFullName]);
+
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   // 2026-05-12 (premium-bar audit DC9): type-confirm gate for the
@@ -898,7 +1040,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     await Linking.openURL(url).catch(() => {
       Alert.alert(
         "Couldn't open subscription settings",
-        "Manage your Suppr subscription from the App Store / Play Store app.",
+        "Manage your Sloe subscription from the App Store / Play Store app.",
       );
     });
   }, []);
@@ -919,6 +1061,88 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     });
     setCancelPromptOpen(true);
   }, [profileData.userTier]);
+
+  /**
+   * Delete account — Sloe DS (Figma 09 Settings `335:2`) renders this as a
+   * centered clay "Delete account" text at the very bottom (not a
+   * destructive card row). Extracted from the inline Danger-zone row
+   * onPress (unchanged flow) so the centered affordance can call it.
+   * Two-step deliberate confirm: an explainer Alert → a typed-"delete"
+   * prompt → `DELETE /api/account/delete` with the bearer token → sign
+   * out. Pinned by `settingsBundleParity.test.ts`.
+   */
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      "Delete your account?",
+      "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "I want to delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.prompt?.(
+              "Type 'delete' to confirm",
+              "We won't be able to recover this account.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete account",
+                  style: "destructive",
+                  onPress: async (text?: string) => {
+                    // P1-7 (2026-05-01) — the compare lowercases the
+                    // typed input so "Delete" / "DELETE" both work.
+                    if ((text ?? "").trim().toLowerCase() !== "delete") {
+                      Alert.alert(
+                        "Not deleted",
+                        "Type the word delete to confirm.",
+                      );
+                      return;
+                    }
+                    try {
+                      const { data: sessionData } =
+                        await supabase.auth.getSession();
+                      const token = sessionData?.session?.access_token;
+                      const base = getSupprWebBase();
+                      if (!base) {
+                        Alert.alert(
+                          "Error",
+                          "API URL not configured. Please contact support.",
+                        );
+                        return;
+                      }
+                      const res = await fetch(`${base}/api/account/delete`, {
+                        method: "DELETE",
+                        headers: token
+                          ? { Authorization: `Bearer ${token}` }
+                          : {},
+                      });
+                      const json = await res.json();
+                      if (json.ok) {
+                        await supabase.auth.signOut();
+                        Alert.alert(
+                          "Account deleted",
+                          "Your account has been permanently deleted.",
+                        );
+                      } else {
+                        Alert.alert(
+                          "Deletion failed",
+                          json.error || "Please try again.",
+                        );
+                      }
+                    } catch {
+                      Alert.alert("Deletion failed", "Please try again later.");
+                    }
+                  },
+                },
+              ],
+              "plain-text",
+            );
+          },
+        },
+      ],
+    );
+  }, []);
 
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
@@ -1262,12 +1486,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
   const t = useMemo(
     () => ({
-      accent: Accent.primary,
+      accent: accent.primary,
       green: Accent.success,
       amber: Accent.warning,
       red: Accent.destructive,
     }),
-    [],
+    [accent],
   );
 
   const avatarInitial = (
@@ -1278,73 +1502,148 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     .toString()
     .toUpperCase();
   const displayName =
-    session?.user?.user_metadata?.display_name ??
-    session?.user?.email?.split("@")[0] ??
+    // Prefer the name the user actually set (the same metadata the Today
+    // greeting + "Your name" field resolve, via metadataFullName) before
+    // falling back to the email local-part — otherwise the header showed an
+    // ugly lowercase handle ("gracemturner") while the greeting said "Grace".
+    session?.user?.user_metadata?.display_name ||
+    metadataFullName ||
+    session?.user?.email?.split("@")[0] ||
     "Your Profile";
   // Base tier collapsed into Free post-Free+Pro consolidation; legacy
-  // `userTier === "base"` rows render as "Free".
+  // `userTier === "base"` rows render as "Free". Drives both the profile
+  // plan label ("Free plan" / "Pro plan") and the Sloe Pro banner action.
   const tierLabel = profileData.userTier === "pro" ? "Pro" : "Free";
-  const tierBadgeColor =
-    profileData.userTier === "pro" ? Accent.primary : colors.textSecondary;
-  const joinedLabel = (() => {
-    const createdAt = session?.user?.created_at;
-    if (!createdAt) return "Joined recently";
-    const d = new Date(createdAt);
-    const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
-    if (diffDays < 7) return "Joined this week";
-    if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
-    if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
-    return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
-  })();
 
   return (
     <>
-      {/* Profile card */}
-      <SettingsCard
+      {/* Profile row — Sloe DS (Figma 09 Settings `335:2`): plum filled
+          circle avatar (white serif initial) + name in Newsreader serif
+          + plan label ("Free plan" / "Pro plan") in grey, sitting
+          directly on the white page (no card chrome). The whole row taps
+          through to /profile (the full editor). Tier is shown as the
+          plan-label line, not a pill — the frame leads with identity,
+          not a status marker. */}
+      <Pressable
+        testID="settings-profile-row"
+        accessibilityRole="button"
+        accessibilityLabel="Edit profile"
+        onPress={() => router.push("/profile" as any)}
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 14,
-          padding: 14,
-          marginBottom: 4,
+          gap: 16,
+          paddingVertical: 8,
+          marginTop: 4,
         }}
       >
-        <GradientAvatar
-          size={52}
-          initial={avatarInitial}
-          fontSize={18}
-          gradientIdSuffix={`${context}-card`}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>
-            {displayName}
-          </Text>
-          <Text
-            style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
-          >
-            {tierLabel} tier · {joinedLabel}
-          </Text>
-        </View>
         <View
           style={{
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 999,
-            backgroundColor: tierBadgeColor + "1a",
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.navPrimary,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Text
             style={{
-              fontSize: 11,
-              fontWeight: "700",
-              color: tierBadgeColor,
-              letterSpacing: 0.2,
+              fontFamily: FontFamily.serifSemibold,
+              fontSize: 22,
+              fontWeight: "600",
+              color: "#fff",
             }}
           >
-            {tierLabel}
+            {avatarInitial}
           </Text>
         </View>
-      </SettingsCard>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontFamily: FontFamily.serifSemibold,
+              fontSize: 24,
+              lineHeight: 28,
+              fontWeight: "600",
+              color: colors.text,
+              letterSpacing: -0.3,
+            }}
+            numberOfLines={1}
+          >
+            {displayName}
+          </Text>
+          <Text
+            style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
+          >
+            {tierLabel === "Pro" ? "Pro plan" : "Free plan"}
+          </Text>
+        </View>
+      </Pressable>
+
+      {/* Sloe Pro upsell banner — Figma 09 Settings `335:2` / `335:23`.
+          Full-width aubergine soft-tint rounded card: sparkle + "Sloe Pro"
+          on the left, a "Manage" OUTLINE pill on the right. For free/base
+          users "Manage" routes to the paywall (upgrade); for Pro users it
+          opens the existing manage-subscription flow (RevenueCat customer
+          center). The detailed upgrade/manage/promo rows still live in the
+          Membership card below — this banner is the at-a-glance entry.
+          2026-06-08: the card tint moved off the hardcoded clay rgba to
+          `accent.primarySoft` (Pro = the brand aubergine, treatment #9), and
+          the "Manage" text became an aubergine OUTLINE pill (treatment #1)
+          so the action reads as a button, not flat coloured text. Matches
+          the web banner (`Settings.tsx` — `--primary` 16% tint). */}
+      <Pressable
+        testID="settings-sloe-pro-banner"
+        accessibilityRole="button"
+        accessibilityLabel={
+          profileData.userTier === "pro"
+            ? "Manage your Sloe Pro subscription"
+            : "Get Sloe Pro"
+        }
+        onPress={() => {
+          if (profileData.userTier === "pro") {
+            void handleManageSubscription();
+          } else {
+            router.push("/paywall?from=settings" as any);
+          }
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: 16,
+          paddingHorizontal: 16,
+          borderRadius: SETTINGS_CARD_RADIUS,
+          backgroundColor: accent.primarySoft,
+          marginTop: 18,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: accent.primarySolid,
+            }}
+          >
+            Sloe Pro
+          </Text>
+        </View>
+        <View
+          style={{
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: Radius.full,
+            borderWidth: 1.5,
+            borderColor: accent.primarySolid,
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
+            Manage
+          </Text>
+        </View>
+      </Pressable>
 
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-22 subtractive: hide tiles whose value is zero
@@ -1367,15 +1666,24 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           ).map(([v, l, c]) => (
             <Pressable
               key={l}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 12,
-                borderRadius: 14,
-                backgroundColor: colors.inputBg,
-                borderWidth: 1,
-                borderColor: c + "55",
-              }}
+              // One-card-treatment (2026-06-09): the stat tile sits on the
+              // page ground, so it takes the same soft card chrome as its
+              // siblings — standard card fill + soft lift — instead of the
+              // bespoke tinted-border inputBg chip that read as one-off
+              // "dead chrome" next to the lifted cards around it. The
+              // accent lives in the numeral, not the border.
+              style={[
+                {
+                  flex: 1,
+                  alignItems: "center",
+                  paddingVertical: 12,
+                  borderRadius: 16,
+                  backgroundColor: statTileElevation.liftBg ?? colors.card,
+                  borderWidth: statTileElevation.useBorder ? 1 : 0,
+                  borderColor: colors.cardBorder,
+                },
+                statTileElevation.shadowStyle,
+              ]}
             >
               <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>
                 {v}
@@ -1389,6 +1697,99 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           ))}
         </View>
       ) : null}
+
+      {/* Personal — the user's identity + personal preferences group.
+          Sits at the top of the list (identity comes first). The "Your
+          name" field below personalises the Today greeting: it writes the
+          auth user's `user_metadata.full_name` via
+          `supabase.auth.updateUser`, and the greeting on Today reads it
+          back through `firstNameFromMetadata`. Empty clears the name →
+          greeting falls back to "Good morning". Web mirror is the
+          "Personal" card in `src/app/components/Settings.tsx` (the name
+          field is the first row). Grace 2026-06-04: the name belongs
+          inside a general Personal settings group, not a lone "Your name"
+          card. */}
+      <SectionHeading title="Personal" />
+      <SettingsCard testID="settings-card-name" style={{ padding: 14, gap: 10 }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "700",
+            color: colors.text,
+            lineHeight: 17,
+          }}
+          accessibilityRole="header"
+        >
+          Your name
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+          Used to greet you on Today (&quot;Morning, {nameInput.trim().split(/\s+/)[0] || "Grace"}&quot;). Leave blank to keep it name-free.
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+          <IconBox color={t.accent}>
+            <User size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <TextInput
+            testID="settings-bundle-name-input"
+            value={nameInput}
+            onChangeText={(text) => {
+              nameDirtyRef.current = true;
+              setNameInput(text);
+            }}
+            onBlur={() => {
+              void handleSaveName();
+            }}
+            placeholder="Your name"
+            placeholderTextColor={colors.textTertiary}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              void handleSaveName();
+            }}
+            // PostHog session replay masks ALL text inputs at capture on
+            // mobile (`maskAllTextInputs: true`, accepted as-is in
+            // `apps/mobile/lib/analytics.ts`) — same posture as the promo
+            // input above, no per-field prop needed.
+            style={{
+              flex: 1,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+              color: colors.text,
+              fontSize: 14,
+            }}
+          />
+          {/* Save name — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
+              Everyday primary CTA: transparent fill, 1.5px `accent.primarySolid`
+              border + label. */}
+          <Pressable
+            testID="settings-bundle-name-save"
+            onPress={() => void handleSaveName()}
+            disabled={nameSaving || nameInput.trim() === metadataFullName}
+            accessibilityRole="button"
+            accessibilityLabel="Save your name"
+            style={{
+              paddingHorizontal: 18,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              borderColor: accent.primarySolid,
+              opacity:
+                nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
+              {nameSaving ? "..." : "Save"}
+            </Text>
+          </Pressable>
+        </View>
+      </SettingsCard>
 
       {/* Membership — restructured 2026-05-01
           (`claude/settings-mobile-structural-fix` P0-1). The card now
@@ -1414,13 +1815,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
-                backgroundColor: Accent.primary + "22",
+                borderRadius: 12,
+                backgroundColor: accent.primary + "22",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+              <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -1474,13 +1875,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
-                backgroundColor: Accent.primary + "18",
+                borderRadius: 12,
+                backgroundColor: accent.primary + "18",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+              <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
             <Text
               style={{
@@ -1561,6 +1962,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 fontSize: 14,
               }}
             />
+            {/* Apply promo — aubergine OUTLINE (Sloe treatment #1,
+                2026-06-08). */}
             <Pressable
               testID="settings-bundle-promo-code-apply"
               onPress={() => void handleRedeemPromo()}
@@ -1569,12 +1972,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 paddingHorizontal: 20,
                 paddingVertical: 12,
                 borderRadius: 12,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
                 {promoSubmitting ? "..." : "Apply"}
               </Text>
             </Pressable>
@@ -1693,9 +2098,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             matches", with no other in-app entry point to change the
             fasting window after onboarding). Routes to /fasting
             which now hosts the timer ring, start/end, history AND
-            the 16:8 / 18:6 / 20:4 / 14:10 preset picker, matching
-            the web FastingTimer. Sub copy mirrors the stored window
-            so the user can see at a glance what they picked. */}
+            the 16:8 / 18:6 / 20:4 / 14:10 / OMAD preset picker (ENG-922),
+            matching the web FastingTimer. Sub copy mirrors the stored
+            window so the user can see at a glance what they picked. */}
         <SettingsRow
           testID="settings-bundle-fasting-row"
           icon={Timer}
@@ -1711,7 +2116,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fast > 0 &&
               eat > 0
             ) {
-              return `${fast}:${eat} window · ${fast}h fast / ${eat}h eat`;
+              return `${fastingWindowLabel(fastingWindow)} window · ${fast}h fast / ${eat}h eat`;
             }
             return "Tap to set fast / eat window";
           })()}
@@ -1726,7 +2131,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           `TRACKING_EXTRAS_STORAGE_KEY`; Today's tracker host re-reads
           on focus. Hydration stays on regardless; turning these off
           hides the row on Today but preserves any historical logs. */}
-      <SectionHeading title="Display & extras" />
+      <SectionHeading title="Display" />
       <SettingsCard testID="settings-card-display">
         <View
           style={{
@@ -1770,7 +2175,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackCaffeine: v,
               })
             }
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
         <View
@@ -1818,7 +2223,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackAlcohol: v,
               })
             }
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
         {/* P3-30 (2026-04-25) — Show net carbs toggle. Migrated
@@ -1876,7 +2281,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   .eq("id", userId);
               }
             }}
-            trackColor={{ true: Accent.primary }}
+            trackColor={{ true: accent.primary }}
           />
         </View>
 
@@ -1928,7 +2333,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </SettingsCard>
 
-      {/* Connections */}
+      {/* Connections — Sloe DS (Figma 09 Settings `335:2`): device /
+          health integrations only. Reminder rows (Notifications, Weekly
+          recap) moved to their own REMINDERS section below to match the
+          frame's grouping. Apple Health is the only wired integration on
+          iOS; Google Fit (in the frame) has no backing integration on the
+          iOS-only build, so it is intentionally omitted rather than
+          shipped as a dead row (see settings.md redesign note + migration
+          tracker). */}
       <SectionHeading title="Connections" />
       <SettingsCard testID="settings-card-connections">
         <SettingsRow
@@ -1952,8 +2364,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           onPress={() => router.push("/health-sync" as any)}
         />
+      </SettingsCard>
+
+      {/* Reminders — Sloe DS (Figma 09 Settings `335:2`): the frame
+          splits reminder controls (Daily reminder → time, Notifications)
+          out of Connections into their own group. The Notifications row
+          carries the daily-reminder time as its value ("Daily reminder at
+          08:00"); Weekly recap is the second reminder output. */}
+      <SectionHeading title="Reminders" />
+      <SettingsCard testID="settings-card-reminders">
         <SettingsRow
           testID="settings-bundle-notifications-row"
+          isFirst
           icon={Bell}
           iconColor={t.accent}
           label="Notifications"
@@ -1992,8 +2414,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </SettingsCard>
 
-      {/* App */}
-      <SectionHeading title="App" />
+      {/* Account — Sloe DS (Figma 09 Settings `335:2`): data + export
+          rows live under the ACCOUNT eyebrow in the frame ("Export
+          data"). Renamed from "App" so the group label matches the frame;
+          testID stays `settings-card-app` (pinned by
+          settingsElevationAndMarker.test.ts). Privacy / terms stay in a
+          distinct LEGAL group below per the redesign spec (settings.md). */}
+      <SectionHeading title="Account" />
       <SettingsCard testID="settings-card-app">
         {context === "more" ? (
           <SettingsRow
@@ -2154,98 +2581,28 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
-        <SettingsRow
-          testID="settings-bundle-delete-account-row"
-          icon={Trash2}
-          iconColor={t.red}
-          label="Delete my account"
-          sub="Permanently removes account + all data"
-          onPress={() => {
-            // Two-step deliberate confirm: first explains the
-            // consequence, then requires typing "delete" so it can't
-            // happen via accidental double-tap.
-            Alert.alert(
-              "Delete your account?",
-              "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "I want to delete",
-                  style: "destructive",
-                  onPress: () => {
-                    Alert.prompt?.(
-                      "Type 'delete' to confirm",
-                      "We won't be able to recover this account.",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete account",
-                          style: "destructive",
-                          onPress: async (text?: string) => {
-                            // P1-7 (2026-05-01) — drop the
-                            // "(lowercase)" qualifier. The compare
-                            // already lowercases the typed input so
-                            // the hint was misleading: "Delete" /
-                            // "DELETE" both worked but the copy
-                            // implied otherwise.
-                            if (
-                              (text ?? "").trim().toLowerCase() !== "delete"
-                            ) {
-                              Alert.alert(
-                                "Not deleted",
-                                "Type the word delete to confirm.",
-                              );
-                              return;
-                            }
-                            try {
-                              const { data: sessionData } =
-                                await supabase.auth.getSession();
-                              const token = sessionData?.session?.access_token;
-                              const base = getSupprWebBase();
-                              if (!base) {
-                                Alert.alert(
-                                  "Error",
-                                  "API URL not configured. Please contact support.",
-                                );
-                                return;
-                              }
-                              const res = await fetch(`${base}/api/account/delete`, {
-                                method: "DELETE",
-                                headers: token
-                                  ? { Authorization: `Bearer ${token}` }
-                                  : {},
-                              });
-                              const json = await res.json();
-                              if (json.ok) {
-                                await supabase.auth.signOut();
-                                Alert.alert(
-                                  "Account deleted",
-                                  "Your account has been permanently deleted.",
-                                );
-                              } else {
-                                Alert.alert(
-                                  "Deletion failed",
-                                  json.error || "Please try again.",
-                                );
-                              }
-                            } catch {
-                              Alert.alert(
-                                "Deletion failed",
-                                "Please try again later.",
-                              );
-                            }
-                          },
-                        },
-                      ],
-                      "plain-text",
-                    );
-                  },
-                },
-              ],
-            );
-          }}
-        />
       </SettingsCard>
+
+      {/* Delete account — Sloe DS (Figma 09 Settings `335:2`): a centered
+          clay text affordance at the very bottom, not a destructive card
+          row. Same two-step typed-"delete" confirm flow as before (now in
+          `handleDeleteAccount`). testID `settings-bundle-delete-account-row`
+          preserved (pinned by settingsBundleParity.test.ts). */}
+      <Pressable
+        testID="settings-bundle-delete-account-row"
+        accessibilityRole="button"
+        accessibilityLabel="Delete my account"
+        onPress={handleDeleteAccount}
+        style={{
+          alignItems: "center",
+          paddingVertical: 18,
+          marginTop: 12,
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "600", color: t.red }}>
+          Delete account
+        </Text>
+      </Pressable>
 
       {/* Sign Out lives in the parent /(tabs)/settings.tsx as a single
           neutral row beneath this bundle. Sign Out is reversible
@@ -2363,11 +2720,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               </View>
             </View>
 
+            {/* Refresh my plan — aubergine OUTLINE (Sloe treatment #1,
+                2026-06-08). The primary (non-destructive) action in the reset
+                modal: transparent fill, 1.5px `accent.primarySolid` border +
+                label, sitting visually above the red "Erase everything" so the
+                safe path reads calm and the destructive path stays red. */}
             <Pressable
               onPress={() => handleRefreshPlan()}
               disabled={resetting}
               style={{
-                backgroundColor: t.accent,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 borderRadius: Radius.md,
                 paddingVertical: 16,
                 alignItems: "center",
@@ -2375,12 +2739,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 opacity: resetting ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 {resetting ? "Starting..." : "Refresh my plan"}
               </Text>
               <Text
                 style={{
-                  color: "rgba(255,255,255,0.7)",
+                  color: accent.primarySolid,
+                  opacity: 0.7,
                   fontSize: 11,
                   marginTop: 2,
                 }}
@@ -2753,7 +3118,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   {isActive ? (
                     <CheckSquare
                       size={22}
-                      color={Accent.primary}
+                      color={accent.primary}
                       strokeWidth={1.75}
                     />
                   ) : (
@@ -2766,17 +3131,20 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 </Pressable>
               );
             })}
+            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
             <Pressable
               onPress={() => setWidgetPickerOpen(false)}
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>
@@ -2893,15 +3261,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setCaffeineTargetPickerOpen(false);
               }}
+              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3009,15 +3380,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setAlcoholTargetPickerOpen(false);
               }}
+              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3165,20 +3539,23 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     );
                   })();
                 }}
-                trackColor={{ false: colors.border, true: Accent.primary }}
+                trackColor={{ false: colors.border, true: accent.primary }}
               />
             </View>
+            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
             <Pressable
               onPress={() => setWeeklyRecapPushPickerOpen(false)}
               style={{
                 marginTop: Spacing.lg,
                 paddingVertical: 14,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>
@@ -3289,7 +3666,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 {weekStartDay === day && (
                   <CheckCircle2
                     size={22}
-                    color={Accent.primary}
+                    color={accent.primary}
                     strokeWidth={1.75}
                   />
                 )}
@@ -3403,7 +3780,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 {weekSummaryMode === opt.value && (
                   <CheckCircle2
                     size={22}
-                    color={Accent.primary}
+                    color={accent.primary}
                     strokeWidth={1.75}
                   />
                 )}

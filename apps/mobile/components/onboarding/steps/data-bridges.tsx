@@ -46,6 +46,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions, syncHealthData } from "@/lib/healthSync";
@@ -58,11 +59,20 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
+import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
 
 export function MobileDataBridgesStep() {
   const overline = useStepOverline();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const { state } = useOnboarding();
+  // ENG-990 — lead the importer card with the app the user told us they
+  // were switching from (app-choice step), when it's one we can import.
+  // `null` for "other" / "none" / no choice keeps the generic copy.
+  const highlightApp = appChoiceDisplayName(state.appChoice);
+  const csvCard = (
+    <MobileMfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
+  );
 
   return (
     <MobileStepBody>
@@ -72,11 +82,14 @@ export function MobileDataBridgesStep() {
         subtitle="Skip any of these — or all of them. You can always set this up later in Settings."
       />
 
+      {/* ENG-990 — when the user is switching from an importable app the
+          CSV import is their primary next action; float it to the top. */}
+      {highlightApp ? csvCard : null}
       <ManualTargetsCard />
       {Platform.OS === "ios" ? <AppleHealthCard userId={userId} /> : null}
       <NotificationsCard userId={userId} />
       <RecipeUrlCard />
-      <MobileMfpCsvImportCard surface="onboarding" />
+      {highlightApp ? null : csvCard}
 
       {/*
         P1 (customer-lens 2026-05-11): the in-body "Maybe later" link
@@ -100,6 +113,11 @@ export function MobileDataBridgesStep() {
 function ManualTargetsCard() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the card's leading
+  // glyph. The kcal field label stays clay deliberately (calories identity —
+  // calories→plum reconciliation is a separate follow-up per the ship plan's
+  // open Q1); the P/C/F field labels keep their `MacroColors`.
+  const accent = useAccent();
   // Mirror state.* into local string buffers so the user can clear
   // a field mid-edit (numeric inputs don't tolerate empty-string
   // round-trips through Number).
@@ -134,17 +152,19 @@ function ManualTargetsCard() {
   return (
     <BridgeCard
       icon="calculator-outline"
-      iconColor={Accent.primaryLight}
+      iconColor={accent.primaryLight}
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >
       <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+        {/* kcal label held clay (calories identity, not the secondary accent) —
+            calories→plum reconciliation is a separate follow-up (ship plan Q1). */}
         <TargetInput
           label="kcal"
           value={kcal}
           onChangeText={setKcal}
           onBlur={commit}
-          color={Accent.primaryLight}
+          color={accent.primaryLight}
         />
         <TargetInput
           label="P g"
@@ -245,6 +265,10 @@ function TargetInput({
 function AppleHealthCard({ userId }: { userId: string | null }) {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the "Open Settings"
+  // link and the "Allow Health access" CTA. The card's heart glyph keeps
+  // `MacroColors.fat`, and the permission-error box keeps `Accent.warning`.
+  const accent = useAccent();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.healthGranted === true;
@@ -311,7 +335,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             {error}
           </Text>
           <Pressable onPress={onOpenSettings}>
-            <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primaryLight }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primaryLight }}>
               Open Settings
             </Text>
           </Pressable>
@@ -328,16 +352,16 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             marginTop: 12,
             height: 40,
             borderRadius: 12,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,
           })}
         >
           {busy ? (
-            <ActivityIndicator color={Accent.primaryForeground} size="small" />
+            <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Allow Health access
             </Text>
           )}
@@ -353,6 +377,9 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
 
 function NotificationsCard({ userId }: { userId: string | null }) {
   const { state, set } = useOnboarding();
+  // Secondary accent (Frost flag → damson, else clay) for the "Turn on" CTA.
+  // The card's bell glyph + the permission-error text keep `Accent.warning`.
+  const accent = useAccent();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.notifGranted === true;
@@ -387,7 +414,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
     } catch {
       set({ notifGranted: false });
       setError(
-        "System notifications need a full Suppr install (not Expo Go).",
+        "System notifications need a full Sloe install (not Expo Go).",
       );
     } finally {
       setBusy(false);
@@ -420,16 +447,16 @@ function NotificationsCard({ userId }: { userId: string | null }) {
             marginTop: 12,
             height: 40,
             borderRadius: 12,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: busy ? 0.6 : pressed ? 0.85 : 1,
           })}
         >
           {busy ? (
-            <ActivityIndicator color={Accent.primaryForeground} size="small" />
+            <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Turn on
             </Text>
           )}
@@ -450,7 +477,7 @@ function RecipeUrlCard() {
       icon="link-outline"
       iconColor={Accent.successLight}
       title="Recipe import"
-      body="Suppr parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
+      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
       grantedBadge={null}
     >
       <Text
@@ -462,7 +489,7 @@ function RecipeUrlCard() {
         }}
       >
         Try it after setup — open the Library tab and tap the share icon to
-        paste a link, or share any recipe to Suppr from inside Instagram /
+        paste a link, or share any recipe to Sloe from inside Instagram /
         TikTok / Safari.
       </Text>
     </BridgeCard>
@@ -493,9 +520,9 @@ function BridgeCard({
     <View
       style={{
         backgroundColor: colors.card,
-        borderRadius: 14,
+        borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 20, // Spacing.lg — breathable inter-card gap (was off-scale 12 = too tight, per Grace)
         borderWidth: 1,
         borderColor: grantedBadge ? Accent.success + "66" : colors.border,
       }}

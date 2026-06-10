@@ -25,6 +25,7 @@ import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -141,6 +142,9 @@ function DigestLegacy(props: DigestProps) {
     weightSurfaceMode = "show",
   } = props;
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the digest CTA tint +
+  // fill. Positive/win beats keep `Accent.success`.
+  const accent = useAccent();
   const cardElevation = useCardElevation();
 
   // `weekly_digest_shown` — fire once per visible weekKey. Legacy name
@@ -442,9 +446,9 @@ function DigestLegacy(props: DigestProps) {
             padding: 12,
             marginBottom: 10,
             borderRadius: Radius.md,
-            backgroundColor: Accent.primary + "0D",
+            backgroundColor: accent.primary + "0D",
             borderWidth: 1,
-            borderColor: Accent.primary + "40",
+            borderColor: accent.primary + "40",
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -455,6 +459,9 @@ function DigestLegacy(props: DigestProps) {
               ? `You've logged the same one ${usual.repeats} times in 2 weeks.`
               : "Save it once, log it in one tap."}
           </Text>
+          {/* Sloe treatment system (§1): inline CTA inside the nudge =
+              aubergine OUTLINE (transparent fill, 1.5px primarySolid border +
+              label), not a filled slab — keeps the accent rationed. */}
           {onStartUsualMealSave || onOpenSaveCombo ? (
             <Pressable
               onPress={handlePromptTap}
@@ -469,11 +476,13 @@ function DigestLegacy(props: DigestProps) {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: Accent.primary,
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
               }}
             >
-              <Ionicons name="bookmark-outline" size={12} color="#fff" />
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
+              <Ionicons name="bookmark-outline" size={12} color={accent.primarySolid} />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>
                 Save {promptSlot} as a meal
               </Text>
             </Pressable>

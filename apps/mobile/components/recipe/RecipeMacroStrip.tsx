@@ -1,0 +1,110 @@
+/**
+ * Recipe detail — macro card (Figma `332:2`, section 4). Web parity:
+ * the macro strip in `src/app/components/RecipeDetail.tsx`.
+ *
+ * One cream slab, rounded-16, four evenly-spread cells. Each cell is a serif
+ * value over a small-caps label. The VALUES are coloured per macro:
+ *   - Cal  → plum   (#3B2A4D / colors.navPrimary)
+ *   - Pro  → sage   (MacroColors.protein)
+ *   - Carb → clay   (MacroColors.carbs)
+ *   - Fat  → amber  (MacroColors.fat)
+ *
+ * The four columns are Figma-fixed (CAL/PRO/CARB/FAT). Tracked micros
+ * (fibre/sugar/sodium) are NOT dropped — the parent renders them as a chip row
+ * below. The net-carbs lens swaps the CARB column label + value upstream.
+ */
+import { Text, View } from "react-native";
+
+import { FontFamily, MacroColors } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+
+export type RecipeMacroCell = {
+  key: "calories" | "protein" | "carbs" | "fat";
+  /** Display label, e.g. CAL / PRO / CARB / NET / FAT. */
+  label: string;
+  /** Pre-rounded integer string value. */
+  value: string;
+  /** Unit suffix, e.g. "g" or "". */
+  unit: string;
+};
+
+/** Per-macro value colour — Figma `332:2` §4. */
+function macroValueColor(
+  key: RecipeMacroCell["key"],
+  plum: string,
+): string {
+  switch (key) {
+    case "protein":
+      return MacroColors.protein; // sage
+    case "carbs":
+      return MacroColors.carbs; // clay
+    case "fat":
+      return MacroColors.fat; // amber
+    case "calories":
+    default:
+      return plum;
+  }
+}
+
+export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
+  const colors = useThemeColors();
+  return (
+    <View
+      testID="recipe-macros-grid"
+      accessibilityLabel="Nutrition per serving"
+      style={{
+        flexDirection: "row",
+        borderRadius: 16,
+        backgroundColor: colors.backgroundSecondary,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        paddingVertical: 18,
+      }}
+    >
+      {cells.map((cell, idx) => (
+        <View
+          key={cell.key}
+          testID={`recipe-macro-tile-${cell.key}`}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            borderLeftWidth: idx > 0 ? 1 : 0,
+            borderLeftColor: colors.border,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FontFamily.serifRegular,
+              fontSize: 24,
+              lineHeight: 28,
+              fontWeight: "400",
+              color: macroValueColor(cell.key, colors.navPrimary),
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {cell.value}
+            {cell.unit ? (
+              <Text style={{ fontSize: 15, fontWeight: "400", color: colors.textSecondary }}>
+                {cell.unit}
+              </Text>
+            ) : null}
+          </Text>
+          <Text
+            style={{
+              marginTop: 4,
+              fontSize: 10,
+              fontFamily: FontFamily.sansSemibold,
+              fontWeight: "600",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              color: colors.textSecondary,
+            }}
+          >
+            {cell.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}

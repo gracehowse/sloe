@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import {
-  Beef,
   Candy,
   Droplet,
-  Droplets,
+  Dumbbell,
   Gauge,
-  Leaf,
+  Sprout,
   Wheat,
   type LucideIcon,
 } from "lucide-react";
@@ -87,6 +86,16 @@ type TileMeta = {
   targetText: string;
   pct: number;
   caption: string;
+  /** Caption semantic — drives the caption colour (audit gap 4):
+   *   - `under`     → "N g remaining" in success/sage
+   *   - `over`      → "N g over" in amber (`--accent-warning-solid`)
+   *   - `reference` → muted "ref N" for sugar/sodium
+   *   - `none`      → suppressed (unlogged tile) */
+  captionTone: "under" | "over" | "reference" | "none";
+  /** True once the macro has any logged value — gap 8 softens the serif
+   *  value to a muted tone while it's still a zero so the editorial numeral
+   *  only earns its full ink weight when there's data. */
+  hasValue: boolean;
   /** CSS color var (e.g. "var(--macro-protein)") for the progress fill. */
   fillVar: string;
   /** True when `current > target` on a tracked (non-ref) macro.
@@ -114,28 +123,42 @@ function buildMacroTile(
     formatWaterLine,
   } = props;
 
-  const plainRemainingCaption = (cur: number, tgt: number, unit: string): string => {
+  const plainRemainingCaption = (
+    cur: number,
+    tgt: number,
+    unit: string,
+    overIsFlag = true,
+  ): { caption: string; tone: TileMeta["captionTone"] } => {
     // Suppress caption on unlogged tiles — the `0 / target` line
-    // above already says everything the user needs.
-    if (cur <= 0 && tgt > 0) return "";
+    // above already says everything the user needs (gap 8 also softens the
+    // value to muted in that state).
+    if (cur <= 0 && tgt > 0) return { caption: "", tone: "none" };
     const remain = tgt - cur;
     const magnitude = Math.round(Math.abs(remain));
-    return remain >= 0
-      ? `${magnitude} ${unit} left`
-      : `${magnitude} ${unit} over`;
+    if (remain >= 0) {
+      // "remaining" is the canonical copy (design-system §2.2, today.md §4) —
+      // mobile uses the same word so the two surfaces can't drift.
+      return { caption: `${magnitude} ${unit} remaining`, tone: "under" };
+    }
+    // Over target — amber caption, except where over-target is a win (fibre /
+    // water): those keep the muted "over" with no alert colour.
+    return { caption: `${magnitude} ${unit} over`, tone: overIsFlag ? "over" : "under" };
   };
 
   if (macroKey === "protein") {
     const cur = proteinCurrent;
     const tgt = proteinTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    const c = plainRemainingCaption(cur, tgt, "g");
     return {
       label: "Protein",
-      Icon: Beef,
+      Icon: Dumbbell,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.protein,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -164,7 +187,9 @@ function buildMacroTile(
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: plainRemainingCaption(cur, tgt, "g").caption,
+      captionTone: plainRemainingCaption(cur, tgt, "g").tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.carbs,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -173,13 +198,16 @@ function buildMacroTile(
     const cur = fatCurrent;
     const tgt = fatTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    const c = plainRemainingCaption(cur, tgt, "g");
     return {
       label: "Fat",
-      Icon: Droplets,
+      Icon: Droplet,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.fat,
       isOverBudget: tgt > 0 && cur > tgt,
     };
@@ -188,13 +216,17 @@ function buildMacroTile(
     const cur = fiberCurrent;
     const tgt = fiberTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    // Fibre over-target is a win, not a flag — no amber caption when over.
+    const c = plainRemainingCaption(cur, tgt, "g", false);
     return {
-      label: "Fiber",
-      Icon: Leaf,
+      label: "Fibre",
+      Icon: Sprout,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.fiber,
       isOverBudget: false /* fibre over-target is not a flag -- it's a win */,
     };
@@ -210,6 +242,8 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: `ref ${tgt} g`,
+      captionTone: "reference",
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sugar,
       isOverBudget: false /* sugar is reference-only */,
     };
@@ -225,6 +259,8 @@ function buildMacroTile(
       targetText: `/ ${tgt} mg`,
       pct,
       caption: `ref ${tgt} mg`,
+      captionTone: "reference",
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sodium,
       isOverBudget: false /* sodium is reference-only */,
     };
@@ -233,13 +269,17 @@ function buildMacroTile(
     const cur = waterCurrentMl;
     const tgt = waterTargetMl;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    // Water over-target is a win, not a flag — no amber caption when over.
+    const c = plainRemainingCaption(cur, tgt, "ml", false);
     return {
       label: "Water",
       Icon: Droplet,
       valueText: formatWaterLine(cur),
       targetText: `/ ${formatWaterLine(tgt)}`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "ml"),
+      caption: c.caption,
+      captionTone: c.tone,
+      hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.water,
       isOverBudget: false /* water over-target is a win, not a flag */,
     };
@@ -252,7 +292,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
 
   return (
     <div className="mb-3">
-    <div className="grid grid-cols-2 gap-2.5 max-w-[480px]">
+    <div className="grid grid-cols-2 gap-3 max-w-[480px]">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
@@ -260,21 +300,14 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-[14px] bg-card border border-border p-3 flex flex-col"
+            className="rounded-card bg-card card-slab p-4 flex flex-col justify-between min-h-24"
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: tile.fillVar }}
-                  aria-hidden
-                />
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                  {tile.label}
-                </span>
-              </div>
+              <span className="text-xs font-medium text-foreground-secondary">
+                {tile.label}
+              </span>
               <Icon
-                size={14}
+                size={18}
                 strokeWidth={1.75}
                 style={{ color: tile.fillVar }}
                 aria-hidden
@@ -287,57 +320,56 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 via `min-w-0` on the flex container so long imperial
                 targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
                 wrap to a second line. */}
-            <div className="flex items-baseline min-w-0">
-              <span className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] shrink-0">
+            <div className="flex items-baseline min-w-0 gap-1">
+              {/* gap 8 — soften the serif value while it's a zero so the
+                  editorial numeral only earns its full ink weight when there's
+                  data (mobile parity). Muted (`text-foreground-tertiary`) until
+                  the macro has a logged value. */}
+              <span
+                className={`font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums tracking-tight shrink-0 ${
+                  tile.hasValue ? "text-foreground" : "text-foreground-tertiary"
+                }`}
+              >
                 {tile.valueText}
               </span>
-              <span className="text-xs text-muted-foreground ml-[3px] truncate">
+              <span className="text-xs text-foreground-tertiary truncate">
                 {tile.targetText}
               </span>
             </div>
             <div
-              className="mt-2.5 h-[6px] rounded-full overflow-hidden"
-              style={{
-                background: `color-mix(in_oklab, ${tile.fillVar} 16%, transparent)`,
-              }}
+              className="mt-2 h-1 rounded-full overflow-hidden bg-border"
             >
               <div
                 className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
                 style={{
                   width: `${tile.pct}%`,
                   background: tile.fillVar,
+                  opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
                 }}
               />
             </div>
-            {tile.caption ? (
-              <span
-                className={`text-[11px] mt-1.5 tabular-nums ${
-                  tile.isOverBudget ? "font-bold" : "text-muted-foreground"
-                }`}
-                style={
-                  tile.isOverBudget
-                    ? { color: "var(--over-budget-fg)" }
-                    : undefined
-                }
-              >
-                {tile.caption}
-              </span>
-            ) : null}
-            {macroKey === "water" ? (
-              <div className="flex gap-1 mt-2">
-                {([250, 500] as const).map((ml) => (
-                  <button
-                    key={ml}
-                    type="button"
-                    onClick={() => onAddWaterMl(ml)}
-                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-[color-mix(in_oklab,var(--macro-water)_12%,transparent)] text-[var(--macro-water)] border border-[color-mix(in_oklab,var(--macro-water)_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--macro-water)_20%,transparent)] transition-colors"
-                    aria-label={`Add ${ml}ml water`}
-                  >
-                    +{ml}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
+                (sage) / "N g over" (amber) / muted "ref N" for reference-only
+                macros. The at-a-glance "how much left" read today.md §3.3/§4
+                calls the warm-coaching payoff. Reserve the row height even when
+                suppressed (unlogged tile) so the grid stays even. */}
+            <span
+              data-testid={`today-macro-tile-caption-${macroKey}`}
+              className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
+                tile.captionTone === "under"
+                  ? "text-success"
+                  : tile.captionTone === "over"
+                    ? ""
+                    : "text-foreground-tertiary"
+              }`}
+              style={
+                tile.captionTone === "over"
+                  ? { color: "var(--accent-warning-solid)" }
+                  : undefined
+              }
+            >
+              {tile.caption}
+            </span>
           </div>
         );
       })}
@@ -356,7 +388,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
           {nutrientRows.map((row) => (
             <div
               key={row.key}
-              className="rounded-xl border border-border bg-card px-3 py-2.5"
+              className="rounded-card border border-border bg-card px-3 py-2.5"
             >
               <p className="text-[10px] text-muted-foreground">{row.label}</p>
               <p className="text-sm font-semibold tabular-nums text-foreground">

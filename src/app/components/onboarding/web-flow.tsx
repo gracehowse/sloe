@@ -12,7 +12,8 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, useOnboarding } from "./context";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
 import { STEP_IDS, canAdvance as canAdvanceStep } from "@/lib/onboarding/state";
@@ -59,6 +60,19 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
+  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
+  // when the flag is OFF, but a user whose persisted `step` points at
+  // app-choice (e.g. they reached it while the flag was ON, then it was
+  // ramped back to 0) would render it directly on remount. This effect
+  // is the same defensive auto-skip the signup step uses for already-
+  // authed users: if we're on app-choice while the flag is OFF, advance
+  // past it. `isFeatureEnabled` is cold-safe (returns false → skip).
+  const isAppChoice = currentStepId === "app-choice";
+  React.useEffect(() => {
+    if (isAppChoice && !isFeatureEnabled(APP_CHOICE_FLAG)) {
+      go(1);
+    }
+  }, [isAppChoice, go]);
   // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
   // Reveal advances on Continue; data-bridges fires the
   // `handleComplete` write path on its "Build my plan" CTA. See
@@ -265,6 +279,10 @@ export function WebFlow() {
             state.manualTargetsProteinG != null &&
             state.manualTargetsCarbsG != null &&
             state.manualTargetsFatG != null,
+          // ENG-990 — the app the user said they're switching from
+          // (`null` when the app-choice step was skipped / flag OFF).
+          // Lets the funnel slice activation by chosen-app cohort.
+          app_choice: state.appChoice,
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the
@@ -410,13 +428,17 @@ export function WebFlow() {
         >
           {narrative && (
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary mb-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground-tertiary mb-4">
                 {narrative.eyebrow}
               </div>
+              {/* Sloe reskin (Figma onboarding parity 2026-06-07): the
+                  narrative headline reads in plum Newsreader serif to
+                  match the editorial warm-coaching direction. Eyebrow
+                  drops the clay tint to muted ink (clay = CTA only). */}
               <h1
-                className="text-[44px] font-extrabold tracking-tight text-foreground m-0 mb-4 leading-[1.05] max-w-[520px]"
+                className="font-[family-name:var(--font-headline)] text-[44px] font-normal tracking-tight text-foreground-brand m-0 mb-4 leading-[1.08] max-w-[520px]"
                 style={{
-                  letterSpacing: "-0.035em",
+                  letterSpacing: "-0.02em",
                   textWrap: "balance",
                   whiteSpace: "pre-line",
                 } as React.CSSProperties}

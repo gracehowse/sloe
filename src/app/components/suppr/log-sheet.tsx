@@ -47,6 +47,7 @@ import * as React from "react";
 import {
   BookmarkCheck,
   Camera,
+  Check,
   ChevronRight,
   Clock,
   History,
@@ -291,6 +292,29 @@ export interface LogSheetProps {
     options: readonly string[];
     onChange: (slot: string) => void;
   };
+  /** S13 logged-confirmation (Figma 202:2). Presentation-only success
+   *  state shown AFTER the host has committed a log. The host owns all
+   *  logging + persistence; this is purely the confirming surface. When
+   *  set, the sheet content is replaced by a calm "Logged" confirmation
+   *  card (item title, estimated kcal, slot) with a primary "Done" and
+   *  an optional "Undo". When `null`/undefined the sheet shows its normal
+   *  search-first composition. Mirror of the mobile `LogSheet`
+   *  `confirmation` prop. */
+  confirmation?: {
+    /** What was logged — e.g. the food/meal title. */
+    title: string;
+    /** Estimated kcal of the logged item (always "estimated" copy). */
+    kcal: number;
+    /** Slot it landed in (Breakfast / Lunch / Dinner / Snacks). */
+    slot?: string;
+    /** Provenance dot for the logged item. */
+    source?: SourceDotSource;
+    /** Dismiss the confirmation (host closes the sheet / resets state). */
+    onDone: () => void;
+    /** Optional undo — host reverses the just-committed log. Hidden when
+     *  undefined. */
+    onUndo?: () => void;
+  } | null;
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -309,6 +333,7 @@ export function LogSheet({
   desktop,
   copyYesterday,
   slot,
+  confirmation,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
@@ -316,6 +341,7 @@ export function LogSheet({
   }, [open]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
+  const inConfirmationMode = !!confirmation;
   const premiumMotion = isPremiumMotionV1Enabled();
 
   // ENG-821 parity gap #19 — the sheet shadow was a hardcoded light-only
@@ -375,10 +401,12 @@ export function LogSheet({
           aria-label="Log a meal"
           aria-describedby={undefined}
           className={cn(
+            // Sloe DS — cream page surface, 24px top radius (the Sloe
+            // sheet corner, `--radius-card-lg`), hairline top border.
             "fixed z-50 flex flex-col bg-background",
-            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t",
+            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-[24px] border-t border-border",
             desktop
-              ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-2xl md:border"
+              ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-[24px] md:border"
               : "",
             sheetShadowCls,
             !motionEnabled && premiumMotion
@@ -400,12 +428,14 @@ export function LogSheet({
             )}
           />
 
-          {/* Header */}
+          {/* Header — Sloe DS: Newsreader serif title in brand plum
+              (`text-foreground-brand`), the same editorial-heading
+              grammar as the Today section headers. */}
           <div
             data-slot="log-sheet-header"
-            className="flex items-center justify-between border-b px-4 pb-3 pt-3"
+            className="flex items-center justify-between border-b border-border px-4 pb-3 pt-3"
           >
-            <DrawerPrimitive.Title className="text-[18px] font-bold tracking-tight">
+            <DrawerPrimitive.Title className="font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
               Log a meal
             </DrawerPrimitive.Title>
             <DrawerPrimitive.Close
@@ -426,12 +456,12 @@ export function LogSheet({
               state uses the canonical soft-tint + primary-border language
               (NOT solid primary) so the `text-foreground` label clears
               WCAG AA — primary text on the tint is only ~3.34:1. */}
-          {slot ? (
+          {slot && !inConfirmationMode ? (
             <div
               role="radiogroup"
               aria-label="Meal to log to"
               data-slot="log-sheet-slot-row"
-              className="flex gap-2 border-b px-4 py-2.5"
+              className="flex gap-2 border-b border-border px-4 py-2.5"
             >
               {slot.options.map((s) => {
                 const active = slot.current === s;
@@ -458,7 +488,9 @@ export function LogSheet({
             </div>
           ) : null}
 
-          {inManualEntryMode ? (
+          {inConfirmationMode ? (
+            <LoggedConfirmation confirmation={confirmation!} />
+          ) : inManualEntryMode ? (
             <BarcodeManualEntry
               entry={barcode!.manualEntry!}
               onConfirm={barcode?.onConfirmManual}
@@ -482,6 +514,86 @@ export function LogSheet({
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
+  );
+}
+
+/* -------------------------- Logged confirmation (S13) -------------------------- */
+
+/**
+ * S13 logged-confirmation (Figma 202:2) — the calm success state shown
+ * after a log commits. Presentation-only: the host has already persisted
+ * the log; this surface just confirms it and offers Done / Undo. Trust
+ * posture: nutrition is always "estimated" (never an absolute claim).
+ */
+function LoggedConfirmation({
+  confirmation,
+}: {
+  confirmation: NonNullable<LogSheetProps["confirmation"]>;
+}) {
+  const { title, kcal, slot, source, onDone, onUndo } = confirmation;
+  return (
+    <div
+      data-slot="log-sheet-confirmation"
+      role="status"
+      aria-live="polite"
+      className="flex flex-1 flex-col items-center px-5 pb-6 pt-8 text-center"
+    >
+      {/* Success mark — Sloe sage success tint, calm not loud. */}
+      <div className="grid size-16 place-items-center rounded-full bg-success-soft text-success">
+        <Check className="size-8" strokeWidth={2.5} aria-hidden />
+      </div>
+
+      <h2 className="mt-4 font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
+        Logged{slot ? ` to ${slot}` : ""}
+      </h2>
+
+      {/* Logged-item card — cream slab, 16px corner, soft lift. */}
+      <div className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left shadow-[var(--elev-card-soft)]">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-foreground">{title}</p>
+          <div className="mt-1 flex items-center gap-1.5">
+            {source ? <SourceDot source={source} size={6} /> : null}
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              Est. {kcal} kcal
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
+          system (2026-06-08): the primary inline CTA is AUBERGINE
+          OUTLINE (transparent fill + 1.5px primary-solid border +
+          primary-solid label), not a filled slab. Mirror of mobile
+          `LogSheet`. */}
+      <div className="mt-6 flex w-full flex-col gap-2">
+        <button
+          type="button"
+          onClick={onDone}
+          aria-label="Done"
+          className={cn(
+            "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
+            "hover:bg-primary/5 transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          )}
+        >
+          Done
+        </button>
+        {onUndo ? (
+          <button
+            type="button"
+            onClick={onUndo}
+            aria-label="Undo log"
+            className={cn(
+              "h-11 w-full rounded-xl text-[13px] font-semibold text-muted-foreground",
+              "hover:bg-muted/50 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            )}
+          >
+            Undo
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -563,7 +675,8 @@ function DefaultComposition({
           <div
             data-testid="log-sheet-search-row"
             className={cn(
-              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1",
+              // Sloe DS — cream search slab, pill-soft 14px corner.
+              "relative flex h-12 w-full items-center gap-2 rounded-xl bg-muted pl-3 pr-1",
               "focus-within:outline-none focus-within:ring-2 focus-within:ring-primary",
             )}
           >
@@ -599,7 +712,8 @@ function DefaultComposition({
             onClick={() => search?.onOpen?.()}
             aria-label="Search foods"
             className={cn(
-              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1 text-left text-[13px] text-muted-foreground",
+              // Sloe DS — cream search slab, pill-soft 14px corner.
+              "relative flex h-12 w-full items-center gap-2 rounded-xl bg-muted pl-3 pr-1 text-left text-[13px] text-muted-foreground",
               "hover:bg-muted/80 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             )}
@@ -702,7 +816,7 @@ function DefaultComposition({
             <div
               role="tablist"
               aria-label="Browse meals"
-              className="mx-3 mt-3 flex rounded-lg bg-muted p-0.5"
+              className="mx-3 mt-3 flex rounded-xl bg-muted p-0.5"
             >
               {visibleTabs.map((id) => {
                 const active = activeTab === id;
@@ -728,8 +842,11 @@ function DefaultComposition({
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
                       "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
+                      // Sloe treatment system (2026-06-08): segmented
+                      // control active segment = white lift + primary-solid
+                      // label; inactive = muted on the warm-grey rail.
                       active
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-primary-solid shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     )}
@@ -865,8 +982,14 @@ function RightEdgeIcons({
           >
             <Icon width={16} height={16} aria-hidden />
             {locked ? (
-              <span className="absolute right-1 top-1 grid h-3 w-3 place-items-center rounded-full bg-primary text-primary-foreground">
-                <Lock width={6} height={6} aria-hidden />
+              // Sloe DS — Pro gate badge in damson (`--accent-win`), the
+              // canonical Pro / achievement accent, distinct from the clay
+              // primary CTA. A small lock on the icon's top-right corner.
+              <span
+                className="absolute right-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded-full text-white shadow-sm"
+                style={{ backgroundColor: "var(--accent-win)" }}
+              >
+                <Lock width={7} height={7} aria-hidden />
               </span>
             ) : null}
           </span>
@@ -887,7 +1010,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center">
+      <div className="rounded-xl border border-dashed border-border p-8 text-center">
         <Clock width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
         <p className="mt-2 text-[13px] font-semibold text-foreground">
           Your recent foods will appear here
@@ -949,7 +1072,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
   if (meals.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center">
+      <div className="rounded-xl border border-dashed border-border p-8 text-center">
         <History width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
         <p className="mt-2 text-[13px] font-semibold text-foreground">No saved meals yet</p>
         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -983,20 +1106,23 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
 
   if (recipes.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center">
+      <div className="rounded-xl border border-dashed border-border p-8 text-center">
         <BookmarkCheck width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
         <p className="mt-2 text-[13px] font-semibold text-foreground">No saved recipes yet</p>
         <p className="mt-1 text-[11px] text-muted-foreground">
           Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
         </p>
         {onBrowseRecipes ? (
+          // Sloe treatment system (2026-06-08): "Browse" is a SECONDARY
+          // action → off-white fill (bg-secondary #F6F5F2) + ink label,
+          // no accent. Mirror of mobile `LibraryList`.
           <button
             type="button"
             onClick={onBrowseRecipes}
             aria-label="Browse recipes"
             className={cn(
-              "mt-3 h-10 rounded-md bg-primary px-5 text-[13px] font-bold text-primary-foreground",
-              "hover:bg-primary/90 transition-colors",
+              "mt-3 h-10 rounded-xl bg-secondary px-5 text-[13px] font-bold text-foreground",
+              "hover:bg-secondary/80 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             )}
           >
@@ -1215,9 +1341,13 @@ function BarcodeManualEntry({
             fat: Number(fat) || 0,
           });
         }}
+        // Sloe treatment system (2026-06-08): primary inline CTA →
+        // aubergine outline (transparent fill + 1.5px primary-solid border
+        // + primary-solid label), not a filled slab. Mirror of mobile
+        // LogSheet `BarcodeManualEntry`.
         className={cn(
-          "h-11 w-full rounded-md bg-primary text-[13px] font-bold text-primary-foreground",
-          "hover:bg-primary/90 transition-colors",
+          "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
+          "hover:bg-primary/5 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}
       >

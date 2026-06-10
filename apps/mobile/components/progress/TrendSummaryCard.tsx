@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { FontWeight, Spacing, Type } from "@/constants/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 
@@ -46,7 +46,6 @@ export function TrendSummaryCard({
   testID,
 }: TrendSummaryCardProps) {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
 
   if (!isFeatureEnabled("progress-trend-summary-mobile")) return null;
 
@@ -73,18 +72,11 @@ export function TrendSummaryCard({
   }
 
   return (
-    <View
+    // Card chrome is the shared <SupprCard> shell (Grace 2026-06-04).
+    <SupprCard
       testID={testID ?? "progress-trend-summary-card"}
-      accessibilityRole="summary"
-      style={[
-        styles.card,
-        cardElevation.shadowStyle,
-        {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-        },
-      ]}
+      accessibilityLabel="Trend summary"
+      padding="md"
     >
       <Text
         testID="progress-trend-summary-header"
@@ -104,16 +96,11 @@ export function TrendSummaryCard({
           </View>
         ))}
       </View>
-    </View>
+    </SupprCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    padding: Spacing.md,
-  },
   header: {
     ...Type.label,
   },

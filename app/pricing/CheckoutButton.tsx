@@ -70,16 +70,26 @@ export function CheckoutButton({
     }
   }
 
+  // SLOE DS: primary tier CTA is the solid clay action pill; the secondary
+  // (Free) CTA is a cream slab. Replaces the violet→indigo gradient + slate
+  // set with semantic Sloe tokens.
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={busy}
-      className={`block w-full text-center px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-60 ${
+      className="block w-full text-center px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-60 hover:opacity-95"
+      style={
         highlighted
-          ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-violet-500/25"
-          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-      }`}
+          ? {
+              background: "var(--accent-primary)",
+              color: "var(--accent-primary-foreground)",
+            }
+          : {
+              background: "var(--background-secondary)",
+              color: "var(--foreground)",
+            }
+      }
     >
       {busy ? "Opening checkout..." : label}
     </button>

@@ -67,8 +67,16 @@ export function Segmented<T extends string = string>({
             onClick={() => onChange(opt.value)}
             className={cn(
               "px-3.5 py-1.5 rounded-[7px] text-xs font-bold transition-pm cursor-pointer border-0",
+              // Sloe treatment system (2026-06-08): the active segment is a
+              // soft aubergine tint + deep-aubergine label, NOT a solid
+              // accent fill — parity with the mobile `MobileSegmented`
+              // (`Accent.primarySoft` bg + `Accent.primary` label) and the
+              // approved component-treatment proto (segmented active = lift +
+              // accent label, the accent rationed to small surfaces as a tint).
+              // `text-primary-solid` (#4E3260) keeps AA contrast on the 10%
+              // tint where `text-primary` would be borderline.
               on
-                ? "bg-primary text-primary-foreground"
+                ? "bg-primary/10 text-primary-solid"
                 : "bg-transparent text-muted-foreground hover:text-foreground",
             )}
           >

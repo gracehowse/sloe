@@ -27,23 +27,24 @@ describe("useMacroDisplayStyle — cross-instance sync", () => {
     const settings = renderHook(() => useMacroDisplayStyle());
     const today = renderHook(() => useMacroDisplayStyle());
 
-    // Default is bars (premium sprint 2026-05-20).
-    expect(settings.result.current[0]).toBe("bars");
-    expect(today.result.current[0]).toBe("bars");
+    // Default is tiles (SLOE redesign 2026-06-03 — the Sloe `01 · Today`
+    // frame shows the 2×2 macro tile grid).
+    expect(settings.result.current[0]).toBe("tiles");
+    expect(today.result.current[0]).toBe("tiles");
 
-    // Settings flips to tiles.
+    // Settings flips to bars (the opt-in dense list).
     act(() => {
-      settings.result.current[1]("tiles");
+      settings.result.current[1]("bars");
     });
 
     // Today (a separate hook instance) must see it.
-    expect(today.result.current[0]).toBe("tiles");
-    expect(settings.result.current[0]).toBe("tiles");
+    expect(today.result.current[0]).toBe("bars");
+    expect(settings.result.current[0]).toBe("bars");
 
     // And the write persisted.
     await waitFor(async () => {
       expect(await AsyncStorage.getItem(MACRO_DISPLAY_STORAGE_KEY)).toBe(
-        "tiles",
+        "bars",
       );
     });
 

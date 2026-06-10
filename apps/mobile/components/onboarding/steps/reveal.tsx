@@ -9,7 +9,8 @@ import Svg, {
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
@@ -24,6 +25,12 @@ import { MobileMethodologyNote } from "../scaffold";
 export function MobileRevealStep() {
   const { targets, state } = useOnboarding();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the target-reveal
+  // ring gradient, the weight-skipped Scale glyph, and the "Log meals" next-step
+  // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),
+  // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
+  // `MacroColors` — none of those are the secondary accent.
+  const accent = useAccent();
   const target = targets?.target ?? 0;
 
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -106,14 +113,14 @@ export function MobileRevealStep() {
             width: 88,
             height: 88,
             borderRadius: 44,
-            backgroundColor: `${Accent.primary}1A`,
+            backgroundColor: `${accent.primary}1A`,
             alignItems: "center",
             justifyContent: "center",
           }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Scale size={48} color={Accent.primaryLight} strokeWidth={1.75} />
+          <Scale size={48} color={accent.primaryLight} strokeWidth={1.75} />
         </View>
         <Text
           style={{
@@ -155,10 +162,10 @@ export function MobileRevealStep() {
         <Text
           style={{
             fontSize: 11,
-            fontWeight: "700",
+            fontWeight: "600",
             textTransform: "uppercase",
             letterSpacing: 1.3,
-            color: Accent.primaryLight,
+            color: colors.textTertiary,
             marginBottom: 10,
           }}
         >
@@ -167,13 +174,17 @@ export function MobileRevealStep() {
         {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
             re-titled the reveal h1 from "Here's what your day looks
             like." → "Your plan is ready." Cal AI parity — leads with
-            completion + reward beat, not "look at this dashboard". */}
+            completion + reward beat, not "look at this dashboard".
+            Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
+            Newsreader serif hero title (`colors.navPrimary` theme-aware
+            plum). Mirrors the web reveal hero. */}
         <Text
           style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: colors.text,
-            letterSpacing: -0.4,
+            fontFamily: FontFamily.serifSemibold,
+            fontSize: 24,
+            fontWeight: "500",
+            color: colors.navPrimary,
+            letterSpacing: -0.3,
             marginBottom: 16,
             textAlign: "center",
           }}
@@ -191,8 +202,8 @@ export function MobileRevealStep() {
           >
             <Defs>
               <SvgLinearGradient id="reveal-grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={Accent.primaryLight} />
-                <Stop offset="1" stopColor={Accent.primary} />
+                <Stop offset="0" stopColor={accent.primaryLight} />
+                <Stop offset="1" stopColor={accent.primary} />
               </SvgLinearGradient>
             </Defs>
             <Circle
@@ -225,12 +236,17 @@ export function MobileRevealStep() {
                 than empty (the page hasn't loaded). */}
             {revealStarted ? (
               <>
+                {/* Sloe reskin — ring calorie numeral in the Newsreader
+                    serif display face + plum heading ink, matching the
+                    Today ring + Figma 192:2. tabular-nums preserved so
+                    the count-up doesn't jitter. */}
                 <Text
                   style={{
+                    fontFamily: FontFamily.serifRegular,
                     fontSize: 56,
-                    fontWeight: "800",
-                    letterSpacing: -1.8,
-                    color: colors.text,
+                    fontWeight: "400",
+                    letterSpacing: -1.2,
+                    color: colors.navPrimary,
                     fontVariant: ["tabular-nums"],
                     lineHeight: 56,
                     includeFontPadding: false,
@@ -329,7 +345,7 @@ export function MobileRevealStep() {
         </View>
 
         <MobileMethodologyNote>
-          Values are estimates based on the Mifflin-St Jeor equation. Suppr
+          Values are estimates based on the Mifflin-St Jeor equation. Sloe
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MobileMethodologyNote>
@@ -378,11 +394,14 @@ export function MobileRevealStep() {
           </Text>
           <NextStepRow
             Icon={BookOpen}
-            iconBg={`${Accent.primary}1A`}
-            iconColor={Accent.primary}
+            iconBg={`${accent.primary}1A`}
+            iconColor={accent.primary}
             title="Log meals as you eat"
             sub="Search, barcode, photo, voice — whichever's fastest."
           />
+          {/* "Watch the ring fill" intentionally uses `Accent.success` (green
+              status), NOT the secondary accent — held warm regardless of the
+              Frost flag. */}
           <NextStepRow
             Icon={Target}
             iconBg={`${Accent.success}1A`}
@@ -395,7 +414,7 @@ export function MobileRevealStep() {
             iconBg={`${MacroColors.fat}1A`}
             iconColor={MacroColors.fat}
             title="Adapt over the first ~2 weeks"
-            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+            sub="As you log + weigh in, Sloe re-tunes your TDEE to what your body actually does."
           />
         </View>
       </View>
@@ -506,10 +525,13 @@ function MacroTile({
           </Text>
         ) : null}
       </View>
+      {/* SLOE Phase 0: the macro-target hero numeral reads in Newsreader serif
+          (matching the 56px calorie ring above + the web reveal StatTile).
+          Family carries the weight; the `g` unit + pct stay sans. */}
       <Text
         style={{
+          fontFamily: FontFamily.serifRegular,
           fontSize: 22,
-          fontWeight: "800",
           color: colors.text,
           letterSpacing: -0.5,
           fontVariant: ["tabular-nums"],
@@ -618,6 +640,9 @@ function RevealShowTheMaths({
   goal: "lose" | "maintain" | "gain" | "recomp";
 }) {
   const [open, setOpen] = React.useState(false);
+  // Secondary accent (Frost flag → damson, else clay) for the "Show the maths"
+  // disclosure link + chevron.
+  const accent = useAccent();
   const adjSigned =
     goal === "gain"
       ? `+${kcalAdj.toLocaleString()}`
@@ -663,16 +688,16 @@ function RevealShowTheMaths({
           style={{
             fontSize: 12,
             fontWeight: "600",
-            color: Accent.primary,
+            color: accent.primary,
             letterSpacing: 0.1,
           }}
         >
           {open ? "Hide the maths" : "Show the maths"}
         </Text>
         {open ? (
-          <ChevronUp size={14} color={Accent.primary} strokeWidth={2.25} />
+          <ChevronUp size={14} color={accent.primary} strokeWidth={2.25} />
         ) : (
-          <ChevronDown size={14} color={Accent.primary} strokeWidth={2.25} />
+          <ChevronDown size={14} color={accent.primary} strokeWidth={2.25} />
         )}
       </Pressable>
       {open ? (

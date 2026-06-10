@@ -49,10 +49,19 @@ describe("TrajectoryCard — projection state (mobile)", () => {
       />,
     );
     expect(getByTestId("trajectory-card")).toBeTruthy();
-    const heroChildren = ([] as unknown[]).concat(
-      getByTestId("trajectory-hero-kg").props.children,
-    );
-    expect(heroChildren).toContain(" kg");
+    // The hero numeral renders as a nested structure: a serif outer <Text>
+    // containing the number and a sans inner <Text> with " kg". Flatten both
+    // levels to assert the unit string is present.
+    const heroEl = getByTestId("trajectory-hero-kg");
+    const heroChildren = ([] as unknown[]).concat(heroEl.props.children);
+    const flatHeroText = heroChildren
+      .map((c: unknown) =>
+        c !== null && typeof c === "object" && "props" in (c as object)
+          ? ([] as unknown[]).concat((c as { props: { children: unknown } }).props.children).join("")
+          : String(c),
+      )
+      .join("");
+    expect(flatHeroText).toContain("kg");
     const when = ([] as unknown[])
       .concat(getByTestId("trajectory-hero-when").props.children)
       .join("");

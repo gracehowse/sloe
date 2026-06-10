@@ -9,9 +9,11 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
+import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import {
@@ -62,6 +64,7 @@ function nutritionRowToJournalMeal(data: Record<string, unknown>): JournalMeal {
 }
 
 export default function MealNutritionScreen() {
+  const accent = useAccent();
   const { id: idParam, slot: slotParam, date: dateParam } = useLocalSearchParams<{
     id?: string | string[];
     slot?: string | string[];
@@ -246,7 +249,7 @@ export default function MealNutritionScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={Accent.primary} />
+        <ActivityIndicator size="large" color={accent.primary} />
       </View>
     );
   }
@@ -349,7 +352,7 @@ export default function MealNutritionScreen() {
           rightSlot={
             <View
               style={{
-                backgroundColor: Accent.primary + "20",
+                backgroundColor: accent.primary + "20",
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
@@ -359,7 +362,7 @@ export default function MealNutritionScreen() {
                 style={{
                   fontSize: 16,
                   fontWeight: "800",
-                  color: Accent.primary,
+                  color: accent.primary,
                   fontVariant: ["tabular-nums"],
                 }}
               >
@@ -381,7 +384,7 @@ export default function MealNutritionScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Edit this meal"
               >
-                <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>
                   Edit
                 </Text>
               </Pressable>
@@ -405,7 +408,12 @@ export default function MealNutritionScreen() {
               const totalCal = Math.max(1, Math.round(meal.calories));
               const val = Math.round(line.calories);
               const pct = totalCal > 0 ? val / totalCal : 0;
-              const upper = (line.time?.trim() || "Logged").toUpperCase();
+              // Single "Logged" affordance — see `slotLineItemLabels`. A
+              // timeless row used to read "LOGGED / Logged item" (Grace).
+              const { overline: upper, title: lineTitle } = slotLineItemLabels(
+                line.time,
+                line.recipeTitle,
+              );
               return (
                 <Pressable
                   key={line.id}
@@ -427,7 +435,7 @@ export default function MealNutritionScreen() {
                       width: 10,
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: Accent.primary,
+                      backgroundColor: accent.primary,
                       opacity: 0.3 + pct * 0.7,
                     }}
                   />
@@ -448,14 +456,14 @@ export default function MealNutritionScreen() {
                       style={{ fontSize: 14, fontWeight: "500", color: colors.text, marginTop: 2 }}
                       numberOfLines={2}
                     >
-                      {line.recipeTitle?.trim() || "Logged item"}
+                      {lineTitle}
                     </Text>
                   </View>
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: Accent.primary,
+                      color: accent.primary,
                       fontVariant: ["tabular-nums"],
                     }}
                   >
@@ -469,7 +477,7 @@ export default function MealNutritionScreen() {
                 marginTop: Spacing.lg,
                 padding: Spacing.md,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary + "10",
+                backgroundColor: accent.primary + "10",
               }}
             >
               <View
@@ -493,7 +501,7 @@ export default function MealNutritionScreen() {
                         {
                           width: `${Math.max(pct, 1)}%`,
                           height: "100%",
-                          backgroundColor: Accent.primary,
+                          backgroundColor: accent.primary,
                           opacity: 0.4 + (i % 3) * 0.2,
                         } as ViewStyle
                       }
@@ -671,7 +679,10 @@ const styles = StyleSheet.create({
   },
   meta: { fontSize: 12, marginBottom: 4 },
   portion: { fontSize: 13, marginBottom: Spacing.sm },
-  kcal: { fontSize: 28, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
+  // SLOE Phase 0: the big standalone meal-kcal hero reads in Newsreader serif
+  // (the design system reserves big numerals for serif). Family carries the
+  // weight, so the sans `fontWeight: 800` is dropped; size/box/tabular kept.
+  kcal: { fontFamily: FontFamily.serifRegular, fontSize: 28, fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
   macroBar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: Spacing.md },
   macroSeg: { minWidth: 2 },
   macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },

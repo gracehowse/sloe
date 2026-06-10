@@ -21,6 +21,7 @@ import {
   detectSlotForHour,
   isLibraryEligibleForNorthStar,
   pickNorthStarSuggestion,
+  slotSuggestionEyebrow,
   whyLineForSuggestion,
   type NorthStarRecipe,
 } from "@suppr/shared/nutrition/northStarSuggestion";
@@ -62,6 +63,10 @@ export interface NorthStarBlockHostProps {
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
+  /** ENG-995: the user's FULL daily calorie target (not remaining).
+   *  Threaded into the scorer so the per-meal budget is a share of the
+   *  day, never the whole remaining day. Mirror of the web host prop. */
+  dailyCalorieTarget: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly to that recipe (or open the log sheet, on web). */
@@ -91,6 +96,7 @@ export function NorthStarBlockHost({
   remainingProtein,
   remainingCarbs,
   remainingFat,
+  dailyCalorieTarget,
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
@@ -154,6 +160,8 @@ export function NorthStarBlockHost({
     protein: remainingProtein,
     carbs: remainingCarbs,
     fat: remainingFat,
+    // ENG-995: full daily target drives the per-meal budget.
+    dailyCalorieTarget,
   };
 
   const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {
@@ -169,6 +177,7 @@ export function NorthStarBlockHost({
     <NorthStarBlock
       kind="default"
       ctaLabel={ctaForSlot(slot)}
+      slotEyebrow={slotSuggestionEyebrow(slot)}
       suggestion={{
         recipeId: suggestion.recipe.id,
         title: suggestion.recipe.title,
@@ -179,6 +188,10 @@ export function NorthStarBlockHost({
         predictedFat: suggestion.predictedFat,
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
+        // Figma `654:2` hero meta — optional cook-time chip. Source
+        // from whatever the recipe exposes; `null`/absent degrades to
+        // no chip. Mirror of web NorthStarBlockHost.
+        cookTimeMin: suggestion.recipe.cookTimeMin ?? undefined,
         // Activation hook (audit 2026-04-30 — leak fix #5): expose
         // the strongest WHY (which macro the suggestion fits) so the
         // card stops reading as black-box. See `whyLineForSuggestion`.

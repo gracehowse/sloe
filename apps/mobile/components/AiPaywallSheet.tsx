@@ -47,7 +47,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import Badge from "./Badge";
@@ -109,6 +110,8 @@ export default function AiPaywallSheet({
   onSeePlans,
   colors,
 }: AiPaywallSheetProps) {
+  // Secondary accent (Frost flag → damson, else clay) for the upgrade CTA.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const copy = FEATURE_COPY[feature];
   const titleRef = useRef<Text | null>(null);
@@ -276,7 +279,7 @@ export default function AiPaywallSheet({
             accessibilityLabel="See Pro plans"
             onPress={handleSeePlans}
             style={{
-              backgroundColor: Accent.primary,
+              backgroundColor: accent.primary,
               borderRadius: Radius.md,
               paddingVertical: 14,
               alignItems: "center",

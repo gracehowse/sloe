@@ -1,13 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Coffee, Sun, UtensilsCrossed, Cookie } from "lucide-react-native";
+import type { ComponentType } from "react";
+import { Spacing, Radius, Type, Accent } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
+type LucideRnIcon = ComponentType<{ size?: number; color?: string }>;
+
+// Lucide line-icon set (§0.1(b)) — replaces the prior Ionicons mix so the
+// create-recipe meal chips share one icon family with Library / Detail.
+// Breakfast → Coffee, Lunch → Sun, Dinner → UtensilsCrossed, Snacks → Cookie.
 const MEAL_OPTIONS = [
-  { value: "breakfast", label: "Breakfast", icon: "cafe-outline" as const },
-  { value: "lunch", label: "Lunch", icon: "sunny-outline" as const },
-  { value: "dinner", label: "Dinner", icon: "restaurant-outline" as const },
-  { value: "snack", label: "Snacks", icon: "cafe-outline" as const },
+  { value: "breakfast", label: "Breakfast", Icon: Coffee as LucideRnIcon },
+  { value: "lunch", label: "Lunch", Icon: Sun as LucideRnIcon },
+  { value: "dinner", label: "Dinner", Icon: UtensilsCrossed as LucideRnIcon },
+  { value: "snack", label: "Snacks", Icon: Cookie as LucideRnIcon },
 ] as const;
 
 type Props = {
@@ -18,6 +25,9 @@ type Props = {
 
 export default function MealTypePicker({ selected, onChange, label }: Props) {
   const colors = useThemeColors();
+  // Functional accent (clay/aubergine) for the selected meal-type chips'
+  // border, tint, glyph, and label.
+  const accent = useAccent();
 
   const toggle = (value: string) => {
     if (selected.includes(value)) {
@@ -30,13 +40,16 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
   return (
     <View style={{ gap: Spacing.sm }}>
       {label && (
-        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>
-          {label}
-        </Text>
+        // Section eyebrow token (§2.2 rule 6 / §10.11): Inter ~10–11pt 600,
+        // +0.08em tracking, sage `--secondary`. Type.label carries the
+        // uppercase + tracking; sage is the eyebrow role colour (Accent.success
+        // is the Sloe sage token), not tertiary grey.
+        <Text style={[Type.label, { color: Accent.success }]}>{label}</Text>
       )}
       <View style={styles.row}>
         {MEAL_OPTIONS.map((opt) => {
           const active = selected.includes(opt.value);
+          const Icon = opt.Icon;
           return (
             <Pressable
               key={opt.value}
@@ -44,17 +57,17 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
               style={[
                 styles.chip,
                 {
-                  borderColor: active ? Accent.primary : colors.border,
-                  backgroundColor: active ? Accent.primary + "15" : "transparent",
+                  borderColor: active ? accent.primary : colors.border,
+                  backgroundColor: active ? accent.primary + "15" : "transparent",
                 },
               ]}
             >
-              <Ionicons name={opt.icon} size={14} color={active ? Accent.primary : colors.textSecondary} />
+              <Icon size={14} color={active ? accent.primary : colors.textSecondary} />
               <Text
                 style={{
                   fontSize: 13,
                   fontWeight: active ? "700" : "500",
-                  color: active ? Accent.primary : colors.text,
+                  color: active ? accent.primary : colors.text,
                 }}
               >
                 {opt.label}
@@ -76,10 +89,10 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.xl,
     borderWidth: 1,
   },
 });

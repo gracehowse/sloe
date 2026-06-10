@@ -313,6 +313,45 @@ const GOLDEN: GoldenCase[] = [
     ],
     top1: "Rice, brown, long-grain, cooked",
   },
+  {
+    query: "starbucks latte",
+    pool: [
+      { name: "Starbucks · Caffè Latte, Grande", source: "FatSecret" },
+      { name: "Latte, coffee", source: "USDA", verified: true },
+      { name: "Brand · Latte Flavoured Protein Bar", source: "OFF" },
+      { name: "Iced Latte", source: "Edamam" },
+    ],
+    top1: "Starbucks · Caffè Latte, Grande",
+  },
+  {
+    query: "chipotle bowl",
+    pool: [
+      { name: "Chipotle · Chicken Burrito Bowl", source: "FatSecret" },
+      { name: "Bowl, chipotle, with chicken", source: "USDA", verified: false },
+      { name: "Chipotle Mayo", source: "OFF" },
+      { name: "Burrito Bowl Salad", source: "Edamam" },
+    ],
+    top1: "Chipotle · Chicken Burrito Bowl",
+  },
+  {
+    query: "tesco chicken",
+    pool: [
+      { name: "Tesco · British Chicken Breast Fillets", source: "FatSecret" },
+      { name: "Chicken, broilers or fryers, breast, meat only, raw", source: "USDA", verified: true },
+      { name: "Brand · Chicken Tikka Masala Ready Meal", source: "OFF" },
+    ],
+    top1: "Tesco · British Chicken Breast Fillets",
+  },
+  {
+    query: "sainsbury's hummus",
+    pool: [
+      { name: "Sainsbury's · Houmous", source: "FatSecret" },
+      { name: "Hummus, commercial", source: "USDA", verified: true },
+      { name: "Sainsbury's · Caramelised Onion Houmous", source: "OFF" },
+      { name: "Hummus Wrap", source: "Edamam" },
+    ],
+    top1: "Sainsbury's · Houmous",
+  },
 ];
 
 describe("golden-query ranking regression (ENG-807)", () => {

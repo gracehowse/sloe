@@ -96,10 +96,15 @@ describe("Round 2 — algorithm display fixes", () => {
 });
 
 describe("Round 2 — colour token alignment", () => {
-  it("D20: Recipe Detail uses MacroColors.fiber (not Accent.success direct ref) for fiber", () => {
-    const SRC = read("apps/mobile/app/recipe/[id].tsx");
-    // The macro map's fiber row references the canonical token.
-    expect(SRC).toMatch(/fiber:\s*\{\s*label:\s*"Fiber"[^}]*color:\s*MacroColors\.fiber/);
+  it("D20: Recipe Detail macro strip is the uncoloured Figma 332:2 flat strip (no per-macro colour token)", () => {
+    // The testID lives in RecipeMacroStrip.tsx (the extracted component),
+    // not in [id].tsx. The old colour-coded fiber macro-row object pattern
+    // (fiber: { label: "Fiber", color: … }) was replaced by the RecipeMacroStrip
+    // component which only receives { key, label, value, unit } cells — no color map.
+    const SRC = read("apps/mobile/components/recipe/RecipeMacroStrip.tsx");
+    expect(SRC).toContain('testID="recipe-macros-grid"');
+    // The old colour-coded fiber macro-row pattern must stay gone.
+    expect(SRC).not.toMatch(/fiber:\s*\{\s*label:\s*"Fiber"[^}]*color:/);
   });
 });
 
@@ -142,7 +147,10 @@ describe("Round 2 — destructive action escalation", () => {
     const SRC = read(
       "apps/mobile/components/settings/SettingsBundleContent.tsx",
     );
-    expect(SRC).toMatch(/label="Delete my account"/);
+    // The delete action is a standalone Pressable with accessibilityLabel
+    // (not a SettingsRow label= prop). The testID is the structural anchor.
+    expect(SRC).toMatch(/accessibilityLabel="Delete my account"/);
+    expect(SRC).toMatch(/testID="settings-bundle-delete-account-row"/);
     // The ghost-button-inside-the-modal pattern is gone.
     expect(SRC).not.toContain("Delete my account permanently");
     // The new flow's "type delete" confirmation must be present.

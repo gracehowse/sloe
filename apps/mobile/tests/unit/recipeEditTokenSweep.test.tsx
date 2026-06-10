@@ -6,9 +6,10 @@
  * The design-director review read the edit sheet + ingredient editor as
  * "imported from a different design system": a hardcoded `#00000066` backdrop,
  * a border-as-depth sheet panel, and an off-token dashed add-button outline
- * (`Accent.primary + "50"`). This sweep aligns them to the one design language,
- * behind `design_system_elevation` (old flat/hairline path kept in the `else`
- * via `useCardElevation`'s default branch):
+ * (`Accent.primary + "50"`). This sweep aligns them to the one design language.
+ * Resting cards take their soft-lift treatment from `useCardElevation` (now an
+ * unconditional default — the shadow carries the separation); the sheet PANEL
+ * keeps its own `design_system_elevation` read for the heavier sheet shadow:
  *   - the sheet panel takes the real `Elevation.sheet` shadow + drops the
  *     border-as-depth when the flag is on (tonal lift on dark);
  *   - the backdrop uses the `colors.overlay` scrim token, not a raw hex;
@@ -67,16 +68,26 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
 
   it("RecipeEditSheet add-ingredient affordance uses the shared chip language", () => {
     const src = sheet();
-    expect(src).toMatch(/backgroundColor:\s*Accent\.primarySoft/);
-    expect(src).toMatch(/borderColor:\s*Accent\.primary\b/);
+    // ENG-997 (Frost): the chip fill + edge now read the flag-aware secondary
+    // accent (clay flag-OFF → damson flag-ON) via the `accent` param threaded
+    // into the StyleSheet factory, not the static `Accent.*`. The soft-fill +
+    // edge chip language is unchanged.
+    expect(src).toMatch(/backgroundColor:\s*accent\.primarySoft/);
+    expect(src).toMatch(/borderColor:\s*accent\.primary\b/);
     // the off-token dashed concat outline is gone.
     expect(src).not.toMatch(/borderStyle:\s*"dashed"/);
   });
 
-  it("RecipeEditSheet commit CTA stays blue (Accent.primary)", () => {
+  it("RecipeEditSheet commit CTA is an aubergine OUTLINE (Sloe treatment system)", () => {
     const src = sheet();
-    expect(src).toMatch(/saveBtn:\s*\{\s*backgroundColor:\s*Accent\.primary\s*\}/);
-    expect(src).toMatch(/color:\s*colors\.primaryForeground/);
+    // Sloe treatment system (2026-06-08): the Save CTA is the everyday primary,
+    // so it's an aubergine OUTLINE — transparent ground + 1.5px aubergine border
+    // + aubergine `primarySolid` label (light/dark via the theme `resolved`
+    // flag), NOT a filled slab. Supersedes the earlier filled `accent.primary`.
+    expect(src).toContain('from "@/context/theme"');
+    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?backgroundColor:\s*"transparent"/);
+    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?borderColor:\s*accentInk/);
+    expect(src).toMatch(/saveText:\s*\{[\s\S]*?color:\s*accentInk/);
   });
 
   it("IngredientEditRow stays fully tokenised (no hardcoded hex)", () => {
@@ -95,7 +106,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     text: "#0f172a",
     textSecondary: "#475569",
     textTertiary: "#94a3b8",
-    background: "#fbfaf6",
+    background: "#FBF8F3",
     border: "#e4e4ec",
     inputBg: "#f0ece4",
     overlay: "#00000088",
@@ -107,7 +118,7 @@ import { IngredientInfoSheet, type IngredientInfo } from "../../components/recip
 const INFO: IngredientInfo = {
   name: "Chicken breast",
   tierLabel: "Verified",
-  tierColor: "#56A775",
+  tierColor: "#5E7C5A",
   confidencePct: null,
   sourceLabel: "USDA",
   calories: 165,

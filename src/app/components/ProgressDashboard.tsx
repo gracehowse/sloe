@@ -26,9 +26,10 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
-import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar, type WeekActivityAdjustment } from "../../lib/nutrition/progressWeekReport.ts";
+import { buildWeekStats, formatAvgCaloriesLabel, type WeekActivityAdjustment } from "../../lib/nutrition/progressWeekReport.ts";
 import {
   buildCaloriesRangeStats,
+  buildMacroAdherenceRangeStats,
   buildWeightRangeStats,
   type RangeKey,
 } from "../../lib/nutrition/progressRangeStats.ts";
@@ -71,18 +72,24 @@ import {
 import { buildWeeklyCheckin } from "../../lib/nutrition/weeklyCheckin.ts";
 import { selectMostFrequentSlotSeed } from "../../lib/nutrition/usualMealHint.ts";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
+// Note: `ProgressHeroMetric` (the Oura-style adherence ring) is removed in
+// the Sloe Figma 492:2 reskin — the "Average Adherence" card is the single
+// adherence surface now. Its mobile mirror is similarly retired.
 // HouseholdBar — 2026-04-20 Claude Design prototype port. Rendered at
 // the top of Progress (mirrors `screens-mobile.jsx` L580) when the
 // user is in a household. Hidden for solo users so the range-picker
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
-import { ProgressHeroMetric } from "./suppr/progress-hero-metric.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
 import { ProgressHeadline } from "./suppr/progress-headline.tsx";
 import { ProgressStoryGate } from "./suppr/progress-story-gate.tsx";
+// Sloe Figma 492:2 — frame sections (web + mobile parity).
+import { ProgressAverageAdherence } from "./suppr/progress-average-adherence.tsx";
+import { ProgressEnergyTriad } from "./suppr/progress-energy-triad.tsx";
+import { ProgressOnTargetRibbon } from "./suppr/progress-ontarget-ribbon.tsx";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
@@ -93,6 +100,13 @@ import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
+
+// Sloe Figma 492:2 — calm header subtitle under the serif "Progress"
+// title. Deliberately DESCRIPTIVE (what the surface holds), not the
+// prototype's presumptuous "you're trending right where you want to be"
+// — that would read false on an off-track week and breaches the
+// no-unearned-encouragement trust posture. Mirrors mobile.
+const PROGRESS_HEADER_SUBTITLE = "Your weight, weekly recap, and adaptive maintenance.";
 
 function parseNumMap(raw: unknown): Record<string, number> {
   if (!raw || typeof raw !== "object") return {};
@@ -220,7 +234,10 @@ function ProgressDashboardContent() {
   // arithmetic is preserved (still drives the weight + steps chart
   // windows); All remains ~infinite (26+ years).
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
-  const rangeLabel = range === "7d" ? "LAST 7 DAYS" : range === "30d" ? "LAST 30 DAYS" : range === "90d" ? "LAST 90 DAYS" : "ALL TIME";
+  // Sloe Figma 492:2 — weight card Trend/Scale segmented toggle. "trend"
+  // renders the smoothed moving-average line (calm Withings-style trend);
+  // "scale" renders the raw weigh-ins. Mirrors mobile.
+  const [weightView, setWeightView] = useState<"trend" | "scale">("trend");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
   // Batch 4.11 — streak freeze + weekly recap state
@@ -620,6 +637,20 @@ function ProgressDashboardContent() {
     () => buildCaloriesRangeStats(nutritionByDay, nutritionTargets.calories, range as RangeKey, new Date()),
     [nutritionByDay, nutritionTargets.calories, range],
   );
+  // Sloe Figma 492:2 — range-scoped macro adherence so the AVERAGE
+  // ADHERENCE card's four bars describe the SAME window as the headline
+  // calorie adherence (responds to the time-range toggle), not just the
+  // current week. Shared helper → web + mobile read identical figures.
+  const macroRange = useMemo(
+    () =>
+      buildMacroAdherenceRangeStats(
+        nutritionByDay,
+        normalizeMacroTargets(nutritionTargets),
+        range as RangeKey,
+        new Date(),
+      ),
+    [nutritionByDay, nutritionTargets, range],
+  );
 
   // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
   const weekTargetsByDay = useMemo(() => {
@@ -729,9 +760,9 @@ function ProgressDashboardContent() {
     isSnapshot: d.isSnapshot,
   }));
   const todayDateKey = todayKey();
-  const proteinAdherence = weekStatsBundle.proteinAdherence;
-  const carbsAdherence = weekStatsBundle.carbsAdherence;
-  const fatAdherence = weekStatsBundle.fatAdherence;
+  // Macro adherence now reads range-scoped figures (`macroRange`) for the
+  // AVERAGE ADHERENCE card; the per-week `weekStatsBundle.*Adherence`
+  // values are still consumed by the weekly recap / digest below.
 
   const avgCalories = weekStatsBundle.avgCalories;
   const proteinOnTarget = weekStatsBundle.proteinOnTarget;
@@ -987,19 +1018,21 @@ function ProgressDashboardContent() {
   const progressDesktopHeader = (
     <div className="hidden md:flex mb-6 items-start justify-between gap-3">
       <div>
-        <p
-          data-testid="progress-overline"
-          className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
-        >
-          {rangeLabel}
-        </p>
         <h1
           data-testid="progress-header"
-          className="text-[24px] font-bold text-foreground tracking-tight mt-0.5"
-          style={{ letterSpacing: "-0.5px" }}
+          className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
         >
           Progress
         </h1>
+        {/* Sloe Figma 492:2 — calm subtitle replaces the uppercase range
+            overline (the 7d/30d/90d/All pills below already carry the
+            range). */}
+        <p
+          data-testid="progress-subtitle"
+          className="text-sm text-muted-foreground mt-1"
+        >
+          {PROGRESS_HEADER_SUBTITLE}
+        </p>
       </div>
       {progressCalendarButton}
     </div>
@@ -1031,19 +1064,21 @@ function ProgressDashboardContent() {
 
     return (
       <>
-        <ProgressTabChrome overline={rangeLabel} trailing={progressLoadingCalendar} />
+        <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressLoadingCalendar} />
       <div
         className="product-shell py-pm-6"
         data-testid="progress-loading-skeleton"
       >
         {progressDesktopHeader}
-        <div className="flex gap-2 mb-5 p-1 rounded-[10px] bg-muted opacity-60">
+        <div className="flex gap-1.5 mb-5 opacity-60">
           {(["7d", "30d", "90d", "all"] as const).map((k) => (
             <span
               key={k}
               className={[
-                "flex-1 rounded-[7px] px-3 py-1.5 text-[11px] font-semibold text-center",
-                k === range ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                "flex-1 rounded-full py-1.5 text-[13px] font-medium text-center border",
+                k === range
+                  ? "bg-primary/10 border-primary-solid text-primary-solid"
+                  : "bg-card border-border text-muted-foreground",
               ].join(" ")}
             >
               {k === "all" ? "All" : k}
@@ -1080,7 +1115,7 @@ function ProgressDashboardContent() {
 
   return (
     <>
-      <ProgressTabChrome overline={rangeLabel} trailing={progressCalendarButton} />
+      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressCalendarButton} />
     <div className="product-shell py-pm-6">
       {progressDesktopHeader}
 
@@ -1089,41 +1124,69 @@ function ProgressDashboardContent() {
           + web Plan). Renders nothing for solo users. */}
       <HouseholdBar />
 
-      {/* Phase 4 / B3.1 — Progress story headline (Surface E).
-          Engine-led commentary line replacing the stat-card dashboard
-          as the visual focus. The maintenance card / charts / stat
-          cards beneath remain (demoted) — this card is the lead.
-          Authority: D-2026-04-27-12 (always-on TDEE) +
-          D-2026-04-27-17 (Progress is a story).
+      {/* ── Sloe Figma 492:2 — frame layout (single production path) ──
+          Order: range toggle → THIS WEEK insight (lilac) → AVERAGE
+          ADHERENCE → weight card → AVG/TDEE/DEFICIT triad → DAILY
+          CALORIES → on-target ribbon. Every previously-wired surface
+          (maintenance, journey, steps, body fat, streak freezes, week
+          digest, weight-surface opt-out, milestone) is preserved below
+          the frame's above-fold story. No migration flags, no duplicate
+          components, no alternate versions. */}
 
-          Note on prevWeekTdee: the weekly TDEE history isn't yet
-          persisted, so the commentary collapses to `steady` /
-          `calibrating` for now. When `progress_weekly_tdee_history`
-          (a future migration) lands, pass the prior-week value here
-          and the `adjustment` regime auto-engages.
+      {/* 1. TIME-RANGE TOGGLE — [7d, 30d, 90d, All]. Active range is a
+          solid plum (`bg-foreground-brand`) fill with white text; the
+          rest are bordered cream pills (Figma header rhythm). Drives the
+          range stats below + the weight/steps chart windows. */}
+      <div
+        role="tablist"
+        aria-label="Progress time range"
+        data-testid="progress-range-picker"
+        className="flex gap-1.5 mb-4"
+      >
+        {(["7d", "30d", "90d", "all"] as const).map((k) => {
+          const active = range === k;
+          const label = k === "all" ? "All" : k;
+          return (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={`Range ${label}`}
+              data-testid={`progress-range-pill-${k}`}
+              onClick={() => setRange(k)}
+              className={[
+                // Sloe treatment system (2026-06-08, §7): selected range pill =
+                // aubergine soft-tint fill + primarySolid border/label (was a
+                // solid plum fill + white text). Mirrors mobile + rations the
+                // accent — the fill is reserved for the FAB + conversion CTAs.
+                "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-colors border",
+                active
+                  ? "bg-primary/10 border-primary-solid text-primary-solid"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-          Note on avgIntakeOnLossWeeksKcal: similarly deferred until
-          the weekly aggregate stream is in place. */}
-      {/* customer-lens audit (2026-04-30): the live story renders even
-          when `adaptiveTdee == null` and the user has < 3 days of
-          logging — narrative based on null is broken UX. Gate via
-          `hasEnoughDataForStory(daysLogged)` and render the
-          `<ProgressStoryGate>` placeholder card until the floor is
-          reached. Geometry matches so the slot doesn't jump. */}
-      {/* ENG-616: Oura-style hero metric — one big number at the top. */}
-      <ProgressHeroMetric
-        adherencePct={caloriesRange.adherencePct}
-        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
-        targetCalories={nutritionTargets.calories}
-        daysLogged={caloriesRange.daysLogged}
-        streak={streakDays}
-      />
+      {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
+          commentary; the StoryGate placeholder shares the same wash until
+          the user crosses the 3-day data floor (geometry matches so the
+          slot doesn't jump). Authority: D-2026-04-27-12 (always-on TDEE)
+          + D-2026-04-27-17 (Progress is a story).
 
+          prevWeekTdee / avgIntakeOnLossWeeks: the weekly aggregate stream
+          isn't persisted yet, so the commentary collapses to steady /
+          calibrating — documented data gap (deferred: see ENG-741 weekly
+          aggregate stream), never faked. */}
       {(() => {
         const daysLogged = weekStatsBundle.daysWithFood;
         if (!hasEnoughDataForStory(daysLogged)) {
           return (
-            <div className="mb-3">
+            <div className="mb-4">
               <ProgressStoryGate daysLogged={daysLogged} />
             </div>
           );
@@ -1149,134 +1212,345 @@ function ProgressDashboardContent() {
           loggingDays: daysLogged,
         });
         return (
-          <div className="mb-3">
+          <div className="mb-4">
             <ProgressHeadline commentary={commentary} />
           </div>
         );
       })()}
 
-      {/* RANGE-PICKER SEGMENTED CONTROL — [7d, 30d, 90d, All].
-          2026-04-21 D5 port of prototype `screens-mobile.jsx:581-591`.
-          Single muted container with an inset `bg-card` chip + subtle
-          shadow marking the active range (replaces the earlier
-          accent-filled outlined pills). Tapping updates the selected
-          range and the header overline; it feeds `rangeDays` used by
-          the weight + steps chart windows below. */}
-      <div
-        role="tablist"
-        aria-label="Progress time range"
-        data-testid="progress-range-picker"
-        className="flex gap-1.5 mb-3 p-1 rounded-[10px] bg-muted"
-      >
-        {(["7d", "30d", "90d", "all"] as const).map((k) => {
-          const active = range === k;
-          const label = k === "all" ? "All" : k;
-          return (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={`Range ${label}`}
-              data-testid={`progress-range-pill-${k}`}
-              onClick={() => setRange(k)}
-              className={[
-                "flex-1 rounded-[7px] px-3 py-1.5 text-[11px] font-semibold transition-colors",
-                active
-                  ? "bg-card text-foreground shadow-sm"
-                  : "bg-transparent text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* 3. AVERAGE ADHERENCE — big calorie-adherence % + on-target dot
+          streak + the four macro bars (Protein sage / Carbs clay / Fat
+          amber / Fibre teal). Every figure is real (range adherence +
+          weekStatsBundle macro adherence). The "up N%" week-over-week
+          trend chip stays hidden until the weekly aggregate stream lands
+          (documented data gap) — never invented.
 
-      {/* ── 2026-04-20 Prototype Phase 2 cards ──
-          Sit directly under the range picker so the two hero cards are
-          the first thing a user sees. Every legacy card (recap, freeze,
-          maintenance, journey, daily-calories, macro adherence) stays
-          intact below. Shared helper output → web + mobile numbers are
-          identical. Household bar sits elsewhere (another agent owns
-          it).
-
-          2026-04-20 desktop prototype port
-          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
-          `WebProgress`): at `md+` the Phase 2 cards lay out as a 2×2
-          grid (Weight / Calories / Protein / Trend summary). Below
-          `md` they stack vertically — mobile-web parity with the
-          existing mobile tab layout. The Protein avg/day + Trend
-          summary cards only exist on desktop today; the narrow view
-          still has Protein Hit / Streak tiles in the legacy 2×2
-          (kept intact for parity) so we don't need mobile duplicates. */}
-      <div
-        data-testid="progress-phase2-grid"
-        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4"
-      >
-        {/*
-          T13.2 (full-sweep follow-up, 2026-04-25): honour
-          profileWeightSurfaceMode on Progress — release-gate C1
-          gate for cohort expand. "hide" suppresses the card; "trends_only"
-          renders the lightweight WeightTrendOnlyCard with a direction
-          label (no absolute kg). "show" keeps the legacy behaviour.
-          Helper: decideWeightSurface in src/lib/nutrition/weightSurfaceMode.ts.
-        */}
-        {/* 2026-05-11 (Grace TF feedback — "this is duplicative"): the
-            full `<WeightRangeCardWeb>` ("show" mode) was rendering a
-            second weight surface above the big Weight chart card lower
-            on this dashboard — same data, smaller chart, same
-            time-range scope. Killed in show mode for parity with the
-            mobile change. The body-neutral `trends_only` mode keeps
-            its lightweight tile because that's intentionally not the
-            big chart; users opt into trends-only to hide absolute
-            numbers. */}
-        {profileWeightSurfaceMode === "trends_only" && (
+          On `trends_only` the lightweight direction tile still renders so
+          opt-out users keep a weight signal without absolute numbers. */}
+      {profileWeightSurfaceMode === "trends_only" && (
+        <div className="mb-4">
           <WeightTrendOnlyCardWeb
             weekDeltaKg={weightRange.weekDeltaKg}
             rangeKey={range as RangeKey}
           />
+        </div>
+      )}
+      <ProgressAverageAdherence
+        className="mb-4"
+        adherencePct={
+          // Parity with mobile (progress.tsx): don't claim an "average
+          // adherence" until the range holds a meaningful sample (≥3 logged
+          // days). A single stray day produced a confident headline next to
+          // the "building your story" gate — incoherent. Below threshold the
+          // card hides. (null → component returns null)
+          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+        }
+        onTargetDays={weekStatsBundle.days.map(
+          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
         )}
-        <CaloriesRangeCardWeb
-          avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
-          deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
-          adherencePct={caloriesRange.adherencePct}
-          daysLogged={caloriesRange.daysLogged}
-          targetCalories={nutritionTargets.calories}
-        />
-        {/* Desktop-only: Protein avg/day + Trend summary. These mirror
-            the right-hand column of the prototype's 2×2 grid. Values
-            are pulled from the already-computed `weekStatsBundle`
-            (shared helper output) so mobile/web numbers can't drift. */}
-        <div className="hidden md:block">
-          <ProteinRangeCardWeb
-            avgProteinPerDay={Math.round(weekStatsBundle.avgProtein ?? 0)}
-            targetProteinG={targets.protein}
-            series={weekStatsBundle.days.map((d) => Math.round(d.protein))}
-          />
+        macros={[
+          { name: "Protein", pct: macroRange.proteinPct, color: "var(--macro-protein)" },
+          { name: "Carbs", pct: macroRange.carbsPct, color: "var(--macro-carbs)" },
+          { name: "Fat", pct: macroRange.fatPct, color: "var(--macro-fat)" },
+          { name: "Fibre", pct: macroRange.fiberPct, color: "var(--macro-fiber)" },
+        ]}
+      />
+
+      {/* 4. WEIGHT CARD (Sloe Figma 492:2) — Newsreader kg headline +
+          "↓ N this week" + Trend/Scale segmented toggle, clay line chart
+          with dashed goal line, START/CURRENT/GOAL/RATE stat row, and a
+          centred "＋ Log weight" button. The single canonical weight
+          surface — win-moment + chart wiring + measurement system all
+          preserved. Gated on `weight_surface_mode === "show"` (opt-out
+          users see the direction tile above instead). */}
+      {profileWeightSurfaceMode === "show" ? (() => {
+        const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
+        const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
+        const weekDeltaKg = weightRange.weekDeltaKg;
+        const rateKgPerWeek = goalTimeline?.weeklyRateKg ?? null;
+        return (
+        <SupprCard elevation="card" padding="lg" radius="lg" className="relative mb-4" data-testid="progress-weight-card">
+          {/* Reserved weight win-moment overlay (ENG-824) — plays once on a
+              new all-time low, then unmounts. */}
+          {weightWinActive ? (
+            <WinMomentPlayer
+              celebration="goal-hit"
+              fullBleed
+              onComplete={() => setWeightWinActive(false)}
+              testID="progress-weight-win-moment"
+            />
+          ) : null}
+          {/* Section eyebrow — parity with mobile (progress.tsx) + the web
+              "Daily Calories" / "Average Adherence" cards, so the weight card
+              is no longer the only Progress card without a header. */}
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="ph-mask">
+                <span
+                  data-testid="progress-current-weight"
+                  className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums transition-colors duration-200 ${weightPulse ? "text-success" : "text-foreground"}`}
+                >
+                  {latestWeightKg != null
+                    ? (profileMeasurementSystem === "imperial"
+                        ? Math.round(kgToLb(latestWeightKg) * 10) / 10
+                        : Math.round(latestWeightKg * 10) / 10)
+                    : "—"}
+                </span>
+                <span className="ml-1.5 text-[15px] text-muted-foreground">
+                  {profileMeasurementSystem === "imperial" ? "lb" : "kg"}
+                </span>
+              </p>
+              {weekDeltaKg != null && Math.abs(weekDeltaKg) >= 0.05 ? (
+                <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground tabular-nums">
+                  {weekDeltaKg < 0 ? (
+                    <Icons.trendDown className="h-3.5 w-3.5" aria-hidden />
+                  ) : (
+                    <Icons.trendUp className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  {formatRatePerWeek(weekDeltaKg).replace("/week", "")} this week
+                </p>
+              ) : null}
+            </div>
+            {/* Trend/Scale segmented toggle */}
+            <div
+              role="tablist"
+              aria-label="Weight chart view"
+              data-testid="progress-weight-view-toggle"
+              className="flex shrink-0 rounded-full bg-muted p-0.5"
+            >
+              {(["trend", "scale"] as const).map((v) => {
+                const active = weightView === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    data-testid={`progress-weight-view-${v}`}
+                    onClick={() => setWeightView(v)}
+                    className={[
+                      // Sloe treatment §8: active segment = white lift +
+                      // primarySolid label (was warm-ink text).
+                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors",
+                      active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {goalWeightKg != null ? (
+            <p className="mt-1.5 text-[13px] text-muted-foreground ph-mask">
+              Goal {profileMeasurementSystem === "imperial" ? Math.round(kgToLb(goalWeightKg) * 10) / 10 : Math.round(goalWeightKg * 10) / 10}{" "}
+              {profileMeasurementSystem === "imperial" ? "lb" : "kg"}
+              {goalDateLabel ? ` · on track for ~${goalDateLabel}` : ""}
+            </p>
+          ) : null}
+          {weightChartData.length >= 2 && (
+            <div className="mt-3">
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={weightChartData} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
+                  <defs>
+                    <linearGradient id="weight-clay-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--macro-carbs)" stopOpacity={0.18} />
+                      <stop offset="100%" stopColor="var(--macro-carbs)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                  <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  {/* Trend = smoothed MA line; Scale = raw weigh-ins. Clay line
+                      with a soft area fill (frame styling). */}
+                  {weightView === "scale" || showRawDots ? (
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="var(--macro-carbs)"
+                      strokeWidth={2.25}
+                      fill="url(#weight-clay-fill)"
+                      dot={weightView === "scale" ? { r: 3, fill: "var(--card)", stroke: "var(--macro-carbs)", strokeWidth: 2 } : false}
+                      activeDot={{ r: 5, fill: "var(--macro-carbs)", stroke: "var(--card)", strokeWidth: 2 }}
+                      connectNulls
+                    />
+                  ) : (
+                    <Line
+                      type="monotone"
+                      dataKey="ma"
+                      stroke="var(--macro-carbs)"
+                      strokeWidth={2.25}
+                      dot={false}
+                      connectNulls
+                    />
+                  )}
+                  {goalWeightChart != null && (
+                    <ReferenceLine y={goalWeightChart} stroke="var(--muted-foreground)" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {/* START / CURRENT / GOAL / RATE stat row */}
+          <div className="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-3">
+            {([
+              ["Start", startKg != null ? formatWeight(startKg) : "—"],
+              ["Current", latestWeightKg != null ? formatWeight(latestWeightKg) : "—"],
+              ["Goal", goalWeightKg != null ? formatWeight(goalWeightKg) : "—"],
+              ["Rate", rateKgPerWeek != null && rateKgPerWeek !== 0
+                ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}`
+                : "—"],
+            ] as const).map(([label, value]) => (
+              <div key={label} className="text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
+                <p className="mt-1 text-[15px] font-semibold tabular-nums text-foreground ph-mask">{value}</p>
+              </div>
+            ))}
+          </div>
+          {/* Log weight — centred button + a quick inline input */}
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+              placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
+              value={weightInput}
+              onChange={(e) => setWeightInput(e.target.value)}
+              type="number"
+              step="0.1"
+              aria-label="Log weight"
+            />
+            <button
+              onClick={() => void saveTodayWeight()}
+              data-testid="progress-log-weight"
+              /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
+                 (transparent fill, 1.5px primarySolid border + label). */
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
+            >
+              <Icons.add className="h-4 w-4" aria-hidden />
+              Log weight
+            </button>
+          </div>
+          {/* Gap 13 parity (web mirror of weight-tracker.tsx 2026-06-09):
+              editorial coaching line in Newsreader italic 14px — matches
+              the mobile Type.coach register. Previously plain text-xs. */}
+          <p
+            data-testid="weight-input-supportive-copy"
+            className="mt-1.5 text-center text-[13px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
+          >
+            Every check-in gives us better data for you.
+          </p>
+        </SupprCard>
+        );
+      })() : null}
+
+      {/* 5. AVG INTAKE / EST. TDEE (ADAPTIVE) / DEFICIT triad — real range
+          intake + resolved maintenance (`recapMaintenance`); deficit =
+          maintenance − intake. Sage TDEE/deficit, amber surplus. */}
+      <ProgressEnergyTriad
+        className="mb-4"
+        avgIntakeKcal={caloriesRange.avgCaloriesPerDay}
+        maintenanceKcal={recapMaintenance?.kcal ?? staticTdee}
+        isAdaptive={recapMaintenance?.source === "adaptive"}
+      />
+
+      {/* 6. DAILY CALORIES (Sloe Figma 492:2) — M–S bars, sage = on target,
+          amber = over, a small goal dot above each bar. Reads the same
+          `dailyCaloriesData` (effective-target colouring) the detailed
+          chart used; this is the frame-styled primary surface. */}
+      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-4" data-testid="progress-daily-calories-card">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
+              Daily Calories
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-headline)] text-[24px] font-medium leading-none text-foreground tabular-nums">
+              {avgCalories.toLocaleString()}
+              <span className="ml-1 text-[13px] text-muted-foreground">avg</span>
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--macro-carbs)" }} />
+            goal
+          </span>
         </div>
-        <div className="hidden md:block md:col-span-2">
-          <TrendSummaryCardWeb
-          daysHitCalorieTarget={(() => {
-            // "Hit" = at or under the day's effective target (snapshot or
-            // fallback). The old ±10% window false-negatives on days you
-            // were well under (e.g. 938 vs 1,100 effective = miss at 14.7%).
-            let n = 0;
-            for (const d of weekStatsBundle.days) {
-              if (d.targetCalories <= 0 || d.calories <= 0) continue;
-              if (d.calories <= d.effectiveTargetCalories) n += 1;
-            }
-            return n;
-          })()}
-          totalDaysInWindow={weekStatsBundle.days.length}
-          daysHitProteinTarget={weekStatsBundle.proteinOnTarget}
-          weighInsThisWeek={weekStatsBundle.days.filter((d) => (weightKgByDay[d.key] ?? 0) > 0).length}
-          goalWeightKg={goalWeightKg}
-          goalDateLabel={goalDateLabel}
-          measurementSystem={profileMeasurementSystem}
-          />
+        {(() => {
+          const chartHeight = 96;
+          const dotReserve = 10;
+          const barMax = chartHeight * 0.72;
+          const maxCal = Math.max(
+            targets.calories,
+            ...dailyCaloriesData.map((dd) => dd.calories),
+            1,
+          );
+          const scaleMax = maxCal * 1.15;
+          return (
+            <div className="mt-4 flex items-end gap-2" style={{ height: chartHeight }}>
+              {dailyCaloriesData.map((d) => {
+                const overTarget = d.calories > d.effectiveTarget;
+                const barH = maxCal > 0 ? Math.max(4, (d.calories / scaleMax) * barMax) : 4;
+                const goalDotBottom = d.effectiveTarget > 0 ? dotReserve + (d.effectiveTarget / scaleMax) * barMax : null;
+                const isDayToday = d.key === todayDateKey;
+                const bg = d.calories === 0
+                  ? "var(--border)"
+                  : overTarget
+                    ? "var(--warning)"
+                    : "var(--macro-protein)";
+                return (
+                  <div key={d.key} className="relative flex-1 flex flex-col items-center justify-end" style={{ height: chartHeight }}>
+                    {/* goal dot above the bar */}
+                    {goalDotBottom != null ? (
+                      <span
+                        aria-hidden
+                        className="absolute left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full"
+                        style={{ bottom: Math.min(goalDotBottom, chartHeight - 16), background: "var(--macro-carbs)" }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-full rounded-[6px]"
+                      data-testid={`progress-day-bar-${d.key}`}
+                      data-today={isDayToday ? "true" : "false"}
+                      style={{ height: barH, background: bg, opacity: isDayToday ? 1 : 0.85 }}
+                    />
+                    <span className={["mt-1.5 text-[10px] font-medium leading-none", isDayToday ? "text-foreground font-bold" : "text-muted-foreground"].join(" ")}>
+                      {d.day.charAt(0)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+        <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--macro-protein)" }} />
+            On target
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--warning)" }} />
+            Over
+          </span>
         </div>
-      </div>
+      </SupprCard>
+
+      {/* 7. ON-TARGET RIBBON — real count of on-target days this week. */}
+      {(() => {
+        const onTargetCount = weekStatsBundle.days.filter(
+          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+        ).length;
+        return (
+          <ProgressOnTargetRibbon
+            className="mb-6"
+            onTargetCount={onTargetCount}
+            subtitle="Your most consistent week this month."
+          />
+        );
+      })()}
+
+      {/* ── Preserved detail (below the frame's above-fold story) ──
+          Everything wired but not part of the 492:2 frame stays here so
+          no functionality is lost: week digest, streak freezes, full
+          macro-adherence breakdown, adaptive-maintenance card + explainer,
+          journey/projection, steps, body fat. */}
 
       {/* WEEK DIGEST (D3) — replaces the legacy WeeklyRecapCard. Host
           computes headline + flattens usual-meal insight into the
@@ -1591,10 +1865,10 @@ function ProgressDashboardContent() {
       {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
           freezes, or has consumed any. Hidden entirely when budget = 0. */}
       {freezeBudgetMax > 0 ? (
-        <SupprCard padding="lg" radius="lg" className="mb-6">
+        <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
-            <p className="text-sm font-semibold text-foreground">Streak freezes</p>
+            <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Streak freezes</p>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             {`Freezes cover one empty day each so a sick or travel day doesn\u2019t break your streak. You earn one every 7-day streak, up to a cap of ${freezeBudgetMax}.`}
@@ -1626,185 +1900,14 @@ function ProgressDashboardContent() {
         </SupprCard>
       ) : null}
 
-      {/* DAILY CALORIES CHART
-          Action 13 Item #5 (2026-04-19) — denominator scales to the
-          largest day so over-target bars visually tower above target
-          bars. Previous code hard-capped at `targets.calories * 1.15`,
-          which made a 200%-of-target day clip identically to a 115%
-          day. Mirrors mobile's `Math.max(targets.calories,
-          ...weekStats.days.map(...))` rule.
-          Action 13 Item #11 — past days that fall back to today's
-          target (no `daily_targets` snapshot) render with a small
-          striped border + tooltip so the user knows the bar's
-          colour decision is approximate. */}
-      {/* Daily Calories + Macro Adherence — mobile parity for bar scale
-          (maxCal * 1.15, barMax = 78% of chart height) and typography.
-          On lg+ sit side-by-side so charts use the wider desktop shell. */}
-      <div
-        data-testid="progress-week-charts-grid"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"
-      >
-      <SupprCard padding="lg" radius="lg">
-        <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
-        {(() => {
-          const chartHeight = 90;
-          const dayLabelReserve = 16;
-          const barMax = chartHeight * 0.78;
-          const maxCal = Math.max(
-            targets.calories,
-            ...dailyCaloriesData.map((dd) => dd.calories),
-            1,
-          );
-          const scaleMax = maxCal * 1.15;
-          const targetLineBottom =
-            targets.calories > 0 && maxCal > 0
-              ? dayLabelReserve + (targets.calories / scaleMax) * barMax
-              : null;
-          return (
-            <>
-        <div className="relative" style={{ height: chartHeight }}>
-          {targetLineBottom != null ? (
-              <div
-                aria-hidden
-                className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-primary/70"
-                style={{ bottom: targetLineBottom }}
-              />
-          ) : null}
-          <div className="flex items-end gap-2 h-full">
-            {dailyCaloriesData.map((d) => {
-              // ENG-787 — colour over/under against the day's *effective*
-              // budget (base + earned activity bonus), not the bare base
-              // target. The bare target painted bars amber on days the user
-              // ate into a bonus they'd earned. `effectiveTarget` equals
-              // `target` when the activity-adjusted preference is off.
-              const overTarget = d.calories > d.effectiveTarget;
-              const barH =
-                maxCal > 0
-                  ? Math.max(4, (d.calories / scaleMax) * barMax)
-                  : 4;
-              const isDayToday = d.key === todayDateKey;
-              const isPast = d.key < todayDateKey;
-              const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
-              const bg = d.calories === 0
-                ? "var(--border)"
-                : overTarget
-                  ? "var(--over-budget-fg)"
-                  : "var(--success)";
-              const valueLabel =
-                d.calories > 0
-                  ? d.calories >= 1000
-                    ? `${(d.calories / 1000).toFixed(1)}k`
-                    : String(d.calories)
-                  : "";
-              return (
-                <div key={d.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <span className="text-[11px] text-muted-foreground tabular-nums leading-none min-h-[14px]">
-                    {valueLabel}
-                  </span>
-                  <div
-                    className="w-full rounded-[5px]"
-                    data-testid={`progress-day-bar-${d.key}`}
-                    data-today={isDayToday ? "true" : "false"}
-                    data-approx={showApproxCue ? "true" : "false"}
-                    title={showApproxCue ? "Compared against today's target (no snapshot for that day)" : undefined}
-                    style={{
-                      height: barH,
-                      background: bg,
-                      opacity: isDayToday ? 1 : 0.75,
-                      ...(showApproxCue
-                        ? {
-                            border: "1px dashed var(--muted-foreground)",
-                            outlineOffset: -1,
-                          }
-                        : {}),
-                    }}
-                  />
-                  <span
-                    className={[
-                      "text-[10px] font-medium leading-none",
-                      isDayToday ? "text-primary font-bold" : "text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {d.day}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1 mt-2">
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
-              At or under daily target
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--over-budget-fg)" }} />
-              Over daily target
-            </span>
-            {targets.calories > 0 ? (
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2.5 h-px border-t border-dashed border-primary" />
-                Base target {targets.calories.toLocaleString()} kcal
-              </span>
-            ) : null}
-          </div>
-          {/* ENG-787 — the dashed line marks the BASE target; a bar can sit
-              above it and stay green on days an activity bonus was earned
-              and eaten into. This caption (mobile parity) disambiguates. */}
-          <p className="text-[10px] text-muted-foreground">
-            Each bar compares to your target for that day — higher on days you earned an activity bonus.
-          </p>
-        </div>
-            </>
-          );
-        })()}
-      </SupprCard>
-
-      {/* MACRO ADHERENCE — F-117 v2 (Grace, 2026-05-07): bar fill
-          clamps to 100% via `formatMacroAdherenceBar`; over-target
-          rows render bar + label in over-budget amber (NOT red) so
-          the row reads "over budget" without feeling like an error.
-          Per brand-tokens.md + project memory ("over-budget is amber,
-          never red"). */}
-      <SupprCard padding="lg" radius="lg">
-        <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
-        <p className="text-[10px] text-muted-foreground mb-2">
-          Based on {weekStatsBundle.daysWithFood}{" "}
-          {weekStatsBundle.daysWithFood === 1 ? "day" : "days"} with logged food
-        </p>
-        <div className="space-y-2">
-          {([
-            ["Protein", proteinAdherence, "var(--macro-protein)"],
-            ["Carbs", carbsAdherence, "var(--macro-carbs)"],
-            ["Fat", fatAdherence, "var(--macro-fat)"],
-          ] as const).map(([name, pct, color]) => {
-            const bar = formatMacroAdherenceBar({ adherencePct: pct });
-            const tone = bar.isOver ? "var(--over-budget-fg)" : color;
-            return (
-              <div key={name} className="flex items-center gap-2.5">
-                <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
-                <span className="text-xs text-muted-foreground w-12">{name}</span>
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    data-testid={`macro-adherence-bar-${name.toLowerCase()}`}
-                    style={{ width: `${bar.barFillPct}%`, background: tone }}
-                  />
-                </div>
-                <span
-                  className="text-xs font-semibold tabular-nums text-right text-foreground"
-                  style={{ minWidth: "3.5rem" }}
-                  data-testid={`macro-adherence-label-${name.toLowerCase()}`}
-                >
-                  {bar.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </SupprCard>
-      </div>
+      {/* DAILY CALORIES + MACRO ADHERENCE detail grid — REMOVED in the
+          492:2 reskin. It duplicated the same `dailyCaloriesData` +
+          `weekStatsBundle` adherence data now owned by the frame's primary
+          "Daily Calories" card (sage/amber + goal dots) and the "Average
+          Adherence" card (the four macro bars Protein/Carbs/Fat/Fibre)
+          above. No duplicate competing surfaces. The per-metric drill-down
+          (`ProgressMetricDetail`) is still reachable from the demoted stat
+          chips below — calories/protein/streak entry points preserved. */}
 
       {/* WEEKLY INSIGHT — removed (Action 5 Item 1, 2026-04-19).
           The card restated numbers already on screen above (avg calories,
@@ -1835,10 +1938,10 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         return (
-        <SupprCard padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
+        <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
-            <p className="text-sm font-semibold text-foreground">Maintenance</p>
+            <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Maintenance</p>
             {showAdaptiveExtras ? (
               <span
                 data-testid="maintenance-source-pill"
@@ -1869,7 +1972,10 @@ function ProgressDashboardContent() {
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <p className={`text-[28px] font-bold tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
+            {/* SLOE Phase 0: the maintenance hero kcal reads in the Newsreader
+                serif display face (big numerals are a serif moment); the
+                `kcal/day` unit stays sans. Mirrors mobile progress.tsx. */}
+            <p className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
               {resolved.kcal.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">kcal/day</p>
@@ -1960,7 +2066,7 @@ function ProgressDashboardContent() {
                   type="button"
                   onClick={() => setMaintenanceExplainerOpen((v) => !v)}
                   aria-expanded={maintenanceExplainerOpen}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary-solid hover:underline"
                 >
                   <span>{maintenanceExplainerOpen ? "Hide" : "How this works"}</span>
                   <span aria-hidden="true" className="text-[10px]">
@@ -2029,146 +2135,12 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* WEIGHT TRACKING — T13.2 (full-sweep follow-up, 2026-04-25):
-          gate the whole tracker section on profileWeightSurfaceMode.
-          "hide" + "trends_only" suppress the absolute kg displays,
-          the goal kg, and the weight-line chart. The trends-only
-          card at the top of Progress (WeightTrendOnlyCardWeb) covers
-          direction. Users who want to log a weight while in opt-out
-          mode flip back to "show" in Settings — that's the explicit
-          opt-in we want, not a secondary side-channel here. */}
-      {profileWeightSurfaceMode === "show" ? (
-      <SupprCard padding="lg" radius="lg" className="relative mb-6 mt-6">
-        {/* ENG-824 — reserved weight win-moment overlay. Mounted only while a
-            new-all-time-low celebration is active; plays once then unmounts.
-            Absolute + pointer-events-none so it never blocks the card. */}
-        {weightWinActive ? (
-          <WinMomentPlayer
-            celebration="goal-hit"
-            fullBleed
-            onComplete={() => setWeightWinActive(false)}
-            testID="progress-weight-win-moment"
-          />
-        ) : null}
-        <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
-        {/* ENG-534 (2026-05-16): current + goal weight are HIGH-class
-            body-stats. `ph-mask` makes PostHog session-replay render
-            these as grey blocks. See
-            `docs/operations/session-replay-masking-audit.md`. */}
-        <div className="flex gap-6 mb-3">
-          <div className="text-center">
-            {/* ENG-824 — the green win-colour pulse on a new all-time low. */}
-            <p
-              className={`text-[22px] font-bold tabular-nums ph-mask transition-colors duration-200 ${weightPulse ? "text-success" : "text-foreground"}`}
-              data-testid="progress-current-weight"
-            >
-              {weightKg != null ? formatWeight(weightKg) : "—"}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Current</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[22px] font-bold text-success tabular-nums ph-mask">{goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
-          </div>
-        </div>
-        {weightChartData.length >= 2 && (
-          <div className="mb-3">
-            {/* 2026-05-13 (premium-bar audit web parity, Withings polish):
-                hollow rings on data points (was filled r=2 dots) +
-                vertical "today" indicator line + thicker smoothed
-                trend line. Same Withings Health Mate parity that
-                mobile got in dd043c3 + 7b0b9b6, ported to the
-                Recharts surface so the web chart no longer reads
-                as the cheap default. */}
-            <ResponsiveContainer width="100%" height={170}>
-              <LineChart data={weightChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-                <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
-                <Tooltip contentStyle={{ fontSize: 11 }} />
-                {/*
-                  2026-05-06 audit (D2): bucket-aware rendering.
-                  Daily ranges keep the raw point line + dots.
-                  Weekly / monthly ranges render only the smoothed
-                  MA line — each `value` point IS an aggregate, so
-                  dots would mislead.
-                */}
-                {showRawDots ? (
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="var(--primary)"
-                    strokeWidth={2.25}
-                    dot={{
-                      r: 3.5,
-                      fill: "var(--card)",
-                      stroke: "var(--primary)",
-                      strokeWidth: 2,
-                    }}
-                    activeDot={{
-                      r: 5,
-                      fill: "var(--primary)",
-                      stroke: "var(--card)",
-                      strokeWidth: 2,
-                    }}
-                  />
-                ) : (
-                  <Line
-                    type="monotone"
-                    dataKey="ma"
-                    stroke="var(--primary)"
-                    strokeWidth={2.25}
-                    dot={false}
-                    connectNulls
-                  />
-                )}
-                {goalWeightChart != null && (
-                  <ReferenceLine
-                    y={goalWeightChart}
-                    stroke="var(--success)"
-                    strokeDasharray="4 4"
-                  />
-                )}
-                {/* 2026-05-13 — "today" vertical indicator. Same
-                    Withings "you are here" marker mobile uses. Renders
-                    when `weightChartData` contains a point whose
-                    underlying ISO date matches today, identified by
-                    the `isToday` flag on each point. */}
-                {weightChartData.some((p) => p.isToday) ? (
-                  <ReferenceLine
-                    x={weightChartData.find((p) => p.isToday)?.date}
-                    stroke="var(--foreground)"
-                    strokeWidth={1}
-                    strokeOpacity={0.3}
-                  />
-                ) : null}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
-            value={weightInput}
-            onChange={(e) => setWeightInput(e.target.value)}
-            type="number"
-            step="0.1"
-          />
-          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
-        </div>
-        {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
-            supportive moment-of-truth line. Mirrors the mobile
-            LogWeightSheet / weight-tracker copy so the
-            high-emotion weigh-in surface reads the same way on
-            both platforms. */}
-        <p
-          data-testid="weight-input-supportive-copy"
-          className="mt-1 text-center text-xs text-muted-foreground"
-        >
-          Every check-in gives us better data for you.
-        </p>
-      </SupprCard>
-      ) : null}
+      {/* WEIGHT TRACKING card — RELOCATED to frame position 4 above
+          (Sloe Figma 492:2: Newsreader headline + Trend/Scale toggle +
+          clay chart + START/CURRENT/GOAL/RATE row + Log weight). The
+          win-moment overlay, measurement-system formatting, chart wiring,
+          and the `weight_surface_mode === "show"` gate are all preserved
+          there — this is the single canonical weight surface. */}
 
       {/* ENG-741 — Trajectory card. Sits directly under the weight chart.
           Flag-gated (`progress_trajectory_box`); default-off preserves the
@@ -2254,15 +2226,16 @@ function ProgressDashboardContent() {
           : null;
 
         return (
-          <SupprCard padding="lg" radius="lg" className="mb-6">
+          <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
-                <p className="text-sm font-semibold text-foreground">Journey</p>
+                <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Journey</p>
               </div>
               {timeline.daysToGoal != null ? (
                 <p className="text-right">
-                  <span className="text-[22px] font-bold text-primary tabular-nums">{timeline.daysToGoal}</span>
+                  {/* SLOE Phase 0: days-to-goal hero numeral in serif; label stays sans. */}
+                  <span className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-primary tabular-nums">{timeline.daysToGoal}</span>
                   <span className="text-xs text-muted-foreground ml-1">days to goal</span>
                 </p>
               ) : timeline.cappedAtMaxDays ? (
@@ -2341,15 +2314,17 @@ function ProgressDashboardContent() {
       })()}
 
       {/* STEPS */}
-      <SupprCard padding="lg" radius="lg" className="mb-6">
+      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
+          {/* SLOE Phase 0: the Steps today/goal big stat numerals read in the
+              Newsreader serif display face; the labels below stay sans. */}
           <div className="text-center">
-            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
+            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
           </div>
           <div className="text-center">
-            <p className="text-[22px] font-bold text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
+            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
           </div>
         </div>
@@ -2373,16 +2348,18 @@ function ProgressDashboardContent() {
             onChange={(e) => setStepsInput(e.target.value)}
             type="number"
           />
-          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
         </div>
       </SupprCard>
 
       {/* BODY FAT */}
-      <SupprCard padding="lg" radius="lg">
+      <SupprCard elevation="card" padding="lg" radius="lg">
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
         {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
             makes PostHog session-replay render this as a grey block. */}
-        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
+        {/* SLOE Phase 0: the body-fat hero stat reads in the Newsreader serif
+            display face (big numerals are a serif moment). `ph-mask` preserved. */}
+        <p className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
         <div className="flex gap-2">
           <input
             className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
@@ -2392,7 +2369,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
         </div>
       </SupprCard>
       <p
@@ -2411,55 +2388,13 @@ function ProgressDashboardContent() {
   );
 }
 
-/* ── 2026-04-20 Prototype Phase 2 cards ──────────────────────────── */
-
-/**
- * Tiny inline SVG sparkline for the Weight card. We intentionally do
- * not reach for recharts here — this line doesn't need axes, tooltips,
- * or a resize observer. Pure component, deterministic output.
- */
-function WeightSparkline({
-  points,
-  color,
-  width,
-  height,
-}: {
-  points: number[];
-  color: string;
-  width: number;
-  height: number;
-}) {
-  if (points.length < 2) {
-    return <svg width={width} height={height} aria-hidden />;
-  }
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const rangeSpan = max - min === 0 ? 1 : max - min;
-  const pad = 4;
-  const innerW = width - pad * 2;
-  const innerH = height - pad * 2;
-  const step = innerW / (points.length - 1);
-  const xy = points.map((v, i) => {
-    const x = pad + i * step;
-    const y = pad + innerH - ((v - min) / rangeSpan) * innerH;
-    return [x, y] as const;
-  });
-  const polyline = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const last = xy[xy.length - 1];
-  return (
-    <svg width={width} height={height} role="img" aria-label="Weight trend sparkline">
-      <polyline
-        points={polyline}
-        fill="none"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <circle cx={last[0]} cy={last[1]} r={3} fill={color} />
-    </svg>
-  );
-}
+/* ── Sloe Figma 492:2 reskin ──────────────────────────────────────
+   The desktop Phase-2 card set (WeightSparkline, WeightRangeCardWeb,
+   CaloriesRangeCardWeb, ProteinRangeCardWeb, TrendSummaryCardWeb) is
+   removed — its data is now owned by the frame's Average Adherence card,
+   the AVG/TDEE/DEFICIT triad, and the relocated weight card. Only the
+   `trends_only` direction tile survives (it's the body-neutral opt-out
+   surface, not part of the removed dense grid). */
 
 /**
  * T13.2 (full-sweep follow-up, 2026-04-25): trends-only weight card
@@ -2505,6 +2440,7 @@ function WeightTrendOnlyCardWeb({
   return (
     <SupprCard
       data-testid="progress-weight-trend-only-card"
+      elevation="card"
       padding="lg"
       radius="lg"
       className="mb-4"
@@ -2525,343 +2461,6 @@ function WeightTrendOnlyCardWeb({
   );
 }
 
-function WeightRangeCardWeb({
-  series,
-  latestKg,
-  weekDeltaKg,
-  deltaKg,
-  rangeKey,
-  goalWeightKg,
-  measurementSystem,
-}: {
-  series: { dateKey: string; kg: number }[];
-  latestKg: number | null;
-  weekDeltaKg: number | null;
-  deltaKg: number | null;
-  rangeKey: RangeKey;
-  goalWeightKg: number | null;
-  measurementSystem: "metric" | "imperial";
-}) {
-  const formatWeight = (kg: number, signed = false) => {
-    const sign = signed ? (kg < 0 ? "−" : kg > 0 ? "+" : "") : "";
-    const abs = Math.abs(kg);
-    if (measurementSystem === "imperial") {
-      const lb = kgToLb(abs);
-      return `${sign}${Math.round(lb * 10) / 10} lb`;
-    }
-    return `${sign}${Math.round(abs * 10) / 10} kg`;
-  };
-  if (latestKg == null) {
-    return (
-      <SupprCard
-        data-testid="progress-weight-range-card-empty"
-        padding="xl"
-        radius="lg"
-        className="mb-4"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center">
-            <Icons.scale className="h-4 w-4 text-primary" aria-hidden />
-          </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Weight</p>
-        </div>
-        <p className="text-[15px] font-semibold text-foreground">
-          Your trend starts with a weigh-in
-        </p>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Log a weight and we&apos;ll chart your trajectory over time.
-        </p>
-      </SupprCard>
-    );
-  }
-  const weekDelta = weekDeltaKg ?? deltaKg;
-  let onTrack = false;
-  if (goalWeightKg != null && weekDelta != null) {
-    onTrack =
-      (goalWeightKg < latestKg && weekDelta < -0.05) ||
-      (goalWeightKg > latestKg && weekDelta > 0.05);
-  }
-  const windowLabel =
-    rangeKey === "7d" ? "last 7 days" : rangeKey === "30d" ? "last 30 days" : rangeKey === "90d" ? "last 90 days" : "all time";
-  const weekDeltaDisplay =
-    weekDelta != null && Math.abs(weekDelta) >= 0.05 ? formatWeight(weekDelta, true) : null;
-  return (
-    <SupprCard
-      data-testid="progress-weight-range-card"
-      padding="lg"
-      radius="lg"
-      className="h-full"
-    >
-      <div className="flex items-start justify-between mb-1">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
-        {onTrack ? (
-          <span
-            data-testid="progress-weight-on-track-pill"
-            className="inline-flex items-center rounded-full bg-success/15 text-success text-[11px] font-semibold px-2 py-0.5"
-          >
-            On track
-          </span>
-        ) : null}
-      </div>
-      <p
-        data-testid="progress-weight-range-value"
-        className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
-      >
-        {formatWeight(latestKg)}
-      </p>
-      {weekDeltaDisplay ? (
-        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-          {weekDelta! < 0 ? (
-            <Icons.trendDown className="w-3 h-3" aria-hidden />
-          ) : (
-            <Icons.trendUp className="w-3 h-3" aria-hidden />
-          )}
-          <span className="tabular-nums">{weekDeltaDisplay} this week</span>
-        </p>
-      ) : null}
-      <div className="mt-2.5">
-        <WeightSparkline
-          points={series.map((p) => p.kg)}
-          color="var(--primary)"
-          width={280}
-          height={48}
-        />
-      </div>
-      <div className="flex justify-between mt-1">
-        {series.length >= 2 ? (
-          <>
-            <span className="text-[10px] text-muted-foreground">{series[0].dateKey.slice(5)}</span>
-            <span className="text-[10px] text-muted-foreground">{series[series.length - 1].dateKey.slice(5)}</span>
-          </>
-        ) : (
-          <span className="text-[10px] text-muted-foreground">Need at least 2 weigh-ins</span>
-        )}
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-        Trend across the {windowLabel}. Projection appears in the Journey card below once you have enough data.
-      </p>
-    </SupprCard>
-  );
-}
-
-const PROGRESS_RANGE_OVERLINE =
-  "text-[11px] font-semibold uppercase tracking-widest text-muted-foreground";
-
-function CaloriesRangeCardWeb({
-  avgCaloriesPerDay,
-  deltaVsTargetKcal,
-  adherencePct,
-  daysLogged,
-  targetCalories,
-}: {
-  avgCaloriesPerDay: number | null;
-  deltaVsTargetKcal: number | null;
-  adherencePct: number | null;
-  daysLogged: number;
-  targetCalories: number;
-}) {
-  return (
-    <div data-testid="progress-calories-range-wrapper" className="h-full">
-      <SupprCard
-        data-testid="progress-calories-range-card"
-        padding="lg"
-        radius="lg"
-        className="h-full"
-      >
-        <p data-testid="progress-calories-range-header" className={PROGRESS_RANGE_OVERLINE}>
-          Calories (avg/day)
-        </p>
-        {avgCaloriesPerDay == null ? (
-          <div className="py-2 mt-2">
-            <p className="text-[15px] font-semibold text-foreground">
-              Your calorie trends will show here
-            </p>
-            <p className="text-[13px] text-muted-foreground mt-1">
-              Log meals on Today and your averages will build over time.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-start justify-between gap-3 mt-2">
-              <p
-                data-testid="progress-calories-range-avg"
-                className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
-              >
-                {avgCaloriesPerDay.toLocaleString()}
-                <span className="text-sm font-medium text-muted-foreground"> avg/day</span>
-              </p>
-              {deltaVsTargetKcal != null ? (
-                <span
-                  data-testid="progress-calories-range-delta-pill"
-                  // 2026-05-21: over-target pill is amber, never red.
-                  // Per brand-tokens.md + project memory ("over-budget
-                  // is amber, never red"). Red was alarming/clinical
-                  // for a wellness app.
-                  className={[
-                    "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
-                    deltaVsTargetKcal <= 0
-                      ? "bg-success text-foreground"
-                      : "bg-[var(--over-budget-soft)] text-[var(--over-budget-fg)]",
-                  ].join(" ")}
-                >
-                  {deltaVsTargetKcal > 0 ? "+" : "−"}
-                  {Math.abs(deltaVsTargetKcal).toLocaleString()} vs target
-                </span>
-              ) : null}
-            </div>
-            <p
-              data-testid="progress-calories-range-subtitle"
-              className="text-xs text-muted-foreground mt-1.5 tabular-nums"
-            >
-              Target {targetCalories.toLocaleString()}
-              {adherencePct != null ? ` · ${adherencePct}% avg` : ""}
-              {daysLogged > 0 ? ` · ${daysLogged} logged day${daysLogged === 1 ? "" : "s"}` : ""}
-            </p>
-          </>
-        )}
-      </SupprCard>
-    </div>
-  );
-}
-
-/**
- * 2026-04-20 desktop prototype port
- * (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
- * `WebProgress` → Protein card): avg protein per day value + target
- * subtitle + 7-bar protein chart (reads directly from the week
- * bundle so mobile + web can't drift). Lighter-weight than the
- * Calories card — no delta pill — because protein adherence shows
- * up in the legacy macro adherence bar below and we don't want two
- * competing "% of target" readings on the same page.
- */
-function ProteinRangeCardWeb({
-  avgProteinPerDay,
-  targetProteinG,
-  series,
-}: {
-  avgProteinPerDay: number;
-  targetProteinG: number;
-  series: number[];
-}) {
-  const max = Math.max(1, targetProteinG, ...series);
-  return (
-    <div data-testid="progress-protein-range-wrapper" className="h-full">
-      <SupprCard
-        data-testid="progress-protein-range-card"
-        padding="lg"
-        radius="lg"
-        className="h-full"
-      >
-        <p data-testid="progress-protein-range-header" className={PROGRESS_RANGE_OVERLINE}>
-          Protein (avg/day)
-        </p>
-        <p
-          data-testid="progress-protein-range-avg"
-          className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em] mt-2"
-        >
-          {avgProteinPerDay}
-          <span className="text-sm font-medium text-muted-foreground"> g avg/day</span>
-        </p>
-        <p className="text-xs text-muted-foreground mt-1.5 tabular-nums">
-          Target {targetProteinG} g
-        </p>
-        {series.length > 0 ? (
-          <div className="mt-3 flex items-end gap-1" style={{ height: 70 }}>
-            {series.map((p, i) => {
-              const h = Math.max(2, Math.round((p / max) * 64));
-              return (
-                <div
-                  key={`protein-bar-${i}`}
-                  data-testid={`progress-protein-bar-${i}`}
-                  className="flex-1 rounded-[3px]"
-                  style={{
-                    height: h,
-                    background: "var(--macro-protein)",
-                    opacity: i === series.length - 1 ? 1 : 0.7,
-                  }}
-                />
-              );
-            })}
-          </div>
-        ) : null}
-      </SupprCard>
-    </div>
-  );
-}
-
-/**
- * 2026-04-20 desktop prototype port — Trend summary card. Key/value
- * list reusing numbers the rest of the page already computed (week
- * bundle hit-counts + weigh-ins + goal date) so this card can't
- * disagree with the others above.
- */
-function TrendSummaryCardWeb({
-  daysHitCalorieTarget,
-  totalDaysInWindow,
-  daysHitProteinTarget,
-  weighInsThisWeek,
-  goalWeightKg,
-  goalDateLabel,
-  measurementSystem,
-}: {
-  daysHitCalorieTarget: number;
-  totalDaysInWindow: number;
-  daysHitProteinTarget: number;
-  weighInsThisWeek: number;
-  goalWeightKg: number | null;
-  goalDateLabel: string | null;
-  measurementSystem: "metric" | "imperial";
-}) {
-  const goalDisplay =
-    goalWeightKg == null
-      ? null
-      : measurementSystem === "imperial"
-        ? `${Math.round(kgToLb(goalWeightKg) * 10) / 10} lb`
-        : `${Math.round(goalWeightKg * 10) / 10} kg`;
-  return (
-    <div data-testid="progress-trend-summary-wrapper">
-      <SupprCard
-        data-testid="progress-trend-summary-card"
-        padding="lg"
-        radius="lg"
-      >
-        <p data-testid="progress-trend-summary-header" className={PROGRESS_RANGE_OVERLINE}>
-          Trend summary
-        </p>
-        <dl className="flex flex-col gap-2.5 text-[13px] mt-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Days hit calorie target</dt>
-            <dd className="font-bold text-foreground tabular-nums">
-              {daysHitCalorieTarget} of {totalDaysInWindow}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Days hit protein target</dt>
-            <dd className="font-bold text-foreground tabular-nums">
-              {daysHitProteinTarget} of {totalDaysInWindow}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Weigh-ins</dt>
-            <dd className="font-bold text-foreground tabular-nums">
-              {weighInsThisWeek} of {totalDaysInWindow}
-            </dd>
-          </div>
-          {goalDisplay != null ? (
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">
-                Projected {goalDisplay} by
-              </dt>
-              <dd className="font-bold text-foreground tabular-nums">
-                {goalDateLabel ?? "—"}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      </SupprCard>
-    </div>
-  );
-}
 
 /**
  * 2026-04-20 prototype port — Suspense fallback mirrors the header
@@ -2883,26 +2482,25 @@ function ProgressSuspenseFallback() {
 
   return (
     <>
-      <ProgressTabChrome overline="LAST 30 DAYS" trailing={calendarPlaceholder} />
+      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={calendarPlaceholder} />
       <div
         className="hidden md:block product-shell py-pm-6"
         data-testid="progress-suspense-fallback"
       >
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <p
-              data-testid="progress-overline"
-              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
-            >
-              LAST 30 DAYS
-            </p>
             <h1
               data-testid="progress-header"
-              className="text-[24px] font-bold text-foreground tracking-tight mt-0.5"
-              style={{ letterSpacing: "-0.5px" }}
+              className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
             >
               Progress
             </h1>
+            <p
+              data-testid="progress-subtitle"
+              className="text-sm text-muted-foreground mt-1"
+            >
+              {PROGRESS_HEADER_SUBTITLE}
+            </p>
           </div>
           {calendarPlaceholder}
         </div>

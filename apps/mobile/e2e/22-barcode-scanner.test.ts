@@ -10,15 +10,16 @@ describe('Barcode Scanner', () => {
   it('opens scanner from Scan button', async () => {
     await element(by.text('Scan')).tap();
 
-    // Should show either permission prompt or scanner UI
+    // Should show either permission prompt or scanner UI.
+    // Gap #2 (2026-06-09): idle overlay title changed from "Barcode Scanner"
+    // to "Scan a barcode" (serif editorial treatment).
     try {
       await waitFor(element(by.text('Grant Permission')))
         .toBeVisible()
         .withTimeout(5000);
       await expect(element(by.text('Grant Permission'))).toBeVisible();
     } catch {
-      await expect(element(by.text('Barcode Scanner'))).toBeVisible();
-      await expect(element(by.text('Point at a product barcode'))).toBeVisible();
+      await expect(element(by.text('Scan a barcode'))).toBeVisible();
     }
   });
 

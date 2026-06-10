@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Cook mode</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<header class="w-full bg-surface flex items-center justify-between px-4 h-16 border-b border-line">
+  <button class="p-1 text-ink"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  <div class="text-center"><p class="font-label text-[11px] uppercase tracking-[0.08em] text-ink-faint">Step 2 of 6</p><p class="font-headline text-base text-plum leading-tight">Three Cheese Fusilli</p></div>
+  <button class="p-1 text-ink-soft"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></button>
+</header>
+<main class="pb-10 max-w-2xl mx-auto">
+  <div class="w-full aspect-[16/10] bg-surface-card overflow-hidden relative">
+    <img src="img/babbc6edccce.png" class="w-full h-full object-cover"/>
+    <!-- active timer chip overlaid on the step image (running in background) -->
+    <div class="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/55 backdrop-blur text-white rounded-full pl-3 pr-1.5 py-1.5">
+      <span class="font-label text-[10px] uppercase tracking-wide text-white/70">Pasta</span>
+      <span class="font-headline text-[15px] tabular-nums">8:24</span>
+      <span class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><svg class="sloe-ico text-[12px]" viewBox="0 0 24 24" aria-hidden="true"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg></span>
+    </div>
+  </div>
+  <div class="px-6 pt-6">
+    <div class="flex items-start gap-4">
+      <span class="font-headline text-5xl text-clay leading-none">2</span>
+      <p class="font-headline text-2xl text-ink leading-snug pt-1">Prepare the cheeses</p>
+    </div>
+    <p class="font-body text-[17px] text-ink-soft leading-relaxed mt-4">While the pasta boils, finely grate the three cheeses. Crush the pink peppercorns lightly with the back of a knife or in a mortar and pestle.</p>
+    <!-- ingredients for this step -->
+    <p class="font-label text-[11px] uppercase tracking-[0.08em] text-ink-faint mt-6 mb-2">For this step</p>
+    <div class="flex gap-2 flex-wrap">
+      <span class="inline-flex items-center gap-2 bg-surface-card border border-line rounded-full pl-1.5 pr-3.5 py-1.5"><span class="w-7 h-7 rounded-full overflow-hidden bg-surface flex-none"><img src="img/ing-parmesan.png" class="w-full h-full object-contain mix-blend-multiply"/></span><span class="font-body text-[13px] text-ink">Parmesan · 80g</span></span>
+      <span class="inline-flex items-center gap-1.5 bg-surface-card border border-line rounded-full px-3.5 py-2"><span class="font-body text-[13px] text-ink">Gruyère · 60g</span></span>
+      <span class="inline-flex items-center gap-1.5 bg-surface-card border border-line rounded-full px-3.5 py-2"><span class="font-body text-[13px] text-ink">Pink peppercorns</span></span>
+    </div>
+    <button class="mt-6 inline-flex items-center gap-2 bg-surface-card border border-line text-ink font-body font-semibold text-sm rounded-full px-5 py-3"><svg class="sloe-ico text-[18px] text-clay" viewBox="0 0 24 24" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg> Start a timer for this step · 9:00</button>
+  </div>
+</main>
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t border-line px-5 py-4">
+  <div class="flex items-center gap-1.5 mb-3"><div class="flex-1 h-1.5 rounded-full bg-clay/40"></div><div class="flex-1 h-1.5 rounded-full bg-clay"></div><div class="flex-1 h-1.5 rounded-full bg-line"></div><div class="flex-1 h-1.5 rounded-full bg-line"></div><div class="flex-1 h-1.5 rounded-full bg-line"></div><div class="flex-1 h-1.5 rounded-full bg-line"></div></div>
+  <div class="flex gap-3">
+    <button class="flex-1 bg-surface-card border border-line text-ink font-body font-semibold text-sm rounded-full py-3.5 flex items-center justify-center gap-2"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Back</button>
+    <button class="flex-[2] bg-clay text-white font-body font-semibold text-sm rounded-full py-3.5 flex items-center justify-center gap-2">Next step <svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+</div>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

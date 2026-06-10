@@ -23,6 +23,12 @@ import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
+import {
+  firstNameFromMetadata,
+  todayGreeting,
+  todayLongDateSubline,
+  todayPastDayGreetingLines,
+} from "../../lib/copy/today.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
@@ -68,6 +74,7 @@ import {
   detectSlotForHour,
   ctaForSlot,
   bandLabel,
+  slotSuggestionEyebrow,
   whyLineForSuggestion,
   isLibraryEligibleForNorthStar,
   type NorthStarRecipe,
@@ -81,10 +88,10 @@ import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
-import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
 import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
+import { TodayScrollSectionHeader } from "./suppr/today-scroll-section-header";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { TodayDashboardMacroBars } from "./suppr/today-dashboard-macro-bars";
@@ -106,10 +113,11 @@ import {
 } from "./suppr/create-custom-food-dialog";
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
+import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
+import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
-  computeEatAgainForSlot,
   computeRecentMeals,
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
@@ -140,17 +148,14 @@ import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   parsePendingUsualMealSave,
 } from "../../lib/nutrition/pendingUsualMealSave";
-import {
-  LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
-  STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
-  readDismissState as readEatAgainDismiss,
-  recordDismiss as recordEatAgainDismiss,
-  serialiseDismissState as serialiseEatAgainDismiss,
-  shouldShowEatAgain,
-  type DismissState as EatAgainDismissState,
-} from "../../lib/nutrition/eatAgainDismiss";
 import { SaveMealDialog } from "./suppr/save-meal-dialog";
-import { parseDateKey, shiftDateKey, todayKey, clampDateKey } from "../../lib/nutrition/trackerDate.ts";
+import {
+  parseDateKey,
+  shiftDateKey,
+  todayKey,
+  clampDateKey,
+  formatDateLabel,
+} from "../../lib/nutrition/trackerDate.ts";
 import { countWeighInDaysInWindow } from "../../lib/nutrition/weighInDays.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
 import {
@@ -328,6 +333,7 @@ function NorthStarBlockHost({
   remainingProtein,
   remainingCarbs,
   remainingFat,
+  dailyCalorieTarget,
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
@@ -340,6 +346,10 @@ function NorthStarBlockHost({
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
+  /** ENG-995: the user's FULL daily calorie target (not remaining).
+   *  Threaded into the scorer so the per-meal budget is a share of the
+   *  day, never the whole remaining day. */
+  dailyCalorieTarget: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly (mobile) or open the log sheet (web — arg ignored). */
@@ -416,6 +426,8 @@ function NorthStarBlockHost({
     protein: remainingProtein,
     carbs: remainingCarbs,
     fat: remainingFat,
+    // ENG-995: full daily target drives the per-meal budget.
+    dailyCalorieTarget,
   };
 
   const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {
@@ -431,6 +443,7 @@ function NorthStarBlockHost({
     <NorthStarBlock
       kind="default"
       ctaLabel={ctaForSlot(slot)}
+      slotEyebrow={slotSuggestionEyebrow(slot)}
       suggestion={{
         recipeId: suggestion.recipe.id,
         title: suggestion.recipe.title,
@@ -441,6 +454,10 @@ function NorthStarBlockHost({
         predictedFat: suggestion.predictedFat,
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
+        // Figma `654:2` hero meta — optional cook-time chip. Source
+        // from whatever the recipe exposes; `null`/absent degrades to
+        // no chip. Mirror of mobile NorthStarBlockHost.
+        cookTimeMin: suggestion.recipe.cookTimeMin ?? undefined,
         // Activation hook (audit 2026-04-30 — leak fix #5): expose
         // the strongest WHY (which macro the suggestion fits) so the
         // card stops reading as black-box. Mirror of mobile
@@ -527,7 +544,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
     return s;
   }, [nutritionByDay]);
-  const [ringExpanded, setRingExpanded] = useState(false);
+  const [ringExpanded, setRingExpanded] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
@@ -708,10 +725,11 @@ export const NutritionTracker = memo(function NutritionTracker({
       isToday: selectedDateKey === todayKey(),
       hasAnyJournalHistory: loggedDays.size > 0,
       mealsYesterdayCount: mealsYesterday.length,
+      mealsTodayCount: mealsForSelectedDate.length,
       todayDayOfWeek: new Date().getDay(),
       weekStartDay,
     });
-  }, [selectedDateKey, loggedDays, nutritionByDay, weekStartDay]);
+  }, [selectedDateKey, loggedDays, nutritionByDay, weekStartDay, mealsForSelectedDate.length]);
   // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
   // alongside `week_start_day`; budget defaults to 3.
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
@@ -766,7 +784,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt } = useAuthSession();
+  const { authedUserId, authUserCreatedAt, authUserMetadata } = useAuthSession();
 
   // Audit M4 (2026-04-18) — Today progressive disclosure on web.
   // Matches mobile. Persists the Quick Add collapsed pref via localStorage
@@ -820,36 +838,6 @@ export const NutritionTracker = memo(function NutritionTracker({
     });
   }, []);
 
-  /** Infer the default meal slot from local clock time for Eat-again /
-   * Quick Add defaults. Mirrors the mobile rule of thumb in
-   * `apps/mobile/app/(tabs)/index.tsx` (shared `slotForHour`). */
-  const currentSlotFromTime = useMemo(
-    () => slotForHour(new Date().getHours()),
-    [],
-  );
-  // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
-  // `{ dateKey, dismissedAt }` so a device clock rollback can't
-  // resurrect the banner on the same real-world day. Reads migrate
-  // v1 on the fly; writes always use v2.
-  const [eatAgainDismissState, setEatAgainDismissState] = useState<EatAgainDismissState | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return readEatAgainDismiss(
-        window.localStorage.getItem(EAT_AGAIN_STORAGE_KEY),
-        window.localStorage.getItem(EAT_AGAIN_LEGACY_KEY_V1),
-        new Date(),
-      );
-    } catch {
-      return null;
-    }
-  });
-
-  /** Suggestion for the "Eat again" card — previous-day meal in the
-   * slot matching the current clock time. `null` disables the card. */
-  const eatAgainSuggestion = useMemo(() => {
-    return computeEatAgainForSlot(nutritionByDay, currentSlotFromTime, new Date());
-  }, [nutritionByDay, currentSlotFromTime]);
-
   /**
    * 2026-05-01 (journey-architect P1) — first-meal empty-state state.
    * Two pieces:
@@ -897,9 +885,9 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
   }, []);
 
-  /** Log a history row (Favourite / Frequent / Recent / Eat again) into
-   * the active meal slot. Shared by QuickAddPanel + Eat-again card so
-   * the event shape is consistent. */
+  /** Log a history row (Favourite / Frequent / Recent) into the active
+   * meal slot. Shared by the QuickAddPanel history rows so the event
+   * shape is consistent. */
   const logHistoryItem = useCallback(
     (item: FoodHistoryItem, slot: string) => {
       // Audit L6 G1 (2026-04-18) — the canonical `food_logged` event
@@ -910,10 +898,10 @@ export const NutritionTracker = memo(function NutritionTracker({
       //
       // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
       // alcohol micros so the journal-state insert path picks up the
-      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals` /
-      // `computeEatAgainForSlot` average per-occurrence stimulant
-      // contribution into `item.caffeineMg` / `item.alcoholG`. Missing
-      // → no key in `micros` (and `addLoggedMeal` skips the bump).
+      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals`
+      // average per-occurrence stimulant contribution into
+      // `item.caffeineMg` / `item.alcoholG`. Missing → no key in
+      // `micros` (and `addLoggedMeal` skips the bump).
       const micros: Record<string, number> = {};
       if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
       if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
@@ -1293,19 +1281,6 @@ export const NutritionTracker = memo(function NutritionTracker({
     },
     [authedUserId],
   );
-
-  const dismissEatAgain = useCallback(() => {
-    const state = recordEatAgainDismiss(new Date());
-    setEatAgainDismissState(state);
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(EAT_AGAIN_STORAGE_KEY, serialiseEatAgainDismiss(state));
-      } catch {
-        /* noop */
-      }
-    }
-  }, []);
-  const eatAgainDismissedForToday = !shouldShowEatAgain(eatAgainDismissState, new Date());
 
   useEffect(() => {
     const id = setInterval(() => setFastingNowTick(Date.now()), 60_000);
@@ -2080,24 +2055,15 @@ export const NutritionTracker = memo(function NutritionTracker({
     ready: winReady,
   });
 
+  const showAboveMealsNorthStarWeb =
+    selectedDateKey === todayKey() &&
+    Math.max(0, effectiveCalorieTarget - totals.calories) > 0;
+
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({
-      northStar:
-        selectedDateKey === todayKey() &&
-        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
-        mealsForSelectedDate.length === 0,
       snap: selectedDateKey === todayKey() && mealsForSelectedDate.length === 0,
     }),
-    [
-      selectedDateKey,
-      effectiveCalorieTarget,
-      totals.calories,
-      mealsForSelectedDate.length,
-    ],
-  );
-  const showBelowMealsNorthStarWeb = isBelowMealsPromptVisible(
-    "northStar",
-    belowMealsPromptEligibleWeb,
+    [selectedDateKey, mealsForSelectedDate.length],
   );
   const showBelowMealsSnapWeb = isBelowMealsPromptVisible(
     "snap",
@@ -2255,10 +2221,23 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
-  const firstName = profileDisplayName?.trim()?.split(/\s/)[0] ?? null;
-  const greetingName = firstName || null;
+  // Today greeting name — read from the auth user's `user_metadata`
+  // (`full_name`, set by the "Your name" Settings field) via the shared
+  // `firstNameFromMetadata`, matching mobile's name-extraction precedence.
+  // We deliberately read auth metadata, NOT `profileDisplayName` (the
+  // `profiles.display_name` editor's domain), so the single canonical
+  // source is the one the Settings "Your name" field writes — set it on
+  // either platform and the greeting personalises on both.
+  //
+  const greetingName = firstNameFromMetadata(authUserMetadata) ?? null;
   const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const sloceHeroGreeting =
+    selectedDateKey === todayKey()
+      ? {
+          headline: todayGreeting(hour, greetingName),
+          subline: todayLongDateSubline(selectedDate),
+        }
+      : todayPastDayGreetingLines(selectedDate);
 
   return (
     <div className="product-shell py-pm-5 space-y-4 relative">
@@ -2278,11 +2257,18 @@ export const NutritionTracker = memo(function NutritionTracker({
       ) : null}
 
       {!isOnline ? (
+        // SLOE (2026-06-07): offline is a neutral SYNC state, not a
+        // warning — so this reads in the calm clay nav-tint, parity with
+        // the mobile Today offline pill (`Accent.primary` + `colors.card`).
+        // Previously this used the amber `warning` family, which read as
+        // "something is wrong". Clay-soft border + neutral ink matches the
+        // mobile treatment and the Sloe trust posture (amber is reserved
+        // for genuine over-budget / caution signals).
         <div
           role="alert"
-          className="mb-4 flex items-start gap-3 rounded-card border border-warning/30 bg-warning-soft px-4 py-3"
+          className="mb-4 flex items-start gap-3 rounded-card border border-primary/20 bg-primary/[0.06] px-4 py-3"
         >
-          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
           <p className="text-sm font-semibold text-foreground">
             {"You're offline. Changes will sync when you reconnect."}
           </p>
@@ -2316,12 +2302,30 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div
           className={
             viewMode === "day"
-              ? "flex-1 min-w-0 space-y-4 lg:max-w-[480px]"
-              : "flex-1 min-w-0 space-y-4"
+              ? "flex-1 min-w-0 space-y-3 lg:max-w-[480px]"
+              : "flex-1 min-w-0 space-y-3"
           }
         >
-      <div className="space-y-1 lg:space-y-0">
-        <TodayDateHeader
+      {viewMode === "day" ? (
+        <div className="text-center mb-5 mt-1">
+          <h2
+            data-testid="today-hero-greeting"
+            className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-none tracking-tight text-foreground-brand"
+          >
+            {sloceHeroGreeting.headline}
+          </h2>
+          {sloceHeroGreeting.subline ? (
+            <p
+              data-testid="today-hero-greeting-subline"
+              className="text-[13px] text-foreground-secondary mt-1"
+            >
+              {sloceHeroGreeting.subline}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         selectedDate={selectedDate}
@@ -2337,18 +2341,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
         onOpenSettings={() => onOpenSettings?.()}
         hideViewModeToggle
-        hideDayStrip
-        dayGreeting={
-          selectedDateKey === todayKey() && viewMode === "day"
-            ? greetingName
-              ? `${timeGreeting}, ${greetingName}`
-              : timeGreeting
-            : undefined
-        }
+        stripOnly={viewMode === "day"}
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
       />
-      </div>
 
       {missedYesterdayVisible && (
         <p
@@ -2423,13 +2419,19 @@ export const NutritionTracker = memo(function NutritionTracker({
         aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
+        baseGoal={baseCalorieTarget}
         proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
         carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
         fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
-        onDisplayModeChange={setRingDisplayMode}
+        onToggleDisplayMode={() => {
+          setRingDisplayMode((m) =>
+            m === "remaining" ? "consumed" : "remaining",
+          );
+          setRingExpanded((e) => !e);
+        }}
         pulse={winPulse}
         isOnTrack={
           totals.calories > 100 &&
@@ -2442,17 +2444,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
       />
 
-      {/* Single context block — priority order: fasting > eat-again >
-          north-star. Mutually exclusive. Pre-Phase-4 these rendered as
-          three separate stacked conditionals (sometimes multiple at
-          once); the cap rule (teardown §2) is "never more than one
-          prompt above the meals". Web has no `TodayDeficitInsight`
-          equivalent (removed 2026-04-18, Pass 7) — when remaining > 0
-          but the user has already logged, the slot stays empty rather
-          than fall through to the north-star. The Net tile inside
-          `TodayHeroStats` already conveys the deficit on web. */}
+      {/* Single context block — priority order: fasting > deficit.
+          Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
+          from Today scroll (2026-05-22 v4); shortcuts live in Log sheet. */}
       {(() => {
-        // 1. Active fast wins outright.
         if (activeFast) {
           return (
             <TodayFastingPill
@@ -2461,24 +2456,20 @@ export const NutritionTracker = memo(function NutritionTracker({
             />
           );
         }
-        // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
-        // 2. Budget met or exceeded, with a re-log suggestion that
-        //    hasn't been dismissed today.
+        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
         if (
-          eatAgainSuggestion &&
-          !eatAgainDismissedForToday &&
-          selectedDateKey === todayKey()
+          viewMode === "day" &&
+          selectedDateKey === todayKey() &&
+          remainingToday > 0
         ) {
           return (
-            <TodayEatAgainBanner
-              suggestion={eatAgainSuggestion}
-              slot={currentSlotFromTime}
-              onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-              onDismiss={dismissEatAgain}
+            <TodayDeficitInsight
+              remaining={remainingToday}
+              selectedDate={selectedDate}
+              byDay={nutritionByDay}
             />
           );
         }
-        // 3. North-star moved below meals (Today premium sprint 2026-05-19).
         return null;
       })()}
 
@@ -2607,7 +2598,34 @@ export const NutritionTracker = memo(function NutritionTracker({
           above Meals. Default collapsed on first run; user's last choice
           persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
 
-      {/* 5. Meals Section */}
+      {/* Figma `654:2` — What to eat next above Today's Meals. */}
+      {showAboveMealsNorthStarWeb && (
+        <NorthStarBlockHost
+          viewMode={viewMode}
+          savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+          remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+          remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
+          remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
+          remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
+          dailyCalorieTarget={effectiveCalorieTarget}
+          onPrimaryCta={(_recipeId) => {
+            setMealSlot(slotForHour(new Date().getHours()));
+            setLogSheetOpen(true);
+          }}
+          onBrowseLibrary={() => {
+            setMealSlot(slotForHour(new Date().getHours()));
+            setLogSheetOpen(true);
+          }}
+          selectedDateKey={selectedDateKey}
+          userCreatedAt={authUserCreatedAt}
+          hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+            (meals) => Array.isArray(meals) && meals.length > 0,
+          )}
+        />
+      )}
+
+      {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
+      <div className="mt-10">
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
         mealsForSelectedDate={mealsForSelectedDate}
@@ -2666,31 +2684,19 @@ export const NutritionTracker = memo(function NutritionTracker({
           />
         }
       />
+      </div>
+
+      <TodayWeeklyInsightMobileCard
+        householdSize={1}
+        loggedDaysInWeek={weekData.loggedDaysInWeek}
+        weekAvgKcal={
+          weekData.loggedDaysInWeek > 0 ? weekData.weekAvg.calories : null
+        }
+        weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
+        dailyKcalTarget={Math.round(effectiveCalorieTarget)}
+      />
 
       {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
-      {showBelowMealsNorthStarWeb && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
-            remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-            remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
-            remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
-            remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
-            onPrimaryCta={(_recipeId) => {
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            onBrowseLibrary={() => {
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            selectedDateKey={selectedDateKey}
-            userCreatedAt={authUserCreatedAt}
-            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
-              (meals) => Array.isArray(meals) && meals.length > 0,
-            )}
-          />
-        )}
       {showBelowMealsSnapWeb && (
         <TodaySnapShortcut
           onPress={() => {
@@ -2770,128 +2776,128 @@ export const NutritionTracker = memo(function NutritionTracker({
         />
       ) : null}
 
-      {/* Steps & activity card — moved here (was between macro tiles
-          and the quick-log strip) to match mobile order
-          (`apps/mobile/app/(tabs)/index.tsx` 2960): meals → steps →
-          activity bonus. Read-only on web (mobile parity, 2026-04-18) —
-          steps + active energy come from the iOS app's HealthKit
-          sync. No card renders when no Health data has synced yet
-          because there's no manual-entry path on web. */}
-      {showStepsCard ? (
-        <TodayStepsCard
-          stepsForSelectedDay={stepsForSelectedDay}
-          dailyStepsGoal={dailyStepsGoal}
-          activityBurnKcal={activityBurnForSelectedDay > 0 ? Math.round(activityBurnForSelectedDay) : null}
-        />
+      {/* Figma TD1 — Activity & energy (mobile parity: section shell always on day view). */}
+      {viewMode === "day" ? (
+        <section className="mt-10 flex flex-col gap-5" data-testid="today-td1-section">
+          <TodayScrollSectionHeader
+            title="Activity & energy"
+            testID="today-td1-section-header"
+          />
+          {showStepsCard ? (
+            <TodayStepsCard
+              stepsForSelectedDay={stepsForSelectedDay}
+              dailyStepsGoal={dailyStepsGoal}
+              activityBurnKcal={
+                activityBurnForSelectedDay > 0 ? Math.round(activityBurnForSelectedDay) : null
+              }
+              dayLabel={formatDateLabel(selectedDate)}
+            />
+          ) : null}
+          {authedUserId && (hasBurnData || selectedDateKey === todayKey()) ? (
+          <TodayActivityBonusCard
+            hasBurnData={hasBurnData}
+            totalBurnKcal={totalBurnKcal}
+            effectiveCalorieTarget={effectiveCalorieTarget}
+            consumedCalories={totals.calories}
+            basalBurnKcal={basalBurnKcal}
+            activityBurnForSelectedDay={activityBurnForSelectedDay}
+            workouts={dayWorkouts}
+            weekSummaryMode={weekSummaryMode}
+            weekSummaryKeys={trackerWeekSummaryKeys}
+            activityBurnByDay={activityBurnByDay}
+            basalBurnByDay={basalBurnByDay}
+            nutritionByDay={nutritionByDay}
+            selectedDateKey={selectedDateKey}
+            profileMeasurementSystem={profileMeasurementSystem}
+            maintenanceTdeeKcal={profileMaintenanceTdee}
+            profileSex={profileSex}
+            profileWeightKg={profileWeightKg}
+            profileHeightCm={profileHeightCm}
+            profileAge={profileAge}
+            profileActivityLevel={profileActivityLevel}
+            maintenanceSource={profileMaintenanceSource}
+            maintenanceConfidence={profileMaintenanceConfidence}
+            activityBudgetAddonKcal={activityAdjustment}
+            preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+            showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
+            onEnableActivityBudget={() => {
+              setPreferActivityAdjustedCalories(true);
+              if (authedUserId) {
+                void supabase
+                  .from("profiles")
+                  .update({ prefer_activity_adjusted_calories: true })
+                  .eq("id", authedUserId);
+              }
+              try {
+                window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+              } catch {
+                /* ignore */
+              }
+              setActivityBudgetDiscoverDismissed(true);
+            }}
+            onDismissActivityBudgetDiscover={() => {
+              try {
+                window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+              } catch {
+                /* ignore */
+              }
+              setActivityBudgetDiscoverDismissed(true);
+            }}
+          />
+          ) : null}
+        </section>
       ) : null}
 
-      {/* Activity Bonus */}
-      <TodayActivityBonusCard
-        hasBurnData={hasBurnData}
-        totalBurnKcal={totalBurnKcal}
-        effectiveCalorieTarget={effectiveCalorieTarget}
-        consumedCalories={totals.calories}
-        basalBurnKcal={basalBurnKcal}
-        activityBurnForSelectedDay={activityBurnForSelectedDay}
-        workouts={dayWorkouts}
-        weekSummaryMode={weekSummaryMode}
-        weekSummaryKeys={trackerWeekSummaryKeys}
-        // The deficit window (rolling 7-day vs calendar week) is changed
-        // from Settings ("Burn / deficit summary"), not in-place on Today.
-        // The mode still drives this card's summary; it hydrates from
-        // `notification_prefs.weekSummaryMode` via NotificationContext.
-        activityBurnByDay={activityBurnByDay}
-        basalBurnByDay={basalBurnByDay}
-        nutritionByDay={nutritionByDay}
-        selectedDateKey={selectedDateKey}
-        profileMeasurementSystem={profileMeasurementSystem}
-        maintenanceTdeeKcal={profileMaintenanceTdee}
-        profileSex={profileSex}
-        profileWeightKg={profileWeightKg}
-        profileHeightCm={profileHeightCm}
-        profileAge={profileAge}
-        profileActivityLevel={profileActivityLevel}
-        maintenanceSource={profileMaintenanceSource}
-        maintenanceConfidence={profileMaintenanceConfidence}
-        activityBudgetAddonKcal={activityAdjustment}
-        preferActivityAdjustedCalories={preferActivityAdjustedCalories}
-        showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
-        onEnableActivityBudget={() => {
-          setPreferActivityAdjustedCalories(true);
-          if (authedUserId) {
-            void supabase
-              .from("profiles")
-              .update({ prefer_activity_adjusted_calories: true })
-              .eq("id", authedUserId);
-          }
-          try {
-            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setActivityBudgetDiscoverDismissed(true);
-        }}
-        onDismissActivityBudgetDiscover={() => {
-          try {
-            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setActivityBudgetDiscoverDismissed(true);
-        }}
-      />
+      {/* Figma TD2 — Hydration & stimulants (mobile parity: header always on day view). */}
+      {viewMode === "day" ? (
+        <section className="mt-10 flex flex-col gap-5" data-testid="today-td2-section">
+          <TodayScrollSectionHeader
+            title="Hydration & stimulants"
+            testID="today-td2-section-header"
+          />
+          {showHydrationCard ? (
+            <HydrationStimulantsCard
+              selectedDateKey={selectedDateKey}
+              weekStartDay={weekStartDay}
+              targets={{
+                waterMl: targets.waterMl,
+                caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
+                alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
+              }}
+              waterTotalMl={totalWaterMl}
+              waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+              caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
+              alcoholByDayG={alcoholByDayMerged}
+              measurementSystem={profileMeasurementSystem}
+              onAddWater={addWaterMlForSelectedDay}
+              onAddCaffeine={addCaffeineMgForSelectedDay}
+              onAddAlcohol={addAlcoholGForSelectedDay}
+              onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+            />
+          ) : (
+            <div className="mb-3 text-center">
+              <button
+                type="button"
+                onClick={() => setHydrationManualExpanded(true)}
+                className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+                aria-expanded={false}
+                aria-controls="today-hydration-card"
+              >
+                Track hydration?
+              </button>
+            </div>
+          )}
+        </section>
+      ) : null}
 
-      {/* Hydration & stimulants card (Batch 2.5).
-          Position (2026-04-18, post-TestFlight build 7 feedback): sits at the
-          bottom of Today — primary hydration quick-add lives in the macro
-          tiles up top; this card is detail + caffeine/alcohol quick-add.
-          Gating: visible once water target > 0 OR any water/caffeine/alcohol
-          logged. Caffeine + alcohol rows additionally self-hide when their
-          individual target is 0. First-run fallback is a tiny
-          "Track hydration?" link. */}
-      {showHydrationCard ? (
-        <HydrationStimulantsCard
-          selectedDateKey={selectedDateKey}
-          weekStartDay={weekStartDay}
-          targets={{
-            waterMl: targets.waterMl,
-            // Phase 2 / B1.4 (D-2026-04-27-08): caffeine + alcohol
-            // are gated by Settings opt-in. When the user hasn't
-            // opted in, force the target to 0 so the row hides via
-            // the existing HydrationStimulantsCard rule. The
-            // underlying data is preserved untouched.
-            caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
-            alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
-          }}
-          waterTotalMl={totalWaterMl}
-          waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-          caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
-          alcoholByDayG={alcoholByDayMerged}
-          measurementSystem={profileMeasurementSystem}
-          onAddWater={addWaterMlForSelectedDay}
-          onAddCaffeine={addCaffeineMgForSelectedDay}
-          onAddAlcohol={addAlcoholGForSelectedDay}
-          onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
-        />
-      ) : (
-        <div className="mb-3 text-center">
-          <button
-            type="button"
-            onClick={() => setHydrationManualExpanded(true)}
-            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
-            aria-expanded={false}
-            aria-controls="today-hydration-card"
-          >
-            Track hydration?
-          </button>
-        </div>
-      )}
-
-      {/* Complete Day */}
+      {/* Complete Day — Sloe treatment system (2026-06-08): primary inline
+          CTA → aubergine outline (transparent fill + 1.5px primary-solid
+          border + primary-solid label), not a filled slab. Mirror of mobile
+          Today host. */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
         <button
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+          className="w-full py-3.5 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-4"
         >
           Complete Day
         </button>
@@ -3417,7 +3423,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             if (!found) return;
             // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
             // in the afternoon was logging picks as Snacks because this
-            // path used currentSlotFromTime instead of the user's choice
+            // path used the time-of-day slot instead of the user's choice
             // (mealSlot). Mobile parity: apps/mobile/app/(tabs)/index.tsx
             // recents.onPick. Generic LogSheet-open paths reset mealSlot
             // to time-of-day so the default is fresh.

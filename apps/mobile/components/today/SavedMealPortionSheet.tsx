@@ -15,7 +15,8 @@ import * as Haptics from "expo-haptics";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
-import { Accent, Elevation, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Elevation, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -66,6 +67,9 @@ export function SavedMealPortionSheet({
 }: SavedMealPortionSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Slot pill border/fill + footer CTA outline use the scheme-resolved
+  // accent so deep plum stays legible on dark (hook inverts to aubergine).
+  const accent = useAccent();
   const card = useCardElevation();
   const [mult, setMult] = useState(1);
 
@@ -195,8 +199,8 @@ export function SavedMealPortionSheet({
                       style={[
                         s.slotPill,
                         {
-                          borderColor: active ? Accent.primary : colors.border,
-                          backgroundColor: active ? Accent.primarySoft : "transparent",
+                          borderColor: active ? accent.primary : colors.border,
+                          backgroundColor: active ? accent.primarySoft : "transparent",
                         },
                       ]}
                     >
@@ -255,9 +259,9 @@ export function SavedMealPortionSheet({
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${formatMultiplier(mult)} times to ${slot}`}
                 testID="saved-portion-confirm"
-                style={s.confirmBtn}
+                style={[s.confirmBtn, { borderColor: accent.primarySolid }]}
               >
-                <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>
+                <Text style={{ color: accent.primarySolid, ...Type.headline }}>
                   {`Log ${formatMultiplier(mult)}× to ${slot}`}
                 </Text>
               </PressableScale>
@@ -307,11 +311,17 @@ const s = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
+  // outline (transparent fill + 1.5px primarySolid border + primarySolid
+  // label), not a filled slab. `borderColor` is injected inline from
+  // `accent.primarySolid` (scheme-resolved hook) so dark gets the lifted
+  // aubergine; the rest of the shape is static.
   confirmBtn: {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: Radius.md,
-    backgroundColor: Accent.primary,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
     height: 48,
   },
 });

@@ -111,7 +111,7 @@ export default function DailyRingStatesPage() {
                 expanded={false}
                 onToggleExpanded={() => {}}
                 displayMode="remaining"
-                onDisplayModeChange={() => {}}
+                onToggleDisplayMode={() => {}}
               />
             </div>
             <div data-testid="hero-under">
@@ -130,7 +130,7 @@ export default function DailyRingStatesPage() {
                 expanded={false}
                 onToggleExpanded={() => {}}
                 displayMode="remaining"
-                onDisplayModeChange={() => {}}
+                onToggleDisplayMode={() => {}}
               />
             </div>
             <div data-testid="hero-at-goal">
@@ -149,7 +149,7 @@ export default function DailyRingStatesPage() {
                 expanded={false}
                 onToggleExpanded={() => {}}
                 displayMode="remaining"
-                onDisplayModeChange={() => {}}
+                onToggleDisplayMode={() => {}}
               />
             </div>
             <div data-testid="hero-over">
@@ -168,7 +168,7 @@ export default function DailyRingStatesPage() {
                 expanded={false}
                 onToggleExpanded={() => {}}
                 displayMode="remaining"
-                onDisplayModeChange={() => {}}
+                onToggleDisplayMode={() => {}}
               />
             </div>
           </div>

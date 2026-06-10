@@ -1,8 +1,9 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   computeTrajectory,
@@ -51,26 +52,26 @@ export interface TrajectoryCardProps {
 export function TrajectoryCard(props: TrajectoryCardProps) {
   const { style, testID, ...input } = props;
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Secondary accent (Frost flag → damson, else clay) for the projection line,
+  // its label, and the projection marker.
+  const accent = useAccent();
   const state: TrajectoryState | null = computeTrajectory(input);
 
   if (!state) return null;
 
   return (
-    <View
+    // Card chrome (fill #F6F5F2, radius 20, soft lift, hairline) is the shared
+    // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
+    // lift="soft" (2026-06-09 one-card-treatment): the trajectory card sits
+    // directly on the Progress page ground, so it floats with the soft lift like
+    // every sibling content card. Mirrors web `elevation="card"`.
+    <SupprCard
       testID={testID ?? "trajectory-card"}
-      accessibilityRole="text"
       accessibilityLabel={accessibilityLabelFor(state)}
-      style={[
-        styles.card,
-        cardElevation.shadowStyle,
-        {
-          backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderColor: colors.cardBorder,
-          borderWidth: cardElevation.useBorder ? 1 : 0,
-        },
-        style,
-      ]}
+      lift="soft"
+      padding="none"
+      style={[styles.card, style]}
+      innerStyle={styles.cardInner}
     >
       {/* Eyebrow — dot tints blue (projection) / muted (placeholder). */}
       <View style={styles.eyebrowRow}>
@@ -79,7 +80,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
             styles.dot,
             {
               backgroundColor:
-                state.kind === "projection" ? Accent.primary : colors.textTertiary,
+                state.kind === "projection" ? accent.primary : colors.textTertiary,
             },
           ]}
         />
@@ -91,17 +92,22 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
       {state.kind === "projection" ? (
         <>
           <View style={styles.heroRow}>
+            {/* SLOE Phase 0: the projected-weight hero numeral reads in
+                Newsreader serif (big numerals are a serif moment); the `kg`
+                unit stays sans. Family carries the weight, so the sans
+                `fontWeight: 800` is dropped. Mirrors web trajectory-card. */}
             <Text
               testID="trajectory-hero-kg"
               style={{
+                fontFamily: FontFamily.serifRegular,
                 fontSize: 30,
-                fontWeight: "800",
                 letterSpacing: -0.5,
-                color: Accent.primary,
+                color: accent.primary,
                 fontVariant: ["tabular-nums"],
               }}
             >
-              {state.projectedKg} kg
+              {state.projectedKg}
+              <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600" }}> kg</Text>
             </Text>
             <Text
               testID="trajectory-hero-when"
@@ -159,7 +165,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
               style={[
                 styles.barFill,
                 {
-                  backgroundColor: Accent.primary,
+                  backgroundColor: accent.primary,
                   width: `${progressPct(state)}%`,
                 },
               ]}
@@ -167,7 +173,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
           </View>
         </>
       )}
-    </View>
+    </SupprCard>
   );
 }
 
@@ -189,12 +195,15 @@ function accessibilityLabelFor(state: TrajectoryState): string {
 }
 
 const styles = StyleSheet.create({
+  // Chrome (radius/border/fill/lift) is the <SupprCard> shell; this only
+  // carries the card's outer margin.
   card: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  // The card's asymmetric content padding (the shell uses symmetric `padding`).
+  cardInner: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: 16,
-    marginBottom: Spacing.md,
   },
   eyebrowRow: {
     flexDirection: "row",

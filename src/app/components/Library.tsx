@@ -7,10 +7,10 @@ import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { SupprCard } from "./ui/suppr-card";
 import { useRouter } from "next/navigation";
 import {
-  LIBRARY_FILTER_PILLS,
-  matchesNutritionPill,
-  type LibraryFilterPillId,
-} from "../../lib/recipes/libraryFilters.ts";
+  LIBRARY_CATEGORY_PILLS,
+  matchesRecipeCategory,
+  type RecipeCategoryId,
+} from "../../lib/recipes/recipeCategoryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
@@ -112,7 +112,7 @@ function kindLabel(kind: LibraryEntryKind): string {
 }
 
 export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, onGoDiscover }: LibraryProps) {
-  const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, nutritionTargets } = useAppData();
+  const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets } = useAppData();
   const uid = userId;
   const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
@@ -134,13 +134,17 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       onGoDiscover();
     }
   }, [savedRecipesForLibrary.length, onGoDiscover]);
-  // 2026-04-20 prototype port: migrate web to the shared
-  // `LIBRARY_FILTER_PILLS` set (All · Saved · High-Protein · Quick ·
-  // Vegetarian · Created · Imported) that mobile already consumes.
-  // Web previously exposed only the four entry-kind pills, so web +
-  // mobile diverged on filter affordances. Both now share
-  // `libraryFilters.ts` for predicate + label.
-  const [pill, setPill] = useState<LibraryFilterPillId>("all");
+  // ENG-921 (2026-06-07, Grace) — CATEGORY filters per Figma `527:2`
+  // (All · Breakfast · Lunch · Dinner · Dessert · Quick 30 · Under 500
+  // cal · High protein · Soup · Pasta · Chicken · Salad), shared with
+  // mobile via `recipeCategoryFilters.ts`. The entry-kind buckets
+  // (Saved / Imported) are NOT lost — ENG-921 polish (2026-06-07) folds
+  // them into a single quiet segmented control in the header (above the
+  // category row) instead of a competing second pill row, so the user
+  // can still narrow by how a recipe entered their library.
+  const [category, setCategory] = useState<RecipeCategoryId>("all");
+  // Secondary entry-kind filter — null = no entry-kind narrowing.
+  const [entryKind, setEntryKind] = useState<"saved" | "imported" | null>(null);
   // Mobile parity: a cycle button switches the sort key between
   // Recent (default) / Calories / Protein. See
   // `apps/mobile/app/(tabs)/library.tsx` 24-57.
@@ -152,25 +156,6 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   };
   const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
 
-  const savedCount = savedRecipesForLibrary.length;
-  // 2026-04-30 audit visual-qa P1 #7 (mobile parity with
-  // `apps/mobile/app/(tabs)/library.tsx` L495-525): show counts on
-  // the entry-kind pills (All / Saved) so the user knows the size of
-  // each bucket at a glance. Other pills (high-protein / quick /
-  // vegetarian / created / imported) get no count — they're filters,
-  // not buckets.
-  // "All" = total saved-library size (matches the desktop subtitle).
-  // "Saved" = entries classified as kind="saved" by the shared
-  // `classifyLibraryEntry` predicate so the count never disagrees
-  // with what the "Saved" pill actually filters down to.
-  const savedOnlyCount = useMemo(
-    () =>
-      savedRecipesForLibrary.filter(
-        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === "saved",
-      ).length,
-    [savedRecipesForLibrary, libraryEntryKindByRecipeId, uid],
-  );
-
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = savedRecipesForLibrary;
@@ -179,12 +164,16 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
       );
     }
-    if (pill === "saved" || pill === "created" || pill === "imported") {
+    // Primary: category (Figma `527:2`). Reuses the shared predicate so
+    // web + mobile classify identically.
+    if (category !== "all") {
+      list = list.filter((r) => matchesRecipeCategory(category, r));
+    }
+    // Secondary: entry-kind (Saved / Imported) — preserved per ENG-921.
+    if (entryKind) {
       list = list.filter(
-        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === (pill as LibraryEntryKind),
+        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === entryKind,
       );
-    } else if (pill !== "all") {
-      list = list.filter((r) => matchesNutritionPill(pill, r));
     }
     // Apply sort. Higher-is-better for Calories / Protein; Recent uses
     // `savedAt` if present (some entries don't carry it — those go to
@@ -199,7 +188,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       // so no-op (just preserve existing order).
     }
     return sorted;
-  }, [savedRecipesForLibrary, searchQuery, pill, libraryEntryKindByRecipeId, uid, sortKey]);
+  }, [savedRecipesForLibrary, searchQuery, category, entryKind, libraryEntryKindByRecipeId, uid, sortKey]);
 
   if (selectedRecipe) {
     return (
@@ -245,95 +234,171 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             layout looked broken. Stack vertically at every breakpoint
             now: search on row 1, filter pills on row 2. */}
         <div className="flex flex-col gap-3 mt-6">
+          {/* Search field — Figma `527:2`: cream-card pill, line border,
+              magnifier prefix. "Search your recipes" placeholder. */}
           <div className="relative group">
-            <Icons.search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Icons.search className="w-[18px] h-[18px] absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
               type="text"
-              placeholder="Search recipes..."
+              placeholder="Search your recipes"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary shadow-sm transition-all"
+              className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
+          {/* Category filter pills — ENG-921 / Figma `527:2`. The SINGLE
+              primary filter row: `All`(clay) · Breakfast · Lunch · Dinner ·
+              Dessert · Quick 30 · … Clay-fill active, cream-card +
+              line-border inactive, horizontal scroll. The old second
+              entry-kind pill row is gone (ENG-921 / Figma 527:2 polish
+              2026-06-07) — "Saved" is now expressed by the bookmark overlay
+              on the card, and the Saved/Imported narrowing rides the quiet
+              control on the count line below. Sort + entry-kind are NOT a
+              second filter row. Mobile parity:
+              `apps/mobile/app/(tabs)/library.tsx`. */}
           <div
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
-            {LIBRARY_FILTER_PILLS.map((f) => {
-              const count =
-                f.id === "all"
-                  ? savedCount
-                  : f.id === "saved"
-                    ? savedOnlyCount
-                    : null;
-              const label = count != null ? `${f.label} · ${count}` : f.label;
+            {LIBRARY_CATEGORY_PILLS.map((f) => {
+              const active = category === f.id;
               return (
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setPill(f.id)}
-                  // 2026-05-02 (build-12): tester reported the pill
-                  // text was squished against the border. Bumped
-                  // horizontal padding (`px-3` → `px-3.5` == 14px) and
-                  // pinned a `min-h-8` (32px) floor so descenders no
-                  // longer kiss the border. `inline-flex items-center`
-                  // keeps the label optically centred when the row
-                  // grows past the text's intrinsic height. Mobile
-                  // parity: `apps/mobile/app/(tabs)/library.tsx`
-                  // `filterPill` style.
+                  data-testid={`library-category-${f.id}`}
+                  onClick={() => setCategory(f.id)}
                   className={[
-                    "shrink-0 inline-flex items-center px-3.5 py-1.5 min-h-8 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
-                    pill === f.id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-muted/60",
+                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] font-medium transition-all whitespace-nowrap",
+                    // Selected = aubergine SOFT-TINT fill + aubergine
+                    // `primary-solid` label (Sloe treatment §7), not a solid
+                    // accent slab. Unselected stays quiet off-white card.
+                    active
+                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
+                      : "bg-card border border-border text-muted-foreground hover:bg-muted/60",
                   ].join(" ")}
-                  aria-label={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
+                  aria-pressed={active}
+                  aria-label={`Category: ${f.label}`}
                 >
-                  {label}
+                  {f.label}
                 </button>
               );
             })}
-            {/* Sort cycle button — mobile parity
-                (`apps/mobile/app/(tabs)/library.tsx` `cycleSort`). Cycles
-                Recent → Calories → Protein → Recent. Web previously had
-                no sort control; mobile previously had no kind filter.
-                Both surfaces now expose both. */}
-            <button
-              type="button"
-              onClick={cycleSort}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted/60 transition-all inline-flex items-center gap-1.5"
-              aria-label={`Sort by ${sortLabel}, click to change`}
+          </div>
+          {/* Count line + quiet controls — Figma `527:2` ("24 saved
+              recipes"). Mobile-web only (desktop shows a subtitle in its
+              header). The calm count sits left; the entry-kind narrowing
+              (All / Saved / Imported) + sort cycle ride as quiet trailing
+              controls so the saved-vs-imported distinction stays reachable
+              WITHOUT a competing second pill row. */}
+          <div className="md:hidden flex items-center justify-between gap-3">
+            <p
+              data-testid="library-count-line"
+              className="text-[13px] text-muted-foreground tabular-nums"
             >
-              <Icons.adjust className="w-3.5 h-3.5" aria-hidden />
-              {sortLabel}
-            </button>
+              {entryKind === "saved"
+                ? `${filteredRecipes.length} saved ${filteredRecipes.length === 1 ? "recipe" : "recipes"}`
+                : `${filteredRecipes.length} ${filteredRecipes.length === 1 ? "recipe" : "recipes"}`}
+            </p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Entry-kind cycle (preserved per ENG-921): All → Saved →
+                  Imported → All. A quiet text control, NOT a pill row. */}
+              <button
+                type="button"
+                data-testid="library-entrykind-cycle"
+                onClick={() =>
+                  setEntryKind((prev) =>
+                    prev === null ? "saved" : prev === "saved" ? "imported" : null,
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
+                aria-label={`Showing ${entryKind ?? "all"} recipes, tap to change`}
+              >
+                <Icons.filter className="w-3 h-3" aria-hidden />
+                {entryKind === "saved" ? "Saved" : entryKind === "imported" ? "Imported" : "All"}
+              </button>
+              {/* Sort cycle — mobile parity (`cycleSort`): Recent →
+                  Calories → Protein → Recent. */}
+              <button
+                type="button"
+                onClick={cycleSort}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
+                aria-label={`Sort by ${sortLabel}, tap to change`}
+              >
+                <Icons.adjust className="w-3 h-3" aria-hidden />
+                {sortLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Empty State */}
-      {filteredRecipes.length === 0 && (
-        <div className="text-center py-24 max-w-md mx-auto">
-          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-            <Icons.search className="w-10 h-10 text-primary" />
-          </div>
-          <h3 className="mb-3 text-foreground">
-            {savedRecipesForLibrary.length === 0 ? "Your library is empty" : "No matches"}
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            {savedRecipesForLibrary.length === 0
-              ? "Save public recipes from Discover, add your own creations, or import cookbooks and links—each type is labeled here."
-              : "Try another search term or switch the source filter."}
+      {/* Empty State — Figma S7 (`529:2`): dashed cream slab, frost-mist
+          icon badge, serif heading, stacked clay + outline pill CTAs.
+          The "no matches after filter" case (library is non-empty but
+          the active category/search empties it) keeps a lighter inline
+          variant so the user can clear the filter. */}
+      {filteredRecipes.length === 0 && savedRecipesForLibrary.length === 0 && (
+        <div
+          data-testid="library-empty-state"
+          className="bg-card border border-dashed border-border rounded-2xl px-8 py-12 text-center max-w-md mx-auto"
+        >
+          <span className="w-14 h-14 rounded-full bg-foreground-brand/10 flex items-center justify-center text-foreground-brand mx-auto mb-4">
+            <Icons.saved className="w-6 h-6" />
+          </span>
+          <h2 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground">
+            No saved recipes yet
+          </h2>
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed max-w-[260px] mx-auto">
+            Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
           </p>
-          {savedRecipesForLibrary.length === 0 && onGoDiscover ? (
+          <div className="flex flex-col gap-2.5 mt-6 max-w-[280px] mx-auto">
             <button
               type="button"
-              onClick={onGoDiscover}
-              className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("view", "import");
+                window.history.pushState({}, "", url.toString());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="w-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
             >
-              Go to Discover
+              <Icons.import className="w-4 h-4" aria-hidden />
+              Import a recipe
             </button>
-          ) : null}
+            {onGoDiscover ? (
+              <button
+                type="button"
+                onClick={onGoDiscover}
+                className="w-full bg-background border border-border text-foreground font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:bg-muted/60 transition-colors"
+              >
+                <Icons.discover className="w-4 h-4" aria-hidden />
+                Explore Discover
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
+      {filteredRecipes.length === 0 && savedRecipesForLibrary.length > 0 && (
+        <div className="text-center py-16 max-w-md mx-auto">
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <Icons.search className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <h3 className="mb-2 text-foreground">No matches</h3>
+          <p className="text-muted-foreground mb-5 text-sm">
+            Try another search term, category, or clear the filters.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setCategory("all");
+              setEntryKind(null);
+              setSearchQuery("");
+            }}
+            className="px-5 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm hover:bg-primary/5 transition-colors"
+          >
+            Clear filters
+          </button>
         </div>
       )}
 
@@ -368,6 +433,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
               const kcal = Math.round(recipe.calories ?? 0);
               const protein = Math.round(recipe.protein ?? 0);
+              const carbs = Math.round(recipe.carbs ?? 0);
+              const fat = Math.round(recipe.fat ?? 0);
               const totalTime =
                 (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
                 (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
@@ -398,8 +465,9 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
                   }}
                   padding="none"
-                  radius="xl"
-                  className="group text-left overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  radius="lg"
+                  elevation="card"
+                  className="group text-left overflow-hidden cursor-pointer w-full transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
                     {/* Phase 5 / B5 (2026-04-27) — view-transition-name
@@ -471,20 +539,45 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     <p className="text-[11px] text-muted-foreground mt-1 truncate">
                       {recipe.creatorName}
                     </p>
+                    {/* Macro row (recipes.md §3.1) — kcal · protein ·
+                        carbs · fat in the immutable macro colours, protein
+                        emphasised (heavier + ink) so the card reads as a
+                        tracker. kcal suppressed at ≤0 so an un-computed
+                        recipe never shows a confident "0 kcal" (trust
+                        posture). Mobile parity:
+                        `apps/mobile/app/(tabs)/library.tsx` MacroIconRow.
+                        text-[11px] = DS §2.2 caption ramp. Was text-[11px]
+                        which is below the 12pt caption floor on the scale. */}
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.calories
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-calories)" }}
-                        />
-                        {kcal} kcal
-                      </span>
-                      <span className="inline-flex items-center gap-1">
+                      {kcal > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.calories
+                            className="w-[11px] h-[11px]"
+                            style={{ color: "var(--macro-calories)" }}
+                          />
+                          {kcal} kcal
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
                         <Icons.protein
                           className="w-[11px] h-[11px]"
                           style={{ color: "var(--macro-protein)" }}
                         />
-                        {protein} P
+                        {protein}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-carbs)" }}
+                        />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-fat)" }}
+                        />
+                        {fat}g
                       </span>
                       {totalTime > 0 ? (
                         <span className="inline-flex items-center gap-1">
@@ -512,7 +605,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
                           router.replace(`/home?${q}`, { scroll: false });
                         }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90"
+                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-[11px] font-semibold hover:bg-primary/5 transition-colors"
                       >
                         Go public
                       </button>
@@ -541,119 +634,156 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             })}
           </div>
 
-          {/* Mobile-web (< md) — legacy layout preserved */}
-          <div className="grid grid-cols-1 gap-6 md:hidden">
-            {filteredRecipes.map((recipe) => (
-              // Design Direction 2026 — mobile-web card routed through SupprCard.
-              // flag-gated internally: elevation ON → soft shadow + no border; OFF → flat border.
-              <SupprCard
-                key={recipe.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedRecipe(recipe)}
-                onKeyDown={(e) => {
+          {/* Mobile-web (< md) — Sloe Figma `527:2` 2-column photo grid.
+              Each card: full-bleed photo (rounded, ~172px), bookmark
+              overlay top-right, then title (serif) + `★ saves · time`
+              meta row. NO macro numbers, NO "..." overflow, NO kind badge
+              chrome on the card — those live in the detail screen now. The
+              saved-vs-imported distinction is expressed by the bookmark
+              overlay (saved → filled clay) + the quiet entry-kind control
+              on the count line above. Mobile parity:
+              `apps/mobile/app/(tabs)/library.tsx`. */}
+          <div
+            data-testid="library-mobile-grid"
+            className="grid grid-cols-2 gap-4 md:hidden"
+          >
+            {filteredRecipes.map((recipe) => {
+              const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
+              const kcal = Math.round(recipe.calories ?? 0);
+              const protein = Math.round(recipe.protein ?? 0);
+              const carbs = Math.round(recipe.carbs ?? 0);
+              const fat = Math.round(recipe.fat ?? 0);
+              const totalTime =
+                (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
+                (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
+              // `★ N` uses the REAL saves count (`savedCount`) — there is no
+              // rating field on RecipeCard, so we never fabricate a 4.8-style
+              // score (would trip recipeCardNoScore.test.ts + the trust
+              // posture). The star pairs with the honest popularity signal.
+              const saves = typeof recipe.savedCount === "number" ? recipe.savedCount : 0;
+              return (
+                <SupprCard
+                  key={recipe.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedRecipe(recipe)}
+                  onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
                   }}
-                padding="none"
-                radius="xl"
-                className="group overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left cursor-pointer"
-              >
-                <div className="relative overflow-hidden">
-                  {recipe.image ? (
-                    <RecipeCardImage
-                      src={recipe.image}
-                      recipeId={recipe.id}
-                      recipeTitle={recipe.title}
-                      iconSize={36}
-                      className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full aspect-[4/3]">
-                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={36} />
-                    </div>
-                  )}
-                  <div
-                    className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/30 ${kindBadgeClasses(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}`}
-                  >
-                    {kindLabel(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}
-                  </div>
-                  {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) !== "saved" &&
-                  recipe.isPublished === false ? (
-                    <div className="absolute top-3 left-[6.75rem] px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/20 bg-foreground/80 text-background">
-                      Draft
-                    </div>
-                  ) : null}
-                  <div className="absolute top-3 right-3 px-3 py-1.5 bg-card/95 backdrop-blur-sm rounded-lg text-sm font-semibold shadow-lg text-foreground">
-                    {recipe.calories} kcal
-                  </div>
-                </div>
-                <div className="p-5">
-                  {/* Audit 2026-04-30 visual-qa P0 #4 — long titles on the
-                      mobile-web card path used to wrap to 4-5 lines and
-                      blow out card height. Match the desktop grid path
-                      (line-clamp:2) so card heights stay consistent and
-                      the meta row underneath remains visible. */}
-                  <h4 className="mb-3">
+                  padding="none"
+                  radius="lg"
+                  elevation="card"
+                  border={false}
+                  className="group overflow-hidden text-left cursor-pointer transition-all"
+                >
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
+                    {recipe.image ? (
+                      <RecipeCardImage
+                        src={recipe.image}
+                        recipeId={recipe.id}
+                        recipeTitle={recipe.title}
+                        iconSize={30}
+                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
+                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full"
+                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                      >
+                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={30} />
+                      </div>
+                    )}
+                    {/* Bookmark overlay — circular translucent, top-right.
+                        Filled clay when saved; outline when not (e.g. an
+                        imported recipe you authored but un-saved — bookmark
+                        stays honest per composeLibraryEntries F-7). Tapping
+                        toggles the save without opening the recipe. */}
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
-                      className="line-clamp-2 text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+                      data-testid={`library-bookmark-${recipe.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleSaveRecipe(recipe.id, userTier, kind);
+                      }}
+                      className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm grid place-items-center shadow-md ring-1 ring-black/5 hover:bg-white transition-colors"
+                      aria-pressed={recipe.isSaved}
+                      aria-label={recipe.isSaved ? `Saved: ${recipe.title}. Tap to remove` : `Save ${recipe.title}`}
                     >
+                      {recipe.isSaved ? (
+                        <Icons.saved className="w-[15px] h-[15px] text-primary" />
+                      ) : (
+                        <Icons.save className="w-[15px] h-[15px] text-foreground/60" />
+                      )}
+                    </button>
+                    {kind !== "saved" && recipe.isPublished === false ? (
+                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[10px] font-semibold shadow-sm bg-foreground/80 text-background">
+                        Draft
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="px-1 pt-2.5 pb-1">
+                    <h3 className="font-[family-name:var(--font-headline)] text-[15px] font-medium leading-snug text-foreground line-clamp-2">
                       {recipe.title}
-                    </button>
-                  </h4>
-                  {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) === "created" &&
-                  recipe.isPublished === false ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
-                        router.replace(`/home?${q}`, { scroll: false });
-                      }}
-                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
-                    >
-                      Go public
-                    </button>
-                  ) : null}
-                  {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) === "imported" ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void (async () => {
-                          const newId = await duplicateRecipeToCreatedDraft(recipe.id);
-                          if (!newId) return;
-                          const q = new URLSearchParams({ view: "create", editRecipe: newId }).toString();
-                          router.replace(`/home?${q}`, { scroll: false });
-                        })();
-                      }}
-                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-warning text-foreground text-xs font-semibold hover:opacity-90"
-                    >
-                      Create your own version
-                    </button>
-                  ) : null}
-                  <div className="flex items-center gap-2 mb-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
-                    <img
-                      src={recipe.creatorImage}
-                      alt={recipe.creatorName}
-                      className="w-6 h-6 rounded-full object-cover ring-2 ring-border/50"
-                    />
-                    <span className="text-sm text-muted-foreground font-medium">{recipe.creatorName}</span>
+                    </h3>
+                    {/* Macro row (recipes.md §3.1) — kcal · protein · carbs
+                        · fat in the immutable macro colours, protein
+                        emphasised. kcal suppressed at ≤0 so an un-computed
+                        recipe never shows a confident "0 kcal" (trust
+                        posture). Narrow 2-col card → no letters (the hue +
+                        icon carry the meaning, protein leads). Mobile
+                        parity: `apps/mobile/app/(tabs)/library.tsx`
+                        MacroIconRow with `emphasiseProtein`. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground tabular-nums">
+                      {kcal > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} aria-hidden />
+                          {kcal}
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} aria-hidden />
+                        {protein}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs className="w-[11px] h-[11px]" style={{ color: "var(--macro-carbs)" }} aria-hidden />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} aria-hidden />
+                        {fat}g
+                      </span>
+                    </div>
+                    {/* Meta row — Figma `527:2` shape `★ N · M min`, but
+                        every chip is REAL + degrades gracefully:
+                          • saves chip only when savedCount > 0 (no `★ 0`),
+                          • time chip only when total time > 0,
+                          • if neither exists, fall back to the honest
+                            serving count so the row never reads empty or
+                            shows a fabricated rating. */}
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
+                      {saves > 0 ? (
+                        <span role="img" className="inline-flex items-center gap-1" aria-label={`${saves} ${saves === 1 ? "save" : "saves"}`}>
+                          <Icons.star className="w-[13px] h-[13px] text-primary fill-primary" aria-hidden />
+                          {saves}
+                        </span>
+                      ) : null}
+                      {saves > 0 && totalTime > 0 ? <span aria-hidden>·</span> : null}
+                      {totalTime > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.time className="w-[12px] h-[12px]" aria-hidden />
+                          {totalTime} min
+                        </span>
+                      ) : null}
+                      {saves === 0 && totalTime === 0 ? (
+                        <span>{recipe.servings} {recipe.servings === 1 ? "serving" : "servings"}</span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">P: {recipe.protein}g</span>
-                    <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">C: {recipe.carbs}g</span>
-                    <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">F: {recipe.fat}g</span>
-                  </div>
-                  {/* GW-08 (audit 2026-04-28): TrustChip removed; see
-                      desktop grid path above for the full rationale. */}
-                </div>
-              </SupprCard>
-            ))}
+                </SupprCard>
+              );
+            })}
           </div>
         </>
       )}

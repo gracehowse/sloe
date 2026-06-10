@@ -60,10 +60,10 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     textSecondary: "#475569",
     textTertiary: "#94a3b8",
     card: "#ffffff",
-    cardElevated: "#fbf8f0",
+    cardElevated: "#F6F5F2",
     cardBorder: "#e4e4ec",
     border: "#e4e4ec",
-    background: "#fbfaf6",
+    background: "#FBF8F3",
     inputBg: "#f0ece4",
   }),
 }));

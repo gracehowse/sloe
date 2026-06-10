@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sloe · Today</title><link rel="stylesheet" href="./sloe.css">
+</head>
+<body class="s-app" style="display:flex;justify-content:center;padding:24px;background:#ece9ec">
+<div class="device"><div class="island"></div><div class="screen">
+  <div class="scroll" style="padding-bottom:100px">
+    <div class="statusbar"><span>9:41</span><span class="r">●●● &nbsp;⌃&nbsp; 100%</span></div>
+
+    <!-- TOP BAR (canonical) -->
+    <div class="topbar-wrap"><div class="topbar">
+      <div class="iconbtn"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div>
+      <div class="wordmark">Sloe</div>
+      <div class="avatar">G</div>
+    </div></div>
+
+    <div style="padding:22px 20px 0;text-align:center">
+      <div class="h-screen-title serif" style="font-size:30px">Morning, Grace</div>
+      <div class="muted" style="font-size:14px;margin-top:4px">Tuesday, 24 Oct</div>
+    </div>
+
+    <!-- HERO CARD: multi-ring + toggle -->
+    <div class="card-el" style="margin:18px 18px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="badge badge-sage">● Under budget</span>
+        <span class="pill-toggle"><span class="on">Remaining</span><span>Consumed</span></span>
+      </div>
+      <div class="ringwrap">
+        <svg width="230" height="230" viewBox="0 0 230 230">
+          <g fill="none" stroke-linecap="round">
+            <circle cx="115" cy="115" r="104" stroke="var(--frost-mist)" stroke-width="13"/>
+            <circle cx="115" cy="115" r="104" stroke="var(--plum)" stroke-width="13" stroke-dasharray="490 653" transform="rotate(-90 115 115)"/>
+            <circle cx="115" cy="115" r="86" stroke="#efe9ef" stroke-width="6"/>
+            <circle cx="115" cy="115" r="86" stroke="var(--macro-protein)" stroke-width="6" stroke-dasharray="360 540" transform="rotate(-90 115 115)"/>
+            <circle cx="115" cy="115" r="74" stroke="#efe9ef" stroke-width="6"/>
+            <circle cx="115" cy="115" r="74" stroke="var(--macro-carbs)" stroke-width="6" stroke-dasharray="330 465" transform="rotate(-90 115 115)"/>
+            <circle cx="115" cy="115" r="62" stroke="#efe9ef" stroke-width="6"/>
+            <circle cx="115" cy="115" r="62" stroke="var(--macro-fat)" stroke-width="6" stroke-dasharray="230 390" transform="rotate(-90 115 115)"/>
+          </g>
+        </svg>
+        <div class="center"><div class="kcal serif">1,420</div><div class="kcal-sub">of 2,040 kcal</div></div>
+      </div>
+      <div style="border-top:1px solid var(--line);display:flex;text-align:center;padding-top:14px;margin-top:6px">
+        <div style="flex:1"><div class="faint" style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase">Goal</div><div class="serif" style="font-size:22px;margin-top:3px">2,040</div></div>
+        <div style="flex:1;border-left:1px solid var(--line);border-right:1px solid var(--line)"><div class="faint" style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase">Eaten</div><div class="serif" style="font-size:22px;margin-top:3px">620</div></div>
+        <div style="flex:1"><div class="faint" style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase">Bonus</div><div class="serif" style="font-size:22px;margin-top:3px;color:var(--sage)">+120</div></div>
+      </div>
+    </div>
+
+    <div class="coach serif">"Room for dinner — about 620 kcal to play with. No rush."</div>
+
+    <!-- WHAT TO EAT NEXT — hyperreal hero -->
+    <div style="padding:0 18px"><div class="sec serif" style="margin-top:8px">What to eat next</div>
+      <div class="card-el" style="padding:0;overflow:hidden">
+        <img src="./img/baked-oats.png" style="width:100%;height:170px;object-fit:cover;display:block"/>
+        <div style="padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="badge badge-sage">✓ Fits your day</span><span class="faint" style="font-size:12px">386 kcal · 14g P</span>
+          </div>
+          <div class="serif" style="font-size:20px;margin-top:8px">Blueberry Baked Oats</div>
+          <div class="muted" style="font-size:13px;margin-top:2px">A warm breakfast that lands right on target.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEALS -->
+    <div style="padding:0 18px"><div class="sec serif">Today's meals</div>
+      <div class="row"><img class="thumb" src="./img/blueberries.png"/><div><div class="nm serif">Breakfast</div><div class="meta">Greek yoghurt & berries · 240 kcal</div></div><div class="addbtn"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div></div>
+      <div class="row"><div class="thumb" style="display:flex;align-items:center;justify-content:center"><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--ink-faint)"><path d="M12 5v14M5 12h14"/></svg></div><div><div class="nm serif">Lunch</div><div class="meta faint">Add lunch · ~600 kcal left</div></div></div>
+    </div>
+  </div>
+
+  <!-- TAB BAR (canonical) -->
+  <div class="tabbar">
+    <div class="tab on"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Today</div>
+    <div class="tab"><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 9h16"/><path d="M8 13h4M8 16h7"/></svg>Plan</div>
+    <div class="fab"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+    <div class="tab"><svg class="ico" viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 002 2M7 3v18M10 3v5a3 3 0 01-3 3"/><path d="M17 3c-1.5 0-2.5 1.8-2.5 4s1 4 2.5 4v7"/></svg>Recipes</div>
+    <div class="tab"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progress</div>
+  </div>
+</div></div>
+</body></html>

@@ -1,37 +1,31 @@
 // @vitest-environment jsdom
 /**
- * TodayHeroRing — chip-control reverted (2026-05-02); explainer
- * affordance removed from Today entirely (2026-05-12 round 3, Grace
- * TF feedback). Iteration history:
- *   - Round 1: long-press repurposed to open the explainer + delta
- *     chip in centre. REVERTED — crowded the ring.
- *   - Round 2: subtle "Why?" inline link below the ring. REMOVED —
- *     still chrome around the hero.
- *   - Round 3 (current): no Today-side affordance. The explainer
- *     lives at Settings → Targets → "How is this calculated?" row,
- *     which deep-links to /(tabs)?openWhy=1 so Today opens the
- *     sheet on focus.
+ * TodayHeroRing — SLOE redesign (2026-06-03, `01 · Today` frame).
  *
- * Pinned behaviour:
- *   - Component does NOT render a Remaining/Consumed segmented chip
- *     control. (2026-05-02 decision.)
- *   - Component does NOT render the old large "Why this number?"
- *     pill, nor the round-2 subtle "Why?" link. The `onPressWhy`
- *     prop is preserved on the type for backwards compat with host
- *     wiring, but no UI surfaces it. (2026-05-12 round 3 decision.)
- *   - Long-press on the ring fires `onToggleDisplayMode` — canonical
- *     power-user gesture (toggle consumed/remaining + show/hide
- *     macro sub-rings).
+ * History:
+ *   - 2026-05-02: a Remaining/Consumed segmented chip was added (PR #50)
+ *     then REVERTED — found redundant with the ring long-press.
+ *   - 2026-05-12 round 3: the "Why this number?" affordance was removed
+ *     from Today entirely (it lives at Settings → Targets now).
+ *   - 2026-06-03 (THIS): the SLOE redesign reinstates the visible
+ *     Remaining/Consumed toggle (it's in the approved `01 · Today`
+ *     frame, chip-right) per rollout-plan O-2 ("the Sloe prototype
+ *     ring wins"). The toggle is the visible counterpart to the ring
+ *     long-press; both fire `onToggleDisplayMode`.
  *
- * Web parity: the segmented chip in
- * `src/app/components/suppr/today-hero-ring.tsx` is also gone for the
- * mobile-web breakpoint. Desktop keeps its chip (no long-press
- * equivalent on a mouse-driven UI) — see
- * `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
+ * Pinned behaviour after the redesign:
+ *   - Component RENDERS the Sloe Remaining/Consumed toggle
+ *     (`today-ring-display-toggle`) + the status chip
+ *     (`today-ring-status-chip`).
+ *   - Tapping the toggle fires `onToggleDisplayMode`.
+ *   - Component still does NOT render the old "Why this number?" pill
+ *     nor the round-2 subtle "Why?" link, even when `onPressWhy` is
+ *     provided (that affordance stayed removed). The `onPressWhy` prop
+ *     remains on the type for backwards compat with host wiring.
  */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import { TodayHeroRing } from "../../components/today/TodayHeroRing";
 
@@ -54,33 +48,33 @@ const baseProps = {
   displayMode: "remaining" as const,
 };
 
-describe("TodayHeroRing — post-revert (2026-05-02)", () => {
-  it("does NOT render a Remaining/Consumed segmented chip control", () => {
-    const { queryByTestId, queryByLabelText } = render(
+describe("TodayHeroRing — SLOE redesign (2026-06-03)", () => {
+  it("renders the Sloe Remaining/Consumed toggle + status chip", () => {
+    const { queryByTestId } = render(
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
         onToggleDisplayMode={() => {}}
       />,
     );
-
-    // Both chip testIDs from PR #50 must be absent.
-    expect(queryByTestId("today-hero-ring-chip-remaining")).toBeNull();
-    expect(queryByTestId("today-hero-ring-chip-consumed")).toBeNull();
-    // The radiogroup wrapper should also be gone.
-    expect(queryByLabelText("Calorie ring display")).toBeNull();
+    expect(queryByTestId("today-ring-display-toggle")).not.toBeNull();
+    expect(queryByTestId("today-ring-status-chip")).not.toBeNull();
   });
 
-  it("does NOT accept an `onSetDisplayMode` prop in its public type", () => {
-    // Compile-time guard expressed as runtime: the component renders
-    // identically whether or not callers attempt to pass the dropped
-    // prop. If a future refactor re-adds the prop, this test still
-    // passes — but the missing chip from the test above will fail
-    // first. Documented here so the prop's absence is intentional.
-    expect(typeof TodayHeroRing).toBe("function");
+  it("fires onToggleDisplayMode when the toggle is pressed", () => {
+    const onToggleDisplayMode = vi.fn();
+    const { getByTestId } = render(
+      <TodayHeroRing
+        {...baseProps}
+        onToggleExpanded={() => {}}
+        onToggleDisplayMode={onToggleDisplayMode}
+      />,
+    );
+    fireEvent.press(getByTestId("today-ring-display-toggle"));
+    expect(onToggleDisplayMode).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT render any 'Why?' affordance even when onPressWhy is provided (2026-05-12 round 3)", () => {
+  it("does NOT render any 'Why?' affordance even when onPressWhy is provided (2026-05-12 round 3, kept)", () => {
     const onPressWhy = vi.fn();
     const { queryByTestId } = render(
       <TodayHeroRing
@@ -90,20 +84,7 @@ describe("TodayHeroRing — post-revert (2026-05-02)", () => {
         onPressWhy={onPressWhy}
       />,
     );
-    // The explainer is reached from Settings → Targets now. No UI
-    // here. The testID must not appear.
     expect(queryByTestId("today-hero-why-this-number")).toBeNull();
     expect(onPressWhy).not.toHaveBeenCalled();
-  });
-
-  it("does NOT render the 'Why?' link when onPressWhy is omitted", () => {
-    const { queryByTestId } = render(
-      <TodayHeroRing
-        {...baseProps}
-        onToggleExpanded={() => {}}
-        onToggleDisplayMode={() => {}}
-      />,
-    );
-    expect(queryByTestId("today-hero-why-this-number")).toBeNull();
   });
 });

@@ -39,23 +39,25 @@ name: "Import Shared Recipe — idle state, URL input, source grid"
       # Verify the screen header
       - assertVisible: ".*IMPORT.*"
 
-      # Verify idle state UI — the paste card
+      # Verify idle state UI — the import header.
+      # recipe-import-redesign (ENG-997): the redesigned idle leads with
+      # the serif "Import a recipe" H1; the legacy flag-OFF idle still
+      # shows "Paste a recipe link". Either is acceptable.
       - assertVisible:
-          text: ".*(?:Paste a recipe link|Looking for a link).*"
+          text: ".*(?:Import a recipe|Paste a recipe link|Looking for a link).*"
 
       # Visual baseline #2 — Import idle state.
-      # Catches paste-card padding, IMPORT-FROM grid alignment, button stacking.
+      # Catches paste-field padding, trust-chip row alignment, button stacking.
       - takeScreenshot: screenshots/latest/import-02-idle
 
-      # Verify source grid buttons (Import From section)
+      # Verify the "WORKS WITH" trust-chip row. The old "IMPORT FROM" tinted
+      # icon-box grid (a fake four-way router) was demoted to a non-tappable
+      # trust row of platform monograms (TT/IG/YT/W) — gap #2/#6/ENG-997.
       - runFlow:
           when:
-            visible: ".*IMPORT FROM.*"
+            visible: ".*WORKS WITH.*"
           commands:
-            - assertVisible: ".*TikTok.*"
-            - assertVisible: ".*Instagram.*"
-            - assertVisible: ".*YouTube.*"
-            - assertVisible: ".*Website.*"
+            - assertVisible: ".*WORKS WITH.*"
 
       # Verify clipboard button
       - runFlow:

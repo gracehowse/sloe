@@ -39,8 +39,12 @@ describe("mobile-web raised Log button — App.tsx", () => {
     // The web equivalent of lucide-react-native. The mobile reference
     // (`apps/mobile/components/tabs/LogTabBarButton.tsx`) imports
     // `Plus` from `lucide-react-native`; the web port must import
-    // the same glyph from `lucide-react`.
-    expect(APP).toMatch(/import \{ Plus \} from "lucide-react"/);
+    // the same glyph from `lucide-react`. SLOE (2026-06-07): the import
+    // now also pulls the Sloe tab glyph set (Sun / BookOpen /
+    // CalendarDays / LineChart) so the import line is matched loosely on
+    // `Plus` being present in a `lucide-react` import, not as the sole
+    // named import.
+    expect(APP).toMatch(/import \{[^}]*\bPlus\b[^}]*\} from "lucide-react"/);
   });
 
   it("imports React.Fragment for the inline 5-slot tab map", () => {
@@ -64,12 +68,36 @@ describe("mobile-web raised Log button — App.tsx", () => {
     expect(APP).toMatch(/data-testid="mobile-web-tab-log-button"/);
   });
 
-  it("uses the canonical 56pt circle visuals (w-14 h-14 rounded-full bg-primary)", () => {
-    // 56pt diameter, primary brand fill, full-circle radius — matches
-    // the mobile `<LogTabBarButton>` (56 / 2 = 28 borderRadius) and
-    // the legacy web `<LogFab>` (h-14 w-14, bg-primary).
+  it("uses the canonical 56pt circle visuals (w-14 h-14 rounded-full, plum nav fill)", () => {
+    // 56pt diameter, full-circle radius — matches the mobile
+    // `<LogTabBarButton>` (56 / 2 = 28 borderRadius).
     expect(APP).toMatch(/w-14 h-14 rounded-full/);
-    expect(APP).toMatch(/bg-primary text-primary-foreground/);
+    // SLOE (2026-06-07): the FAB fill is the plum nav/brand-chrome token
+    // (`--sidebar-primary`, #3B2A4D light / #815E91 dark), NOT clay
+    // `bg-primary` — so it reads as nav chrome, parity with the mobile
+    // FAB's `colors.navPrimary` plum. Pins against regressing to the old
+    // clay fill.
+    expect(APP).toMatch(/bg-\[var\(--sidebar-primary\)\] text-\[var\(--sidebar-primary-foreground\)\]/);
+  });
+
+  it("re-tints the FAB drop-shadow to plum (no stale brand-blue glow)", () => {
+    // SLOE (2026-06-07): the glow was `rgba(76,108,224,0.4)` — the
+    // retired brand BLUE — which had drifted off the Sloe palette. It is
+    // now plum `rgba(59,42,77,...)` to match the fill. Guard both ways:
+    // the plum glow must be present and the blue glow must be gone.
+    expect(APP).toMatch(/shadow-\[0_4px_16px_rgba\(59,42,77,/);
+    expect(APP).not.toMatch(/rgba\(76,\s*108,\s*224/);
+  });
+
+  it("uses the Sloe tab glyph set (Sun / BookOpen / CalendarDays / LineChart)", () => {
+    // SLOE (2026-06-07): the bottom-nav glyphs are pinned to the mobile
+    // `<SupprTabBar>` set so mobile-web and native iOS read as one
+    // surface. Previously Today used `Icons.home` (Home) and Progress
+    // used `Icons.progress` (BarChart3), which drifted from Figma.
+    expect(APP).toMatch(/icon: <Sun className="w-5 h-5" strokeWidth=\{2\}/);
+    expect(APP).toMatch(/icon: <BookOpen className="w-5 h-5" strokeWidth=\{2\}/);
+    expect(APP).toMatch(/icon: <CalendarDays className="w-5 h-5" strokeWidth=\{2\}/);
+    expect(APP).toMatch(/icon: <LineChart className="w-5 h-5" strokeWidth=\{2\}/);
   });
 
   it("projects 16px above the bar fill line (relative -top-4)", () => {

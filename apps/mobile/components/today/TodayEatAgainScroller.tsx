@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Dimensions, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
-import { Accent, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
 
 import { TodayEatAgainBanner } from "./TodayEatAgainBanner";
@@ -19,7 +19,7 @@ import { TodayEatAgainBanner } from "./TodayEatAgainBanner";
  * the screen width minus the Today scroll padding), `pagingEnabled`
  * so swipes snap to a card boundary, hidden horizontal scrollbar.
  * Page dots are a calm 6pt circles row beneath the scroller — the
- * active dot uses `Accent.primary`, inactive dots use the host's
+ * active dot used `accent.primary` (scheme-resolved), inactive dots use the host's
  * secondary text colour at 30% alpha.
  */
 export interface TodayEatAgainScrollerProps {

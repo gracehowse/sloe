@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Sloe — Bloom Berry on AccentWin gradient field">
+  <defs>
+    <!-- AccentWinGradient field: Plum -> Clay -> Amber, diagonal, warm + energetic. -->
+    <linearGradient id="winGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B2A4D"/>
+      <stop offset="50%" stop-color="#C8794E"/>
+      <stop offset="100%" stop-color="#C9892C"/>
+    </linearGradient>
+    <!-- Berry: deep plum kept DEEPEST here, so it reads as a dark jewel against the warm/bright field. -->
+    <radialGradient id="berryWin" cx="38%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#6A4B7A"/>
+      <stop offset="48%" stop-color="#3B2A4D"/>
+      <stop offset="100%" stop-color="#241733"/>
+    </radialGradient>
+    <!-- Frosted bloom — even more load-bearing here, because the warm field reduces hue contrast on the lower-right. -->
+    <radialGradient id="bloomWin" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#EDEAF1" stop-opacity="0.95"/>
+      <stop offset="42%" stop-color="#C9C2D6" stop-opacity="0.66"/>
+      <stop offset="78%" stop-color="#C9C2D6" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#C9C2D6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="winVig" cx="28%" cy="24%" r="70%">
+      <stop offset="0%" stop-color="#241733" stop-opacity="0.42"/>
+      <stop offset="60%" stop-color="#241733" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#winGrad)"/>
+
+  <!-- Subtle plum vignette upper-left so the field doesn't start too bright behind the bloom -->
+  <rect width="1024" height="1024" fill="url(#winVig)"/>
+
+  <!-- Berry: optically centred (cy 524, a touch high of 512). -->
+  <circle cx="512" cy="524" r="348" fill="url(#berryWin)"/>
+
+  <ellipse cx="408" cy="420" rx="176" ry="150" fill="url(#bloomWin)"/>
+
+  <!-- Hair-thin cool rim, bottom-right, to lift the deep berry off the warm amber zone. -->
+  <path d="M512 878 A348 348 0 0 0 860 530" fill="none" stroke="#EDEAF1" stroke-width="5" stroke-linecap="round" opacity="0.26"/>
+</svg>

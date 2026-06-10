@@ -32,7 +32,9 @@ test.describe("Authenticated app view matrix", () => {
       // Empty library redirects to Discover (parity with mobile).
       const libraryTitle = page.getByTestId("library-desktop-title");
       if (await libraryTitle.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await expect(page.getByPlaceholder(/search recipes/i)).toBeVisible();
+        // ENG-921 / Figma 527:2 — Library search placeholder is
+        // "Search your recipes" (Discover keeps "Search recipes").
+        await expect(page.getByPlaceholder(/search (your )?recipes/i).first()).toBeVisible();
       } else {
         await expect(page.getByRole("heading", { name: /^Discover$/i }).first()).toBeVisible();
       }
@@ -56,7 +58,8 @@ test.describe("Authenticated app view matrix", () => {
         .getByRole("tab", { name: /^Today$/i })
         .or(page.getByRole("button", { name: /^Today$/i }));
       await expect(todayNav.first()).toBeVisible();
-      await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
+      // Sloe redesign renamed the meals section heading "Meals" → "Today's Meals".
+      await expect(page.getByRole("heading", { name: /Today's Meals/i })).toBeVisible();
       await expect(
         page.locator('[data-testid="today-hero-desktop"] [data-testid="today-macro-rings-toggle"]'),
       ).toBeVisible();

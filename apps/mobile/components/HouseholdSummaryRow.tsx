@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   getMyHousehold,
@@ -39,6 +40,8 @@ const householdFetchTimedOut = Symbol("household_summary_timeout");
 export function HouseholdSummaryRow() {
   const router = useRouter();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the people glyph.
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const [data, setData] = useState<HouseholdData | null>(null);
@@ -128,7 +131,7 @@ export function HouseholdSummaryRow() {
       accessibilityRole="button"
       accessibilityLabel={`Open household settings — ${summary}`}
     >
-      <Ionicons name="people-outline" size={16} color={Accent.primary} />
+      <Ionicons name="people-outline" size={16} color={accent.primary} />
       <Text
         style={{ flex: 1, fontSize: 13, color: colors.text, fontWeight: "500" }}
         numberOfLines={1}

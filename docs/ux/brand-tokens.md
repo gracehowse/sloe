@@ -2,47 +2,66 @@
 
 Single reference for **accent roles** so colours do not drift between the Next.js web app and Expo mobile app.
 
-**Wellness palette rationale (2026-05):** `docs/ux/color-direction-noom-lifesum-2026-05.md`
+**Sloe palette (2026-06-03):** Phase 0 token-foundation re-skin —
+`docs/ux/redesign/phase-0-token-foundation-dossier.md`.
 
-> **Note:** The palette shifted from violet (#7c3aed) to blue, and again in 2026-05 to blue (#588CE4). Any remaining #588CE4 or violet references are legacy and should be migrated to #588CE4 (canonical primary) per D-06 (2026-05-25).
+> **Note:** Phase 0 (2026-06-03) re-skinned the whole app from the blue
+> "8-slot lock" to the warm **Sloe** family — **token NAMES are unchanged,
+> only the hex VALUES moved**. The six Sloe hues, by role: **plum `#3B2A4D`**
+> (chrome / brand / calorie ring), **clay `#C8794E`** (primary / CTA / carbs),
+> **sage `#5E7C5A`** (success), **amber `#C9892C`** (warning / fat), **damson
+> `#6A4B7A`** (win / celebration), **teal `#4A7878`** (fiber / water / snack).
+> The smaller palette is intentional (dossier D-4) — distinguishability is by
+> icon + label + position, not 8 saturated hues. Any remaining blue
+> (`#588CE4`) or magenta (`#DF5EBC`) references below the marketing-gradient
+> note are stale and should be read against `src/styles/theme.css`.
 
 ## Accent palette
 
+Many accents carry a darkened `*-solid` / `*Solid` variant for text/icon use on
+light surfaces (the base fill clears the 3:1 graphical bar but not 4.5:1 text);
+see `src/styles/theme.css` / `apps/mobile/constants/theme.ts` for the computed
+contrast ratios.
+
 | Role | Hex (canonical) | Mobile token | Web CSS variable | Usage |
 |------|-----------------|-------------|-----------------|--------|
-| **Primary (UI chrome)** | `#588CE4` (light) / `#7a90f5` (dark) | `Accent.primary` / `Colors.*.tint` | `--primary` | Buttons, selected states, links, tab bar (TF49 baseline) |
-| **Primary light** | `#7a90f5` | `Accent.primaryLight` | `--macro-protein` (dark) | Dark tabs, sugar macro |
-| **Body ink** | `#1c1916` (light) / `#e8e7ed` (dark) | `Colors.*.text` | `--foreground` | Headlines and body copy — not button fill |
-| **brandBlue alias** | `#588CE4` | `Accent.brandBlue` | `--macro-protein` | Stable import alias; same as `Accent.primary` |
-| **Success** | `#62b35a` | `Accent.success` | `--success` | Confirmations, calorie ring under-target, positive states |
-| **Success light** | `#82d878` | `Accent.successLight` | `--success` (dark) | Dark mode success tint |
-| **Warning** | `#F78A32` (light) / `#FAA45F` (dark) | `Accent.warning` | `--warning` | Over-budget, approaching limits — **not** carbs macro, **not** activity bonus (that owns the Yellow Activity accent) |
-| **Warning light** | `#FAA45F` | `Accent.warningLight` | `--warning` (dark) | Dark mode warning tint |
-| **Carbs** | `#E8721E` (light) / `#F2904A` (dark) | `Accent.carbs` | `--macro-carbs` | Carbs (+ sugar) macro track — deep amber-orange, distinct from sodium's orange and from the Yellow Activity accent (2026-05-25 de-collide) |
-| **Activity** | `#F3C336` (light) / `#F5D162` (dark) | `Accent.activity` | `--activity` | Activity / burn / earned-bonus — ring bonus arc, activity cards, burn detail (Yellow slot vacated by carbs) |
-| **Fiber** | `#4a7878` | `Accent.fiber` | `--macro-fiber` | Fibre macro — dusty blue-teal, not success sage |
-| **Carbs light** | `#F2904A` | `Accent.carbsLight` | `--macro-carbs` (dark) | Dark mode carbs tint |
-| **Destructive** | `#e04848` | `Accent.destructive` | `--destructive` | Errors, dangerous actions only — never for over-budget |
-| **Destructive light** | `#ff6c6c` | `Accent.destructiveLight` | `--destructive` (dark) | Dark mode destructive tint |
-| **Magenta** | `#DF5EBC` | `Accent.magenta` | `--macro-fat` | Fat macro, gradient accent — not for standalone body UI, **never for the Snacks slot** |
-| **Cyan** | `#06b6d4` | `Accent.cyan` / `SlotColors.snack` | `--macro-water` / `--slot-snack` | Water tracking, exercise/activity, **Snacks meal-slot tint** |
-| **Orange** | `#F78A32` (light) / `#FAA45F` (dark) | `Accent.orange` / `Accent.warning` | `--macro-sodium` | Sodium macro — shares the orange family with carbs but a distinct, lighter tint (`#F78A32` vs carbs `#E8721E`) so the two never read as one role on a single screen |
-| **Info** | `#0ea5e9` | `Accent.info` | n/a | Informational accents |
+| **Primary (content CTA)** | `#C8794E` (light) / `#D58A5E` (dark) | `Accent.primary` / `Colors.*.tint` | `--accent-primary` / `--primary` | Inline content CTAs (Save, Log Dinner, Start Cooking), selected states, links, tab active label/icon — Sloe clay |
+| **Primary solid (text/icon)** | `#A0552E` (light) / `#C8794E` (dark) | `Accent.primarySolid` | `--accent-primary-solid` | Clay as small text / icon / link on light (AA-safe) |
+| **Primary light** | `#D58A5E` | `Accent.primaryLight` | n/a | Dark-mode primary, selected tabs |
+| **Nav / brand primary** | `#3B2A4D` (light) / `#815E91` (dark) | `Colors.*.navPrimary` | `--sidebar-primary` (web mirror) | Nav + brand chrome — the centre Log **FAB** (mobile), wordmark, page titles. Plum. Distinct from clay `tint` (locked Grace 2026-06-04: plum = nav/brand, clay = content CTAs). |
+| **Brand heading ink (text)** | `#3B2A4D` (light) / `#A98CB8` (dark) | `MacroColors.calories` (mobile, light only — see ENG-886) | `--foreground-brand` (`text-foreground-brand`) | Newsreader **card titles** ("Steps & activity", "Hydration", "Planned", …) — the plum hue as TEXT (AA-safe: 11.9:1 light, 5.4:1 dark). The text variant of the plum/nav hue; dark uses the lighter `#A98CB8` lift, NOT the `#815E91` fill-lift (only 2.99:1 as text). Web card titles previously (wrongly) used clay `text-primary` — ENG-885. |
+| **Body ink** | `#221B26` (light) / `#F5F3F4` (dark) | `Colors.*.text` | `--foreground` | Aubergine ink — headlines and body copy, not button fill |
+| **brandBlue alias** | `#C8794E` | `Accent.brandBlue` | n/a | Legacy alias — now clay; same as `Accent.primary` |
+| **Success** | `#5E7C5A` (light) / `#83A57E` (dark) | `Accent.success` | `--accent-success` / `--success` | Confirmations, calorie-ring at/under-target signal, positive states — Sloe sage |
+| **Success solid (text)** | `#466046` | `Accent.successSolid` | `--accent-success-solid` | Sage as small text on light (AA-safe) |
+| **Warning** | `#C9892C` (light) / `#D6A24A` (dark) | `Accent.warning` | `--accent-warning` / `--warning` | Approaching limits — Sloe amber. **Not** over-budget (that is red, D-2); **not** activity bonus (that owns honey) |
+| **Warning solid (text)** | `#956619` | `Accent.warningSolid` | `--accent-warning-solid` | Amber as small text on light (AA-safe) |
+| **Carbs** | `#C8794E` (light) / `#D58A5E` (dark) | `Accent.carbs` | `--macro-carbs` | Carbs (+ sugar) macro track — Sloe clay (same hue family as primary) |
+| **Activity** | `#D6A24A` (light) / `#E0B25E` (dark) | `Accent.activity` | `--activity` | Activity / burn / earned-bonus — Sloe honey, distinct from amber warning + red over-budget. **FILL-ONLY** — honey is 2.3:1 even on white, so it can never be text (any size) |
+| **Activity solid (text)** | `#8A5A14` (light) / `#E0B25E` (dark) | `Accent.activitySolid` / `Accent.activitySolidDark` | `--activity-solid` (`text-activity-solid`) | Deep honey for burn-detail "Bonus earned" value + workout-kcal TEXT (AA-safe: 4.9:1 on the honey tint, 5.9:1 on white). Added ENG-885 |
+| **Fiber** | `#4A7878` (light) / `#6FA3A3` (dark) | `Accent.fiber` | `--macro-fiber` | Fibre macro — Sloe teal |
+| **Carbs light** | `#D58A5E` | `Accent.carbsLight` | `--macro-carbs` (dark) | Dark-mode carbs tint |
+| **Destructive** | `#C0533F` (light) / `#DC6B55` (dark) | `Accent.destructive` | `--accent-destructive` / `--destructive` | Errors, dangerous actions, **and over-budget** (D-2) — Sloe warm brick |
+| **Destructive solid (text)** | `#9E3F2E` | `Accent.destructiveSolid` | `--accent-destructive-solid` | Brick as small text on light (AA-safe) |
+| **Damson / win** | `#6A4B7A` (light) / `#9A7BAA` (dark) | `Accent.purple` / `Accent.win` | `--accent-win` / `--accent-info` | Streaks, milestones, Pro accent, dinner slot, caffeine, win landmark — Sloe damson |
+| **Teal (alias)** | `#4A7878` | `Accent.cyan` / `SlotColors.snack` | `--macro-water` / `--slot-snack` | Water tracking, **Snacks meal-slot tint** — Sloe teal (legacy `cyan` alias) |
+| **Amber (alias)** | `#C9892C` | `Accent.orange` / `Accent.magenta` | `--macro-sodium` / `--macro-fat` | Sodium + fat macro — Sloe amber (legacy `orange` / `magenta` aliases) |
+| **Info** | `#6A4B7A` (light) / `#9A7BAA` (dark) | `Accent.info` | `--accent-info` | Informational accents — Sloe damson |
 
 ## Macro colours
 
 Fixed across all screens. Never hardcode — always reference `MacroColors` (mobile) or `--macro-*` (web).
 
-| Macro | Colour | Hex | Web CSS variable |
-|-------|--------|-----|------------------|
-| Calories | Success (green) | `#62b35a` | `--macro-calories` |
-| Protein | Primary (blue) | `#588CE4` | `--macro-protein` |
-| Carbs | Amber-orange | `#E8721E` (light) / `#F2904A` (dark) | `--macro-carbs` (distinct from sodium's `#F78A32`) |
-| Fat | Magenta (pink) | `#DF5EBC` | `--macro-fat` |
-| Fiber | Blue-teal | `#4a7878` | `--macro-fiber` (distinct from calories sage) |
-| Sugar | Amber-orange (follows carbs) | `#E8721E` (light) / `#F2904A` (dark) | `--macro-sugar` |
-| Sodium | Orange | `#F78A32` (light) / `#FAA45F` (dark) | `--macro-sodium` (shares orange family with carbs, distinct lighter tint) |
-| Water | Cyan | `#06b6d4` | `--macro-water` |
+| Macro | Colour | Hex (light / dark) | Web CSS variable |
+|-------|--------|--------------------|------------------|
+| Calories | Plum (the calorie ring) | `#3B2A4D` / `#815E91` | `--macro-calories` |
+| Protein | Olive-sage | `#7C8466` / `#A2AE88` | `--macro-protein` |
+| Carbs | Clay | `#C8794E` / `#D58A5E` | `--macro-carbs` |
+| Fat | Amber | `#C9892C` / `#D6A24A` | `--macro-fat` |
+| Fiber | Teal | `#4A7878` / `#6FA3A3` | `--macro-fiber` (distinct from calories plum) |
+| Sugar | Clay (follows carbs) | `#C8794E` / `#D58A5E` | `--macro-sugar` |
+| Sodium | Amber (follows fat) | `#C9892C` / `#D6A24A` | `--macro-sodium` |
+| Water | Teal | `#4A7878` / `#6FA3A3` | `--macro-water` |
 
 ## Meal-slot colours
 
@@ -50,25 +69,34 @@ Per-slot tint applied to the slot-header icon wrapper on Today's meal section an
 
 | Slot | Light | Dark | Mobile token | Web CSS variable |
 |------|-------|------|--------------|------------------|
-| Breakfast | `#F3C336` (yellow) | `#F5D162` | `SlotColors.breakfast` | `--slot-breakfast` |
-| Lunch | `#62b35a` (green) | `#82d878` | `SlotColors.lunch` | `--slot-lunch` |
-| Dinner | `#588CE4` (blue) | `#7a90f5` | `SlotColors.dinner` | `--slot-dinner` |
-| Snack(s) | `#06b6d4` (cyan) | `#22d3ee` | `SlotColors.snack` | `--slot-snack` |
+| Breakfast | `#C9892C` (amber) | `#D6A24A` | `SlotColors.breakfast` | `--slot-breakfast` |
+| Lunch | `#5E7C5A` (sage) | `#83A57E` | `SlotColors.lunch` | `--slot-lunch` |
+| Dinner | `#6A4B7A` (damson) | `#9A7BAA` | `SlotColors.dinner` | `--slot-dinner` |
+| Snack(s) | `#4A7878` (teal) | `#6FA3A3` | `SlotColors.snack` | `--slot-snack` |
 
-Each slot also exposes a `--slot-<name>-soft` variant (12% alpha, matches the `--macro-*-soft` pattern) for tinted backgrounds (chip pills, icon wrappers).
+Each slot also exposes a `--slot-<name>-soft` variant (`12` alpha suffix in light, `15` in dark) for tinted backgrounds (chip pills, icon wrappers).
 
-> **Breakfast shares the Yellow hue with the Activity accent by design** (`#F3C336` light / `#F5D162` dark). They live in different namespaces — `--slot-breakfast` (meal slot) vs `--activity` (burn/earned-bonus) — and never co-occur on the same surface, so the shared hue is not a collision. Carbs vacated this Yellow on 2026-05-25 (moved to amber-orange `#E8721E`); the freed Yellow is now the dedicated activity token.
+> **Breakfast (amber) shares the warning + fat hue family.** They live in
+> different namespaces — `--slot-breakfast` (meal slot) vs `--warning` /
+> `--macro-fat` — and the slot is differentiated by its breakfast icon +
+> position, so the shared amber is not a collision. Snack (teal) stays
+> collision-free with every macro hue (dossier D-4).
 
-_Added 2026-05-01 (ui-critic P2 #10) — replaces the prior pattern where `Snacks` borrowed `MacroColors.fat` (magenta `#DF5EBC`) and collided 1:1 with the Fat macro tile on the same Today screen. Source-grep + render parity tests live at `apps/mobile/tests/unit/slotColorTokensParity.test.ts` and `apps/mobile/tests/unit/todayMealsSectionSlotColors.test.tsx`._
+_Sloe Phase 0 (2026-06-03) remapped slots to amber / sage / damson / teal. The
+original 2026-05-01 fix (ui-critic P2 #10) that moved `Snacks` off
+`MacroColors.fat` still holds — snack is its own `SlotColors.snack` (teal),
+never a macro token. Source-grep + render parity tests live at
+`apps/mobile/tests/unit/slotColorTokensParity.test.ts` and
+`apps/mobile/tests/unit/todayMealsSectionSlotColors.test.tsx`._
 
 ## Stimulant tracker colours
 
 Used exclusively by the Hydration & Stimulants card (Batch 2.5). Not macro roles — caffeine has its own violet tone; alcohol uses an amber that rhymes with the warning accent because "approaching weekly limit" is the same semantic category.
 
-| Stimulant | Colour | Hex | Mobile token | Web CSS variable |
-|-----------|--------|-----|--------------|-----------------|
-| Caffeine | Violet | `#8b5cf6` | `StimulantColors.caffeine` | `--stimulant-caffeine` |
-| Alcohol | Amber | `#f59e0b` | `StimulantColors.alcohol` | `--stimulant-alcohol` |
+| Stimulant | Colour | Hex (light / dark) | Mobile token | Web CSS variable |
+|-----------|--------|--------------------|--------------|-----------------|
+| Caffeine | Damson | `#6A4B7A` / `#9A7BAA` | `StimulantColors.caffeine` | `--stimulant-caffeine` |
+| Alcohol | Amber | `#C9892C` / `#D6A24A` | `StimulantColors.alcohol` | `--stimulant-alcohol` |
 
 _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously duplicated across `src/app/components/suppr/hydration-stimulants-card.tsx` and `apps/mobile/components/HydrationStimulantsCard.tsx`._
 
@@ -76,29 +104,29 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 | Role | Light | Dark | Mobile token |
 |------|-------|------|-------------|
-| Background | `#fafaf8` (crisp warm white) | `#0a0a0f` | `Colors.*.background` |
-| Background secondary | `#f0ebe3` | `#111118` | `Colors.*.backgroundSecondary` |
-| Ring empty track | `#d8dff2` | `rgba(122,144,245,0.35)` | `Colors.*.ringTrack` / `--ring-bg` |
-| Card | `#ffffff` | `#16161e` | `Colors.*.card` |
-| Card border | `#e3dccc` (warm stone) | `#32313c` | `Colors.*.cardBorder` |
-| Border | `#e3dccc` (warm stone) | `#32313c` | `Colors.*.border` |
-| Input background | `#ede7dc` | `#222028` | `Colors.*.inputBg` |
+| Background | `#FBF8F3` (oat) | `#19181C` | `Colors.*.background` |
+| Background secondary | `#F2EFEA` | `#232126` | `Colors.*.backgroundSecondary` |
+| Ring empty track | `#EDEAF1` (frost-mist) | `#372F44` | `Colors.*.ringTrack` / `--ring-bg` |
+| Card | `#FFFFFF` | `#232126` | `Colors.*.card` |
+| Card elevated | `#F6F5F2` | `#2A2730` | `Colors.*.cardElevated` / `--card-elevated` |
+| Card border | `#E8E2EC` (Sloe line) | `#35323A` | `Colors.*.cardBorder` |
+| Border | `#E8E2EC` (Sloe line) | `#35323A` | `Colors.*.border` |
+| Input background | `#F2EFEA` | `#232126` | `Colors.*.inputBg` |
 | Overlay | `#00000088` | `#000000aa` | `Colors.*.overlay` |
+| Brand-mark ring | `#3B2A4D` (plum) | `#ffffff` | `Colors.*.brandMarkRing` / `--brand-mark-ring` |
 
-> **2026-05-21 palette refresh:** Background went from the warm cream
-> `#f6f3ee` (read as "yellow/papery") to the crisp warm white
-> `#fafaf8`, **and** borders went from cool grey `#e8e6e1` (read as
-> "grey/cold/clinical") back to warm stone `#e3dccc`. Muted/accent
-> moved to the slightly lifted warm stone `#e8e1d2`. The combination
-> keeps the page reading crisp without losing the warm brand identity.
+> **Sloe Phase 0 (2026-06-03):** the page is **oat `#FBF8F3`**, cards are pure
+> white, the warmth lives in the **aubergine ink** (`--foreground` `#221B26`)
+> and the hairline **Sloe line** border `#E8E2EC`. Dark mode is a warm
+> aubergine graphite (ivory ink, not cool slate).
 
 ## Text colours
 
 | Role | Light | Dark |
 |------|-------|------|
-| Primary text | `#1c1916` | `#e8e7ed` |
-| Secondary text | `#5e574e` | `#a8a4b4` |
-| Tertiary text | `#8c8378` | `#706c7c` |
+| Primary text | `#221B26` (aubergine ink) | `#F5F3F4` |
+| Secondary text | `#6A6072` | `#B7B2BA` |
+| Tertiary text | `#9B93A3` | `#857F8B` |
 
 ## Where it lives in code
 
@@ -119,22 +147,47 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 ## Radius tokens
 
+_Canonical 2026-05-22 lock — tighter ladder (Linear / Stripe / Things 3 tier)._
+
 | Token | Value | Usage |
 |-------|-------|-------|
-| `sm` | 8px | Chips, badges, small buttons |
-| `md` | 12px | Inputs, standard buttons |
-| `lg` | 16px | Cards (canonical card radius) |
-| `xl` | 20px | Large cards, modals |
+| `sm` | 4px | Chips, badges, small buttons |
+| `md` | 6px | Inputs, standard buttons |
+| `lg` | 8px | Cards (canonical card radius) |
+| `xl` | 12px | Large cards, modals |
 | `full` | 9999px | Pills, circular badges |
 
 ## Rules
 
 1. **No hardcoded hex values in components.** All colours must come from theme tokens or `useThemeColors()`.
 2. **One primary per screen region.** Do not mix `primary` and `primaryLight` as competing accents.
-3. **Magenta is not a standalone accent** — only for fat macro and gradient endpoints. Specifically: **never use `MacroColors.fat` / `--macro-fat` as a meal-slot tint** (the Snacks slot uses `SlotColors.snack` / `--slot-snack`). Macro tokens are reserved for the Macro tile row.
-4. **Over-budget = warning (amber), never destructive (red).** Red implies failure.
-5. **Macro colours are immutable.** They must not change per-screen or per-context.
-6. **Surface tints use `color + "08"` consistently.** Do not mix "08", "12", "18", "20" for the same role.
+3. **Macro tokens are reserved for the Macro tile row** — never use `MacroColors.fat` / `--macro-fat` (amber) as a meal-slot tint (the Snacks slot uses `SlotColors.snack` / `--slot-snack`, teal).
+4. **Four-role colour law (Sloe, refined Grace 2026-06-04).** NAV/BRAND = plum (`navPrimary` — the centre Log FAB, wordmark, page titles; nav chrome only); PRIMARY = clay CTA (the one inline "do it" content action per region — Save, Log Dinner, Start Cooking); SUCCESS = sage (calorie ring at/under-target + macro identity); WIN = damson (landmark celebration only — not a CTA, not a state, not a macro). The plum/clay split is load-bearing: the FAB is plum so it reads as nav chrome, never "just another clay content CTA".
+5. **Over-budget = destructive red (`#C0533F`), not amber (dossier D-2).** Fat now owns amber, so the over-budget signal moved to red. The calorie ring is plum under-target and gets a red overage when over.
+6. **Macro colours are immutable.** They must not change per-screen or per-context.
+7. **Use the `*-solid` / `*Solid` variant for accent TEXT/ICON on light.** The base clay / amber / sage / honey fills clear the 3:1 graphical bar but not 4.5:1 text — switch to the darkened solid token for small text or icons. Corollaries (ENG-885, verified by `tests/unit/sloeContrastTokens.test.ts`):
+   - **Honey `--activity` is fill-only** — it's 2.3:1 even on white, so it can NEVER be text at any size. Use `--activity-solid` / `Accent.activitySolid` for burn/bonus text.
+   - **White text on an accent fill needs the `-solid` fill** (white on clay `#C8794E` is only 3.33:1). The global `Button` (`bg-primary-solid`) and the net-energy state chip (`NET_ENERGY_CHIP_BG` in `src/lib/nutrition/netEnergyBalance.ts`) both follow this. The vivid base fill stays correct for large headlines (≥18.66px bold / ≥24px, 3:1 bar) and graphical marks.
+   - **Card titles use plum `--foreground-brand`, not clay.** Headings are nav/brand chrome (plum), not content CTAs (clay).
+
+## Fonts (Sloe Phase 0)
+
+- **Headlines / display / hero numerals → Newsreader** (editorial serif).
+  Web: `next/font/google` `--font-newsreader` (`app/layout.tsx`), applied to
+  `h1–h3` + `.font-display` + `font-[family-name:var(--font-headline)]` in
+  `src/styles/theme.css`. Mobile: `@expo-google-fonts/newsreader` loaded via
+  `useFonts` in `apps/mobile/app/_layout.tsx`;
+  `Type.display/title/headline/ringValue/heroValue` point at Newsreader.
+  **Big standalone numeric HERO values are serif** — calorie ring, macro tiles,
+  kcal/kg targets, big stat numbers, the prominent number on a card (SLOE
+  Phase 0 / ENG-997; the consistency pass landed 2026-06-08, see
+  `design-system.md` › "Hero numerals are serif" + `heroNumeralSerif.test.ts`).
+- **Body / labels / captions → Inter** (sans), AND **unit suffixes** (kcal, kg,
+  g, ml, %) beside a serif hero numeral + the small inline macro callouts on the
+  saved-meal portion / ingredient sheets (`Type.macroValue`) — those stay Inter
+  tabular for tight digit alignment. Web `--font-inter`; mobile
+  `@expo-google-fonts/inter` (`Inter_400/500/600/700`). `tnum` + `ss01`
+  preserved for numerics.
 
 ## Visual QA checklist
 

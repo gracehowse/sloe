@@ -1,6 +1,13 @@
 # Search tab safe-area inset (2026-05-05)
 
-**Status:** Resolved.
+> **Superseded 2026-06-08.** The "Food search" tab
+> (`apps/mobile/app/(tabs)/search.tsx`) this fix applied to has since
+> been **deleted** — it was a vestigial read-only USDA dev-stub, removed
+> per the nutrition-log spec §3.15. Food search lives only in the Log
+> sheet now. This doc is kept as a historical record of the safe-area
+> fix; the screen and its inset code no longer exist.
+
+**Status:** Resolved (screen later deleted — see banner).
 **Authority:** 2026-05-05 supplemental mobile audit (finding N1, P0).
 **Owner:** Grace / executor.
 

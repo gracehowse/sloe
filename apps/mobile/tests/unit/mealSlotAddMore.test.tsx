@@ -25,6 +25,16 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
+// The per-slot header `+` affordance + collapse/expand pinned here live in the
+// LEGACY TD4 slot layout (rendered when `today_meals_figma_654` is OFF). The
+// Figma 654:2 layout (default-on) moved the add affordance into the expanded
+// slot body. Force the legacy branch so this fallback coverage stays green —
+// same mock as `todayMealsSectionTd4.test.tsx`.
+vi.mock("../../lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+}));
+
 void React;
 
 const BASE_MEAL: JournalMeal = {

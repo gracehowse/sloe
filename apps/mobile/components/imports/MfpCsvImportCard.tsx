@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { Check, FileSpreadsheet, RotateCcw } from "lucide-react-native";
 import { Accent, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -72,10 +73,20 @@ type DocumentAsset = {
 
 export function MobileMfpCsvImportCard({
   surface = "onboarding",
+  highlightApp = null,
 }: {
   surface?: "onboarding" | "settings";
+  /** ENG-990 — when the user picked an importable app on the app-choice
+   *  step, the data-bridges step passes its display name (e.g.
+   *  "MyFitnessPal") so this card leads with their app and reads as the
+   *  pre-selected next step. `null` keeps the generic multi-app copy. */
+  highlightApp?: string | null;
 }) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the highlighted-card
+  // border + the spreadsheet-icon tile/spinner. Success rows keep
+  // `Accent.success`; the size-cap note keeps `Accent.warning`.
+  const accent = useAccent();
   const [phase, setPhase] = React.useState<Phase>({ kind: "idle" });
 
   const uploadFile = React.useCallback(
@@ -195,6 +206,17 @@ export function MobileMfpCsvImportCard({
     }
   }, [uploadFile]);
 
+  // ENG-990 — lead with the user's app when they told us they're
+  // switching from one we can import. `highlightApp` is `null` on the
+  // generic Settings surface and when no importable app was chosen.
+  const highlighted = highlightApp != null;
+  const title = highlighted
+    ? `Bring your ${highlightApp} history`
+    : "Import from another app";
+  const body = highlighted
+    ? `Upload your ${highlightApp} CSV export and we'll bring your meal history into Sloe — your numbers stay exactly as you logged them.`
+    : "MyFitnessPal, Lose It, or Cronometer — upload the CSV export and we'll bring your meal history into Sloe without changing the macros you already logged.";
+
   return (
     <View
       style={{
@@ -203,7 +225,11 @@ export function MobileMfpCsvImportCard({
         padding: 16,
         borderWidth: 1,
         borderColor:
-          phase.kind === "success" ? Accent.success + "66" : colors.border,
+          phase.kind === "success"
+            ? Accent.success + "66"
+            : highlighted && phase.kind === "idle"
+              ? accent.primary + "66"
+              : colors.border,
       }}
     >
       <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
@@ -214,12 +240,12 @@ export function MobileMfpCsvImportCard({
             borderRadius: 10,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: Accent.primaryLight + "26",
+            backgroundColor: accent.primaryLight + "26",
           }}
         >
           <FileSpreadsheet
             size={18}
-            color={Accent.primaryLight}
+            color={accent.primaryLight}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -235,7 +261,7 @@ export function MobileMfpCsvImportCard({
                 letterSpacing: -0.2,
               }}
             >
-              Import from another app
+              {title}
             </Text>
             {phase.kind === "success" ? (
               <View
@@ -274,9 +300,7 @@ export function MobileMfpCsvImportCard({
               lineHeight: 18,
             }}
           >
-            MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
-            we&rsquo;ll bring your meal history into Suppr without changing the
-            macros you already logged.
+            {body}
           </Text>
 
           {phase.kind === "idle" && (
@@ -314,7 +338,7 @@ export function MobileMfpCsvImportCard({
                 gap: 8,
               }}
             >
-              <ActivityIndicator size="small" color={Accent.primaryLight} />
+              <ActivityIndicator size="small" color={accent.primaryLight} />
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 Importing {phase.fileName}&hellip;
               </Text>

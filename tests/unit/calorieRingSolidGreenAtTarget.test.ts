@@ -1,13 +1,5 @@
 /**
- * Three-state ring colour mapping — structural pins for calorie rings.
- *
- *   1. Empty (consumed === 0) → neutral track (no blue→pink gradient).
- *   2. Logged-and-under → solid green (`Accent.success` / `--success`).
- *   3. Logged-and-over → destructive red (`Accent.destructive` /
- *      `--destructive`). TF49 baseline for the calorie ring stroke;
- *      NET stats / chips may still use over-budget amber elsewhere.
- *
- * Centre number + label use foreground ink; stroke carries budget state.
+ * Calorie-ring colour rule — structural pins (mobile + web Sloe 2026-06-04).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -25,31 +17,35 @@ const WEB_PATH = resolve(
 const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
-describe("Three-state ring — mobile CalorieRing", () => {
-  it("logged → over red, under success (no gradient stroke)", () => {
-    expect(MOBILE_SRC).toMatch(/ringStateColor = isOver \? Accent\.destructive : Accent\.success/);
-    expect(MOBILE_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\? trackColor[\s\S]*?: ringStateColor/,
+describe("Sloe calorie ring — mobile CalorieRing", () => {
+  it("under-budget arc is PLUM, NOT recoloured destructive when over", () => {
+    expect(MOBILE_SRC).toMatch(/const ringStateColor = calorieRingColor/);
+    expect(MOBILE_SRC).not.toMatch(
+      /ringStateColor = isOver \? Accent\.destructive/,
     );
+  });
+
+  it("over-budget draws a lifted-plum overage LAP, NOT red or hash", () => {
+    expect(MOBILE_SRC).toMatch(/overageLapColor/);
+    expect(MOBILE_SRC).toMatch(/stroke=\{overageLapColor\}/);
+    expect(MOBILE_SRC).not.toMatch(/stroke="url\(#overHash\)"/);
+    expect(MOBILE_SRC).not.toMatch(/id="overHash"/);
+    expect(MOBILE_SRC).not.toMatch(/const overArcColor/);
   });
 
   it("centre number + label use textColor (ink), not ring stroke hue", () => {
     expect(MOBILE_SRC).toMatch(/color: textColor/);
     expect(MOBILE_SRC).not.toMatch(/color: ringStateColor/);
   });
-
-  it("does NOT use the blue→pink brand gradient on the Today ring", () => {
-    expect(MOBILE_SRC).not.toMatch(/calorie-ring-gradient/);
-    expect(MOBILE_SRC).not.toMatch(/SvgLinearGradient/);
-  });
 });
 
-describe("Three-state ring — web DailyRing", () => {
-  it("logged → over red, under success (solid stroke, no gradient)", () => {
-    expect(WEB_SRC).not.toContain("ring-grad-over");
-    expect(WEB_SRC).not.toContain("ring-grad-success");
-    expect(WEB_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?"var\(--ring-bg\)"[\s\S]*?: isOverBudget[\s\S]*\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
+describe("Sloe calorie ring — web DailyRing", () => {
+  it("logged arc stays plum; overage uses lifted-plum lap tokens", () => {
+    expect(WEB_SRC).toMatch(/var\(--macro-calories\)/);
+    expect(WEB_SRC).toMatch(/var\(--ring-overage-lap\)/);
+    expect(WEB_SRC).not.toMatch(/url\(#overHash\)/);
+    expect(WEB_SRC).not.toMatch(
+      /isOverBudget[\s\S]{0,40}\?\s*"var\(--destructive\)"/,
     );
   });
 
@@ -57,10 +53,5 @@ describe("Three-state ring — web DailyRing", () => {
     expect(WEB_SRC).toMatch(
       /centerValueColor = isEmpty[\s\S]*\?\s*undefined[\s\S]*?:\s*"var\(--foreground\)"/,
     );
-  });
-
-  it("does NOT use the blue→pink brand gradient on the Today ring", () => {
-    expect(WEB_SRC).not.toMatch(/daily-ring-gradient/);
-    expect(WEB_SRC).not.toMatch(/#e04888/);
   });
 });

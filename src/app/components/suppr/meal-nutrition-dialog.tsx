@@ -202,7 +202,7 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
 
             <div className="pt-1">
               {/* Macro summary card */}
-              <div className="rounded-card border border-border bg-card p-3.5">
+              <div className="rounded-card bg-card card-slab p-3.5">
                 {showPortionLine ? (
                   <p className="mb-1 text-[13px] text-muted-foreground">Portion ×{portionLabel}</p>
                 ) : null}
@@ -270,7 +270,7 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
               </div>
 
               {/* Vitamins, minerals & more */}
-              <div className="mt-3 rounded-card border border-border bg-card p-3.5">
+              <div className="mt-3 rounded-card bg-card card-slab p-3.5">
                 <p className="mb-1 text-[15px] font-bold text-foreground">Vitamins, minerals &amp; more</p>
                 {/* F-86 — when every micro row is "—" the panel reads as a debug
                     surface. Collapse to a source-attributed empty state; otherwise

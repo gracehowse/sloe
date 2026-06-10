@@ -46,15 +46,19 @@ export function TodaySnapShortcut({
       data-testid={testID ?? "today-snap-shortcut"}
       aria-label={locked ? "Snap a meal (Pro)" : "Snap a meal"}
       className={[
-        "mb-3 w-full flex items-center gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left card-elevated",
+        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
+        // lift (`card-slab`). Was flat slab.
+        "mb-3 w-full flex items-center gap-2 rounded-card bg-card card-slab px-3 py-2.5 text-left",
         "hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         className ?? "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
+      {/* Sloe treatment system (2026-06-08): soft-tint icon container
+          (bg-primary/10 + primary-solid glyph). Mirror of mobile shutter. */}
       <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-        <Icons.camera className="h-4 w-4 text-primary" aria-hidden />
+        <Icons.camera className="h-4 w-4 text-primary-solid" aria-hidden />
         {locked ? (
           <span
             data-testid="today-snap-shortcut-lock"
@@ -79,7 +83,9 @@ export function TodaySnapShortcut({
             <span
               data-testid="today-snap-shortcut-pro-chip"
               aria-label="Pro feature"
-              className="inline-flex items-center rounded-sm bg-primary px-1.5 py-px text-[9px] font-extrabold tracking-wider text-primary-foreground"
+              // Sloe treatment system (2026-06-08): Pro badge = aubergine
+              // soft-tint + primary-solid label, not a solid fill.
+              className="inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-px text-[9px] font-extrabold tracking-wider text-primary-solid"
             >
               PRO
             </span>

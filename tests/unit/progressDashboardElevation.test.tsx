@@ -1,18 +1,20 @@
 /**
- * ProgressDashboard — resting-card elevation flag gate (ENG-822, gap #7).
+ * ProgressDashboard — page-ground cards take the SOFT lift; the loading
+ * skeleton tiles stay FLAT.
  *
- * Web parity with the mobile `useCardElevation` hook. The Progress dashboard's
- * resting cards are now routed through the canonical <SupprCard> primitive,
- * which owns the `design_system_elevation` flag-gate internally:
- *   - flag ON  → soft `--elev-card-soft` ambient shadow (inline boxShadow) with
- *     the hairline border dropped — surfaced as `data-soft-elevation="true"`
- *     and no `border` utility class (one edge, no double line).
- *   - flag OFF → flat `card` tier: no soft-elevation marker, hairline border
- *     class kept, byte-for-byte cold path.
+ * One-card-treatment rule (Grace 2026-06-09, `docs/decisions/2026-06-09-one-
+ * card-treatment-soft-elevation.md`): every card sitting directly on the
+ * Progress page ground opts INTO the soft lift (`elevation="card"` →
+ * `.card-slab`, `data-soft-elevation="true"`) so the whole stack lifts off the
+ * near-tonal page instead of re-blending as flat slabs. The maintenance card is
+ * the pinned exemplar here — it flipped from flat slab to soft in this sweep.
  *
- * This is the end-to-end render check for the elevation behaviour (component →
- * SupprCard → DOM); the source-match siblings (settings/mealPlanner/today
- * sweeps) only assert the call sites use the primitive.
+ * Two things stay FLAT and are pinned so they don't drift:
+ *   1. The SupprCard DEFAULT (`elevation="slab-flat"`) — the system contract is
+ *      unchanged; call sites opt into soft, the default never moved (also
+ *      pinned by `supprPrimitives` + `cardElevationVariants`).
+ *   2. The loading-skeleton tiles — they preview the flat bordered demoted stat
+ *      chips, not page-ground content cards, so they keep the bare default.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -136,7 +138,7 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 
 import { ProgressDashboard } from "../../src/app/components/ProgressDashboard";
 
-describe("ProgressDashboard resting-card elevation gate (design_system_elevation)", () => {
+describe("ProgressDashboard page-ground cards take the soft lift (2026-06-09)", () => {
   beforeEach(() => {
     mockListSavedMeals.mockClear();
     mockIsFeatureEnabled.mockReset();
@@ -148,32 +150,31 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     cleanup();
   });
 
-  it("flag OFF → maintenance card renders the flat SupprCard tier (border kept, no soft elevation)", async () => {
+  it("maintenance card renders the SOFT SupprCard tier (page-ground)", async () => {
     mockIsFeatureEnabled.mockImplementation(() => false);
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    // ENG-822: the card is a <SupprCard>. Flag OFF → flat `card` tier.
     expect(card.getAttribute("data-slot")).toBe("suppr-card");
-    expect(card.getAttribute("data-soft-elevation")).toBeNull();
-    expect(card.className.split(/\s+/)).toContain("border");
+    // One-card-treatment: page-ground card opts into soft → `.card-slab`,
+    // `data-soft-elevation`, no flat-slab marker, no hairline `border` class.
+    expect(card.getAttribute("data-soft-elevation")).toBe("true");
+    expect(card.getAttribute("data-flat-slab")).toBeNull();
+    expect(card.className.split(/\s+/)).toContain("card-slab");
+    expect(card.className.split(/\s+/)).not.toContain("card-slab-flat");
+    expect(card.className.split(/\s+/)).not.toContain("border");
   });
 
-  it("flag ON → maintenance card adopts the SupprCard soft elevation with the border dropped", async () => {
+  it("soft lift does not depend on design_system_elevation (gate removed)", async () => {
     mockIsFeatureEnabled.mockImplementation(
       (flag: string) => flag === "design_system_elevation",
     );
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    // Soft tier: data-soft-elevation marker set, hairline border class dropped
-    // (the --elev-card-soft shadow itself is an inline boxShadow on SupprCard).
     expect(card.getAttribute("data-soft-elevation")).toBe("true");
     expect(card.className.split(/\s+/)).not.toContain("border");
   });
 
-  it("flag ON preserves each card's own spacing/testid (maintenance keeps mb-6 mt-6)", async () => {
-    mockIsFeatureEnabled.mockImplementation(
-      (flag: string) => flag === "design_system_elevation",
-    );
+  it("preserves each card's own spacing/testid (maintenance keeps mb-6 mt-6)", async () => {
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
     expect(card.className).toContain("mb-6");
@@ -181,7 +182,7 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     expect(card.className).toContain("p-4");
   });
 
-  it("flag ON elevates the loading-skeleton tile too (same paint system)", async () => {
+  it("keeps the loading-skeleton tile FLAT (previews the flat demoted chips, not a page-ground content card)", async () => {
     // Hold the profile read pending so the loading branch stays mounted.
     let resolveLoad: (v: { data: typeof profileRow; error: null }) => void = () => {};
     profileMaybeSingle.mockReturnValue(
@@ -189,12 +190,9 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
         resolveLoad = res;
       }),
     );
-    mockIsFeatureEnabled.mockImplementation(
-      (flag: string) => flag === "design_system_elevation",
-    );
     render(<ProgressDashboard />);
     const tile = await screen.findByTestId("progress-skeleton-tile-0");
-    expect(tile.getAttribute("data-soft-elevation")).toBe("true");
+    expect(tile.getAttribute("data-flat-slab")).toBe("true");
     expect(tile.className.split(/\s+/)).not.toContain("border");
     // Skeleton-specific geometry preserved.
     expect(tile.className).toContain("min-h-[86px]");

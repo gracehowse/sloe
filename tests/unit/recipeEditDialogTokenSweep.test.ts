@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * The design-director review read the web edit + ingredient dialogs as
  * "imported from a different design system": they sat on a pure-white
  * `bg-card` (#fff) surface with a hairline border standing in for depth,
- * against the product's warm-cream (`--background: #fbfaf6`) canvas. Under
+ * against the product's warm-oat (`--background: #FBF8F3`) canvas. Under
  * `design_system_elevation` the three dialogs move onto the warm
  * `bg-background` surface and let the real soft `--elev-card-soft` shadow
  * carry separation (no border). The flag-OFF path keeps today's white/hairline

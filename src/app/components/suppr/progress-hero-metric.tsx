@@ -16,6 +16,22 @@ export interface ProgressHeroMetricProps {
   targetCalories: number;
   daysLogged: number;
   streak: number;
+  /**
+   * Sloe Figma 492:2 — per-day on-target booleans for the 7-dot ribbon
+   * beside the score (filled sage = on target, hollow line = off/empty).
+   * Each entry is a real day from `weekStatsBundle.days`
+   * (`calories > 0 && calories <= effectiveTargetCalories`). Optional so
+   * legacy callers keep the dot-less hero. Never fabricated — omitted
+   * entirely when the host can't supply real days.
+   */
+  onTargetDays?: boolean[];
+  /**
+   * Sloe Figma 492:2 — week-over-week adherence delta (percentage
+   * points). Positive renders the sage "up N%" trend chip; negative
+   * renders "down N%"; null/zero hides the chip. Real value from the
+   * host's range stats — never invented.
+   */
+  adherenceDeltaPct?: number | null;
 }
 
 const RING_SIZE = 120;
@@ -33,15 +49,47 @@ function adherenceTone(pct: number): {
     return { ring: "var(--success)", gradientId: "url(#prog-grad-success)", text: "text-success", label: "On target" };
   }
   if (pct < 90) {
-    return { ring: "var(--warning)", gradientId: "url(#prog-grad-warning)", text: "text-warning", label: "Under target" };
+    // Under target — calm sage, mirroring mobile (`Accent.success` for the
+    // under case). Not an alarm; the user simply hasn't filled the budget.
+    return { ring: "var(--success)", gradientId: "url(#prog-grad-success)", text: "text-success", label: "Under target" };
   }
-  // Over-target (>110%) is WARNING AMBER. Canonical 2026-05-22 v2 —
-  // anti-MFP brand: over-budget is a gentle nudge, not an alarm.
-  // Reverted from the 2026-05-05 "destructive red" rule. Memory updated.
-  return { ring: "var(--warning)", gradientId: "url(#prog-grad-over)", text: "text-warning", label: "Over target" };
+  // Over-target (>110%) — the Progress adherence RING owns the same
+  // green/red rule as Today's calorie ring (mobile decision 2026-05-22:
+  // "one rule across both rings"). Over = destructive red on BOTH the ring
+  // stroke and the centred number so web == mobile. (The amber over rule
+  // still governs the macro bars + daily-calorie bars, which are not rings.)
+  return { ring: "var(--destructive)", gradientId: "url(#prog-grad-over)", text: "text-destructive", label: "Over target" };
 }
 
 import { SupprCard } from "../ui/suppr-card";
+
+/**
+ * Sloe Figma 492:2 — 7-dot on-target ribbon. Filled sage dot = a logged
+ * day at/under its effective target; hollow `bg-border` dot = off-target
+ * or unlogged. Renders exactly the days the host supplies (real data).
+ */
+function OnTargetDots({ days }: { days: boolean[] }) {
+  if (days.length === 0) return null;
+  return (
+    <div
+      className="flex items-center gap-1.5"
+      data-testid="progress-hero-ontarget-dots"
+      aria-label={`${days.filter(Boolean).length} of ${days.length} days on target`}
+    >
+      {days.map((on, i) => (
+        <span
+          key={i}
+          className="block rounded-full"
+          style={{
+            width: 8,
+            height: 8,
+            background: on ? "var(--success)" : "var(--border)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function ProgressHeroMetric({
   adherencePct,
@@ -49,6 +97,8 @@ export function ProgressHeroMetric({
   targetCalories,
   daysLogged,
   streak,
+  onTargetDays,
+  adherenceDeltaPct,
 }: ProgressHeroMetricProps) {
   if (adherencePct == null || daysLogged === 0) {
     return (
@@ -99,13 +149,13 @@ export function ProgressHeroMetric({
               <stop offset="0%" stopColor="var(--success)" stopOpacity="0.8" />
               <stop offset="100%" stopColor="var(--success)" />
             </linearGradient>
-            <linearGradient id="prog-grad-warning" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="var(--warning)" />
-            </linearGradient>
+            {/* Over-target adherence ring is destructive red — the Progress
+                ring owns the same green/red rule as Today's calorie ring
+                (mobile decision 2026-05-22). Macro/daily-calorie bars stay
+                amber; rings go red. */}
             <linearGradient id="prog-grad-over" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="var(--over-budget-fg)" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="var(--over-budget-fg)" />
+              <stop offset="0%" stopColor="var(--destructive)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--destructive)" />
             </linearGradient>
           </defs>
           <circle
@@ -139,9 +189,31 @@ export function ProgressHeroMetric({
         </div>
       </div>
 
-      <p className={`mt-2 text-sm font-semibold ${tone.text}`}>
-        {tone.label}
-      </p>
+      <div className="mt-2 flex items-center gap-2">
+        <p className={`text-sm font-semibold ${tone.text}`}>{tone.label}</p>
+        {/* Sloe Figma 492:2 — sage "up N%" / "down N%" week-over-week
+            adherence trend chip. Real delta from the host; hidden at 0. */}
+        {adherenceDeltaPct != null && adherenceDeltaPct !== 0 ? (
+          <span
+            data-testid="progress-hero-trend-chip"
+            className={[
+              "inline-flex items-center gap-1 text-[11px] font-medium tabular-nums",
+              adherenceDeltaPct > 0 ? "text-success" : "text-muted-foreground",
+            ].join(" ")}
+          >
+            <span aria-hidden>{adherenceDeltaPct > 0 ? "↑" : "↓"}</span>
+            {adherenceDeltaPct > 0 ? "up" : "down"} {Math.abs(adherenceDeltaPct)}%
+          </span>
+        ) : null}
+      </div>
+
+      {/* Sloe Figma 492:2 — on-target days ribbon. Only renders when the
+          host supplies real per-day data. */}
+      {onTargetDays && onTargetDays.length > 0 ? (
+        <div className="mt-3">
+          <OnTargetDots days={onTargetDays} />
+        </div>
+      ) : null}
 
       <div className="flex gap-6 mt-3 text-xs text-muted-foreground tabular-nums">
         {avgCaloriesPerDay != null && (

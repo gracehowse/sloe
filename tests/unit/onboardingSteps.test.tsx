@@ -325,7 +325,9 @@ describe("OnboardingProvider", () => {
     }
     withProvider(<Probe />, {
       goal: "maintain",
-      step: 7, // currently on `activity`
+      // Index-relative so this survives step reordering (ENG-990 added
+      // `app-choice` after Welcome, shifting `activity`'s raw index).
+      step: STEP_IDS.indexOf("activity"),
     });
     expect(screen.getByTestId("step-id").textContent).toBe("activity");
     fireEvent.click(screen.getByTestId("next"));

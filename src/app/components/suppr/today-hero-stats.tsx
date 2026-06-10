@@ -3,13 +3,19 @@
 import * as React from "react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
-import { MACRO_RING_TOGGLE, TODAY_STAT_LABELS } from "../../../lib/copy/today";
+import {
+  MACRO_RING_TOGGLE,
+  TODAY_HERO_STAT_LABELS,
+  todayStatusChip,
+} from "../../../lib/copy/today";
+import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { calorieRingGeometryFromSize } from "../../../lib/nutrition/calorieRingGeometry";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
- * TodayHeroStats — Today-screen hero block with the calorie ring + 4
- * stat figures (Logged / Target / Burned / Net).
+ * TodayHeroStats — Today-screen hero block with the calorie ring +
+ * Figma `654:2` stat row (Goal / Eaten / Bonus) on every breakpoint.
  *
  * Layout is **one vertical stack on every breakpoint** so Today and
  * previous days share the same geometry (no desktop-only side-by-side
@@ -24,6 +30,7 @@ import { SupprCard } from "../ui/suppr-card.tsx";
  */
 
 const HERO_RING_SIZE = 160;
+const DESKTOP_RING_GEOMETRY = calorieRingGeometryFromSize(HERO_RING_SIZE);
 
 export interface TodayHeroStatsProps extends TodayHeroRingProps {
   loggedKcal: number;
@@ -33,8 +40,11 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   /** ENG-753 — true when the user has logged today and calories are
    *  within ±10% of the daily target. Drives the "On track" pill. */
   isOnTrack?: boolean;
-  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
-   *  the "Adaptive TDEE learning · N of 7 days" pill. */
+  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Retained for call-site
+   *  stability but no longer rendered on Today (the "Adaptive TDEE learning ·
+   *  N of 7 days" line was removed 2026-06-08 to match Figma `654:2`; the
+   *  learning state lives on Progress). The underlying TDEE logic is
+   *  unchanged. */
   tdeeLearnDays?: number;
   /** ENG-798 — win-moment ring pulse. True for ~200ms after a Today
    *  landmark fires; forwarded to the calorie ring on both breakpoints.
@@ -57,26 +67,28 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
   const {
     consumed,
     target,
+    baseGoal,
     proteinPct,
     carbsPct,
     fatPct,
     expanded,
     onToggleExpanded,
     displayMode,
-    onDisplayModeChange,
+    onToggleDisplayMode,
     onPressWhy,
     pulse,
   } = props;
   return {
     consumed,
     target,
+    baseGoal,
     proteinPct,
     carbsPct,
     fatPct,
     expanded,
     onToggleExpanded,
     displayMode,
-    onDisplayModeChange,
+    onToggleDisplayMode,
     onPressWhy,
     pulse,
   };
@@ -85,23 +97,33 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
 function DesktopHeroStats({
   loggedKcal,
   targetKcal,
-  burnedKcal,
+  burnedKcal: _burnedKcal,
   consumed,
   target,
+  baseGoal,
   proteinPct,
   carbsPct,
   fatPct,
   expanded,
   onToggleExpanded,
   displayMode,
-  onDisplayModeChange,
+  onToggleDisplayMode,
   isOnTrack,
-  tdeeLearnDays,
+  // `tdeeLearnDays` is retained on the props interface for call-site stability
+  // but no longer rendered on Today — the Adaptive-TDEE line was removed to
+  // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
   pulse,
 }: TodayHeroStatsProps) {
-  const net = loggedKcal - targetKcal;
-  const netStr = loggedKcal === 0 ? "—" : formatNet(net);
-  const showStatRow = loggedKcal > 0;
+  const showStatRow = consumed > 0 && target > 0;
+  const isEmpty = consumed === 0 || target <= 0;
+  const isOver = target > 0 && consumed > target;
+  const bonusKcal =
+    baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
+  const chipState: "empty" | "under" | "over" = isEmpty
+    ? "empty"
+    : isOver
+      ? "over"
+      : "under";
 
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
@@ -110,104 +132,120 @@ function DesktopHeroStats({
     // the exact `px-4 py-4` geometry; `hidden md:block` display utility and
     // the `data-testid` are preserved.
     <SupprCard
+      elevation="card"
       radius="lg"
       padding="none"
       className="hidden md:block mb-3 px-4 py-4"
       data-testid="today-hero-desktop"
     >
       <div className="flex flex-col items-center gap-3">
-        {showStatRow ? (
-          <div
-            className="inline-flex rounded-md bg-muted/50 p-0.5"
-            role="group"
-            aria-label="Calorie ring display"
-          >
-            {(["remaining", "consumed"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onDisplayModeChange(mode)}
-                aria-pressed={displayMode === mode}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                  displayMode === mode
-                    ? "bg-card text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex w-full items-center justify-between gap-2">
+          <HeroStatusChip state={chipState} />
+          {showStatRow ? (
+            <button
+              type="button"
+              onClick={onToggleDisplayMode}
+              className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
+              aria-label={`Showing ${displayMode} calories. Tap to switch.`}
+              data-testid="today-ring-display-toggle"
+            >
+              {(["remaining", "consumed"] as const).map((mode) => (
+                <span
+                  key={mode}
+                  aria-hidden
+                  className={`rounded-full px-3 py-1 capitalize transition-colors ${
+                    displayMode === mode
+                      ? "bg-card text-foreground-brand shadow-sm"
+                      : "text-foreground-secondary"
+                  }`}
+                >
+                  {mode}
+                </span>
+              ))}
+            </button>
+          ) : (
+            <span className="w-px shrink-0" aria-hidden />
+          )}
+        </div>
 
         <DailyRing
           consumed={consumed}
           target={target}
-          size={HERO_RING_SIZE}
-          strokeWidth={10}
+          size={DESKTOP_RING_GEOMETRY.size}
+          strokeWidth={DESKTOP_RING_GEOMETRY.strokeWidth}
+          ringRadius={DESKTOP_RING_GEOMETRY.radius}
+          macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
+          macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
           proteinPct={proteinPct}
           carbsPct={carbsPct}
           fatPct={fatPct}
           expanded={expanded}
+          onToggle={onToggleExpanded}
           displayMode={displayMode}
+          onLongPressToggleDisplayMode={onToggleDisplayMode}
           pulse={pulse}
         />
 
         {showStatRow ? (
           <div
-            className="grid w-full max-w-lg grid-cols-4 gap-2"
+            className="grid w-full max-w-lg grid-cols-3 gap-2 border-t border-border pt-3"
             data-testid="today-hero-stat-row"
           >
-            <StatCell label={TODAY_STAT_LABELS.logged} value={loggedKcal.toLocaleString()} />
-            <StatCell label={TODAY_STAT_LABELS.target} value={targetKcal.toLocaleString()} />
             <StatCell
-              label={TODAY_STAT_LABELS.burned}
-              value={burnedKcal > 0 ? burnedKcal.toLocaleString() : "—"}
+              label={TODAY_HERO_STAT_LABELS.goal}
+              value={targetKcal.toLocaleString()}
             />
             <StatCell
-              label={TODAY_STAT_LABELS.net}
-              value={netStr}
-              valueTone={net < 0 ? "positive" : net > 0 ? "over" : "neutral"}
+              label={TODAY_HERO_STAT_LABELS.eaten}
+              value={loggedKcal.toLocaleString()}
             />
+            {isOver ? (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.over}
+                value={`−${Math.round(consumed - target).toLocaleString()}`}
+                valueTone="over"
+              />
+            ) : (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.bonus}
+                value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+                valueTone={bonusKcal > 0 ? "positive" : "neutral"}
+              />
+            )}
           </div>
         ) : null}
 
-        {/* ENG-753 — status pills below the stat grid (prototype
+        {/* ENG-753 — "On track" pill below the stat grid (prototype
             screens-web.jsx:173-177). Flag-gated; only render when the
-            day has been logged (showStatRow) and at least one pill is
-            applicable. */}
-        {isFeatureEnabled("today-status-pills") &&
-        showStatRow &&
-        (isOnTrack || (tdeeLearnDays != null && tdeeLearnDays > 0)) ? (
+            day has been logged (showStatRow) and the user is on track.
+
+            Sloe redesign (2026-06-08): the "Adaptive TDEE learning · N of 7
+            days" pill was removed — the canonical Figma `654:2` Today hero
+            shows nothing between the Goal/Eaten/Bonus stats and the "Room for
+            dinner" coach line. The learning state lives on Progress; surfacing
+            it on Today added clutter. The underlying adaptive-TDEE logic is
+            unchanged — only this presentational line is gone. The
+            `tdeeLearnDays` prop is retained for call-site stability. */}
+        {isFeatureEnabled("today-status-pills") && showStatRow && isOnTrack ? (
           <div className="flex gap-2" data-testid="today-status-pills">
-            {isOnTrack ? (
-              <span
-                data-testid="today-pill-on-track"
-                className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+            <span
+              data-testid="today-pill-on-track"
+              className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+            >
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden
               >
-                <svg
-                  className="h-3 w-3"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                On track
-              </span>
-            ) : null}
-            {tdeeLearnDays != null && tdeeLearnDays > 0 ? (
-              <span
-                data-testid="today-pill-tdee-learning"
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary"
-              >
-                Adaptive TDEE learning · {tdeeLearnDays} of 7 days
-              </span>
-            ) : null}
+                <path
+                  fillRule="evenodd"
+                  d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              On track
+            </span>
           </div>
         ) : null}
 
@@ -253,8 +291,34 @@ function StatCell({
   );
 }
 
-function formatNet(net: number): string {
-  if (net === 0) return "0";
-  if (net < 0) return `\u2212${Math.abs(net).toLocaleString()}`;
-  return `+${net.toLocaleString()}`;
+function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
+  const config =
+    state === "over"
+      ? {
+          label: todayStatusChip("over"),
+          className: "bg-destructive/10 text-destructive",
+          Icon: CircleAlert,
+        }
+      : state === "empty"
+        ? {
+            label: todayStatusChip("empty"),
+            className: "bg-[#EDEAF1] text-primary",
+            Icon: Sparkles,
+          }
+        : {
+            label: todayStatusChip("under"),
+            className: "bg-success/15 text-success",
+            Icon: CircleCheck,
+          };
+  const { label, className, Icon } = config;
+  return (
+    <span
+      data-testid="today-ring-status-chip"
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+    >
+      <Icon size={13} strokeWidth={2} aria-hidden />
+      {label}
+    </span>
+  );
 }
+

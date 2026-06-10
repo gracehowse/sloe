@@ -4,7 +4,7 @@
  *
  * Pins the user-visible contract of the What's new screen that
  * testers see when they:
- *   1. tap Settings → About → "What's new in Suppr", or
+ *   1. tap Settings → About → "What's new", or
  *   2. get auto-surfaced after a build-number bump.
  *
  * Mirrors the data shape of the web page at `/whats-new` so the
@@ -14,11 +14,16 @@
  * Coverage:
  *   1. The screen renders the latest entry's build header line
  *      (`Build N (V #N)`).
- *   2. The release date renders (in some locale form).
- *   3. Every category heading for the latest entry is present.
+ *   2. The release date renders correctly (TZ-safe local parse — see
+ *      gap 1 in the 2026-06-09 premium-bar audit).
+ *   3. Every category heading for the latest entry is present as a
+ *      kind chip (kind chip IA — gap 5 in the audit).
  *   4. The tester attribution footer renders when set.
  *   5. The native-header "Done" button is installed via
- *      `navigation.setOptions` and pops via `useSafeBack`.
+ *      `navigation.setOptions` (with `headerTitleStyle` in serif)
+ *      and pops via `useSafeBack`.
+ *   6. `formatReleaseDate` parses ISO dates as local calendar dates —
+ *      never shifts back a day in UTC-west timezones (gap 1).
  */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -80,19 +85,82 @@ describe("WhatsNewScreen (mobile) — F-0 'What's new' surface", () => {
     expect(rendered).not.toBe("Invalid Date");
   });
 
-  it("renders a section heading for every category present in the latest entry", () => {
+  it("renders the correct date for 2026-05-12 regardless of UTC-west timezone (gap 1 — TZ bug fix)", () => {
+    // Reproduce the original bug: TZ=America/Los_Angeles rendered '11 May 2026'
+    // for releaseDate '2026-05-12' because new Date('2026-05-12') is UTC midnight.
+    // The fix parses using new Date(y, m-1, d) which respects local time.
+    //
+    // We test the SSOT function directly by importing it — but since it's
+    // not exported from the module, we verify the output via the rendered
+    // whats-new-date element for the known build-49 entry (releaseDate
+    // '2026-05-12'). The expected en-GB string is '12 May 2026'.
+    //
+    // CI runs in UTC where old and new code both gave '12 May 2026' — the bug
+    // only surfaces west of UTC. To guarantee the fix is in the code path we
+    // use a deterministic simulation: we temporarily override Date's constructor
+    // to check that the parsing does NOT call new Date('2026-05-12') (the UTC
+    // path) and DOES call new Date(2026, 4, 12) (the local path).
+    // Capture the REAL constructor BEFORE spying — calling `new Date(...)` inside
+    // the mock would otherwise re-enter the mock and recurse infinitely.
+    const RealDate = global.Date;
+    const dateSpy = vi.spyOn(global, "Date").mockImplementation((...args) => {
+      // @ts-expect-error — we're intercepting all overloads
+      return new (RealDate as never)(...args);
+    });
+    // Preserve statics the render path may touch (Date.now/UTC/parse).
+    Object.assign(global.Date, {
+      now: RealDate.now,
+      UTC: RealDate.UTC,
+      parse: RealDate.parse,
+    });
+
+    render(<WhatsNewScreen />);
+
+    // Verify the local-calendar-date path was used: new Date(y, m-1, d)
+    // is called with THREE numeric arguments, not a string.
+    const callsWithThreeNumericArgs = dateSpy.mock.calls.filter((rawArgs) => {
+      // mock.calls is typed against Date's single-arg overload; the local
+      // path passes three numeric args, so widen to read indices 1/2.
+      const args = rawArgs as unknown[];
+      return (
+        args.length === 3 &&
+        typeof args[0] === "number" &&
+        typeof args[1] === "number" &&
+        typeof args[2] === "number"
+      );
+    });
+    expect(callsWithThreeNumericArgs.length).toBeGreaterThan(0);
+
+    // Verify the UTC-string path was NOT used for any YYYY-MM-DD pattern
+    // (the only remaining use of single-string Date() is the fallback branch
+    // for non-ISO strings, which should not fire for valid entries).
+    const callsWithISOString = dateSpy.mock.calls.filter(
+      (args) =>
+        args.length === 1 &&
+        typeof args[0] === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(String(args[0])),
+    );
+    expect(callsWithISOString.length).toBe(0);
+
+    dateSpy.mockRestore();
+  });
+
+  it("renders a kind chip for every category present in the latest entry", () => {
     const latest = getLatestChangelog();
     const groups = groupChangelogItems(latest);
-    // At least one group — build 10 has three.
+    // At least one group — build 49 has three.
     expect(groups.length).toBeGreaterThan(0);
 
-    const { getByTestId, queryByTestId } = render(<WhatsNewScreen />);
+    const { getByTestId, queryByTestId, getByText } = render(<WhatsNewScreen />);
     for (const group of groups) {
-      const section = getByTestId(`whats-new-section-${group.kind}`);
-      expect(section.props.children).toBe(changelogKindLabel(group.kind));
+      // Kind chips are View containers with testID. The chip contains a
+      // Text child with the human label — use getByText to assert the label.
+      const chip = getByTestId(`whats-new-section-${group.kind}`);
+      expect(chip).toBeDefined();
+      // The chip label text must be present in the rendered tree.
+      expect(getByText(changelogKindLabel(group.kind))).toBeDefined();
     }
-    // Kinds not present in the entry must NOT emit a headless
-    // section (the renderer filters empties).
+    // Kinds not present in the entry must NOT emit a chip.
     const allKinds = ["new", "fixed", "coming_soon"] as const;
     const present = new Set(groups.map((g) => g.kind));
     for (const kind of allKinds) {
@@ -129,6 +197,7 @@ describe("WhatsNewScreen (mobile) — F-0 'What's new' surface", () => {
     const lastCall = setOptionsSpy.mock.calls[setOptionsSpy.mock.calls.length - 1];
     const opts = lastCall[0] as {
       title?: string;
+      headerTitleStyle?: object;
       headerRight?: () => React.ReactElement;
     };
     expect(opts.title).toBe("What's new");
@@ -139,5 +208,18 @@ describe("WhatsNewScreen (mobile) — F-0 'What's new' surface", () => {
     const { getByLabelText } = render(opts.headerRight!());
     fireEvent.press(getByLabelText("Done"));
     expect(backSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("installs a serif headerTitleStyle (Newsreader) in setOptions (gap 2 — typography)", () => {
+    setOptionsSpy.mockClear();
+    render(<WhatsNewScreen />);
+
+    const lastCall = setOptionsSpy.mock.calls[setOptionsSpy.mock.calls.length - 1];
+    const opts = lastCall[0] as { headerTitleStyle?: { fontFamily?: string } };
+    // The nav bar title must use a Newsreader weight family — not the
+    // system sans default. This ensures the editorial register on the
+    // native header.
+    expect(opts.headerTitleStyle).toBeDefined();
+    expect(opts.headerTitleStyle?.fontFamily).toMatch(/Newsreader/);
   });
 });

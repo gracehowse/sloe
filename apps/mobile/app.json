@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Suppr",
+    "name": "Sloe",
     "slug": "suppr",
     "version": "1.0.7",
     "orientation": "portrait",
@@ -78,7 +78,7 @@
         }
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#4c6ce0",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -122,7 +122,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#4c6ce0"
+          "color": "#3B2A4D"
         }
       ],
       [
@@ -149,13 +149,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/icon.png",
-          "imageWidth": 120,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#fafaf8",
+          "backgroundColor": "#FBF8F3",
           "dark": {
-            "image": "./assets/images/icon.png",
-            "backgroundColor": "#0a0a0f"
+            "image": "./assets/images/splash-icon-dark.png",
+            "backgroundColor": "#3B2A4D"
           }
         }
       ],

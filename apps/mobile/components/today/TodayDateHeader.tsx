@@ -2,7 +2,8 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
-import { Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
@@ -40,6 +41,16 @@ export interface TodayDateHeaderProps {
   hideViewModeToggle?: boolean;
   hideDayStrip?: boolean;
   dayGreeting?: string;
+  /**
+   * SLOE redesign (2026-06-03, `01 · Today` frame, Grace decision):
+   * render ONLY the week strip (+ the streak-reset copy block) — no
+   * nav chevrons, no "Today" title, no avatar, no view-mode toggle.
+   * The Today screen now owns its own top header (Sloe wordmark +
+   * avatar) above the greeting; this component is reduced to the
+   * day-selection strip there. Backward-compatible: every other
+   * consumer leaves `stripOnly` unset and gets the full header.
+   */
+  stripOnly?: boolean;
 }
 
 export function TodayDateHeader({
@@ -71,8 +82,10 @@ export function TodayDateHeader({
   hideViewModeToggle = false,
   hideDayStrip = false,
   dayGreeting,
+  stripOnly = false,
 }: TodayDateHeaderProps) {
   const router = useRouter();
+  const accent = useAccent();
   const calmDateNav = hideDayStrip && viewMode === "day";
 
   const navChromeStyle = {
@@ -105,6 +118,35 @@ export function TodayDateHeader({
   const _streakAvailable = typeof streakDays === "number" && streakDays >= 2 && !streakResetCopyVisible;
   void _streakAvailable;
   const showStreakPip = false;
+
+  // SLOE redesign (2026-06-03, `01 · Today` frame): when the Today
+  // screen supplies its own Sloe-wordmark + avatar header, this
+  // component collapses to the week strip alone. Day-selection lives
+  // entirely in the strip (taps) + the calendar icon (far dates);
+  // there is no nav chevron / title / avatar / view-mode toggle in
+  // this mode. The strip renders regardless of `viewMode` — Today is
+  // day-centric and the strip is its only date affordance now.
+  if (stripOnly) {
+    return (
+      <View style={{ gap: Spacing.xs }}>
+        <DayStrip
+          selectedDate={selectedDate}
+          weekStartDay={weekStartDay}
+          loggedDays={loggedDays}
+          protectedDateKeys={protectedDateKeys}
+          onSelectDate={onSelectDate}
+          onOpenCalendar={onOpenCalendar}
+          textColor={textColor}
+          secondaryColor={textSecondaryColor}
+        />
+        {isToday && streakResetCopyVisible ? (
+          <Text style={{ ...Type.caption, color: textSecondaryColor }} numberOfLines={2}>
+            Every expert was once a beginner. Start fresh today.
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
 
   if (calmDateNav) {
     return (
@@ -182,7 +224,14 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, marginLeft: 2 })}
           >
-            <GradientAvatar size={32} initial={avatarLetter} fontSize={12} gradientIdSuffix="today-header" />
+            <GradientAvatar
+              size={36}
+              initial={avatarLetter}
+              fontSize={13}
+              gradientIdSuffix="today-header"
+              fill="#6a4b7a"
+              textColor={primaryForegroundColor}
+            />
           </Pressable>
         </View>
 
@@ -261,6 +310,10 @@ export function TodayDateHeader({
                 overflow: "hidden",
               }}
             >
+              {/* Sloe treatment system (2026-06-08): segmented control
+                  active segment = soft-tint lift (Accent.primarySoft) +
+                  primarySolid icon; inactive = transparent on the
+                  warm-grey rail with a textSecondary glyph. */}
               <Pressable
                 onPress={() => onViewModeChange("day")}
                 accessibilityRole="button"
@@ -270,12 +323,12 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "day" ? textSecondaryColor + "18" : "transparent",
+                    viewMode === "day" ? accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Sun size={14} color={viewMode === "day" ? textColor : textSecondaryColor} />
+                <Sun size={14} color={viewMode === "day" ? accent.primarySolid : textSecondaryColor} />
               </Pressable>
               <Pressable
                 onPress={() => onViewModeChange("week")}
@@ -286,14 +339,14 @@ export function TodayDateHeader({
                   paddingHorizontal: 8,
                   paddingVertical: 6,
                   backgroundColor:
-                    viewMode === "week" ? textSecondaryColor + "18" : "transparent",
+                    viewMode === "week" ? accent.primarySoft : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <LayoutGrid
                   size={14}
-                  color={viewMode === "week" ? textColor : textSecondaryColor}
+                  color={viewMode === "week" ? accent.primarySolid : textSecondaryColor}
                 />
               </Pressable>
             </View>
@@ -305,7 +358,14 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <GradientAvatar size={36} initial={avatarLetter} fontSize={13} gradientIdSuffix="today-header" />
+            <GradientAvatar
+              size={36}
+              initial={avatarLetter}
+              fontSize={13}
+              gradientIdSuffix="today-header"
+              fill="#6a4b7a"
+              textColor={primaryForegroundColor}
+            />
           </Pressable>
         </View>
       </View>

@@ -18,10 +18,11 @@
  *      provenance stamp, Cancel button, dirty-flag write
  *      (`docs/specs/2026-04-27-mobile-target-edits-parity.md` P0-1 +
  *      P0-2 + P1-1 + P1-2).
- *   5. Eat-again banner repositioned above the Today hero on both
- *      mobile (`apps/mobile/app/(tabs)/index.tsx`) and web
- *      (`src/app/components/NutritionTracker.tsx`)
- *      (`docs/specs/2026-04-27-b4-today-screen-phase3.md` Phase 3a).
+ *   5. Eat-again banner REMOVED from the Today host on both mobile
+ *      (`apps/mobile/app/(tabs)/index.tsx`) and web
+ *      (`src/app/components/NutritionTracker.tsx`) — earlier phases only
+ *      tuned its placement; the Sloe Figma-654:2 sweep retired the prompt
+ *      entirely so the two surfaces match.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -217,30 +218,28 @@ describe("Fix 4 — Profile target editor matches web parity", () => {
   });
 });
 
-// ── Fix 5 — Eat-again banner placement on both platforms ────────────
+// ── Fix 5 — Eat-again removed from the Today host (both platforms) ───
 //
-// Phase 3a (2026-04-27) put the eat-again banner ABOVE the hero so an
-// active suggestion shaved a scroll. Phase 4 / Top-5 #2 (2026-04-28)
-// supersedes that placement — the banner is now part of a mutually-
-// exclusive context-block dispatch BELOW the hero (priority: fasting
-// > eat-again > north-star > deficit). The cap rule is "never more
-// than one prompt above the meals" — having eat-again above plus a
-// deficit/north-star prompt below was creating two aspirational
-// prompts at once. The pin asserts eat-again renders AFTER the hero
-// on both platforms. Reference:
-// `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #2.
+// Earlier phases tuned the eat-again banner's PLACEMENT (above → below
+// the hero). That whole prompt was then RETIRED from Today: mobile
+// dropped it first (2026-05-22 "v4"), and web followed in the Sloe
+// Figma-654:2 parity sweep (commit 664df1cb, 2026-06-04) so the two
+// surfaces match — Today shows at most the north-star / deficit prompt,
+// never a separate eat-again banner. This pins that BOTH composition
+// roots stop rendering the banner (parity), so it can't silently return
+// on one platform. (Web NutritionTracker's dead eat-again logic —
+// `eatAgainSuggestion`, the dismiss-state hooks, and the
+// `eatAgainDismiss` imports — was removed in the follow-up cleanup;
+// mobile index.tsx still computes it for analytics/tests.)
 
-describe("Fix 5 — Eat-again removed from Today host (2026-05-22 v4)", () => {
+describe("Fix 5 — Eat-again removed from Today host (web + mobile)", () => {
   it("mobile composition root no longer renders TodayEatAgainBanner", () => {
     expect(SRC.today).not.toContain("<TodayEatAgainBanner");
     expect(SRC.today).not.toContain("<TodayEatAgainScroller");
   });
 
-  it("web NutritionTracker still renders eat-again below hero when candidates exist", () => {
-    const eatIdx = SRC.webTracker.indexOf("<TodayEatAgainBanner");
-    const heroIdx = SRC.webTracker.indexOf("<TodayHeroStats");
-    expect(eatIdx).toBeGreaterThan(0);
-    expect(heroIdx).toBeGreaterThan(0);
-    expect(eatIdx).toBeGreaterThan(heroIdx);
+  it("web NutritionTracker no longer renders the eat-again banner (parity)", () => {
+    expect(SRC.webTracker).not.toContain("<TodayEatAgainBanner");
+    expect(SRC.webTracker).not.toContain("<TodayEatAgainScroller");
   });
 });

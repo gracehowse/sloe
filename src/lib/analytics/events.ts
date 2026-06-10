@@ -54,6 +54,64 @@ export const AnalyticsEvents = {
    * the browser SDK. `distinctId` is the user id from the request.
    */
   recipe_import_pipeline_stage: "recipe_import_pipeline_stage",
+  /**
+   * Supadata acquisition (ENG-994, 2026-06-08) — SERVER-side, fires once
+   * per URL import after the acquisition adapter runs (BEFORE the existing
+   * extraction step), behind the `supadata-acquisition` flag. Measures how
+   * often Supadata acquisition succeeds vs falls back to the existing
+   * scrape/oEmbed path — the data needed to decide whether to ramp the flag.
+   *
+   * Payload contract:
+   *   {
+   *     adapter: "supadata",
+   *     kind: "scrape" | "transcript" | null,   // null when acquisition failed
+   *     platform: "blog" | "instagram" | "tiktok" | "youtube" | "unknown",
+   *     outcome: "acquired" | "fallback",        // fallback → existing path ran
+   *     reason?: "not_configured" | "rate_limited" | "blocked_by_policy"
+   *            | "empty" | "error",              // present when outcome === "fallback"
+   *     contentChars?: number,                   // length of acquired content (acquired only)
+   *   }
+   *
+   * Fired via `serverTrack`; `distinctId` is the request user id. No raw
+   * URLs or content in the payload (PII / content-rights hygiene).
+   */
+  recipe_acquisition: "recipe_acquisition",
+  /**
+   * Import-progress v2 (2026-06-08) — CLIENT-side, fires when one import
+   * job advances to a new *user-visible* stage in the staged-progress +
+   * queue UX (`import-progress-v2` flag). Distinct from the SERVER-side
+   * `recipe_import_pipeline_stage` above: that one traces extraction
+   * internals for nutrition-debug; this one measures the front-end
+   * experience (how long users sit at each stage, where they cancel).
+   *
+   * Same event name on web + mobile (driven by the shared
+   * `RecipeImportScheduler.onStageChange`). Payload:
+   *   {
+   *     stage: "queued" | "confirming" | "extracting" | "organizing"
+   *          | "done" | "cancelled" | "failed",
+   *     previousStage: <same union>,
+   *     kind: "url" | "image" | "caption",
+   *     platform: "web" | "mobile",
+   *     queuePosition?: number,      // when stage === "queued"
+   *     errorCode?: string,          // when stage === "failed" (stable code, never raw)
+   *     elapsedMs?: number,          // ms since the job was enqueued
+   *   }
+   */
+  recipe_import_stage_changed: "recipe_import_stage_changed",
+  /**
+   * Import-progress v2 (2026-06-08) — fires when a user enqueues an import
+   * into the queue. Lets us measure batch size (how many imports users
+   * queue at once — the multi-recipe / bulk behaviour Julienne optimises
+   * for). Same name web + mobile. Payload:
+   *   { kind, platform, activeCount, queuedCount } — counts AFTER enqueue. */
+  recipe_import_enqueued: "recipe_import_enqueued",
+  /**
+   * Import-progress v2 (2026-06-08) — fires when a user taps Cancel or
+   * Retry on a job in the persistent drawer. `action` distinguishes the
+   * two; `errorCode` present on retry (the code being retried). Same name
+   * web + mobile. Payload:
+   *   { action: "cancel" | "retry", kind, platform, errorCode?, stage } */
+  recipe_import_job_action: "recipe_import_job_action",
   meal_plan_generated: "meal_plan_generated",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
@@ -637,6 +695,24 @@ export const AnalyticsEvents = {
    *  `data_bridge_chosen: null` on `onboarding_completed`). Payload:
    *    { reason: "card_tap" } */
   onboarding_data_bridge_skipped: "onboarding_data_bridge_skipped",
+  /** ENG-990 (2026-06-08) — user picked an app on the "Coming from
+   *  another app?" onboarding step (the `app-choice` step, gated behind
+   *  the `onboarding-app-choice` flag). Mirrors Yazio's
+   *  `calorie_counting.app_choice.{mfp,…}` competitor-switch capture
+   *  (see `docs/research/2026-06-08-yazio-teardown.md`) and feeds the
+   *  MFP-refugee capture initiative. Fires once per tap on either
+   *  platform with an identical payload so the funnel reads the same:
+   *    {
+   *      app: "mfp" | "lose-it" | "cronometer" | "macrofactor"
+   *         | "other" | "none",   // the chosen app (`none` = starting fresh)
+   *      has_importer: boolean,   // true when `app` has a live CSV adapter,
+   *                               // i.e. the data-bridges step will pre-
+   *                               // highlight the importer for this user
+   *      platform: "web" | "ios"
+   *    }
+   *  `onboarding_completed` also carries the final `app_choice` for
+   *  funnel slicing (chosen-app → activation). */
+  onboarding_app_choice: "onboarding_app_choice",
   /** 2026-05-02 — user picked an MFP CSV file in the importer card.
    *  Closes the MFP-refugee history-bridge gap (P1 customer-lens).
    *  Fires once per file pick on both web and mobile.

@@ -86,10 +86,16 @@ describe("mobile SupprCard", () => {
       <SupprCard testID="noborder" border={false} />,
     );
     const card = getByTestId("noborder");
-    // The flattened style from RNTL exposes the borderWidth.
-    const flat = (card.props.style as Record<string, unknown>[])
+    // 2026-06-04 consolidation: the shell is now an OUTER wrapper (shadow + fill,
+    // carries the testID) + an INNER clip View that owns the border. So the
+    // border lives on the inner node. `border={false}` must zero it there.
+    const inner = (card.props.children as { props: { style: unknown } }).props;
+    const flat = (Array.isArray(inner.style) ? inner.style : [inner.style])
       .filter(Boolean)
-      .reduce((a, b) => ({ ...a, ...b }), {} as Record<string, unknown>);
+      .reduce(
+        (a: Record<string, unknown>, b) => ({ ...a, ...(b as object) }),
+        {} as Record<string, unknown>,
+      );
     expect(flat.borderWidth).toBe(0);
   });
 });

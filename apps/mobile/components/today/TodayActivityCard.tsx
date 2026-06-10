@@ -1,15 +1,24 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { SupprCard } from "@/components/ui/SupprCard";
+import { todayHealthConnectActiveCaloriesHint } from "@suppr/shared/copy/today";
 
 /**
  * TodayActivityCard — Steps & active-energy card on the Today screen.
  *
+ * Sloe `TD1 · Activity & energy` re-skin (Today re-skin unit 3, 2026-06-03).
+ * Figma 459:2 / `docs/prototypes/stitch-sloe/today-activity.html` — the
+ * "Steps & activity" card: a Newsreader title + "Today" right label, a Steps
+ * row (count / goal over a track) and an Active-energy row, divided by a
+ * hairline.
+ *
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
  * 2026-04-18). Host owns all data; component is a pure view so the
  * existing HealthKit sync flow + historic-day navigation still run
- * through the composition root.
+ * through the composition root. Re-skin only — no data/logic change.
  *
  * 2026-05-08 (Pattern #9, tracker `AN8GJ1Dr3M`): optional `onShowProvenance`
  * prop renders a small info icon next to the title that opens the
@@ -42,73 +51,86 @@ export function TodayActivityCard({
   textTertiaryColor,
   borderColor,
 }: TodayActivityCardProps) {
+  const accent = useAccent();
+  void styles;
   return (
-    <View style={styles.card}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Text style={styles.cardTitle}>Steps & activity</Text>
-        {onShowProvenance ? (
-          <Pressable
-            onPress={onShowProvenance}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Where this number comes from"
-            testID="today-activity-provenance-info"
-          >
-            <Info size={14} color={textTertiaryColor} strokeWidth={2} />
-          </Pressable>
-        ) : null}
-      </View>
-      <Text style={{ fontSize: 11, color: textTertiaryColor, marginBottom: Spacing.md }}>{dayLabel}</Text>
-
-      <View style={{ gap: Spacing.sm }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Footprints size={18} color={textSecondaryColor} strokeWidth={2.25} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Steps</Text>
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-            {stepsCount != null ? stepsCount.toLocaleString() : "—"}
-            {stepsCount != null && (
-              <Text style={{ fontSize: 12, fontWeight: "600", color: textTertiaryColor }}>
-                {" "}/ {dailyStepsGoal.toLocaleString()}
-              </Text>
-            )}
-          </Text>
+    // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+    <SupprCard lift="soft" padding="lg" testID="today-activity-card" innerStyle={{ gap: Spacing.md }}>
+      {/* Sloe TD1 header — Newsreader title + right-aligned day label. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ ...Type.headline, color: MacroColors.calories }}>Steps & activity</Text>
+          {onShowProvenance ? (
+            <Pressable
+              onPress={onShowProvenance}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Where this number comes from"
+              testID="today-activity-provenance-info"
+            >
+              <Info size={14} color={textTertiaryColor} strokeWidth={2} />
+            </Pressable>
+          ) : null}
         </View>
-        {stepsCount != null && dailyStepsGoal > 0 && (
-          <View style={{ height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
-            <View
-              style={{
-                width: `${Math.min(stepsCount / dailyStepsGoal, 1) * 100}%`,
-                height: "100%",
-                borderRadius: 3,
-                backgroundColor: stepsCount >= dailyStepsGoal ? Accent.success : Accent.primary,
-              }}
-            />
-          </View>
-        )}
+        <Text style={{ ...Type.caption, color: textTertiaryColor }}>{dayLabel}</Text>
+      </View>
 
-        <View style={{ height: 1, backgroundColor: borderColor, marginVertical: 4 }} />
+      <View style={{ gap: Spacing.md }}>
+        <View>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Footprints size={18} color={textSecondaryColor} strokeWidth={2} />
+              <Text style={{ fontSize: 15, color: textColor }}>Steps</Text>
+            </View>
+            <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+              {stepsCount != null ? stepsCount.toLocaleString() : "—"}
+              {stepsCount != null && (
+                <Text style={{ ...Type.caption, color: textTertiaryColor }}>
+                  {" "}/ {dailyStepsGoal.toLocaleString()}
+                </Text>
+              )}
+            </Text>
+          </View>
+          {stepsCount != null && dailyStepsGoal > 0 && (
+            <View style={{ height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
+              <View
+                style={{
+                  width: `${Math.min(stepsCount / dailyStepsGoal, 1) * 100}%`,
+                  height: "100%",
+                  borderRadius: 3,
+                  backgroundColor: stepsCount >= dailyStepsGoal ? Accent.success : accent.primary,
+                }}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Sloe: hairline divider (`border-t border-line`), not a 1pt (3px) rule. */}
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Flame size={18} color={Accent.activity} strokeWidth={2.25} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Active energy</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Flame size={18} color={Accent.activity} strokeWidth={2} />
+            <Text style={{ fontSize: 15, color: textColor }}>Active energy</Text>
           </View>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-            {activityBurnKcal != null ? `${activityBurnKcal.toLocaleString()} kcal` : "—"}
+          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+            {activityBurnKcal != null ? (
+              <>
+                {activityBurnKcal.toLocaleString()}
+                <Text style={{ ...Type.caption, color: textTertiaryColor }}> kcal</Text>
+              </>
+            ) : (
+              "—"
+            )}
           </Text>
         </View>
         {activityBurnKcal == null && (
           <Text style={{ fontSize: 11, color: textTertiaryColor }}>
-            {/* Debug audit 2026-05-04 (visual-qa): "More → Connected"
-                referenced a tab that no longer exists post-IA-collapse.
-                Settings now hosts Connections under the same path. */}
-            Active calories appear here once a source is connected (Settings → Connections).
+            {todayHealthConnectActiveCaloriesHint()}
           </Text>
         )}
       </View>
-    </View>
+    </SupprCard>
   );
 }
 

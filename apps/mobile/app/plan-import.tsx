@@ -19,7 +19,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
@@ -56,6 +57,11 @@ export default function PlanImportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the primary CTA,
+  // active segmented + source tabs, parse spinner, and Save action. Threaded
+  // into the memoised StyleSheet via the dep array below. The success callout
+  // keeps `Accent.success` (sage).
+  const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -322,10 +328,13 @@ export default function PlanImportScreen() {
         root: { flex: 1, backgroundColor: colors.background },
         scroll: { padding: Spacing.lg, paddingBottom: insets.bottom + 48 },
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
+        // SLOE DS reskin (2026-06-07): cream `surface-card` slabs, 24px Sloe
+        // radius (Radius.xl * 2), serif headings. Presentation only — the
+        // paste / PDF / photo parse + plan-commit logic is untouched.
         callout: {
           backgroundColor: Accent.success + "18",
-          borderRadius: Radius.md,
-          padding: Spacing.md,
+          borderRadius: 16,
+          padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
           borderColor: Accent.success + "40",
@@ -335,10 +344,10 @@ export default function PlanImportScreen() {
         label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, marginBottom: 6, marginTop: Spacing.sm },
         input: {
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
+          borderRadius: 16,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.md,
+          padding: Spacing.lg,
           fontSize: 15,
           color: colors.text,
           minHeight: 160,
@@ -346,17 +355,17 @@ export default function PlanImportScreen() {
         },
         textInput: {
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
+          borderRadius: 16,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.md,
+          padding: Spacing.lg,
           fontSize: 15,
           color: colors.text,
         },
         primaryBtn: {
-          backgroundColor: Accent.primary,
-          borderRadius: Radius.md,
-          paddingVertical: 14,
+          backgroundColor: accent.primary,
+          borderRadius: 16,
+          paddingVertical: 16,
           alignItems: "center",
           marginTop: Spacing.lg,
         },
@@ -365,39 +374,39 @@ export default function PlanImportScreen() {
         segBtn: {
           flex: 1,
           padding: Spacing.md,
-          borderRadius: Radius.md,
+          borderRadius: 14,
           borderWidth: 1,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
-        segBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        segBtnActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
         sourceTabs: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
         sourceTab: {
           flex: 1,
-          paddingVertical: 10,
-          borderRadius: Radius.md,
+          paddingVertical: 12,
+          borderRadius: 14,
           borderWidth: 1,
           borderColor: colors.border,
           alignItems: "center",
           backgroundColor: colors.card,
         },
-        sourceTabActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        sourceTabActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
         uploadZone: {
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
+          borderRadius: Radius.xl * 2,
           borderWidth: 1,
           borderColor: colors.border,
           borderStyle: "dashed",
-          padding: Spacing.lg,
+          padding: Spacing.xl,
           alignItems: "center",
           marginBottom: Spacing.sm,
         },
-        uploadTitle: { fontSize: 15, fontWeight: "700", color: colors.text, textAlign: "center" },
+        uploadTitle: { ...Type.headline, color: colors.text, textAlign: "center" },
         uploadHint: { fontSize: 12, color: colors.textSecondary, marginTop: 6, textAlign: "center", lineHeight: 18 },
         assessment: {
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
-          padding: Spacing.md,
+          borderRadius: Radius.xl * 2,
+          padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
           borderColor: colors.border,
@@ -416,7 +425,7 @@ export default function PlanImportScreen() {
         toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 },
         parseCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, accent],
   );
 
   if (step === "parsing") {
@@ -424,12 +433,12 @@ export default function PlanImportScreen() {
       <View style={styles.root} testID="screen-plan-import-parsing">
         <PushScreenHeader title="Import" onBack={() => setStep("paste")} />
         <View style={styles.parseCenter}>
-          <ActivityIndicator size="large" color={Accent.primary} />
-          <Text style={{ marginTop: Spacing.lg, fontSize: 18, fontWeight: "700", color: colors.text }}>
+          <ActivityIndicator size="large" color={accent.primary} />
+          <Text style={{ ...Type.title, marginTop: Spacing.lg, color: colors.navPrimary, textAlign: "center" }}>
             {parsingMessage}
           </Text>
           <Text style={{ marginTop: 8, fontSize: 14, color: colors.textSecondary, textAlign: "center" }}>
-            Recipes first — ingredients matched to Suppr — then the weekly schedule is compiled.
+            Recipes first — ingredients matched to Sloe — then the weekly schedule is compiled.
           </Text>
         </View>
       </View>
@@ -444,14 +453,14 @@ export default function PlanImportScreen() {
           onBack={() => setStep("paste")}
           rightSlot={
             <Pressable onPress={() => setActivateOpen(true)} disabled={committing} hitSlop={8}>
-              <Text style={{ color: Accent.primary, fontWeight: "700" }}>Save</Text>
+              <Text style={{ color: accent.primary, fontWeight: "700" }}>Save</Text>
             </Pressable>
           }
         />
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.assessment}>
             <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>
-              Plan averages <Text style={{ fontWeight: "700" }}>{avgKcal} kcal/day</Text> (Suppr calc) · Your
+              Plan averages <Text style={{ fontWeight: "700" }}>{avgKcal} kcal/day</Text> (Sloe calc) · Your
               target <Text style={{ fontWeight: "700" }}>{userTargetKcal}</Text>
             </Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 6 }}>
@@ -528,10 +537,10 @@ export default function PlanImportScreen() {
             onPress={() => !committing && setActivateOpen(false)}
           >
             <Pressable
-              style={{ backgroundColor: colors.card, borderRadius: Radius.lg, padding: Spacing.lg }}
+              style={{ backgroundColor: colors.card, borderRadius: Radius.xl * 2, padding: Spacing.xl }}
               onPress={() => {}}
             >
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 8 }}>
+              <Text style={{ ...Type.title, color: colors.navPrimary, marginBottom: 8 }}>
                 Activate imported plan?
               </Text>
               <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: Spacing.lg }}>

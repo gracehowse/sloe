@@ -95,6 +95,10 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   target: number;
   size?: number;
   strokeWidth?: number;
+  /** Sloe geometry override — mobile parity radii from `calorieRingGeometry`. */
+  ringRadius?: number;
+  macroRadii?: [number, number, number];
+  macroStroke?: number;
   /** Macro progress values 0-1 */
   proteinPct?: number;
   carbsPct?: number;
@@ -103,6 +107,8 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   expanded?: boolean;
   /** Toggle expanded */
   onToggle?: () => void;
+  /** Mobile parity: long-press flips display mode + macro rings (host-coupled). */
+  onLongPressToggleDisplayMode?: () => void;
   /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
   displayMode?: CalorieRingDisplayMode;
   /**
@@ -130,18 +136,32 @@ function DailyRing({
   target,
   size = 160,
   strokeWidth = 10,
+  ringRadius,
+  macroRadii: macroRadiiProp,
+  macroStroke: macroStrokeProp,
   className,
   proteinPct = 0,
   carbsPct = 0,
   fatPct = 0,
   expanded = false,
   onToggle,
+  onLongPressToggleDisplayMode,
   displayMode = "remaining",
   pulse = false,
   ...props
 }: DailyRingProps) {
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const clearLongPressTimer = React.useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+  React.useEffect(() => () => clearLongPressTimer(), [clearLongPressTimer]);
   const cx = size / 2;
-  const radius = (size - strokeWidth) / 2 - 2;
+  const radius = ringRadius ?? Math.round(size * 0.44);
   const circumference = 2 * Math.PI * radius;
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
   const offset = circumference * (1 - pct);
@@ -234,8 +254,12 @@ function DailyRing({
   // (160 vs 140) so it can carry the same proportional bump
   // comfortably. Audit flagged the macro arcs as "too thin to read at
   // a glance" — fattening reads them as macros, not hairlines.
-  const macroStroke = 7;
-  const macroRadii = [radius - 13, radius - 24, radius - 35];
+  const macroStroke = macroStrokeProp ?? Math.max(4, Math.round(size * 0.028));
+  const macroRadii: [number, number, number] = macroRadiiProp ?? [
+    Math.round(size * 0.368),
+    Math.round(size * 0.314),
+    Math.round(size * 0.259),
+  ];
 
   const macroRings = [
     { r: macroRadii[0], pct: proteinPct, color: "var(--macro-protein)" },
@@ -243,7 +267,7 @@ function DailyRing({
     { r: macroRadii[2], pct: fatPct, color: "var(--macro-fat)" },
   ];
 
-  const interactive = Boolean(onToggle);
+  const interactive = Boolean(onToggle || onLongPressToggleDisplayMode);
 
   return (
     <div
@@ -253,11 +277,29 @@ function DailyRing({
         className,
       )}
       style={{ width: size, height: size }}
-      onClick={interactive ? onToggle : undefined}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
+      onClick={onToggle ? onToggle : undefined}
+      onPointerDown={
+        onLongPressToggleDisplayMode
+          ? () => {
+              clearLongPressTimer();
+              longPressTimerRef.current = setTimeout(() => {
+                longPressTimerRef.current = null;
+                onLongPressToggleDisplayMode();
+              }, 500);
+            }
+          : undefined
+      }
+      onPointerUp={onLongPressToggleDisplayMode ? clearLongPressTimer : undefined}
+      onPointerLeave={
+        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
+      }
+      onPointerCancel={
+        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
+      }
+      role={onToggle ? "button" : undefined}
+      tabIndex={onToggle ? 0 : undefined}
       onKeyDown={
-        interactive
+        onToggle
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") onToggle?.();
             }
@@ -271,55 +313,50 @@ function DailyRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
       >
-        {/* MFP-style diagonal hash pattern — mirrors mobile
-            `CalorieRing.tsx`. Hue matches --destructive so the
-            pattern reads as part of the red arc, not a new colour
-            layer. Grace 2026-05-22: own green/red + hashed overage. */}
         <defs>
-          <pattern
-            id="overHash"
-            patternUnits="userSpaceOnUse"
-            width={6}
-            height={6}
-            patternTransform="rotate(45)"
-          >
-            <line
-              x1={0}
-              y1={0}
-              x2={0}
-              y2={6}
-              stroke="var(--destructive)"
-              strokeWidth={3}
-            />
-          </pattern>
-          {/* ENG-798 win-moment celebration gradient — mirrors the
-              `--accent-win-gradient` token (brand spectrum #588CE4 → #9679D9
-              → #DF5EBC, 120°). SVG `stroke` can't take a CSS
-              `linear-gradient()`, so the celebration arc references this def.
-              Only painted while `celebrating`. */}
+          {/* Win-moment celebration gradient — mirrors the
+              `--accent-win-gradient` token (Sloe brand gradient plum → clay →
+              amber, 120°; Phase 0 dossier D-3). SVG `stroke` can't take a CSS
+              `linear-gradient()`, so the celebration arc references this def;
+              the plum → clay → amber stops stay in lockstep with that token +
+              the mobile `AccentWinGradient`. Only painted while `celebrating`.
+              (The Frost secondary-colour exploration was retired 2026-06-08,
+              ENG-997 — clay is the unconditional accent, so these are the
+              constant clay-mid stops, no longer flag-dependent.) */}
           <linearGradient id="winSpectrum" x1="0%" y1="0%" x2="86%" y2="50%">
-            <stop offset="0%" stopColor="#588CE4" />
-            <stop offset="50%" stopColor="#9679D9" />
-            <stop offset="100%" stopColor="#DF5EBC" />
-          </linearGradient>
-          {/* ENG-826 — calm "calibrating" idle gradient for the EMPTY ring
-              (zero logged / no target yet): a soft brand-blue tonal arc instead
-              of a flat grey track, matching the prototype's brand-gradient idle.
-              Deliberately NOT the win spectrum (reserved for celebration). */}
-          <linearGradient id="ringIdle" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#588CE4" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#7BA3EA" stopOpacity="0.22" />
+            <stop offset="0%" stopColor="#3B2A4D" />
+            <stop offset="50%" stopColor="#C8794E" />
+            <stop offset="100%" stopColor="#C9892C" />
           </linearGradient>
         </defs>
+        {/* Outer track. On the EMPTY state the track lifts to the stronger
+            `--border-strong` (#C9C2D6 light) so the ring's shape reads on a
+            cold open instead of disappearing into the near-tonal card (audit
+            gap 1, mobile CalorieRing parity); the filled state keeps the soft
+            `--ring-bg` frost-mist so the plum arc holds contrast. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={isEmpty ? "url(#ringIdle)" : "var(--ring-bg)"}
+          stroke={isEmpty ? "var(--border-strong)" : "var(--ring-bg)"}
           strokeWidth={strokeWidth}
           opacity={1}
         />
+        {/* Empty-state inner hairline (audit gap 1) — a 1px ring just inside
+            the track so the empty circle reads as intentional geometry, not a
+            faint outline. Hidden the moment anything is logged. */}
+        {isEmpty ? (
+          <circle
+            cx={cx}
+            cy={cx}
+            r={radius - strokeWidth / 2 - 1}
+            fill="none"
+            stroke="var(--border-strong)"
+            strokeWidth={1}
+            opacity={0.7}
+          />
+        ) : null}
         <circle
           data-testid="daily-ring-progress"
           data-pulse={pulse ? "true" : undefined}
@@ -331,10 +368,8 @@ function DailyRing({
             celebrating
               ? "url(#winSpectrum)"
               : isEmpty
-                ? "url(#ringIdle)"
-                : isOverBudget
-                  ? "var(--destructive)"
-                  : "var(--success)"
+                ? "var(--ring-bg)"
+                : "var(--macro-calories)"
           }
           // ENG-798 win-moment: a target-hit is by definition the
           // at/under-budget state, so the celebration only ever lights an
@@ -359,37 +394,52 @@ function DailyRing({
               : undefined,
           }}
         />
-        {/* Hashed overage segment — only when over budget. Starts at
-            top (12 o'clock after the parent's -rotate-90) and runs
-            clockwise for `(over / target) * circumference`. Capped
-            at one full lap. */}
+        {/* Over-budget overage lap — Apple-Watch wrap (2026-06-04, mobile
+            CalorieRing parity). Base ring stays plum; portion past 100% is a
+            second lap in lifted plum with a soft glow on the leading cap. */}
         {!isEmpty && isOverBudget && target > 0
           ? (() => {
-              const overFraction = Math.min(
-                (consumed - target) / target,
-                1,
-              );
-              const overLen = circumference * overFraction;
+              const overFrac = Math.min(consumed / target - 1, 1);
+              const overLen = circumference * overFrac;
+              const capAngle = (-90 + overFrac * 360) * (Math.PI / 180);
+              const capX = cx + radius * Math.cos(capAngle);
+              const capY = cx + radius * Math.sin(capAngle);
               return (
-                <circle
-                  cx={cx}
-                  cy={cx}
-                  r={radius}
-                  fill="none"
-                  stroke="url(#overHash)"
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={`${overLen} ${circumference}`}
-                  strokeDashoffset={0}
-                  strokeLinecap="butt"
-                />
+                <g data-testid="daily-ring-overage-lap">
+                  <circle
+                    cx={cx}
+                    cy={cx}
+                    r={radius}
+                    fill="none"
+                    stroke="var(--ring-overage-lap)"
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${overLen} ${circumference}`}
+                    strokeDashoffset={0}
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx={capX}
+                    cy={capY}
+                    r={strokeWidth * 0.95}
+                    fill="var(--ring-overage-glow)"
+                    opacity={0.28}
+                  />
+                  <circle
+                    cx={capX}
+                    cy={capY}
+                    r={strokeWidth * 0.5}
+                    fill="var(--ring-overage-glow)"
+                    opacity={0.65}
+                  />
+                </g>
               );
             })()
           : null}
         {/* Macro rings (shown when expanded).
             2026-05-14 — Grace's call: macro arcs always render in
             their own colour at full opacity, even when over-budget.
-            The red outer kcal ring carries the over-budget signal
-            — the inner arcs don't need to repeat it, and dimming
+            The plum overage lap on the outer ring carries the over-budget
+            signal — the inner arcs don't need to repeat it, and dimming
             them collapsed the multi-colour language. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
@@ -435,11 +485,11 @@ function DailyRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-1 px-2">
-            <span className="text-lg font-bold leading-none text-center text-foreground tracking-tight">
+            <span className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-snug text-center text-foreground">
               Start your day
             </span>
             {target > 0 ? (
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
                 {Math.round(target).toLocaleString()} kcal goal
               </span>
             ) : null}
@@ -453,35 +503,42 @@ function DailyRing({
                 "Start your day" empty-state copy above is intentionally
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
+            {/* Centre value scales WITH the ring (like its radii/strokes/arcs,
+                all `size * k`) so it holds mobile's proportion at every ring
+                size. A fixed 48px — tuned for the ~207-230px mobile ring —
+                overflowed the smaller 160px DESKTOP ring and crowded the macro
+                arcs (Grace, 2026-06-07). 0.23 ≈ mobile's 48/207 ratio: 160 → 37. */}
             <span
-              className={cn(
-                "tabular-nums text-foreground -tracking-[0.02em] leading-none ph-mask",
-                // Design Direction 2026 — under `redesign_motion` the calorie
-                // total is the "counting hero": render it at display size,
-                // heavy. Flag OFF keeps the prior 22px / font-bold treatment
-                // byte-for-byte.
-                motionEnabled
-                  ? "text-[36px] font-extrabold"
-                  : "text-[22px] font-bold",
-              )}
-              style={{ color: centerValueColor ?? undefined }}
+              className="font-[family-name:var(--font-headline)] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
+              style={{ fontSize: Math.round(size * 0.23), color: centerValueColor ?? undefined }}
             >
               {animatedCenterValue.toLocaleString()}
             </span>
-            <span
-              className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-foreground ph-mask"
-              style={{ color: centerLabelColor ?? undefined }}
-            >
-              {centerLabel}
-            </span>
-            {/* Budget anchor only when macro rings are hidden (collapsed
-                ring). Parity with mobile `CalorieRing` — expanded +
-                "of X kcal" squished the centre copy. */}
-            {!expanded && target > 0 ? (
-              <span className="text-xs text-muted-foreground mt-0.5 tabular-nums ph-mask">
+            {/* Mobile parity (2026-06-06): remaining + under-budget shows
+                only "of X kcal"; over/consumed show the status label. */}
+            {!isOverBudget &&
+            displayMode === "remaining" &&
+            target > 0 ? (
+              <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
                 of {Math.round(target).toLocaleString()} kcal
               </span>
-            ) : null}
+            ) : (
+              <>
+                <span
+                  className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground ph-mask"
+                  style={{ color: centerLabelColor ?? undefined }}
+                >
+                  {centerLabel}
+                </span>
+                {!expanded &&
+                displayMode === "consumed" &&
+                target > 0 ? (
+                  <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
+                    of {Math.round(target).toLocaleString()} kcal
+                  </span>
+                ) : null}
+              </>
+            )}
           </>
         )}
       </div>

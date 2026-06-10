@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -67,6 +68,11 @@ export function ServingStepper({
   testIdPrefix,
 }: ServingStepperProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the +/- button tint.
+  // Lifted from the module-level StyleSheet (which can't read a hook) onto the
+  // inline button style — the `TodayPlannedMealsCard` StyleSheet-lift pattern.
+  const accent = useAccent();
+  const btnTint = { backgroundColor: accent.primary + "1a" };
 
   const parsed = React.useMemo(() => {
     const n = Number.parseFloat(String(value).replace(",", ".").trim());
@@ -115,6 +121,7 @@ export function ServingStepper({
         hitSlop={8}
         style={({ pressed }) => [
           styles.btn,
+          btnTint,
           { opacity: pressed ? 0.6 : 1 },
           (parsed ?? min) <= min && { opacity: 0.35 },
         ]}
@@ -142,6 +149,7 @@ export function ServingStepper({
         hitSlop={8}
         style={({ pressed }) => [
           styles.btn,
+          btnTint,
           { opacity: pressed ? 0.6 : 1 },
           (parsed ?? min) >= max && { opacity: 0.35 },
         ]}
@@ -168,7 +176,8 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Accent.primary + "1a",
+    // backgroundColor lifted to an inline `btnTint` (flag-aware accent) — see
+    // the component body. Module-level styles can't read `useAccent()`.
     alignItems: "center",
     justifyContent: "center",
   },

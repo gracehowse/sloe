@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta name="viewport" content="width=500, initial-scale=1, viewport-fit=cover"/>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<meta charset="utf-8"/>
+<title>Sloe · Shopping list</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>tailwind.config={theme:{extend:{colors:{plum:'#3B2A4D','plum-deep':'#241733',damson:'#6A4B7A',frost:'#C9C2D6','frost-mist':'#EDEAF1',clay:'#C8794E','clay-soft':'#F4E2D2',honey:'#D6A24A',sage:'#5E7C5A',amber:'#C9892C',destructive:'#C0533F',ink:{DEFAULT:'#221B26',soft:'#6A6072',faint:'#9B93A3'},line:'#E8E2EC',surface:{DEFAULT:'#FFFFFF',card:'#F6F5F2'},oat:'#FBF8F3',macro:{protein:'#7C8466',carbs:'#C8794E',fat:'#C9892C',fiber:'#4A7878'}},borderRadius:{DEFAULT:'0.5rem',lg:'1rem',xl:'1.5rem','2xl':'1.25rem',full:'9999px'},fontFamily:{headline:['Newsreader','serif'],display:['Newsreader','serif'],body:['Inter','sans-serif'],label:['Inter','sans-serif']}}}}</script>
+<style>
+svg.sloe-ico{width:1em;height:1em;font-size:24px;display:inline-block;vertical-align:-0.15em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body{position:relative;padding-bottom:0}
+[class~="fixed"][class*="bottom-"],[class~="sticky"][class*="bottom-"]{position:static !important;width:100% !important}
+</style></head>
+<body class="bg-surface text-ink font-body antialiased">
+
+<header class="w-full bg-surface border-b border-line flex items-center justify-between px-4 h-16">
+<button onclick="history.back()" class="p-1 -ml-1 text-plum"><svg class="sloe-ico text-2xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<h1 class="font-headline text-xl text-plum">Shopping list</h1>
+<div class="w-8 flex items-center justify-end text-ink-soft"><svg class="sloe-ico " viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></div>
+</header>
+<main class="px-5 pt-5 pb-10 max-w-2xl mx-auto space-y-5">
+  <div class="flex items-center gap-2">
+    <div class="flex -space-x-2"><span class="w-8 h-8 rounded-full border-2 border-surface overflow-hidden"><img src="img/a6610a1bee6c.png" class="w-full h-full object-cover"/></span><span class="w-8 h-8 rounded-full border-2 border-surface overflow-hidden"><img src="img/babbc6edccce.png" class="w-full h-full object-cover"/></span><span class="w-8 h-8 rounded-full border-2 border-surface overflow-hidden"><img src="img/e427c86a0d4f.png" class="w-full h-full object-cover"/></span></div>
+    <span class="font-body text-[13px] text-ink-soft">from 4 planned meals · 12 items</span>
+  </div>
+  <section class="bg-surface-card border border-line rounded-2xl px-4 py-1">
+    <div class="flex items-center justify-between py-2.5"><h2 class="font-headline text-lg text-ink">Produce</h2><svg class="sloe-ico text-ink-faint text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-avocado.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Avocado</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-soft">2</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-cherry-tomatoes.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Cherry tomatoes</p><p class="font-body text-xs text-ink-faint">Used in 2 recipes</p></div>
+    <span class="font-body text-sm text-ink-soft">250 g</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full bg-sage flex items-center justify-center flex-none text-white"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-spinach.png" class="w-full h-full object-contain mix-blend-multiply opacity-50"/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink-faint line-through leading-tight">Baby spinach</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-faint">1 bag</span>
+  </div>
+  </section>
+  <section class="bg-surface-card border border-line rounded-2xl px-4 py-1">
+    <div class="flex items-center justify-between py-2.5"><h2 class="font-headline text-lg text-ink">Dairy &amp; eggs</h2><svg class="sloe-ico text-ink-faint text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-greek-yoghurt.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Greek yoghurt</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-soft">500 g</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/allergen-eggs.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Brown eggs</p><p class="font-body text-xs text-ink-faint">Used in 2 recipes</p></div>
+    <span class="font-body text-sm text-ink-soft">6</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-parmesan.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Parmesan</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-soft">80 g</span>
+  </div>
+  </section>
+  <section class="bg-surface-card border border-line rounded-2xl px-4 py-1">
+    <div class="flex items-center justify-between py-2.5"><h2 class="font-headline text-lg text-ink">Pantry</h2><svg class="sloe-ico text-ink-faint text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-chickpeas.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Chickpeas</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-soft">1 tin</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full bg-sage flex items-center justify-center flex-none text-white"><svg class="sloe-ico text-[14px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-fusilli.png" class="w-full h-full object-contain mix-blend-multiply opacity-50"/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink-faint line-through leading-tight">Fusilli pasta</p><p class="font-body text-xs text-ink-faint">Used in 1 recipe</p></div>
+    <span class="font-body text-sm text-ink-faint">500 g</span>
+  </div><div class="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
+    <span class="w-6 h-6 rounded-full border-[1.5px] border-line flex-none"></span>
+    <span class="w-10 h-10 rounded-lg overflow-hidden bg-surface flex-none flex items-center justify-center"><img src="img/ing-tahini.png" class="w-full h-full object-contain mix-blend-multiply "/></span>
+    <div class="flex-1 min-w-0"><p class="font-body text-[15px] text-ink leading-tight">Tahini</p><p class="font-body text-xs text-ink-faint">Used in 2 recipes</p></div>
+    <span class="font-body text-sm text-ink-soft">1 jar</span>
+  </div>
+  </section>
+  <button class="w-full flex items-center justify-center gap-2 font-body text-sm font-semibold text-clay py-2"><svg class="sloe-ico text-[18px]" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add custom item</button>
+</main>
+<script>document.addEventListener('click',function(e){
+ var n=e.target.closest('[data-nav]'); if(n){e.preventDefault();location.href=n.getAttribute('data-nav');return;}
+ var el=e.target.closest('a,button,[role=button],label'); if(!el) return;
+ var t=(el.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+ var nx=document.body.getAttribute('data-next');
+ var map={'get started':'onboarding.html','i already have an account':'auth.html','continue with apple':'onboarding.html','continue with google':'onboarding.html','continue with email':'onboarding.html','continue':nx,'next step':nx,'no allergies':'onboarding-plan.html','start using sloe':'today.html','start cooking':'cook.html','cook':'cook.html','import recipe':'recipe-verify.html','add custom item':null,'log a meal':'logmeal.html'};
+ if(t in map && map[t]){e.preventDefault();location.href=map[t];return;}
+ var card=e.target.closest('[data-recipe],.recipe-card'); if(card){e.preventDefault();location.href='recipe.html';}
+},true);</script>
+</body></html>

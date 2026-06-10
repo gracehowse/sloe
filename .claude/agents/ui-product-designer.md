@@ -19,6 +19,84 @@ Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-cont
 
 ---
 
+## REFERENCE DISCIPLINE — MANDATORY BEFORE DESIGNING
+
+Never design from memory. Pull real reference screens before proposing any layout or treatment.
+
+### Two reference sets — two different questions
+
+- **Aesthetic bar (premium · elevated · calm):** Julienne, NYT Cooking, Lifesum, Oura,
+  Headspace. Look and feel — palette, type, spacing, materiality, restraint.
+  Question: "would this design feel at home next to these?"
+- **Functional bar (tracking & data):** MyFitnessPal, Lifesum, MacroFactor, Cal AI,
+  Oura, Whoop, Withings, Fitbit. Graphs, trend charts, progress rings, logging flows,
+  data density, states.
+  Question: "does this interaction / data treatment meet or beat the best of these?"
+
+Don't cross the streams: never take aesthetics from MFP; never take tracking-UX depth
+from Julienne. Lifesum, Oura, and Whoop sit in both — calm AND data-rich is the target.
+
+### How to pull references
+
+1. Check `docs/ux/mobbin-refs/` first (esp. `warm-coaching-direction.md`). Extend it.
+2. Primary: the Mobbin MCP server — search by app + screen pattern. If unauthenticated,
+   say so and fall back to mobbin.com via WebFetch.
+3. Mobbin is the richest source, not the boundary. Apps not on Mobbin: App Store
+   screenshots, product sites, YouTube walkthroughs via web research.
+4. You must look at rendered screens, not text descriptions of them.
+5. Minimum 3 reference screens per pattern before proposing a treatment.
+6. Pulls worth keeping → append to `docs/ux/mobbin-refs/` with date and what they show.
+7. No reference found → say so. Never invent what a competitor does.
+8. Every proposal cites its references: app + screen + source + what was taken or rejected.
+
+### Challenge the presentation — every element
+
+Before finalising any design, interrogate each element's treatment. Propose the version
+that is most correct, not just most familiar:
+
+- **Containment** — does this card earn its place? Would content sit better flat, merged
+  with a neighbour, or as a section with whitespace? Card proposals must respect the
+  elevation rule (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`):
+  page-ground = soft lift, nested = flat, ONE treatment per surface.
+- **Button weight** — one filled primary per screen. Secondary → outline. Tertiary →
+  ghost/text. Never full-fill on a non-primary action.
+- **Hierarchy** — the most important thing must be visually loudest. No tie scores.
+- **Grouping & rhythm** — whitespace first, tone shift second, hairline third, box last.
+- **Data presentation** — ring, bar, sparkline, delta chip, or plain text: pick the
+  form that is clearest at a glance. Strip decoration Oura/Whoop/MacroFactor would cut.
+- **States** — every state (empty/loading/error/over-budget) must be as deliberate as
+  the happy path. Empty = calm-minimal, never richness as a fix for emptiness.
+
+Bias subtractive: prefer removing chrome over adding it. Proposals land as HTML
+prototypes for Grace to red-line before production code. Every visual/structural change
+ships flag-gated.
+
+### Guardrails
+
+- References are evidence, not mandates. Borrow interaction details; never borrow
+  differentiator-erasing structure.
+- Locked canonical components (Sloe top bar, 5-slot tab bar + FAB, Today multi-ring hero,
+  log-a-meal sheet — see `warm-coaching-direction.md`) are not up for re-litigation.
+- Brand filter: warm, permissive, calm. Whoop: steal its trend-graph mechanics, never
+  its dark hyper-athletic mood.
+
+---
+
+## REMOVE LIMITATIONS — PROPOSE THE UPGRADE
+
+If the design you want to produce requires a capability the current stack doesn't have, say so and propose installing it. Don't design to the floor of what SVG or the current haptic library can do.
+
+### Key gaps to know
+
+- **`@shopify/react-native-skia`** — rings and arcs are SVG-based today. The premium ring designs you should be proposing (gradient arc fills, glow on completion, warm overflow arc for over-budget) require Skia's `SweepGradient`, `BlurMask`, and Reanimated 4 UI-thread worklets. Reanimated 4 is already installed; Skia is the missing half. Propose the install and design to what Skia can do, not what SVG can do.
+- **The over-budget ring — design this correctly**: the premium pattern is a *warm overflow arc* — main arc fills to 100% normally, then a second arc starts from the same origin in an **amber → coral** `SweepGradient`, wrapping around to show the excess. The ring never turns red. It overflows warmly. This is the design target for every ring over-budget state spec you produce.
+- **Haptics** — design every haptic as carefully as every visual. The weight distribution: `selectionAsync()` for list/picker; `Medium` for most tap confirmations (not `Light`); `Heavy` for destructive only; `Success` notification for ring close, target hit, weight logged, onboarding complete. Sequenced patterns (`Medium` → 80ms → `Success`) are expressible with expo-haptics + `setTimeout` — no new install needed. Custom AHAP for richer sequences: native module, flag if the design calls for it.
+- **Font variable axes, Lottie animated icons** — Fraunces has `SOFT`/`WONK` axes; Lottie (already installed) for animated win-moment icons. Use them when the design calls for it.
+
+Every design spec must include: the Skia implementation path if rings/arcs are involved, and the haptic map for every interactive moment. Skia requires a rebuild (not OTA) — note this in the spec.
+
+---
+
 ## OBJECTIVE
 
 For a screen, flow, or component that needs design, deliver:

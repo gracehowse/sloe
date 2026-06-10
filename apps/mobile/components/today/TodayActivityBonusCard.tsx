@@ -1,8 +1,14 @@
 import React from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
+import { Layout } from "@/constants/layout";
+import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { useTodayCardElevation } from "@/hooks/useCardElevation";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
@@ -19,6 +25,19 @@ import {
   type MaintenanceSource,
 } from "@suppr/shared/nutrition/resolveMaintenance";
 import { weekDeficitToKg } from "@suppr/shared/nutrition/maintenanceChain";
+import {
+  NET_ENERGY_CHIP_BG,
+  NET_ENERGY_CHIP_LABEL,
+  NET_ENERGY_STATE_COLOR,
+  netEnergyChipState,
+  netEnergyKcalUnit,
+  netEnergyMarkerFraction,
+  netEnergySubline,
+} from "@suppr/shared/nutrition/netEnergyBalance";
+import {
+  TODAY_HEALTH_CONNECT_ROUTE,
+  WEEKLY_ROLLING_DENOMINATOR_HINT,
+} from "@suppr/shared/copy/today";
 import {
   ACTIVITY_BUDGET_DISCOVER_BODY,
   ACTIVITY_BUDGET_DISCOVER_CTA,
@@ -141,7 +160,16 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     onDismissActivityBudgetDiscover,
     showActivityBudgetDiscoverBanner = false,
   } = props;
-  const cardElevation = useCardElevation();
+  const cardElevation = useTodayCardElevation();
+  // Theme-aware honey TEXT (base honey is fill-only): deep honey on light,
+  // lifted honey on dark; both clear AA. Mirrors web `--activity-solid`.
+  const activitySolid =
+    useColorScheme() === "dark" ? Accent.activitySolidDark : Accent.activitySolid;
+  // Secondary accent (Frost flag → damson, else clay) for the two CTAs on this
+  // card (the "Enable activity budget" discover button + the popover "Close").
+  // The honey activity data (flame/arc/kcal via `Accent.activity*`), the sage/
+  // amber status hues, and the energy-balance track stay on their own tokens.
+  const accent = useAccent();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
@@ -183,6 +211,25 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
 
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
+  const chipState = netEnergyChipState(net);
+  const chipColor = NET_ENERGY_STATE_COLOR[chipState];
+  // AA-safe -solid chip background (white-on-fill needs 4.5:1). Headline +
+  // marker keep the vivid `chipColor`.
+  const chipBg = NET_ENERGY_CHIP_BG[chipState];
+  const balanceFraction = netEnergyMarkerFraction(
+    net,
+    hasMaintenanceTile ? maintenanceTdeeKcal : null,
+    consumedCalories,
+    isDeficit,
+  );
+  const netHeadlineColor = chipColor;
+  const netSubLine = netEnergySubline({
+    burnedKcal: totalBurnKcal,
+    eatenKcal: consumedCalories,
+    isToday,
+    netKcal: net,
+    isDeficit,
+  });
 
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
   // actually logged, not a hardcoded /7 — a mid-week calendar window was
@@ -218,15 +265,27 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const weeklyLbsRate = weeklyKgRate / 0.4536;
   const isWeekDeficit = weekDeficit >= 0;
 
+  const showBurnBreakdown = (activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0;
+
   return (
-    <View style={styles.card}>
+    <>
+    <View style={{ gap: Layout.todaySectionCardGap }}>
+    {/* Figma TD1 — Energy balance + burn + 7-day are sibling cards on the Today
+        scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+    <SupprCard
+      lift="soft"
+      padding="lg"
+      testID="today-energy-balance-card"
+      innerStyle={{ gap: Spacing.md }}
+    >
       {showDiscover ? (
         <View
           style={[{
             marginBottom: Spacing.sm,
             padding: Spacing.sm,
             borderRadius: Radius.md,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
+            // Sloe: hairline edge (≈1 physical px), not a 1pt (3px) border.
+            borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
             borderColor: cardBorderColor,
             backgroundColor: cardElevation.liftBg ?? cardColor,
           }, cardElevation.shadowStyle]}
@@ -236,17 +295,23 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             {ACTIVITY_BUDGET_DISCOVER_BODY}
           </Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            {/* Sloe treatment system (2026-06-08): primary inline CTA →
+                aubergine outline (transparent fill + 1.5px primarySolid
+                border + primarySolid label), not a filled slab. */}
             <Pressable
               accessibilityRole="button"
               onPress={onEnableActivityBudget}
-              style={{
+              style={({ pressed }) => ({
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
-                backgroundColor: Accent.primary,
-              }}
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -259,163 +324,206 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </View>
         </View>
       ) : null}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
-        <Ionicons name="flame" size={20} color={Accent.activity} />
-        <Text style={[styles.cardTitle, { flex: 1 }]}>Activity Bonus</Text>
-        {popoverCopy ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="What is maintenance TDEE?"
-            testID="today-activity-bonus-info-trigger"
-            onPress={() => setInfoOpen(true)}
-            hitSlop={8}
-            style={{ padding: 4 }}
+      {/* Sloe TD1 — Net energy overline + state chip (Bevel pattern). */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm }}>
+        <Text style={{ ...Type.label, color: textTertiaryColor }}>Net energy</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {popoverCopy ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="What is maintenance TDEE?"
+              testID="today-activity-bonus-info-trigger"
+              onPress={() => setInfoOpen(true)}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
+            </Pressable>
+          ) : null}
+          <View
+            testID="today-activity-bonus-net-chip"
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: Radius.full,
+              backgroundColor: chipBg,
+            }}
           >
-            <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
-          </Pressable>
-        ) : null}
+            <Text style={{ ...Type.label, fontSize: 11, color: "#fff" }}>
+              {NET_ENERGY_CHIP_LABEL[chipState]}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {!hasBurnData && isToday ? (
         <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}>
-          No resting or active energy for this day in Suppr yet. Open{" "}
-          <Text style={{ fontWeight: "700", color: textColor }}>More → Connected</Text>, enable Apple Health, then pull
-          to refresh or revisit this tab to sync.
+          No resting or active energy for this day in Sloe yet. Open{" "}
+          <Text style={{ fontWeight: "700", color: textColor }}>{TODAY_HEALTH_CONNECT_ROUTE}</Text>
+          , enable Apple Health, then pull to refresh or revisit this tab to sync.
         </Text>
       ) : null}
 
-      <View
-        testID="today-activity-bonus-summary-row"
-        style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm }}
-      >
-        <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-            {totalBurnKcal.toLocaleString()}
-          </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>
-            {isToday ? "Burn so far" : "Total burn"}
-          </Text>
-        </View>
-        <View style={{ width: 1, backgroundColor: borderColor }} />
-        <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-            {consumedCalories.toLocaleString()}
-          </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Food logged</Text>
-        </View>
-        {hasMaintenanceTile ? (
-          <>
-            <View style={{ width: 1, backgroundColor: borderColor }} />
-            <View
-              testID="today-activity-bonus-maintenance-tile"
-              style={{ alignItems: "center", flex: 1 }}
-            >
-              <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
-                {maintenanceTdeeKcal!.toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Maintenance</Text>
-            </View>
-          </>
-        ) : null}
-        <View style={{ width: 1, backgroundColor: borderColor }} />
-        <View style={{ alignItems: "center", flex: 1 }}>
-          {/* P2-31 (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
-              2026-04-25 visual-qa): when no food was logged the
-              "Net deficit" was rendered green (success), affirming
-              data that's really just "we haven't subtracted anything
-              yet". When `consumedCalories === 0` the deficit is just
-              the burn — render in neutral grey so the user can tell
-              this isn't a real net. */}
+      {/* Sloe TD1 energy-balance HERO — the net headline + plain-language
+          sub-line + deficit→maintenance→surplus gradient bar. Net moved
+          OUT of the summary tile row up into this headline (frame 459:2).
+          P2-31 rule preserved: when nothing's been eaten the net is just
+          the burn, so the headline reads neutral grey, not affirming
+          green. */}
+      <View style={{ marginBottom: Spacing.sm }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
           <Text
+            testID="today-activity-bonus-net-headline"
             style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color:
-                consumedCalories === 0
-                  ? textSecondaryColor
-                  : isDeficit
-                    ? Accent.success
-                    : Accent.warning,
+              fontFamily: FontFamily.serifRegular,
+              fontSize: 52,
+              lineHeight: 52,
+              color: netHeadlineColor,
               fontVariant: ["tabular-nums"],
             }}
           >
             {Math.abs(net).toLocaleString()}
           </Text>
-          <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>
-            {isDeficit ? "Net deficit" : "Net surplus"}
+          <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+            {netEnergyKcalUnit(chipState)}
           </Text>
         </View>
+        <Text style={{ fontSize: 13, color: textTertiaryColor, marginTop: 8, marginBottom: Spacing.md }}>
+          {netSubLine}
+        </Text>
+
+        {(hasBurnData || consumedCalories > 0) ? (
+          <>
+            {/* Sloe TD1 calm slider — a true deficit↔maintenance↔surplus
+                gradient track (sage 0% → frost 50% → amber 100%) with a knob
+                at the current position. Matches the Figma TD1 / prototype
+                `linear-gradient(90deg,#5E7C5A,#EDEAF1,#C9892C)`. The gradient
+                is drawn via `react-native-svg` (already a dependency — no new
+                package); the knob stays a plain absolutely-positioned View so
+                its left % can be data-driven by `balanceFraction` (a
+                PRESENTATION of existing burn/intake — no new nutrition value).
+                The track frost stop uses the card's hairline `borderColor` so
+                the centre reads as the neutral line, not a hard segment. */}
+            <View
+              accessibilityRole="progressbar"
+              accessibilityLabel="Energy balance"
+              style={{ position: "relative", height: 20, justifyContent: "center", marginBottom: Spacing.sm }}
+            >
+              <Svg width="100%" height={10}>
+                <Defs>
+                  {/* Energy-balance scale (deficit→maintenance→surplus) — a
+                      DATA track, not a CTA, so the surplus end uses amber
+                      (`Accent.warning` #C9892C) matching the TD1 prototype
+                      `linear-gradient(90deg,#5E7C5A,#EDEAF1,#C9892C)`. */}
+                  <LinearGradient id="energyBalanceTrack" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={Accent.success} />
+                    <Stop offset="0.5" stopColor={borderColor} />
+                    <Stop offset="1" stopColor={Accent.warning} />
+                  </LinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height={10} rx={5} ry={5} fill="url(#energyBalanceTrack)" />
+              </Svg>
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: `${balanceFraction * 100}%`,
+                  marginLeft: -10,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 3,
+                  borderColor: chipColor,
+                }}
+              />
+            </View>
+            {/* Sloe TD1 axis labels — UPPERCASE small-caps (Figma reads
+                "DEFICIT · MAINTENANCE · SURPLUS"). Restored from the Title-case
+                pass via Type.label (uppercase + letter-spacing). */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.md }}>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Deficit</Text>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Maintenance</Text>
+              <Text style={{ ...Type.label, color: textTertiaryColor }}>Surplus</Text>
+            </View>
+          </>
+        ) : null}
+      </View>
+
+      {/* Burned / Eaten / Maintenance — the supporting stat row (frame's
+          3-col `divide-x` set). Net no longer lives here; it's the headline.
+          The Maintenance tile keeps its testID + gate (today-vs-past
+          parity test). */}
+      <View
+        testID="today-activity-bonus-summary-row"
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          paddingTop: Spacing.md,
+          marginBottom: Spacing.sm,
+          // Sloe: hairline `border-t border-line` above the stat row.
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: borderColor,
+        }}
+      >
+        {/* Sloe TD1 stat tiles — each is an icon + UPPERCASE label on the top
+            row, with the value below (Figma 459:2 reads a centred
+            "[flame] BURNED" / "[fork] EATEN" / "[target] MAINTENANCE", number
+            beneath). Type.label carries the uppercase transform + tracking; the
+            glyphs are calm lucide strokes at IconSize.sm (the Figma's
+            text-[15px]). Burned takes the honey activity hue (it's the burn
+            number); Eaten + Maintenance take muted ink so they don't compete. */}
+        <View style={{ alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+            <Flame size={IconSize.sm} color={Accent.activity} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              Burned
+            </Text>
+          </View>
+          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+            {totalBurnKcal.toLocaleString()}
+          </Text>
+        </View>
+        {/* Sloe: hairline `divide-x divide-line` between stat tiles. */}
+        <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
+        <View style={{ alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+            <Utensils size={IconSize.sm} color={textSecondaryColor} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              Eaten
+            </Text>
+          </View>
+          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+            {consumedCalories.toLocaleString()}
+          </Text>
+        </View>
+        {hasMaintenanceTile ? (
+          <>
+            {/* Sloe: hairline `divide-x divide-line` before the maintenance tile. */}
+            <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: borderColor }} />
+            <View
+              testID="today-activity-bonus-maintenance-tile"
+              style={{ alignItems: "center", flex: 1 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                <Target size={IconSize.sm} color={MacroColors.calories} strokeWidth={2} />
+                <Text style={{ ...Type.label, color: textTertiaryColor }}>
+                  Maintenance
+                </Text>
+              </View>
+              <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+                {maintenanceTdeeKcal!.toLocaleString()}
+              </Text>
+            </View>
+          </>
+        ) : null}
       </View>
 
       {effectiveCalorieGoal > 0 && (
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginBottom: Spacing.sm, textAlign: "center" }}>
-          Calorie goal for this day: {effectiveCalorieGoal.toLocaleString()} kcal
+          Calorie goal {isToday ? "today" : "for this day"} ·{" "}
+          <Text style={{ color: textColor, fontWeight: "600" }}>{effectiveCalorieGoal.toLocaleString()} kcal</Text>
         </Text>
-      )}
-
-      {((activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0) && (
-        <Pressable
-          onPress={onOpenBurnDetail}
-          style={[{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: Spacing.md,
-            marginBottom: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: cardElevation.liftBg ?? cardColor,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
-            borderColor: cardBorderColor,
-          }, cardElevation.shadowStyle]}
-        >
-          <View style={{ flex: 1, gap: 4 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="flame-outline" size={14} color={Accent.activity} />
-              <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
-                {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal {isToday ? "burned so far" : "burned"}
-              </Text>
-              {/* F-131 — small Info icon. Stops the row press from
-                  bubbling so the user gets explain-in-place rather
-                  than navigating to /burn-detail. */}
-              {onShowBurnProvenance ? (
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    onShowBurnProvenance();
-                  }}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel="Where this number comes from"
-                  testID="today-burn-provenance-info"
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={14}
-                    color={textTertiaryColor}
-                  />
-                </Pressable>
-              ) : null}
-            </View>
-            <View style={{ flexDirection: "row", gap: Spacing.md }}>
-              {(activityBurnKcal ?? 0) > 0 && (
-                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-                  Active {(activityBurnKcal ?? 0).toLocaleString()}
-                </Text>
-              )}
-              {basalBurnKcal > 0 && (
-                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-                  Resting {basalBurnKcal.toLocaleString()}
-                </Text>
-              )}
-              {todayActivityBudgetAddon > 0 && (
-                <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.activity }}>
-                  +{todayActivityBudgetAddon.toLocaleString()} bonus earned
-                </Text>
-              )}
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={textTertiaryColor} />
-        </Pressable>
       )}
 
       {dayWorkouts.length > 0 && (
@@ -423,29 +531,109 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 2 }}>Workouts</Text>
           {dayWorkouts.map((w, i) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
-              <Ionicons name="barbell-outline" size={16} color={Accent.primary} />
+              {/* Workout-row glyph stays warm (activity context, not a CTA) —
+                  intentionally NOT migrated to the Frost accent. */}
+              <Ionicons name="barbell-outline" size={16} color={accent.primary} />
               <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{w.type}</Text>
               <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                 {w.minutes > 0 ? `${w.minutes} min` : ""}
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.activity, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: activitySolid, fontVariant: ["tabular-nums"] }}>
                 {w.calories > 0 ? `${w.calories} kcal` : ""}
               </Text>
             </View>
           ))}
         </View>
       )}
+    </SupprCard>
 
-      {showWeekly && (
-        <View style={{ marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: borderColor }}>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 6 }}>
-            {weekSummaryHeading(weekSummaryMode)}
-          </Text>
-          {/* Audit T13 (2026-05-05) — neutral grey when weekConsumed === 0
-              so a user with burn data but zero food logged across the
-              window doesn't see "Avg daily deficit: 2,400 kcal" green
-              affirming a degenerate state (false success). Mirrors
-              the same rule the today-tile got 2026-04-25. */}
+      {showBurnBreakdown ? (
+        <Pressable
+          onPress={onOpenBurnDetail}
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+        >
+          <SupprCard
+            // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+            lift="soft"
+            padding="lg"
+            testID="today-burn-breakdown-card"
+            innerStyle={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
+            <View style={{ flex: 1, gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
+                <Text
+                  testID="today-burn-card-headline"
+                  style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
+                >
+                  {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()}
+                </Text>
+                <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                  kcal {isToday ? "burned so far" : "burned"}
+                </Text>
+                {onShowBurnProvenance ? (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      onShowBurnProvenance();
+                    }}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Where this number comes from"
+                    testID="today-burn-provenance-info"
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={IconSize.md}
+                      color={textTertiaryColor}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
+                {(activityBurnKcal ?? 0) > 0 && (
+                  <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                    Active {(activityBurnKcal ?? 0).toLocaleString()}
+                  </Text>
+                )}
+                {basalBurnKcal > 0 && (
+                  <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                    Resting {basalBurnKcal.toLocaleString()}
+                  </Text>
+                )}
+                {todayActivityBudgetAddon > 0 && (
+                  <Text
+                    style={{
+                      ...Type.caption,
+                      fontFamily: FontFamily.sansSemibold,
+                      fontWeight: FontWeight.semibold,
+                      color: activitySolid,
+                    }}
+                  >
+                    +{todayActivityBudgetAddon.toLocaleString()} bonus earned
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={IconSize.base} color={textTertiaryColor} />
+          </SupprCard>
+        </Pressable>
+      ) : null}
+
+      {showWeekly ? (
+        // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
+        <SupprCard lift="soft" padding="lg" testID="today-weekly-rolling-card">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
+            <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
+            <Text style={{ ...Type.label, color: textTertiaryColor }}>
+              {weekSummaryHeading(weekSummaryMode)}
+            </Text>
+          </View>
           {(() => {
             const isCalibrating = weekConsumed === 0;
             const valueColor = isCalibrating
@@ -455,14 +643,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 : Accent.warning;
             return (
               <>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Avg daily {isWeekDeficit ? "deficit" : "surplus"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -470,14 +657,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Weekly {isWeekDeficit ? "deficit" : "surplus"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -485,14 +671,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {Math.abs(weekDeficit).toLocaleString()} kcal
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
+                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
                     Projected weekly {isWeekDeficit ? "loss" : "gain"}
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontWeight: "700",
+                      ...Type.headline,
                       color: valueColor,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -500,11 +685,22 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     {weeklyKgRate.toFixed(2)} kg
                   </Text>
                 </View>
+                <Text
+                  style={{
+                    ...Type.caption,
+                    color: textTertiaryColor,
+                    marginTop: Spacing.sm,
+                    lineHeight: 16,
+                  }}
+                >
+                  {WEEKLY_ROLLING_DENOMINATOR_HINT}
+                </Text>
               </>
             );
           })()}
-        </View>
-      )}
+        </SupprCard>
+      ) : null}
+    </View>
 
       {popoverCopy ? (
         <Modal
@@ -548,13 +744,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 onPress={() => setInfoOpen(false)}
                 style={{ marginTop: Spacing.sm, paddingVertical: 8, alignItems: "flex-end" }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>Close</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary }}>Close</Text>
               </Pressable>
             </View>
           </Pressable>
         </Modal>
       ) : null}
-    </View>
+    </>
   );
 }
 

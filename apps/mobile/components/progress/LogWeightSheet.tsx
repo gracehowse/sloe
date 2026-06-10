@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
@@ -117,6 +118,10 @@ export function LogWeightSheet({
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
+  // Aubergine accent for the Save CTA. Sloe treatment system (2026-06-08, §1):
+  // the weight Save/Update is a primary inline CTA → aubergine OUTLINE, not a
+  // filled slab.
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [input, setInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
@@ -293,13 +298,17 @@ export function LogWeightSheet({
             style={[
               styles.cta,
               {
-                backgroundColor: Accent.primary,
+                // Sloe treatment §1: aubergine OUTLINE (transparent fill,
+                // 1.5px primarySolid border). Disabled keeps the dim.
+                backgroundColor: "transparent",
+                borderWidth: 1.5,
+                borderColor: accent.primarySolid,
                 opacity: saving || !input.trim() ? 0.5 : 1,
               },
             ]}
             testID="log-weight-save"
           >
-            <Text style={styles.ctaLabel}>
+            <Text style={[styles.ctaLabel, { color: accent.primarySolid }]}>
               {saving
                 ? "Saving..."
                 : isEditing
@@ -370,10 +379,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: Spacing.lg,
   },
+  // SLOE Phase 0: the weight-entry hero numeral reads in Newsreader serif
+  // (big numerals are a serif moment); the kg/lb unit beside it stays sans.
+  // Family carries the weight, so the sans `fontWeight: 600` is dropped.
   input: {
     flex: 1,
+    fontFamily: FontFamily.serifRegular,
     fontSize: 28,
-    fontWeight: "600",
   },
   unit: {
     ...Type.body,

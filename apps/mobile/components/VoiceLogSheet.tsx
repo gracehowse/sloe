@@ -25,7 +25,9 @@ import {
 } from "react-native";
 import { Mic, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   averageConfidence,
   isLowConfidence,
@@ -77,6 +79,14 @@ export default function VoiceLogSheet({
   onCommit,
   colors,
 }: Props) {
+  // `colors` prop carries the host's Theme (text/card/border/etc.); the
+  // Sloe brand plum (`navPrimary`) used for the serif sheet title isn't in
+  // that contract, so read it from the shared theme hook here.
+  const themeColors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the parsing spinner
+  // and the primary CTAs (Log / Add). The record mic keeps `Accent.success`
+  // (green), and parse errors keep `Accent.destructive`.
+  const accent = useAccent();
   const [stage, setStage] = useState<Stage>("input");
   const [transcript, setTranscript] = useState("");
   const [items, setItems] = useState<AiLoggedItem[]>([]);
@@ -216,8 +226,9 @@ export default function VoiceLogSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
               padding: Spacing.lg,
               paddingBottom: Spacing.xxl,
               maxHeight: "85%",
@@ -237,8 +248,11 @@ export default function VoiceLogSheet({
               }}
             >
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Mic size={IconSize.xl} color={Accent.success} strokeWidth={2.25} />
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Voice log</Text>
+                {/* Sloe DS — voice is a Pro feature; the mic carries the damson
+                    Pro accent and the title reads in the Newsreader serif plum
+                    (`navPrimary`), matching the LogSheet header grammar. */}
+                <Mic size={IconSize.xl} color={Accent.purple} strokeWidth={2.25} />
+                <Text style={[Type.title, { color: themeColors.navPrimary }]}>Voice log</Text>
               </View>
               <Pressable
                 onPress={onClose}
@@ -314,7 +328,7 @@ export default function VoiceLogSheet({
 
             {stage === "parsing" && (
               <View style={{ alignItems: "center", paddingVertical: Spacing.xl, gap: 10 }}>
-                <ActivityIndicator size="small" color={Accent.primary} />
+                <ActivityIndicator size="small" color={accent.primary} />
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>Parsing your description…</Text>
               </View>
             )}
@@ -384,7 +398,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: transcript.trim() ? Accent.primary : colors.cardBorder,
+                    backgroundColor: transcript.trim() ? accent.primary : colors.cardBorder,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Parse</Text>
@@ -400,7 +414,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary,
+                    backgroundColor: accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
@@ -417,7 +431,7 @@ export default function VoiceLogSheet({
                     paddingVertical: 12,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
+                    backgroundColor: items.length === 0 ? colors.cardBorder : accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>

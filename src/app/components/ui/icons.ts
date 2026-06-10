@@ -96,6 +96,7 @@ import {
 
   // Progress & data
   Trophy,
+  Award,
   Flame as Streak,
   CalendarCheck,
   PieChart,
@@ -220,6 +221,7 @@ export const Icons = {
 
   // Progress & data
   trophy: Trophy,
+  award: Award,
   streak: Streak,
   streakFreeze: Snowflake,
   calendarCheck: CalendarCheck,

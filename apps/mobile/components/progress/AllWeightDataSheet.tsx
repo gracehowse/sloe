@@ -11,7 +11,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Scale as ScaleIcon, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
@@ -121,6 +122,9 @@ export function AllWeightDataSheet({
   onEditEntry,
 }: AllWeightDataSheetProps) {
   const colors = useThemeColors();
+  // Secondary accent (Frost flag → damson, else clay) for the edit affordance
+  // (tint + glyph).
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
 
   const sections = React.useMemo(() => {
@@ -312,12 +316,12 @@ export function AllWeightDataSheet({
                   <View
                     style={[
                       styles.iconSquare,
-                      { backgroundColor: Accent.primary + "22" },
+                      { backgroundColor: accent.primary + "22" },
                     ]}
                   >
                     <ScaleIcon
                       size={16}
-                      color={Accent.primary}
+                      color={accent.primary}
                       strokeWidth={2}
                     />
                   </View>
