@@ -51,7 +51,8 @@ export function ProgressStoryGate({
 }: ProgressStoryGateProps) {
   const accent = useAccent();
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Mirrors ProgressHeadline (geometry-twin contract) — soft page-ground lift.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const placeholder = buildProgressStoryPlaceholder(daysLogged, { hasHistory });
 
   // Day-count indicator — STORY_DATA_FLOOR_DAYS discrete ring segments

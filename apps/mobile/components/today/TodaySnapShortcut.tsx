@@ -1,10 +1,11 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Camera, Lock } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -76,9 +77,9 @@ export function TodaySnapShortcut({
           gap: Spacing.sm,
           paddingVertical: Spacing.md,
           paddingHorizontal: Spacing.md,
-          borderRadius: Radius.md,
+          borderRadius: CARD_RADIUS,
           backgroundColor: colors.card,
-          borderWidth: 1,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.cardBorder,
           opacity: pressed ? 0.7 : 1,
         })}

@@ -153,6 +153,7 @@ import {
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -1437,8 +1438,11 @@ export default function PlannerScreen() {
         // on the cream with breathing room above the action row.
         summaryCard: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl,
-          borderWidth: 1,
+          // Card-shell unification (2026-06-10 census): page-ground cards share
+          // CARD_RADIUS 24 — this sat at Radius.xl(12), a visibly tighter corner
+          // than every sibling tab's cards. Border matches SupprCard (hairline).
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.lg,
           marginBottom: Spacing.xs,
@@ -1585,8 +1589,8 @@ export default function PlannerScreen() {
         // the "Plan your week" form reads as a calm card, not a dense panel.
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,

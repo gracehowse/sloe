@@ -1,18 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Alert,
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  RefreshControl,
-  Image,
-  type StyleProp,
-  type ImageStyle,
-} from "react-native";
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -25,6 +14,7 @@ import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
@@ -60,7 +50,7 @@ import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSk
  * out at 12 (`xl`), hence this local const. Web parity: `radius="lg"`
  * (24px) on the `SupprCard` in `DiscoverFeed.tsx` / `Library.tsx`.
  */
-const RECIPE_CARD_RADIUS = 24;
+const RECIPE_CARD_RADIUS = CARD_RADIUS;
 
 /* ── Icon Box (local helper matching prototype) ── */
 function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -436,7 +426,7 @@ export default function DiscoverScreen() {
           style={{
             borderRadius: RECIPE_CARD_RADIUS,
             backgroundColor: cardElevation.liftBg ?? colors.card,
-            borderWidth: cardElevation.useBorder ? 1 : 0,
+            borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
             borderColor: colors.cardBorder,
             overflow: "hidden",
           }}
@@ -807,9 +797,9 @@ export default function DiscoverScreen() {
                     width: 160,
                     // Gap-3 fix (2026-06-09): card padding 10 → Spacing.sm (8).
                     padding: Spacing.sm,
-                    borderRadius: Radius.md,
+                    borderRadius: CARD_RADIUS,
                     backgroundColor: colors.card,
-                    borderWidth: 1,
+                    borderWidth: StyleSheet.hairlineWidth,
                     borderColor: colors.cardBorder,
                   }}
                 >
@@ -998,7 +988,7 @@ export default function DiscoverScreen() {
                     style={{
                       borderRadius: RECIPE_CARD_RADIUS,
                       backgroundColor: cardElevation.liftBg ?? colors.card,
-                      borderWidth: cardElevation.useBorder ? 1 : 0,
+                      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                       borderColor: colors.cardBorder,
                       overflow: "hidden",
                     }}
@@ -1029,9 +1019,9 @@ export default function DiscoverScreen() {
             alignItems: "center",
             gap: Spacing.md,
             padding: Spacing.md,
-            borderRadius: Radius.lg,
+            borderRadius: CARD_RADIUS,
             backgroundColor: colors.card,
-            borderWidth: 1,
+            borderWidth: StyleSheet.hairlineWidth,
             borderColor: colors.cardBorder,
           }}
         >

@@ -262,7 +262,10 @@ export function TodayDashboardMacroTiles({
             })}
           >
           <SupprCard
-            lift="flat"
+            // One-card decision (2026-06-09): EVERY page-ground card lifts
+            // soft — these tiles were the last flat residue next to the soft
+            // hero ring ("the ring card is raised, the macro cards are flat").
+            lift="soft"
             size="tile"
             padding="md"
             innerStyle={{ minHeight: 96, justifyContent: "space-between" }}
