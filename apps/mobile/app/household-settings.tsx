@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   View,
   Text,
@@ -97,7 +98,7 @@ const SAGE_SECONDARY = "#7C8466";
  *  sheets. theme.ts Radius.xl=12 (card radius), so the sheet value is kept
  *  explicit here until a Radius.sheet(20) token is added (deferred: see
  *  ENG-998 to reconcile the sheet-radius token). */
-const SHEET_RADIUS = 20;
+
 
 const DAY_LABELS: Record<HouseholdDayId, string> = {
   mon: "Mon",

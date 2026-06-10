@@ -7,6 +7,7 @@
  * cannot drift on target-list dedup or date arithmetic.
  */
 import { useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -133,8 +134,8 @@ export default function CopyMealSheet({
           onPress={() => {}}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             padding: Spacing.lg,
             paddingBottom: Spacing.xl,
           }}

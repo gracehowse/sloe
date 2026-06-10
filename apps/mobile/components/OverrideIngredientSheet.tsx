@@ -8,6 +8,7 @@
  * helper so the "what counts as an override" rule is defined in one place.
  */
 import { useEffect, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Keyboard,
   Modal,
@@ -161,8 +162,8 @@ export default function OverrideIngredientSheet({
           onPress={() => {}}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             padding: Spacing.lg,
             paddingBottom: Spacing.xl,
           }}

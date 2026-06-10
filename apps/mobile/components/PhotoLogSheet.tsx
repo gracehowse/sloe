@@ -38,6 +38,7 @@
  * ToastAndroid + Alert.alert on mobile).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Alert,
@@ -473,8 +474,8 @@ export default function PhotoLogSheet({
             style={{
               backgroundColor: colors.card,
               // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xxl,
               maxHeight: "90%",

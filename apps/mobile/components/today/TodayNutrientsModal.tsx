@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Spacing } from "@/constants/theme";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,8 +42,8 @@ export function TodayNutrientsModal({
         <View
           style={{
             backgroundColor,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.dense,
             paddingBottom: insets.bottom + 20,
             maxHeight: "82%",

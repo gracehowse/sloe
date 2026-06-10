@@ -38,7 +38,7 @@ import * as Haptics from "expo-haptics";
 import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { SHEET_RADIUS, SupprCard } from "@/components/ui/SupprCard";
 import { SupprMark } from "@/components/SupprMark";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
@@ -466,8 +466,8 @@ const mas = StyleSheet.create({
   backdrop: { backgroundColor: "rgba(20,18,24,0.4)" },
   sheet: {
     // Prototype sheet corner (24px) — above the tightened Radius.xl (12).
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.xl,
   },
@@ -1494,8 +1494,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             onPress={() => {}}
             style={{
               backgroundColor: cardColor,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
               maxHeight: "80%",

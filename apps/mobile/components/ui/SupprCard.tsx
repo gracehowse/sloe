@@ -121,6 +121,11 @@ const radiusValues: Record<SupprCardRadius, number> = {
  *  Linear/Stripe density). The Sloe Figma chosen Today rounds cards AND tiles to
  *  24 (borderless warm slabs — Grace, 2026-06-04). Centralised here so every
  *  card shares the exact corner. */
+/** One sheet radius (2026-06-10 decision: docs/decisions/2026-06-10-sheet-
+ * radius-and-nested-inset-standard.md) — sheets share the card corner so
+ * "lifted warm surface" reads as one material at rest or risen. Replaces
+ * six live ad-hoc top-corner styles (8/12/18/20/24/28). */
+export const SHEET_RADIUS = 24;
 export const CARD_RADIUS = 24;
 export const TILE_RADIUS = 24;
 

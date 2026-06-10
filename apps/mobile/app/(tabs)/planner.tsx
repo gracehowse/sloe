@@ -153,7 +153,7 @@ import {
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
-import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -3898,8 +3898,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               paddingHorizontal: Spacing.xl,
@@ -4013,8 +4013,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               paddingHorizontal: Spacing.xl,
@@ -4261,8 +4261,8 @@ export default function PlannerScreen() {
                 onPress={(e) => e.stopPropagation?.()}
                 style={{
                   backgroundColor: colors.card,
-                  borderTopLeftRadius: Radius.lg,
-                  borderTopRightRadius: Radius.lg,
+                  borderTopLeftRadius: SHEET_RADIUS,
+                  borderTopRightRadius: SHEET_RADIUS,
                   paddingTop: Spacing.md,
                   paddingBottom: insets.bottom + Spacing.sm,
                 }}
@@ -4323,8 +4323,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               maxHeight: "70%",

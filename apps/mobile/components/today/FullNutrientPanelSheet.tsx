@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Pressable,
@@ -280,8 +281,8 @@ export function FullNutrientPanelSheet({
           testID="full-nutrient-panel-sheet"
           style={{
             backgroundColor: colors.background,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.dense,
             paddingBottom: insets.bottom + 16,
             maxHeight: "88%",

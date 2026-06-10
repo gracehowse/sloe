@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
@@ -71,8 +72,8 @@ export function Milestone30DayModal({
         <View
           style={{
             backgroundColor: cardColor,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.xl,
             paddingHorizontal: Spacing.xl,
             paddingBottom: Spacing.md,

@@ -16,6 +16,7 @@
  *  - Up/down/remove buttons have per-item accessibility labels
  */
 import { useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -144,8 +145,8 @@ export default function SaveMealSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
               maxHeight: "85%",

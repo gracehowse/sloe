@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -278,7 +279,7 @@ const s = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   backdrop: { backgroundColor: "rgba(0,0,0,0.5)" },
   keyboardAvoid: { flex: 1, justifyContent: "flex-end" },
-  sheet: { maxHeight: "92%", borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: "hidden" },
+  sheet: { maxHeight: "92%", borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, overflow: "hidden" },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: Spacing.sm },
   header: {
     flexDirection: "row",

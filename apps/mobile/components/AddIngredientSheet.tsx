@@ -12,6 +12,7 @@
  *  4. `onAdd` is called with the payload — the parent writes to Supabase.
  */
 import { useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Keyboard,
@@ -316,8 +317,8 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
           onPress={() => {}}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             padding: Spacing.lg,
             paddingBottom: Spacing.xl,
             maxHeight: "92%",

@@ -12,6 +12,7 @@
  * `averageConfidence` with web via `src/lib/nutrition/aiLogging.ts`.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -227,8 +228,8 @@ export default function VoiceLogSheet({
             style={{
               backgroundColor: colors.card,
               // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xxl,
               maxHeight: "85%",

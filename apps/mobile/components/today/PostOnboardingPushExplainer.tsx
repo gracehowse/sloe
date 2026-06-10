@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Platform,
@@ -159,8 +160,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderTopWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,

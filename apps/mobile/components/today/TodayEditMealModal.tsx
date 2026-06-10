@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import {
   KeyboardAvoidingView,
@@ -370,8 +371,8 @@ const v2 = StyleSheet.create({
   keyboardAvoid: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     maxHeight: "92%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
   },
   handle: {
@@ -486,8 +487,8 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
         <View
           style={{
             backgroundColor: cardColor,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,

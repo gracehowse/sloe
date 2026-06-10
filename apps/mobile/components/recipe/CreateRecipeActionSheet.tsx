@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -147,8 +148,8 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
         <View
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,

@@ -35,6 +35,7 @@
  * Tokens only — no hex literals. `Accent` / `Radius` / `Spacing` only.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   AccessibilityInfo,
   Modal,
@@ -200,8 +201,8 @@ export default function AiPaywallSheet({
           }}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.xl,
-            borderTopRightRadius: Radius.xl,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingHorizontal: Spacing.xl,
             paddingTop: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.lg,

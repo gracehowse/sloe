@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RefreshCw, X } from "lucide-react-native";
@@ -98,8 +99,8 @@ export function WhereThisComesFromSheet({
           testID="where-this-comes-from-sheet"
           style={{
             backgroundColor,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingBottom: insets.bottom + Spacing.lg,
           }}
         >

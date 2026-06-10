@@ -26,6 +26,7 @@
  * passes it only when `ingredientShouldShowVerifyCta` + a real recipe id).
  */
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { X } from "lucide-react-native";
 
 import { Elevation, FontFamily, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
@@ -174,8 +175,8 @@ const s = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     maxHeight: "80%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
   },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: Spacing.sm },

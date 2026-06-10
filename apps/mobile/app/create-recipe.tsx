@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Alert,
@@ -945,8 +946,8 @@ export default function CreateRecipeScreen() {
     modalBackdrop: { flex: 1, backgroundColor: "#0007", justifyContent: "flex-end" },
     modalCard: {
       backgroundColor: colors.background,
-      borderTopLeftRadius: Radius.lg,
-      borderTopRightRadius: Radius.lg,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       paddingHorizontal: Spacing.xl,
       paddingTop: Spacing.lg,
       paddingBottom: Spacing.xl,

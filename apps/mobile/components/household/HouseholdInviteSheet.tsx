@@ -15,6 +15,7 @@
  * prefer the share-the-code flow (it remains the working fallback).
  */
 import React, { useCallback, useEffect, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Alert,
@@ -129,8 +130,8 @@ export function HouseholdInviteSheet({
         <View
           style={{
             backgroundColor: colors.background,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingHorizontal: Spacing.xl,
             paddingTop: Spacing.lg,
             paddingBottom: Spacing.xxxl,

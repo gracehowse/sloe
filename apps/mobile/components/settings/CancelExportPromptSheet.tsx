@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Download, Settings as SettingsIcon, X } from "lucide-react-native";
 
@@ -73,8 +74,8 @@ export function CancelExportPromptSheet({
           testID="cancel-export-prompt-sheet"
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingHorizontal: Spacing.lg,
             paddingTop: Spacing.lg,
             paddingBottom: Spacing.xl,

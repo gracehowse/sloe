@@ -60,7 +60,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
-import { CARD_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
+import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -2636,8 +2636,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3023,8 +3023,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3177,8 +3177,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3305,8 +3305,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3424,8 +3424,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3588,8 +3588,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3704,8 +3704,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Image,
   KeyboardAvoidingView,
@@ -1550,8 +1551,8 @@ const styles = StyleSheet.create({
     height: "92%",
     // Sloe DS — 24px sheet corner (matches web `rounded-t-[24px]` /
     // `--radius-card-lg`), warm sheet shadow.
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.18,

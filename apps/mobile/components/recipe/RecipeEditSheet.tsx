@@ -18,6 +18,7 @@
  * only — web already has inline ingredient editing in RecipeDetail.tsx).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Alert,
@@ -556,8 +557,8 @@ const makeStyles = (
     backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
       maxHeight: "92%",
-      borderTopLeftRadius: Radius.lg,
-      borderTopRightRadius: Radius.lg,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       // backgroundColor + borderWidth driven inline by `useCardElevation`
       // (ENG-821) so the flag-OFF hairline and flag-ON shadow paths coexist.
       borderColor: colors.border,

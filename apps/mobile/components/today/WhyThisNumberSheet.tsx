@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight, X } from "lucide-react-native";
@@ -73,8 +74,8 @@ export function WhyThisNumberSheet({
           testID="why-this-number-sheet"
           style={{
             backgroundColor,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.md,
             paddingBottom: insets.bottom + Spacing.xl,
           }}
