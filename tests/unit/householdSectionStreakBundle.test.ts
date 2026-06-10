@@ -199,8 +199,8 @@ describe("Premium parity — household settings redesign (2026-06-09)", () => {
 
   // GAP 6: Save CTA is aubergine-outline on both platforms.
   it("mobile Save CTA is an outline (not a filled button)", () => {
-    // The mobile CTA has backgroundColor colors.card + borderColor Accent.primarySolid.
-    expect(MOBILE_HOUSEHOLD).toContain("Accent.primarySolid");
+    // The mobile CTA has backgroundColor colors.card + borderColor accent.primarySolid (scheme-resolved via useAccent).
+    expect(MOBILE_HOUSEHOLD).toContain("accent.primarySolid");
     expect(MOBILE_HOUSEHOLD).toContain("borderWidth: 1.5");
   });
 
@@ -214,7 +214,7 @@ describe("Premium parity — household settings redesign (2026-06-09)", () => {
   // GAP 13: "You" pill on the self row — both platforms.
   it("mobile self-row renders a You pill (not just \" (you)\" inline text)", () => {
     expect(MOBILE_HOUSEHOLD).toContain("You");
-    expect(MOBILE_HOUSEHOLD).toContain("Accent.primarySoft");
+    expect(MOBILE_HOUSEHOLD).toContain("accent.primarySoft");
     // The old inline " (you)" text must be gone.
     expect(MOBILE_HOUSEHOLD).not.toMatch(/"[^"]*\(you\)"/);
   });
