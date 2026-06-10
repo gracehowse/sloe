@@ -93,4 +93,53 @@ describe("buildProgressStoryPlaceholder", () => {
     expect(b.ringFraction).toBe(0);
     expect(b.ringLabel).toBe("0 / 3");
   });
+
+  // fresh-eyes 2026-06-10 P0-2 — the gate card counts the CURRENT WEEK,
+  // so a returning user (history in the journal) must get new-week copy,
+  // never cold-start copy. "Log a meal to start the count … your first
+  // insight" next to an adherence card full of range data read as the
+  // screen contradicting itself.
+  describe("hasHistory (returning user, new week)", () => {
+    it("0 days this week + history → new-week copy, not cold-start copy", () => {
+      const out = buildProgressStoryPlaceholder(0, { hasHistory: true });
+      expect(out.headline).toBe("New week, fresh story");
+      expect(out.body).toBe("Log 3 days this week to unlock this week's insight.");
+      expect(out.body).not.toContain("first insight");
+      expect(out.body).not.toContain("start the count");
+    });
+
+    it("1 day this week + history → building copy scoped to this week", () => {
+      const out = buildProgressStoryPlaceholder(1, { hasHistory: true });
+      expect(out.headline).toBe("This week's story is building");
+      expect(out.body).toBe("2 more days to this week's insight.");
+    });
+
+    it("2 days this week + history → almost-there copy scoped to this week", () => {
+      const out = buildProgressStoryPlaceholder(2, { hasHistory: true });
+      expect(out.headline).toBe("Almost there");
+      expect(out.body).toBe("One more logged day and this week's story unlocks.");
+    });
+
+    it("no history (default) keeps the cold-start copy untouched", () => {
+      expect(buildProgressStoryPlaceholder(0).headline).toBe(
+        "Your story builds with your data",
+      );
+      expect(buildProgressStoryPlaceholder(0, { hasHistory: false }).body).toContain(
+        "first insight",
+      );
+    });
+  });
+
+  // The day indicator is discrete (3 segments), not a continuous arc —
+  // a partial arc at 0/3 read as a stuck loading spinner.
+  describe("segmentsFilled (discrete day indicator)", () => {
+    it("maps logged days to whole filled segments, clamped to the floor", () => {
+      expect(buildProgressStoryPlaceholder(0).segmentsFilled).toBe(0);
+      expect(buildProgressStoryPlaceholder(1).segmentsFilled).toBe(1);
+      expect(buildProgressStoryPlaceholder(2).segmentsFilled).toBe(2);
+      expect(buildProgressStoryPlaceholder(3).segmentsFilled).toBe(3);
+      expect(buildProgressStoryPlaceholder(99).segmentsFilled).toBe(3);
+      expect(buildProgressStoryPlaceholder(NaN).segmentsFilled).toBe(0);
+    });
+  });
 });

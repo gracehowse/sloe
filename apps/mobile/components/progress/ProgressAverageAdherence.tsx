@@ -140,6 +140,12 @@ export function ProgressAverageAdherence({
       >
         {adherencePct}
         <Text style={{ fontSize: 22, color: sub }}>%</Text>
+        {/* >100% means "ate over budget on average" — carry the same
+            "· over" qualifier the macro rows use, so 110% can't read as
+            a triumph stat (fresh-eyes 2026-06-10 P0-2, hero-tone half). */}
+        {adherencePct > 100 ? (
+          <Text style={{ fontSize: 15, fontWeight: "400", color: sub }}> · over</Text>
+        ) : null}
       </Text>
 
       <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>

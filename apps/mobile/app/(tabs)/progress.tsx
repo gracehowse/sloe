@@ -1195,7 +1195,15 @@ export default function ProgressScreen() {
           })}
         />
       ) : (
-        <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
+        <ProgressStoryGate
+          daysLogged={weekStats.daysWithFood}
+          // Any logged day in the journal store (not range-scoped) → the
+          // copy uses new-week framing instead of cold-start framing, so
+          // this card can't claim "log a meal to start" while the
+          // range-scoped adherence card below shows real data
+          // (fresh-eyes 2026-06-10 P0-2 resolution).
+          hasHistory={Object.keys(byDay).some((k) => (byDay[k] ?? []).length > 0)}
+        />
       )}
       </ReAnimated.View>
 
