@@ -110,7 +110,8 @@ export function PortionStepper({
               style={[
                 s.chip,
                 {
-                  borderColor: active ? accent.primary : colors.border,
+                  // §7 (2026-06-10): tint IS the signal — no accent ring.
+                  borderColor: active ? accent.primarySoft : colors.border,
                   backgroundColor: active ? accent.primarySoft : "transparent",
                 },
               ]}
@@ -131,7 +132,8 @@ const s = StyleSheet.create({
   stepBtn: { width: 44, height: 44, borderRadius: Radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   stepValue: { flex: 1, height: 44, borderWidth: 1, borderRadius: Radius.md, fontSize: 16, fontWeight: "700" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs, marginTop: Spacing.sm },
-  chip: { paddingHorizontal: Spacing.dense, paddingVertical: 8, borderRadius: Radius.sm, borderWidth: 1 },
+  // Chips census (2026-06-10): §7 family — fully round, hairline.
+  chip: { paddingHorizontal: Spacing.dense, paddingVertical: 8, borderRadius: Radius.full, borderWidth: StyleSheet.hairlineWidth },
 });
 
 export default PortionStepper;

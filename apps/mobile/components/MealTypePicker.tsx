@@ -57,8 +57,10 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
               style={[
                 styles.chip,
                 {
-                  borderColor: active ? accent.primary : colors.border,
-                  backgroundColor: active ? accent.primary + "15" : "transparent",
+                  // §7 (2026-06-10): soft tint carries selection — no ring,
+                  // canonical primarySoft fill (was an ad-hoc 8% alpha).
+                  borderColor: active ? accent.primarySoft : colors.border,
+                  backgroundColor: active ? accent.primarySoft : "transparent",
                 },
               ]}
             >
@@ -92,7 +94,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
+    // Chips census (2026-06-10): §7 family — fully round, hairline.
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

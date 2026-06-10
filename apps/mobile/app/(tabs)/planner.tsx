@@ -1623,8 +1623,9 @@ export default function PlannerScreen() {
         dayBtn: {
           flex: 1,
           paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          borderWidth: 1,
+          // Chips census (2026-06-10): option pills join the §7 family.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           alignItems: "center",
         },
@@ -1649,7 +1650,8 @@ export default function PlannerScreen() {
         // a 10% tint fill measures 2.89:1, below WCAG AA — matches the
         // canonical LogSheet slot pill (`text-foreground` on `bg-primary/10`).
         dayBtnActivePrimary: {
-          borderColor: colors.tint,
+          // §7 (2026-06-10): tint IS the signal — no accent ring.
+          borderColor: colors.tint + "1A",
           backgroundColor: colors.tint + "1A",
         },
         // Sloe treatment system (2026-06-08, §7): selected config pill label in

@@ -458,7 +458,8 @@ export function LogSheet({
                           // primary text on the tint is only ~3.34:1 and
                           // would fail WCAG AA 4.5:1 for this 12px label,
                           // whereas foreground clears it comfortably.
-                          borderColor: active ? accent.primary : colors.border,
+                          // §7 (2026-06-10): tint IS the signal — no ring.
+                          borderColor: active ? accent.primarySoft : colors.border,
                           backgroundColor: active
                             ? accent.primarySoft
                             : "transparent",
@@ -1593,8 +1594,10 @@ const styles = StyleSheet.create({
   slotPill: {
     flex: 1,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+    // Chips census (2026-06-10): option chips join the §7 family —
+    // fully round, soft tint carries selection (no accent ring).
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
