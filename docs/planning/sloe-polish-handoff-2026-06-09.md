@@ -114,11 +114,13 @@ specs → build with ui-critic checks) with these constraints:
 - `simctl ui <udid> appearance dark|light` switches the SIM scheme; the app
   preference lives in Settings → Theme (`settings-theme-preference`).
 - CI "E2E (smoke)" runs ALL Playwright specs incl. visual-regression — the
-  test job stays red until queue #6 regenerates baselines.
+  test job stays red until the advisory baselines are regenerated (queue #0
+  follow-up PR, from CI Linux artifacts).
 
-## Pending mirrors (batched, not yet done)
+## Mirrors — DONE 2026-06-10 (do not repeat)
 
-- Notion Decisions log rows for: 2026-06-08 aubergine accent system,
-  2026-06-09 one-card-treatment, 2026-06-09 ring-overflow-brightening-plum.
-- Linear: close/update elevation + dark-mode work under Surface polish;
-  ENG-1002 (mobile type-scale) remains open; consider issues for queue items.
+- Notion Decisions log: 3 rows created (aubergine accent, one-card-treatment,
+  ring-overflow-brightening-plum).
+- Linear: ENG-1003/1004/1005/1006 created + Done with commit evidence;
+  initiative updates posted on Platform foundations + Surface polish.
+  ENG-1002 (mobile type-scale) remains OPEN.
