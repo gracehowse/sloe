@@ -34,6 +34,13 @@ type Props = {
 export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedDateKeys, onSelectDateKey, onOpenCalendar }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  // ENG-1008 parity (2026-06-10): only user-initiated scrolls may write the
+  // selected date back from scroll position. Programmatic `scrollTo` (the
+  // align effect) also fires scroll/scrollend; if layout is mid-flight the
+  // readback can disagree with the intended week and overwrite a correct
+  // calendar/deep-link date (the mobile FlatList-clamp bug, same class).
+  // User intent is detected via wheel/touch/pointer on the scroller.
+  const userScrollRef = useRef(false);
   const [pagerW, setPagerW] = useState(0);
   const { min, max } = useMemo(() => journalRangeBounds(), []);
   const weekStarts = useMemo(() => enumerateWeekStartsInJournalRange(weekStartDay), [weekStartDay]);
@@ -88,6 +95,9 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   }, [weekIdx, pagerW, scrollToWeekIndex, selectedDk]);
 
   const handleScrollEnd = useCallback(() => {
+    // Ignore settles from programmatic scrolls (see userScrollRef above).
+    if (!userScrollRef.current) return;
+    userScrollRef.current = false;
     const el = scrollRef.current;
     if (!el || pagerW <= 0) return;
     const idx = Math.round(el.scrollLeft / pagerW);
@@ -111,9 +121,18 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
         debounce = null;
       }, 120);
     };
+    const markUserScroll = () => {
+      userScrollRef.current = true;
+    };
+    el.addEventListener("wheel", markUserScroll, { passive: true });
+    el.addEventListener("touchstart", markUserScroll, { passive: true });
+    el.addEventListener("pointerdown", markUserScroll, { passive: true });
     el.addEventListener("scrollend", handleScrollEnd);
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      el.removeEventListener("wheel", markUserScroll);
+      el.removeEventListener("touchstart", markUserScroll);
+      el.removeEventListener("pointerdown", markUserScroll);
       el.removeEventListener("scrollend", handleScrollEnd);
       el.removeEventListener("scroll", onScroll);
       if (debounce) clearTimeout(debounce);
