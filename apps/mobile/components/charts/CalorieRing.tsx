@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Dimensions, Pressable, Text, useColorScheme, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
 import Svg, { Circle, G } from "react-native-svg";

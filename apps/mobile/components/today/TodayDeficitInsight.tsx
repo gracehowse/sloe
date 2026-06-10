@@ -1,5 +1,7 @@
 import React from "react";
-import { Text, useColorScheme, View } from "react-native";
+import { Text, View } from "react-native";
+// App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MacroColors, Spacing, Type } from "@/constants/theme";
 import {
   dateKeyFromDate,

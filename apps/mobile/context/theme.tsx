@@ -50,6 +50,10 @@ type ThemeContextValue = {
   accent: typeof Accent;
   /** Win-moment gradient stops — always the clay Sloe brand gradient. */
   winGradient: WinGradient;
+  /** True only inside a mounted <ThemeProvider>. Lets scheme hooks fall back
+   *  to the SYSTEM scheme (instead of the static default below) when read
+   *  outside the provider (boot path, tests without the provider). */
+  isProviderMounted: boolean;
 };
 
 const STORAGE_KEY = "suppr_theme";
@@ -61,6 +65,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   setPreference: () => {},
   accent: Accent,
   winGradient: AccentWinGradient,
+  isProviderMounted: false,
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -120,7 +125,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const winGradient = AccentWinGradient;
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ preference, resolved, colors, setPreference, accent, winGradient }),
+    () => ({ preference, resolved, colors, setPreference, accent, winGradient, isProviderMounted: true }),
     [preference, resolved, colors, setPreference, accent, winGradient],
   );
 
@@ -141,6 +146,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   return useContext(ThemeContext);
+}
+
+/**
+ * THE canonical scheme read for styling (2026-06-09). Returns the APP's
+ * resolved theme — the user's in-app preference (light/dark/auto) resolved
+ * against the system — NOT the raw OS scheme. Components must never style off
+ * react-native's useColorScheme() directly: when the phone is dark but the
+ * app preference is light, raw reads paint dark fragments onto light screens
+ * (Grace, 2026-06-09 — dark toggle/chip/ring-track on a light Today).
+ * Outside a mounted provider (boot, bare tests) falls back to the system
+ * scheme rather than the static context default.
+ */
+export function useResolvedScheme(): ResolvedTheme {
+  const ctx = useContext(ThemeContext);
+  const system = useColorScheme();
+  if (ctx.isProviderMounted) return ctx.resolved;
+  return system === "light" ? "light" : "dark";
 }
 
 /** SCHEME-RESOLVED accent palette (2026-06-09): light → deep plum `#3B2A4D`
