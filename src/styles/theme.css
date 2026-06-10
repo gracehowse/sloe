@@ -39,6 +39,7 @@
    *  `docs/ux/design-system.md`. */
   --space-xs: 0.25rem;    /* 4px  ↔ Spacing.xs   */
   --space-sm: 0.5rem;     /* 8px  ↔ Spacing.sm   */
+  --space-dense: 0.75rem; /* 12px ↔ Spacing.dense — ENG-1012 dense step */
   --space-md: 1rem;       /* 16px ↔ Spacing.md   */
   --space-lg: 1.25rem;    /* 20px ↔ Spacing.lg   */
   --space-xl: 1.5rem;     /* 24px ↔ Spacing.xl   */
@@ -719,6 +720,7 @@
      (renamed from `--spacing-pm-N` 2026-04-28, Next-10 #11). */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
+  --space-dense: 0.75rem;
   --space-md: 1rem;
   --space-lg: 1.25rem;
   --space-xl: 1.5rem;
