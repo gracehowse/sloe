@@ -35,6 +35,16 @@ trackers on function; iOS leads, web in lockstep; everything SEE-verified.
 
 ## Key context
 
+- **Design craft contract adopted (2026-06-09, after handoff was written)** —
+  `docs/decisions/2026-06-09-design-craft-contract.md`. The fleet was upgraded
+  for exactly queue #1's constraints: census-before-verdict + verdict-grade
+  walls are now IN the agents (`_project-context.md` craft contract; visual-qa
+  rebuilt forensic; design-director/ui-critic patched), and write-time UI
+  rules are in root + mobile CLAUDE.md. The fresh-eyes review should lean on
+  the upgraded `visual-qa` six-pass protocol for the spacing-forensics and
+  consistency passes (don't re-specify them ad hoc); the no-anchoring rule
+  (don't feed prior tier verdicts) still applies. ENG-1007 = programmatic
+  spacing+token census gate (build it as the review's measuring instrument).
 - **Reviews/specs persisted**: `docs/ux/reviews/2026-06-09-design-director-review.md`,
   `docs/ux/reviews/2026-06-09-premium-audit-recipe-progress.md`,
   `docs/ux/specs/2026-06-09-skia-ring-cta-map-serif-titles.md`.
