@@ -183,9 +183,10 @@ function slotIcon(s: string): LucideIcon {
   return SLOT_ICON[s] ?? UtensilsCrossed;
 }
 
-function slotColor(s: string): string {
-  const accent = useAccent();
-  return SLOT_COLOR[s] ?? accent.primary;
+// Plain helper — hooks are forbidden here (rules-of-hooks); the caller passes
+// the scheme-resolved accent fallback from its own useAccent().
+function slotColor(s: string, fallback: string): string {
+  return SLOT_COLOR[s] ?? fallback;
 }
 
 function SlotIcon({
@@ -829,7 +830,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const isOpen = !collapsedSlots.has(slot);
           const hasMeals = meals.length > 0;
           const ic = slotIcon(slot);
-          const col = slotColor(slot);
+          const col = slotColor(slot, accent.primary);
           const slotSaved = savedMealsForSlot(savedMeals, slot);
           const hasSaved = slotSaved.length > 0;
           const showSaveRow = meals.length >= 2 && !hasSaved;
