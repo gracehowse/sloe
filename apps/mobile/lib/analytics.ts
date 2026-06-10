@@ -290,6 +290,12 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // Skia hero ring (SPEC 1) — default ON, SAFE for binaries without the
+  // native pod: CalorieRing probes TurboModuleRegistry.get("RNSkiaModule")
+  // (null, never throws) before requiring the module, so old clients
+  // silently keep the SVG layer. Re-enabled 2026-06-10 after the probe
+  // landed (the first default-on predated it and red-boxed Grace's phone).
+  "ring_skia_v1",
   "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",
