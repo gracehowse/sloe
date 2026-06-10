@@ -128,9 +128,10 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
 });
 
 describe("Today card fill — Figma surface.card", () => {
-  it("theme.css --card is #F6F5F2 (not the darker #ECECEA interim)", () => {
+  it("theme.css light material is the §1 inversion: white card on cream ground (2026-06-10)", () => {
     const theme = read("src/styles/theme.css");
-    expect(theme).toMatch(/:root[\s\S]*?--card:\s*#F6F5F2/i);
+    expect(theme).toMatch(/:root[\s\S]*?--background:\s*#FBF8F3/i);
+    expect(theme).toMatch(/:root[\s\S]*?--card:\s*#FFFFFF/i);
     expect(theme).not.toMatch(/--card:\s*#ECECEA/i);
   });
 });

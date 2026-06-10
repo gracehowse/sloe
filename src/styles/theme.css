@@ -68,7 +68,9 @@
    *  are pure white. Mirrors mobile `Colors.light` in
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
-  --background: #FFFFFF;
+  /* Material inversion (2026-06-10 fresh-eyes §1+§2, mirror of mobile
+     theme.ts): cream brand ground + white cards. */
+  --background: #FBF8F3;
   --background-secondary: #F6F5F2;
   --foreground: #221B26;
   --foreground-secondary: #6A6072;
@@ -81,8 +83,8 @@
    *  card titles were the ONLY surface still using clay `text-primary`
    *  (3.06:1 — AA FAIL); this is the parity + contrast fix. */
   --foreground-brand: #3B2A4D;
-  --card: #F6F5F2;
-  --card-elevated: #F6F5F2;
+  --card: #FFFFFF;
+  --card-elevated: #FFFFFF;
   --card-foreground: #221B26;
   --popover: #FFFFFF;
   --popover-foreground: #221B26;

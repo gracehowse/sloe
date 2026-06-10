@@ -24,9 +24,14 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   // another card (inset tiles, rows inside a sheet) stay flat — a card-in-a-card
   // must not double-shadow. This guard pins the page-ground cards to SOFT; the
   // exceptions (macro tiles, hero) are pinned explicitly below.
-  it("light card fill matches Figma surface.card (#F6F5F2)", () => {
-    expect(Colors.light.card).toBe("#F6F5F2");
-    expect(Colors.light.cardElevated).toBe("#F6F5F2");
+  it("light material is the §1 inversion: white cards on the cream brand ground (2026-06-10)", () => {
+    // Fresh-eyes §1+§2: ground #FBF8F3 (the splash/onboarding cream) with
+    // WHITE cards — the old white-ground/cream-card pairing differed by ~3
+    // RGB points and never registered as a system. Supersedes the Figma
+    // 654:2 surface.card cream-fill pin.
+    expect(Colors.light.background).toBe("#FBF8F3");
+    expect(Colors.light.card).toBe("#FFFFFF");
+    expect(Colors.light.cardElevated).toBe("#FFFFFF");
   });
 
   it("useTodayCardElevation (the named flat wrapper, still the hook flat contract) drops shadow and border in light mode", () => {
@@ -68,7 +73,8 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     "components/today/WeeklyCheckinBanner.tsx",
     "components/today/TodayFirstMealEmptyState.tsx",
     "components/today/TodayDashboardMacroBars.tsx",
-    "components/today/WeeklyInsightCard.tsx",
+    // WeeklyInsightCard removed 2026-06-10 — de-carded into a typographic
+    // callout (fresh-eyes §3); pinned separately below.
     "components/HydrationStimulantsCard.tsx",
   ];
 
@@ -110,14 +116,18 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     expect(src).not.toMatch(/borderColor:\s*`\$\{Accent\.primary\}30`/);
   });
 
-  it("WeeklyInsightCard renders both branches as SupprCards (no rogue inline rgba tint)", () => {
+  it("WeeklyInsightCard is a de-carded typographic callout (fresh-eyes §3, 2026-06-10)", () => {
     const src = readFileSync(
       join(ROOT, "components/today/WeeklyInsightCard.tsx"),
       "utf8",
     );
-    // Both the legacy stat-grid AND the Figma narrative branch are SupprCards.
+    // On the §1 inverted material the lilac slab read as the odd muddy box
+    // between white gallery cards — the insight now sits directly on the
+    // cream ground as eyebrow + prose. No card shell, no lilac tone, and
+    // the old hand-rolled tints must not return.
+    expect(src).not.toMatch(/<SupprCard/);
+    expect(src).not.toMatch(/tone="magenta"/);
     expect(src).not.toMatch(/rgba\(237,\s*234,\s*241/);
-    // The deleted hand-rolled bordered card style must not come back.
     expect(src).not.toContain("figmaInsightCard");
   });
 
@@ -138,7 +148,7 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   const TODAY_SUPPR_CARD_SHAPE_SURFACES = [
     "components/today/TodayFirstMealEmptyState.tsx",
     "components/today/TodayDashboardMacroBars.tsx",
-    "components/today/WeeklyInsightCard.tsx",
+    // WeeklyInsightCard removed 2026-06-10 — de-carded (fresh-eyes §3).
   ];
 
   it.each(TODAY_SUPPR_CARD_SHAPE_SURFACES)(

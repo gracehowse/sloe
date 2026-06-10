@@ -4751,23 +4751,24 @@ export default function TrackerScreen() {
               }
             : todayPastDayGreetingLines(selectedDate);
           return (
-          <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.lg }}>
-            <Text
-              testID="today-hero-greeting"
-              style={{ ...Type.title, fontWeight: "500", color: colors.navPrimary, textAlign: "center" }}
-              numberOfLines={2}
-            >
-              {headline}
-            </Text>
-            {subline ? (
-              <Text
-                testID="today-hero-greeting-subline"
-                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.textSecondary, marginTop: 4, textAlign: "center" }}
-                numberOfLines={1}
-              >
-                {subline}
+          // Fresh-eyes §4 (2026-06-10): the centered two-line serif greeting
+          // block spent ~25% of the viewport on header moments. Compacted to
+          // ONE left-aligned sans context line (greeting · date) — the hero
+          // number is the page's display moment now, not the greeting.
+          <View style={{ marginTop: Spacing.xs, marginBottom: Spacing.sm }}>
+            <Text testID="today-hero-greeting" numberOfLines={1}>
+              <Text style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "600", color: colors.text }}>
+                {headline}
               </Text>
-            ) : null}
+              {subline ? (
+                <Text
+                  testID="today-hero-greeting-subline"
+                  style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "400", color: colors.textSecondary }}
+                >
+                  {"  ·  " + subline}
+                </Text>
+              ) : null}
+            </Text>
           </View>
           );
         })() : null}

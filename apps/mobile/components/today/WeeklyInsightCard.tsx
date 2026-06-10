@@ -4,7 +4,6 @@ import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
 import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   weeklyInsightCoachLine,
@@ -182,56 +181,35 @@ export function WeeklyInsightCard({
 
   if (figmaLayout) {
     return (
-      // Flat `SupprCard` slab — same chrome as every resting Today card.
-      // `tone="magenta"` carries the CROSS-SCREEN insight wash (Sloe damson
-      // `rgba(106,75,122,0.10)`), the same lilac language the Progress
-      // THIS WEEK card uses (`PROGRESS_INSIGHT_LILAC_BG` ≈ damson 0.12) — so
-      // "insight = lilac" reads consistently across Today and Progress. The
-      // flat lift drops the border (no rogue hairline) and the old ad-hoc
-      // cooler-lilac inline rgba fill is gone (2026-06-08 flat-slab
-      // unification). To make Today's insight cream-neutral like the rest of
-      // Today instead, change `tone="magenta"` → `tone="neutral"` here AND in
-      // the legacy branch below (one founder decision; see the card report).
-      <SupprCard
-        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        lift="soft"
-        tone="magenta"
-        padding="lg"
+      // Fresh-eyes §3 (2026-06-10): de-carded. On the inverted material the
+      // lilac slab read as the odd muddy box between white gallery cards.
+      // The insight is now a typographic callout sitting directly on the
+      // cream ground — eyebrow + prose, content over chrome.
+      <View
         testID="today-weekly-insight-mobile"
         accessibilityLabel="Weekly insight"
-        innerStyle={styles.figmaInsightRow}
+        style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
       >
-        <View
-          style={[
-            styles.figmaInsightIcon,
-            { borderColor: _borderColor, backgroundColor: _cardBackgroundColor },
-          ]}
-        >
-          <TrendingUp size={18} color={colors.navPrimary} strokeWidth={2} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.figmaInsightTitle, { color: colors.navPrimary }]}>
-            Weekly Insight
-          </Text>
-          <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
-            {proseBody}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+          <TrendingUp size={13} color={accent.primarySolid} strokeWidth={2} />
+          <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
+            WEEKLY INSIGHT
           </Text>
         </View>
-      </SupprCard>
+        <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
+          {proseBody}
+        </Text>
+      </View>
     );
   }
 
   return (
-    // `tone="magenta"` — the cross-screen insight lilac (matches Progress's
-    // THIS WEEK card); flat lift keeps it a borderless slab. Flip to
-    // `tone="neutral"` here + in the figma branch above for cream-neutral.
-    <SupprCard
-      // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-      lift="soft"
-      tone="magenta"
-      padding="lg"
+    // Fresh-eyes §3 (2026-06-10): de-carded typographic callout (see the
+    // figma branch above for the rationale).
+    <View
       testID="today-weekly-insight-mobile"
       accessibilityLabel="Weekly insight"
+      style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
     >
       {/* Accent sparkle overline (frame: `text-clay` sparkle + uppercase;
           flag-aware → damson under Frost). */}
@@ -332,7 +310,7 @@ export function WeeklyInsightCard({
           {weekAvgKcal != null ? " daily average." : ""}
         </Text>
       )}
-    </SupprCard>
+    </View>
   );
 }
 
@@ -390,21 +368,6 @@ const styles = StyleSheet.create({
   },
   summaryLine: {
     ...Type.caption,
-  },
-  figmaInsightRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Spacing.md,
-  },
-  figmaInsightIcon: {
-    marginTop: 4,
-    padding: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  figmaInsightTitle: {
-    ...Type.headline,
-    marginBottom: 4,
   },
   figmaInsightBody: {
     fontSize: 14,

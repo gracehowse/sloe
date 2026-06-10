@@ -115,12 +115,22 @@ function useAnimatedNumber(
 // prototype's weight at the larger size. Capped so it can't get silly on a
 // large device.
 const SCREEN_W = Dimensions.get("window").width;
-const SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
-const STROKE = Math.round(SIZE * 0.05);
-const MACRO_STROKE = Math.max(4, Math.round(SIZE * 0.028));
-const CX = SIZE / 2;
-const R = Math.round(SIZE * 0.44);
-const MACRO_R = [SIZE * 0.368, SIZE * 0.314, SIZE * 0.259];
+const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
+// Fresh-eyes §5 (2026-06-10): the EMPTY-state hero shrinks to ~72% — a
+// giant pale circle was the first thing every new user saw. The ring
+// earns full size with data. All geometry derives from one scale so the
+// prototype's arc ratios hold at either size.
+export function ringGeometry(compact: boolean) {
+  const SIZE = compact ? Math.round(BASE_SIZE * 0.72) : BASE_SIZE;
+  return {
+    SIZE,
+    STROKE: Math.round(SIZE * 0.05),
+    MACRO_STROKE: Math.max(4, Math.round(SIZE * 0.028)),
+    CX: SIZE / 2,
+    R: Math.round(SIZE * 0.44),
+    MACRO_R: [SIZE * 0.368, SIZE * 0.314, SIZE * 0.259],
+  };
+}
 const CIRC = (r: number) => 2 * Math.PI * r;
 
 type DisplayMode = "remaining" | "consumed";
@@ -163,12 +173,17 @@ function MacroRing({
   color,
   trackColor,
   delay,
+  cx,
+  strokeW,
 }: {
   radius: number;
   pct: number;
   color: string;
   trackColor: string;
   delay: number;
+  /** Centre + stroke from the parent's ringGeometry (§5 compact-aware). */
+  cx: number;
+  strokeW: number;
 }) {
   const circ = CIRC(radius);
   const progress = useSharedValue(0);
@@ -208,26 +223,26 @@ function MacroRing({
   return (
     <G>
       <Circle
-        cx={CX}
-        cy={CX}
+        cx={cx}
+        cy={cx}
         r={radius}
         fill="none"
         stroke={trackColor}
-        strokeWidth={MACRO_STROKE}
+        strokeWidth={strokeW}
         opacity={0.4}
       />
       <AnimatedCircle
-        cx={CX}
-        cy={CX}
+        cx={cx}
+        cy={cx}
         r={radius}
         stroke={color}
-        strokeWidth={MACRO_STROKE}
+        strokeWidth={strokeW}
         fill="none"
         strokeDasharray={`${circ}`}
         animatedProps={animatedProps}
         strokeLinecap="round"
         rotation="-90"
-        origin={`${CX},${CX}`}
+        origin={`${cx},${cx}`}
       />
     </G>
   );
@@ -264,6 +279,8 @@ export default function CalorieRing({
   // fall into the calibrating-empty state until a profile target is
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
+  // §5: empty hero renders at 72% — see ringGeometry above.
+  const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(isEmpty);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   /** Calorie ring colour. SLOE redesign (2026-06-03, `01 · Today` frame +
@@ -560,6 +577,8 @@ export default function CalorieRing({
           {!isEmpty && expanded ? (
             <>
               <MacroRing
+                cx={CX}
+                strokeW={MACRO_STROKE}
                 radius={MACRO_R[0]}
                 pct={proteinPct}
                 color={MacroColors.protein}
@@ -567,6 +586,8 @@ export default function CalorieRing({
                 delay={100}
               />
               <MacroRing
+                cx={CX}
+                strokeW={MACRO_STROKE}
                 radius={MACRO_R[1]}
                 pct={carbsPct}
                 color={MacroColors.carbs}
@@ -574,6 +595,8 @@ export default function CalorieRing({
                 delay={200}
               />
               <MacroRing
+                cx={CX}
+                strokeW={MACRO_STROKE}
                 radius={MACRO_R[2]}
                 pct={fatPct}
                 color={MacroColors.fat}

@@ -517,7 +517,10 @@ export const Type = {
    *  2026-06-04 (Grace measured-spec pass) so the "Room for dinner…" line
    *  reads as the editorial plum nudge it is in the mock, not a grey caption.
    *  Sole consumer: `TodayDeficitInsight.tsx` (colour set there to plum). */
-  coach:   { fontFamily: FontFamily.serifItalic, fontSize: 17, lineHeight: 23, letterSpacing: 0 },
+  // Fresh-eyes §6 (2026-06-10): de-italicised — the serif-italic nudge read
+  // as quaint at small sizes and cream+serif-italic is the documented
+  // AI-default tell. The COPY stays warm; the dressing goes calm sans.
+  coach:   { fontFamily: FontFamily.sansRegular, fontSize: 14, lineHeight: 20, letterSpacing: 0 },
   /** Macro tile + calorie ring centre value — keep in sync. Inter (numerals
    *  stay in the sans for tight tabular alignment on small tiles + inline
    *  macro callouts like the saved-meal portion + ingredient sheets, which
