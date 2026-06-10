@@ -248,8 +248,10 @@ describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () =
     // The page is cream, so the card is an UNCONDITIONAL white slab (the `soft`
     // variant carries the lift); the dark tonal-lift branch resolves via `liftBg`.
     expect(SRC).toMatch(/const cardElevation = useCardElevation\(\{ variant: "soft" \}\);/);
-    // White fill on light (`colors.background`), tonal lift on dark (`liftBg`).
-    expect(SRC).toMatch(/backgroundColor:\s*cardElevation\.liftBg\s*\?\?\s*colors\.background/);
+    // §1 inversion (2026-06-10): colors.card IS white now — the old
+    // `colors.background` fill went cream-on-cream when the ground
+    // inverted, so the card reads the canonical card token.
+    expect(SRC).toMatch(/backgroundColor:\s*cardElevation\.liftBg\s*\?\?\s*colors\.card/);
     // Always-on hairline (cardBorder) — the slab is delineated even before the
     // shadow renders — plus the soft shadow spread.
     expect(SRC).toMatch(/borderColor:\s*colors\.cardBorder/);
