@@ -262,10 +262,12 @@ export function TodayDashboardMacroTiles({
             })}
           >
           <SupprCard
-            // One-card decision (2026-06-09): EVERY page-ground card lifts
-            // soft — these tiles were the last flat residue next to the soft
-            // hero ring ("the ring card is raised, the macro cards are flat").
-            lift="soft"
+            // Tile-class rule (2026-06-10 A/B, docs/decisions/2026-06-10-
+            // sheet-radius-and-nested-inset-standard.md amendment): small
+            // stat TILES stay flat-tonal; soft lift is the CARD class's.
+            // Rendered A/B (tile-ab-2026-06-10/A3 vs B3): four mini-shadows
+            // read as noise and flatten the hero's anchor lift.
+            lift="flat"
             size="tile"
             padding="md"
             innerStyle={{ minHeight: 96, justifyContent: "space-between" }}
