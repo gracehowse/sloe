@@ -1997,10 +1997,15 @@ export function FoodSearchPanel({
                   aria-selected={isActive}
                   data-testid={`food-search-category-${cat}`}
                   onClick={() => setActiveCategory(cat)}
-                  className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition-colors ${
+                  // Chip grammar (web parity 2026-06-10, ENG-1022): filter
+                  // chips are `rounded-full`; selected = `bg-primary-soft` fill
+                  // + `primary-solid` label + `font-semibold`, NO ring/border;
+                  // unselected = quiet `bg-card` + muted label, NO border. Was
+                  // `rounded-xl border` + a solid `bg-primary` selected slab.
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                     isActive
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:border-border/80"
+                      ? "bg-primary-soft text-primary-solid font-semibold"
+                      : "bg-card text-muted-foreground font-medium hover:bg-muted/60"
                   }`}
                   style={
                     !isActive && elevated

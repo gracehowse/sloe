@@ -816,11 +816,16 @@ export const MealPlanner = memo(function MealPlanner({
                 }
                 title="Click to switch · double-click to rename"
                 data-testid={`planner-slot-chip-${s.id}`}
+                // Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+                // `bg-primary-soft` fill + `primary-solid` label +
+                // `font-semibold`, NO ring/border; unselected = quiet `bg-card`
+                // + muted label, NO border. Was `border-primary bg-primary/10`
+                // selected / `border-border` unselected.
                 className={[
-                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
+                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   active
-                    ? "border-primary bg-primary/10 text-primary-solid"
-                    : "border-border text-foreground hover:bg-muted/60",
+                    ? "bg-primary-soft text-primary-solid font-semibold"
+                    : "bg-card text-muted-foreground font-medium hover:bg-muted/60",
                 ].join(" ")}
               >
                 {s.name}

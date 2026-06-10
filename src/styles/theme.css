@@ -603,6 +603,13 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-solid: var(--primary-solid);
+  /* Aubergine soft-tint wash — the canonical selected-chip / segmented fill
+     (web parity 2026-06-10, ENG-1022). The `--primary-soft` CSS var existed
+     but was never mapped into the `@theme` block, so `bg-primary-soft`
+     generated NO utility and rendered transparent (latent bug — DayStrip
+     already used the class). Mapping it here makes `bg-primary-soft` /
+     `text-primary-soft` real Tailwind utilities, matching `--color-primary-solid`. */
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

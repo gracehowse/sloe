@@ -269,13 +269,17 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   data-testid={`library-category-${f.id}`}
                   onClick={() => setCategory(f.id)}
                   className={[
-                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] font-medium transition-all whitespace-nowrap",
-                    // Selected = aubergine SOFT-TINT fill + aubergine
-                    // `primary-solid` label (Sloe treatment §7), not a solid
-                    // accent slab. Unselected stays quiet off-white card.
+                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                    // Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+                    // `bg-primary-soft` fill + `primary-solid` label +
+                    // `font-semibold`, NO ring/border; unselected = quiet
+                    // `bg-card` + muted label, NO border. The old
+                    // `border border-primary-solid` selected ring + the
+                    // unselected `border border-border` were the chip drift.
                     active
-                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
-                      : "bg-card border border-border text-muted-foreground hover:bg-muted/60",
+                      ? "bg-primary-soft text-primary-solid font-semibold"
+                      : "bg-card text-muted-foreground font-medium hover:bg-muted/60",
                   ].join(" ")}
                   aria-pressed={active}
                   aria-label={`Category: ${f.label}`}

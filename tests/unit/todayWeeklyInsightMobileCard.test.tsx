@@ -3,21 +3,21 @@
  * TodayWeeklyInsightMobileCard (web) — below-meals weekly insight on
  * mobile-web; parity with `apps/mobile/components/today/WeeklyInsightCard.tsx`.
  *
- * 2026-06-08 flat-slab unification (Grace flagged the below-hero Today cards
- * as inconsistent across web + mobile): the Figma narrative branch used to be
- * a hand-rolled `<div class="rounded-xl border border-border bg-[…frost-mist…]">`
- * — a bordered card with a COOLER ad-hoc lilac that didn't match the
- * cross-screen insight wash. Both branches are now soft `SupprCard` slabs
- * (`elevation="card"`, one-treatment Grace 2026-06-09) carrying the CANONICAL insight lilac
- * (`PROGRESS_INSIGHT_LILAC_STYLE` = `var(--slot-dinner-soft)`, the exact wash
- * the Progress THIS WEEK card uses) — mirroring mobile `tone="magenta"`.
+ * §3 de-card (web parity 2026-06-10, ENG-1022): the card was a soft
+ * `SupprCard` slab carrying the cross-screen insight lilac
+ * (`PROGRESS_INSIGHT_LILAC_STYLE`). On the inverted §1 material (cream ground /
+ * white cards) the filled lilac slab read as the odd muddy box between the
+ * white gallery cards — the same finding that drove the mobile de-card. Both
+ * branches now render a card-less typographic callout sitting directly on the
+ * page ground: an uppercase eyebrow row (TrendingUp + "WEEKLY INSIGHT" in
+ * `text-primary-solid`) + a prose line in `text-muted-foreground`.
  *
  * Pinned here (both flag branches):
- *   1. The card is a soft `SupprCard` slab — `.card-slab` +
- *      `data-soft-elevation` — never the old bordered `rounded-xl border` div.
- *   2. It carries the canonical insight-lilac background var (matches
- *      Progress), not the cooler `--frost-mist` ad-hoc fill.
- *   3. Every wired figure still renders (the re-chrome is presentation-only).
+ *   1. No card chrome — the host is not a `.card-slab` / `data-soft-elevation`
+ *      node, and it carries no `--slot-dinner-soft` lilac background.
+ *   2. The eyebrow reads "Weekly insight" in the primary-solid accent.
+ *   3. The wired derived prose still renders (the de-chrome is presentation-
+ *      only — every figure stays derived from log data).
  *   4. The flag gate is preserved (nothing renders when both layout flags off).
  */
 import * as React from "react";
@@ -43,12 +43,12 @@ const base = {
   dailyKcalTarget: 2000,
 };
 
-/** The flat `SupprCard` host node — both branches set `data-testid`. */
-function insightCard(container: HTMLElement): HTMLElement {
+/** The de-carded callout host node — both branches set `data-testid`. */
+function insightCallout(container: HTMLElement): HTMLElement {
   const el = container.querySelector<HTMLElement>(
     '[data-testid="today-weekly-insight-mobile"]',
   );
-  if (!el) throw new Error("insight card not rendered");
+  if (!el) throw new Error("insight callout not rendered");
   return el;
 }
 
@@ -72,35 +72,31 @@ describe.each([
     impl: (flag: string) => flag !== "today_meals_figma_654",
   },
 ])("TodayWeeklyInsightMobileCard (web) — $label", ({ impl }) => {
-  it("renders a soft SupprCard slab, never the old bordered figma div", () => {
+  it("renders a card-less typographic callout, never the old lilac slab", () => {
     flagMock.mockImplementation(impl);
     const { container } = render(<TodayWeeklyInsightMobileCard {...base} />);
-    const card = insightCard(container);
-    // Soft lift — one-treatment (Grace 2026-06-09): page-ground Today cards
-    // carry the `.card-slab` soft elevation, in parity with the flipped
-    // mobile twin (WeeklyInsightCard lift="soft").
-    expect(card.className).toContain("card-slab");
-    expect(card.className).not.toContain("card-slab-flat");
-    expect(card).toHaveAttribute("data-soft-elevation", "true");
-    // The deleted hand-rolled bordered figma div must not come back.
-    expect(card.className).not.toMatch(/\brounded-xl\b/);
-    expect(card.className).not.toMatch(/\bborder-border\b/);
+    const callout = insightCallout(container);
+    // §3 de-card: the callout sits on the page ground — no card elevation,
+    // no lilac wash. The deleted carded treatment must not come back.
+    expect(callout.className).not.toContain("card-slab");
+    expect(callout).not.toHaveAttribute("data-soft-elevation");
+    expect(callout.style.background).not.toContain("--slot-dinner-soft");
+    // Mobile-web only — the desktop right rail owns the insight on `md+`.
+    expect(callout.className).toContain("md:hidden");
   });
 
-  it("carries the canonical insight lilac (matches Progress), not frost-mist", () => {
-    flagMock.mockImplementation(impl);
-    const { container } = render(<TodayWeeklyInsightMobileCard {...base} />);
-    const card = insightCard(container);
-    // `PROGRESS_INSIGHT_LILAC_STYLE.background = var(--slot-dinner-soft)`.
-    expect(card.style.background).toContain("--slot-dinner-soft");
-    // The old cooler ad-hoc fill is gone from the card surface.
-    expect(card.className).not.toContain("frost-mist");
-  });
-
-  it("renders the wired derived content", () => {
+  it("renders the primary-solid 'Weekly insight' eyebrow", () => {
     flagMock.mockImplementation(impl);
     const { getByText } = render(<TodayWeeklyInsightMobileCard {...base} />);
-    // 3 of 4 logged days on target → the coach line shows in both branches.
+    const eyebrow = getByText("Weekly insight");
+    expect(eyebrow.className).toContain("text-primary-solid");
+    expect(eyebrow.className).toContain("uppercase");
+  });
+
+  it("renders the wired derived prose", () => {
+    flagMock.mockImplementation(impl);
+    const { getByText } = render(<TodayWeeklyInsightMobileCard {...base} />);
+    // 3 of 4 logged days on target → the coach line is the prose body.
     expect(getByText("3 of 4 days landed on target — nice.")).toBeTruthy();
   });
 });

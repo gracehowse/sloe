@@ -450,11 +450,17 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           ) : null}
         </div>
 
-        {/* Category filter pills — ENG-921 / Figma `528:2`. Clay-fill
-            active, cream-card + border inactive. "Following" leads as a
-            secondary feed-scope toggle (wired follow-graph feature),
-            then the shared category set. Mobile parity:
-            `apps/mobile/app/(tabs)/discover.tsx`. */}
+        {/* Category filter pills — ENG-921 / Figma `528:2`. "Following"
+            leads as a secondary feed-scope toggle (wired follow-graph
+            feature), then the shared category set. Mobile parity:
+            `apps/mobile/app/(tabs)/discover.tsx`.
+
+            Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+            `bg-primary-soft` fill + `primary-solid` label + `font-semibold`,
+            NO selected ring/border; unselected = quiet `bg-card` + muted
+            label, NO border. The old `border border-primary-solid` selected
+            ring and the unselected `border border-border` were the chip
+            drift this pass converges. */}
         <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">
           <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <button
@@ -465,10 +471,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 setFeedScope("following");
                 setCategory("all");
               }}
-              className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
+              className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 feedScope === "following"
-                  ? "bg-primary/10 text-primary-solid border border-primary-solid"
-                  : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
+                  ? "bg-primary-soft text-primary-solid font-semibold"
+                  : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
               }`}
               aria-pressed={feedScope === "following"}
             >
@@ -485,12 +491,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     setFeedScope("forYou");
                     setCategory(f.id);
                   }}
-                  className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-200 ${
-                    // Selected = aubergine SOFT-TINT + aubergine `primary-solid`
-                    // label (Sloe treatment §7), not a solid accent slab.
+                  className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                     isActive
-                      ? "bg-primary/10 text-primary-solid border border-primary-solid"
-                      : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
+                      ? "bg-primary-soft text-primary-solid font-semibold"
+                      : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
                   }`}
                   aria-pressed={isActive}
                   aria-label={`Category: ${f.label}`}

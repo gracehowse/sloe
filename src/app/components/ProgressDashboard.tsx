@@ -1081,11 +1081,13 @@ function ProgressDashboardContent() {
           {(["7d", "30d", "90d", "all"] as const).map((k) => (
             <span
               key={k}
+              // Skeleton must mirror the live range picker exactly (chip
+              // grammar, web parity 2026-06-10, ENG-1022).
               className={[
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium text-center border",
+                "flex-1 rounded-full py-1.5 text-[13px] text-center",
                 k === range
-                  ? "bg-primary/10 border-primary-solid text-primary-solid"
-                  : "bg-card border-border text-muted-foreground",
+                  ? "bg-primary-soft text-primary-solid font-semibold"
+                  : "bg-card text-muted-foreground font-medium",
               ].join(" ")}
             >
               {k === "all" ? "All" : k}
@@ -1163,14 +1165,15 @@ function ProgressDashboardContent() {
               data-testid={`progress-range-pill-${k}`}
               onClick={() => setRange(k)}
               className={[
-                // Sloe treatment system (2026-06-08, §7): selected range pill =
-                // aubergine soft-tint fill + primarySolid border/label (was a
-                // solid plum fill + white text). Mirrors mobile + rations the
-                // accent — the fill is reserved for the FAB + conversion CTAs.
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-colors border",
+                // Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+                // `bg-primary-soft` fill + `primary-solid` label +
+                // `font-semibold`, NO ring/border; unselected = quiet `bg-card`
+                // + muted label, NO border. Was `bg-primary/10` +
+                // `border-primary-solid` selected / `border-border` unselected.
+                "flex-1 rounded-full py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                 active
-                  ? "bg-primary/10 border-primary-solid text-primary-solid"
-                  : "bg-card border-border text-muted-foreground hover:text-foreground",
+                  ? "bg-primary-soft text-primary-solid font-semibold"
+                  : "bg-card text-muted-foreground font-medium hover:text-foreground",
               ].join(" ")}
             >
               {label}
@@ -1361,9 +1364,10 @@ function ProgressDashboardContent() {
                     data-testid={`progress-weight-view-${v}`}
                     onClick={() => setWeightView(v)}
                     className={[
-                      // Sloe treatment §8: active segment = white lift +
-                      // primarySolid label (was warm-ink text).
-                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors",
+                      // Segmented grammar (treatment §8): active thumb = white
+                      // `bg-card` lift + `primary-solid` label + `shadow-sm`.
+                      // focus-visible added (web parity 2026-06-10, ENG-1022).
+                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                       active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
                     ].join(" ")}
                   >

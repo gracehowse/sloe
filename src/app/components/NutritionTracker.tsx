@@ -2307,22 +2307,25 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
         >
       {viewMode === "day" ? (
-        <div className="text-center mb-5 mt-1">
-          <h2
-            data-testid="today-hero-greeting"
-            className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-none tracking-tight text-foreground-brand"
-          >
+        // Fresh-eyes §4 (web parity 2026-06-10, ENG-1022): the centred two-line
+        // serif greeting block spent ~25% of the header viewport on a non-action
+        // moment. Compacted to ONE left-aligned sans context line
+        // (greeting · date) — parity with mobile `today-hero-greeting`
+        // (apps/mobile/app/(tabs)/index.tsx). The ring number is the page's
+        // display moment now, not the greeting.
+        <p data-testid="today-hero-greeting" className="mt-1 text-sm">
+          <span className="font-semibold text-foreground">
             {sloceHeroGreeting.headline}
-          </h2>
+          </span>
           {sloceHeroGreeting.subline ? (
-            <p
+            <span
               data-testid="today-hero-greeting-subline"
-              className="text-[13px] text-foreground-secondary mt-1"
+              className="text-foreground-secondary"
             >
-              {sloceHeroGreeting.subline}
-            </p>
+              {"  ·  " + sloceHeroGreeting.subline}
+            </span>
           ) : null}
-        </div>
+        </p>
       ) : null}
 
       <TodayDateHeader
