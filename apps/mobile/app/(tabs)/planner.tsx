@@ -153,6 +153,7 @@ import {
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
+import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
@@ -859,6 +860,15 @@ export default function PlannerScreen() {
   // Long-press a meal row → action sheet → "Move to another slot…" opens
   // `MoveMealSheet` with `moveSource` set to the pressed cell.
   const [moveSheetOpen, setMoveSheetOpen] = useState(false);
+  // ENG-1011 — SwapMealSheet state (null = closed). `onPick` captures the
+  // fit-ranked pool closure exactly as the old Alert.alert onPress did.
+  const [swapSheet, setSwapSheet] = useState<{
+    slotName: string;
+    dayLabel: string;
+    targetKcal: number;
+    candidates: SwapCandidate[];
+    onPick: (recipeId: string) => void;
+  } | null>(null);
   const [moveSource, setMoveSource] = useState<{ day: number; slotIndex: number } | null>(null);
 
   // P2-40 (TestFlight `APU2FBCjLALmugeCLmQ4Ii0`, 2026-04-25):
@@ -1044,8 +1054,17 @@ export default function PlannerScreen() {
           carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
         }
       : null;
+    // ENG-1011 follow-on (2026-06-10): split the day target across the
+    // day's ACTUAL slots and take this meal's share. The old call passed a
+    // single-slot array — `slotMacroTargets` normalises weights over the
+    // slots it's given, so one slot received 100% of the day (the swap
+    // picker showed "target ~1,252 kcal" for a lunch and ranked candidates
+    // against the day total — visible in the old Alert subtitle too).
+    const daySlotNames = (plan?.[dayIndex]?.meals ?? []).map((m) => m.name);
     const slotMacro = plannerTargets
-      ? slotMacroTargets([canonicalSlot], plannerTargets)[0]!
+      ? (daySlotNames.length > mealIndex
+          ? slotMacroTargets(daySlotNames, plannerTargets)[mealIndex]!
+          : slotMacroTargets([canonicalSlot], plannerTargets)[0]!)
       : { calories: 400, protein: 30, carbs: 45, fat: 15, fiber: 0 };
     const sorted = [...fits].sort(
       (a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro),
@@ -1059,25 +1078,31 @@ export default function PlannerScreen() {
     // tag and a clearer title so the action reads as "pick from your
     // library" rather than just "swap".
     const savedSet = new Set(savedRecipes.map((r) => r.id));
-    const options = sorted.slice(0, 10).map(
-      (r) => `${savedSet.has(r.id) ? "★ " : ""}${r.title} (${r.calories} kcal)`,
-    );
-    options.push("Cancel");
-
-    const savedCount = sorted.slice(0, 10).filter((r) => savedSet.has(r.id)).length;
-    const subtitle =
-      savedCount > 0
-        ? `★ from your library · Target ~${Math.round(slotTarget)} kcal`
-        : `Target: ~${Math.round(slotTarget)} kcal for this slot`;
-
-    Alert.alert(
-      `Pick recipe for ${slotName}`,
-      subtitle,
-      options.map((label, idx) => ({
-        text: label,
-        style: idx === options.length - 1 ? "cancel" as const : "default" as const,
-        onPress: idx === options.length - 1 ? undefined : () => {
-          const picked = sorted[idx];
+    // ENG-1011 (2026-06-10, fresh-eyes P0 class B): SwapMealSheet — the
+    // MoveMealSheet chassis with photo + kcal + protein per candidate, a
+    // ★ Library tag (P1-22 intent preserved), and Δ-vs-target context —
+    // replaces the native Alert.alert pill stack (no photos, no macro
+    // context, no haptics). The pick body below is UNCHANGED: trial
+    // portion-refit + over-target confirm + doSwap.
+    const candidates: SwapCandidate[] = sorted.slice(0, 10).map((r) => ({
+      id: r.id,
+      title: r.title,
+      calories: Math.round(r.calories ?? 0),
+      proteinG: Math.round((r as { protein?: number }).protein ?? 0),
+      image: (r as { image?: string | null }).image ?? null,
+      isSaved: savedSet.has(r.id),
+    }));
+    const swapDayLabel = (() => {
+      const cal = planCalendarDateForIndex(dayIndex, startOffset);
+      return WEEKDAY_LONG[cal.getDay()] ?? `Day ${dayIndex + 1}`;
+    })();
+    setSwapSheet({
+      slotName,
+      dayLabel: swapDayLabel,
+      targetKcal: Math.round(slotTarget),
+      candidates,
+      onPick: (recipeId: string) => {
+          const picked = sorted.find((r) => r.id === recipeId);
           if (!picked || !plan || !plannerTargets) return;
 
           const currentDay = plan[dayIndex];
@@ -1198,9 +1223,8 @@ export default function PlannerScreen() {
             doSwap();
           }
         },
-      })),
-    );
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool]);
+    });
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset]);
 
   // ENG-820 (Plan win-moment, Redesign — Design Direction 2026): one flag gates
   // the whole Plan win layer — the state-aware headline tone + pulse, the 7/7
@@ -4504,6 +4528,21 @@ export default function PlannerScreen() {
           handleMove(moveSource, to);
           setMoveSheetOpen(false);
           setMoveSource(null);
+        }}
+      />
+      <SwapMealSheet
+        visible={swapSheet != null}
+        onClose={() => setSwapSheet(null)}
+        slotName={swapSheet?.slotName ?? ""}
+        dayLabel={swapSheet?.dayLabel ?? ""}
+        targetKcal={swapSheet?.targetKcal ?? 0}
+        candidates={swapSheet?.candidates ?? []}
+        onPick={(id) => {
+          const pick = swapSheet?.onPick;
+          // Close before running the pick — the over-target confirm (a
+          // legitimate Alert) must present over the planner, not the sheet.
+          setSwapSheet(null);
+          pick?.(id);
         }}
       />
     </View>
