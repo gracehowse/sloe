@@ -177,6 +177,8 @@ Then **Read every PNG** — you see by opening images, not by reading the YAML t
 
 Before judging, enumerate the **full** surface inventory (the mobile tour manifest above + every web route + the key modals/sheets/empty/error/loading states) and mark each: ✅ captured-and-read / ⚠️ stale / ❌ uncovered. You may only call something "the whole wall" once the ledger is complete. A partial wall reviewed as if whole is the exact "silent cap" failure CLAUDE.md bans — declare the gaps loudly. Report the ledger as section 0 of your output.
 
+**Verdict-grade walls** (per the Design craft contract in `_project-context.md`): a tier verdict additionally requires scrolled states, the key sheets/modals, dark mode, and a populated account in the wall. Top-of-screen captures of a sparse account produced a disputed "Premium" call on 2026-06-09 — that wall supports findings, never a tier.
+
 ### Guard against phantom findings (NON-NEGOTIABLE)
 
 A capture is only truth if the bundle that produced it matches `HEAD`. Per `feedback_visual_sweep_stale_bundle` (a stale iOS bundle once produced a P1 phantom, ENG-769):
@@ -224,6 +226,8 @@ Then your colour findings cite counts and surfaces, and the fix is "collapse the
 ### 3. Cross-surface consistency
 Build a consistency matrix across the canonical surfaces. For each design primitive — corner radius, card elevation, button shape/height, type scale, icon set (must be the exact prototype glyphs, per `feedback_prototype_icons_exact`, lucide-react-native on mobile), spacing unit, divider pattern — is it the **same everywhere it should be**? Flag every drift. Separate true drift from documented intentional divergence (STEP ZERO).
 
+**Census the primitives the same way you census the palette** (see lens 2): grep every spacing/radius/type literal across the surfaces and diff against the canonical scales (Spacing 4/8/16/20/24/32/40, Radius 4/6/8/12, the `Type` ramp — Design craft contract). Delegate the value-level sweep to `visual-qa` (its six-pass forensic protocol) when the wall is large — but the matrix you publish must be backed by the census, not by eyeballing thumbnails. Apply the **near-duplicate rule**: two subtly-different renderings of the same element class is always a finding — identical, or deliberately different and documented.
+
 ### 4. Material & depth
 This is where "cheap" and "flat" live. Look for:
 - Default/system shadows, flat fills where the rest of the product has depth, stock-component tells, hairline borders doing a shadow's job.
@@ -267,6 +271,8 @@ This is the layer that makes people *feel* the app and come back.
 - Sanding off a real Suppr differentiator to make screens "match."
 - Filing findings from a capture you never confirmed was built from `HEAD`.
 - Treating haptics/motion as garnish instead of as the engagement lever they are.
+- Issuing a tier verdict from a non-verdict-grade wall (top-of-screen, light-only, sparse account) or without the censuses attached.
+- Compressing instances into a narrative so early that the value-level data is never collected — root-cause in the FIX, but the census still gets taken.
 
 ---
 
@@ -298,6 +304,8 @@ Numbered, ranked by leverage (how much of the product each unifies × first-impr
 
 **8. Scorecard (stable, for run-over-run tracking)**
 A tier per lens so milestone runs are comparable and progress is visible, not vibes. Keep the scale fixed every run: Flagship / Premium / Good / Generic / Prototype / Cheap.
+
+**Census before verdict:** the scorecard is only valid if the consistency matrix and the value-level censuses (palette + spacing + radius + type) are attached and the wall is verdict-grade (scrolled, sheets, dark, populated). If they aren't, output findings and mark the scorecard **withheld — census incomplete**. A narrative tier with no census is exactly how "Premium, knocking on Flagship" coexisted with the spacing drift Grace then found by eye.
 
 | Lens | Tier | One-line why |
 |---|---|---|

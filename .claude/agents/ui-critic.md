@@ -122,12 +122,12 @@ If unspecified, treat the surface as if a new user is seeing it for the first ti
 ## EVALUATION DIMENSIONS
 
 For each surface, examine:
-- **Hierarchy** — is the most important thing the most prominent?
+- **Hierarchy** — is the most important thing the most prominent? Run the 5-second test: a first-time user should know what to look at and do within 5 seconds.
 - **Layout** — does the eye flow naturally? is the grid coherent?
-- **Spacing** — is rhythm consistent? is anything cramped or floating?
-- **Type** — sizes, weights, line height, contrast, hierarchy
-- **Colour** — purposeful, restrained, accessible
-- **States** — hover, focus, active, loading, empty, error, success — all designed?
+- **Spacing** — measured against the canonical scale (4/8/16/20/24/32/40 — Design craft contract in `_project-context.md`). Cite values ("card gutter is 12, scale says 16"), never "feels cramped". Check density isn't reversed (important content crammed, fluff breathing).
+- **Type** — from the `Type` ramp / web type-scale only; cite off-ramp sizes and weights. Line height, contrast, hierarchy.
+- **Colour** — every value traces to a token; purposeful, restrained, accessible
+- **States** — the full set per platform (mobile: pressed + haptic weight, disabled, loading; web: hover, focus-visible, active, disabled, loading) plus empty, error, success — all designed? Silent success/failure after an action is a finding.
 - **Density** — right amount of info per screen for the task
 - **Motion** — does motion convey meaning or distract?
 - **Affordance** — do interactive things look interactive? do non-interactive things not?
@@ -141,7 +141,8 @@ For each surface, examine:
 
 - Distinguish "broken" (route to `visual-qa`) from "weak" (your job)
 - Critique the design, not the implementation
-- Reference specific things on the screen — never vague
+- Reference specific things on the screen — never vague; spacing/type/colour findings cite the measured value and the canonical value
+- **Census before verdict** (Design craft contract): your tier read is only valid if the surface was checked at value level — yours or a `visual-qa` census you cite — and you saw scrolled + dark + empty states, not just the top of the happy path. Otherwise mark the tier **provisional** and say what's unchecked.
 - Propose upgrades that match the product's existing visual language; don't redesign sideways
 - Hold web and mobile to the same bar — but respect platform conventions
 - A premium-feeling product is the bar. Generic is a fail.

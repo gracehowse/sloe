@@ -44,6 +44,35 @@ Then commit to one recommendation — don't hand back a menu.
 - No accidental divergence between platforms
 - **No screen file over 400 lines.** If a component grows past 400 lines, extract a `use<Screen>()` hook or break child components into their own files. The 3,400-line `(tabs)/index.tsx` and 2,671-line `NutritionTracker.tsx` are legacy — every new touch should move toward the 400-line target, not away from it. (ENG-621)
 
+## UI write discipline — non-negotiable
+
+Design drift is prevented at write time, not caught in review. Review sweeps
+kept passing surfaces Grace then faulted for spacing/consistency because the
+rules only existed in review agents — nobody writing UI code had them. They
+apply to EVERY line of UI code, whoever writes it (Claude or Cursor). Full
+contract: "Design craft contract" in `.claude/agents/_project-context.md`.
+
+- **Tokens only.** Colour, spacing, radius, type, and shadow values come from
+  `apps/mobile/constants/theme.ts` (mobile) / `src/styles/theme.css` + the
+  Tailwind theme (web). No literal hexes, no off-scale numbers. If the value
+  you need doesn't exist, add the token first, then use it.
+- **Spacing snaps to the scale:** 4 / 8 / 16 / 20 / 24 / 32 / 40. An 18px
+  padding or 10px gap is a bug even if it looks fine.
+- **Radius snaps to:** 4 / 6 / 8 / 12 / full.
+- **Type comes from the ramp** (`Type` on mobile; type-scale-gated classes on
+  web) — no ad-hoc font sizes or weights.
+- **States ship with the element, not as polish.** Interactive = pressed
+  (mobile, via `PressableScale` with the right `haptic` weight) / hover +
+  `:focus-visible` + active (web), plus disabled, plus loading on async
+  commits (disable + progress — no double-submit, no silent success/failure).
+- **One filled CTA per screen** (FAB + conversion surfaces excepted — see the
+  2026-06-09 CTA decision). Secondary = outline, tertiary = ghost.
+- **Elevation per the one-card decision:** page-ground cards soft lift,
+  nested cards flat — one treatment per surface.
+- **Same element, same treatment.** Before styling a chip/pill/row/header,
+  check how the nearest existing sibling renders it and match exactly — or
+  document why this one is deliberately different.
+
 ## Required workflow
 For any meaningful feature, fix, or change:
 1. Audit affected area
