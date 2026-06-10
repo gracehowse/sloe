@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { DevSettings, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   clearForcedFlags,
@@ -66,6 +67,7 @@ function stateOf(map: Record<string, boolean>, flag: string): TriState {
 }
 
 export function DevFlagOverrides() {
+  const accent = useAccent();
   const colors = useThemeColors();
   const [map, setMap] = useState<Record<string, boolean>>(() => getForcedFlags());
   const [customFlag, setCustomFlag] = useState("");
@@ -156,10 +158,10 @@ export function DevFlagOverrides() {
             paddingHorizontal: Spacing.md,
             paddingVertical: Spacing.xs,
             borderRadius: Radius.md,
-            backgroundColor: customFlag.trim() ? Accent.primary : colors.border,
+            backgroundColor: customFlag.trim() ? accent.primary : colors.border,
           }}
         >
-          <Text style={{ ...Type.body, fontWeight: "700", color: Accent.primaryForeground }}>
+          <Text style={{ ...Type.body, fontWeight: "700", color: accent.primaryForeground }}>
             Force ON
           </Text>
         </Pressable>
@@ -213,6 +215,7 @@ function FlagRow({
   state: TriState;
   onChange: (next: TriState) => void;
 }) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const options: TriState[] = ["auto", "off", "on"];
   return (
@@ -242,7 +245,7 @@ function FlagRow({
         {options.map((opt) => {
           const active = state === opt;
           const tint =
-            opt === "on" ? Accent.success : opt === "off" ? Accent.destructive : Accent.primary;
+            opt === "on" ? Accent.success : opt === "off" ? Accent.destructive : accent.primary;
           return (
             <Pressable
               key={opt}

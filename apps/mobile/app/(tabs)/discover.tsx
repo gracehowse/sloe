@@ -24,6 +24,7 @@ import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "luci
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
@@ -145,6 +146,7 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
 }
 
 export default function DiscoverScreen() {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
@@ -383,7 +385,7 @@ export default function DiscoverScreen() {
   });
 
   const t = {
-    accent: Accent.primary,
+    accent: accent.primary,
     green: Accent.success,
     amber: Accent.warning,
     protein: MacroColors.protein,
@@ -396,8 +398,8 @@ export default function DiscoverScreen() {
   // accent slab (treatment §7). Light/dark aware so the accent clears AA on the
   // dark card.
   const isLight = colors.background === "#FFFFFF";
-  const accentInk = isLight ? Accent.primarySolid : Accent.primarySolidDark;
-  const accentSoft = isLight ? Accent.primarySoft : Accent.primarySoftDark;
+  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
+  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
 
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped
@@ -618,7 +620,7 @@ export default function DiscoverScreen() {
           <RefreshControl
             refreshing={loading}
             onRefresh={() => void refresh()}
-            tintColor={Accent.primary}
+            tintColor={accent.primary}
           />
         }
         keyboardShouldPersistTaps="handled"
@@ -923,12 +925,12 @@ export default function DiscoverScreen() {
                     paddingVertical: 8,
                     borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: Accent.primary,
-                    backgroundColor: Accent.primary + "10",
+                    borderColor: accent.primary,
+                    backgroundColor: accent.primary + "10",
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ ...Type.caption, fontWeight: '600', color: Accent.primary }}>
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: accent.primary }}>
                     Retry
                   </Text>
                 </Pressable>

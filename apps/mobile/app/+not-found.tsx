@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Accent, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -13,6 +14,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  */
 
 export default function NotFound() {
+  const accent = useAccent();
   const router = useRouter();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -66,7 +68,7 @@ export default function NotFound() {
         accessibilityRole="button"
         accessibilityLabel="Back to Today"
         style={({ pressed }) => ({
-          backgroundColor: Accent.primary,
+          backgroundColor: accent.primary,
           paddingHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
           borderRadius: 12,

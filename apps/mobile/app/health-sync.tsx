@@ -706,19 +706,19 @@ export default function HealthSyncScreen() {
         },
         desc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
         // Aubergine OUTLINE primary CTA (Sloe treatment #1, 2026-06-08) —
-        // transparent fill, 1.5px border in `Accent.primarySolid`, label in
+        // transparent fill, 1.5px border in `accent.primarySolid`, label in
         // the same. The everyday primary action reads as an accent line.
         btnOutline: {
           marginHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
           borderRadius: Radius.md,
           borderWidth: 1.5,
-          borderColor: Accent.primarySolid,
+          borderColor: accent.primarySolid,
           backgroundColor: "transparent",
           alignItems: "center" as const,
           marginBottom: Spacing.md,
         },
-        btnOutlineText: { fontSize: 16, fontWeight: "700" as const, color: Accent.primarySolid },
+        btnOutlineText: { fontSize: 16, fontWeight: "700" as const, color: accent.primarySolid },
         // Category row — 44pt minimum height (design-system §3.3 + settings.md §2).
         // paddingVertical: 12pt gives ~44pt with 20pt icon + label.
         feature: {
@@ -885,9 +885,9 @@ export default function HealthSyncScreen() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Utensils size={16} color={Accent.primarySolid} strokeWidth={1.75} />
+                <Utensils size={16} color={accent.primarySolid} strokeWidth={1.75} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: Accent.primarySolid }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: accent.primarySolid }}>
                     Test: check meal import
                   </Text>
                   <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
@@ -960,9 +960,9 @@ export default function HealthSyncScreen() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Share2 size={16} color={Accent.primarySolid} strokeWidth={1.75} />
+                <Share2 size={16} color={accent.primarySolid} strokeWidth={1.75} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: Accent.primarySolid }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600" as const, color: accent.primarySolid }}>
                     Test: write a meal to Health
                   </Text>
                   <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
@@ -1071,12 +1071,12 @@ export default function HealthSyncScreen() {
                 paddingVertical: 12,
                 borderRadius: Radius.md,
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
-                backgroundColor: pressed ? Accent.primarySoft : "transparent",
+                borderColor: accent.primarySolid,
+                backgroundColor: pressed ? accent.primarySoft : "transparent",
                 alignItems: "center" as const,
               })}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: Accent.primarySolid }}>
+              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: accent.primarySolid }}>
                 Try again
               </Text>
             </Pressable>
@@ -1090,12 +1090,12 @@ export default function HealthSyncScreen() {
                 paddingVertical: 12,
                 borderRadius: Radius.md,
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 alignItems: "center" as const,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: Accent.primarySolid }}>
+              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: accent.primarySolid }}>
                 Open iOS Settings
               </Text>
             </Pressable>
@@ -1109,7 +1109,7 @@ export default function HealthSyncScreen() {
 
       {/* Connect / Sync — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
           The everyday primary CTA is an accent line, not a filled slab:
-          transparent fill, 1.5px border + `Accent.primarySolid` label. The
+          transparent fill, 1.5px border + `accent.primarySolid` label. The
           unavailable Connect state stays a muted grey outline so the disabled
           affordance still reads as a button. (The ink Apple Sign-In button on
           auth screens is unaffected — this is the Health connect CTA.) */}
@@ -1118,19 +1118,19 @@ export default function HealthSyncScreen() {
           style={[
             styles.btnOutline,
             {
-              borderColor: available && !connecting ? Accent.primarySolid : colors.textTertiary,
+              borderColor: available && !connecting ? accent.primarySolid : colors.textTertiary,
             },
           ]}
           onPress={handleConnect}
           disabled={!available || connecting}
         >
           {connecting ? (
-            <ActivityIndicator color={Accent.primarySolid} />
+            <ActivityIndicator color={accent.primarySolid} />
           ) : (
             <Text
               style={[
                 styles.btnOutlineText,
-                { color: available ? Accent.primarySolid : colors.textTertiary },
+                { color: available ? accent.primarySolid : colors.textTertiary },
               ]}
             >
               Connect Health Data
@@ -1140,7 +1140,7 @@ export default function HealthSyncScreen() {
       ) : (
         <Pressable style={styles.btnOutline} onPress={handleSync} disabled={syncing}>
           {syncing ? (
-            <ActivityIndicator color={Accent.primarySolid} />
+            <ActivityIndicator color={accent.primarySolid} />
           ) : (
             <Text style={styles.btnOutlineText}>Sync Now</Text>
           )}

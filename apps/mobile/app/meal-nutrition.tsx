@@ -13,6 +13,7 @@ import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import {
@@ -63,6 +64,7 @@ function nutritionRowToJournalMeal(data: Record<string, unknown>): JournalMeal {
 }
 
 export default function MealNutritionScreen() {
+  const accent = useAccent();
   const { id: idParam, slot: slotParam, date: dateParam } = useLocalSearchParams<{
     id?: string | string[];
     slot?: string | string[];
@@ -247,7 +249,7 @@ export default function MealNutritionScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={Accent.primary} />
+        <ActivityIndicator size="large" color={accent.primary} />
       </View>
     );
   }
@@ -350,7 +352,7 @@ export default function MealNutritionScreen() {
           rightSlot={
             <View
               style={{
-                backgroundColor: Accent.primary + "20",
+                backgroundColor: accent.primary + "20",
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
@@ -360,7 +362,7 @@ export default function MealNutritionScreen() {
                 style={{
                   fontSize: 16,
                   fontWeight: "800",
-                  color: Accent.primary,
+                  color: accent.primary,
                   fontVariant: ["tabular-nums"],
                 }}
               >
@@ -382,7 +384,7 @@ export default function MealNutritionScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Edit this meal"
               >
-                <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>
                   Edit
                 </Text>
               </Pressable>
@@ -433,7 +435,7 @@ export default function MealNutritionScreen() {
                       width: 10,
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: Accent.primary,
+                      backgroundColor: accent.primary,
                       opacity: 0.3 + pct * 0.7,
                     }}
                   />
@@ -461,7 +463,7 @@ export default function MealNutritionScreen() {
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: Accent.primary,
+                      color: accent.primary,
                       fontVariant: ["tabular-nums"],
                     }}
                   >
@@ -475,7 +477,7 @@ export default function MealNutritionScreen() {
                 marginTop: Spacing.lg,
                 padding: Spacing.md,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.primary + "10",
+                backgroundColor: accent.primary + "10",
               }}
             >
               <View
@@ -499,7 +501,7 @@ export default function MealNutritionScreen() {
                         {
                           width: `${Math.max(pct, 1)}%`,
                           height: "100%",
-                          backgroundColor: Accent.primary,
+                          backgroundColor: accent.primary,
                           opacity: 0.4 + (i % 3) * 0.2,
                         } as ViewStyle
                       }

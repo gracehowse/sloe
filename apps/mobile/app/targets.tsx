@@ -736,7 +736,7 @@ export default function TargetsScreen() {
           {/* Recalculate — aubergine OUTLINE button (Sloe treatment #1,
               2026-06-08). The everyday primary CTA is an accent LINE, not a
               filled slab: transparent fill, 1.5px border in
-              `Accent.primarySolid` (#4E3260, ≈8.7:1 on the white card — AA),
+              `accent.primarySolid` (#4E3260, ≈8.7:1 on the white card — AA),
               label in the same. Pressed state lifts a faint aubergine wash.
               The FAB + conversion CTAs keep the fill; this everyday recompute
               reads as the calm outline. */}
@@ -753,8 +753,8 @@ export default function TargetsScreen() {
               paddingVertical: 9,
               borderRadius: Radius.full,
               borderWidth: 1.5,
-              borderColor: Accent.primarySolid,
-              backgroundColor: pressed ? Accent.primarySoft : "transparent",
+              borderColor: accent.primarySolid,
+              backgroundColor: pressed ? accent.primarySoft : "transparent",
               opacity: recalculating ? 0.6 : 1,
               flexDirection: "row",
               alignItems: "center",
@@ -762,9 +762,9 @@ export default function TargetsScreen() {
             })}
           >
             {recalculating ? (
-              <ActivityIndicator size="small" color={Accent.primarySolid} />
+              <ActivityIndicator size="small" color={accent.primarySolid} />
             ) : null}
-            <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primarySolid }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid }}>
               {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
             </Text>
           </Pressable>

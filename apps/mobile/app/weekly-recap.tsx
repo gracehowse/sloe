@@ -898,7 +898,7 @@ export default function WeeklyRecapScreen() {
               style={{
                 fontFamily: FontFamily.sansSemibold,
                 fontSize: 14,
-                color: Accent.primary,
+                color: accent.primary,
                 letterSpacing: 0.1,
               }}
             >

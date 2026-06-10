@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { todayHealthConnectActiveCaloriesHint } from "@suppr/shared/copy/today";
 
@@ -50,6 +51,7 @@ export function TodayActivityCard({
   textTertiaryColor,
   borderColor,
 }: TodayActivityCardProps) {
+  const accent = useAccent();
   void styles;
   return (
     // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
@@ -96,7 +98,7 @@ export function TodayActivityCard({
                   width: `${Math.min(stepsCount / dailyStepsGoal, 1) * 100}%`,
                   height: "100%",
                   borderRadius: 3,
-                  backgroundColor: stepsCount >= dailyStepsGoal ? Accent.success : Accent.primary,
+                  backgroundColor: stepsCount >= dailyStepsGoal ? Accent.success : accent.primary,
                 }}
               />
             </View>

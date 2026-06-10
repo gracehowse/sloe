@@ -491,7 +491,7 @@ export default function HouseholdSettingsScreen() {
               you&apos;re part of one.
             </Text>
             <Pressable onPress={() => router.replace("/(tabs)/planner" as any)}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primarySolid }}>Open Plan</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primarySolid }}>Open Plan</Text>
             </Pressable>
           </View>
         ) : (
@@ -589,7 +589,7 @@ export default function HouseholdSettingsScreen() {
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <Plus size={16} color={Accent.primarySolid} strokeWidth={2.25} />
+                    <Plus size={16} color={accent.primarySolid} strokeWidth={2.25} />
                     <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
                       Invite
                     </Text>
@@ -620,8 +620,8 @@ export default function HouseholdSettingsScreen() {
                   hitSlop={Spacing.sm}
                   style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
                 >
-                  <Plus size={14} color={Accent.primarySolid} strokeWidth={2} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primarySolid }}>Invite</Text>
+                  <Plus size={14} color={accent.primarySolid} strokeWidth={2} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: accent.primarySolid }}>Invite</Text>
                 </Pressable>
               </View>
               {/* Outer wrapper carries the soft lift (elevation system); inner clips border+overflow */}
@@ -692,10 +692,10 @@ export default function HouseholdSettingsScreen() {
                                 paddingHorizontal: Spacing.sm,
                                 paddingVertical: 2,
                                 borderRadius: Radius.full,
-                                backgroundColor: Accent.primarySoft,
+                                backgroundColor: accent.primarySoft,
                               }}
                             >
-                              <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 10, color: Accent.primarySolid }}>
+                              <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 10, color: accent.primarySolid }}>
                                 You
                               </Text>
                             </View>
@@ -1053,7 +1053,7 @@ export default function HouseholdSettingsScreen() {
               2026-06-08). The everyday primary CTA is an accent line on a
               white backing (the sticky footer behind it is translucent, so
               the button fills white to stay crisp), 1.5px border +
-              `Accent.primarySolid` label. */}
+              `accent.primarySolid` label. */}
           <Pressable
             onPress={() => void onSave()}
             disabled={saving || !household.isOwner}
@@ -1065,12 +1065,12 @@ export default function HouseholdSettingsScreen() {
               borderRadius: Radius.lg,
               backgroundColor: colors.card,
               borderWidth: 1.5,
-              borderColor: Accent.primarySolid,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               opacity: saving || !household.isOwner ? 0.5 : 1,
             }}
           >
-            <Text style={{ color: Accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
+            <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
               {/* DC12 (2026-05-14, premium-bar audit) — specific
                   confirmation. The button is "Save changes" so the
                   affirmed state should mirror that, not the generic

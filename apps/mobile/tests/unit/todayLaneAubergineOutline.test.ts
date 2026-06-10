@@ -7,7 +7,7 @@
  * the Today surface + Log sheet (Cook this / Log it / Log a meal / Complete
  * Day / Save changes / Accept new target / Keep going / View my progress /
  * Notify me / Browse-recipes) reads as an aubergine OUTLINE — a 1.5px
- * `Accent.primarySolid` border + `Accent.primarySolid` label on a
+ * `accent.primarySolid` (scheme-resolved via useAccent — dark inverts) border + `accent.primarySolid` (scheme-resolved via useAccent — dark inverts) label on a
  * transparent fill, NOT a filled slab. Filter pills + segmented controls
  * carry the accent as a SOFT tint, never a solid fill. "Browse" is a
  * SECONDARY off-white fill.
@@ -16,7 +16,7 @@
  * `settingsLaneAubergineOutline`). It breaks if any of these CTAs regress
  * to a filled `backgroundColor: accent.primary` slab with a white label, so
  * the reskin can't silently drift. We deliberately assert on
- * `Accent.primarySolid` (the AA-safe #4E3260 text/border-on-light variant),
+ * `accent.primarySolid` (scheme-resolved via useAccent — dark inverts) (the AA-safe #4E3260 text/border-on-light variant),
  * not the `accent.primary` fill hue.
  *
  * Web parity for these surfaces is pinned in
@@ -75,22 +75,22 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   });
 
   it("Edit-meal 'Save changes' is an outline; Delete stays destructive red", () => {
-    expect(EDIT_MEAL).toMatch(/saveBtn:\s*\{[\s\S]{0,200}borderColor:\s*Accent\.primarySolid/);
-    expect(EDIT_MEAL).not.toMatch(/saveBtn:\s*\{[^}]*backgroundColor:\s*Accent\.primary,/);
+    expect(EDIT_MEAL).toMatch(/v2\.saveBtn,\s*\{\s*borderColor:\s*accent\.primarySolid/);
+    expect(EDIT_MEAL).not.toMatch(/saveBtn:\s*\{[^}]*backgroundColor:\s*accent\.primary,/);
     expect(EDIT_MEAL).toMatch(/Accent\.destructive/); // Delete unchanged
   });
 
   it("Complete-day modal 'View my progress' is an aubergine outline", () => {
-    expect(COMPLETE_DAY).toMatch(/borderColor:\s*Accent\.primarySolid[\s\S]{0,200}>View my progress</);
+    expect(COMPLETE_DAY).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,200}>View my progress</);
   });
 
   it("Weekly check-in modal 'Accept new target' is an outline; banner 'OPEN' is an outline", () => {
-    expect(CHECKIN_MODAL).toMatch(/borderColor:\s*Accent\.primarySolid[\s\S]{0,400}Accept new target/);
+    expect(CHECKIN_MODAL).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}Accept new target/);
     expect(CHECKIN_BANNER).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}OPEN/);
   });
 
   it("Milestone 'Keep going' is an aubergine outline (not a filled celebration slab)", () => {
-    expect(MILESTONE).toMatch(/borderColor:\s*Accent\.primarySolid[\s\S]{0,400}Keep going/);
+    expect(MILESTONE).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}Keep going/);
   });
 
   it("Saved-meal portion confirm is an aubergine outline", () => {
@@ -143,8 +143,8 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
   });
 
   it("Edit-meal legacy slot pills: selected = primarySoft + primarySolid label", () => {
-    expect(EDIT_MEAL).toMatch(/backgroundColor:\s*editSlot === s\s*\?\s*Accent\.primarySoft/);
-    expect(EDIT_MEAL).toMatch(/color:\s*editSlot === s\s*\?\s*Accent\.primarySolid/);
+    expect(EDIT_MEAL).toMatch(/backgroundColor:\s*editSlot === s\s*\?\s*accent\.primarySoft/);
+    expect(EDIT_MEAL).toMatch(/color:\s*editSlot === s\s*\?\s*accent\.primarySolid/);
   });
 
   it("Date-header day/week segmented control: active = primarySoft lift + primarySolid glyph", () => {
@@ -166,7 +166,7 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
   });
 
   it("Eat-again nudge is a soft-tint card with an outline 'Log it' CTA", () => {
-    expect(EAT_AGAIN).toMatch(/Accent\.primarySoft/); // card wash
-    expect(EAT_AGAIN).toMatch(/borderColor:\s*Accent\.primarySolid/); // CTA outline
+    expect(EAT_AGAIN).toMatch(/accent\.primarySoft/); // card wash
+    expect(EAT_AGAIN).toMatch(/borderColor:\s*accent\.primarySolid/); // CTA outline
   });
 });

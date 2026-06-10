@@ -4,6 +4,7 @@ import { Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { Accent, Elevation } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * LogFab — persistent 56pt circular Log button.
@@ -50,6 +51,7 @@ export interface LogFabProps {
 }
 
 export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: LogFabProps) {
+  const accent = useAccent();
   if (!visible) return null;
 
   const handlePress = () => {
@@ -81,7 +83,7 @@ export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: Lo
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.94 : 1 }],

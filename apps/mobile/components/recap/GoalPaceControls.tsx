@@ -9,6 +9,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { EditorDbGoal } from "@suppr/shared/nutrition/goalEditorPace";
 
@@ -25,10 +26,11 @@ export function GoalOptionList({
   goal: EditorDbGoal;
   onChange: (g: EditorDbGoal) => void;
 }) {
+  const accent = useAccent();
   const colors = useThemeColors();
   // Selected goal option — aubergine edge + soft tint + aubergine check (Sloe
-  // treatment #7/#8, 2026-06-08). `Accent.primarySolid` carries the edge/check
-  // (AA on the card); `Accent.primarySoft` is the selected wash.
+  // treatment #7/#8, 2026-06-08). `accent.primarySolid` carries the edge/check
+  // (AA on the card); `accent.primarySoft` is the selected wash.
   return (
     <View
       style={{ gap: Spacing.sm, marginBottom: Spacing.lg }}
@@ -48,8 +50,8 @@ export function GoalOptionList({
               paddingHorizontal: Spacing.md,
               borderRadius: Radius.md,
               borderWidth: 1.5,
-              borderColor: selected ? Accent.primarySolid : colors.cardBorder,
-              backgroundColor: selected ? Accent.primarySoft : colors.card,
+              borderColor: selected ? accent.primarySolid : colors.cardBorder,
+              backgroundColor: selected ? accent.primarySoft : colors.card,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -69,7 +71,7 @@ export function GoalOptionList({
                 {opt.desc}
               </Text>
             </View>
-            {selected ? <Check size={18} color={Accent.primarySolid} /> : null}
+            {selected ? <Check size={18} color={accent.primarySolid} /> : null}
           </Pressable>
         );
       })}
@@ -88,10 +90,11 @@ export function GoalPaceFooter({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const accent = useAccent();
   const colors = useThemeColors();
   // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). The goal/pace
   // Save is an everyday primary CTA: transparent fill, 1.5px
-  // `Accent.primarySolid` border + label, sitting alongside the neutral
+  // `accent.primarySolid` border + label, sitting alongside the neutral
   // grey-outline Cancel.
   return (
     <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}>
@@ -126,16 +129,16 @@ export function GoalPaceFooter({
           borderRadius: Radius.md,
           backgroundColor: "transparent",
           borderWidth: 1.5,
-          borderColor: Accent.primarySolid,
+          borderColor: accent.primarySolid,
           alignItems: "center",
           justifyContent: "center",
           opacity: saving || !dirty ? 0.5 : 1,
         }}
       >
         {saving ? (
-          <ActivityIndicator color={Accent.primarySolid} />
+          <ActivityIndicator color={accent.primarySolid} />
         ) : (
-          <Text style={{ fontSize: 15, fontWeight: "700", color: Accent.primarySolid }}>Save</Text>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: accent.primarySolid }}>Save</Text>
         )}
       </Pressable>
     </View>

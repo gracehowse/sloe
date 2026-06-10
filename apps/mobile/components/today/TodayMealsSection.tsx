@@ -184,7 +184,8 @@ function slotIcon(s: string): LucideIcon {
 }
 
 function slotColor(s: string): string {
-  return SLOT_COLOR[s] ?? Accent.primary;
+  const accent = useAccent();
+  return SLOT_COLOR[s] ?? accent.primary;
 }
 
 function SlotIcon({
@@ -305,8 +306,8 @@ function MealActionRow({
   testID: string;
   colors: ReturnType<typeof useThemeColors>;
 }) {
-  // Secondary accent (Frost flag → damson, else clay) for the non-danger row
-  // glyph/tint. Danger keeps `Accent.destructive` (status — never secondary).
+  // Scheme-resolved accent for the non-danger row glyph/tint. Danger keeps
+  // `Accent.destructive` (status — never secondary).
   const themeAccent = useAccent();
   const accent = danger ? Accent.destructive : themeAccent.primary;
   return (

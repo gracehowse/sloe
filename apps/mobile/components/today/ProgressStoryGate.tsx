@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Accent, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -39,6 +40,7 @@ export function ProgressStoryGate({
   style,
   testID,
 }: ProgressStoryGateProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const cardElevation = useCardElevation();
   const placeholder = buildProgressStoryPlaceholder(daysLogged);
@@ -80,7 +82,7 @@ export function ProgressStoryGate({
         style={[
           Type.label,
           {
-            color: Accent.primary,
+            color: accent.primary,
             marginBottom: Spacing.sm,
           },
         ]}
@@ -115,7 +117,7 @@ export function ProgressStoryGate({
               cx={RING_SIZE / 2}
               cy={RING_SIZE / 2}
               r={radius}
-              stroke={Accent.primary}
+              stroke={accent.primary}
               strokeWidth={STROKE}
               fill="none"
               strokeLinecap="round"

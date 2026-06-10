@@ -164,7 +164,7 @@ function ManualTargetsCard() {
           value={kcal}
           onChangeText={setKcal}
           onBlur={commit}
-          color={Accent.primaryLight}
+          color={accent.primaryLight}
         />
         <TargetInput
           label="P g"

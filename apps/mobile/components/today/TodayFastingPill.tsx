@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text } from "react-native";
 import { Clock } from "lucide-react-native";
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -40,6 +41,7 @@ export type TodayFastingPillProps =
     };
 
 export function TodayFastingPill(props: TodayFastingPillProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   if (props.mode === "idle") {
     return (
@@ -88,13 +90,13 @@ export function TodayFastingPill(props: TodayFastingPillProps) {
         paddingVertical: 6,
         paddingHorizontal: Spacing.lg,
         alignSelf: "center",
-        backgroundColor: Accent.primary + "18",
+        backgroundColor: accent.primary + "18",
         borderRadius: Radius.full,
         marginVertical: Spacing.xs,
       }}
     >
-      <Clock size={16} color={Accent.primarySolid} strokeWidth={2.25} />
-      <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: Accent.primarySolid }}>
+      <Clock size={16} color={accent.primarySolid} strokeWidth={2.25} />
+      <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
         Fasting — {h}h {m}m
       </Text>
     </Pressable>

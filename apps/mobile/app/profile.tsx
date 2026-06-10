@@ -49,7 +49,7 @@ import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 export default function ProfileScreen() {
   const colors = useThemeColors();
   // `accent` (aubergine) drives the loading spinner. The Save CTA + selected
-  // dietary pills now use the static `Accent.primarySolid` / `Accent.primarySoft`
+  // dietary pills now use the static `accent.primarySolid` / `accent.primarySoft`
   // treatment tokens directly (Sloe, 2026-06-08). Macros keep `MacroColors`.
   const accent = useAccent();
   // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
@@ -168,7 +168,7 @@ export default function ProfileScreen() {
     centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
     // §3.2 identity card — warm editorial anchor at the top of the surface.
-    // Monogram (Accent.primarySolid) + serif name + tier·joined label, then a
+    // Monogram (accent.primarySolid) + serif name + tier·joined label, then a
     // two-tile stats strip. Soft elevation on the outer wrapper so the card
     // lifts off white (RN clips iOS shadows under overflow:hidden, so the
     // shadow lives on this padded outer view, never on a clipped child).
@@ -188,7 +188,7 @@ export default function ProfileScreen() {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: Accent.primarySolid,
+      backgroundColor: accent.primarySolid,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -201,9 +201,9 @@ export default function ProfileScreen() {
       paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
-      backgroundColor: Accent.primarySoft,
+      backgroundColor: accent.primarySoft,
     },
-    tierPillText: { ...Type.label, color: Accent.primarySolid },
+    tierPillText: { ...Type.label, color: accent.primarySolid },
 
     // §3.2 stats strip — two equal-width tiles (Recipes saved + Day streak),
     // serif numerals, sourced from the canonical streak/recipe data.
@@ -326,8 +326,8 @@ export default function ProfileScreen() {
       marginTop: Spacing.sm,
     },
     // Save Targets — aubergine OUTLINE (Sloe treatment, 2026-06-08). Every
-    // everyday settings-surface commit CTA uses the 1.5px `Accent.primarySolid`
-    // border + `Accent.primarySolid` label on a transparent fill, matching the
+    // everyday settings-surface commit CTA uses the 1.5px `accent.primarySolid`
+    // border + `accent.primarySolid` label on a transparent fill, matching the
     // settingsLaneAubergineOutline spec. FABs and conversion CTAs keep the
     // filled slab; daily-use writes use the calm outline.
     saveBtn: {
@@ -335,11 +335,11 @@ export default function ProfileScreen() {
       backgroundColor: "transparent",
       borderRadius: Radius.md,
       borderWidth: 1.5,
-      borderColor: Accent.primarySolid,
+      borderColor: accent.primarySolid,
       paddingVertical: 16,
       alignItems: "center",
     },
-    saveBtnText: { color: Accent.primarySolid, fontWeight: "700", fontSize: 16 },
+    saveBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
     cancelBtn: {
       flex: 1,
       backgroundColor: "transparent",
@@ -372,8 +372,8 @@ export default function ProfileScreen() {
     // grammar. (Sage stays reserved for success/status + nutrition-confidence
     // semantics, not selection state.)
     dietaryChipActive: {
-      borderColor: Accent.primarySolid + "80",
-      backgroundColor: Accent.primarySoft,
+      borderColor: accent.primarySolid + "80",
+      backgroundColor: accent.primarySoft,
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
 
@@ -748,7 +748,7 @@ export default function ProfileScreen() {
                 {streak > 0 ? (
                   <View style={styles.statTile}>
                     <View style={styles.statTileHeader}>
-                      <Flame size={16} color={Accent.primarySolid} strokeWidth={1.75} />
+                      <Flame size={16} color={accent.primarySolid} strokeWidth={1.75} />
                       <Text style={styles.statTileLabel}>Day streak</Text>
                     </View>
                     <Text style={styles.statTileValue}>{streak}</Text>
@@ -932,7 +932,7 @@ export default function ProfileScreen() {
                   onPress={() => toggleDietary(pref.id)}
                 >
                   {active ? (
-                    <Check size={16} color={Accent.primarySolid} strokeWidth={2.5} />
+                    <Check size={16} color={accent.primarySolid} strokeWidth={2.5} />
                   ) : (
                     <Circle
                       size={16}

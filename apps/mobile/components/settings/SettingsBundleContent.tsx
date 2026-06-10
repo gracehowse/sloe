@@ -177,6 +177,7 @@ function IconBox({
 }
 
 function SectionHeading({ title }: { title: string }) {
+  const accent = useAccent();
   const colors = useThemeColors();
   // Sloe DS (Figma 09 Settings `335:2`): section headers are small
   // ALL-CAPS grey eyebrows (GOALS & TARGETS / DISPLAY / CONNECTIONS /
@@ -308,6 +309,7 @@ function SegmentedRow({
   colors: ReturnType<typeof useThemeColors>;
   testID?: string;
 }) {
+  const accent = useAccent();
   return (
     <View
       style={{
@@ -379,9 +381,9 @@ function SegmentedRow({
                 style={{
                   fontSize: 12,
                   fontWeight: active ? "700" : "500",
-                  // Active label reads in `Accent.primarySolid` (aubergine);
+                  // Active label reads in `accent.primarySolid` (aubergine);
                   // inactive stays muted on the rail (treatment #8).
-                  color: active ? Accent.primarySolid : colors.textSecondary,
+                  color: active ? accent.primarySolid : colors.textSecondary,
                 }}
               >
                 {opt.label}
@@ -1586,7 +1588,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           center). The detailed upgrade/manage/promo rows still live in the
           Membership card below — this banner is the at-a-glance entry.
           2026-06-08: the card tint moved off the hardcoded clay rgba to
-          `Accent.primarySoft` (Pro = the brand aubergine, treatment #9), and
+          `accent.primarySoft` (Pro = the brand aubergine, treatment #9), and
           the "Manage" text became an aubergine OUTLINE pill (treatment #1)
           so the action reads as a button, not flat coloured text. Matches
           the web banner (`Settings.tsx` — `--primary` 16% tint). */}
@@ -1612,17 +1614,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           paddingVertical: 16,
           paddingHorizontal: 16,
           borderRadius: SETTINGS_CARD_RADIUS,
-          backgroundColor: Accent.primarySoft,
+          backgroundColor: accent.primarySoft,
           marginTop: 18,
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Sparkles size={18} color={Accent.primarySolid} strokeWidth={1.75} />
+          <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
           <Text
             style={{
               fontSize: 15,
               fontWeight: "600",
-              color: Accent.primarySolid,
+              color: accent.primarySolid,
             }}
           >
             Sloe Pro
@@ -1634,10 +1636,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             paddingVertical: 7,
             borderRadius: Radius.full,
             borderWidth: 1.5,
-            borderColor: Accent.primarySolid,
+            borderColor: accent.primarySolid,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primarySolid }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
             Manage
           </Text>
         </View>
@@ -1762,7 +1764,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             }}
           />
           {/* Save name — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-              Everyday primary CTA: transparent fill, 1.5px `Accent.primarySolid`
+              Everyday primary CTA: transparent fill, 1.5px `accent.primarySolid`
               border + label. */}
           <Pressable
             testID="settings-bundle-name-save"
@@ -1776,13 +1778,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               borderRadius: 12,
               backgroundColor: "transparent",
               borderWidth: 1.5,
-              borderColor: Accent.primarySolid,
+              borderColor: accent.primarySolid,
               opacity:
                 nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
               {nameSaving ? "..." : "Save"}
             </Text>
           </Pressable>
@@ -1972,12 +1974,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 borderRadius: 12,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
                 {promoSubmitting ? "..." : "Apply"}
               </Text>
             </Pressable>
@@ -2720,7 +2722,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
             {/* Refresh my plan — aubergine OUTLINE (Sloe treatment #1,
                 2026-06-08). The primary (non-destructive) action in the reset
-                modal: transparent fill, 1.5px `Accent.primarySolid` border +
+                modal: transparent fill, 1.5px `accent.primarySolid` border +
                 label, sitting visually above the red "Erase everything" so the
                 safe path reads calm and the destructive path stays red. */}
             <Pressable
@@ -2729,7 +2731,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 borderRadius: Radius.md,
                 paddingVertical: 16,
                 alignItems: "center",
@@ -2737,12 +2739,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 opacity: resetting ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 {resetting ? "Starting..." : "Refresh my plan"}
               </Text>
               <Text
                 style={{
-                  color: Accent.primarySolid,
+                  color: accent.primarySolid,
                   opacity: 0.7,
                   fontSize: 11,
                   marginTop: 2,
@@ -3138,11 +3140,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 borderRadius: Radius.md,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>
@@ -3266,11 +3268,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 borderRadius: Radius.md,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3385,11 +3387,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 borderRadius: Radius.md,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Save
               </Text>
             </Pressable>
@@ -3549,11 +3551,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 borderRadius: Radius.md,
                 backgroundColor: "transparent",
                 borderWidth: 1.5,
-                borderColor: Accent.primarySolid,
+                borderColor: accent.primarySolid,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
                 Done
               </Text>
             </Pressable>

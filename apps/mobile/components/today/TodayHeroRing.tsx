@@ -4,6 +4,7 @@ import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
 
@@ -151,6 +152,7 @@ function StatusChip({
   overByKcal: number;
   isDark: boolean;
 }) {
+  const accent = useAccent();
   const sage = isDark ? Accent.successLight : Accent.success;
   const red = isDark ? Accent.destructiveLight : Accent.destructive;
   const plum = isDark ? "#815E91" : MacroColors.calories;
@@ -270,6 +272,7 @@ export function TodayHeroRing({
   textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
+  const accent = useAccent();
   const isDark = useColorScheme() === "dark";
   const isEmpty = consumed === 0 || goal <= 0;
   const isOver = goal > 0 && consumed > goal;
@@ -430,7 +433,7 @@ export function TodayHeroRing({
           style={{
             fontSize: 11,
             fontWeight: "600",
-            color: isDark ? Accent.primarySolidDark : Accent.primarySolid,
+            color: isDark ? accent.primarySolidDark : accent.primarySolid,
           }}
         >
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}

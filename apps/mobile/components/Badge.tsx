@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
 import { Accent, Radius } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 
 /**
  * Mobile `<Badge>` primitive — the single compact-pill abstraction used
@@ -30,13 +31,13 @@ const variantColors: Record<BadgeVariant, string> = {
   neutral: "#94a3b8", // slate-400 — matches NutritionSourceBadge "manual" tone
   info: Accent.info,
   warn: Accent.warning,
-  pro: Accent.primary,
+  pro: Accent.primary, // overridden in-component via useAccent (scheme-resolved)
   // AI — violet/purple. Mirrors web --chart-5.
   ai: "#9679D9",
   added: Accent.success,
   override: Accent.warning,
   leftover: Accent.warning,
-  custom: Accent.primary,
+  custom: Accent.primary, // overridden in-component via useAccent
   freeze: Accent.cyan,
 };
 
@@ -78,7 +79,9 @@ export function Badge({
   style,
   textStyle,
 }: BadgeProps) {
-  const color = variantColors[variant];
+  const accent = useAccent();
+  // pro/custom anchor follows the scheme-resolved accent (module map can't hook).
+  const color = variant === "pro" || variant === "custom" ? accent.primary : variantColors[variant];
   const label = accessibilityLabel ?? defaultAccessibilityLabel[variant];
 
   return (

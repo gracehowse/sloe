@@ -533,7 +533,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
               {/* Workout-row glyph stays warm (activity context, not a CTA) —
                   intentionally NOT migrated to the Frost accent. */}
-              <Ionicons name="barbell-outline" size={16} color={Accent.primary} />
+              <Ionicons name="barbell-outline" size={16} color={accent.primary} />
               <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{w.type}</Text>
               <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                 {w.minutes > 0 ? `${w.minutes} min` : ""}

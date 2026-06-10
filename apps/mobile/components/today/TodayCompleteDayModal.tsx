@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { projectWeight } from "@/lib/weightProjection";
 
 /**
@@ -51,6 +52,7 @@ export function TodayCompleteDayModal({
   textSecondaryColor,
   textTertiaryColor,
 }: TodayCompleteDayModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -84,13 +86,13 @@ export function TodayCompleteDayModal({
               width: 80,
               height: 80,
               borderRadius: 40,
-              backgroundColor: Accent.primary + "18",
+              backgroundColor: accent.primary + "18",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 24,
             }}
           >
-            <Ionicons name="checkmark" size={40} color={Accent.primary} />
+            <Ionicons name="checkmark" size={40} color={accent.primary} />
           </View>
 
           {profileWeightKg != null && todayCalories > 0 ? (() => {
@@ -114,7 +116,7 @@ export function TodayCompleteDayModal({
                   }}
                 >
                   {isToday ? "Today\u2019s trajectory" : "This day\u2019s trajectory"}:{" "}
-                  <Text style={{ color: Accent.primary }}>{prediction.projectedWeightKg} kg</Text>
+                  <Text style={{ color: accent.primary }}>{prediction.projectedWeightKg} kg</Text>
                   {" "}in ~{prediction.projectionWeeks} weeks
                 </Text>
                 <Text
@@ -164,12 +166,12 @@ export function TodayCompleteDayModal({
               borderRadius: Radius.md,
               backgroundColor: "transparent",
               borderWidth: 1.5,
-              borderColor: Accent.primarySolid,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 16 }}>View my progress</Text>
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>View my progress</Text>
           </Pressable>
         </View>
       </View>

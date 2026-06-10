@@ -127,12 +127,12 @@ function kindChipBg(kind: ChangelogItemKind, colors: ReturnType<typeof useThemeC
   }
 }
 
-function kindChipColor(kind: ChangelogItemKind): string {
+function kindChipColor(kind: ChangelogItemKind, accentSolid: string): string {
   switch (kind) {
     case "new":
       return Accent.successSolid; // #466046 — AA on white
     case "fixed":
-      return Accent.primarySolid; // plum — neutral info
+      return accentSolid; // plum (scheme-resolved) — neutral info
     case "coming_soon":
       return Accent.warningSolid; // #956619 — AA on white
   }
@@ -236,7 +236,7 @@ function ReleaseBlock({
                 testID={isLatest ? `whats-new-section-${group.kind}` : `whats-new-section-${entry.buildNumber}-${group.kind}`}
               >
                 <Text
-                  style={[styles.kindChipText, { color: kindChipColor(group.kind) }]}
+                  style={[styles.kindChipText, { color: kindChipColor(group.kind, accent.primarySolid) }]}
                 >
                   {heading}
                 </Text>
@@ -251,7 +251,7 @@ function ReleaseBlock({
                         key={`${group.kind}-${idx}`}
                         style={[styles.itemRow, isLast && styles.itemRowLast]}
                       >
-                        <View style={[styles.bullet, { backgroundColor: kindChipColor(group.kind) }]} />
+                        <View style={[styles.bullet, { backgroundColor: kindChipColor(group.kind, accent.primarySolid) }]} />
                         <Text style={styles.itemText}>{item.text}</Text>
                       </View>
                     );

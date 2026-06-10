@@ -34,6 +34,7 @@ import {
 import { Check, X } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -103,9 +104,10 @@ function planPaceForKgPerWeek(paceKgPerWeek: RetunePace): string | null {
 }
 
 export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   // Selected pace option (edge/tint/check) + the Confirm CTA use the aubergine
-  // `Accent.primarySolid` / `Accent.primarySoft` treatment (Sloe, 2026-06-08).
+  // `accent.primarySolid` / `accent.primarySoft` treatment (Sloe, 2026-06-08).
   // Pace cautions keep `Accent.warning`.
   const {
     visible,
@@ -409,8 +411,8 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                       borderWidth: 1.5,
                       // Selected pace — aubergine edge + soft tint + aubergine
                       // check (Sloe treatment #7/#8, 2026-06-08).
-                      borderColor: selected ? Accent.primarySolid : colors.cardBorder,
-                      backgroundColor: selected ? Accent.primarySoft : colors.card,
+                      borderColor: selected ? accent.primarySolid : colors.cardBorder,
+                      backgroundColor: selected ? accent.primarySoft : colors.card,
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -426,7 +428,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                       {label}
                     </Text>
                     {selected ? (
-                      <Check size={18} color={Accent.primarySolid} />
+                      <Check size={18} color={accent.primarySolid} />
                     ) : null}
                   </Pressable>
                 );
@@ -570,7 +572,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
               </Pressable>
               {/* Confirm — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
                   The goal/pace confirm is an everyday primary CTA: transparent
-                  fill, 1.5px `Accent.primarySolid` border + label. */}
+                  fill, 1.5px `accent.primarySolid` border + label. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Confirm new pace"
@@ -583,20 +585,20 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                   borderRadius: Radius.md,
                   backgroundColor: "transparent",
                   borderWidth: 1.5,
-                  borderColor: Accent.primarySolid,
+                  borderColor: accent.primarySolid,
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: saving || !preview ? 0.5 : 1,
                 }}
               >
                 {saving ? (
-                  <ActivityIndicator color={Accent.primarySolid} />
+                  <ActivityIndicator color={accent.primarySolid} />
                 ) : (
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: Accent.primarySolid,
+                      color: accent.primarySolid,
                     }}
                   >
                     Confirm

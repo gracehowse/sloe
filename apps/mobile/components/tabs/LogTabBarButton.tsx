@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
 import { Accent, Elevation } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
@@ -22,7 +23,7 @@ import { useHaptics } from "@/hooks/useHaptics";
  *
  * Visual:
  *   - 56pt diameter circle (matches the legacy LogFab).
- *   - Aubergine `Accent.primary` (#5B3B6E) background — the brand accent fill.
+ *   - Aubergine `accent.primary` (#5B3B6E) background — the brand accent fill.
  *     The FAB is the ONE filled-accent moment in the system (2026-06-08
  *     aubergine review); everyday inline CTAs are an aubergine OUTLINE.
  *     (Supersedes the 2026-06-04 plum-FAB / clay-CTA split.)
@@ -54,6 +55,7 @@ export interface LogTabBarButtonProps {
 }
 
 export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
+  const accent = useAccent();
   const colors = useThemeColors();
   const haptics = useHaptics();
   const handlePress = () => {
@@ -89,14 +91,14 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: Accent.primary,
+            backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.94 : 1 }],
           },
           Elevation.floatPrimary,
           // Re-tint the glow to the aubergine accent fill.
-          { shadowColor: Accent.primary },
+          { shadowColor: accent.primary },
         ]}
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />

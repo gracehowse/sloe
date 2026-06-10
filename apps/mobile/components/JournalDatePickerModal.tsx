@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 
@@ -44,6 +45,8 @@ function monthMatrix(viewMonth: Date): (Date | null)[] {
 }
 
 export default function JournalDatePickerModal({ visible, onClose, selectedDate, onSelectDate, colors }: Props) {
+  // Scheme-resolved accent (2026-06-09): dark inverts the aubergine family.
+  const accent = useAccent();
   const { min, max } = useMemo(() => journalRangeBounds(), []);
   const [viewMonth, setViewMonth] = useState(() => stripMidnight(selectedDate));
 
@@ -117,7 +120,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
                       borderRadius: 18,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: isSel ? Accent.primary : "transparent",
+                      backgroundColor: isSel ? accent.primary : "transparent",
                       opacity: disabled ? 0.28 : 1,
                     }}
                   >
@@ -140,7 +143,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
             onPress={onClose}
             style={{ marginTop: Spacing.md, paddingVertical: 12, alignItems: "center" }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: Accent.primary }}>Cancel</Text>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primarySolid }}>Cancel</Text>
           </Pressable>
         </Pressable>
       </Pressable>

@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
 import { Accent, Radius, Spacing, FontFamily } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
@@ -40,6 +41,7 @@ export function Milestone30DayModal({
   textSecondaryColor,
   borderColor,
 }: Milestone30DayModalProps) {
+  const accent = useAccent();
   const insets = useSafeAreaInsets();
   if (!content) return null;
 
@@ -170,7 +172,7 @@ export function Milestone30DayModal({
               }}
             >
               <StatTile
-                icon={<Flame size={18} color={Accent.primary} strokeWidth={2.25} />}
+                icon={<Flame size={18} color={accent.primary} strokeWidth={2.25} />}
                 label="Avg daily kcal"
                 value={`${content.avgDailyKcal.toLocaleString("en-GB")}`}
                 textColor={textColor}
@@ -179,7 +181,7 @@ export function Milestone30DayModal({
                 tabularStyle={tabularStyle}
               />
               <StatTile
-                icon={<Sparkles size={18} color={Accent.primary} strokeWidth={2.25} />}
+                icon={<Sparkles size={18} color={accent.primary} strokeWidth={2.25} />}
                 // Audit 2026-05-04 #26: "Best consecutive run" upper-cased
                 // to "BEST CONSECUTIVE R…" with a trailing ellipsis at
                 // the available column width on iPhone 16 Pro. Shorter
@@ -212,7 +214,7 @@ export function Milestone30DayModal({
                     marginBottom: 10,
                   }}
                 >
-                  <Utensils size={16} color={Accent.primary} strokeWidth={2.25} />
+                  <Utensils size={16} color={accent.primary} strokeWidth={2.25} />
                   <Text
                     style={{
                       fontSize: 12,
@@ -278,7 +280,7 @@ export function Milestone30DayModal({
                   alignItems: "center",
                 }}
               >
-                <Scale size={18} color={Accent.primary} strokeWidth={2.25} />
+                <Scale size={18} color={accent.primary} strokeWidth={2.25} />
                 <Text
                   style={{
                     fontSize: 14,
@@ -316,14 +318,14 @@ export function Milestone30DayModal({
               borderRadius: Radius.full,
               backgroundColor: "transparent",
               borderWidth: 1.5,
-              borderColor: Accent.primarySolid,
+              borderColor: accent.primarySolid,
               alignItems: "center",
               marginTop: Spacing.sm,
               marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ color: Accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
+            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
               Keep going
             </Text>
           </Pressable>
