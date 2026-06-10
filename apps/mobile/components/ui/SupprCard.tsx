@@ -45,7 +45,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  *  - `size`:
  *      - `card` (default — radius 24, soft lift, the top-level resting card)
  *      - `tile` (radius 24, padding `md`, for the 2×2 macro tiles)
- *      - `inset` (radius 24, hairline border, NO drop shadow — a sub-panel
+ *      - `inset` (radius 12, hairline border, NO drop shadow — a sub-panel
  *        nested ON a card, e.g. the burn-breakdown + 7-day-rolling panels
  *        inside the energy-balance card; a card-on-card must not double-shadow)
  *  - `gradient`: bool — north-star tinted surface when `tone='primary'`
@@ -126,6 +126,12 @@ const radiusValues: Record<SupprCardRadius, number> = {
  * "lifted warm surface" reads as one material at rest or risen. Replaces
  * six live ad-hoc top-corner styles (8/12/18/20/24/28). */
 export const SHEET_RADIUS = 24;
+/** Nested/inset sub-panel radius (2026-06-10 decision, same doc): inner
+ * radius ≈ outer minus padding (concentric-corner principle) — a 24-inside-24
+ * panel at 16pt padding clashes. The old inset spec (24) had zero adoption
+ * because it was optically wrong. */
+export const INSET_RADIUS = Radius.xl; // 12
+
 export const CARD_RADIUS = 24;
 export const TILE_RADIUS = 24;
 
@@ -152,7 +158,9 @@ export function SupprCard({
       ? radiusValues[radius]
       : size === "card"
         ? CARD_RADIUS
-        : TILE_RADIUS; // tile + inset both round to 24 (same as the card)
+        : isInset
+          ? INSET_RADIUS // 12 — concentric inner corner (2026-06-10 decision)
+          : TILE_RADIUS;
   // Tiles + insets default to a tighter padding; cards to the airy `lg`.
   const pad = paddingValues[padding ?? (size === "card" ? "lg" : "md")];
 

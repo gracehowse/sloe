@@ -1412,7 +1412,7 @@ function BarcodeManualEntry({
       <View
         style={{
           padding: Spacing.md,
-          borderRadius: Radius.md,
+          borderRadius: Radius.xl,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.border,
@@ -1688,7 +1688,7 @@ const styles = StyleSheet.create({
   emptyBlock: {
     borderWidth: 1,
     borderStyle: "dashed",
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
     paddingVertical: 32,
     paddingHorizontal: Spacing.lg,
     alignItems: "center",

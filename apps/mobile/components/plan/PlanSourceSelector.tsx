@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     gap: Spacing.dense,
     paddingVertical: Spacing.dense,
     paddingHorizontal: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
     borderWidth: 1,
   },
   radio: {

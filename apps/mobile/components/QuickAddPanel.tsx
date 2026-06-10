@@ -641,7 +641,7 @@ export function QuickAddPanel({
                     backgroundColor: cardElevation.liftBg ?? colors.card,
                     // Audit M6 (2026-04-18): card-shell list rows align to
                     // Radius.lg (mobile convention, matches web rounded-card).
-                    borderRadius: Radius.lg,
+                    borderRadius: Radius.xl,
                     padding: Spacing.md,
                     flexDirection: "row",
                     alignItems: "center",
@@ -735,7 +735,7 @@ export function QuickAddPanel({
                   backgroundColor: cardElevation.liftBg ?? colors.card,
                   // Audit M6 (2026-04-18): card-shell list rows align to
                   // Radius.lg (mobile convention, matches web rounded-card).
-                  borderRadius: Radius.lg,
+                  borderRadius: Radius.xl,
                   padding: Spacing.md,
                   flexDirection: "row",
                   alignItems: "center",

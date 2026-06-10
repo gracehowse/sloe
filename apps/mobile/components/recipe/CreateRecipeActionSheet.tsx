@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -189,7 +189,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
                 gap: Spacing.dense,
                 paddingHorizontal: Spacing.md,
                 paddingVertical: Spacing.dense,
-                borderRadius: 16,
+                borderRadius: Radius.xl,
                 backgroundColor: `${accent.primary}14`,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: `${accent.primary}40`,
