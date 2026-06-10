@@ -63,11 +63,34 @@ export interface ProgressStoryPlaceholder {
   ringLabel: string;
   /** Whole days remaining until the live story can render. */
   daysToFloor: number;
+  /**
+   * Discrete progress for the segmented day indicator: how many of the
+   * `STORY_DATA_FLOOR_DAYS` segments render filled. The gate counts
+   * whole days, so the indicator is N discrete segments, not a
+   * continuous arc — a partial arc at 0/3 read as a stuck loading
+   * spinner (fresh-eyes 2026-06-10, Grace report).
+   */
+  segmentsFilled: number;
+}
+
+export interface ProgressStoryPlaceholderOpts {
+  /**
+   * Whether the account has ANY logged history beyond the current
+   * week (e.g. days in the journal store). The gate card counts the
+   * CURRENT WEEK (it fronts the weekly-insight ritual), but a user
+   * with weeks of data must not be greeted with cold-start copy —
+   * "log a meal to start the count … your first insight" next to an
+   * adherence card full of their own range data read as the screen
+   * contradicting itself (fresh-eyes 2026-06-10, P0-2 resolution).
+   */
+  hasHistory?: boolean;
 }
 
 export function buildProgressStoryPlaceholder(
   daysLogged: number,
+  opts?: ProgressStoryPlaceholderOpts,
 ): ProgressStoryPlaceholder {
+  const hasHistory = opts?.hasHistory === true;
   const safeDays = Number.isFinite(daysLogged) && daysLogged > 0 ? Math.floor(daysLogged) : 0;
   const cappedDays = Math.min(safeDays, STORY_DATA_FLOOR_DAYS);
   const daysToFloor = Math.max(0, STORY_DATA_FLOOR_DAYS - cappedDays);
@@ -81,7 +104,20 @@ export function buildProgressStoryPlaceholder(
 
   let headline: string;
   let body: string;
-  if (safeDays === 0) {
+  if (hasHistory) {
+    // Returning user, new (or thin) week — the count is week-scoped and
+    // the copy must say so. Never imply they're starting from nothing.
+    if (safeDays === 0) {
+      headline = "New week, fresh story";
+      body = `Log ${STORY_DATA_FLOOR_DAYS} days this week to unlock this week's insight.`;
+    } else if (daysToFloor === 1) {
+      headline = "Almost there";
+      body = "One more logged day and this week's story unlocks.";
+    } else {
+      headline = "This week's story is building";
+      body = `${daysToFloor} more day${daysToFloor === 1 ? "" : "s"} to this week's insight.`;
+    }
+  } else if (safeDays === 0) {
     headline = "Your story builds with your data";
     body = `Log a meal to start the count. ${STORY_DATA_FLOOR_DAYS} days to your first insight.`;
   } else if (daysToFloor === 1) {
@@ -99,5 +135,6 @@ export function buildProgressStoryPlaceholder(
     ringFraction,
     ringLabel,
     daysToFloor,
+    segmentsFilled: cappedDays,
   };
 }

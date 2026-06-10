@@ -132,6 +132,11 @@ export function ProgressAverageAdherence({
       >
         {adherencePct}
         <span className="text-[22px] text-muted-foreground">%</span>
+        {/* >100% means "over budget on average" — same "· over" qualifier
+            as the macro rows (mirror of mobile; fresh-eyes P0-2). */}
+        {adherencePct > 100 ? (
+          <span className="text-[15px] font-normal text-muted-foreground"> · over</span>
+        ) : null}
       </p>
 
       <div className="mt-5 space-y-4">

@@ -26,30 +26,37 @@ import { Icons } from "../ui/icons";
 import { PROGRESS_INSIGHT_LILAC_STYLE } from "./progress-headline";
 
 export interface ProgressStoryGateProps {
-  /** Days with ≥1 logged meal in the rolling window. */
+  /** Days with ≥1 logged meal in the CURRENT WEEK (the card's window). */
   daysLogged: number;
+  /**
+   * Whether the account has any logged history at all (journal store,
+   * not range-scoped). Switches the copy from cold-start ("your first
+   * insight") to new-week framing — mirror of mobile (fresh-eyes
+   * 2026-06-10 P0-2 resolution).
+   */
+  hasHistory?: boolean;
   className?: string;
 }
 
 export function ProgressStoryGate({
   daysLogged,
+  hasHistory,
   className,
 }: ProgressStoryGateProps) {
-  const placeholder = buildProgressStoryPlaceholder(daysLogged);
+  const placeholder = buildProgressStoryPlaceholder(daysLogged, { hasHistory });
 
-  // Ring geometry — single-stroke arc that fills as logged days
-  // approach the floor. Snaps closed at 1 once the user reaches the
-  // threshold (the live `<ProgressHeadline>` takes over on the next
-  // render).
+  // Day-count indicator — STORY_DATA_FLOOR_DAYS discrete ring segments
+  // (filled per logged day). Mirror of mobile: the previous continuous
+  // arc with a 6% minimum fill (ENG-1006) read as a stuck loading
+  // spinner at 0/3 — superseded by segments, structurally visible at 0.
   const RING_SIZE = 24;
   const STROKE = 3;
   const radius = (RING_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
-  // ENG-1006 — visible-arc floor (mirror of mobile). At 0 / 3 logged the
-  // bare track read as a dead grey circle. Clamp the FILL fraction (not
-  // the label) to ≥0.06 so even an unstarted ring shows a small clay tick.
-  const ringFill = Math.max(0.06, placeholder.ringFraction);
-  const dashOffset = circumference * (1 - ringFill);
+  const SEGMENT_GAP = 4; // px of arc between segments
+  const segmentCount = STORY_DATA_FLOOR_DAYS;
+  const segmentLen = Math.max(2, circumference / segmentCount - SEGMENT_GAP);
+  const gapDeg = (SEGMENT_GAP / circumference) * 360;
 
   return (
     <SupprCard
@@ -85,28 +92,21 @@ export function ProgressStoryGate({
           data-testid="progress-story-gate-ring"
           className="shrink-0"
         >
-          <circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={radius}
-            stroke="currentColor"
-            className="text-border"
-            strokeWidth={STROKE}
-            fill="none"
-          />
-          <circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={radius}
-            stroke="currentColor"
-            className="text-primary"
-            strokeWidth={STROKE}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={dashOffset}
-            transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-          />
+          {Array.from({ length: segmentCount }, (_, i) => (
+            <circle
+              key={i}
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={radius}
+              stroke="currentColor"
+              className={i < placeholder.segmentsFilled ? "text-primary" : "text-border"}
+              strokeWidth={STROKE}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${segmentLen} ${circumference - segmentLen}`}
+              transform={`rotate(${-90 + (i * 360) / segmentCount + gapDeg / 2} ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+            />
+          ))}
         </svg>
       </div>
       {/* ENG-1006 — 13px label-secondary floor (was 11px, below the spec's

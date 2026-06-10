@@ -29,36 +29,45 @@ import {
  */
 
 export interface ProgressStoryGateProps {
-  /** Days with ≥1 logged meal in the rolling window. */
+  /** Days with ≥1 logged meal in the CURRENT WEEK (the card's window). */
   daysLogged: number;
+  /**
+   * Whether the account has any logged history at all (journal store,
+   * not range-scoped). Switches the copy from cold-start ("your first
+   * insight") to new-week framing — a returning user must never be told
+   * to "log a meal to start the count" next to an adherence card full
+   * of their own data (fresh-eyes 2026-06-10 P0-2, Grace report).
+   */
+  hasHistory?: boolean;
   style?: ViewStyle;
   testID?: string;
 }
 
 export function ProgressStoryGate({
   daysLogged,
+  hasHistory,
   style,
   testID,
 }: ProgressStoryGateProps) {
   const accent = useAccent();
   const colors = useThemeColors();
   const cardElevation = useCardElevation();
-  const placeholder = buildProgressStoryPlaceholder(daysLogged);
+  const placeholder = buildProgressStoryPlaceholder(daysLogged, { hasHistory });
 
-  // Ring geometry — small (24pt), single-stroke arc that fills as
-  // logged days approach the floor. Clamps at 1 so the ring snaps
-  // closed once the user reaches the threshold (and the live story
-  // takes over on the next render).
+  // Day-count indicator — STORY_DATA_FLOOR_DAYS discrete ring segments
+  // (filled clay per logged day, hairline track otherwise). The gate
+  // counts whole days, so the indicator is discrete: the previous
+  // continuous arc with a 6% minimum fill (ENG-1006) read as a STUCK
+  // LOADING SPINNER at 0/3 (fresh-eyes 2026-06-10, Grace report) —
+  // superseded by segments, which are structurally visible at zero.
   const RING_SIZE = 24;
   const STROKE = 3;
   const radius = (RING_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
-  // ENG-1006 — visible-arc floor. At 0 / 3 logged the bare track read as a
-  // dead grey circle, not a progress affordance. Clamp the FILL fraction
-  // (not the label) to ≥0.06 so even an unstarted ring shows a small clay
-  // tick that says "this is a progress ring, you're at the start".
-  const ringFill = Math.max(0.06, placeholder.ringFraction);
-  const dashOffset = circumference * (1 - ringFill);
+  const SEGMENT_GAP = 4; // px of arc between segments
+  const segmentCount = STORY_DATA_FLOOR_DAYS;
+  const segmentLen = Math.max(2, circumference / segmentCount - SEGMENT_GAP);
+  const gapDeg = (SEGMENT_GAP / circumference) * 360;
 
   return (
     <View
@@ -105,26 +114,20 @@ export function ProgressStoryGate({
           testID="progress-story-gate-ring"
         >
           <Svg width={RING_SIZE} height={RING_SIZE}>
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={radius}
-              stroke={colors.cardBorder}
-              strokeWidth={STROKE}
-              fill="none"
-            />
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={radius}
-              stroke={accent.primary}
-              strokeWidth={STROKE}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${circumference} ${circumference}`}
-              strokeDashoffset={dashOffset}
-              transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-            />
+            {Array.from({ length: segmentCount }, (_, i) => (
+              <Circle
+                key={i}
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={radius}
+                stroke={i < placeholder.segmentsFilled ? accent.primary : colors.cardBorder}
+                strokeWidth={STROKE}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${segmentLen} ${circumference - segmentLen}`}
+                transform={`rotate(${-90 + (i * 360) / segmentCount + gapDeg / 2} ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+              />
+            ))}
           </Svg>
         </View>
       </View>

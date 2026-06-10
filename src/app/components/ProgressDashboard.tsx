@@ -1187,7 +1187,14 @@ function ProgressDashboardContent() {
         if (!hasEnoughDataForStory(daysLogged)) {
           return (
             <div className="mb-4">
-              <ProgressStoryGate daysLogged={daysLogged} />
+              <ProgressStoryGate
+                daysLogged={daysLogged}
+                // Any logged day in the journal store → new-week copy, not
+                // cold-start copy (mirror of mobile; fresh-eyes P0-2).
+                hasHistory={Object.keys(nutritionByDay).some(
+                  (k) => (nutritionByDay[k] ?? []).length > 0,
+                )}
+              />
             </div>
           );
         }
