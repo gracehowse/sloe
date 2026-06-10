@@ -81,11 +81,10 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
     // + fontSize:12 + lineHeight:18 + minHeight:36 — descenders
     // ("Q", "g") sit fully inside the pill body and the row fits.
     it("pins paddingHorizontal: 12 (Spacing.sm+Spacing.xs) — on-scale canonical value (was 13, snapped 2026-06-09)", () => {
-      // 2026-06-09 library spacing audit snapped 13 → 12 (Spacing.sm+xs=8+4)
-      // to land on the canonical Spacing ladder. The test now pins the
-      // token expression the source uses rather than a raw off-scale literal.
+      // Chips census 2026-06-10: the sm+xs arithmetic became the dense
+      // token (same 12px value, named step on the ladder — ENG-1012).
       expect(MOBILE_SRC).toMatch(
-        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*Spacing\.sm\s*\+\s*Spacing\.xs[\s\S]*?\}/,
+        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*Spacing\.dense[\s\S]*?\}/,
       );
     });
 
