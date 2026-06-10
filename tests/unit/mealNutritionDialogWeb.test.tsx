@@ -127,8 +127,14 @@ describe("MealNutritionDialog (web) — meal WITH data", () => {
     expect(within(list).getByText("12g")).toBeTruthy();
     expect(within(list).getByText("Sodium")).toBeTruthy();
     expect(within(list).getByText("540mg")).toBeTruthy();
-    // Unpublished curated rows read "Not published", not a bare dash.
-    expect(within(list).getAllByText("Not published").length).toBeGreaterThan(0);
+    // e2e walk 2026-06-10: unpublished rows no longer render at all —
+    // the absent fields collapse to one quiet summary line below the
+    // list (calm-minimal; the old wall of grey "Not published" rows
+    // read as dead chrome).
+    expect(within(list).queryByText("Not published")).toBeNull();
+    expect(screen.getByTestId("meal-nutrition-micros-rest").textContent).toMatch(
+      /\d+ more not published by FatSecret\./,
+    );
   });
 
   it("shows the source-attributed published-count line", () => {

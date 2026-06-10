@@ -10,6 +10,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
 import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
+import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
@@ -521,7 +522,7 @@ export default function MealNutritionScreen() {
           <>
             <Text style={[styles.meta, { color: colors.textTertiary }]}>
               {[meal.name, meal.time].filter(Boolean).join(" · ")}
-              {meal.source ? ` · ${meal.source}` : ""}
+              {meal.source ? ` · ${formatNutritionSourceLabel(meal.source)}` : ""}
             </Text>
             {showPortionLine ? (
               <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
@@ -587,9 +588,7 @@ export default function MealNutritionScreen() {
           const populatedCount = microRows.filter((row) => row.value !== "—").length;
           const sourceLabel = isSlotAggregate
             ? "your logged items in this slot"
-            : meal.source
-              ? meal.source
-              : "the data source";
+            : formatNutritionSourceLabel(meal.source) ?? "the data source";
           if (populatedCount === 0) {
             return (
               <Text style={[styles.sectionSub, { color: colors.textTertiary, marginBottom: 0 }]}>
@@ -605,21 +604,33 @@ export default function MealNutritionScreen() {
                 {populatedCount} of {microRows.length} fields published by {sourceLabel}
                 {showPortionLine ? `; values reflect portion ×${portionLabel}` : ""}.
               </Text>
-              {microRows.map((row) => (
-                <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
-                  <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
-                    {row.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.microValue,
-                      { color: row.value === "—" ? colors.textTertiary : colors.textSecondary },
-                    ]}
-                  >
-                    {row.value === "—" ? "Not published" : row.value}
-                  </Text>
-                </View>
-              ))}
+              {/* e2e walk 2026-06-10 (Grace report follow-up): render ONLY
+                  the populated rows. The previous full list painted a wall
+                  of 13+ grey not-published rows — dead chrome on a
+                  daily-traffic screen (calm-minimal empty-state decision,
+                  2026-06-09; same class as the recipe-detail allergen
+                  null-state collapse). Absent fields collapse to one quiet
+                  summary line below. */}
+              {microRows
+                .filter((row) => row.value !== "—")
+                .map((row) => (
+                  <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
+                    <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
+                      {row.label}
+                    </Text>
+                    <Text style={[styles.microValue, { color: colors.textSecondary }]}>
+                      {row.value}
+                    </Text>
+                  </View>
+                ))}
+              {populatedCount < microRows.length ? (
+                <Text
+                  testID="meal-nutrition-micros-rest"
+                  style={[styles.sectionSub, { color: colors.textTertiary, marginTop: Spacing.sm, marginBottom: 0 }]}
+                >
+                  {microRows.length - populatedCount} more not published by {sourceLabel}.
+                </Text>
+              ) : null}
             </>
           );
         })()}

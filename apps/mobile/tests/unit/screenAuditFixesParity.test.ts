@@ -234,8 +234,13 @@ describe("F-86 — micros panel collapses to source-attributed empty state", () 
     expect(SRC.mealNutrition).toMatch(/did not publish vitamin or mineral data/);
   });
 
-  it("populated rows use 'Not published' instead of '—' for absent fields", () => {
-    expect(SRC.mealNutrition).toMatch(/"Not published"/);
+  it("absent fields collapse to a quiet rest-line instead of rendering rows (e2e walk 2026-06-10)", () => {
+    // Only populated rows render…
+    expect(SRC.mealNutrition).toMatch(/\.filter\(\(row\) => row\.value !== "—"\)/);
+    // …and the absent count collapses to one summary line.
+    expect(SRC.mealNutrition).toMatch(/more not published by \{sourceLabel\}/);
+    // The old wall of per-row "Not published" labels is gone.
+    expect(SRC.mealNutrition).not.toMatch(/"Not published"/);
   });
 
   it("attribution line names the source", () => {
