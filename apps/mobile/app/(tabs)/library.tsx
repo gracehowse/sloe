@@ -34,6 +34,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -64,7 +65,7 @@ type SortKey = "recent" | "calories" | "protein";
  * Web parity: `radius="lg"` (24px) on the `SupprCard` in `Library.tsx` /
  * `DiscoverFeed.tsx`.
  */
-const RECIPE_CARD_RADIUS = 24;
+const RECIPE_CARD_RADIUS = CARD_RADIUS;
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
@@ -562,7 +563,7 @@ export default function LibraryScreen() {
     card: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: RECIPE_CARD_RADIUS,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.border,
       overflow: "hidden",
     },

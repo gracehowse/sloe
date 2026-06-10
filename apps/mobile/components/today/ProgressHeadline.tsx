@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react-native";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
 import {
@@ -45,7 +46,7 @@ export function ProgressHeadline({
   testID,
 }: ProgressHeadlineProps) {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  const cardElevation = useCardElevation({ variant: "soft" });
   const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
@@ -132,9 +133,9 @@ export function ProgressHeadline({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.lg,
+    borderRadius: CARD_RADIUS,
     paddingHorizontal: Spacing.xl,
-    paddingVertical: 16,
+    paddingVertical: Spacing.md,
   },
   eyebrowRow: {
     flexDirection: "row",

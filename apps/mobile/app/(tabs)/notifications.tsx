@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -115,8 +116,8 @@ export default function NotificationsScreen() {
         btnText: { color: colors.text, fontSize: 13, fontWeight: "600" },
         empty: {
           padding: Spacing.xl,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
           gap: 8,
@@ -125,8 +126,8 @@ export default function NotificationsScreen() {
         emptyTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
         card: {
           padding: Spacing.lg,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
           marginTop: Spacing.sm,

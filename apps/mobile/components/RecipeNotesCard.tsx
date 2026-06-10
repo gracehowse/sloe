@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import {
   getUserRecipeNotes,
@@ -201,8 +202,8 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
       StyleSheet.create({
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.xl,
           gap: Spacing.md,

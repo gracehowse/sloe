@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -1074,9 +1074,9 @@ export default function ProgressScreen() {
               style={[{
                 width: "47%",
                 padding: Spacing.md,
-                borderRadius: Radius.lg,
+                borderRadius: CARD_RADIUS,
                 backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderWidth: cardElevation.useBorder ? 1 : 0,
+                borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                 borderColor: t.border,
                 minHeight: 86,
               }, cardElevation.shadowStyle]}
@@ -2134,8 +2134,8 @@ function WeightTrendOnlyCard({
       testID="progress-weight-trend-only-card"
       style={[{
         backgroundColor: cardElev.liftBg ?? theme.elevated,
-        borderRadius: Radius.lg,
-        borderWidth: cardElev.useBorder ? 1 : 0,
+        borderRadius: CARD_RADIUS,
+        borderWidth: cardElev.useBorder ? StyleSheet.hairlineWidth : 0,
         borderColor: theme.border,
         padding: 16,
         marginBottom: Spacing.md,

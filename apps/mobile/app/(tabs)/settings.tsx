@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import { Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
@@ -229,8 +230,8 @@ export default function SettingsScreen() {
                 marginTop: Spacing.xl,
                 // Sloe warm-slab corner (was 14) — matches the section
                 // cards so the lone Sign Out row reads as one of them.
-                borderRadius: 24,
-                borderWidth: 1,
+                borderRadius: CARD_RADIUS,
+                borderWidth: StyleSheet.hairlineWidth,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
               }}
