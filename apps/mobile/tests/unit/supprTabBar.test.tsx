@@ -37,8 +37,9 @@ vi.mock("expo-haptics", () => ({
 }));
 
 const pushSpy = vi.fn();
+const routerNavigateSpy = vi.fn();
 vi.mock("expo-router", () => ({
-  useRouter: () => ({ push: pushSpy }),
+  useRouter: () => ({ push: pushSpy, navigate: routerNavigateSpy }),
 }));
 
 vi.mock("@/hooks/use-theme-colors", () => ({
@@ -297,8 +298,8 @@ describe("SupprTabBar", () => {
     expect(props.spies.navigateSpy).not.toHaveBeenCalled();
   });
 
-  it("raised Log button routes to /(tabs)?openLog=1 (Today consumes the param to open the canonical LogSheet)", () => {
-    pushSpy.mockClear();
+  it("raised Log button routes to /(tabs)?openLog=1&_t=<ts> (Today consumes the param via useFocusEffect; _t is the ENG-1009 cache-buster so repeat taps re-fire)", () => {
+    routerNavigateSpy.mockClear();
     const props = makeProps();
     const { getByLabelText } = render(
       <SupprTabBar
@@ -309,9 +310,9 @@ describe("SupprTabBar", () => {
       />,
     );
     fireEvent.press(getByLabelText("Log a meal"));
-    expect(pushSpy).toHaveBeenCalledWith({
+    expect(routerNavigateSpy).toHaveBeenCalledWith({
       pathname: "/(tabs)",
-      params: { openLog: "1" },
+      params: { openLog: "1", _t: expect.stringMatching(/^\d+$/) },
     });
   });
 });

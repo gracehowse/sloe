@@ -104,10 +104,11 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 const pushSpy = vi.fn();
+const routerNavigateSpy = vi.fn();
 vi.mock("expo-router", () => ({
   useRouter: () => ({
     push: pushSpy,
-    navigate: vi.fn(),
+    navigate: routerNavigateSpy,
     replace: vi.fn(),
     back: vi.fn(),
   }),
@@ -334,7 +335,10 @@ describe("WeeklyRecap screen — render states", () => {
     const { findByLabelText } = render(<WeeklyRecapScreen />);
     const cta = await findByLabelText("Log a meal");
     fireEvent.press(cta);
-    expect(pushSpy).toHaveBeenCalledWith("/(tabs)?openLog=1");
+    expect(routerNavigateSpy).toHaveBeenCalledWith({
+      pathname: "/(tabs)",
+      params: { openLog: "1", _t: expect.stringMatching(/^\d+$/) },
+    });
   });
 
   it("hero numerals use the Newsreader serif font family token (§2.3 rule 3)", async () => {
