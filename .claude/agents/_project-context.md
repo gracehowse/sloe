@@ -174,11 +174,33 @@ are not the system.
 
 Cream + serif + warm-accent editorial is now the default look of AI-generated
 UI (the Claude Design prompt itself flags the `#F4F1EA`-family + serif-display
-+ terracotta combination as today's purple-gradient). Sloe keeps the direction
-— committed, documented, and native to food — but the look alone no longer
++ terracotta combination as today's purple-gradient). The look alone no longer
 reads premium. Premium is earned in the layers a template can't fake:
 photography, ring/data-viz craft, motion, haptics, measured spacing rhythm.
 Judge those hardest; never accept "cream + serif present, therefore premium."
+
+**The warm-editorial direction itself is under active challenge (Grace,
+2026-06-10)** — see the direction-question note in
+`docs/planning/sloe-polish-handoff-2026-06-09.md`. Do not treat "it matches
+the committed direction" as a defence against a slop-convergence finding.
+
+### Decisions are challengeable (Grace's standing mandate, 2026-06-10)
+
+A documented decision or carve-out suppresses **re-filing the same settled
+finding** — it does NOT suppress a **new, evidence-backed challenge**. Grace:
+"Even though I've made decisions, I don't want the app to look like AI slop —
+if my design decisions are going to make it look like that we need to
+challenge." This includes her own decisions and the warm-editorial direction.
+
+Rules of engagement:
+- A challenge must be **named and evidenced** (which decision, what changed —
+  e.g. convergence references, rendered comparisons), never "I'd have chosen
+  differently."
+- Route the challenge **to Grace as a decision item** — never silently
+  implement against a decision, and never silently respect a decision the
+  evidence now undermines. Both silences are failures.
+- Locked components stay locked **pending her call** — challenging is
+  flagging, not unilaterally rebuilding.
 
 ---
 

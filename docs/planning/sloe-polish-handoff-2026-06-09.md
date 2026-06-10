@@ -56,6 +56,30 @@ trackers on function; iOS leads, web in lockstep; everything SEE-verified.
   (on flagged surfaces) → ui-product-designer (specs) → build with ui-critic
   mid-build checks.
 
+## ⚠️ DIRECTION QUESTION — OPEN (Grace, 2026-06-10, "food for thought, don't action yet")
+
+Grace is actively questioning the warm-editorial shell (cream ground + serif
+display + wellness-warm accents) as converging on the AI-default look. Her
+sketch: **"a calm, intelligent food companion"** — soft neutral ground,
+charcoal ink, ONE accent (her seasonal list includes plum — current aubergine
+may survive), modern sans, colour comes from the FOOD PHOTOGRAPHY not the UI
+chrome. Reference triangle: Apple Health × Paprika × Pinterest. NOT actioned —
+no design changes from this yet. Consequences for this queue:
+
+- **Lane B (serif titles) — CHECK WITH GRACE BEFORE RUNNING.** It invests
+  further into the serif direction she's questioning. Do not start it on
+  autopilot.
+- The **fresh-eyes review (queue #1) should treat the shell direction as an
+  open question**, not a fixed constraint: design-director's "unifying
+  direction" output should evaluate the current warm-editorial shell against
+  the calm-intelligent-companion sketch on the rendered evidence.
+- When Grace wants to decide: G3.5 gate — rendered side-by-side prototypes
+  (same screens, same data; current shell vs neutral+sans vs a
+  break-the-bundle hybrid keeping serif for display only), plus Mobbin pulls.
+  Route positioning language to `brand-manager`.
+- The "Decisions are challengeable" mandate is now in
+  `.claude/agents/_project-context.md` (craft contract).
+
 ## THE QUEUE (in order — REVISED 2026-06-10)
 
 **0. Merge PR #375 first** (decided with Grace 2026-06-10): the only REQUIRED
