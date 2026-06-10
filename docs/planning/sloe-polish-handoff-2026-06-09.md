@@ -90,6 +90,17 @@ no design changes from this yet. Consequences for this queue:
 - The "Decisions are challengeable" mandate is now in
   `.claude/agents/_project-context.md` (craft contract).
 
+> **✅ QUEUE ITEMS 0–1 DONE (2026-06-10).** PR #375 merged to main; the
+> fresh-eyes full review ran (direction-blind, 13 agents, ~120 fresh captures,
+> light+dark+scrolled+sheets+web). **Its backlog supersedes this queue where
+> they conflict** — read `docs/ux/reviews/2026-06-10-fresh-eyes/README.md`
+> first: verdict Premium; P0s = ENG-1010 (dark MacroColors.calories class fix)
+> + ENG-1011 (SwapMealSheet); ranked lanes ENG-1012→1018; runtime bugs
+> root-caused on ENG-1008 (DayStrip momentum-readback) + ENG-1009 (deep-link
+> `_t` cache-buster). Spacing-scale decision (adopt 12, ENG-1012) gates the
+> biggest lane and sits with Grace. Lanes A–D below remain valid work; land
+> them on the post-review scale.
+
 ## THE QUEUE (in order — REVISED 2026-06-10)
 
 **0. Merge PR #375 first** (decided with Grace 2026-06-10): the only REQUIRED
