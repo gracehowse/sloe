@@ -126,7 +126,14 @@ describe("Round 2 — copy / discoverability", () => {
     // still includes the percentage so screen-reader users keep
     // the precision.
     expect(SRC).not.toMatch(/\{confPct\}% · \{tierLabel\}/);
-    expect(SRC).toMatch(/`Status: \$\{tierLabel\}\$\{confPct/);
+    // Lane D (2026-06-10): ingredient taps now open IngredientInfoSheet,
+    // which shows the categorical tier label with the precise % beside it
+    // when unverified — the precision path moved from a long-press
+    // accessibilityHint to visible, screen-reader-reachable sheet text
+    // (a stronger form of the same D22 contract).
+    const SHEET = read("apps/mobile/components/recipe/IngredientInfoSheet.tsx");
+    expect(SHEET).toMatch(/\$\{info\.confidencePct\}%/);
+    expect(SRC).toMatch(/confidencePct:\s*tier === "verified" \? null : confPct/);
   });
 
   it("D21: Progress page weight card header is Sentence Case (matches Daily Calories / Macro Adherence)", () => {

@@ -477,6 +477,21 @@ export const Type = {
   display: { fontFamily: FontFamily.serifRegular, fontSize: 32, lineHeight: 36, fontWeight: '400' as const, letterSpacing: -0.4 },
   title:   { fontFamily: FontFamily.serifRegular, fontSize: 24, lineHeight: 28, fontWeight: '400' as const, letterSpacing: -0.3 },
   headline:{ fontFamily: FontFamily.serifMedium, fontSize: 17, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1 },
+  /** Large left-aligned in-body screen H1 — Newsreader serif 28/34, weight 600,
+   *  the editorial screen-title voice (matches what SloeHeaderWordmark / Settings
+   *  already render). For the big top-of-scroll title on a push/sub screen:
+   *  Targets ("Daily targets"), Health-Sync, Household, Weight & Trends,
+   *  Nutrition-sources. Consolidates five hand-rolled serif/Inter headers into
+   *  one token (ui-product-designer Spec 3, 2026-06-09). Set `color: colors.text`
+   *  at the call site. Mirrors web `.screen-title` in `src/styles/theme.css`.
+   *  Rule of thumb: large left-aligned top-of-scroll title → screenTitle. */
+  screenTitle: { fontFamily: FontFamily.serifSemibold, fontSize: 28, lineHeight: 34, fontWeight: '600' as const, letterSpacing: -0.3 },
+  /** Compact nav-bar-row title — Newsreader serif 18/22, weight 500. The single
+   *  shared lever for PushScreenHeader's title (and any nav-bar-row title that
+   *  was Inter-bold). Quieter than `screenTitle`; sits next to the back chevron.
+   *  Mirrors web `.nav-title`. Rule of thumb: compact nav-bar-row title →
+   *  navTitle (ui-product-designer Spec 3, 2026-06-09). */
+  navTitle: { fontFamily: FontFamily.serifMedium, fontSize: 18, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1 },
   body:    { fontFamily: FontFamily.sansMedium, fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0 },
   bodyMuted:{ fontFamily: FontFamily.sansRegular, fontSize: 14, lineHeight: 20, fontWeight: '400' as const, letterSpacing: 0 },
   label:   {

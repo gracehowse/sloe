@@ -268,9 +268,10 @@ describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () =
     expect(SRC).toMatch(/const winMomentFeedback = isFeatureEnabled\("redesign_winmoment"\)/);
     const hapticUses = SRC.match(/haptic=\{winMomentFeedback \? "confirm" : "none"\}/g) ?? [];
     expect(hapticUses.length).toBeGreaterThanOrEqual(2);
-    // The action pills are PressableScale (not bare Pressable any more).
+    // The action pills are PressableScale (not bare Pressable any more); the
+    // dominant pill is Log (cook entry deduped to the footer — gap 1).
     expect(ACTION_PILLS).toMatch(
-      /<PressableScale[\s\S]{0,600}testID="recipe-action-start-cooking"/,
+      /<PressableScale[\s\S]{0,600}testID="recipe-action-log"/,
     );
   });
 });

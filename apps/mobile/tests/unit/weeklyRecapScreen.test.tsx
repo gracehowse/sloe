@@ -33,7 +33,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { StreakPip } from "../../components/today/StreakPip";
 import WeeklyRecapScreen from "../../app/weekly-recap";
 import { selectClosestToTargetDay } from "@suppr/shared/nutrition/weeklyRecap";
-import { FontFamily, Type } from "../../constants/theme";
+import { FontFamily } from "../../constants/theme";
 
 void React;
 
@@ -209,6 +209,37 @@ function loadEmpty() {
   };
 }
 
+// ENG-1019/1020 — empty CURRENT week but the journal has older history.
+// Seeds two logged days ~30 days back (well outside the current Mon–Sun
+// week) so the screen derives `hasHistory: true` and must render the
+// week-scoped empty copy, not the cold-start copy.
+function loadEmptyWeekWithHistory() {
+  const now = new Date();
+  const keyDaysBack = (back: number) => {
+    const d = new Date(now);
+    d.setHours(12, 0, 0, 0);
+    d.setDate(now.getDate() - back);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  harness.rows = [
+    { date_key: keyDaysBack(30), calories: 2000, protein: 140, carbs: 220, fat: 70 },
+    { date_key: keyDaysBack(29), calories: 1900, protein: 130, carbs: 210, fat: 65 },
+  ];
+  harness.profile = {
+    target_calories: 2100,
+    target_protein: 150,
+    target_carbs: 230,
+    target_fat: 70,
+    week_start_day: "monday",
+    streak_freeze_budget_max: 3,
+    streak_freezes_earned_at: [],
+    streak_freezes_used_history: [],
+  };
+}
+
 // ── Tests ──────────────────────────────────────────────────────────
 
 describe("StreakPip — tappable entry point (2026-04-30 audit)", () => {
@@ -339,6 +370,46 @@ describe("WeeklyRecap screen — render states", () => {
       pathname: "/(tabs)",
       params: { openLog: "1", _t: expect.stringMatching(/^\d+$/) },
     });
+  });
+
+  it("cold-start empty state (no history) keeps the 'starts here' copy", async () => {
+    setMode("ready");
+    loadEmpty();
+    const { findByTestId, getByText } = render(<WeeklyRecapScreen />);
+    const headline = await findByTestId("weekly-recap-empty-headline");
+    expect(headline).toBeTruthy();
+    expect(getByText("Your streak starts here.")).toBeTruthy();
+    expect(getByText(/come back after your first meal/)).toBeTruthy();
+  });
+
+  it("returning user with an empty current week shows week-scoped copy, not cold-start copy", async () => {
+    setMode("ready");
+    loadEmptyWeekWithHistory();
+    const { findByTestId, getByText, queryByText } = render(<WeeklyRecapScreen />);
+    // Still the empty container (current week has zero logged days)…
+    await findByTestId("weekly-recap-empty-card");
+    // …but the copy is week-scoped, never cold-start.
+    expect(getByText("Nothing logged this week yet")).toBeTruthy();
+    expect(getByText(/This week's recap builds as you log/)).toBeTruthy();
+    expect(queryByText("Your streak starts here.")).toBeNull();
+    expect(queryByText(/come back after your first meal/)).toBeNull();
+  });
+
+  it("‘Log a meal’ CTA is an aubergine OUTLINE pill (border + primarySolid label), not a bare text-link", async () => {
+    setMode("ready");
+    loadEmpty();
+    const { findByLabelText } = render(<WeeklyRecapScreen />);
+    const cta = await findByLabelText("Log a meal");
+    // The pill carries a 1.5px aubergine outline + full radius. The
+    // PressableScale flattens its style array onto the underlying
+    // Pressable; assert the border landed (the CTA is no longer a bare
+    // text-link per the 2026-06-09 CTA weight map).
+    const flat = Array.isArray(cta.props.style)
+      ? Object.assign({}, ...cta.props.style.filter(Boolean))
+      : cta.props.style;
+    expect(flat.borderWidth).toBe(1.5);
+    expect(flat.borderRadius).toBe(9999); // Radius.full
+    expect(typeof flat.borderColor).toBe("string");
   });
 
   it("hero numerals use the Newsreader serif font family token (§2.3 rule 3)", async () => {

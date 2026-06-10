@@ -664,6 +664,7 @@ function MacroStat({
   color: string;
   textColor: string;
 }) {
+  const colors = useThemeColors();
   return (
     <View style={styles.macroCell}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -672,7 +673,12 @@ function MacroStat({
       </View>
       <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
       {pct != null ? (
-        <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of kcal</Text>
+        // e2e walk 2026-06-10: "{pct}% of kcal" is a neutral share-of-energy
+        // stat, so it reads in `textSecondary` — NOT the macro hue. The Fat
+        // macro hue is amber (`MacroColors.fat`), so painting this caption in
+        // `color` made a neutral stat read as the over-budget signal. The macro
+        // hue stays on the dot + grams; the caption is informational text.
+        <Text style={{ fontSize: 12, color: colors.textSecondary }}>{pct}% of kcal</Text>
       ) : null}
     </View>
   );

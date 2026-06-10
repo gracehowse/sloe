@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { MacroColors, Spacing, Type } from "@/constants/theme";
+import { MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -118,12 +118,25 @@ export function TodayPlannedMealsCard({
                 </Text>
                 <MacroLine meal={pm} textSecondaryColor={colors.textSecondary} />
               </View>
+              {/* "Log today" — compact aubergine OUTLINE pill (Sloe CTA weight
+                  map, Spec 2, 2026-06-09). Was bare caps text; per-row primaries
+                  read as accent lines, not bare text (bare text = dismissal only).
+                  Keeps the caps `Type.label`; 1.5px `accent.primarySolid` border;
+                  full radius. padH/padV snap to the scale (Spacing.dense/xs) — the
+                  spec's literal 10/4 is off-token, write-discipline wins. */}
               <Pressable
                 onPress={() => setPicker({ meal: pm })}
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${name} today`}
                 hitSlop={8}
-                style={{ paddingHorizontal: 8, paddingVertical: Spacing.dense }}
+                style={({ pressed }) => ({
+                  paddingHorizontal: Spacing.dense,
+                  paddingVertical: Spacing.xs,
+                  borderRadius: Radius.full,
+                  borderWidth: 1.5,
+                  borderColor: accent.primarySolid,
+                  backgroundColor: pressed ? accent.primarySoft : "transparent",
+                })}
               >
                 <Text style={{ ...Type.label, color: accent.primarySolid }}>Log today</Text>
               </Pressable>

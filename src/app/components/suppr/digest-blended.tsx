@@ -38,6 +38,7 @@ import {
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL,
   formatLoggingConsistencyValue,
 } from "../../../lib/nutrition/weightSurfaceMode";
+import { buildWeeklyRecapEmptyCopy } from "../../../lib/nutrition/weeklyRecapEmptyCopy";
 
 export function DigestBlended(props: DigestProps) {
   const {
@@ -55,6 +56,7 @@ export function DigestBlended(props: DigestProps) {
     onDismiss,
     onAdjustPace,
     weightSurfaceMode = "show",
+    hasHistory = false,
     blendedExtras,
     className,
   } = props;
@@ -234,8 +236,14 @@ export function DigestBlended(props: DigestProps) {
             <p className="text-[15px] font-semibold text-foreground" data-testid="digest-hero-empty">
               {headline}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              No days logged yet — log a meal to start your week.
+            {/* ENG-1019/1020 — history-aware empty subline. Mirror of mobile
+                `weekly-recap.tsx`: returning user with an empty recap week gets
+                week-scoped copy; true cold start keeps the "starts here" promise. */}
+            <p
+              className="text-xs text-muted-foreground mt-1"
+              data-testid="digest-hero-empty-sub"
+            >
+              {buildWeeklyRecapEmptyCopy({ hasHistory }).body}
             </p>
           </>
         ) : closest ? (

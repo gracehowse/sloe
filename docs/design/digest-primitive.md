@@ -121,12 +121,29 @@ Microcopy:
 - Share aria-label: "Share week digest"
 - Empty streak tile hint: "log any day to start"
 - Empty weight tile hint: "log weight any day"
-- Empty-week headline (0 days logged): "Quiet week."; subline: "No days logged — that's fine."
+- Empty-week headline (0 days logged): "Quiet week."
+- Empty-week subline is **history-aware** (ENG-1019/1020 — the
+  "hasHistory disease" pattern). The host passes `hasHistory` (any logged
+  day in the journal store); the subline is sourced from
+  `buildWeeklyRecapEmptyCopy` in `src/lib/nutrition/weeklyRecapEmptyCopy.ts`
+  so web (`Digest`) and mobile (`weekly-recap.tsx`) never diverge:
+  - **True cold start** (`hasHistory: false`): "A streak begins when you log
+    on two different days in the same week. There's nothing to recap yet —
+    come back after your first meal."
+  - **Returning user, empty recap week** (`hasHistory: true`): "This week's
+    recap builds as you log. A streak counts every day with at least one
+    meal — log today to keep yours going." Never the cold-start promise.
+- The first_week TDEE check-in headline is also history-aware: the cascade
+  emits "Your check-in starts after 7 days of data." whenever last week's
+  TDEE snapshot is missing (also true on a returning user's first visit
+  this week). When `hasHistory`, that headline is swapped for "Your
+  check-in updates as you log this week." via
+  `resolveCheckinFirstWeekHeadline`.
 
 ## 7. States
 
 - **Loading** — skeleton: 1 eyebrow pill (44×14), 1 headline bar (60% w, 20h), 1 subline bar (40% w, 12h), 4 tiles (64h each, muted bg). No narrative lines. No footer. 400ms shimmer.
-- **Empty (0 days logged)** — Show card. Headline "Quiet week." Subline "No days logged — that's fine." Stats: streak tile shows current streak (could be 0), others muted-grey with em-dash values. No narrative lines. Footer: Share disabled (aria-disabled, 40% opacity). "Got it" enabled.
+- **Empty (0 days logged)** — Show card. Headline "Quiet week." Subline is history-aware (see §6 Microcopy — `buildWeeklyRecapEmptyCopy({ hasHistory })`). Stats: streak tile shows current streak (could be 0), others muted-grey with em-dash values. No narrative lines. Footer: Share disabled (aria-disabled, 40% opacity). "Got it" enabled.
 - **Partial week (1–3 days logged)** — Full card. Subline shows day count honestly. Stats show averages over logged days only; hint adds "(over N days)". Narrative lines render if data supports them.
 - **Success (4+ days logged)** — Full card with all applicable narrative lines.
 - **Error (data fetch failed)** — Do not render Digest. Render a minimal error tile: "Couldn't load your digest. Try again." with retry link. Never show partial numbers on error.
@@ -149,7 +166,9 @@ Microcopy:
 - **Haptic** — mobile only: light impact on share, selection on dismiss.
 - **Tile grid** — web can flow to 4-up ≥720px; mobile always 2×2.
 
-No intentional copy divergence.
+No intentional copy divergence. The empty subline + first_week check-in
+headline are history-aware on both platforms via the shared
+`weeklyRecapEmptyCopy` helper (see §6 Microcopy).
 
 ## 10. Acceptance criteria
 

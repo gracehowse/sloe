@@ -843,6 +843,32 @@
     font-family: var(--font-display);
     font-variant-numeric: tabular-nums;
   }
+
+  /** Screen title — mirror of mobile `Type.screenTitle` (ui-product-designer
+   *  Spec 3, 2026-06-09). The large left-aligned in-body H1 voice for push /
+   *  sub-screens (Targets, Health-Sync, Household, Weight & Trends,
+   *  Nutrition-sources): Newsreader serif 28px, weight 600, tight tracking.
+   *  Kept in lockstep with `apps/mobile/constants/theme.ts :: Type.screenTitle`
+   *  (28/34/600/-0.3). Use on the equivalent web sub-screen H1s. */
+  .screen-title {
+    font-family: var(--font-headline);
+    font-size: var(--text-3xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.21; /* 34/28 ≈ mobile lineHeight */
+    letter-spacing: -0.01em;
+  }
+
+  /** Nav title — mirror of mobile `Type.navTitle`. The compact nav-bar-row
+   *  title voice (PushScreenHeader equivalent): Newsreader serif 18px,
+   *  weight 500. Quieter than `.screen-title`. Kept in lockstep with
+   *  `apps/mobile/constants/theme.ts :: Type.navTitle` (18/22/500/-0.1). */
+  .nav-title {
+    font-family: var(--font-headline);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.22; /* 22/18 ≈ mobile lineHeight */
+    letter-spacing: -0.005em;
+  }
 }
 
 @layer utilities {

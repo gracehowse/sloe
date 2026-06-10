@@ -64,7 +64,9 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     );
     // The helper is called inline (not via a local boolean variable) and
     // guarded by recipeId — both must be present in the same if-condition.
-    expect(SRC.mobileRecipe).toMatch(/ingredientShouldShowVerifyCta\(tier\)\s*&&\s*recipeId/);
+    expect(SRC.mobileRecipe).toMatch(
+      /ingredientShouldShowVerifyCta\(tier\)\s*&&\s*Boolean\(recipeId\)\s*&&\s*!isSeedRecipeId\(recipeId\)/,
+    );
     // Pre-fix gating used `confPct < 75` directly; that path is gone.
     expect(SRC.mobileRecipe).not.toMatch(/\(confPct\s*==\s*null\s*\|\|\s*confPct\s*<\s*75\)\s*&&\s*recipeId/);
   });

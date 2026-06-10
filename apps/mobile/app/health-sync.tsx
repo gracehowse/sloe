@@ -655,13 +655,13 @@ export default function HealthSyncScreen() {
           paddingHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
         },
+        // SLOE Spec 3 (2026-06-09): tokenised onto `Type.screenTitle` (Newsreader
+        // serif 28/34, weight 600). Was a hand-rolled serif 28/700; the 700 over-
+        // weighted the title vs the other four screens now on the shared token.
+        // Left-aligned — no textAlign: "center", no flex:1 centering trick.
         title: {
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 28,
-          lineHeight: 34,
-          fontWeight: "700" as const,
+          ...Type.screenTitle,
           color: colors.text,
-          // Left-aligned — no textAlign: "center", no flex:1 centering trick
         },
         // Section eyebrow: ALL-CAPS, Inter 11sp, +0.08em tracking, sage colour.
         // settings.md §4: 24pt above / 8pt below each eyebrow.

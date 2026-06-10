@@ -13,22 +13,23 @@ describe('Cook mode', () => {
     const recipeCard = element(by.text('kcal')).atIndex(0);
     await recipeCard.tap();
 
-    // Scroll to Start Cooking
-    await waitFor(element(by.text('Start Cooking')))
+    // The cook entry is the floating footer "Cook Mode" pill — the top-row
+    // "Start Cooking" pill was removed (cook-CTA dedup, premium-audit
+    // 2026-06-09 gap 1). The footer is fixed, so no scroll needed.
+    await waitFor(element(by.id('recipe-cook-mode-cta')))
       .toBeVisible()
-      .whileElement(by.id('recipe-detail-scroll'))
-      .scroll(200, 'down');
+      .withTimeout(10000);
   });
 
   it('enters cook mode', async () => {
     try {
-      await element(by.text('Start Cooking')).tap();
+      await element(by.id('recipe-cook-mode-cta')).tap();
 
       await waitFor(element(by.text('Exit')))
         .toBeVisible()
         .withTimeout(5000);
     } catch {
-      // Start Cooking not available
+      // Cook Mode not available
     }
   });
 

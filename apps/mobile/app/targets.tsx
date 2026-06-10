@@ -406,12 +406,14 @@ export default function TargetsScreen() {
           paddingBottom: Spacing.md,
         },
         backHit: { padding: Spacing.sm, marginLeft: -Spacing.sm },
+        // SLOE Spec 3 (2026-06-09): the one real Inter→serif screen-title fix.
+        // "Daily targets" was the only genuinely-Inter H1 of the five screens
+        // unified onto `Type.screenTitle` (Newsreader serif 28/34). flex:1 keeps
+        // the title taking the row's middle column between back + Edit.
         title: {
+          ...Type.screenTitle,
           flex: 1,
-          fontSize: 24,
-          fontWeight: "700",
           color: colors.text,
-          letterSpacing: -0.4,
         },
         editBtn: {
           paddingHorizontal: Spacing.md,

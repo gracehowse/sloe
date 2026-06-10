@@ -190,11 +190,15 @@ function canonicalSlotsMissingFromDay(meals: { name: string }[]): string[] {
   return ALL_MEAL_SLOTS.filter((slot) => !present.has(slot));
 }
 
-/** Compact chip label so four slots fit one row on narrow phones. */
+/** Add-slot chip label. "Snacks" → singular "Snack" so the chip reads as one
+ *  action; every other slot keeps its full name — "Bfast" was the only
+ *  abbreviation left in the app (e2e walk 2026-06-10) and read as a typo.
+ *  The chips flex-shrink with `numberOfLines={1}`, so the full "Breakfast"
+ *  still fits one row on narrow phones. */
 function compactPlanSlotLabel(slot: string): string {
   switch (slot) {
     case "Breakfast":
-      return "Bfast";
+      return "Breakfast";
     case "Lunch":
       return "Lunch";
     case "Dinner":
@@ -1290,16 +1294,10 @@ export default function PlannerScreen() {
     });
   }, []);
 
-  // Prototype port (2026-04-20): "Week of {Month Day}" overline.
-  // Superseded the older getDateRange helper which built a
-  // "Apr 20 – Apr 26" span; the new overline shows only the first
-  // day of the plan to match the prototype (`screens-mobile.jsx` 455).
-  // Shows the first day of the currently-displayed plan, honouring
-  // startOffset so "Next week" doesn't still say today's date.
-  const getWeekOfLabel = useCallback(() => {
-    const d = planCalendarDateForIndex(0, startOffset);
-    return `Week of ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
-  }, [startOffset]);
+  // e2e walk 2026-06-10: the page subheader "Week of June 10" repeated the
+  // span already carried by the summary-card eyebrow ("Jun 10 – 16 · Meal
+  // plan"). Subheader dropped (title "Meal plan" + card eyebrow are enough),
+  // so the old `getWeekOfLabel` overline helper is gone with it.
 
   // Prototype port — compute "Hits your targets N of 7 days" from the
   // live plan + targets. A day "hits" when its total calories sit
@@ -2441,7 +2439,6 @@ export default function PlannerScreen() {
           header so the user can return without losing their place. */}
       <PlanTabChrome
         value="plan"
-        subtitle={getWeekOfLabel()}
         onChange={(next) => {
           if (next === "shopping") {
             router.push("/shopping" as Href);
@@ -3196,8 +3193,15 @@ export default function PlannerScreen() {
             {/* Calm Sloe macro summary — four evenly-spread cells with a
                 clear two-line hierarchy (macro grams over an "On track" /
                 ±gap caption) replace the old jammed inline run. Computed
-                here, rendered by `PlanDayMacroSummary`. */}
-            {planTargets ? (() => {
+                here, rendered by `PlanDayMacroSummary`.
+                e2e walk 2026-06-10: an empty day (only placeholder slots,
+                no chosen recipe) rendered four chips reading "P 0g −99g …"
+                — an all-zero macro wall under every blank day. Suppress the
+                whole row when the day has no real meal; the "No meals
+                planned for this day yet" empty state + add-slot pills carry
+                the day on their own. Same per-day "has real meal" semantics
+                as `planHasRealMeals` (recipe chosen, not a placeholder). */}
+            {planTargets && dp.meals.some(planMealHasRecipe) ? (() => {
               const dayFiber =
                 Math.round(
                   dp.meals.reduce((s, m) => s + planMealFiberG(m, recipeFiberPool), 0) * 10,

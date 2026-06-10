@@ -755,9 +755,25 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           collapsedSlots={collapsedSlots}
           onToggleSlotCollapse={onToggleSlotCollapse}
           onOpenFabForSlot={onOpenFabForSlot}
-          renderSlotExpanded={(slot, meals) => (
+          renderSlotExpanded={(slot, meals) => {
+            // e2e walk 2026-06-10: the Figma card header already shows the
+            // single (primary) meal's title + "{slotCals} kcal · {P}g P". When
+            // a slot has exactly one entry AND that entry's title equals the
+            // header title, the expanded row repeats it verbatim ("MyFitnessPal
+            // entry · 318 kcal" twice). Suppress just that redundant row — keep
+            // "+ Add food" so the slot stays editable. Mirrors the macro-detail
+            // "true duplicate" rule (single entry literally named after the
+            // header) from `apps/mobile/app/macro-detail.tsx` (2026-06-10).
+            const headerTitle = (meals[0]?.recipeTitle ?? "").trim();
+            const redundantSingleRow =
+              meals.length === 1 &&
+              (meals[0]?.recipeTitle ?? "").trim() === headerTitle &&
+              headerTitle !== "";
+            return (
             <View>
-              {meals.map((m) => (
+              {redundantSingleRow
+                ? null
+                : meals.map((m) => (
                 <Pressable
                   key={m.id}
                   onPress={() => onPressMeal(m.id)}
@@ -808,7 +824,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </Text>
               </Pressable>
             </View>
-          )}
+            );
+          }}
         />
       ) : (
         slots.map((slot, slotIndex) => {

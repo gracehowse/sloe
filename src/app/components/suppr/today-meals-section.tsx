@@ -384,12 +384,27 @@ export function TodayMealsSection({
             collapsedSlots={collapsedSlots}
             onToggleSlot={onToggleSlot}
             onOpenAddForSlot={onOpenAddForSlot}
-            renderSlotExpanded={(sectionName, sectionMeals) => (
+            renderSlotExpanded={(sectionName, sectionMeals) => {
+              // e2e walk 2026-06-10 (mobile parity): the Figma summary card
+              // header already shows the single (primary) meal's title +
+              // "{slotCals} kcal · {P}g P". When a slot has exactly one entry
+              // whose title equals that header title, the expanded row repeats
+              // it verbatim ("MyFitnessPal entry · 318 kcal" twice). Suppress
+              // just that redundant row — keep "Add food" so the slot stays
+              // editable. Mirrors the macro-detail "true duplicate" rule
+              // (single entry literally named after the header) and the mobile
+              // `TodayMealsSection` renderSlotExpanded guard.
+              const headerTitle = (sectionMeals[0]?.recipeTitle ?? "").trim();
+              const redundantSingleRow =
+                sectionMeals.length === 1 &&
+                (sectionMeals[0]?.recipeTitle ?? "").trim() === headerTitle &&
+                headerTitle !== "";
+              return (
               <div
                 className="border-t border-border/10"
                 data-testid={`today-meals-figma-expanded-${sectionName}`}
               >
-                {sectionMeals.map((meal) => (
+                {(redundantSingleRow ? [] : sectionMeals).map((meal) => (
                   <div
                     key={meal.id}
                     className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10"
@@ -473,7 +488,8 @@ export function TodayMealsSection({
                   Add food
                 </button>
               </div>
-            )}
+              );
+            }}
           />
           {mealsForSelectedDate.length > 0 ? (
             <div className="mt-2 flex justify-end">

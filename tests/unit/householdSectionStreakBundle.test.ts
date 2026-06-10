@@ -158,9 +158,17 @@ describe("Fix 3A — Why this number? panel uses the streak value", () => {
 
 describe("Premium parity — household settings redesign (2026-06-09)", () => {
   // GAP 1 / 2: screen H1 is serif on both platforms.
-  it("mobile screen title uses Newsreader serif (FontFamily.serifSemibold)", () => {
-    expect(MOBILE_HOUSEHOLD).toContain("FontFamily.serifSemibold");
-    expect(MOBILE_HOUSEHOLD).toMatch(/fontSize:\s*28/);
+  it("mobile screen title uses the serif screen-title token (Type.screenTitle)", () => {
+    // SLOE Spec 3 (2026-06-10): the hand-rolled serifSemibold/28 H1 was
+    // tokenised onto Type.screenTitle — the serif contract now lives in
+    // the token, pinned here at its source so the consumer pin can't
+    // silently pass against a de-serifed token.
+    expect(MOBILE_HOUSEHOLD).toContain("Type.screenTitle");
+    const THEME = readFileSync(
+      resolve(__dirname, "../../apps/mobile/constants/theme.ts"),
+      "utf8",
+    );
+    expect(THEME).toMatch(/screenTitle:\s*\{\s*fontFamily:\s*FontFamily\.serifSemibold,\s*fontSize:\s*28/);
   });
 
   it("web screen H1 uses Newsreader serif (--font-headline)", () => {

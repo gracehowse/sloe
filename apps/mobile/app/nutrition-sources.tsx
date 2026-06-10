@@ -95,7 +95,11 @@ export default function NutritionSourcesScreen() {
         // `#C4ACD0` so small text stays legible on near-black.
         topTitle: { color: accent.primarySolid, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
         scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
-        heading: { ...Type.title, color: colors.text },
+        // SLOE Spec 3 (2026-06-09): the large in-body H1 ("About nutrition data")
+        // tokenised onto the shared `Type.screenTitle` (Newsreader serif 28/34/600).
+        // Was `Type.title` (serifRegular 24/400) — a step down from the screen-title
+        // voice every sibling sub-screen now shares.
+        heading: { ...Type.screenTitle, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,

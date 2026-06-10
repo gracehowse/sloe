@@ -120,6 +120,10 @@ import {
 } from "../../components/recipe/RecipeIngredientGrid";
 import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
 import { RecipeServingsFooter } from "../../components/recipe/RecipeServingsFooter";
+import {
+  IngredientInfoSheet,
+  type IngredientInfo,
+} from "../../components/recipe/IngredientInfoSheet";
 
 function verifyJsonNeedsReviewNudge(json: Record<string, unknown>): boolean {
   const avg = json.avgIngredientConfidence;
@@ -298,6 +302,12 @@ export default function RecipeDetailScreen() {
   // Figma 332:2 §6 — the ingredient grid shows a preview then expands via the
   // "View all N ingredients" pill.
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
+  // Tapping an ingredient tile opens the branded read-only `IngredientInfoSheet`
+  // (status / source / per-line macros) — premium-audit 2026-06-09, gap 5. This
+  // replaces the prior off-brand `Alert.alert` info popup. The slot also carries
+  // the resolved Verify route (set only when the tier still needs review).
+  const [ingredientInfo, setIngredientInfo] = useState<IngredientInfo | null>(null);
+  const [ingredientInfoVerifyHref, setIngredientInfoVerifyHref] = useState<string | null>(null);
   // Sloe image system (2026-06-08) — `name_key → image_url` for the
   // ingredient tiles, hydrated from the global `ingredient_images` table.
   // Empty until the fal-funded backfill runs; missing keys fall back to the
@@ -1455,8 +1465,11 @@ export default function RecipeDetailScreen() {
     Alert.alert("Recipe options", undefined, menu);
   };
 
-  // Per-ingredient tap → status / source / macros Alert (preserves the wired
-  // 4-tier verification info + Verify routing). Mirrors the prior grid card tap.
+  // Per-ingredient tap → branded `IngredientInfoSheet` (status / source /
+  // per-line macros + a Verify route when the tier still needs review). This
+  // replaces the prior off-brand `Alert.alert` info popup (premium-audit
+  // 2026-06-09, gap 5). The host owns the full derivation (tier label/colour,
+  // explanation, Verify gate) so the sheet stays a pure presenter.
   const onIngredientPress = (index: number) => {
     const ing = ingredientsForIngredientsTab[index];
     if (!ing) return;
@@ -1475,21 +1488,35 @@ export default function RecipeDetailScreen() {
           : tier === "estimated"
             ? "Estimated"
             : "Unverified";
-    const sourceLabel = ing.source ?? "Local estimate";
-    const body =
-      `Status: ${tierLabel}${confPct != null ? ` (${confPct}%)` : ""}\n` +
-      `Source: ${sourceLabel}\n\n` +
-      `${Math.round(ing.calories ?? 0)} kcal · P ${Math.round(ing.protein ?? 0)}g · C ${Math.round(ing.carbs ?? 0)}g · F ${Math.round(ing.fat ?? 0)}g`;
-    const buttons: { text: string; style?: "cancel" | "default"; onPress?: () => void }[] = [
-      { text: "Close", style: "cancel" },
-    ];
-    if (ingredientShouldShowVerifyCta(tier) && recipeId && !isSeedRecipeId(recipeId)) {
-      buttons.unshift({
-        text: "Verify →",
-        onPress: () => router.push(`/recipe/verify?id=${recipeId}` as never),
-      });
-    }
-    Alert.alert(decodeEntities(ing.name), body, buttons);
+    // Tier swatch — sage for a verified source+match, amber for an estimate /
+    // partial match, quiet grey for unverified. All semantic tokens (no hexes).
+    const tierColor =
+      tier === "verified"
+        ? Accent.successSolid
+        : tier === "unverified"
+          ? colors.textTertiary
+          : Accent.warningSolid;
+    const explanation =
+      tier === "verified"
+        ? "Matched to a database entry with high confidence. These macros are scaled to this recipe's portion."
+        : tier === "unverified"
+          ? "We couldn't confidently match this line to the food database — these macros are a local estimate. Verify the recipe to lock in accurate values."
+          : "This line matched with lower confidence, so the macros are approximate. Verify the recipe to refine them.";
+    const showVerify =
+      ingredientShouldShowVerifyCta(tier) && Boolean(recipeId) && !isSeedRecipeId(recipeId);
+    setIngredientInfoVerifyHref(showVerify ? `/recipe/verify?id=${recipeId}` : null);
+    setIngredientInfo({
+      name: decodeEntities(ing.name),
+      tierLabel,
+      tierColor,
+      confidencePct: tier === "verified" ? null : confPct,
+      sourceLabel: ing.source ?? "Local estimate",
+      calories: ing.calories ?? 0,
+      protein: ing.protein ?? 0,
+      carbs: ing.carbs ?? 0,
+      fat: ing.fat ?? 0,
+      explanation,
+    });
   };
 
   // Attribution row (Figma §2). Reuse the existing byline resolution — it
@@ -1613,10 +1640,11 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* 3. Action pills — Start Cooking / Log / Edit (Ask omitted: no
-              coach handler exists — net-new Figma 185:2). */}
+          {/* 3. Action pills — Log (dominant) / Edit. Cook entry deduped to
+              the single floating Cook Mode pill in the footer (premium-audit
+              2026-06-09, gap 1); Ask pill omitted: no coach handler exists —
+              net-new Figma 185:2. */}
           <RecipeActionPills
-            onStartCooking={openCookMode}
             onLog={() => void addRecipeToTodayJournal()}
             logging={loggingJournal}
             onEdit={
@@ -1717,21 +1745,37 @@ export default function RecipeDetailScreen() {
             </View>
           ) : null}
 
-          {/* Regulated-allergen callout — always present (silence ≠ safety). */}
-          <View
-            style={styles.card}
-            accessibilityRole="text"
-            accessibilityLabel="Regulated-allergen information"
-            testID="recipe-allergen-callout"
-          >
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-              {allergenLine ?? "Not tagged for allergens"}
+          {/* Regulated-allergen callout — always present (silence ≠ safety),
+              but the null state is QUIET. When an allergen IS tagged the full
+              white-slab card renders with the verify caveat; when nothing is
+              tagged it collapses to one quiet caption line — same calm-minimal
+              class as the shipped micros collapse (premium-audit 2026-06-09,
+              gap 6). */}
+          {allergenLine ? (
+            <View
+              style={styles.card}
+              accessibilityRole="text"
+              accessibilityLabel="Regulated-allergen information"
+              testID="recipe-allergen-callout"
+            >
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+                {allergenLine}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                We tag recipes from matched ingredients at import and verify time. Always verify
+                ingredients against the original source if an allergen is a safety concern.
+              </Text>
+            </View>
+          ) : (
+            <Text
+              accessibilityRole="text"
+              accessibilityLabel="Not tagged for allergens. We tag recipes from matched ingredients — always verify against the original source if an allergen is a safety concern."
+              testID="recipe-allergen-callout"
+              style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 17 }}
+            >
+              Not tagged for allergens — always verify against the original source.
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
-              We tag recipes from matched ingredients at import and verify time. Always verify
-              ingredients against the original source if an allergen is a safety concern.
-            </Text>
-          </View>
+          )}
 
           {/* Auto-verify progress note. */}
           {autoVerifyingIngredients ? (
@@ -1795,6 +1839,27 @@ export default function RecipeDetailScreen() {
           sheet below (`RecipeEditSheet`), reached from the Edit action pill /
           owner overflow — it recalculates per-serving aggregates on save. The
           footer stepper handles the orthogonal "servings to view" scaling. */}
+
+      {/* Ingredient detail — branded sheet (premium-audit 2026-06-09, gap 5);
+          replaces the prior `Alert.alert` info popup. The Verify CTA renders
+          only when the host resolved a route for a still-needs-review tier. */}
+      <IngredientInfoSheet
+        info={ingredientInfo}
+        onClose={() => {
+          setIngredientInfo(null);
+          setIngredientInfoVerifyHref(null);
+        }}
+        onVerify={
+          ingredientInfoVerifyHref
+            ? () => {
+                const href = ingredientInfoVerifyHref;
+                setIngredientInfo(null);
+                setIngredientInfoVerifyHref(null);
+                router.push(href as never);
+              }
+            : undefined
+        }
+      />
 
       {recipeEditOpen && recipe && canEditRecipe(recipe.author_id, userId) ? (
         <RecipeEditSheet
