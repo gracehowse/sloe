@@ -253,9 +253,17 @@ export default function MacroDetailScreen() {
                     </Text>
                   </View>
 
-                  {/* Sub-rows — only render when more than one meal in
-                      the slot so we don't duplicate the header. */}
-                  {slotMeals.length > 1 &&
+                  {/* Sub-rows — e2e walk 2026-06-10: single-item slots used
+                      to hide their row entirely, so "BREAKFAST · 24.6g" gave
+                      no clue WHAT contributed the grams without switching to
+                      the By-ingredient tab. Render sub-rows whenever the
+                      meal name adds information; skip only the true
+                      duplicate case (a single entry literally named after
+                      the slot, e.g. a quick-add titled "Breakfast"). */}
+                  {(slotMeals.length > 1 ||
+                    ((slotMeals[0]?.recipeTitle ?? "").trim().toLowerCase() !==
+                      slot.trim().toLowerCase() &&
+                      (slotMeals[0]?.recipeTitle ?? "").trim() !== "")) &&
                     slotMeals.map((meal, i) => {
                       const val = Number(meal[config.field]) || 0;
                       return (

@@ -1306,6 +1306,17 @@ export default function PlannerScreen() {
   // within ±10% of the daily calorie target. Worst-short day = the
   // day with the largest negative gap (most calories under).
   // Returns null if we don't have targets or plan data yet.
+  // e2e walk 2026-06-10: a freshly-created plan is 7 days of PLACEHOLDER
+  // slots — `plan.length > 0` is true while nothing real is planned. The
+  // summary card was scoring that empty week ("Hits your targets 0 of 7
+  // days") and the worst-short advice referenced meals that don't exist
+  // ("…swap the dinner"). Same disease class as the Progress story-gate
+  // contradiction (ENG-1019): an insight engine speaking without data.
+  const planHasRealMeals = useMemo(
+    () => (plan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
+    [plan],
+  );
+
   const summaryScore = useMemo((): {
     hits: number;
     total: number;
@@ -2776,10 +2787,14 @@ export default function PlannerScreen() {
               testID="plan-summary-headline"
               style={[styles.summaryTitle, { color: summaryTitleColor }, summaryTitleAnimStyle]}
             >
-              {`Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`}
+              {planHasRealMeals
+                ? `Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`
+                : "Plan your week"}
             </ReAnimated.Text>
             <Text style={styles.summarySubtitle}>
-              {summaryScore.hits === summaryScore.total
+              {!planHasRealMeals
+                ? `Generate fills all ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} around your targets — or add meals to any day below.`
+                : summaryScore.hits === summaryScore.total
                 ? `All ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} land on target.`
                 : summaryScore.worstShort
                   ? `${WEEKDAY_LONG[planCalendarDateForIndex(summaryScore.worstShort.dayIndex, startOffset).getDay()]} is ~${Math.round(summaryScore.worstShort.shortBy)} kcal short. Add a snack or swap the dinner.`

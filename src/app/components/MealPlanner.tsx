@@ -280,8 +280,17 @@ export const MealPlanner = memo(function MealPlanner({
     const date = planCalendarDateForIndex(summary.worstShort.dayIndex, startOffset);
     return shortWeekdayLabel(date);
   }, [summary, startOffset]);
+  // e2e walk 2026-06-10 (mirror of mobile planner): a freshly-created plan
+  // is all placeholder slots — don't score the empty week or advise on
+  // meals that don't exist; invite the user to Generate instead.
+  const planHasRealMeals = useMemo(
+    () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
+    [mealPlan],
+  );
   const summarySubtitle = summary
-    ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
+    ? planHasRealMeals
+      ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
+      : `Generate fills all ${summary.total} day${summary.total === 1 ? "" : "s"} around your targets — or add meals to any day below.`
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
 
@@ -738,7 +747,9 @@ export const MealPlanner = memo(function MealPlanner({
                   ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
                 }}
               >
-                Hits your targets {summary.hits} of {`${summary.total} day${summary.total === 1 ? "" : "s"}`}
+                {planHasRealMeals
+                  ? `Hits your targets ${summary.hits} of ${summary.total} day${summary.total === 1 ? "" : "s"}`
+                  : "Plan your week"}
               </p>
               {summarySubtitle ? (
                 <p
