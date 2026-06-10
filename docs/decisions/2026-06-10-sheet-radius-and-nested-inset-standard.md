@@ -54,7 +54,20 @@ canonical shell** (cream cards, CARD_RADIUS, soft lift, no always-on
 border in light). Pixel-verify the ingredient-grid contrast against the
 cream cards before shipping (tiles currently tuned for white).
 
-## Provenance note: Today macro tiles → soft lift
+## 4. AMENDMENT (same day, rendered A/B): tile class stays FLAT
+
+Grace challenged the macro-tile soft lift. Rendered A/B at identical
+framing (`apps/mobile/screenshots/agent/tile-ab-2026-06-10/A3-tiles-soft.png`
+vs `B3-tiles-flat.png`): soft puts six shadow sources in one viewport and
+dulls the hero's anchor lift; flat reads as one calm tonal cluster. Comps
+(Apple Health, Oura — the audience's daily screens) keep dense stat tiles
+flat-tonal. **Rule: one treatment per element CLASS — full-width cards
+lift soft; small stat TILES are flat-tonal + hairline.** Applied to
+Today macro tiles, Progress energy triad (+ skeletons), Settings stat
+tiles. This AMENDS the 2026-06-09 one-card decision ("every page-ground
+card lifts soft") with the tile-class carve-out.
+
+## Provenance note: Today macro tiles → soft lift (superseded by §4)
 
 Applied 2026-06-10 as one-card-decision residue, NOT a new call: the
 2026-06-09 decision's decider line is Grace's own review ("the ring card

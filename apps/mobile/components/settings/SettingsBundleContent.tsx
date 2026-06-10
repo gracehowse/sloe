@@ -502,7 +502,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const accent = useAccent();
   // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
   // tiles (Recipes / Streak), matching the SettingsCard sections around them.
-  const statTileElevation = useCardElevation({ variant: "soft" });
+  // Tile-class rule (2026-06-10): stat tiles are flat-tonal, not lifted.
+  const statTileElevation = useCardElevation();
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{

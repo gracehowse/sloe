@@ -173,6 +173,8 @@ export default function ProgressScreen() {
   // inside another card, so there's no double-shadow risk. Mirrors web giving
   // the same cards `elevation="card"`.
   const cardElevation = useCardElevation({ variant: "soft" });
+  // Tile-class rule (2026-06-10): skeleton stat tiles mirror the flat triad.
+  const tileElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -1075,11 +1077,11 @@ export default function ProgressScreen() {
                 width: "47%",
                 padding: Spacing.md,
                 borderRadius: CARD_RADIUS,
-                backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+                backgroundColor: tileElevation.liftBg ?? t.elevated,
+                borderWidth: tileElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                 borderColor: t.border,
                 minHeight: 86,
-              }, cardElevation.shadowStyle]}
+              }, tileElevation.shadowStyle]}
             >
               <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
               <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
