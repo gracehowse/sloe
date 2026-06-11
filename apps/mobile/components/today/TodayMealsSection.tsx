@@ -601,6 +601,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // "Add food" CTA below. The macro/slot tints + plum chrome are NOT
   // secondary-accent and keep their own `MacroColors`/`SlotColors` imports.
   const accent = useAccent();
+  const colors = useThemeColors();
 
   // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
   // `Log usual: <name>` chip moves out of the section-header trailing
@@ -1178,8 +1179,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           accessibilityRole="button"
                           accessibilityLabel="Remove meal"
                         >
-                          <Trash2 size={22} color="#fff" />
-                          <Text style={{ ...Type.caption, color: "#fff", marginTop: 4 }}>Remove</Text>
+                          <Trash2 size={22} color={colors.destructiveForeground} />
+                          <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>Remove</Text>
                         </Pressable>
                       </View>
                     )}
@@ -1351,8 +1352,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: col,
                       }}
                     >
-                      <Bookmark size={12} color="#fff" />
-                      <Text style={{ ...Type.caption, color: "#fff" }}>
+                      <Bookmark size={12} color={colors.primaryForeground} />
+                      <Text style={{ ...Type.caption, color: colors.primaryForeground }}>
                         Save as usual
                       </Text>
                     </Pressable>

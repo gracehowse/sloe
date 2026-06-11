@@ -328,9 +328,13 @@ export default function LibraryScreen() {
   // Aubergine-on-surface tokens (Sloe treatment system) — light uses the deep
   // `primarySolid` for outline borders / labels + the `primarySoft` tint for
   // selected pills; dark lifts both so the accent clears AA on the dark card.
-  const isLight = colors.background === "#FFFFFF";
-  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
-  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves these (light
+  // primarySolid #3B2A4D / primarySoft tint → dark lifted aubergine), so read
+  // them directly. The old `colors.background === "#FFFFFF"` probe silently
+  // broke when the light ground moved off pure white to cream #FBF8F3 — it
+  // returned the dark values in LIGHT mode. Dropping the probe fixes it.
+  const accentInk = accent.primarySolid;
+  const accentSoft = accent.primarySoft;
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },

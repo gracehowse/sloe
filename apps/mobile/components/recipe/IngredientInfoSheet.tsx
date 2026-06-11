@@ -69,8 +69,10 @@ export function IngredientInfoSheet({
   const accent = useAccent();
   // Aubergine OUTLINE (Sloe treatment §1) — light detects via the white sheet
   // surface, dark uses the lifted aubergine so the border + label clear AA.
-  const outlineColor =
-    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
+  // (#3B2A4D light / #C4ACD0 dark); the old pure-white background probe broke
+  // when the light ground moved to cream #FBF8F3. Read the accent directly.
+  const outlineColor = accent.primarySolid;
   const open = info != null;
 
   const macroSummary = info

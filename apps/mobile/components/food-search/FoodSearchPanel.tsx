@@ -1668,8 +1668,8 @@ export default function FoodSearchPanel({
               style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
               onPress={onConfirmPreview}
             >
-              <Check size={18} color="#fff" />
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Use this</Text>
+              <Check size={18} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
             </Pressable>
             <Pressable
               style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", borderWidth: 1, borderColor: colors.border }}

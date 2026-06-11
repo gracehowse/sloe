@@ -43,6 +43,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
@@ -433,7 +434,7 @@ export default function SaveMealSheet({
                 accessibilityLabel="Save usual meal"
                 accessibilityState={{ disabled: !canSave }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
                   {saving ? "Saving…" : "Save"}
                 </Text>
               </Pressable>

@@ -85,6 +85,7 @@ type Theme = {
   card: string;
   border: string;
   background: string;
+  primaryForeground: string;
 };
 
 export type AiPaywallSheetProps = {
@@ -287,7 +288,7 @@ export default function AiPaywallSheet({
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primaryForeground }}>
               See Pro plans
             </Text>
           </Pressable>

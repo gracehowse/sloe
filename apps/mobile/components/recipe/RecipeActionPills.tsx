@@ -54,8 +54,10 @@ export function RecipeActionPills({
   // theme surfaces. On dark, `primarySolidDark` carries the lifted aubergine
   // so the outline + label stay legible on the dark card.
   const accent = useAccent();
-  const outlineColor =
-    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
+  // (#3B2A4D light / #C4ACD0 dark); the old pure-white background probe broke
+  // when the light ground moved to cream #FBF8F3. Read the accent directly.
+  const outlineColor = accent.primarySolid;
 
   const creamPill = {
     flex: 1,

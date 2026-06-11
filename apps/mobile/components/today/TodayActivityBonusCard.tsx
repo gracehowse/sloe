@@ -4,7 +4,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -349,7 +349,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               backgroundColor: chipBg,
             }}
           >
-            <Text style={{ ...Type.label, fontSize: 11, color: "#fff" }}>
+            <Text style={{ ...Type.label, fontSize: 11, color: Colors.light.primaryForeground }}>
               {NET_ENERGY_CHIP_LABEL[chipState]}
             </Text>
           </View>
@@ -432,7 +432,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                   width: 20,
                   height: 20,
                   borderRadius: 10,
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: Colors.light.primaryForeground,
                   borderWidth: 3,
                   borderColor: chipColor,
                 }}

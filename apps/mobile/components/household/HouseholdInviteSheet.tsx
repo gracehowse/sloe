@@ -209,9 +209,9 @@ export function HouseholdInviteSheet({
                   }}
                 >
                   {sending ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
-                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Send</Text>
+                    <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Send</Text>
                   )}
                 </Pressable>
               </View>

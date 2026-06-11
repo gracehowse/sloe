@@ -36,6 +36,12 @@ export const Accent = {
   primarySolid: '#3B2A4D',
   /** Lifted aubergine for text on dark (AA on dark card). */
   primarySolidDark: '#C4ACD0',
+  /** Dark-scheme accent FILL — the OLED-contrast aubergine the dark theme
+   *  inverts to (= AccentWinGradient stop 3). Named here (ENG-1013, 2026-06-10)
+   *  so the dark accent family lives in this file with the light one instead of
+   *  as a literal in `context/theme.tsx`'s DARK_ACCENT. Mirrors web `.dark`
+   *  `--accent-primary`. (`primaryLight` dark = `purpleLight` #9A7BAA.) */
+  primaryDark: '#7E5C92',
   /** Soft fill for selected pills / segmented active / nudge tint. Lifted-aubergine
    *  hue (12%) so the tint stays perceptible. Solid fill stays reserved for the FAB
    *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */

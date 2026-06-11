@@ -387,9 +387,13 @@ export default function DiscoverScreen() {
   // pills get a SOFT TINT fill + aubergine `primarySolid` label, NOT a solid
   // accent slab (treatment §7). Light/dark aware so the accent clears AA on the
   // dark card.
-  const isLight = colors.background === "#FFFFFF";
-  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
-  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves these (light
+  // primarySolid #3B2A4D / primarySoft tint → dark lifted aubergine), so read
+  // them directly. The old `colors.background === "#FFFFFF"` probe silently
+  // broke when the light ground moved off pure white to cream #FBF8F3 — it
+  // returned the dark values in LIGHT mode. Dropping the probe fixes it.
+  const accentInk = accent.primarySolid;
+  const accentSoft = accent.primarySoft;
 
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped

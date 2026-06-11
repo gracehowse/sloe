@@ -1553,7 +1553,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fontFamily: FontFamily.serifSemibold,
               fontSize: 22,
               fontWeight: "600",
-              color: "#fff",
+              color: colors.primaryForeground,
             }}
           >
             {avatarInitial}
@@ -2974,7 +2974,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 opacity: eraseConfirmInput !== "RESET" || resetting ? 0.35 : 1,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: colors.destructiveForeground, fontWeight: "700", fontSize: 15 }}>
                 {resetting ? "Working..." : "Erase everything"}
               </Text>
             </Pressable>

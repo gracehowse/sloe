@@ -29,6 +29,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 type Mode = "single" | "range";
@@ -189,7 +190,7 @@ export default function DuplicateDaySheet({
                     backgroundColor: isActive ? accent.primary : "transparent",
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: isActive ? "#fff" : colors.textSecondary }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: isActive ? colors.primaryForeground : colors.textSecondary }}>
                     {m === "single" ? "Single day" : "Date range"}
                   </Text>
                 </Pressable>
@@ -276,7 +277,7 @@ export default function DuplicateDaySheet({
                         style={{
                           fontSize: 14,
                           fontWeight: isHighlighted ? "800" : "600",
-                          color: isHighlighted ? "#fff" : colors.text,
+                          color: isHighlighted ? colors.primaryForeground : colors.text,
                           fontVariant: ["tabular-nums"],
                         }}
                       >
@@ -342,7 +343,7 @@ export default function DuplicateDaySheet({
               accessibilityLabel="Duplicate"
               accessibilityState={{ disabled: !canConfirm }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Duplicate</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Duplicate</Text>
             </Pressable>
           </View>
         </Pressable>

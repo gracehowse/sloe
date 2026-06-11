@@ -671,8 +671,10 @@ export default function CreateRecipeWizard() {
   // OUTLINES (treatment §1), not filled slabs. Light uses the deep
   // `primarySolid`; dark lifts to `primarySolidDark` so the outline + label
   // clear AA on the dark surface.
-  const accentInk =
-    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
+  // (#3B2A4D light / #C4ACD0 dark); the old `colors.background === "#FFFFFF"`
+  // probe broke when the light ground moved to cream #FBF8F3. Read directly.
+  const accentInk = accent.primarySolid;
 
   // ---- Styles -----------------------------------------------------------
   const styles = useMemo(

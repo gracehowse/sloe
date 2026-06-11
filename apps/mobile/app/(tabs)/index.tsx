@@ -4736,8 +4736,8 @@ export default function TrackerScreen() {
               fontSize={13}
               gradientIdSuffix="today-wordmark-header"
               // Figma `654:6` — damson fill + white initial (not the grey ink default).
-              fill="#6a4b7a"
-              textColor="#ffffff"
+              fill={Accent.purple}
+              textColor={colors.primaryForeground}
             />
           </Pressable>
         </View>
@@ -6217,6 +6217,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6264,6 +6265,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6296,6 +6298,7 @@ export default function TrackerScreen() {
               card: colors.card,
               cardBorder: colors.cardBorder,
               background: colors.background,
+              primaryForeground: colors.primaryForeground,
             }}
           />
         );
@@ -6326,6 +6329,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6448,6 +6452,7 @@ export default function TrackerScreen() {
           card: colors.card,
           border: colors.border,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
     </View>

@@ -47,6 +47,7 @@ type Theme = {
   cardBorder: string;
   background: string;
   border: string;
+  primaryForeground: string;
 };
 
 export type AddIngredientPayload = {
@@ -289,7 +290,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
     },
     btnPrimary: { backgroundColor: accent.primary },
     btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
-    btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    btnPrimaryText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
     btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
     matchCard: {
       backgroundColor: colors.background,

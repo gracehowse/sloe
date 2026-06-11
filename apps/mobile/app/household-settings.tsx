@@ -681,7 +681,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>{initials}</Text>
+                        <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 12 }}>{initials}</Text>
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, flexWrap: "wrap" }}>
@@ -1023,7 +1023,7 @@ export default function HouseholdSettingsScreen() {
                         justifyContent: "center",
                       }}
                     >
-                      <Text style={{ fontSize: 9, fontWeight: "700", color: "#fff" }}>
+                      <Text style={{ fontSize: 9, fontWeight: "700", color: colors.primaryForeground }}>
                         {householdMemberInitials(m.displayName)}
                       </Text>
                     </View>
@@ -1154,7 +1154,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 11 }}>
+                        <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 11 }}>
                           {householdMemberInitials(m.displayName)}
                         </Text>
                       </View>
@@ -1178,7 +1178,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        {on ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
+                        {on ? <Check size={12} color={colors.primaryForeground} strokeWidth={3} /> : null}
                       </View>
                     </Pressable>
                   );

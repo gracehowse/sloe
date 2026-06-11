@@ -213,7 +213,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: 9, fontWeight: "700", color: "#fff" }}>
+                <Text style={{ fontSize: 9, fontWeight: "700", color: colors.primaryForeground }}>
                   {initials}
                 </Text>
               </View>

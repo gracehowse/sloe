@@ -1065,7 +1065,7 @@ function RightEdgeIcons({
             <Icon size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
             {locked ? (
               <View style={styles.lockBadge}>
-                <Lock size={8} color="#fff" strokeWidth={2.5} />
+                <Lock size={8} color={colors.primaryForeground} strokeWidth={2.5} />
               </View>
             ) : null}
           </Pressable>

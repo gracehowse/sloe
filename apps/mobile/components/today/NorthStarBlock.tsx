@@ -27,7 +27,7 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Colors, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -333,9 +333,9 @@ function NorthStarFigmaHero({
         >
           <Defs>
             <LinearGradient id="north-star-scrim" x1="0" y1="1" x2="0" y2="0">
-              <Stop offset="0" stopColor="#221B26" stopOpacity={0.9} />
-              <Stop offset="0.5" stopColor="#221B26" stopOpacity={0.2} />
-              <Stop offset="1" stopColor="#221B26" stopOpacity={0} />
+              <Stop offset="0" stopColor={Colors.light.text} stopOpacity={0.9} />
+              <Stop offset="0.5" stopColor={Colors.light.text} stopOpacity={0.2} />
+              <Stop offset="1" stopColor={Colors.light.text} stopOpacity={0} />
             </LinearGradient>
           </Defs>
           <Rect width="100%" height="100%" fill="url(#north-star-scrim)" />

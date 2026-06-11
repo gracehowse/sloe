@@ -516,7 +516,7 @@ export default function LoginScreen() {
                   accessibilityLabel="Agree to Terms of Service and Privacy Policy"
                 >
                   <View style={[styles.termsCheckbox, acceptedTerms && styles.termsCheckboxChecked]}>
-                    {acceptedTerms ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
+                    {acceptedTerms ? <Ionicons name="checkmark" size={12} color={colors.primaryForeground} /> : null}
                   </View>
                   <Text style={styles.termsText}>
                     I agree to the{" "}

@@ -68,7 +68,7 @@ export default function NotFound() {
           marginTop: Spacing.md,
         })}
       >
-        <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
+        <Text style={{ color: colors.primaryForeground, fontSize: 15, fontWeight: "700" }}>
           Back to Today
         </Text>
       </Pressable>

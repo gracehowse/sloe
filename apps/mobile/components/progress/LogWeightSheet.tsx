@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
-import { FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { Colors, FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   ctaLabel: {
-    color: "#fff",
+    color: Colors.light.primaryForeground,
     fontSize: 16,
     fontWeight: "700",
   },

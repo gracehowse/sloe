@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -107,7 +107,7 @@ export function TodayDashboardMacroTiles({
   const isDark = useColorScheme() === "dark";
   // Progress-bar track tone. Light: Sloe `line` (#E8E2EC) per Figma `654:2`.
   // Dark: theme hairline so the light track hex doesn't glare.
-  const barTrackColor = isDark ? cardBorderColor : "#E8E2EC";
+  const barTrackColor = isDark ? cardBorderColor : Colors.light.border;
   // Caption colours (audit gap 4). Success (sage) when under target; amber for
   // over — `warningSolid` is the AA-safe-as-TEXT amber (the base `warning`
   // #C9892C fails AA as text, per the theme contrast note), dark-lifted on the

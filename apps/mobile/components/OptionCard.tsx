@@ -175,7 +175,7 @@ export function OptionCard({
               }}
             >
               {selected ? (
-                <Ionicons name="checkmark" size={12} color="#ffffff" />
+                <Ionicons name="checkmark" size={12} color={colors.primaryForeground} />
               ) : null}
             </View>
           )}

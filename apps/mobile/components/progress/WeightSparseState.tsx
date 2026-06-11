@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { FontFamily, Spacing, Radius } from "@/constants/theme";
+import { Colors, FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightPoint } from "@/lib/progress/weightTrend";
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   btnText: {
-    color: "#fff",
+    color: Colors.light.primaryForeground,
     fontSize: 14,
     fontWeight: "600",
   },

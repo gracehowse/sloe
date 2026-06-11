@@ -1242,7 +1242,7 @@ export default function ImportSharedScreen() {
       marginTop: Spacing.xs,
     },
     btnPressed: { opacity: 0.88 },
-    primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    primaryBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
     btnIconRight: { marginLeft: 2 },
     // Aubergine OUTLINE Import CTA — Sloe CTA weight map (Spec 2, 2026-06-09):
     // the everyday import action is NOT a conversion/FAB moment, so it reads as
@@ -1738,7 +1738,7 @@ export default function ImportSharedScreen() {
               accessibilityLabel="Looks right, import"
               testID="caption-preview-confirm"
             >
-              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Ionicons name="checkmark" size={18} color={colors.primaryForeground} />
               <Text style={styles.primaryBtnText}>Looks right? Import</Text>
             </Pressable>
 
@@ -1996,10 +1996,10 @@ export default function ImportSharedScreen() {
               disabled={state === "saving"}
             >
               {state === "saving" ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <>
-                  <Ionicons name="bookmark" size={18} color="#fff" />
+                  <Ionicons name="bookmark" size={18} color={colors.primaryForeground} />
                   <Text style={styles.primaryBtnText}>Save to Library</Text>
                 </>
               )}
@@ -2025,7 +2025,7 @@ export default function ImportSharedScreen() {
               onPress={() => router.replace(`/recipe/${savedRecipeId}`)}
             >
               <Text style={styles.primaryBtnText}>View recipe</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.btnIconRight} />
+              <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} style={styles.btnIconRight} />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}

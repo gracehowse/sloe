@@ -82,7 +82,7 @@ export function RecipeDetailHero({
   const showPhoto = Boolean(imageUrl) && !imageBroken;
   return (
     <View
-      style={{ width: "100%", height: RECIPE_HERO_HEIGHT, backgroundColor: "#3B2A4D" }}
+      style={{ width: "100%", height: RECIPE_HERO_HEIGHT, backgroundColor: Accent.primary }}
       testID="recipe-detail-hero"
     >
       {showPhoto ? (

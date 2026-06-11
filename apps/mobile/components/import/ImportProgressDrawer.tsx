@@ -201,7 +201,7 @@ function ImportJobRow({
                 justifyContent: "center",
               }}
             >
-              <Check size={13} color="#fff" strokeWidth={3} />
+              <Check size={13} color={colors.primaryForeground} strokeWidth={3} />
             </View>
           ) : null}
           {job.canRetry ? (

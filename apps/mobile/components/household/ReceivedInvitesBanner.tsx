@@ -141,9 +141,9 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
               }}
             >
               {busyId === inv.id ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Accept</Text>
+                <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Accept</Text>
               )}
             </Pressable>
             <Pressable

@@ -109,7 +109,7 @@ export function SubTabPill<TId extends string>({
                   style={{
                     fontSize: 10,
                     fontWeight: "700",
-                    color: active ? "#fff" : colors.textSecondary,
+                    color: active ? colors.primaryForeground : colors.textSecondary,
                   }}
                 >
                   {item.badge > 999 ? "999+" : item.badge}

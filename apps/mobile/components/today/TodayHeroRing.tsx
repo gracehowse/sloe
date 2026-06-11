@@ -162,7 +162,7 @@ function StatusChip({
     state === "over"
       ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
       : state === "empty"
-        ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : "#EDEAF1", Icon: Sparkles }
+        ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : Colors.light.ringTrack, Icon: Sparkles }
         : { fg: sage, bg: `${sage}26`, Icon: CircleCheck };
   const { fg, bg, Icon } = config;
   return (

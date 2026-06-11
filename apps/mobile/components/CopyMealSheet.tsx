@@ -27,6 +27,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 type QuickRange = "none" | "+2" | "+3" | "+7";
@@ -220,7 +221,7 @@ export default function CopyMealSheet({
                         style={{
                           fontSize: 14,
                           fontWeight: isSel ? "800" : "600",
-                          color: isSel ? "#fff" : colors.text,
+                          color: isSel ? colors.primaryForeground : colors.text,
                           fontVariant: ["tabular-nums"],
                         }}
                       >
@@ -261,7 +262,7 @@ export default function CopyMealSheet({
                     style={{
                       fontSize: 12,
                       fontWeight: "600",
-                      color: isActive ? "#fff" : colors.text,
+                      color: isActive ? colors.primaryForeground : colors.text,
                     }}
                   >
                     {label}
@@ -321,7 +322,7 @@ export default function CopyMealSheet({
               accessibilityLabel="Copy"
               accessibilityState={{ disabled: !canConfirm }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Copy</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Copy</Text>
             </Pressable>
           </View>
         </Pressable>

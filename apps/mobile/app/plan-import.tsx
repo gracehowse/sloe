@@ -369,7 +369,7 @@ export default function PlanImportScreen() {
           alignItems: "center",
           marginTop: Spacing.lg,
         },
-        primaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+        primaryBtnText: { color: colors.primaryForeground, fontSize: 16, fontWeight: "700" },
         seg: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
         segBtn: {
           flex: 1,
@@ -524,7 +524,7 @@ export default function PlanImportScreen() {
 
           <Pressable style={styles.primaryBtn} onPress={() => setActivateOpen(true)} disabled={committing}>
             {committing ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={styles.primaryBtnText}>Save as template</Text>
             )}

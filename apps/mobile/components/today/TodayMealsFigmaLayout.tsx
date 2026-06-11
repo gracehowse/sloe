@@ -217,7 +217,7 @@ export function TodayMealsFigmaLayout({
             }}
           >
             <SloePlusIcon size={20} color={accent.primary} />
-            <Text style={{ ...Type.body, fontWeight: "500", color: "#6a6072" }}>
+            <Text style={{ ...Type.body, fontWeight: "500", color: colors.textSecondary }}>
               Log {nextSlot}
             </Text>
           </Pressable>

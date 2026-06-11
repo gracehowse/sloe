@@ -194,7 +194,7 @@ export default function ProfileScreen() {
     },
     // Serif initial — Newsreader (Type.title), white on plum. The one accent
     // colour-block allowed on this surface (small enough to read as accent).
-    monogramInitial: { ...Type.title, color: "#FFFFFF" },
+    monogramInitial: { ...Type.title, color: colors.primaryForeground },
     identityName: { ...Type.title, color: colors.text },
     identityMeta: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
     tierPill: {

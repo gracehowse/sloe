@@ -35,6 +35,7 @@ type Theme = {
   cardBorder: string;
   background: string;
   border: string;
+  primaryForeground: string;
 };
 
 type Props = {
@@ -150,7 +151,7 @@ export default function OverrideIngredientSheet({
     btnPrimary: { backgroundColor: accent.primary },
     btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
     btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
-    btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    btnPrimaryText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
     btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
     btnDestructiveText: { color: Accent.destructive, fontWeight: "600", fontSize: 14 },
   });

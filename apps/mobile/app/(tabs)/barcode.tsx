@@ -592,7 +592,7 @@ export default function BarcodeScreen() {
           color: Colors.dark.textSecondary,
           fontFamily: FontFamily.sansSemibold,
         },
-        slotPillTextActive: { color: "#fff" },
+        slotPillTextActive: { color: colors.primaryForeground },
         btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xs },
         logBtn: {
           flex: 2,
@@ -606,7 +606,7 @@ export default function BarcodeScreen() {
           // Gap #4: paddingVertical → Spacing.md (≥48px height).
           paddingVertical: Spacing.md,
         },
-        logBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+        logBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
         secondaryBtn: {
           flex: 1,
           alignItems: "center",
@@ -620,7 +620,7 @@ export default function BarcodeScreen() {
           paddingVertical: Spacing.md,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        secondaryBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+        secondaryBtnText: { color: colors.primaryForeground, fontWeight: "600", fontSize: 14 },
         errorIcon: { marginBottom: Spacing.xs },
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
@@ -922,9 +922,9 @@ export default function BarcodeScreen() {
                 accessibilityLabel={`Log ${product.name} to ${mealSlot}`}
               >
                 {logging ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
-                  <PlusCircle size={20} color="#fff" />
+                  <PlusCircle size={20} color={colors.primaryForeground} />
                 )}
                 <Text style={styles.logBtnText} numberOfLines={1}>
                   {logging ? "Logging…" : `Log to ${mealSlot}`}
@@ -1052,9 +1052,9 @@ export default function BarcodeScreen() {
               disabled={!manualName.trim() || !(Number(manualCalories) > 0) || logging}
             >
               {logging ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <PlusCircle size={20} color="#fff" />
+                <PlusCircle size={20} color={colors.primaryForeground} />
               )}
               <Text style={styles.logBtnText}>{logging ? "Logging…" : `Log to ${mealSlot}`}</Text>
             </Pressable>

@@ -124,7 +124,7 @@ export function TodaySnapShortcut({
                 borderColor: colors.card,
               }}
             >
-              <Lock size={8} color="#fff" strokeWidth={2.5} />
+              <Lock size={8} color={colors.primaryForeground} strokeWidth={2.5} />
             </View>
           ) : null}
         </View>
