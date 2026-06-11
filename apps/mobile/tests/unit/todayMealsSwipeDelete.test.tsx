@@ -75,4 +75,41 @@ describe("TodayMealsSection (mobile) — swipe delete on Figma layout", () => {
     fireEvent.press(removeButtons[0]!);
     expect(onDeleteMeal).toHaveBeenCalledWith("m1");
   });
+
+  it("exposes Remove meal on the summary card when a slot has only one item", () => {
+    const onDeleteMeal = vi.fn();
+    const only = journalMeal({ id: "solo", recipeTitle: "Greek yogurt" });
+    render(
+      <TodayMealsSection
+        slots={["Breakfast", "Lunch", "Dinner", "Snacks"]}
+        mealGroups={{ Breakfast: [only], Lunch: [], Dinner: [], Snacks: [] }}
+        mealsTodayCount={1}
+        collapsedSlots={new Set()}
+        onToggleSlotCollapse={NOOP}
+        onOpenFabForSlot={NOOP}
+        onOpenSaveUsualMealForSlot={NOOP}
+        onOpenDuplicateDay={NOOP}
+        onPressMeal={NOOP}
+        onLongPressEdit={NOOP}
+        onRequestCopyMeal={NOOP}
+        onDeleteMeal={onDeleteMeal}
+        showMealTimestamps={false}
+        formatMealMacroDetail={() => ""}
+        formatMealTimeDisplay={() => ""}
+        formatMealSourceLabelForRow={() => null}
+        textColor="#111"
+        textSecondaryColor="#666"
+        textTertiaryColor="#999"
+        cardColor="#fff"
+        cardBorderColor="#ddd"
+        savedMeals={[]}
+        onLogSavedMeal={NOOP}
+        hintVisibleForSlot={() => false}
+        onDismissUsualMealHint={NOOP}
+        onAcceptUsualMealHint={NOOP}
+      />,
+    );
+    fireEvent.press(screen.getByLabelText("Remove meal"));
+    expect(onDeleteMeal).toHaveBeenCalledWith("solo");
+  });
 });

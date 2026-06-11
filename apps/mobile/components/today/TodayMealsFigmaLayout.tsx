@@ -9,6 +9,7 @@ import {
   TODAY_MEAL_SLOT_ORDER,
 } from "@suppr/shared/copy/today";
 import { SupprCard, CARD_RADIUS } from "@/components/ui/SupprCard";
+import { MealRowSwipeable } from "./MealRowSwipeable";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -43,6 +44,8 @@ export interface TodayMealsFigmaLayoutProps {
   collapsedSlots: Set<string>;
   onToggleSlotCollapse: (slot: string) => void;
   onOpenFabForSlot: (slot: string) => void;
+  /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
+  onDeleteMeal?: (mealId: string) => void;
   renderSlotExpanded?: (slot: string, meals: JournalMeal[]) => ReactNode;
 }
 
@@ -52,6 +55,7 @@ export function TodayMealsFigmaLayout({
   collapsedSlots,
   onToggleSlotCollapse,
   onOpenFabForSlot,
+  onDeleteMeal,
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
   const colors = useThemeColors();
@@ -116,6 +120,8 @@ export function TodayMealsFigmaLayout({
               padding="none"
               testID={`today-meals-figma-card-${slot}`}
             >
+              {(() => {
+                const header = (
               <Pressable
                 onPress={() => onToggleSlotCollapse(slot)}
                 accessibilityRole="button"
@@ -192,6 +198,15 @@ export function TodayMealsFigmaLayout({
                   </Text>
                 </View>
               </Pressable>
+                );
+                return onDeleteMeal ? (
+                  <MealRowSwipeable mealId={primary.id} onDeleteMeal={onDeleteMeal}>
+                    {header}
+                  </MealRowSwipeable>
+                ) : (
+                  header
+                );
+              })()}
               {isOpen && renderSlotExpanded
                 ? renderSlotExpanded(slot, meals)
                 : null}

@@ -10,6 +10,7 @@ import {
   type TodayMealSlot,
 } from "../../../lib/copy/today";
 import type { TodayMealSectionMeal } from "./today-meals-section";
+import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
 /** Sloe stroke check — Figma `654:2` / `today.html` Logged badge. */
 export function SloeCheckIcon({ className }: { className?: string }) {
@@ -54,6 +55,8 @@ export interface TodayMealsFigmaLayoutProps {
   collapsedSlots: Set<string>;
   onToggleSlot: (name: string) => void;
   onOpenAddForSlot: (slot: string) => void;
+  /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
+  onRequestDeleteMeal?: (mealId: string, recipeTitle: string) => void;
   /** Item rows + slot actions when a summary card is expanded. */
   renderSlotExpanded?: (
     slotName: string,
@@ -71,6 +74,7 @@ export function TodayMealsFigmaLayout({
   collapsedSlots,
   onToggleSlot,
   onOpenAddForSlot,
+  onRequestDeleteMeal,
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
   const totalKcal = Math.round(
@@ -127,6 +131,8 @@ export function TodayMealsFigmaLayout({
               className="overflow-hidden"
               data-testid={`today-meals-figma-card-${slotName}`}
             >
+              {(() => {
+                const header = (
               <button
                 type="button"
                 onClick={() => onToggleSlot(slotName)}
@@ -167,6 +173,19 @@ export function TodayMealsFigmaLayout({
                   </p>
                 </div>
               </button>
+                );
+                return onRequestDeleteMeal ? (
+                  <SwipeDeleteRow
+                    onDelete={() =>
+                      onRequestDeleteMeal(primary.id, primary.recipeTitle)
+                    }
+                  >
+                    {header}
+                  </SwipeDeleteRow>
+                ) : (
+                  header
+                );
+              })()}
               {isOpen && renderSlotExpanded
                 ? renderSlotExpanded(slotName, meals)
                 : null}

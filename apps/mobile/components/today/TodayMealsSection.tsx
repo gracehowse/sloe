@@ -13,7 +13,6 @@ import {
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
-import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
   CalendarPlus,
@@ -50,6 +49,7 @@ import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
+import { MealRowSwipeable } from "./MealRowSwipeable";
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -259,50 +259,6 @@ function SlotMacroChips({
         </Text>
       ) : null}
     </View>
-  );
-}
-
-/** Swipe-left delete affordance shared by legacy + Figma 654 meal rows. */
-function MealRowSwipeable({
-  mealId,
-  onDeleteMeal,
-  children,
-}: {
-  mealId: string;
-  onDeleteMeal: (mealId: string) => void;
-  children: React.ReactNode;
-}) {
-  const colors = useThemeColors();
-  return (
-    <Swipeable
-      overshootRight={false}
-      friction={2}
-      renderRightActions={() => (
-        <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-          <Pressable
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onDeleteMeal(mealId);
-            }}
-            style={{
-              width: 88,
-              backgroundColor: Accent.destructive,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Remove meal"
-          >
-            <Trash2 size={22} color={colors.destructiveForeground} />
-            <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>
-              Remove
-            </Text>
-          </Pressable>
-        </View>
-      )}
-    >
-      {children}
-    </Swipeable>
   );
 }
 
@@ -800,6 +756,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           collapsedSlots={collapsedSlots}
           onToggleSlotCollapse={onToggleSlotCollapse}
           onOpenFabForSlot={onOpenFabForSlot}
+          onDeleteMeal={onDeleteMeal}
           renderSlotExpanded={(slot, meals) => {
             // e2e walk 2026-06-10: the Figma card header already shows the
             // single (primary) meal's title + "{slotCals} kcal · {P}g P". When

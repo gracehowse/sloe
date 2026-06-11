@@ -385,6 +385,9 @@ export function TodayMealsSection({
             collapsedSlots={collapsedSlots}
             onToggleSlot={onToggleSlot}
             onOpenAddForSlot={onOpenAddForSlot}
+            onRequestDeleteMeal={(mealId, recipeTitle) =>
+              setDeleteCandidate({ id: mealId, recipeTitle })
+            }
             renderSlotExpanded={(sectionName, sectionMeals) => {
               // e2e walk 2026-06-10 (mobile parity): the Figma summary card
               // header already shows the single (primary) meal's title +

@@ -93,6 +93,10 @@ describe("TodayMealsSection — Figma 654 single-row dedup", () => {
     expect(
       screen.queryByLabelText("More actions for MyFitnessPal entry"),
     ).toBeNull();
+    // Swipe delete still targets the summary card (primary meal).
+    expect(
+      screen.getAllByRole("button", { name: "Remove meal", hidden: true }).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("keeps rows for a multi-item slot even when the first entry matches the header title", () => {
