@@ -191,8 +191,7 @@ export function SkiaRingArcs({
   const bonusStart = Math.max(0, Math.min(1, 1 - bonusFrac));
   // Hoisted (hooks must not live inside conditional JSX): the overflow
   // leading-cap glow trails the lap end by ~6% of the circle.
-  const overGlowStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.06));
-  const capHighlightStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.015));
+  const capShadowStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.025));
 
   return (
     <Canvas
@@ -231,29 +230,20 @@ export function SkiaRingArcs({
           end={1}
         />
       ) : null}
-      {/* Food fill — ONE continuous ribbon of light (2026-06-10, Grace:
-          the contrasting overage segment read as a cheap blob; comps —
-          Any Distance / Klima / Zero — all keep ONE hue and let light +
-          depth signal the wrap). The sweep gradient runs base → bright
-          across the full lap, so the arc brightens as it fills; past
-          100% the second lap continues the same gradient to the glowing
-          cap. No seam, no second colour. */}
+      {/* Food fill — flat plum (round 5, 2026-06-10): the base sweep
+          gradient fought the same-colour lap (inverse seam at 12
+          o'clock on device). One colour everywhere; the wrap reads by
+          its overlap shadow alone. */}
       {!isEmpty ? (
         <Path
           path={mainPath}
           style="stroke"
           strokeWidth={STROKE}
           strokeCap="round"
+          color={ringColor}
           start={0}
           end={fillEnd}
-        >
-          <SweepGradient
-            c={vec(CX, CX)}
-            start={-90}
-            end={270}
-            colors={[ringColor, overflowFrom]}
-          />
-        </Path>
+        />
       ) : null}
       {/* Goal-hit glow lap (600ms pulse on goalHitCount). */}
       {!isEmpty ? (
@@ -270,29 +260,24 @@ export function SkiaRingArcs({
           <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
-      {/* Over-budget second lap — round 4 (2026-06-10, judged on Grace's
-          device): SAME colour as the base ring, full Apple grammar. The
-          two gradient rounds still read as "a lighter segment stuck on";
-          and the wide cap glow smudged on glass. Separation now comes from
-          DEPTH only: a soft dark shadow under the lap's leading edge (the
-          overlap), plus one tight highlight right at the cap — light
-          catching the edge, not a halo. */}
+      {/* Over-budget second lap — round 5: pure Apple. Same colour, and
+          the ONLY signal is one tight soft shadow under the leading cap
+          (the round-4 wide shadow smudged across the macro rings on
+          device; the cap highlight read as a notch). */}
       {!isEmpty && isOver && overFrac > 0 ? (
         <Group>
-          {/* Overlap depth: shadow UNDER the lap's leading edge. */}
           <Path
             path={mainPath}
             style="stroke"
-            strokeWidth={STROKE * 1.18}
+            strokeWidth={STROKE * 1.05}
             strokeCap="round"
             color="#000000"
-            opacity={0.22}
-            start={overGlowStart}
+            opacity={0.15}
+            start={capShadowStart}
             end={overEnd}
           >
-            <BlurMask blur={STROKE * 0.45} style="normal" />
+            <BlurMask blur={STROKE * 0.22} style="normal" />
           </Path>
-          {/* The lap itself — the same ring, continuing. */}
           <Path
             path={mainPath}
             style="stroke"
@@ -302,19 +287,6 @@ export function SkiaRingArcs({
             start={0}
             end={overEnd}
           />
-          {/* Tight cap highlight — the last ~1.5% of arc, barely lifted. */}
-          <Path
-            path={mainPath}
-            style="stroke"
-            strokeWidth={STROKE * 0.9}
-            strokeCap="round"
-            color={overflowTo}
-            opacity={0.65}
-            start={capHighlightStart}
-            end={overEnd}
-          >
-            <BlurMask blur={STROKE * 0.25} style="normal" />
-          </Path>
         </Group>
       ) : null}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
