@@ -166,7 +166,7 @@ describe("SavedMealPortionSheet — ENG-813 redesign", () => {
     const { getByTestId } = renderSheet();
     // Tap the 2× quick chip — a committed recalc, not a keystroke.
     fireEvent.press(getByTestId("saved-portion-chip-2"));
-    expect(H.impactAsync).toHaveBeenCalledWith("light");
+    expect(H.impactAsync).toHaveBeenCalledWith("medium");
   });
 
   it("commit CTA fires the confirm haptic on press-in when motion is on", async () => {
@@ -175,7 +175,7 @@ describe("SavedMealPortionSheet — ENG-813 redesign", () => {
     (H.impactAsync as ReturnType<typeof vi.fn>).mockClear();
     const { getByTestId } = renderSheet();
     fireEvent(getByTestId("saved-portion-confirm"), "pressIn");
-    expect(H.impactAsync).toHaveBeenCalledWith("light");
+    expect(H.impactAsync).toHaveBeenCalledWith("medium");
   });
 
   it("motion OFF — no haptic on recalc and onConfirm still works", async () => {

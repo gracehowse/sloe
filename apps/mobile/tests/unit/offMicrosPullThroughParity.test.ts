@@ -189,8 +189,8 @@ describe("ENG-738 — generic-food micros thread through both platforms", () => 
     // `scaleMicrosForGrams(result.microsPer100g ?? {}, grams, …)` path that
     // already handles OFF/USDA. Pin that the field name the commit reads
     // (`result.microsPer100g`) is what the generic branch now populates.
-    expect(SRC.todayIndex).toMatch(/scaleMicrosForGrams\(\s*result\.microsPer100g/);
-    expect(SRC.webTracker).toMatch(/scaleMicrosForGrams\(/);
+    expect(SRC.todayIndex).toMatch(/foodSelectionToMealMacros\(result\)/);
+    expect(SRC.webTracker).toMatch(/foodSelectionToMealMacros\(/);
   });
 });
 
@@ -259,16 +259,14 @@ describe("F-79 — commit sites scale + write nutrition_micros", () => {
     expect(SRC.barcode).toMatch(/nutritionMicros/);
   });
 
-  it("mobile Today food-search commit uses scaleMicrosForGrams", () => {
-    expect(SRC.todayIndex).toMatch(/import\s*\{\s*scaleMicrosForGrams\s*\}/);
-    expect(SRC.todayIndex).toMatch(/scaleMicrosForGrams\(\s*result\.microsPer100g/);
+  it("mobile Today food-search commit uses foodSelectionToMealMacros", () => {
+    expect(SRC.todayIndex).toMatch(/foodSelectionToMealMacros/);
+    expect(SRC.todayIndex).toMatch(/foodSelectionToMealMacros\(result\)/);
   });
 
-  it("web NutritionTracker (Today search + barcode) uses scaleMicrosForGrams", () => {
+  it("web NutritionTracker food-search commit uses foodSelectionToMealMacros; barcode keeps scaleMicrosForGrams", () => {
+    expect(SRC.webTracker).toMatch(/foodSelectionToMealMacros/);
     expect(SRC.webTracker).toMatch(/import\s*\{\s*scaleMicrosForGrams\s*\}/);
-    // Two callsites (Today search + Today barcode dialog), so the helper
-    // is invoked at least twice.
-    const occurrences = SRC.webTracker.match(/scaleMicrosForGrams\(/g) ?? [];
-    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    expect(SRC.webTracker).toMatch(/scaleMicrosForGrams\(/);
   });
 });

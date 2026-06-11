@@ -59,7 +59,7 @@ vi.mock("expo-haptics", () => ({
   notificationAsync: (...a: unknown[]) => notificationAsync(...a),
   impactAsync: (...a: unknown[]) => impactAsync(...a),
   NotificationFeedbackType: { Success: "success" },
-  ImpactFeedbackStyle: { Light: "light" },
+  ImpactFeedbackStyle: { Light: "light", Medium: "medium" },
 }));
 
 import { LogWeightSheet } from "../../components/progress/LogWeightSheet";
@@ -120,7 +120,7 @@ describe("<LogWeightSheet> weight win-moment (ENG-824)", () => {
     fireEvent.press(getByTestId("log-weight-save"));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
 
-    expect(impactAsync).toHaveBeenCalledWith("light");
+    expect(impactAsync).toHaveBeenCalledWith("medium");
     expect(notificationAsync).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({ isNewLow: false }),

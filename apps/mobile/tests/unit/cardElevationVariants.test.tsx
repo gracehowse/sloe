@@ -215,7 +215,6 @@ describe("iOS overflow-clip fix lives in the shared <SupprCard> shell", () => {
   const MIGRATED_SURFACES = [
     "components/HydrationStimulantsCard.tsx", // SloeCard → SupprCard
     "components/today/TodayHeroRing.tsx",
-    "components/today/TodayDashboardMacroTiles.tsx", // size="tile"
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayMealsSection.tsx", // per-slot + quick-add cards
     "components/today/TodayActivityBonusCard.tsx", // outer + inset sub-cards

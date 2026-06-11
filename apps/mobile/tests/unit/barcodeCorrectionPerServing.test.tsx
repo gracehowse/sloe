@@ -160,7 +160,7 @@ describe("2026-05-13 portion-picker rebuild — scan card pins", () => {
   // docs/decisions/2026-05-13-portion-picker-and-macro-display.md.
 
   it("Log button label uses pickerState via formatPortion (mid-dot retained)", () => {
-    expect(MODAL_SRC).toMatch(/Log · \{pickerState\s*\?\s*formatPortion\(pickerState\)/);
+    expect(MODAL_SRC).toMatch(/Log to \{mealSlot\} · \{pickerState \? formatPortion\(pickerState\)/);
     expect(MODAL_SRC).not.toContain("Log ({portionSummary})");
   });
 
