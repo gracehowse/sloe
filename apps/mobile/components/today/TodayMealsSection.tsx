@@ -262,6 +262,50 @@ function SlotMacroChips({
   );
 }
 
+/** Swipe-left delete affordance shared by legacy + Figma 654 meal rows. */
+function MealRowSwipeable({
+  mealId,
+  onDeleteMeal,
+  children,
+}: {
+  mealId: string;
+  onDeleteMeal: (mealId: string) => void;
+  children: React.ReactNode;
+}) {
+  const colors = useThemeColors();
+  return (
+    <Swipeable
+      overshootRight={false}
+      friction={2}
+      renderRightActions={() => (
+        <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+          <Pressable
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onDeleteMeal(mealId);
+            }}
+            style={{
+              width: 88,
+              backgroundColor: Accent.destructive,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Remove meal"
+          >
+            <Trash2 size={22} color={colors.destructiveForeground} />
+            <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>
+              Remove
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    >
+      {children}
+    </Swipeable>
+  );
+}
+
 /**
  * MealActionSheet — branded cream bottom sheet for the meal long-press
  * gesture (ENG-799, Redesign — Design Direction 2026, 2026-05-31).
@@ -775,30 +819,32 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               {redundantSingleRow
                 ? null
                 : meals.map((m) => (
-                <Pressable
-                  key={m.id}
-                  onPress={() => onPressMeal(m.id)}
-                  onLongPress={() => onLongPressEdit(m)}
-                  style={{
-                    paddingVertical: Spacing.sm,
-                    paddingHorizontal: Spacing.md,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: cardBorderColor + "20",
-                  }}
-                >
-                  <Text
-                    style={{ ...Type.body, color: textColor, flex: 1, minWidth: 0 }}
-                    numberOfLines={1}
+                <MealRowSwipeable key={m.id} mealId={m.id} onDeleteMeal={onDeleteMeal}>
+                  <Pressable
+                    onPress={() => onPressMeal(m.id)}
+                    onLongPress={() => onLongPressEdit(m)}
+                    style={{
+                      paddingVertical: Spacing.sm,
+                      paddingHorizontal: Spacing.md,
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: cardBorderColor + "20",
+                      backgroundColor: cardColor,
+                    }}
                   >
-                    {m.recipeTitle}
-                  </Text>
-                  <Text style={{ ...Type.caption, color: textSecondaryColor, marginLeft: 8 }}>
-                    {Math.round(m.calories)} kcal
-                  </Text>
-                </Pressable>
+                    <Text
+                      style={{ ...Type.body, color: textColor, flex: 1, minWidth: 0 }}
+                      numberOfLines={1}
+                    >
+                      {m.recipeTitle}
+                    </Text>
+                    <Text style={{ ...Type.caption, color: textSecondaryColor, marginLeft: 8 }}>
+                      {Math.round(m.calories)} kcal
+                    </Text>
+                  </Pressable>
+                </MealRowSwipeable>
               ))}
               <Pressable
                 onPress={() => onOpenFabForSlot(slot)}
@@ -1153,38 +1199,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 isOpen &&
                 meals.map((m) => (
                   <React.Fragment key={m.id}>
-                  <Swipeable
-                    overshootRight={false}
-                    friction={2}
-                    renderRightActions={() => (
-                      <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-                        <Pressable
-                          onPress={() => {
-                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            onDeleteMeal(m.id);
-                          }}
-                          // 2026-04-30 visual-qa: removed `paddingVertical: 8`
-                          // so the destructive zone stretches to the meal
-                          // row's natural height (3 lines: name +
-                          // timestamp + source badge). Without this, the
-                          // red zone showed bg padding top + bottom and
-                          // looked misaligned. The Swipeable parent flex
-                          // row + sibling's natural height handle the rest.
-                          style={{
-                            width: 88,
-                            backgroundColor: Accent.destructive,
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel="Remove meal"
-                        >
-                          <Trash2 size={22} color={colors.destructiveForeground} />
-                          <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>Remove</Text>
-                        </Pressable>
-                      </View>
-                    )}
-                  >
+                  <MealRowSwipeable mealId={m.id} onDeleteMeal={onDeleteMeal}>
                     <Pressable
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
@@ -1295,7 +1310,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
                     </Pressable>
-                  </Swipeable>
+                  </MealRowSwipeable>
                   {/* Phase 5 (2026-04-30) — one-time AI-first-log
                       tooltip. Anchored below the row whose id matches
                       `aiFirstLogTooltipMealId`. Host gates this on

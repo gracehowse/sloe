@@ -36,6 +36,7 @@ import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 import { TodayScrollSectionHeader } from "./today-scroll-section-header";
 import { TodayMealsFigmaLayout } from "./today-meals-figma-layout";
+import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
 /**
  * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
@@ -405,8 +406,13 @@ export function TodayMealsSection({
                 data-testid={`today-meals-figma-expanded-${sectionName}`}
               >
                 {(redundantSingleRow ? [] : sectionMeals).map((meal) => (
-                  <div
+                  <SwipeDeleteRow
                     key={meal.id}
+                    onDelete={() =>
+                      setDeleteCandidate({ id: meal.id, recipeTitle: meal.recipeTitle })
+                    }
+                  >
+                  <div
                     className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -476,6 +482,7 @@ export function TodayMealsSection({
                       </DropdownMenu>
                     </div>
                   </div>
+                  </SwipeDeleteRow>
                 ))}
                 <button
                   type="button"
@@ -689,8 +696,13 @@ export function TodayMealsSection({
               {!collapsedSlots.has(sectionName) && sectionMeals.length > 0 && (
                 <div>
                   {sectionMeals.map((meal) => (
-                    <div
+                    <SwipeDeleteRow
                       key={meal.id}
+                      onDelete={() =>
+                        setDeleteCandidate({ id: meal.id, recipeTitle: meal.recipeTitle })
+                      }
+                    >
+                    <div
                       // Audit 2026-04-30 visual-qa P1 #11 — the inline
                       // 56px padding overrode the Tailwind `px-4` and
                       // diverged from the slot header (`px-3.5` = 14px),
@@ -877,6 +889,7 @@ export function TodayMealsSection({
                         </DropdownMenu>
                       </div>
                     </div>
+                    </SwipeDeleteRow>
                   ))}
 
                   {/* Ship M1 — first-run hint inside the slot body. Teaches

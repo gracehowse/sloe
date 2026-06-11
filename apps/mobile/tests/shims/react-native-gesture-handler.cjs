@@ -20,11 +20,8 @@ function passthrough(name) {
 }
 
 const Swipeable = function Swipeable(props) {
-  // Expose both the children and any right-action renderer so tests
-  // that assert on the swipe row shape still see the delete button —
-  // but for F-17 we only assert on the slot header so rendering
-  // children is sufficient.
-  return React.createElement(React.Fragment, null, props.children);
+  const right = props.renderRightActions ? props.renderRightActions() : null;
+  return React.createElement(React.Fragment, null, props.children, right);
 };
 
 // New gesture-handler API (Gesture.Pan(), GestureDetector) used by
