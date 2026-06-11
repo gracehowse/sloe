@@ -12,8 +12,9 @@
  * What Skia buys over the SVG layer:
  *   - Antialiased arcs with true round caps (the SVG ring shows faint
  *     stair-stepping on the plum arc at 3x).
- *   - Over-budget: the ring caps at FULL (no second lap — 2026-06-10
- *     category survey; the centre verdict carries the overage).
+ *   - Over-budget: the ring caps at FULL — one complete circle (Grace's
+ *     final call on the 2026-06-10 overage survey; the centre verdict
+ *     carries it).
  *   - A goal-hit glow arc (BlurMask STROKE×0.9) pulsing 0→0.6→0 over 600ms.
  *
  * IMPORTANT — native dependency: `@shopify/react-native-skia` is linked in
@@ -31,10 +32,8 @@ import {
   BlurMask,
   Canvas,
   Group,
-  LinearGradient,
   Path,
   Skia,
-  vec,
 } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
@@ -137,16 +136,6 @@ export function SkiaRingArcs({
   }, [fillPct, reduceMotion, fill]);
   const fillEnd = useDerivedValue(() => Math.min(fill.value, 0.999));
 
-  // ── Overage hash sweep (the segment past goal, from 12 o'clock) ──
-  const over = useSharedValue(reduceMotion ? overFrac : 0);
-  useEffect(() => {
-    if (reduceMotion) {
-      over.value = overFrac;
-      return;
-    }
-    over.value = withSpring(overFrac, Motion.springSoft);
-  }, [overFrac, reduceMotion, over]);
-  const overEnd = useDerivedValue(() => Math.min(over.value, 0.999));
 
   // ── Macro arcs (200ms timing — parity with the SVG MacroRing) ──
   const m0 = useSharedValue(0);
@@ -255,36 +244,24 @@ export function SkiaRingArcs({
           <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
-      {/* Over-budget — the MFP hash, in plum (2026-06-10, Grace's call
-          after the category survey: MFP marks the over portion with a
-          diagonal ridge-line texture, and our MFP-refugee audience reads
-          it natively; Suppr itself had this until 2026-06-03). The base
-          ring caps at full; the OVERAGE SEGMENT (from 12 o'clock, the
-          amount past goal) carries 45° light stripes — texture, not a
-          second colour, not a lap. */}
-      {!isEmpty && isOver && overFrac > 0 ? (
+      {/* Goal-hit glow lap (600ms pulse on goalHitCount). */}
+      {!isEmpty ? (
         <Path
           path={mainPath}
           style="stroke"
           strokeWidth={STROKE}
-          strokeCap="butt"
+          strokeCap="round"
+          color={glowColor}
+          opacity={glowOpacity}
           start={0}
-          end={overEnd}
+          end={fillEnd}
         >
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(7, 7)}
-            colors={[
-              "rgba(255,255,255,0)",
-              "rgba(255,255,255,0)",
-              "rgba(255,255,255,0.42)",
-              "rgba(255,255,255,0.42)",
-            ]}
-            positions={[0, 0.5, 0.5, 1]}
-            mode="repeat"
-          />
+          <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
+      {/* Over-budget: the ring caps at FULL — one complete circle; the
+          centre verdict ("356 OVER") + chip carry it (Grace's final call,
+          2026-06-10, on the overage-treatments survey). */}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
       {expanded
         ? MACRO_R.map((r, i) => (

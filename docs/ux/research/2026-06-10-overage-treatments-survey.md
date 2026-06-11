@@ -138,3 +138,13 @@ light-stripe hash too subtle at a glance.
 not committed). Mobbin links are canonical screen URLs and stable. App Store
 `mzstatic` URLs are version-pinned and may rot when vendors refresh listings — the
 descriptions in the table are written to stand without the image.*
+
+---
+
+## DECISION — Grace, 2026-06-10
+
+"Remove the hash; over is just a full circle. They can see they are over
+by the words OVER." → Alternative A (the Lifesum/modal grammar): ring
+caps at full in plum, centre verdict + chip carry the overage. Hash
+removed from the Skia layer; web already matched. The `--ring-overage-*`
+web tokens can now be removed (code-quality sweep).
