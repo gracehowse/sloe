@@ -13,11 +13,20 @@
  *   - a stale or low-confidence adaptive value falls back to static.
  *   - strategy defaults to mapGoalToStrategy(goal), NOT "balanced".
  *   - continuous pace from the plan_pace preset (no PACE_DAILY_DEFICIT).
+ *
+ * TDEE gating 2026-06-10 — the formula-fallback maintenance baseline now
+ * SEEDS AT SEDENTARY (1.2), not the profile's activity multiplier, because
+ * this recompute path's `target_calories` coexists with the per-day activity
+ * bonus on Today (bonus adds activity once; the seed must not bake it in
+ * again). The expected formula numbers below are therefore computed at
+ * `MAINTENANCE_SEED_ACTIVITY` (sedentary), not the profile's `moderate`.
+ * See `docs/decisions/2026-06-10-adaptive-tdee-gating.md` + survey §4.
  */
 
 import { describe, expect, it } from "vitest";
 import { recomputeTargetsFromProfile } from "../../src/lib/nutrition/recomputeTargetsForActivity";
 import { calculateTDEE, calculateMacros } from "../../src/lib/nutrition/tdee";
+import { MAINTENANCE_SEED_ACTIVITY } from "../../src/lib/nutrition/resolveMaintenance";
 import { mapGoalToStrategy } from "../../src/lib/onboarding/targets";
 
 const PROFILE = {
@@ -29,14 +38,20 @@ const PROFILE = {
   planPace: "steady" as const, // 0.5 kg/week → 550 deficit
 };
 
+/**
+ * The formula-fallback maintenance for PROFILE, at the SEDENTARY seed (the
+ * bonus-coexisting baseline). 60 kg · 165 cm · 30 F · sedentary = 1,584 kcal.
+ * Used everywhere a test previously expected the `moderate` static TDEE.
+ */
+const SEED_TDEE = calculateTDEE("female", 60, 165, 30, MAINTENANCE_SEED_ACTIVITY);
+
 const NOW = new Date("2026-05-26T12:00:00.000Z");
 const FRESH = "2026-05-25T12:00:00.000Z"; // 1 day old
 const STALE = "2026-05-01T12:00:00.000Z"; // 25 days old (> 14d)
 
 describe("recomputeTargetsFromProfile — adaptive maintenance baseline", () => {
   it("uses a confident + fresh adaptive value as the deficit baseline (NOT static)", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate"); // 2046
-    const adaptive = 2200; // deliberately ≠ static
+    const adaptive = 2200; // deliberately ≠ the sedentary seed
 
     const out = recomputeTargetsFromProfile({
       ...PROFILE,
@@ -47,15 +62,14 @@ describe("recomputeTargetsFromProfile — adaptive maintenance baseline", () => 
       now: NOW,
     })!;
 
-    // Maintenance = adaptive (2200), NOT static (2046).
+    // Maintenance = adaptive (2200), NOT the sedentary seed (1,584).
     expect(out.maintenanceTdee).toBe(adaptive);
-    expect(out.maintenanceTdee).not.toBe(staticTdee);
+    expect(out.maintenanceTdee).not.toBe(SEED_TDEE);
     // Deficit applied to the ADAPTIVE baseline: 2200 − 550 = 1650.
     expect(out.target_calories).toBe(1650);
   });
 
-  it("falls back to static Mifflin when the adaptive value is STALE", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate"); // 2046
+  it("falls back to the SEDENTARY-seeded formula when the adaptive value is STALE", () => {
     const out = recomputeTargetsFromProfile({
       ...PROFILE,
       goal: "cut",
@@ -64,12 +78,12 @@ describe("recomputeTargetsFromProfile — adaptive maintenance baseline", () => 
       adaptiveTdeeUpdatedAt: STALE,
       now: NOW,
     })!;
-    expect(out.maintenanceTdee).toBe(staticTdee); // 2046
-    expect(out.target_calories).toBe(staticTdee - 550); // 1496
+    // TDEE gating 2026-06-10: seed = sedentary (1,584), NOT moderate (2,046).
+    expect(out.maintenanceTdee).toBe(SEED_TDEE); // 1,584
+    expect(out.target_calories).toBe(SEED_TDEE - 550); // 1,034
   });
 
-  it("falls back to static when confidence is low", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate");
+  it("falls back to the sedentary seed when confidence is low", () => {
     const out = recomputeTargetsFromProfile({
       ...PROFILE,
       goal: "cut",
@@ -78,17 +92,16 @@ describe("recomputeTargetsFromProfile — adaptive maintenance baseline", () => 
       adaptiveTdeeUpdatedAt: FRESH,
       now: NOW,
     })!;
-    expect(out.maintenanceTdee).toBe(staticTdee);
+    expect(out.maintenanceTdee).toBe(SEED_TDEE);
   });
 
-  it("falls back to static when NO adaptive fields are passed (editor UIs today)", () => {
-    // This is the behaviour-preserving path: the editor UIs don't pass
-    // adaptive columns yet, so the maintenance number is the static
-    // formula — same shape as before the unification.
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate");
+  it("falls back to the sedentary seed when NO adaptive fields are passed (editor UIs today)", () => {
+    // The editor UIs don't pass adaptive columns yet, so the maintenance
+    // number is the formula — now SEEDED AT SEDENTARY (bonus-coexisting
+    // baseline), TDEE gating 2026-06-10.
     const out = recomputeTargetsFromProfile({ ...PROFILE, goal: "cut" })!;
-    expect(out.maintenanceTdee).toBe(staticTdee);
-    expect(out.target_calories).toBe(staticTdee - 550);
+    expect(out.maintenanceTdee).toBe(SEED_TDEE);
+    expect(out.target_calories).toBe(SEED_TDEE - 550);
   });
 });
 
@@ -125,7 +138,7 @@ describe("recomputeTargetsFromProfile — strategy default (NOT balanced)", () =
 
 describe("recomputeTargetsFromProfile — continuous pace per preset", () => {
   it("maps each plan_pace preset to its continuous kg/week deficit", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate"); // 2046
+    // Baseline = the sedentary seed (1,584), TDEE gating 2026-06-10.
     const cases: Array<[typeof PROFILE.planPace, number]> = [
       ["relaxed", 275], // 0.25 kg/week
       ["steady", 550], // 0.5
@@ -134,21 +147,20 @@ describe("recomputeTargetsFromProfile — continuous pace per preset", () => {
     ];
     for (const [planPace, deficit] of cases) {
       const out = recomputeTargetsFromProfile({ ...PROFILE, planPace, goal: "cut" })!;
-      expect(out.target_calories).toBe(staticTdee - deficit);
+      expect(out.target_calories).toBe(SEED_TDEE - deficit);
     }
   });
 
   it("applies the FULL surplus magnitude for gain (no half-magnitude bug)", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate");
     const out = recomputeTargetsFromProfile({ ...PROFILE, goal: "bulk" })!;
-    // Full +550 (the old calculateBudget path applied +275).
-    expect(out.target_calories).toBe(staticTdee + 550);
+    // Full +550 (the old calculateBudget path applied +275), off the
+    // sedentary seed.
+    expect(out.target_calories).toBe(SEED_TDEE + 550);
   });
 
-  it("lands exactly on maintenance for a maintain goal", () => {
-    const staticTdee = calculateTDEE("female", 60, 165, 30, "moderate");
+  it("lands exactly on the sedentary seed for a maintain goal", () => {
     const out = recomputeTargetsFromProfile({ ...PROFILE, goal: "maintain" })!;
-    expect(out.target_calories).toBe(staticTdee);
+    expect(out.target_calories).toBe(SEED_TDEE);
   });
 
   it("returns null when body basics are invalid (no fabricated targets)", () => {

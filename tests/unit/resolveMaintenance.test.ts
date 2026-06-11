@@ -3,7 +3,9 @@ import {
   resolveMaintenance,
   buildMaintenancePopoverCopy,
   ADAPTIVE_STALE_DAYS,
+  MAINTENANCE_SEED_ACTIVITY,
 } from "@/lib/nutrition/resolveMaintenance";
+import { calculateTDEE } from "@/lib/nutrition/tdee";
 
 /**
  * F-3 (TestFlight `ADFYpDgEEb0QH-j3BXshPTo`, 2026-04-19) — the shared
@@ -165,6 +167,59 @@ describe("resolveMaintenance", () => {
     });
     expect(resolved!.source).toBe("formula");
     expect(resolved!.confidence).toBeNull();
+  });
+});
+
+/**
+ * Seed-multiplier (sedentary) — TDEE gating 2026-06-10. The maintenance
+ * number that COEXISTS WITH THE PER-DAY ACTIVITY BONUS must be the lazy-day /
+ * NEAT (sedentary 1.2) burn, so the bonus (`computeActivityBonusKcal`) doesn't
+ * double-count activity the profile multiplier already baked in. Survey §4 +
+ * `docs/decisions/2026-06-10-adaptive-tdee-gating.md`.
+ */
+describe("resolveMaintenance — sedentary seed (bonus-coexisting chain)", () => {
+  // Grace's profile basics (forensic §4): 55 kg · 157 cm · 31 F.
+  const grace = {
+    sex: "female" as const,
+    weight_kg: 55,
+    height_cm: 157,
+    age: 31,
+  };
+
+  it("seeds the formula at sedentary (1.2), IGNORING a non-sedentary activity_level", () => {
+    // Grace's stored level is `light` (1.375 → 1,671). The seed must NOT use
+    // it — it must use sedentary (1.2 → 1,458) so the activity bonus pays for
+    // activity exactly once.
+    const resolvedLight = resolveMaintenance({
+      ...grace,
+      activity_level: "light",
+    });
+    const resolvedModerate = resolveMaintenance({
+      ...grace,
+      activity_level: "moderate",
+    });
+    const sedentaryKcal = calculateTDEE("female", 55, 157, 31, "sedentary"); // 1,458
+
+    expect(resolvedLight!.source).toBe("formula");
+    expect(resolvedLight!.kcal).toBe(sedentaryKcal);
+    expect(resolvedLight!.kcal).toBe(1458);
+    // The light multiplier (1,671) must NOT leak through.
+    expect(resolvedLight!.kcal).not.toBe(
+      calculateTDEE("female", 55, 157, 31, "light"),
+    );
+    // Activity level is ignored entirely — light and moderate resolve identically.
+    expect(resolvedModerate!.kcal).toBe(resolvedLight!.kcal);
+  });
+
+  it("resolves the same number whether activity_level is missing or active", () => {
+    const missing = resolveMaintenance({ ...grace, activity_level: null });
+    const active = resolveMaintenance({ ...grace, activity_level: "very_active" });
+    expect(missing!.kcal).toBe(active!.kcal);
+    expect(missing!.kcal).toBe(calculateTDEE("female", 55, 157, 31, "sedentary"));
+  });
+
+  it("MAINTENANCE_SEED_ACTIVITY is sedentary (the constant the comment cites)", () => {
+    expect(MAINTENANCE_SEED_ACTIVITY).toBe("sedentary");
   });
 });
 

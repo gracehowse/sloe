@@ -17,6 +17,14 @@
  * (web) and (tabs)/settings.tsx (mobile) do in `onConfirm`. That way
  * the real UI code and this test agree on field names + math without
  * a brittle DOM mount.
+ *
+ * TDEE gating 2026-06-10 — point (4) above no longer holds at the requested
+ * activity multiplier: the maintenance baseline now SEEDS AT SEDENTARY (1.2)
+ * for every activity level, because target_calories coexists with the per-day
+ * activity bonus (the bonus pays for activity once). The sedentary-requesting
+ * cases below still match `calculateTDEE(… "sedentary")` because the seed and
+ * the request coincide; the moderate→sedentary delta test is superseded — see
+ * its body + `docs/decisions/2026-06-10-adaptive-tdee-gating.md`.
  */
 import { describe, expect, it, vi } from "vitest";
 import { recomputeTargetsForActivity } from "../../src/lib/nutrition/recomputeTargetsForActivity";
@@ -141,7 +149,21 @@ describe("profile activity-level update pipeline", () => {
     expect(payload.target_fiber_g).toBe(macros.fiber);
   });
 
-  it("switching from moderate to sedentary lowers maintenance by ~430 kcal for the tester's basics (the AIIm60n / AHCSYMATS delta)", () => {
+  it("seeds maintenance at sedentary regardless of the requested activity level (TDEE gating 2026-06-10)", () => {
+    // SUPERSEDES the old "moderate → sedentary lowers maintenance by ~430"
+    // assertion. The formula maintenance baseline now SEEDS AT SEDENTARY (1.2)
+    // for ALL activity levels, because this recompute path's target_calories
+    // coexists with the per-day activity bonus on Today — the bonus pays for
+    // activity, so the activity *multiplier* must not also move maintenance
+    // (that was the latent double-count, survey §4 +
+    // `docs/decisions/2026-06-10-adaptive-tdee-gating.md`).
+    //
+    // PRODUCT CONSEQUENCE (flagged for product-lead, ENG follow-up): the
+    // Settings activity-level self-edit (the AIIm60n / AHCSYMATS fix) no longer
+    // moves the maintenance number — the control still persists `activity_level`
+    // but the calorie target is the same lazy-day number whatever the user
+    // picks. Honest under the add-back model; whether the Settings control
+    // should still exist / be reframed is a separate UX call.
     const asModerate = recomputeTargetsForActivity({
       sex: TESTER.sex,
       weightKg: TESTER.weightKg,
@@ -164,12 +186,11 @@ describe("profile activity-level update pipeline", () => {
     });
     expect(asModerate).not.toBeNull();
     expect(asSedentary).not.toBeNull();
-    const delta = (asModerate!.maintenanceTdee) - (asSedentary!.maintenanceTdee);
-    // BMR ≈ 1,225 × (1.55 - 1.2) = 428.75 → expect a drop in the
-    // 400–460 kcal band. Tighter than an order-of-magnitude check
-    // so a future multiplier regression is caught.
-    expect(delta).toBeGreaterThanOrEqual(400);
-    expect(delta).toBeLessThanOrEqual(460);
+    // Both seed at sedentary → identical maintenance, zero delta.
+    expect(asModerate!.maintenanceTdee).toBe(asSedentary!.maintenanceTdee);
+    expect(asModerate!.maintenanceTdee).toBe(
+      calculateTDEE(TESTER.sex, TESTER.weightKg, TESTER.heightCm, TESTER.age, "sedentary"),
+    );
   });
 
   it("returns null (no fabricated fallback) when basics are missing", () => {

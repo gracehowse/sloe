@@ -81,6 +81,45 @@ describe("buildMaintenanceChain", () => {
     expect(step.label).toContain("Sedentary");
   });
 
+  it("pins the activity row to SEDENTARY even for a non-sedentary profile (TDEE gating 2026-06-10)", () => {
+    // The explainer's BMR × activity row must reconcile to `= Maintenance`.
+    // Since the bonus-coexisting maintenance seed is pinned to SEDENTARY (the
+    // add-back / activity-bonus architecture — survey §4 + decision
+    // `docs/decisions/2026-06-10-adaptive-tdee-gating.md`), the formula row
+    // shows the sedentary multiplier whatever the profile's activity_level is —
+    // otherwise the row's product would disagree with the maintenance total
+    // below it. Use a LIGHT profile and assert the row stays sedentary.
+    const lightProfile = { ...baseProfile, activity_level: "light" as const };
+    const formulaResolved = resolveMaintenance(lightProfile);
+    expect(formulaResolved).not.toBeNull();
+    const chain = buildMaintenanceChain(
+      lightProfile,
+      formulaResolved!,
+      "relaxed",
+      "cut",
+    );
+    const activityStep = chain!.steps.find((s) => s.kind === "activity")!;
+    // Row renders the SEDENTARY multiplier + label, NOT light (1.375).
+    expect(activityStep.label).toContain(String(ACTIVITY_MULTIPLIERS.sedentary));
+    expect(activityStep.label).toContain("Sedentary");
+    expect(activityStep.label).not.toContain(String(ACTIVITY_MULTIPLIERS.light));
+
+    // And the row's product reconciles to the maintenance total (BMR × 1.2).
+    const expectedMaintenance = Math.round(
+      calculateBMR(
+        lightProfile.sex,
+        lightProfile.weight_kg,
+        lightProfile.height_cm,
+        lightProfile.age,
+      ) * ACTIVITY_MULTIPLIERS.sedentary,
+    );
+    expect(formulaResolved!.kcal).toBe(expectedMaintenance);
+    const maintenanceStep = chain!.steps.find((s) => s.kind === "maintenance")!;
+    expect(maintenanceStep.value).toBe(
+      `${expectedMaintenance.toLocaleString()} kcal`,
+    );
+  });
+
   it("includes the adaptive adjustment when adaptive beats formula", () => {
     const chain = buildMaintenanceChain(
       baseProfile,
