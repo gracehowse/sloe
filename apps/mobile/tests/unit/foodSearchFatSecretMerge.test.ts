@@ -150,7 +150,8 @@ describe("Lane-A — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/async function searchFatSecret/);
     // ENG-686 replaced Promise.all with a Promise.race streaming loop; verify
     // all four sources (including FatSecret) are still fired concurrently.
-    expect(WEB_SRC).toMatch(/searchFatSecret\(q,\s*1\)/);
+    // ENG-1038 added an optional `onDegraded` 3rd arg — allow it.
+    expect(WEB_SRC).toMatch(/searchFatSecret\(q,\s*1(?:,\s*\w+)?\)/);
     expect(WEB_SRC).toMatch(/Promise\.race/);
   });
 

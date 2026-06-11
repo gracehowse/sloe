@@ -9,6 +9,12 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { hasEdamamConfig } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import {
+  checkQuota,
+  consumeQuota,
+  getCachedSearch,
+  setCachedSearch,
+} from "@/lib/server/vendorSearchCache";
 
 /**
  * GET /api/edamam/search?q=<query>&mode=<foods|meals>
@@ -54,6 +60,32 @@ export async function GET(req: Request) {
   const rawPage = Number(searchParams.get("page") ?? "1");
   const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
 
+  // ENG-1038 — Edamam's 1,000/day free tier is account-wide, so this is the
+  // tightest shared ceiling of the three keyed vendors. Cache + quota guard
+  // protect it. `mode` differs the result filter, so it's part of the key.
+  const locale = searchParams.get("locale");
+  const cacheQuery = `${mode}::${q}`;
+
+  // 1) Cache hit — no Edamam call, no quota spend.
+  const cached = await getCachedSearch<unknown>("edamam", cacheQuery, { locale, page: pageNumber });
+  if (cached) {
+    return NextResponse.json({ ok: true, mode, page: pageNumber, hits: cached, cached: true });
+  }
+
+  // 2) Account-wide quota exhausted — skip Edamam, return DEGRADED so the
+  //    merge falls through and the UI shows an honest notice.
+  const quota = await checkQuota("edamam");
+  if (!quota.allowed) {
+    return NextResponse.json({
+      ok: true,
+      mode,
+      page: pageNumber,
+      hits: [],
+      degraded: true,
+      degradedReason: "quota_exhausted",
+    });
+  }
+
   if (!hasEdamamConfig()) {
     return NextResponse.json(
       {
@@ -75,8 +107,13 @@ export async function GET(req: Request) {
 
   try {
     if (pageNumber > 1) {
+      // Edamam returns a single flat page; pages beyond 1 are always empty.
+      // Cache that stable fact so a paginated repeat skips the round-trip.
+      await setCachedSearch("edamam", cacheQuery, [], { locale, page: pageNumber });
       return NextResponse.json({ ok: true, mode, page: pageNumber, hits: [] });
     }
+    // Consume one quota unit immediately before the live call (atomic).
+    await consumeQuota("edamam");
     const raw = await edamamFoodSearch(cfg, q, { pageSize: mode === "meals" ? 20 : 12 });
     const filtered = mode === "meals"
       ? raw.filter((h) => {
@@ -112,6 +149,10 @@ export async function GET(req: Request) {
         servingSizes: h.food.servingSizes ?? [],
       };
     });
+    // Cache only the genuine successful response — the catch block below
+    // returns ok+empty on upstream failure and must NOT be cached as a
+    // real empty (that would poison the cache for 24h on a transient blip).
+    await setCachedSearch("edamam", cacheQuery, hits, { locale, page: pageNumber });
     return NextResponse.json({ ok: true, mode, page: pageNumber, hits });
   } catch (e) {
     captureRouteError(e, "/api/edamam/search");
