@@ -18,7 +18,7 @@
 | New projects created | **4** (Gate 0 — launch hardening; AI features; Synthetic persona testing; Category-leading growth backlog) |
 | Issues moved to a new/correct project | **86** (13 audit P0-P1s + 27 other orphans + 56 Category-leading + ENG-927 home corrections; −11 double-counted homes resolved) |
 | Consolidated (closed as duplicate) | **2** (ENG-1042→ENG-858; ENG-1050→ENG-999) |
-| Closed as Done (verified) | **0** — see §5 strategic call (the 31 In Review redesign issues were *not* bulk-closed; per-AC evidence is incomplete) |
+| Closed as Done (verified) | **27** — In-Review redesign issues closed in the per-AC verification pass (see "In-Review verification pass (2026-06-11)" below); 4 left In-Review as partial. Initial restructure deliberately did NOT bulk-close (§5.2); the follow-up pass closed each one against cited evidence. |
 | Closed as obsolete | 0 |
 | Relabelled / re-prioritised | **1** (`launch-blocker` stripped from ENG-696) |
 | Initiatives archived (empty duplicate) | **1** ("Premium experience — launch bar" duplicate `d4966476`, completed + project-less) |
@@ -207,3 +207,50 @@ This matches the audit's §26 Gate-0 intent: the two P0s + the legal/security cl
 - The 22 pre-existing `Duplicate`-state issues (Premium-bar-audit tranche).
 - No issue deleted anywhere (consolidations = state→Duplicate + relation, reversible).
 - No In Review redesign issue force-closed without per-AC evidence (§5.2).
+
+---
+
+## In-Review verification pass (2026-06-11)
+
+Executes §5.2's recommended one-issue-at-a-time verification (not a bulk close). All 31 `In Review` redesign issues had their acceptance criteria parsed and each AC verified against the actual codebase on `claude/skia-ring-2026-06-10` (which contains the merged Sloe wave: `19bbff72`, `55571a2e`, `852c8df1`, PR #382) — Grep/Read on the named files, git history, and the relevant `*.test.*` files run green this session. Cross-referenced the 2026-06-11 launch audit (§22, §24) and the 2026-06-10 fresh-eyes census.
+
+**Counts: 31 reviewed · 27 closed-done · 4 left-partial · 0 dup.**
+
+Key correction to the going-in priors: the **ENG-811 hex-lint guard does now exist on web** (`eslint.config.mjs:49-78` — `no-restricted-syntax` selectors for raw hex + raw-Tailwind-palette utilities, with token-file + `tests/**` allowlists). The launch audit's "no such lint exists" was stale. It is still PARTIAL because it ships at `warn` (does not fail CI on a single new violation — the AC's explicit requirement) and has **no mobile counterpart** (the mobile config only restricts style-property literals, Today-scoped). The flag-gated redesign work renders by default: all 8 redesign flags sit in `REDESIGN_DEFAULT_ON` on both platforms (`apps/mobile/lib/analytics.ts:292-309`, `src/lib/analytics/track.ts:163-179`), so "flag-gated" here means independently revertible, not hidden.
+
+| Issue | Verdict | Evidence (closed) / Outstanding ACs (partial) |
+|---|---|---|
+| ENG-794 | closed-done | `.on()×2` before `.subscribe()` + unique per-mount topic seq (`(tabs)/notifications.tsx:242,247,257`); `notificationsRealtimeChannelTopic.test.tsx` (4 green) |
+| ENG-795 | closed-done | One soft elevation token, default-ON; mobile `Elevation.cardSoft` (`theme.ts:638`) ↔ web `--elev-card-soft` (`theme.css:311`); hairline stripped (`border-width:0`); dark variant; `cardElevationVariants.test.tsx` |
+| ENG-796 | closed-done | Reserved win-colour `Accent.win`/`--accent-win`; commit CTA → blue via `design_system_colours` (`FoodSearchPanel.tsx:367` mobile / `:848` web); 0 web violet hardcodes |
+| ENG-797 | closed-done | Single Sloe wordmark (`SloeLaunchWordmark`/`SloeHeaderWordmark`); `brandMark.test.tsx` pins no-legacy-'S'; 0 web violet |
+| ENG-798 | closed-done | Quiet confirm haptic per durable commit (`(tabs)/index.tsx:545`); ONE landmark win-moment, ≤1/day (`use-win-moment.ts`); odometer tweens (mobile `useAnimatedNumber` `CalorieRing.tsx:434`, web `useOdometer` `daily-ring.tsx:225`) |
+| ENG-799 | closed-done | Branded `MealActionSheet` replaces `Alert.alert` (`TodayMealsSection.tsx:266`, `mealActionSheetBranded.test.tsx` 7 green); branded `RootErrorBoundary.tsx` (`rootErrorBoundaryBranded.test.tsx`) |
+| ENG-800 | closed-done | `suppr:///plan` → `/(tabs)/planner` alias (`deepLinkRouting.ts:57`); `deepLinkRouting.test.ts` covers 2-/3-slash/query/trailing |
+| ENG-801 | closed-done | Stale 'F50' marker removed; Build row `__DEV__`-gated (`SettingsBundleContent.tsx:2538`); `settingsElevationAndMarker.test.ts` |
+| ENG-803 | closed-done | Header stacks `flex-col` below sm (`NotificationsCenter.tsx:21`) |
+| ENG-805 | **partial** | Mobile demoted to non-blocking `WeeklyCheckinBanner` (`(tabs)/index.tsx:801,2706`). **Outstanding (web):** `NutritionTracker.tsx:1991` still `setWeeklyCheckinOpen(true)` cold-open + `:3044` renders centred `WeeklyCheckinDialog`; no web banner/card, no gate. AC says web+mobile. |
+| ENG-806 | closed-done | `planner→plan` collapse (`App.tsx:147,173`); download-wall copy gone from tree |
+| ENG-807 | closed-done | Honest tier from provenance+score (`foodSearchRanking.ts:528`); golden-query fixture `foodSearchRankingGolden.test.ts` **35 green** |
+| ENG-808 | **partial** | Macro tiles/meal-slot/macro icons + hydration all Lucide (default-ON). **Outstanding:** one live functional emoji — planner leftover badge `(tabs)/planner.tsx:3331` `icon={<Text>🍱</Text>}`. Trivial swap. |
+| ENG-809 | closed-done | 6+ flags wired both platforms (`apps/mobile/lib/analytics.ts:299`, `track.ts:164`); map doc `2026-05-31-redesign-implementation-plan.md` §P0 |
+| ENG-810 | closed-done | `lottie-react-native` + `@lottiefiles/dotlottie-react` installed; `WinMomentPlayer` both platforms (props `celebration`/`onComplete`, plays once); `winMomentPlayer.test.tsx` (6 green) |
+| ENG-811 | **partial** | Web guard exists (`eslint.config.mjs:49-78`) — corrects the audit's stale "no lint" claim. **Outstanding:** ships at `warn` not `error` (doesn't fail CI on a new hex — AC requirement); no mobile raw-hex selector. Recommend splitting "flip-to-error after ENG-1013 migration" into a fresh enforcement ticket. |
+| ENG-812 | closed-done | One spring vocab + morph + odometer, single source of truth (`apps/mobile/lib/motion.ts` ↔ `src/lib/motion.ts`/`useOdometer.ts`) |
+| ENG-813 | closed-done | Sheets: soft elevation + morph + blue commit + confirm haptic (mobile `TodayEditMealModal.tsx:137`; web `log-sheet.tsx:388,408`) |
+| ENG-814 | closed-done | Mobile search: one segmented control + elevated cards + chips + blue commit (`FoodSearchPanel.tsx`); hard gate satisfied by ENG-807; `foodSearchRedesignResults.test.tsx` (4 green) |
+| ENG-816 | closed-done | Barcode Ionicons→Lucide behind `design_system_icons` (`BarcodeScannerModal.tsx:107`) |
+| ENG-817 | closed-done | Search language on barcode + voice sheets; `barcodeVoiceResultRedesign.test.ts` green |
+| ENG-818 | closed-done | Recipe "Fits your day" → real fit chip + elevation + blue Log-all (`recipe/[id].tsx:229`, `computeFitsYourDayVerdict`) both platforms |
+| ENG-819 | closed-done | Recipe CTAs fire `confirm` haptic via PressableScale (`recipe/[id].tsx:1661,2064`) |
+| ENG-820 | closed-done | Plan headline state-aware + win pulse + gen/move haptics (mobile `planner.tsx:1234`; web `MealPlanner.tsx:297` analog) |
+| ENG-821 | closed-done | Recipe edit/ingredient editor tokenised (mobile `IngredientEditRow.tsx`; web `recipe-edit-dialog.tsx:183`); `recipeEditTokenSweep.test.tsx` (9 green) + `recipeEditMobileParity.test.ts` |
+| ENG-822 | closed-done | Progress/metric-detail elevation + calm header; `metric=weight` mislabel bug fixed via redirect (`progress-metric.tsx:51`); web `ProgressMetricDetail.tsx:44` |
+| ENG-823 | closed-done | Settings elevation + section-label unify + destructive token (mobile `SettingsBundleContent.tsx`; web `Settings.tsx:972`) |
+| ENG-824 | closed-done | Progress/Settings tiered feedback + new-low win-moment (`ProgressDashboard.tsx:589`); mobile `targets.tsx`/`health-sync.tsx`/`progress.tsx` |
+| ENG-825 | closed-done | Two nutrition-detail headers unified + PressableScale + blue commit (mobile `meal-nutrition.tsx:340`/`macro-detail.tsx:167`; web `MacroDetailPanel.tsx:110`) |
+| ENG-826 | **partial** | Web win-moment analog done (`daily-ring.tsx:119-135,290-305`, `winSpectrum` gradient + gold glow on target-hit). **Outstanding/superseded:** the empty-state gradient + green/red 3-state mapping was replaced by the 2026-06-10 "always plum" ring wave (`daily-ring.tsx:186`) — likely an intentional later decision; held In-Review pending Grace's supersession confirm (conf 6). |
+| ENG-835 | closed-done | Web `meal-nutrition-dialog.tsx` mirrors mobile (macro split + micros + confidence), wired from Today rows (`today-meals-section.tsx:83`, `NutritionTracker.tsx:3383`), flag-gated per AC |
+
+### Residuals worth a fresh ticket (Grace's call)
+- **ENG-811 enforcement tail** — the residual ("flip the web rule to `error` + add the mobile raw-hex selector") is *distinct* from "write a guard" and *blocked* by the ENG-1013 colour migration (246 hex literals must come down first or CI reds). **Recommend** splitting that enforcement step into a fresh issue under Design system cleanup, paired with ENG-1013, and keeping ENG-811 In-Review only for the bounded mobile-selector add. The other three partials (ENG-805 web demotion, ENG-808 one-emoji swap, ENG-826 supersession confirm) are bounded — keep on-issue.
