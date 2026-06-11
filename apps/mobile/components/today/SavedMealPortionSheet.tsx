@@ -94,7 +94,7 @@ export function SavedMealPortionSheet({
   const onPortionChange = (next: number) => {
     if (motionEnabled) {
       try {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch {
         /* haptics unavailable (e.g. Expo Go) — silent */
       }

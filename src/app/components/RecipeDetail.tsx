@@ -126,7 +126,7 @@ async function shareRecipeDeepLink(recipeId: string) {
   const url = webRecipeDeepLink(recipeId, window.location.origin);
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
-      await navigator.share({ title: "Recipe on Suppr", text: "Open this recipe in Suppr", url });
+      await navigator.share({ title: "Recipe on Sloe", text: "Open this recipe in Sloe", url });
       toast.success("Shared");
       return;
     } catch (e: unknown) {

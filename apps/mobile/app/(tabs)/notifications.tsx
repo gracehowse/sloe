@@ -16,7 +16,7 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 
 // Monotonic counter so each realtime subscription gets a UNIQUE channel topic.
@@ -96,7 +96,7 @@ export default function NotificationsScreen() {
         title: { ...Type.title, color: colors.navPrimary },
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
-        err: { color: "#f87171", textAlign: "center", fontSize: 15 },
+        err: { color: Accent.destructive, textAlign: "center", fontSize: 15 },
         retry: {
           marginTop: Spacing.sm,
           paddingHorizontal: Spacing.lg,

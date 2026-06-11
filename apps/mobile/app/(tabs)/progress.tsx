@@ -33,6 +33,7 @@ import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import {
+  avgCaloriesOverRecentLoggedDays,
   calcGoalTimeline,
   computeWeightJourneyProgressPct,
   formatWeightJourneyProgressCopy,
@@ -1369,7 +1370,7 @@ export default function ProgressScreen() {
                       style={({ pressed }) => [{
                         paddingHorizontal: Spacing.dense,
                         paddingVertical: 4,
-                        borderRadius: 999,
+                        borderRadius: Radius.full,
                         // Sloe treatment §8: active segment = white lift +
                         // primarySolid label (was warm-ink text).
                         backgroundColor: active ? t.elevated : "transparent",
@@ -1438,7 +1439,7 @@ export default function ProgressScreen() {
                 gap: Spacing.xs,
                 paddingHorizontal: Spacing.lg,
                 paddingVertical: Spacing.sm,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 // Sloe treatment system (§1): primary inline CTA = aubergine
                 // OUTLINE (transparent fill, 1.5px primarySolid border + label).
                 backgroundColor: "transparent",
@@ -1528,7 +1529,7 @@ export default function ProgressScreen() {
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: t.carbs }} />
+              <View style={{ width: 8, height: 8, borderRadius: Radius.full, backgroundColor: t.carbs }} />
               <Text style={{ fontSize: 11, color: t.dim }}>goal</Text>
             </View>
           </View>
@@ -1554,7 +1555,7 @@ export default function ProgressScreen() {
                       style={{ flex: 1, height: chartHeight, justifyContent: "flex-end", alignItems: "center", position: "relative" }}
                     >
                       {goalDotBottom != null ? (
-                        <View style={{ position: "absolute", bottom: goalDotBottom, width: 6, height: 6, borderRadius: 999, backgroundColor: t.carbs }} />
+                        <View style={{ position: "absolute", bottom: goalDotBottom, width: 6, height: 6, borderRadius: Radius.full, backgroundColor: t.carbs }} />
                       ) : null}
                       <View
                         testID={`progress-day-bar-${d.key}`}
@@ -1629,7 +1630,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: adaptive"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
+                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   {/* headers census 2026-06-10: pill eyebrow → Type.label, pill hue kept. */}
                   <Text style={{ ...Type.label, color: t.green }}>Adaptive</Text>
@@ -1638,7 +1639,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: formula estimate"
-                  style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
+                  style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   {/* headers census 2026-06-10: pill eyebrow → Type.label. */}
                   <Text style={{ ...Type.label, color: t.dim }}>Formula estimate</Text>
@@ -1652,6 +1653,12 @@ export default function ProgressScreen() {
               </Text>
               <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
             </View>
+
+            {resolved.adaptiveRejectedBelowFormula && resolved.rejectedAdaptiveKcal != null && (
+              <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
+                Adaptive estimate was {resolved.rejectedAdaptiveKcal.toLocaleString()} kcal — below your formula floor, so we're showing the formula estimate until logging catches up.
+              </Text>
+            )}
 
             {showAdaptiveExtras && resolved.formulaKcal != null && (
               <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
@@ -1703,6 +1710,7 @@ export default function ProgressScreen() {
                 resolved,
                 planPace,
                 userGoal,
+                targets.calories,
               );
               if (!chain) return null;
               return (
@@ -1782,13 +1790,12 @@ export default function ProgressScreen() {
               : null;
             const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
             const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
-            const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
-            const recentDays = daysWithFood.slice(-7);
-            const avgCals = recentDays.length > 0
-              ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
-              : 0;
+            // ENG-1053 — same helper as TrajectoryCard (`computeTrajectory`) so
+            // the two "last 7 days averaged" lines on this screen can't drift.
+            const { avgCalories: avgCals, daysWithFood: foodLoggedDayCount } =
+              avgCaloriesOverRecentLoggedDays(byDay, 7);
             const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
-            const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+            const projectionEligible = shouldRenderDailyProjection(foodLoggedDayCount);
             const observedKgPerWeek =
               typeof timeline.weeklyRateKg === "number"
                 ? timeline.trendDirection === "losing"

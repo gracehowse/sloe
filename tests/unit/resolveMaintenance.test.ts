@@ -159,6 +159,31 @@ describe("resolveMaintenance", () => {
     ).toBeNull();
   });
 
+  it("falls back to formula when adaptive sits below the sedentary formula (ENG-1057)", () => {
+    const now = new Date("2026-06-11T12:00:00Z");
+    const femaleProfile = {
+      sex: "female" as const,
+      weight_kg: 62,
+      height_cm: 165,
+      age: 34,
+      activity_level: "sedentary" as const,
+    };
+    const resolved = resolveMaintenance(
+      {
+        ...femaleProfile,
+        adaptive_tdee: 1270,
+        adaptive_tdee_confidence: "medium",
+        adaptive_tdee_updated_at: "2026-06-10T12:00:00Z",
+      },
+      { now },
+    );
+    expect(resolved).not.toBeNull();
+    expect(resolved!.source).toBe("formula");
+    expect(resolved!.kcal).toBeGreaterThan(1400);
+    expect(resolved!.adaptiveRejectedBelowFormula).toBe(true);
+    expect(resolved!.rejectedAdaptiveKcal).toBe(1270);
+  });
+
   it("normalises an unknown confidence string to `null`", () => {
     const resolved = resolveMaintenance({
       ...baseProfile,
@@ -231,6 +256,8 @@ describe("buildMaintenancePopoverCopy", () => {
       confidence: "medium",
       formulaKcal: 1675,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     });
     expect(copy).toContain("Maintenance is the calories you'd burn in a normal day.");
     expect(copy).toContain("actual intake");
@@ -244,6 +271,8 @@ describe("buildMaintenancePopoverCopy", () => {
       confidence: null,
       formulaKcal: 1675,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     });
     expect(copy).toContain("Maintenance is the calories you'd burn in a normal day.");
     expect(copy).toContain("Formula estimate");
@@ -257,6 +286,8 @@ describe("buildMaintenancePopoverCopy", () => {
       confidence: null,
       formulaKcal: null,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     });
     // Shouldn't contain "null confidence" — should pick a sensible default.
     expect(copy).not.toContain("null");

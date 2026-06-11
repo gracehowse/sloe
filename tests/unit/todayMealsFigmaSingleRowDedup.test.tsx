@@ -99,6 +99,27 @@ describe("TodayMealsSection — Figma 654 single-row dedup", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
+  it("shows aggregate header title for multi-item slots (ENG-1058)", () => {
+    const a = meal({ id: "1", recipeTitle: "good culture", calories: 141 });
+    const b = meal({ id: "2", recipeTitle: "Cherry Tomatoes", calories: 28 });
+    render(
+      <TodayMealsSection
+        {...baseProps({
+          mealsGrouped: [
+            { name: "Breakfast", meals: [a, b] },
+            { name: "Lunch", meals: [] },
+            { name: "Dinner", meals: [] },
+            { name: "Snacks", meals: [] },
+          ],
+          mealsForSelectedDate: [a, b],
+        })}
+      />,
+    );
+    const summaryRow = screen.getByTestId("today-meals-figma-meal-row-Breakfast");
+    expect(summaryRow.textContent).toContain("2 items");
+    expect(summaryRow.textContent).not.toContain("good culture");
+  });
+
   it("keeps rows for a multi-item slot even when the first entry matches the header title", () => {
     const a = meal({ id: "1", recipeTitle: "MyFitnessPal entry", calories: 318 });
     const b = meal({ id: "2", recipeTitle: "Sourdough", calories: 272 });

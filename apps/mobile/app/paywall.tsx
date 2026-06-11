@@ -1330,7 +1330,7 @@ export default function PaywallScreen() {
             <ActivityIndicator size="small" color={colors.textSecondary} />
           ) : (
             <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: "500" }}>
-              Restore purchases
+              Restore purchase
             </Text>
           )}
         </Pressable>

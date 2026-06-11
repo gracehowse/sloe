@@ -13,12 +13,11 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { Colors, Spacing, Type } from "@/constants/theme";
+import { MacroStatTile } from "@/components/nutrition/MacroStatTile";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -108,13 +107,6 @@ export function TodayDashboardMacroTiles({
   // Progress-bar track tone. Light: Sloe `line` (#E8E2EC) per Figma `654:2`.
   // Dark: theme hairline so the light track hex doesn't glare.
   const barTrackColor = isDark ? cardBorderColor : Colors.light.border;
-  // Caption colours (audit gap 4). Success (sage) when under target; amber for
-  // over — `warningSolid` is the AA-safe-as-TEXT amber (the base `warning`
-  // #C9892C fails AA as text, per the theme contrast note), dark-lifted on the
-  // dark surface. Mirrors the locked macro over-budget rule (design-system §1.2
-  // — macros over-budget use amber, never the ring's destructive red).
-  const captionUnderColor = isDark ? Accent.successLight : Accent.success;
-  const captionOverColor = isDark ? Accent.warningLight : Accent.warningSolid;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -189,181 +181,32 @@ export function TodayDashboardMacroTiles({
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
-        // Polish (2026-04-25) — formatMacro centralises per-macro rounding.
-        // protein/carbs/fat now keep 1 decimal (no more "105.80000000000001g"),
-        // calories+sodium stay integer. Trailing ".0" trimmed for readability.
-        const value = formatMacro(def.current, macro);
-        // Progress bar (2026-06-04). barColor stays the macro IDENTITY colour
-        // (matches the mock + the bars variant; never flips to amber/red on
-        // over — over-budget signalling is the calorie ring's job, not the
-        // macro tiles). Pinned by `macroColorConsistency.test.ts`.
-        const barColor = def.color;
-        const pct =
-          def.target > 0
-            ? Math.min(1, Math.max(0, def.current / def.target)) * 100
-            : 0;
-
-        // Per-tile caption (audit gap 4 — today.md §3.3 / §4 "warm-coaching
-        // payoff"). Web parity: same shape as the web tiles' caption
-        // (`plainRemainingCaption`).
-        //   - referenceOnly (sugar/sodium): muted "ref N unit" — no remaining
-        //     claim, since there's a generic reference not a personal target.
-        //   - unlogged (current ≤ 0, real target): suppress — the "0 / target"
-        //     line already says everything.
-        //   - over target: "N {unit} over" in amber.
-        //   - under target: "N {unit} remaining" in success/sage.
-        let captionText = "";
-        let captionColor = textTertiaryColor;
-        if (def.referenceOnly) {
-          captionText = `ref ${def.target}${def.unit === "g" ? "g" : ` ${def.unit}`}`;
-          captionColor = textTertiaryColor;
-        } else if (def.target > 0 && def.current > 0) {
-          const remain = def.target - def.current;
-          const magnitude = Math.round(Math.abs(remain));
-          const unitSuffix = def.unit === "g" ? "g" : ` ${def.unit}`;
-          if (remain >= 0) {
-            captionText = `${magnitude}${unitSuffix} remaining`;
-            captionColor = captionUnderColor;
-          } else {
-            captionText = `${magnitude}${unitSuffix} over`;
-            captionColor = captionOverColor;
-          }
-        }
-        // Gap 8 — soften the serif value while it's a zero so the editorial
-        // numeral only earns its full ink weight when there's data. Empty
-        // accounts otherwise show four heavy serif zeros that invert the
-        // cold-open hierarchy (the faint empty ring whispers while the zeros
-        // shout). Muted until current > 0.
-        const valueColor = def.current > 0 ? textColor : textTertiaryColor;
 
         return (
-          // The 2×2 macro tiles are the `size="tile"` variant of the shared
-          // <SupprCard lift="flat"> shell (radius 24, matching the full card, with tighter `md`
-          // padding) — they're small tiles, not full cards, so they get the one
-          // documented size variant rather than being a bespoke exception
-          // (Grace 2026-06-04 consolidation; no silent divergence). The
-          // Pressable is the thin tap + press-feedback layer; the SupprCard
-          // owns ALL chrome (fill #F6F5F2, radius, soft lift, clip).
-          <Pressable
+          <MacroStatTile
             key={macro}
-            testID={`today-macro-tile-${macro}`}
+            macroKey={macro}
+            label={def.label}
+            Icon={def.Icon}
+            current={def.current}
+            target={def.target}
+            unit={def.unit}
+            color={def.color}
+            referenceOnly={def.referenceOnly}
+            overIsFlag={macro !== "fiber" && macro !== "water"}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            textTertiaryColor={textTertiaryColor}
+            barTrackColor={barTrackColor}
             onPress={() => onPressMacro(macro)}
-            accessibilityRole="button"
-            accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
-            style={({ pressed }) => ({
-              // 2x2 grid: fixed half-width cells. `flexGrow: 0` stops a
-              // lone tile on the last row stretching full width (was
-              // reading as one "wide screen" card).
+            testID={`today-macro-tile-${macro}`}
+            style={{
               width: "48%",
               maxWidth: "48%",
               flexGrow: 0,
               flexShrink: 0,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-          <SupprCard
-            // Tile-class rule (2026-06-10 A/B, docs/decisions/2026-06-10-
-            // sheet-radius-and-nested-inset-standard.md amendment): small
-            // stat TILES stay flat-tonal; soft lift is the CARD class's.
-            // Rendered A/B (tile-ab-2026-06-10/A3 vs B3): four mini-shadows
-            // read as noise and flatten the hero's anchor lift.
-            lift="flat"
-            size="tile"
-            padding="md"
-            innerStyle={{ minHeight: 96, justifyContent: "space-between" }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
-                <Text
-                  style={{
-                    // SLOE (2026-06-04, Grace "card style off"): Title case
-                    // ("Protein"), not the uppercase Type.label ("PROTEIN") —
-                    // matches the Figma 01 tile labels.
-                    ...Type.caption,
-                    fontSize: 12,
-                    lineHeight: 16,
-                    fontWeight: "500",
-                    color: textSecondaryColor,
-                  }}
-                >
-                  {def.label}
-                </Text>
-                <def.Icon size={18} color={def.color} strokeWidth={1.75} />
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-                {/* SLOE redesign (2026-06-03): macro value reads in
-                    Newsreader (serif) to match the `01 · Today` frame's
-                    `font-headline text-2xl` macro-tile numeral, with a
-                    smaller inline unit. Was Inter (`Type.macroValue`). */}
-                <Text
-                  style={{
-                    ...Type.title,
-                    fontSize: 20,
-                    lineHeight: 24,
-                    color: valueColor,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                  numberOfLines={1}
-                >
-                  {value}
-                  <Text style={{ ...Type.body, fontSize: 14, color: textSecondaryColor }}>
-                    {def.unit === "g" ? "g" : ` ${def.unit}`}
-                  </Text>
-                </Text>
-                <Text
-                  style={{ ...Type.caption, flexShrink: 1, color: textTertiaryColor }}
-                  numberOfLines={1}
-                >
-                  / {def.target}{def.unit === "g" ? "g" : ` ${def.unit}`}
-                </Text>
-              </View>
-              {/* Progress bar — mock's `h-1 … rounded-full` tile bar. Track is
-                  frost-mist (#EDEAF1) above the grey card; fill is the macro
-                  identity colour at min(current/target, 1). reference-only
-                  macros (sugar/sodium) get a quieter fill so the bar never
-                  reads as a HIT target where there's only a generic reference. */}
-              <View
-                testID={`today-macro-tile-bar-${macro}`}
-                style={{
-                  height: 4,
-                  borderRadius: Radius.full,
-                  backgroundColor: barTrackColor,
-                  overflow: "hidden",
-                  marginTop: Spacing.sm,
-                }}
-              >
-                <View
-                  style={{
-                    height: "100%",
-                    width: `${pct}%`,
-                    borderRadius: Radius.full,
-                    backgroundColor: barColor,
-                    opacity: def.referenceOnly ? 0.45 : 1,
-                  }}
-                />
-              </View>
-              {/* Per-tile caption (audit gap 4) — "N g remaining" (sage) /
-                  "N g over" (amber) / muted "ref N" for reference-only macros.
-                  The at-a-glance "how much left" read today.md §3.3/§4 calls
-                  the warm-coaching payoff. Reserve the row's height even when
-                  the caption is suppressed (unlogged tile) so the grid stays
-                  even. */}
-              <Text
-                testID={`today-macro-tile-caption-${macro}`}
-                style={{
-                  ...Type.caption,
-                  fontSize: 11,
-                  lineHeight: 14,
-                  color: captionColor,
-                  marginTop: Spacing.xs,
-                  minHeight: 14,
-                  fontVariant: ["tabular-nums"],
-                }}
-                numberOfLines={1}
-              >
-                {captionText}
-              </Text>
-          </SupprCard>
-          </Pressable>
+            }}
+          />
         );
       })}
       </View>

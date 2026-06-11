@@ -1,7 +1,6 @@
 import * as React from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,6 +27,9 @@ import {
   Search,
   X,
 } from "lucide-react-native";
+import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import * as Haptics from "expo-haptics";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
@@ -421,7 +423,7 @@ export function LogSheet({
           accessibilityLabel="Dismiss log sheet"
           testID="log-sheet-backdrop"
           onPress={onClose}
-          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.4)" }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: MODAL_OVERLAY_SCRIM }]}
         />
         {/* iOS keyboard-avoidance — when the user focuses the inline
             search TextInput, the sheet card lifts above the keyboard
@@ -1288,30 +1290,18 @@ function LibraryRow({
 }) {
   const colors = useThemeColors();
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`Log ${recipe.title}`}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        onPick();
-      }}
-      style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
+      haptic="confirm"
+      onPress={onPick}
+      style={styles.resultRow}
     >
-      {recipe.thumbnail ? (
-        // The recipe row uses a real thumbnail when one's available
-        // (recipes typically have an `image_url`); falls back to the
-        // shared coloured placeholder when not. <Image> is fine for
-        // small (~36x36) cells -- no FastImage dependency.
-        <Image
-          source={{ uri: recipe.thumbnail }}
-          style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
-          accessibilityIgnoresInvertColors
-        />
-      ) : (
-        <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
-      )}
+      <FoodFallbackThumb
+        title={recipe.title}
+        imageUrl={recipe.thumbnail}
+        style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
+      />
       <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
         <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
           {recipe.title}
@@ -1339,7 +1329,7 @@ function LibraryRow({
           ) : null}
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -1362,18 +1352,17 @@ function BrowseRow({
 }) {
   const colors = useThemeColors();
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        onPick();
-      }}
-      style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
+      haptic="confirm"
+      onPress={onPick}
+      style={styles.resultRow}
     >
-      <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
+      <FoodFallbackThumb
+        title={title}
+        style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
+      />
       <View style={{ flex: 1, marginLeft: Spacing.sm }}>
         <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
           {title}
@@ -1390,7 +1379,7 @@ function BrowseRow({
           </Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -1623,7 +1612,7 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: Radius.full,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1723,12 +1712,12 @@ const styles = StyleSheet.create({
   skeletonThumb: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: Radius.lg,
     opacity: 0.6,
   },
   skeletonLine: {
     height: 10,
-    borderRadius: 5,
+    borderRadius: Radius.sm,
     opacity: 0.6,
   },
   emptyBlock: {

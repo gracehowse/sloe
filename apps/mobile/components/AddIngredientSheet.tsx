@@ -36,6 +36,7 @@ import {
 } from "@suppr/shared/nutrition/ingredientOverrides";
 import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
@@ -313,7 +314,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}>
         <Pressable
           onPress={() => {}}
           style={{

@@ -32,6 +32,7 @@ import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { sheetTransition } from "../../../lib/motion";
+import { figmaSlotSummaryTitle } from "../../../lib/copy/today";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 import { TodayScrollSectionHeader } from "./today-scroll-section-header";
@@ -399,7 +400,7 @@ export function TodayMealsSection({
               // editable. Mirrors the macro-detail "true duplicate" rule
               // (single entry literally named after the header) and the mobile
               // `TodayMealsSection` renderSlotExpanded guard.
-              const headerTitle = (sectionMeals[0]?.recipeTitle ?? "").trim();
+              const headerTitle = figmaSlotSummaryTitle(sectionMeals);
               const redundantSingleRow =
                 sectionMeals.length === 1 &&
                 (sectionMeals[0]?.recipeTitle ?? "").trim() === headerTitle &&

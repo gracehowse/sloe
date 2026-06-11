@@ -63,6 +63,37 @@ describe("avgCaloriesOverRecentLoggedDays", () => {
       daysWithFood: 0,
     });
   });
+
+  it("ENG-1053 — differs from the old Journey calendar-window average (1894 vs 1872 class)", () => {
+    // Sparse logging with gaps: the old web Journey path took the last 7
+    // *calendar* keys then averaged only the subset that had food (smaller
+    // denominator → higher avg). Trajectory used the last 7 *food-logged*
+    // days. Both now share this helper.
+    const byDay: Record<string, Meal[]> = {
+      "2026-06-01": [{ calories: 1200 }],
+      "2026-06-02": [],
+      "2026-06-03": [],
+      "2026-06-04": [{ calories: 1800 }],
+      "2026-06-05": [],
+      "2026-06-06": [{ calories: 2000 }],
+      "2026-06-07": [],
+      "2026-06-08": [{ calories: 2200 }],
+      "2026-06-09": [{ calories: 2400 }],
+      "2026-06-10": [{ calories: 2600 }],
+    };
+    const shared = avgCaloriesOverRecentLoggedDays(byDay, 7);
+    const recentCalendar = Object.keys(byDay).sort().slice(-7);
+    const foodInWindow = recentCalendar.filter((k) => (byDay[k] ?? []).length > 0);
+    const legacyJourneyAvg = Math.round(
+      foodInWindow.reduce(
+        (s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + (m.calories ?? 0), 0),
+        0,
+      ) / foodInWindow.length,
+    );
+    expect(shared.avgCalories).toBe(2033); // all 6 food-logged days (window < 7)
+    expect(legacyJourneyAvg).toBe(2200); // 5 food days in last 7 calendar keys: 1800…2600
+    expect(shared.avgCalories).not.toBe(legacyJourneyAvg);
+  });
 });
 
 describe("signedObservedKgPerWeek", () => {

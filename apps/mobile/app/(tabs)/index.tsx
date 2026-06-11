@@ -80,7 +80,7 @@ import {
   resolvePlannedMealLogTitles,
 } from "@suppr/shared/nutrition/resolveRecipeLogTitles";
 import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
-import { isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
+import { foodSelectionToMealMacros } from "@suppr/shared/nutrition/foodSelectionToMeal";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
   availableFreezes,
@@ -163,7 +163,6 @@ import {
 } from "@suppr/shared/nutrition/todayProgressiveDisclosure";
 import { aiLoggingSourceLabel } from "@suppr/shared/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
-import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
 import { scaleLoggedMealFiberAndMicros } from "@suppr/shared/nutrition/scaleLoggedMealPortion";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
@@ -2115,8 +2114,6 @@ export default function TrackerScreen() {
    */
   const handleFoodSearchSelect = useCallback(
     (result: FoodSearchSelectedFood) => {
-      const grams = result.chosenPortion.gramWeight * result.quantity;
-      const f = grams / 100;
       const source =
         result.source === "CUSTOM"
           ? "custom_food"
@@ -2127,81 +2124,15 @@ export default function TrackerScreen() {
           : result.source === "FatSecret"
           ? "FatSecret"
           : "USDA FoodData Central";
-      // Per-serving path: any chosen portion with no gram grounding
-      // (`gramWeight === 0`) that carries per-serving macros — e.g. a
-      // FatSecret "1 large tomato" / "Big Mac" / count serving. Use
-      // `macrosPerServing × quantity` directly, no gram scaling.
-      //
-      // ENG-745 (2026-05-26): this MUST match the preview's condition
-      // (`FoodSearchPanel.previewMacros`, which fires on
-      // `macrosPerServing && gramWeight === 0` regardless of
-      // `macrosPer100g`). The old guard also required
-      // `macrosPer100g === null`, but FatSecret no-metric foods carry a
-      // non-null *zero* per-100g panel — so the guard was false, the
-      // commit fell into the per-100g branch, scaled by `grams = 0`, and
-      // persisted 0 kcal even though the preview showed the real value.
-      // (The preview was fixed 2026-05-14; the commit was missed.)
-      const isPerServingOnly = isPerServingPortion({
-        gramWeight: result.chosenPortion.gramWeight,
-        hasMacrosPerServing: Boolean(result.macrosPerServing),
-      });
-      let mealCalories: number;
-      let mealProtein: number;
-      let mealCarbs: number;
-      let mealFat: number;
-      // ENG-1041 (audit 2026-06-11 P1-6) — set a TOP-LEVEL `fiberG` on the
-      // food-search meal (mirrors web `mealFiberG`). Previously mobile left
-      // fibre only in the `micros` map, so `persistMealsImmediate` wrote
-      // `fiber_g: null`. Daily totals stayed correct via the micros
-      // fallback, but the web CSV export reads the `fiber_g` column
-      // directly — so a mobile-logged food exported BLANK fibre while the
-      // same food logged on web exported the real value.
-      let mealFiberG = 0;
-      let micros: Record<string, number> = {};
-      if (isPerServingOnly) {
-        const ps = result.macrosPerServing!;
-        // servingFraction scales a derived "1 piece" portion to 1/N of
-        // the per-serving payload (parity with the preview, which applies
-        // the same fraction in `FoodSearchPanel.previewMacros`). Primary
-        // "N pieces" portions keep fraction = 1.
-        const fraction = result.chosenPortion.servingFraction ?? 1;
-        const q = result.quantity * fraction;
-        mealCalories = Math.round(ps.calories * q);
-        mealProtein = Math.round(ps.protein * q * 10) / 10;
-        mealCarbs = Math.round(ps.carbs * q * 10) / 10;
-        mealFat = Math.round(ps.fat * q * 10) / 10;
-        // 2026-05-06: no caffeine/alcohol scaling (no per-100g
-        // basis), but DO pull through `microsPerServing × quantity`
-        // so the meal-detail "Vitamins, minerals & more" panel
-        // populates fiber / sugar / sodium / sat fat / cholesterol
-        // / potassium etc. for FatSecret no-metric foods. Shared
-        // helper used by web + mobile + audit-pinned for rounding
-        // conventions.
-        micros = scaleMicrosPerServing(result.microsPerServing, q);
-        // Promote the scaled fibre to the top-level column (web parity).
-        const fiberFromMicros = micros.fiberG;
-        if (typeof fiberFromMicros === "number") mealFiberG = fiberFromMicros;
-      } else {
-        const m = result.macrosPer100g!;
-        const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-          grams,
-          caffeineMgPer100g: m.caffeineMgPer100g ?? null,
-          alcoholGPer100g: m.alcoholGPer100g ?? null,
-        });
-        const explicitMicros: Record<string, number> = {};
-        if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-        if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-        micros = scaleMicrosForGrams(
-          result.microsPer100g ?? {},
-          grams,
-          explicitMicros,
-        );
-        mealCalories = Math.round(m.calories * f);
-        mealProtein = Math.round(m.protein * f * 10) / 10;
-        mealCarbs = Math.round(m.carbs * f * 10) / 10;
-        mealFat = Math.round(m.fat * f * 10) / 10;
-        mealFiberG = Math.round(m.fiberG * f * 10) / 10;
-      }
+      // ENG-1046 — shared scaling core (instant-log + basket-add, web parity).
+      const {
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        fiberG: mealFiberG,
+        micros,
+      } = foodSelectionToMealMacros(result);
       const meal: JournalMeal = {
         id: newMealId(),
         name: activeMealSlot,

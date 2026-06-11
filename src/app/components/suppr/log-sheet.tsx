@@ -63,6 +63,7 @@ import {
 import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "../ui/utils";
+import { FoodFallbackThumb } from "./food-fallback-thumb";
 import { SourceDot, type SourceDotSource } from "../ui/source-dot";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
@@ -1199,17 +1200,7 @@ function LibraryRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
       )}
     >
-      {recipe.thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={recipe.thumbnail}
-          alt=""
-          aria-hidden
-          className="size-9 rounded-md bg-muted object-cover shrink-0"
-        />
-      ) : (
-        <div className="size-9 rounded-md bg-muted shrink-0" aria-hidden />
-      )}
+      <FoodFallbackThumb title={recipe.title} imageUrl={recipe.thumbnail} />
       <div className="ml-2 flex-1 min-w-0">
         <p className="truncate text-[13px] text-foreground">{recipe.title}</p>
         <div className="mt-0.5 flex items-center gap-1.5">
@@ -1251,7 +1242,7 @@ function BrowseRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
       )}
     >
-      <div className="size-9 rounded-md bg-muted shrink-0" aria-hidden />
+      <FoodFallbackThumb title={title} />
       <div className="ml-2 flex-1 min-w-0">
         <p className="truncate text-[13px] text-foreground">{title}</p>
         <div className="mt-0.5 flex items-center gap-1.5">

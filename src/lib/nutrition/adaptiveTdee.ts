@@ -14,8 +14,11 @@
  *      "full day" and "barely logged", and the solver reads the dilution as
  *      low expenditure. This is the MacroFactor / Carbon "trusted day" guard,
  *      automated.
- *   2. WEIGHT TREND (R2): least-squares slope (kg/day) over the *raw*
- *      weigh-ins in the window, capped to ±SLOPE_CAP_KG_PER_WEEK to reject
+ *   2. WEIGHT TREND (R2): least-squares slope (kg/day) over a
+ *      gap-filled *daily* series (ENG-1024 — interpolate sparse weigh-ins
+ *      to one reading per day before fitting, so weekly weighers get the
+ *      same time-uniform smoothing as daily weighers), capped to
+ *      ±SLOPE_CAP_KG_PER_WEEK to reject
  *      water/glycogen noise on short windows. Replaces the old per-weigh-in
  *      EMA(α=0.1), which captured only ~29% of the real weight move with
  *      sparse weigh-ins and so understated the trend term ~3.5×.
@@ -47,6 +50,7 @@ import {
   MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE,
   MIN_WEIGH_INS_FOR_ADAPTIVE_TDEE,
 } from "./progressDataContract";
+import { dailyInterpolatedWeightEntries } from "./weightTrendSmoothing";
 
 const KCAL_PER_KG = 7700;
 export const MIN_LOGGING_DAYS = MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE;
@@ -253,8 +257,9 @@ export function computeAdaptiveTDEE(
     gatedIntakeEntries.reduce((sum, [, v]) => sum + v, 0) / loggingDays,
   );
 
-  // R2: least-squares slope over the raw weigh-ins, capped.
-  const rawSlope = leastSquaresSlopeKgPerDay(weightEntries);
+  // R2 / ENG-1024: least-squares slope over the daily-interpolated series.
+  const dailyWeightEntries = dailyInterpolatedWeightEntries(weightEntries);
+  const rawSlope = leastSquaresSlopeKgPerDay(dailyWeightEntries);
   const weightChangeKgPerDay = Math.max(
     -SLOPE_CAP_KG_PER_DAY,
     Math.min(SLOPE_CAP_KG_PER_DAY, rawSlope),

@@ -39,6 +39,17 @@ const FILES_TO_GUARD = [
   "../../components/PhotoLogSheet.tsx",
   "../../components/today/TodayDateHeader.tsx",
   "../../app/recipe/[id].tsx",
+  "../../app/(tabs)/barcode.tsx",
+  "../../components/CreateCustomFoodSheet.tsx",
+  "../../app/login.tsx",
+  "../../app/(tabs)/discover.tsx",
+  "../../app/recipe/verify.tsx",
+  "../../app/notifications-prompt.tsx",
+  "../../components/PlanTemplatesSheet.tsx",
+  "../../components/AiLogReviewItem.tsx",
+  "../../components/onboarding/steps/signup.tsx",
+  "../../components/QuickAddPanel.tsx",
+  "../../components/recipe/RecipeDetailHero.tsx",
 ] as const;
 
 const BANNED_HEX_RE =
@@ -75,8 +86,7 @@ describe("hex token sweep — destructive / warning / primary-foreground (2026-0
     expect(src).toMatch(/#9679D9/);
   });
 
-  it("modal overlay tint #00000066 stays shared between VoiceLogSheet and PhotoLogSheet", () => {
-    // Documented anchor — kept identical to the web modal overlay.
+  it("modal overlay scrim uses the shared token in VoiceLogSheet and PhotoLogSheet", () => {
     const voice = readFileSync(
       resolve(__dirname, "../../components/VoiceLogSheet.tsx"),
       "utf8",
@@ -85,7 +95,7 @@ describe("hex token sweep — destructive / warning / primary-foreground (2026-0
       resolve(__dirname, "../../components/PhotoLogSheet.tsx"),
       "utf8",
     );
-    expect(voice).toMatch(/#00000066/);
-    expect(photo).toMatch(/#00000066/);
+    expect(voice).toContain("MODAL_OVERLAY_SCRIM");
+    expect(photo).toContain("MODAL_OVERLAY_SCRIM");
   });
 });

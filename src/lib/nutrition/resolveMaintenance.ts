@@ -88,6 +88,14 @@ export interface ResolvedMaintenance {
    * a gentle "re-weigh to refresh" hint without re-deriving staleness.
    */
   adaptiveRejectedAsStale: boolean;
+  /**
+   * ENG-1057 — adaptive sat below the sedentary formula (typical when intake
+   * is under-logged). We surface the formula as Maintenance instead of an
+   * implausible adaptive headline; callers can mention the rejected value.
+   */
+  adaptiveRejectedBelowFormula: boolean;
+  /** Raw adaptive kcal when `adaptiveRejectedBelowFormula` is true. */
+  rejectedAdaptiveKcal: number | null;
 }
 
 function isFinitePositive(n: unknown): n is number {
@@ -168,12 +176,29 @@ export function resolveMaintenance(
     if (stale) {
       adaptiveRejectedAsStale = true;
     } else {
+      const adaptiveKcal = Math.round(adaptiveCandidate as number);
+      // ENG-1057: under-logged users can drive adaptive below the sedentary
+      // formula. Showing that as "Maintenance" breaks trust and poisons the
+      // explainer chain; fall back to formula until intake quality recovers.
+      if (formulaKcal != null && adaptiveKcal < formulaKcal) {
+        return {
+          kcal: formulaKcal,
+          source: "formula",
+          confidence,
+          formulaKcal,
+          adaptiveRejectedAsStale: false,
+          adaptiveRejectedBelowFormula: true,
+          rejectedAdaptiveKcal: adaptiveKcal,
+        };
+      }
       return {
-        kcal: Math.round(adaptiveCandidate as number),
+        kcal: adaptiveKcal,
         source: "adaptive",
         confidence,
         formulaKcal,
         adaptiveRejectedAsStale: false,
+        adaptiveRejectedBelowFormula: false,
+        rejectedAdaptiveKcal: null,
       };
     }
   }
@@ -185,6 +210,8 @@ export function resolveMaintenance(
     confidence,
     formulaKcal,
     adaptiveRejectedAsStale,
+    adaptiveRejectedBelowFormula: false,
+    rejectedAdaptiveKcal: null,
   };
 }
 

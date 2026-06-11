@@ -225,6 +225,33 @@ describe("buildMaintenanceChain", () => {
     expect(wl.label).toMatch(/\*long-term fat loss; week-to-week varies with water\/glycogen/);
   });
 
+  it("uses the live calorie target instead of re-deriving from collapsed maintenance (ENG-1057)", () => {
+    const collapsedAdaptive = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: 1270,
+        adaptive_tdee_confidence: "medium",
+        adaptive_tdee_updated_at: "2026-06-10T12:00:00Z",
+      },
+      { now: new Date("2026-06-11T12:00:00Z") },
+    );
+    expect(collapsedAdaptive).not.toBeNull();
+    expect(collapsedAdaptive!.source).toBe("formula");
+
+    const chain = buildMaintenanceChain(
+      baseProfile,
+      collapsedAdaptive!,
+      "steady",
+      "cut",
+      1450,
+    );
+    expect(chain).not.toBeNull();
+    const goalStep = chain!.steps.find((s) => s.kind === "goal")!;
+    expect(goalStep.value).toBe("1,450 kcal");
+    expect(chain!.budgetKcal).toBe(1450);
+    expect(chain!.budgetKcal).not.toBe(720);
+  });
+
   it("attaches the long-term-fat caveat to the weekly-gain row (bulk)", () => {
     const formulaResolved = (
       adaptiveResolved as unknown as { source: "adaptive" | "formula" }

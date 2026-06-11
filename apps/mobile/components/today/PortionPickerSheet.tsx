@@ -15,6 +15,7 @@ import { X } from "lucide-react-native";
 
 import { Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 const PORTIONS: { value: number; label: string }[] = [
   { value: 0.5, label: "½ ×" },
@@ -49,7 +50,7 @@ export function PortionPickerSheet({
         onPress={onClose}
         accessibilityLabel="Close portion picker"
         accessibilityRole="button"
-        style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
+        style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
       >
         <Pressable
           onPress={() => {}}

@@ -9,8 +9,10 @@
  * produce identical copy for the same plan/target input.
  *
  * Definitions:
- * - A day "hits" when its total calories sit within ±10% of the daily
- *   calorie target. This matches the mobile summary-score rule exactly.
+ * - A day "hits" when its total calories are at or under target and
+ *   within 10% below (ENG-1049 — over-budget days never count as a
+ *   "hit", even inside the old symmetric ±10% band, so "7/7" can't
+ *   read as a win while days ran hot).
  * - Worst-short day = the day with the largest negative gap (most
  *   calories *under* target). Days over target never appear here — the
  *   surface is a "pace floor" nudge, not a ceiling warning.
@@ -54,7 +56,7 @@ export function computePlanWeekSummaryScore(
     // and drop the entry from both hits and worstShort, which is worse.
     const total = Number.isFinite(raw) ? Number(raw) : 0;
     const diff = total - targetCalories;
-    if (Math.abs(diff) <= tol) hits += 1;
+    if (diff <= 0 && diff >= -tol) hits += 1;
     if (diff < 0) {
       const shortBy = -diff;
       if (!worstShort || shortBy > worstShort.shortBy) {

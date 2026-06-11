@@ -9,6 +9,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 // here but Plan on native.)
 import { Plus, Calendar, BookOpen, Utensils, BarChart3 } from "lucide-react";
 import { useFeatureFlagEnabled } from "posthog-js/react";
+import { canonicalNavOrderEnabled } from "../lib/navigation/primaryNav.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
@@ -166,11 +167,11 @@ export default function App() {
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
 
-  // ENG-1044 — flag-gated canonical Plan-first tab order (matches native
-  // iOS) for the mobile-web bottom nav. Default-OFF (legacy Recipes-first)
-  // until ramped; `?? false` keeps first paint stable while the flag loads.
-  const navPlanFirst =
-    (useFeatureFlagEnabled("nav-tab-order-plan-first") ?? false) === true;
+  // ENG-1017 / ENG-1044 — canonical Plan-first tab order for mobile-web
+  // bottom nav (matches native iOS). Defaults ON while PostHog loads.
+  const navPlanFirst = canonicalNavOrderEnabled(
+    useFeatureFlagEnabled("nav-tab-order-plan-first"),
+  );
   // Upgrade-paywall dialog (2026-04-20 Claude Design port). When
   // `upgradePaywallFrom` is non-null the `<UpgradePaywallDialog>`
   // renders with that attribution. Opened via `openUpgradeDialog()`,

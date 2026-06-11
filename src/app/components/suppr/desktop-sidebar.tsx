@@ -8,7 +8,8 @@ import type { UserTier } from "../../../types/recipe";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 import {
   NAV_TAB_ORDER_FLAG,
-  PRIMARY_NAV_ORDER,
+  NAV_TAB_ORDER_FLAG,
+  canonicalNavOrderEnabled,
 } from "../../../lib/navigation/primaryNav";
 
 /**
@@ -232,11 +233,12 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
   const activePrimary = resolvePrimaryFromView(currentView);
 
-  // ENG-1044 — flag-gated canonical Plan-first tab order (matches native
-  // iOS). Default-OFF (legacy Recipes-first) until ramped via PostHog; the
-  // hook returns `undefined` while the flag is loading, which `?? false`
-  // resolves to the legacy order so first paint is stable.
-  const planFirst = useFeatureFlagEnabled("nav-tab-order-plan-first") ?? false;
+  // ENG-1017 / ENG-1044 — canonical Plan-first tab order (matches native
+  // iOS). Defaults ON while PostHog loads; set the flag to `false` to roll
+  // back to legacy Recipes-first.
+  const planFirst = canonicalNavOrderEnabled(
+    useFeatureFlagEnabled(NAV_TAB_ORDER_FLAG),
+  );
   const primaryItems = React.useMemo(
     () => orderedPrimaryItems(planFirst),
     [planFirst],

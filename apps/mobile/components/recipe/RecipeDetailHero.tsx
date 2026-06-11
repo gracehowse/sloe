@@ -133,7 +133,7 @@ export function RecipeDetailHero({
         }}
       >
         <HeroCircleButton onPress={onBack} accessibilityLabel="Go back">
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={24} color={Accent.primaryForeground} />
         </HeroCircleButton>
         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           <HeroCircleButton
@@ -142,16 +142,16 @@ export function RecipeDetailHero({
           >
             <Bookmark
               size={22}
-              color={saved ? Accent.successLight : "#FFFFFF"}
+              color={saved ? Accent.successLight : Accent.primaryForeground}
               fill={saved ? Accent.successLight : "transparent"}
             />
           </HeroCircleButton>
           <HeroCircleButton onPress={onShare} accessibilityLabel="Share recipe">
-            <Share2 size={22} color="#FFFFFF" />
+            <Share2 size={22} color={Accent.primaryForeground} />
           </HeroCircleButton>
           {onMore ? (
             <HeroCircleButton onPress={onMore} accessibilityLabel="More recipe actions">
-              <MoreHorizontal size={22} color="#FFFFFF" />
+              <MoreHorizontal size={22} color={Accent.primaryForeground} />
             </HeroCircleButton>
           ) : null}
         </View>

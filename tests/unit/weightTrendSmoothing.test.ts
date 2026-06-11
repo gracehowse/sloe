@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MIN_WEIGH_INS_FOR_SMOOTHING,
+  dailyInterpolatedWeightEntries,
   smoothedTrendByDate,
   smoothedWeeklyRateKg,
 } from "../../src/lib/nutrition/weightTrendSmoothing";
@@ -110,5 +111,18 @@ describe("smoothedWeeklyRateKg (least-squares slope)", () => {
       ["2026-06-08", 80],
     ]);
     expect(Number.isFinite(r.weeklyRateKg)).toBe(true);
+  });
+});
+
+describe("dailyInterpolatedWeightEntries (ENG-1024)", () => {
+  it("expands weekly weigh-ins to one reading per day", () => {
+    const daily = dailyInterpolatedWeightEntries([
+      ["2026-06-01", 80],
+      ["2026-06-08", 79.5],
+      ["2026-06-15", 79],
+    ]);
+    expect(daily.length).toBe(15);
+    expect(daily[0][1]).toBeCloseTo(80, 5);
+    expect(daily[daily.length - 1][1]).toBeCloseTo(79, 5);
   });
 });

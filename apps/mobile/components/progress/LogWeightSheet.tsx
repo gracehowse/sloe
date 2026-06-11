@@ -198,7 +198,7 @@ export function LogWeightSheet({
       if (newLow) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
     }
     onSaved({

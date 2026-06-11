@@ -338,7 +338,7 @@ describe("fan-out flow", () => {
     const sentMessages = JSON.parse(String((init as RequestInit).body));
     expect(sentMessages).toHaveLength(2);
     expect(sentMessages[0].to).toBe("ExponentPushToken[aaa]");
-    expect(sentMessages[0].title).toBe("Your week in Suppr");
+    expect(sentMessages[0].title).toBe("Your week in Sloe");
     // Sunday push rewrite — T5 (2026-04-19): the data payload now
     // carries `weekKey` so the in-app tap listener
     // (`apps/mobile/app/_layout.tsx`) can attribute the open event.
@@ -993,7 +993,7 @@ describe("ENG-748 #7 — web-push fan-out for web-only + dual-rail users", () =>
     ];
     expect(subs).toHaveLength(1);
     expect(subs[0].endpoint).toBe("https://push.example/web-1");
-    expect(payload.title).toBe("Your week in Suppr");
+    expect(payload.title).toBe("Your week in Sloe");
     expect(payload.body).toBe(
       "Nothing logged this week. Open Suppr to get back on track.",
     );

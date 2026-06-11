@@ -19,7 +19,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
+import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -2016,6 +2016,12 @@ function ProgressDashboardContent() {
             <p className="text-xs text-muted-foreground">kcal/day</p>
           </div>
 
+          {resolved.adaptiveRejectedBelowFormula && resolved.rejectedAdaptiveKcal != null && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Adaptive estimate was {resolved.rejectedAdaptiveKcal.toLocaleString()} kcal — below your formula floor, so we&apos;re showing the formula estimate until logging catches up.
+            </p>
+          )}
+
           {showAdaptiveExtras && resolved.formulaKcal != null && (
             <p className="text-xs text-muted-foreground mb-2">
               Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
@@ -2093,6 +2099,7 @@ function ProgressDashboardContent() {
               resolved,
               planPace,
               userGoal,
+              targets.calories,
             );
             if (!chain) return null;
             return (
@@ -2218,12 +2225,10 @@ function ProgressDashboardContent() {
         });
         const progressPct = pctFrac != null ? pctFrac * 100 : 0;
         const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
-        // Recent 7-day average calories
-        const recentKeys = Object.keys(nutritionByDay).sort().slice(-7);
-        const daysWithFood = recentKeys.filter((k) => (nutritionByDay[k] ?? []).length > 0);
-        const avgRecentCals = daysWithFood.length > 0
-          ? Math.round(daysWithFood.reduce((s, k) => s + (nutritionByDay[k] ?? []).reduce((a, m) => a + m.calories, 0), 0) / daysWithFood.length)
-          : 0;
+        // ENG-1053 — shared with TrajectoryCard so Journey + Projected Weight
+        // show the same "last 7 days averaged" kcal on one screen.
+        const { avgCalories: avgRecentCals, daysWithFood: foodLoggedDayCount } =
+          avgCaloriesOverRecentLoggedDays(nutritionByDay, 7);
         // Prefer the user's real TDEE (adaptive when available, else static Mifflin) as
         // the break-even number, so the projection respects actual burn and doesn't
         // flag a genuine deficit as a gain. See TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
@@ -2234,7 +2239,7 @@ function ProgressDashboardContent() {
         // project from (a 2-day average can be 700 kcal off the
         // long-term mean). The block is suppressed entirely below the
         // floor — we don't backfill with placeholder copy.
-        const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+        const projectionEligible = shouldRenderDailyProjection(foodLoggedDayCount);
         // F-126 / F-113 web parity (2026-05-07): mirror the mobile
         // Progress fix from a117789. Mobile passes
         // `timeline.weeklyRateKg` so the projection respects the

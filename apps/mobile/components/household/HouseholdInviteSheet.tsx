@@ -31,6 +31,7 @@ import { Mail, Plus, Trash2, X } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { supabase } from "@/lib/supabase";
 import {
   cancelHouseholdInvite,
@@ -126,7 +127,7 @@ export function HouseholdInviteSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "#0007" }}>
+      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: MODAL_OVERLAY_SCRIM }}>
         <View
           style={{
             backgroundColor: colors.background,

@@ -74,6 +74,8 @@ describe("formatMaintenanceRecapLine — happy path", () => {
       confidence: "high",
       formulaKcal: 2050,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(
@@ -136,6 +138,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       confidence: "high",
       formulaKcal: null,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -147,6 +151,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       confidence: "high",
       formulaKcal: 2050,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -161,6 +167,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       confidence: "low",
       formulaKcal: 2000,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -174,6 +182,8 @@ describe("formatMaintenanceRecapLine — direction", () => {
       confidence: "medium",
       formulaKcal: 2000,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(
@@ -188,6 +198,8 @@ describe("formatMaintenanceRecapLine — direction", () => {
       confidence: "high",
       formulaKcal: 2050,
       adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(

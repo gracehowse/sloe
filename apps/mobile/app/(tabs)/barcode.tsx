@@ -497,7 +497,7 @@ export default function BarcodeScreen() {
         // (the canonical compact serif title voice; was Type.headline + overrides).
         overlayTitle: {
           ...Type.navTitle,
-          color: "#fff",
+          color: Accent.primaryForeground,
         },
         hint: { color: Colors.dark.textSecondary, fontSize: 13 },
         dim: { color: Colors.dark.textTertiary },
@@ -512,11 +512,11 @@ export default function BarcodeScreen() {
           paddingVertical: Spacing.md,
           borderRadius: Radius.xl,
         },
-        permBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+        permBtnText: { color: Accent.primaryForeground, fontWeight: "700", fontSize: 15 },
         // headers census 2026-06-10: hand-tuned 17/600 serif → Type.navTitle.
         productName: {
           ...Type.navTitle,
-          color: "#fff",
+          color: Accent.primaryForeground,
           textAlign: "center",
         },
         macroRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.lg },
@@ -524,7 +524,7 @@ export default function BarcodeScreen() {
         // Gap #1: macro values → heroValue (Newsreader/serif, 20/500).
         // Gap #12: bump size slightly and use textSecondary for labels.
         macroValue: {
-          color: "#fff",
+          color: Accent.primaryForeground,
           ...Type.heroValue,
           fontSize: 16,
         },
@@ -539,7 +539,7 @@ export default function BarcodeScreen() {
         },
         servingLabel: { color: Colors.dark.textSecondary, fontSize: 13 },
         servingInput: {
-          color: "#fff",
+          color: Accent.primaryForeground,
           fontWeight: "600",
           fontSize: 15,
           // Gap #10: token-based input bg instead of raw rgba literal.
@@ -661,7 +661,7 @@ export default function BarcodeScreen() {
         // headers census 2026-06-10: sheet title → Type.navTitle.
         manualTitle: {
           ...Type.navTitle,
-          color: "#fff",
+          color: Accent.primaryForeground,
         },
         // Gap #4: replace marginTop:-4 negative hack with gap token on
         // the parent container (gap: Spacing.md already set on manualOverlay).
@@ -673,7 +673,7 @@ export default function BarcodeScreen() {
           borderRadius: Radius.xl,
           paddingHorizontal: Spacing.lg,
           paddingVertical: Spacing.md,
-          color: "#fff",
+          color: Accent.primaryForeground,
           fontSize: 15,
         },
         manualInputRow: { flexDirection: "row", gap: Spacing.sm },
@@ -692,7 +692,7 @@ export default function BarcodeScreen() {
         // headers census 2026-06-10: correction sheet title → Type.navTitle.
         corrTitle: {
           ...Type.navTitle,
-          color: "#fff",
+          color: Accent.primaryForeground,
         },
         // Gap #4: replace marginTop:-4 negative hack.
         corrSub: { color: Colors.dark.textSecondary, fontSize: 13 },
@@ -778,7 +778,7 @@ export default function BarcodeScreen() {
           justifyContent: "center",
         }}
       >
-        <X size={22} color="#fff" strokeWidth={2.25} />
+        <X size={22} color={Accent.primaryForeground} strokeWidth={2.25} />
       </Pressable>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>

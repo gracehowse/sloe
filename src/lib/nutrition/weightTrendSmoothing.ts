@@ -49,6 +49,47 @@ function dayKeyToMs(key: string): number {
   return new Date(`${key}T12:00:00`).getTime();
 }
 
+function addDaysToKey(key: string, days: number): string {
+  const d = new Date(`${key}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Expand sparse weigh-ins to one synthetic reading per calendar day by
+ * linear interpolation (the same gap-fill `smoothedTrendByDate` uses).
+ *
+ * ENG-1024 — adaptive TDEE's least-squares slope must run on this
+ * time-uniform series, not on raw sparse points, so a weekly weigher and
+ * a daily weigher get the same smoothing per unit time.
+ */
+export function dailyInterpolatedWeightEntries(
+  ascendingEntries: Array<[string, number]>,
+): Array<[string, number]> {
+  if (ascendingEntries.length < 2) return ascendingEntries;
+  const out: Array<[string, number]> = [];
+  const firstKey = ascendingEntries[0][0];
+  for (let i = 0; i < ascendingEntries.length - 1; i++) {
+    const [kA, vA] = ascendingEntries[i];
+    const [kB, vB] = ascendingEntries[i + 1];
+    const gapDays = Math.max(
+      1,
+      Math.round((dayKeyToMs(kB) - dayKeyToMs(kA)) / 86_400_000),
+    );
+    for (let d = 0; d < gapDays; d++) {
+      const frac = d / gapDays;
+      const key = addDaysToKey(firstKey, out.length);
+      out.push([key, vA + (vB - vA) * frac]);
+    }
+  }
+  const last = ascendingEntries[ascendingEntries.length - 1];
+  out.push([addDaysToKey(firstKey, out.length), last[1]]);
+  return out;
+}
+
 /**
  * Smoothed trend value (kg) at each weigh-in's date.
  *

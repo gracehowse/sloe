@@ -51,7 +51,7 @@ export function confidenceColor(c: number): string {
   const level = classifyConfidence(c);
   if (level === "high") return Accent.success;
   if (level === "medium") return Accent.warning;
-  return "#EF4444";
+  return Accent.destructive;
 }
 
 /** Short label for the chip — "High" / "Med" / "Low". */
@@ -132,8 +132,8 @@ export default function AiLogReviewItem({
       style={[
         {
           borderWidth: 1,
-          borderColor: low ? "#F59E0B55" : colors.cardBorder,
-          backgroundColor: low ? "#F59E0B0F" : colors.background,
+          borderColor: low ? Accent.warning + "55" : colors.cardBorder,
+          backgroundColor: low ? Accent.warning + "0F" : colors.background,
           borderRadius: Radius.md,
           padding: Spacing.md,
           marginBottom: Spacing.sm,
@@ -180,7 +180,7 @@ export default function AiLogReviewItem({
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              borderRadius: 999,
+              borderRadius: Radius.full,
               paddingHorizontal: 6,
               paddingVertical: 2,
               backgroundColor: cColor + "22",
@@ -190,7 +190,7 @@ export default function AiLogReviewItem({
               style={{
                 width: 6,
                 height: 6,
-                borderRadius: 3,
+                borderRadius: Radius.sm,
                 backgroundColor: cColor,
               }}
             />
@@ -201,7 +201,7 @@ export default function AiLogReviewItem({
           <Badge
             variant="ai"
             accessibilityLabel="AI estimated nutrition"
-            icon={<Sparkles size={10} color="#9679D9" strokeWidth={2.25} />}
+            icon={<Sparkles size={10} color={Accent.purple} strokeWidth={2.25} />}
           >
             AI estimate
           </Badge>
@@ -244,7 +244,7 @@ export default function AiLogReviewItem({
       {low && (
         <Text
           accessibilityRole="alert"
-          style={{ fontSize: 11, color: "#B45309", marginTop: 6 }}
+          style={{ fontSize: 11, color: Accent.warningSolid, marginTop: 6 }}
         >
           Low confidence — please verify portion and macros before logging.
         </Text>

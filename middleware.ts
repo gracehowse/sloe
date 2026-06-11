@@ -72,6 +72,13 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ENG-1045 — public routes skip the Supabase auth round-trip entirely.
+  if (isPublic(pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
@@ -103,13 +110,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
-  // Allow public routes unconditionally
-  if (isPublic(pathname)) {
-    return supabaseResponse;
-  }
-
   // Redirect unauthenticated users to login
   if (!user) {
     const url = request.nextUrl.clone();
@@ -126,6 +126,6 @@ export const config = {
      * Match all request paths except static files and images.
      * See: https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

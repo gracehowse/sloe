@@ -206,7 +206,7 @@ export default function LoginScreen() {
       justifyContent: "center",
       gap: Spacing.sm,
     },
-    appleBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 17 },
+    appleBtnText: { color: Accent.primaryForeground, fontWeight: "700", fontSize: 17 },
     // Continue with email — outline pill (`296:2` chooser).
     emailBtn: {
       backgroundColor: colors.background,
@@ -420,7 +420,7 @@ export default function LoginScreen() {
                   onPress={() => void onAppleSignIn()}
                   disabled={busy}
                 >
-                  <Ionicons name="logo-apple" size={20} color="#fff" />
+                  <Ionicons name="logo-apple" size={20} color={Accent.primaryForeground} />
                   <Text style={styles.appleBtnText}>Continue with Apple</Text>
                 </Pressable>
               )}
@@ -586,7 +586,7 @@ export default function LoginScreen() {
                     onPress={() => void onAppleSignIn()}
                     disabled={busy || (isSignUp && !acceptedTerms)}
                   >
-                    <Ionicons name="logo-apple" size={20} color="#fff" />
+                    <Ionicons name="logo-apple" size={20} color={Accent.primaryForeground} />
                     <Text style={styles.appleBtnText}>Continue with Apple</Text>
                   </Pressable>
                 </>

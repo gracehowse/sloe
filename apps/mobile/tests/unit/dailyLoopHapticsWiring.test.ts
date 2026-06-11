@@ -10,7 +10,7 @@
  *     wired at the single `persistMealsImmediate` funnel (every log entry
  *     point — quick-add / search / saved-meal / barcode / AI — flows through
  *     it). Gated behind `redesign_motion` inside `use-win-moment`.
- *   - LOG WEIGHT         — a quiet confirm (Light) on save, with the loud
+ *   - LOG WEIGHT         — a confirm (Medium) on save, with the loud
  *     SUCCESS notification reserved for the new-all-time-low landmark. Gated
  *     behind `redesign_winmoment`.
  *   - SEGMENT CHANGE     — a SELECTION beat on the Progress range picker, only
@@ -72,12 +72,12 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
 });
 
 describe("Daily-loop haptics — LOG WEIGHT", () => {
-  it("save fires a confirm (Light) and reserves SUCCESS for the new-low landmark", () => {
+  it("save fires a confirm (Medium) and reserves SUCCESS for the new-low landmark", () => {
     expect(LOG_WEIGHT).toContain(
       "Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)",
     );
     expect(LOG_WEIGHT).toContain(
-      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)",
+      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)",
     );
   });
 

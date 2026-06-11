@@ -624,8 +624,8 @@ export default function VerifyScreen() {
     claimBanner: {
       flexDirection: "row",
       alignItems: "flex-start",
-      backgroundColor: "#FEF3C7",
-      borderColor: "#FDE68A",
+      backgroundColor: Accent.warning + "1F",
+      borderColor: Accent.warningLight + "66",
       borderWidth: 1,
       borderRadius: Radius.md,
       paddingVertical: Spacing.sm,
@@ -635,12 +635,12 @@ export default function VerifyScreen() {
     claimBannerTitle: {
       fontSize: 13,
       fontWeight: "700",
-      color: "#92400E",
+      color: Accent.warningSolid,
       lineHeight: 18,
     },
     claimBannerBody: {
       fontSize: 12,
-      color: "#92400E",
+      color: Accent.warningSolid,
       marginTop: 2,
       lineHeight: 16,
     },
@@ -787,7 +787,7 @@ export default function VerifyScreen() {
               <Ionicons
                 name="alert-circle-outline"
                 size={18}
-                color="#B45309"
+                color={Accent.warningSolid}
                 style={{ marginRight: 8, marginTop: 1 }}
               />
               <View style={{ flex: 1 }}>
@@ -1101,13 +1101,13 @@ export default function VerifyScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.actionBtn, { borderColor: "#ff444440" }]}
+                      style={[styles.actionBtn, { borderColor: Accent.destructive + "40" }]}
                       onPress={() => onDeleteIngredient(i)}
                       accessibilityRole="button"
                       accessibilityLabel={`Remove ${displayName} from recipe`}
                     >
-                      <Ionicons name="trash-outline" size={16} color="#ff4444" />
-                      <Text style={[styles.actionBtnText, { color: "#ff4444" }]}>Remove</Text>
+                      <Ionicons name="trash-outline" size={16} color={Accent.destructive} />
+                      <Text style={[styles.actionBtnText, { color: Accent.destructive }]}>Remove</Text>
                     </Pressable>
                   </View>
                 </View>

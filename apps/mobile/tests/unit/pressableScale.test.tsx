@@ -70,6 +70,18 @@ describe("PressableScale (mobile)", () => {
     expect(Haptics.impactAsync).not.toHaveBeenCalled();
   });
 
+  it("fires medium impact when haptic='confirm'", async () => {
+    const Haptics = await import("expo-haptics");
+    (Haptics.impactAsync as ReturnType<typeof vi.fn>).mockClear();
+    const { getByText } = render(
+      <PressableScale onPress={() => {}} haptic="confirm">
+        <Text>confirm</Text>
+      </PressableScale>,
+    );
+    fireEvent(getByText("confirm"), "pressIn");
+    expect(Haptics.impactAsync).toHaveBeenCalledWith("medium");
+  });
+
   it("forwards custom onPressIn alongside the haptic", async () => {
     const Haptics = await import("expo-haptics");
     (Haptics.selectionAsync as ReturnType<typeof vi.fn>).mockClear();

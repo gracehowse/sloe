@@ -13,6 +13,7 @@ import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "luci
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
@@ -75,8 +76,8 @@ function IconBox({ color, size = 28, children }: { color: string; size?: number;
 function SourceBadge({ source }: { source?: string }) {
   if (!source) return null;
   return (
-    <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: 4, backgroundColor: "#00000066" }}>
-      <Text style={{ ...Type.caption, color: "#fff" }}>{source}</Text>
+    <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, backgroundColor: MODAL_OVERLAY_SCRIM }}>
+      <Text style={{ ...Type.caption, color: Accent.primaryForeground }}>{source}</Text>
     </View>
   );
 }

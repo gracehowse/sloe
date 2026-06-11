@@ -129,6 +129,13 @@ export function buildMaintenanceChain(
   resolved: ResolvedMaintenance,
   planPace: PlanPace,
   goal: string | null | undefined,
+  /**
+   * ENG-1057 — the calorie target the user actually sees on Today / the ring.
+   * When supplied, the "= Calorie goal" row uses this instead of re-deriving
+   * from maintenance via `calculateBudget`, which can disagree when the stored
+   * target carries a safety floor or was seeded from a different TDEE branch.
+   */
+  actualTargetCalories?: number | null,
 ): MaintenanceChainResult | null {
   if (
     !profile.sex ||
@@ -199,13 +206,14 @@ export function buildMaintenanceChain(
     emphasis: true,
   });
 
-  // Calorie goal line — derived from pace + goal type. `calculateBudget`
-  // handles "cut" / "maintain" / "bulk" (and the onboarding label
-  // aliases). `goal` is nullable because older profiles may lack it; in
-  // that case we default to the safe-cut branch, matching the budget
-  // calculator's existing fallback.
+  // Calorie goal line — prefer the live target when callers pass it (ENG-1057).
+  // Otherwise derive from pace + goal via `calculateBudget`.
   const goalType = (goal ?? "cut").toString();
-  const budget = calculateBudget(maintenance, planPace, goalType);
+  const derivedBudget = calculateBudget(maintenance, planPace, goalType);
+  const budget =
+    isFinitePositive(actualTargetCalories)
+      ? Math.round(actualTargetCalories)
+      : derivedBudget;
   const dailyDeficit = maintenance - budget;
 
   let budgetKcal: number | null = null;

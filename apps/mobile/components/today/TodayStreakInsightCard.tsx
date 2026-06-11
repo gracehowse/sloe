@@ -47,7 +47,7 @@ export function TodayStreakInsightCard({
         style={{
           width: 36,
           height: 36,
-          borderRadius: 10,
+          borderRadius: Radius.lg,
           backgroundColor: Accent.success + "18",
           alignItems: "center",
           justifyContent: "center",

@@ -35,6 +35,7 @@ import { useAccent } from "@/context/theme";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 type Theme = {
   text: string;
@@ -140,7 +141,7 @@ export default function SaveMealSheet({
       >
         <Pressable
           onPress={onClose}
-          style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
         >
           <Pressable
             onPress={() => {}}

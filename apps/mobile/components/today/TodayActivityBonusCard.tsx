@@ -44,6 +44,7 @@ import {
   ACTIVITY_BUDGET_DISCOVER_TITLE,
 } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import type { JournalMeal } from "@/lib/nutritionJournal";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 /**
  * TodayActivityBonusCard — summary row, burn breakdown, workouts list,
@@ -199,6 +200,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             confidence: maintenanceConfidence ?? null,
             formulaKcal: null,
             adaptiveRejectedAsStale: false,
+            adaptiveRejectedBelowFormula: false,
+            rejectedAdaptiveKcal: null,
           })
         : buildTdeeExplainerCopy({
             maintenanceTdeeKcal: maintenanceTdeeKcal!,
@@ -431,7 +434,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                   marginLeft: -10,
                   width: 20,
                   height: 20,
-                  borderRadius: 10,
+                  borderRadius: Radius.lg,
                   backgroundColor: Colors.light.primaryForeground,
                   borderWidth: 3,
                   borderColor: chipColor,
@@ -717,7 +720,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             onPress={() => setInfoOpen(false)}
             style={{
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
+              backgroundColor: MODAL_OVERLAY_SCRIM,
               justifyContent: "center",
               alignItems: "center",
               padding: Spacing.lg,

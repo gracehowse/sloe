@@ -200,6 +200,11 @@ export function useNutritionJournalState(opts: {
               setDbNutritionEnabled(false);
               return;
             }
+            // ENG-1048 — roll back the optimistic add on persist failure.
+            setNutritionByDay((prev) => ({
+              ...prev,
+              [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== id),
+            }));
             toast.error(syncFailedRetryMessage("nutrition log", msg));
             return;
           }
@@ -310,6 +315,9 @@ export function useNutritionJournalState(opts: {
       // the next render's `caffeineFromMealsMgToday` /
       // `alcoholByDayMerged` sum automatically. No `doomed*` capture
       // needed.
+      const removedMeal = (nutritionByDay[selectedDateKey] ?? []).find(
+        (m) => m.id === mealId,
+      );
       setNutritionByDay((prev) => ({
         ...prev,
         [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
@@ -319,6 +327,14 @@ export function useNutritionJournalState(opts: {
       if (authedUserId && dbNutritionEnabled) {
         supabase.from("nutrition_entries").delete().eq("id", mealId).then(({ error }) => {
           if (error && !looksLikeMissingTableError(error.message ?? "")) {
+            // ENG-1048 — restore the optimistically removed meal.
+            if (removedMeal) {
+              setNutritionByDay((prev) => {
+                const day = prev[selectedDateKey] ?? [];
+                if (day.some((m) => m.id === mealId)) return prev;
+                return { ...prev, [selectedDateKey]: [...day, removedMeal] };
+              });
+            }
             toast.error(syncFailedRetryMessage("nutrition log", error.message ?? ""));
             return;
           }
@@ -333,7 +349,7 @@ export function useNutritionJournalState(opts: {
         });
       }
     },
-    [selectedDateKey, authedUserId, dbNutritionEnabled],
+    [selectedDateKey, authedUserId, dbNutritionEnabled, nutritionByDay],
   );
 
   const mealsForSelectedDate = useMemo(() => {

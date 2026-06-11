@@ -70,8 +70,8 @@ describe("Unified serif screen titles — the five in-body H1s use Type.screenTi
     expect(WEIGHT).not.toMatch(/headerTitle:\s*\{[\s\S]{0,40}\.\.\.Type\.display/);
   });
 
-  it("Nutrition-sources heading is on Type.screenTitle (was Type.title)", () => {
-    expect(NUTRITION_SOURCES).toMatch(/heading:\s*\{\s*\.\.\.Type\.screenTitle/);
+  it("Nutrition-sources screen title is on Type.screenTitle in the header", () => {
+    expect(NUTRITION_SOURCES).toMatch(/title:\s*\{\s*\.\.\.Type\.screenTitle/);
     expect(NUTRITION_SOURCES).not.toMatch(/heading:\s*\{\s*\.\.\.Type\.title/);
   });
 });

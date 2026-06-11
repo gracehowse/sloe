@@ -352,8 +352,6 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 accessibilityLabel="Save changes"
                 style={[v2.saveBtn, { borderColor: accent.primarySolid }]}
               >
-                {/* Sloe treatment system (2026-06-08): primary inline CTA
-                    → aubergine outline; label in primarySolid. */}
                 <Text style={{ color: accent.primarySolid, ...Type.headline }}>Save changes</Text>
               </PressableScale>
             </View>

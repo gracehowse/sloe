@@ -34,9 +34,9 @@ import {
 } from "../../src/lib/changelog/entries";
 
 export const metadata: Metadata = {
-  title: "What's new — Suppr",
+  title: "What's new — Sloe",
   description:
-    "Fixes, new features, and upcoming work in every Suppr build.",
+    "Fixes, new features, and upcoming work in every Sloe build.",
   // 2026-05-13 — RSS feed discoverability. `<link rel="alternate">`
   // in the `<head>` lets feed-reader browser extensions auto-detect
   // the feed when the user lands on `/whats-new`.
@@ -136,7 +136,7 @@ export default function WhatsNewPage() {
             className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white"
             data-testid="whats-new-title"
           >
-            What&rsquo;s new in Suppr
+            What&rsquo;s new in Sloe
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Every release, freshest first. New features, fixes, and what we
