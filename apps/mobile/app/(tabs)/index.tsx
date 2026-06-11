@@ -1,18 +1,13 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Animated,
   AppState,
-  Keyboard,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,12 +47,10 @@ import { supabase } from "@/lib/supabase";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   CloudOff,
   X,
 } from "lucide-react-native";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
