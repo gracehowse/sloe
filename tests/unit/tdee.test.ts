@@ -12,7 +12,12 @@ import {
   budgetSafety,
   goalDate,
   getEffectiveTDEE,
+  planOptions,
+  effectiveWeeklyKgForGoal,
+  GAIN_SURPLUS_PACE_FACTOR,
+  PACE_WEEKLY_KG,
 } from "@/lib/nutrition/tdee";
+import { buildWhyThisNumber } from "@/lib/nutrition/whyThisNumber";
 
 describe("calculateBMR (Mifflin-St Jeor)", () => {
   it("calculates male BMR correctly", () => {
@@ -107,6 +112,108 @@ describe("weeksToGoal", () => {
   it("returns 0 when already at goal", () => {
     const weeks = weeksToGoal(70, 70, "steady");
     expect(weeks).toBe(0);
+  });
+
+  it("loss is unscaled — steady covers 10 kg at 0.5 kg/wk (20 weeks)", () => {
+    // 10 kg / 0.5 kg/wk = 20 weeks. Loss never applies the gain factor.
+    expect(weeksToGoal(80, 70, "steady", "lose")).toBe(20);
+  });
+});
+
+// ─── ENG-1025: gain-goal budget ↔ explainer ↔ weeks-to-goal parity ───────
+//
+// The bug: the budget halves the surplus for gaining (lean-bulk
+// asymmetry — deliberate), but the "why this number" explainer and
+// weeks-to-goal used the FULL nominal pace, so a gaining user saw a Goal
+// row and a Result row that disagreed by 2× and goal dates ~2× too
+// optimistic. These tests pin that all three now agree on the EFFECTIVE
+// (halved) pace. If a future change drifts one of them, this fails.
+describe("ENG-1025 gain-goal parity (budget == explainer == weeks-to-goal)", () => {
+  it("effectiveWeeklyKgForGoal halves only gain, never loss/maintain", () => {
+    expect(effectiveWeeklyKgForGoal(0.5, "bulk")).toBeCloseTo(0.25, 5);
+    expect(effectiveWeeklyKgForGoal(0.5, "gain")).toBeCloseTo(0.25, 5);
+    expect(effectiveWeeklyKgForGoal(0.5, "strength")).toBeCloseTo(0.25, 5);
+    // Loss + maintain are unscaled.
+    expect(effectiveWeeklyKgForGoal(0.5, "cut")).toBeCloseTo(0.5, 5);
+    expect(effectiveWeeklyKgForGoal(0.5, "lose")).toBeCloseTo(0.5, 5);
+    expect(effectiveWeeklyKgForGoal(0, "maintain")).toBeCloseTo(0, 5);
+    expect(GAIN_SURPLUS_PACE_FACTOR).toBe(0.5);
+  });
+
+  it("a steady gain user's budget, explainer pace, and weeks-to-goal all reflect 0.25 kg/wk", () => {
+    const tdee = 2000;
+    const nominalPace = PACE_WEEKLY_KG.steady; // 0.5 kg/wk nominal
+
+    // 1) Budget: half the +550 nominal surplus → +275.
+    const budget = calculateBudget(tdee, "steady", "bulk");
+    expect(budget).toBe(2275);
+    const surplus = budget - tdee; // +275
+
+    // 2) Effective pace the budget actually delivers: 275 / (7700/7).
+    const effectivePace = (surplus * 7) / 7700;
+    expect(effectivePace).toBeCloseTo(0.25, 5);
+    // This MUST equal the explainer's scaled nominal pace.
+    expect(effectiveWeeklyKgForGoal(nominalPace, "bulk")).toBeCloseTo(
+      effectivePace,
+      5,
+    );
+
+    // 3) Explainer: Goal row + Result row are read off the SAME budget,
+    //    so they cannot disagree. Goal row shows 0.25 (effective), not 0.5.
+    const why = buildWhyThisNumber({
+      targetCalories: budget,
+      maintenanceTdee: tdee,
+      confidence: "high",
+      loggingDays: 21,
+      goal: "gain",
+      // Caller still passes the NOMINAL preset pace (+0.5) — the explainer
+      // must re-derive the effective pace from the budget, not echo this.
+      paceKgPerWeek: nominalPace,
+    });
+    const goalRow = why.lines.find((l) => l.key === "goal")!;
+    const resultRow = why.lines.find((l) => l.key === "result")!;
+    expect(goalRow.value).toBe("Gain 0.25 kg/wk");
+    expect(resultRow.value).toBe("+275 kcal/day surplus");
+    // The summary echoes the same effective goal — no stale 0.5.
+    expect(why.summary).toContain("gain 0.25 kg/wk");
+    expect(why.summary).not.toContain("0.5 kg/wk");
+
+    // 4) Weeks-to-goal at the same effective pace: 2.5 kg / 0.25 = 10 weeks.
+    expect(weeksToGoal(70, 72.5, "steady", "bulk")).toBe(10);
+  });
+
+  it("pre-calibration (no maintenance) the explainer still shows the halved gain pace", () => {
+    // No TDEE yet — the explainer scales the nominal preset by the gain
+    // factor so the implied surplus line agrees with the budget that will
+    // be computed once maintenance lands.
+    const why = buildWhyThisNumber({
+      targetCalories: 2275, // ignored when maintenanceTdee is null
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "gain",
+      paceKgPerWeek: PACE_WEEKLY_KG.steady, // nominal +0.5
+    });
+    const goalRow = why.lines.find((l) => l.key === "goal")!;
+    const resultRow = why.lines.find((l) => l.key === "result")!;
+    expect(goalRow.value).toBe("Gain 0.25 kg/wk");
+    // 0.25 kg/wk → 0.25 × 7700 / 7 ≈ 275 kcal/day surplus (target).
+    expect(resultRow.value).toBe("+275 kcal/day surplus (target)");
+  });
+
+  it("planOptions reports the effective (halved) weeklyKg for gain rows", () => {
+    const opts = planOptions(2000, 70, 75, "bulk", "male");
+    const steady = opts.find((o) => o.pace === "steady")!;
+    // Nominal steady is 0.5; the gain row reports the effective 0.25.
+    expect(steady.weeklyKg).toBeCloseTo(0.25, 5);
+    expect(steady.budget).toBe(2275);
+    // 5 kg at 0.25 kg/wk = 20 weeks.
+    expect(steady.weeks).toBe(20);
+
+    // Loss rows stay at full nominal pace.
+    const lossOpts = planOptions(2000, 75, 70, "cut", "male");
+    const steadyLoss = lossOpts.find((o) => o.pace === "steady")!;
+    expect(steadyLoss.weeklyKg).toBeCloseTo(0.5, 5);
+    expect(steadyLoss.weeks).toBe(10); // 5 kg / 0.5 = 10 weeks
   });
 });
 

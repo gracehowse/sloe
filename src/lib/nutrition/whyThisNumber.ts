@@ -145,6 +145,17 @@ export interface WhyThisNumberResult {
 const KCAL_PER_KG_FAT = 7700;
 const KCAL_PER_DAY_PER_WEEKLY_KG = KCAL_PER_KG_FAT / 7;
 
+/**
+ * ENG-1025 — gain budgets apply only HALF the nominal surplus (lean-bulk
+ * asymmetry; see `GAIN_SURPLUS_PACE_FACTOR` in `tdee.ts`). Duplicated here
+ * (rather than imported) to keep this helper React-Native-safe and
+ * dependency-free, the same pattern the gate constants below follow. When
+ * the factor in `tdee.ts` changes, change here in lockstep — the parity
+ * test `whyThisNumber.test.ts` pins that a gain user's Goal row, Result
+ * row, and implied pace all agree.
+ */
+const GAIN_SURPLUS_PACE_FACTOR = 0.5;
+
 /** Mirrors `MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE` and
  *  `MIN_WEIGH_INS_FOR_ADAPTIVE_TDEE` in
  *  `src/lib/nutrition/progressDataContract.ts` (re-exported from
@@ -339,6 +350,43 @@ export function buildStoryBeats(input: {
 }
 
 /**
+ * ENG-1025 — resolve the EFFECTIVE weekly kg pace to display for the goal
+ * row, implied-deficit line, and summary. For loss / maintain this is the
+ * nominal pace unchanged. For gain it reflects the halved surplus the
+ * budget actually applies:
+ *
+ *   - When we have a maintenance number, the budget is the source of
+ *     truth: effective pace = (target − maintenance) → kcal/day → kg/wk.
+ *     This guarantees the Goal row and the Result row can never disagree,
+ *     because both are now read off the same target/maintenance delta.
+ *   - Pre-calibration (no maintenance yet) we can't read a budget, so we
+ *     scale the nominal preset by the gain factor — the same factor the
+ *     budget will apply once it's computed.
+ *
+ * Returns `null` (passed straight through) when the nominal pace is null,
+ * so "Goal not set" still renders for users with no preset.
+ */
+function resolveEffectivePace(input: {
+  goal: WhyThisNumberGoal;
+  nominalPaceKgPerWeek: number | null;
+  targetCalories: number;
+  maintenanceTdee: number | null;
+}): number | null {
+  const { goal, nominalPaceKgPerWeek, targetCalories, maintenanceTdee } = input;
+  if (nominalPaceKgPerWeek === null) return null;
+  // Loss + maintain budgets run at full nominal pace — never scaled.
+  if (goal !== "gain") return nominalPaceKgPerWeek;
+
+  if (maintenanceTdee != null && maintenanceTdee > 0) {
+    // Budget is the source of truth — derive the pace the surplus buys.
+    const surplus = targetCalories - maintenanceTdee;
+    return surplus / KCAL_PER_DAY_PER_WEEKLY_KG;
+  }
+  // No budget to read yet — scale the nominal preset by the gain factor.
+  return nominalPaceKgPerWeek * GAIN_SURPLUS_PACE_FACTOR;
+}
+
+/**
  * Build the breakdown rows + summary sentence. Pure.
  */
 export function buildWhyThisNumber(
@@ -378,7 +426,21 @@ export function buildWhyThisNumber(
   }
 
   // -- Row 2: Goal & pace ------------------------------------------
-  const goalValue = goalLabel(goal, paceKgPerWeek);
+  // ENG-1025: for GAIN goals the budget delivers only HALF the nominal
+  // surplus, so the Goal row must show the EFFECTIVE pace — otherwise it
+  // reads "Gain 0.5 kg/wk" while the Result row shows a +275 surplus that
+  // only buys ~0.25 kg/wk (the 2× mismatch the audit flagged). We derive
+  // the effective pace straight from the budget when we have a maintenance
+  // number (the budget is the source of truth); pre-calibration we scale
+  // the nominal preset by the gain factor so the label still matches the
+  // target the budget will land on. Loss / maintain are unscaled.
+  const effectivePaceKgPerWeek = resolveEffectivePace({
+    goal,
+    nominalPaceKgPerWeek: paceKgPerWeek,
+    targetCalories,
+    maintenanceTdee,
+  });
+  const goalValue = goalLabel(goal, effectivePaceKgPerWeek);
 
   // -- Row 3: Result (the deficit / surplus we landed at) ----------
   // Prefer the actual delta (target - tdee) when we have a tdee.
@@ -395,16 +457,18 @@ export function buildWhyThisNumber(
     } else {
       resultValue = "no deficit (maintaining)";
     }
-  } else if (paceKgPerWeek == null) {
+  } else if (effectivePaceKgPerWeek == null) {
     // No TDEE AND no pace preset — we genuinely can't compute a
     // direction. Don't lie about "maintaining".
     resultValue = "—";
   } else {
-    // No TDEE yet → derive from pace.
-    const impliedDelta = paceKgPerWeek * KCAL_PER_DAY_PER_WEEKLY_KG;
+    // No TDEE yet → derive from the EFFECTIVE pace (ENG-1025: for gain
+    // this is the halved-surplus pace, so the implied target line agrees
+    // with the budget that will be computed once maintenance is known).
+    const impliedDelta = effectivePaceKgPerWeek * KCAL_PER_DAY_PER_WEEKLY_KG;
     const abs = Math.abs(Math.round(impliedDelta));
-    if (paceKgPerWeek < 0) resultValue = `−${abs.toLocaleString()} kcal/day deficit (target)`;
-    else if (paceKgPerWeek > 0) resultValue = `+${abs.toLocaleString()} kcal/day surplus (target)`;
+    if (effectivePaceKgPerWeek < 0) resultValue = `−${abs.toLocaleString()} kcal/day deficit (target)`;
+    else if (effectivePaceKgPerWeek > 0) resultValue = `+${abs.toLocaleString()} kcal/day surplus (target)`;
     else resultValue = "no deficit (maintaining)";
   }
 

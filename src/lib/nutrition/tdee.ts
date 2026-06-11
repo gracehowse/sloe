@@ -61,6 +61,52 @@ const PACE_DAILY_DEFICIT: Record<PlanPace, number> = {
 };
 
 /**
+ * ENG-1025 — the lean-bulk asymmetry factor for GAIN goals.
+ *
+ * Convention (decided 2026-06-11; audit
+ * `docs/ux/research/2026-06-10-nutrition-calculations-audit.md` #2):
+ * the calorie budget intentionally applies only HALF the nominal pace
+ * preset as a surplus. Gaining lean mass is slower than losing fat at
+ * the same nominal rate — a +550 kcal/day "steady" surplus would drive
+ * mostly fat gain, so we coach the lower +275. This is the deliberate,
+ * defended behaviour (audit table #13: "surplus-smaller-than-deficit
+ * bulking" is the lean-bulk norm).
+ *
+ * The bug this constant fixes is NOT the halved budget — it's that the
+ * "why this number" explainer and weeks-to-goal projections used to read
+ * the FULL nominal pace (0.5 kg/wk) while the budget delivered half of
+ * it, so a gaining user saw a Goal row and a Result row that disagreed
+ * by 2×. Now every gain display derives its effective pace from this one
+ * factor (or, preferably, straight from `budget − maintenance`), so the
+ * budget, the explainer, and the projected goal date always agree.
+ *
+ * Loss goals are unaffected — the deficit is applied at full pace, and a
+ * losing user's display has always matched their budget.
+ */
+export const GAIN_SURPLUS_PACE_FACTOR = 0.5;
+
+/**
+ * ENG-1025 — the effective weekly kg pace a GAIN budget actually
+ * delivers, given a nominal pace. For loss/maintain this is the identity
+ * (the budget already runs at full nominal pace); for gain it is the
+ * nominal pace scaled by `GAIN_SURPLUS_PACE_FACTOR`, matching the halved
+ * surplus `calculateBudget` applies. Single source of truth so the
+ * explainer and weeks-to-goal can't drift from the budget again.
+ *
+ * Accepts the DB / onboarding goal vocabulary (`gain | bulk | strength`
+ * → gain; everything else → unscaled).
+ */
+export function effectiveWeeklyKgForGoal(
+  nominalWeeklyKg: number,
+  goalType: string,
+): number {
+  if (goalType === "bulk" || goalType === "strength" || goalType === "gain") {
+    return nominalWeeklyKg * GAIN_SURPLUS_PACE_FACTOR;
+  }
+  return nominalWeeklyKg;
+}
+
+/**
  * Mifflin-St Jeor BMR (Basal Metabolic Rate)
  * Male:   10 × weight(kg) + 6.25 × height(cm) − 5 × age − 161 + 166 = ... simplified:
  * Male:   10w + 6.25h − 5a + 5
@@ -112,10 +158,26 @@ export function budgetSafety(budget: number, sex: Sex): "safe" | "caution" | "wa
   return "safe";
 }
 
-/** Estimate weeks to reach goal weight */
-export function weeksToGoal(currentKg: number, goalKg: number, pace: PlanPace): number {
+/**
+ * Estimate weeks to reach goal weight at the budget's EFFECTIVE pace.
+ *
+ * ENG-1025: for GAIN goals the budget only applies half the nominal
+ * surplus (`GAIN_SURPLUS_PACE_FACTOR`), so projecting at the full
+ * nominal pace gave goal dates ~2× too optimistic. We now scale the
+ * weekly rate through `effectiveWeeklyKgForGoal` so the projected weeks
+ * match the calorie budget the user is actually on. `goalType` defaults
+ * to `"lose"` for back-compat with the historical 3-arg signature
+ * (loss is unscaled, so existing loss call-sites are unchanged).
+ */
+export function weeksToGoal(
+  currentKg: number,
+  goalKg: number,
+  pace: PlanPace,
+  goalType = "lose",
+): number {
   const diff = Math.abs(currentKg - goalKg);
-  const weeklyRate = PACE_WEEKLY_KG[pace];
+  const weeklyRate = effectiveWeeklyKgForGoal(PACE_WEEKLY_KG[pace], goalType);
+  if (weeklyRate <= 0) return Infinity;
   return Math.ceil(diff / weeklyRate);
 }
 
@@ -177,19 +239,28 @@ export function calculateMacros(
   return { protein, carbs, fat, fiber: Math.max(15, fiberG) };
 }
 
-/** All plan options with calculated values */
+/** All plan options with calculated values.
+ *
+ *  ENG-1025: `weeklyKg` and `weeks` report the budget's EFFECTIVE pace,
+ *  so a gain row shows the halved rate the +surplus actually delivers
+ *  (e.g. "steady" gain → 0.25 kg/wk, not the nominal 0.5). Loss rows are
+ *  unscaled. Gain weeks are now computed too (previously suppressed). */
 export function planOptions(tdee: number, currentKg: number, goalKg: number, goalType: string, sex: Sex) {
   const paces: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
+  const isLoss = goalType === "cut" || goalType === "lose";
+  const isGain = goalType === "bulk" || goalType === "strength" || goalType === "gain";
   return paces.map((pace) => {
     const budget = calculateBudget(tdee, pace, goalType);
-    const weeks = goalType === "cut" || goalType === "lose" ? weeksToGoal(currentKg, goalKg, pace) : 0;
+    const weeklyKg = effectiveWeeklyKgForGoal(PACE_WEEKLY_KG[pace], goalType);
+    const weeks =
+      isLoss || isGain ? weeksToGoal(currentKg, goalKg, pace, goalType) : 0;
     const safety = budgetSafety(budget, sex);
     return {
       pace,
       budget,
-      weeklyKg: PACE_WEEKLY_KG[pace],
-      weeks,
-      goalDate: weeks > 0 ? goalDate(weeks) : null,
+      weeklyKg,
+      weeks: Number.isFinite(weeks) ? weeks : 0,
+      goalDate: Number.isFinite(weeks) && weeks > 0 ? goalDate(weeks) : null,
       safety,
     };
   });
