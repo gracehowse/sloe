@@ -9,7 +9,11 @@ import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
-import { isPerServingPortion } from "../../lib/nutrition/foodSearchCore.ts";
+import {
+  foodSelectionAnalyticsSource,
+  foodSelectionSourceLabel,
+  foodSelectionToMealMacros,
+} from "../../lib/nutrition/foodSelectionToMeal.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
 // 2026-05-02 — rebuild of #26). Web parity of the mobile modal.
@@ -49,7 +53,6 @@ import {
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
-import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing.ts";
 import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
@@ -1629,97 +1632,17 @@ export const NutritionTracker = memo(function NutritionTracker({
    */
   const commitFoodSearchSelection = useCallback(
     (selection: FoodSearchSelection) => {
-      const grams = selection.chosenPortion.gramWeight * selection.quantity;
-      const f = grams / 100;
-      // Mirror mobile's attribution — USDA / Open Food Facts / Custom
-      // foods all show a human-readable `source` in the journal row so
-      // the user can tell where the numbers came from after the fact.
-      const sourceLabel =
-        selection.source === "CUSTOM"
-          ? "Custom food"
-          : selection.source === "OFF"
-          ? "Open Food Facts"
-          : selection.source === "Edamam"
-          ? "Edamam"
-          : selection.source === "FatSecret"
-          ? "FatSecret"
-          : selection.source === "history"
-          ? // ENG-1033 — a re-logged "Past logged" item; the macros are the
-            // user's own prior totals, so label it neutrally rather than
-            // misattribute to a database source.
-            "Manual"
-          : "USDA FoodData Central";
+      const sourceLabel = foodSelectionSourceLabel(selection.source);
 
-      // Per-serving path (FatSecret no-metric / count servings like
-      // "1 large tomato"). Use `macrosPerServing × quantity` directly.
-      //
-      // ENG-745 (2026-05-26): must match the preview's condition
-      // (`macrosPerServing && gramWeight === 0`, regardless of
-      // `macrosPer100g`). The old guard required `macrosPer100g === null`,
-      // but FatSecret no-metric foods carry a non-null *zero* per-100g
-      // panel — so the guard was false, the commit scaled by `grams = 0`
-      // and persisted 0 kcal while the preview showed the real value.
-      // Mirrors mobile `handleFoodSearchSelect`.
-      const isPerServingOnly = isPerServingPortion({
-        gramWeight: selection.chosenPortion.gramWeight,
-        hasMacrosPerServing: Boolean(selection.macrosPerServing),
-      });
-
-      let mealCalories: number;
-      let mealProtein: number;
-      let mealCarbs: number;
-      let mealFat: number;
-      let mealFiberG = 0;
-      let micros: Record<string, number> = {};
-
-      if (isPerServingOnly) {
-        const ps = selection.macrosPerServing!;
-        // servingFraction scales a derived "1 piece" portion to 1/N of
-        // the per-serving payload (parity with preview + mobile).
-        const fraction = selection.chosenPortion.servingFraction ?? 1;
-        const q = selection.quantity * fraction;
-        mealCalories = Math.max(0, Math.round(ps.calories * q));
-        mealProtein = Math.max(0, Math.round(ps.protein * q * 10) / 10);
-        mealCarbs = Math.max(0, Math.round(ps.carbs * q * 10) / 10);
-        mealFat = Math.max(0, Math.round(ps.fat * q * 10) / 10);
-        // Per-serving micros × quantity via shared helper (audit
-        // E2 — pinned in `tests/unit/scaleMicrosPerServing.test.ts`).
-        // No caffeine/alcohol here — FatSecret doesn't ship those,
-        // and we have no per-100g basis to scale them anyway.
-        const ms = (selection as { microsPerServing?: Record<string, number> }).microsPerServing;
-        micros = scaleMicrosPerServing(ms, q);
-        const fiberFromMicros = micros.fiberG;
-        if (typeof fiberFromMicros === "number") mealFiberG = fiberFromMicros;
-      } else {
-        const m = selection.macrosPer100g!;
-        mealCalories = Math.max(0, Math.round(m.calories * f));
-        mealProtein = Math.max(0, Math.round(m.protein * f * 10) / 10);
-        mealCarbs = Math.max(0, Math.round(m.carbs * f * 10) / 10);
-        mealFat = Math.max(0, Math.round(m.fat * f * 10) / 10);
-        mealFiberG = Math.round(m.fiberG * f * 10) / 10;
-        // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash
-        // scaled values on the meal's `micros` map so the insert
-        // path in `useNutritionJournalState` can bump
-        // `profiles.extra_caffeine_by_day` /
-        // `extra_alcohol_g_by_day` and the delete path can
-        // decrement by the same delta. Null per-100g → 0
-        // (never invented).
-        const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-          grams,
-          caffeineMgPer100g: m.caffeineMgPer100g ?? null,
-          alcoholGPer100g: m.alcoholGPer100g ?? null,
-        });
-        const explicitMicros: Record<string, number> = {};
-        if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-        if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-        // F-79 (2026-04-25) — full micro set scaled for `grams`,
-        // merged with caffeine/alcohol overrides.
-        micros = scaleMicrosForGrams(
-          (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-          grams,
-          explicitMicros,
-        );
-      }
+      // ENG-1046 — shared scaling core (instant-log + basket-add, mobile parity).
+      const {
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        fiberG: mealFiberG,
+        micros,
+      } = foodSelectionToMealMacros(selection);
 
       addLoggedMeal(
         {
@@ -1738,7 +1661,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         // Mirror mobile's `food_logged.source` mapping: custom food
         // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
         // with `"manual"` (the canonical shared-food source).
-        selection.source === "CUSTOM" ? "custom_food" : "manual",
+        foodSelectionAnalyticsSource(selection.source),
       );
     },
     [addLoggedMeal, mealSlot, timeLabel],

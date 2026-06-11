@@ -5,6 +5,7 @@ import { Utensils } from "lucide-react";
 import { SupprCard } from "../ui/suppr-card.tsx";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import {
+  figmaSlotSummaryTitle,
   nextUnloggedMealSlot,
   TODAY_MEAL_SLOT_ORDER,
   type TodayMealSlot,
@@ -58,6 +59,8 @@ export interface TodayMealsFigmaLayoutProps {
   onOpenAddForSlot: (slot: string) => void;
   /** Tap the meal row — nutrition detail (MFP chevron-row parity). */
   onPressMeal?: (mealId: string) => void;
+  /** Multi-item slot summary tap — expand/collapse or slot nutrition when wired. */
+  onPressSlotSummary?: (slot: string) => void;
   /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
   onRequestDeleteMeal?: (mealId: string, recipeTitle: string) => void;
   /** Item rows + slot actions when a summary card is expanded. */
@@ -78,6 +81,7 @@ export function TodayMealsFigmaLayout({
   onToggleSlot,
   onOpenAddForSlot,
   onPressMeal,
+  onPressSlotSummary,
   onRequestDeleteMeal,
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
@@ -123,7 +127,9 @@ export function TodayMealsFigmaLayout({
             meals.reduce((s, m) => s + (m.protein ?? 0), 0),
           );
           const primary = meals[0];
-          const thumbUrl = mealRowImageUrl(primary);
+          const isMultiItem = meals.length > 1;
+          const summaryTitle = figmaSlotSummaryTitle(meals);
+          const thumbUrl = isMultiItem ? null : mealRowImageUrl(primary);
           const isOpen = !collapsedSlots.has(slotName);
 
           return (
@@ -154,12 +160,24 @@ export function TodayMealsFigmaLayout({
                 const mealRow = (
                   <button
                     type="button"
-                    onClick={() =>
-                      onPressMeal ? onPressMeal(primary.id) : onToggleSlot(slotName)
-                    }
+                    onClick={() => {
+                      if (isMultiItem) {
+                        if (onPressSlotSummary) {
+                          onPressSlotSummary(slotName);
+                          return;
+                        }
+                        onToggleSlot(slotName);
+                        return;
+                      }
+                      if (onPressMeal) {
+                        onPressMeal(primary.id);
+                        return;
+                      }
+                      onToggleSlot(slotName);
+                    }}
                     className="flex w-full items-center gap-4 bg-card px-3 pb-3 text-left"
                     data-testid={`today-meals-figma-meal-row-${slotName}`}
-                    aria-label={`${primary.recipeTitle}, ${slotCals} kcal`}
+                    aria-label={`${summaryTitle}, ${slotCals} kcal`}
                   >
                     {thumbUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -178,7 +196,7 @@ export function TodayMealsFigmaLayout({
                     )}
                     <div className="min-w-0 flex-1">
                       <h4 className="truncate font-[family-name:var(--font-headline)] text-lg font-normal text-foreground">
-                        {primary.recipeTitle}
+                        {summaryTitle}
                       </h4>
                       <p className="mt-0.5 text-xs text-foreground-secondary tabular-nums">
                         {slotCals.toLocaleString()} kcal • {slotProtein}g P

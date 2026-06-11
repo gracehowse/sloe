@@ -142,7 +142,7 @@ export default function NotificationsPromptScreen() {
       width: 28, height: 28, borderRadius: 14,
       backgroundColor: Accent.destructive, justifyContent: "center", alignItems: "center",
     },
-    notifBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+    notifBadgeText: { color: Accent.primaryForeground, fontSize: 14, fontWeight: "800" },
     heading: { ...Type.title, color: colors.text, textAlign: "center" },
     stat: {
       fontSize: 15, color: colors.textSecondary, textAlign: "center",
@@ -159,7 +159,7 @@ export default function NotificationsPromptScreen() {
       paddingVertical: 18, alignItems: "center", alignSelf: "stretch",
       marginTop: Spacing.xxxl,
     },
-    enableBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+    enableBtnText: { color: Accent.primaryForeground, fontWeight: "700", fontSize: 17 },
     // Audit 2026-04-30: was tiny tertiary text reading "Skip" — looked
     // ignorable and didn't communicate persistence. Now sized closer to
     // the primary CTA with honest "Maybe later" copy.

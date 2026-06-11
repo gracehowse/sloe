@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -57,17 +57,21 @@ function MacroLine({
   meal: TodayPlannedMealEntry;
   textSecondaryColor: string;
 }) {
+  const isDark = useColorScheme() === "dark";
   const parts = formatPlannedMealMacroParts(
     Number(meal.calories) || 0,
     Number(meal.protein) || 0,
     Number(meal.carbs) || 0,
     Number(meal.fat) || 0,
   );
+  // Fresh-eyes P1 (2026-06-10): static MacroColors.protein fails AA as 11px
+  // caption on dark cards — lift to successLight on dark only.
+  const proteinColor = isDark ? Accent.successLight : MacroColors.protein;
   return (
     <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 2 }}>
       <Text style={{ fontVariant: ["tabular-nums"] }}>{parts.kcal.toLocaleString()} kcal</Text>
       {" · "}
-      <Text style={{ color: MacroColors.protein, fontVariant: ["tabular-nums"] }}>{parts.protein}g P</Text>
+      <Text style={{ color: proteinColor, fontVariant: ["tabular-nums"] }}>{parts.protein}g P</Text>
       {" · "}
       <Text style={{ color: MacroColors.carbs, fontVariant: ["tabular-nums"] }}>{parts.carbs}g C</Text>
       {" · "}

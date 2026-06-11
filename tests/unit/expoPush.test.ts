@@ -26,7 +26,7 @@ import {
 function makeMessage(token: string): ExpoPushMessage {
   return {
     to: token,
-    title: "Your week in Suppr",
+    title: "Your week in Sloe",
     body: "Tap to see your weekly recap — avg calories, protein, streak, and weight trend.",
     data: { deepLink: "/progress", kind: "weekly_recap" },
   };

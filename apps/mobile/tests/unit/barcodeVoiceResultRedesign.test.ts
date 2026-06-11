@@ -92,6 +92,6 @@ describe("voice-log result — redesign gate", () => {
     // Elevation is only applied to non-low rows; low rows always keep the
     // amber border even under the redesign flag.
     expect(REVIEW_ITEM).toMatch(/searchRedesign\s*&&\s*!low/);
-    expect(REVIEW_ITEM).toMatch(/#F59E0B55/);
+    expect(REVIEW_ITEM).toMatch(/Accent\.warning \+ "55"/);
   });
 });

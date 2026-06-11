@@ -86,15 +86,15 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     },
   );
 
-  // The 2×2 macro tiles stay flat — they are the documented `size="tile"`
-  // exception (small tiles, not full cards; a grid of drop-shadowed tiles reads
-  // noisy). Left untouched by the 2026-06-09 sweep per Grace's instruction.
-  it("TodayDashboardMacroTiles keeps lift=\"flat\" on the size=\"tile\" macro tiles (exception)", () => {
+  // ENG-1014 — macro tiles delegate to MacroStatTile (shared leaf), not SupprCard.
+  it("TodayDashboardMacroTiles renders MacroStatTile per tracked macro (ENG-1014)", () => {
     const src = readFileSync(
       join(ROOT, "components/today/TodayDashboardMacroTiles.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/<SupprCard[\s\S]*?lift="flat"[\s\S]*?size="tile"/);
+    expect(src).toMatch(/import \{ MacroStatTile \}/);
+    expect(src).toMatch(/<MacroStatTile/);
+    expect(src).not.toMatch(/from ["']@\/components\/ui\/SupprCard["']/);
   });
 
   // The two below-hero cards Grace flagged as inconsistent (2026-06-08). They

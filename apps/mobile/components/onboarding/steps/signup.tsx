@@ -149,11 +149,11 @@ export function MobileSignupStep() {
           })}
         >
           {busy ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Accent.primaryForeground} />
           ) : (
             <>
-              <Ionicons name="logo-apple" size={18} color="#fff" />
-              <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
+              <Ionicons name="logo-apple" size={18} color={Accent.primaryForeground} />
+              <Text style={{ color: Accent.primaryForeground, fontSize: 15, fontWeight: "700" }}>
                 Sign in with Apple
               </Text>
             </>

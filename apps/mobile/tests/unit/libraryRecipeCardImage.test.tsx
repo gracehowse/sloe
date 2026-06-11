@@ -1,12 +1,6 @@
 /**
  * Audit 2026-05-04 #28 — `<RecipeCardImage>` on-error fallback test.
- *
- * `pickDefaultImage` upstream means `item.image` is always a string,
- * so the broken-image case in the wild is "<Image source={uri}>" failing
- * to load (network blip / expired Unsplash URL / 404). The component
- * must swap to the placeholder surface (utensils glyph on a soft-grey
- * background) when `onError` fires, so a single broken image doesn't
- * leave a stark white rectangle next to siblings that loaded cleanly.
+ * ENG-1015 — painterly `FoodFallbackThumb` when id/title are available.
  */
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
@@ -17,35 +11,14 @@ vi.mock("lucide-react-native", () => ({
   UtensilsCrossed: ({ testID }: { testID?: string }) => (
     <View testID={testID ?? "utensils-crossed-glyph"} />
   ),
-  // B7 (2026-05-11) — glyph set used by `<RecipeHeroFallback>`. Tested
-  // separately; here we just need them to render as Views so the
-  // per-recipe placeholder mounts without RN-svg errors.
-  Salad: () => <View />,
-  Beef: () => <View />,
-  Fish: () => <View />,
-  Pizza: () => <View />,
-  Cookie: () => <View />,
-  Soup: () => <View />,
-  Wheat: () => <View />,
   Utensils: () => <View />,
 }));
 
-vi.mock("react-native-svg", () => {
-  const fn = ({ children }: { children?: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children);
-  return {
-    __esModule: true,
-    default: fn,
-    Defs: fn,
-    LinearGradient: fn,
-    Pattern: fn,
-    Rect: fn,
-    Stop: fn,
-    Circle: fn,
-    Path: fn,
-    G: fn,
-  };
-});
+vi.mock("../../components/imagery/FoodFallbackThumb", () => ({
+  FoodFallbackThumb: ({ testID }: { testID?: string }) => (
+    <View testID={testID ?? "food-fallback-thumb"} />
+  ),
+}));
 
 import { RecipeCardImage } from "../../components/library/RecipeCardImage";
 
@@ -78,7 +51,7 @@ describe("Library <RecipeCardImage> — on-error placeholder (audit #28)", () =>
     expect(getByTestId("utensils-crossed-glyph")).toBeTruthy();
   });
 
-  it("renders the per-recipe RecipeHeroFallback when uri is null AND id/title are passed (B7 2026-05-11)", () => {
+  it("renders FoodFallbackThumb when uri is null AND id/title are passed (ENG-1015)", () => {
     const { UNSAFE_queryByType, getByTestId, queryByTestId } = render(
       <RecipeCardImage
         uri={null}
@@ -90,12 +63,8 @@ describe("Library <RecipeCardImage> — on-error placeholder (audit #28)", () =>
       />,
     );
     expect(UNSAFE_queryByType(Image)).toBeNull();
-    // Per-recipe placeholder wrapper carries the recipe id so the
-    // gradient seed is observable from outside the component.
     expect(getByTestId("recipe-card-image-fallback-abc-123")).toBeTruthy();
-    // The legacy utensils glyph is the WRONG fallback when id/title
-    // are available — it would mean the per-recipe placeholder didn't
-    // mount. Pin that explicitly.
+    expect(getByTestId("recipe-card-food-fallback-abc-123")).toBeTruthy();
     expect(queryByTestId("utensils-crossed-glyph")).toBeNull();
   });
 

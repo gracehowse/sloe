@@ -52,13 +52,13 @@ export const PLAN_SOURCE_ROW_META: Record<PlanSourceMode, PlanSourceRowMeta> = {
   },
   library_and_discovery: {
     title: "Library & discovery",
-    subtitle: "Your saves plus Suppr's recipe picks",
-    emptySubtitle: "Suppr's recipe picks",
+    subtitle: "Your saves plus Sloe's recipe picks",
+    emptySubtitle: "Sloe's recipe picks",
   },
   discovery: {
     title: "Discovery only",
-    subtitle: "Just Suppr's recipes",
-    emptySubtitle: "Just Suppr's recipes",
+    subtitle: "Just Sloe's recipes",
+    emptySubtitle: "Just Sloe's recipes",
   },
 };
 

@@ -75,10 +75,10 @@ describe("TodayDashboardMacroTiles — uses macroColorFor", () => {
     expect(src).not.toMatch(/sugar:[\s\S]*?color:\s*Accent\.warning/);
   });
 
-  it("keeps macro identity colour on bars; captions stay neutral (2026-05-22 A2)", () => {
-    expect(src).toMatch(/const barColor = def\.color/);
+  it("passes macro identity colour into MacroStatTile (ENG-1014)", () => {
+    expect(src).toMatch(/color: macroColorFor\("/);
+    expect(src).toMatch(/color=\{def\.color\}/);
+    expect(src).toMatch(/<MacroStatTile/);
     expect(src).not.toMatch(/barColor = isOverBudget \? Accent\.(warning|destructive)/);
-    expect(src).toMatch(/color: textTertiaryColor/);
-    expect(src).not.toMatch(/isOverBudget \? overBudgetAmber/);
   });
 });

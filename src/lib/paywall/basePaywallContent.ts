@@ -80,7 +80,7 @@ export const BASE_PAYWALL_FEATURES: readonly BasePaywallFeature[] = [
 
 export const BASE_PAYWALL_HERO = {
   /** Small uppercase pill above the title. */
-  kicker: "SUPPR BASE",
+  kicker: "SLOE BASE",
   title: "The full meal planning loop",
   subtitle: "Plans that hit your macros, one-tap shopping lists, cook mode with timers.",
 } as const;

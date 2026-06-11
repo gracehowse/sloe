@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
+import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 
 /**
@@ -123,33 +124,27 @@ function buildMacroTile(
     formatWaterLine,
   } = props;
 
-  const plainRemainingCaption = (
+  const captionFor = (
     cur: number,
     tgt: number,
     unit: string,
-    overIsFlag = true,
+    opts?: { referenceOnly?: boolean; overIsFlag?: boolean },
   ): { caption: string; tone: TileMeta["captionTone"] } => {
-    // Suppress caption on unlogged tiles — the `0 / target` line
-    // above already says everything the user needs (gap 8 also softens the
-    // value to muted in that state).
-    if (cur <= 0 && tgt > 0) return { caption: "", tone: "none" };
-    const remain = tgt - cur;
-    const magnitude = Math.round(Math.abs(remain));
-    if (remain >= 0) {
-      // "remaining" is the canonical copy (design-system §2.2, today.md §4) —
-      // mobile uses the same word so the two surfaces can't drift.
-      return { caption: `${magnitude} ${unit} remaining`, tone: "under" };
-    }
-    // Over target — amber caption, except where over-target is a win (fibre /
-    // water): those keep the muted "over" with no alert colour.
-    return { caption: `${magnitude} ${unit} over`, tone: overIsFlag ? "over" : "under" };
+    const result = macroStatCaption({
+      current: cur,
+      target: tgt,
+      unit,
+      referenceOnly: opts?.referenceOnly,
+      overIsFlag: opts?.overIsFlag ?? true,
+    });
+    return { caption: result.text, tone: result.tone };
   };
 
   if (macroKey === "protein") {
     const cur = proteinCurrent;
     const tgt = proteinTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
-    const c = plainRemainingCaption(cur, tgt, "g");
+    const c = captionFor(cur, tgt, "g");
     return {
       label: "Protein",
       Icon: Dumbbell,
@@ -187,8 +182,8 @@ function buildMacroTile(
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
-      caption: plainRemainingCaption(cur, tgt, "g").caption,
-      captionTone: plainRemainingCaption(cur, tgt, "g").tone,
+      caption: captionFor(cur, tgt, "g").caption,
+      captionTone: captionFor(cur, tgt, "g").tone,
       hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.carbs,
       isOverBudget: tgt > 0 && cur > tgt,
@@ -198,7 +193,7 @@ function buildMacroTile(
     const cur = fatCurrent;
     const tgt = fatTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
-    const c = plainRemainingCaption(cur, tgt, "g");
+    const c = captionFor(cur, tgt, "g");
     return {
       label: "Fat",
       Icon: Droplet,
@@ -217,7 +212,7 @@ function buildMacroTile(
     const tgt = fiberTarget;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     // Fibre over-target is a win, not a flag — no amber caption when over.
-    const c = plainRemainingCaption(cur, tgt, "g", false);
+    const c = captionFor(cur, tgt, "g", { overIsFlag: false });
     return {
       label: "Fibre",
       Icon: Sprout,
@@ -241,7 +236,7 @@ function buildMacroTile(
       valueText: formatMacro(cur, "sugar"),
       targetText: `/ ${tgt} g`,
       pct,
-      caption: `ref ${tgt} g`,
+      caption: captionFor(cur, tgt, "g", { referenceOnly: true }).caption,
       captionTone: "reference",
       hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sugar,
@@ -258,7 +253,7 @@ function buildMacroTile(
       valueText: formatMacro(cur, "sodium"),
       targetText: `/ ${tgt} mg`,
       pct,
-      caption: `ref ${tgt} mg`,
+      caption: captionFor(cur, tgt, "mg", { referenceOnly: true }).caption,
       captionTone: "reference",
       hasValue: cur > 0,
       fillVar: MACRO_COLOR_VARS.sodium,
@@ -270,7 +265,7 @@ function buildMacroTile(
     const tgt = waterTargetMl;
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     // Water over-target is a win, not a flag — no amber caption when over.
-    const c = plainRemainingCaption(cur, tgt, "ml", false);
+    const c = captionFor(cur, tgt, "ml", { overIsFlag: false });
     return {
       label: "Water",
       Icon: Droplet,

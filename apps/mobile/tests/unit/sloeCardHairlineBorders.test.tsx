@@ -57,7 +57,6 @@ describe("resting cards CONSOLIDATED onto <SupprCard> (2026-06-04)", () => {
   // hand-roll the resting-card border chrome themselves.
   const MIGRATED = [
     "components/today/TodayHeroRing.tsx",
-    "components/today/TodayDashboardMacroTiles.tsx",
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayMealsSection.tsx",
     "components/today/TodayDashboardMacroBars.tsx",

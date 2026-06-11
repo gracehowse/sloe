@@ -49,6 +49,7 @@ import Constants from "expo-constants";
 import KeyboardSafeView from "./KeyboardSafeView";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -704,7 +705,7 @@ export default function CreateCustomFoodSheet({
           onPress={onClose}
           style={{
             flex: 1,
-            backgroundColor: "#00000066",
+            backgroundColor: MODAL_OVERLAY_SCRIM,
             justifyContent: "flex-end",
           }}
         >
@@ -1117,7 +1118,7 @@ export default function CreateCustomFoodSheet({
                         style={{
                           fontSize: 13,
                           fontWeight: "600",
-                          color: selected ? "#fff" : colors.text,
+                          color: selected ? Accent.primaryForeground : colors.text,
                         }}
                       >
                         {opt.label}
@@ -1451,7 +1452,7 @@ export default function CreateCustomFoodSheet({
                   style={{
                     fontSize: 14,
                     fontWeight: "700",
-                    color: canSave ? "#fff" : colors.textSecondary,
+                    color: canSave ? Accent.primaryForeground : colors.textSecondary,
                   }}
                 >
                   {saving ? "Saving…" : isEditing ? "Save changes" : "Save food"}

@@ -38,23 +38,31 @@ describe("computePlanWeekSummaryScore", () => {
     expect(computePlanWeekSummaryScore([day(1800)], Number.POSITIVE_INFINITY)).toBeNull();
   });
 
-  it("counts hits as days whose calories sit within ±10% of target", () => {
+  it("counts hits only for at-or-under-target days within the 10% band (ENG-1049)", () => {
     const target = 2000;
-    // Exactly on target, just-inside +10%, just-inside -10%, hot over, cold under
+    // On target, just-inside -10%, hot over (even inside old +10%), cold under
     const plan = [day(2000), day(2200), day(1800), day(2201), day(1799)];
     const score = computePlanWeekSummaryScore(plan, target);
     expect(score).not.toBeNull();
-    // 3 hits (the first three rows), 2 misses (the last two).
-    expect(score?.hits).toBe(3);
+    // 2 hits (on target + 1800 under), 3 misses (over days + 1799 too far under).
+    expect(score?.hits).toBe(2);
     expect(score?.total).toBe(5);
   });
 
-  it("treats the band boundary as a hit (inclusive ±10%)", () => {
+  it("treats the lower band boundary as a hit but not the upper (ENG-1049)", () => {
     const target = 2000;
     const atLowerBand = day(2000 - 2000 * PLAN_SUMMARY_HIT_BAND);
     const atUpperBand = day(2000 + 2000 * PLAN_SUMMARY_HIT_BAND);
     const score = computePlanWeekSummaryScore([atLowerBand, atUpperBand], target);
-    expect(score?.hits).toBe(2);
+    expect(score?.hits).toBe(1);
+  });
+
+  it("does not award 7/7 when every day is over target (ENG-1049)", () => {
+    const target = 2000;
+    const plan = Array.from({ length: 7 }, () => day(2100));
+    const score = computePlanWeekSummaryScore(plan, target)!;
+    expect(score.hits).toBe(0);
+    expect(planWeekHeadlineTone(score)).not.toBe("win");
   });
 
   it("picks the day with the largest negative calorie gap as worstShort", () => {

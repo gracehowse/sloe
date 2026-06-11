@@ -101,6 +101,7 @@ import {
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
 import {
+  computePlanWeekSummaryScore,
   planWeekHeadlineTone,
   type PlanWeekHeadlineTone,
 } from "@suppr/shared/planning/planWeekSummary";
@@ -1319,31 +1320,13 @@ export default function PlannerScreen() {
     [plan],
   );
 
-  const summaryScore = useMemo((): {
-    hits: number;
-    total: number;
-    worstShort: { dayIndex: number; shortBy: number } | null;
-  } | null => {
-    if (!plan || plan.length === 0 || !planTargets || planTargets.calories <= 0) {
-      return null;
-    }
-    const target = planTargets.calories;
-    const tol = target * 0.1;
-    let hits = 0;
-    let worstShort: { dayIndex: number; shortBy: number } | null = null;
-    plan.forEach((dp, idx) => {
-      const total = dp.totals.calories;
-      const diff = total - target;
-      if (Math.abs(diff) <= tol) hits += 1;
-      if (diff < 0) {
-        const shortBy = -diff;
-        if (!worstShort || shortBy > worstShort.shortBy) {
-          worstShort = { dayIndex: idx, shortBy };
-        }
-      }
-    });
-    return { hits, total: plan.length, worstShort };
-  }, [plan, planTargets]);
+  const summaryScore = useMemo(
+    () =>
+      plan && planTargets && planTargets.calories > 0
+        ? computePlanWeekSummaryScore(plan, planTargets.calories)
+        : null,
+    [plan, planTargets],
+  );
 
   // ENG-820 — make the "Hits your targets N of 7" headline state-aware. Behind
   // `redesign_winmoment` (resolved above as `winMomentsEnabled`) the headline is

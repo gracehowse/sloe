@@ -1,6 +1,6 @@
 import React from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
-import { Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
@@ -74,7 +74,7 @@ export function TodayNutrientsModal({
                     minWidth: 140,
                     paddingVertical: Spacing.dense,
                     paddingHorizontal: Spacing.dense,
-                    borderRadius: 10,
+                    borderRadius: Radius.lg,
                     backgroundColor: cardColor,
                     borderWidth: 1,
                     borderColor: cardBorderColor,

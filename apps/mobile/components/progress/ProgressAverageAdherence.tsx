@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -121,7 +121,7 @@ export function ProgressAverageAdherence({
               {onTargetDays.map((on, i) => (
                 <View
                   key={i}
-                  style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: on ? MacroColors.protein : colors.cardBorder }}
+                  style={{ width: 9, height: 9, borderRadius: Radius.full, backgroundColor: on ? MacroColors.protein : colors.cardBorder }}
                 />
               ))}
             </View>
@@ -168,10 +168,10 @@ export function ProgressAverageAdherence({
               {/* §7.3 — adherence-bar track 4–6pt; 6pt keeps the fill
                   legible while reading lighter than the prior 8pt
                   full-width x4 stack (less "tracker dashboard"). */}
-              <View style={{ marginTop: Spacing.sm, height: 6, borderRadius: 999, backgroundColor: colors.inputBg, overflow: "hidden" }}>
+              <View style={{ marginTop: Spacing.sm, height: 6, borderRadius: Radius.full, backgroundColor: colors.inputBg, overflow: "hidden" }}>
                 <View
                   testID={`progress-adherence-bar-${name.toLowerCase()}`}
-                  style={{ height: "100%", width: `${bar.barFillPct}%`, borderRadius: 999, backgroundColor: tone }}
+                  style={{ height: "100%", width: `${bar.barFillPct}%`, borderRadius: Radius.full, backgroundColor: tone }}
                 />
               </View>
             </View>

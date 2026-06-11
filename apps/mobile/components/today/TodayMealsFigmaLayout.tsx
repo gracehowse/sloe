@@ -5,6 +5,7 @@ import { ChevronRight, Utensils } from "lucide-react-native";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import {
+  figmaSlotSummaryTitle,
   nextUnloggedMealSlot,
   TODAY_MEAL_SLOT_ORDER,
 } from "@suppr/shared/copy/today";
@@ -46,6 +47,8 @@ export interface TodayMealsFigmaLayoutProps {
   onOpenFabForSlot: (slot: string) => void;
   /** Tap the meal row — nutrition detail (legacy parity / MFP chevron row). */
   onPressMeal: (mealId: string) => void;
+  /** Multi-item slot summary tap — combined slot nutrition (ENG-508). */
+  onPressSlotSummary?: (slot: string) => void;
   /** Long-press the meal row — edit / action sheet (host decides). */
   onLongPressMeal?: (meal: JournalMeal) => void;
   /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
@@ -60,6 +63,7 @@ export function TodayMealsFigmaLayout({
   onToggleSlotCollapse,
   onOpenFabForSlot,
   onPressMeal,
+  onPressSlotSummary,
   onLongPressMeal,
   onDeleteMeal,
   renderSlotExpanded,
@@ -115,7 +119,9 @@ export function TodayMealsFigmaLayout({
             meals.reduce((s, m) => s + (m.protein ?? 0), 0),
           );
           const primary = meals[0];
-          const thumbUrl = mealRowImageUrl(primary);
+          const isMultiItem = meals.length > 1;
+          const summaryTitle = figmaSlotSummaryTitle(meals);
+          const thumbUrl = isMultiItem ? null : mealRowImageUrl(primary);
           const isOpen = !collapsedSlots.has(slot);
 
           return (
@@ -158,12 +164,24 @@ export function TodayMealsFigmaLayout({
               {(() => {
                 const mealRow = (
                   <Pressable
-                    onPress={() => onPressMeal(primary.id)}
+                    onPress={() => {
+                      if (isMultiItem) {
+                        if (onPressSlotSummary) {
+                          onPressSlotSummary(slot);
+                          return;
+                        }
+                        onToggleSlotCollapse(slot);
+                        return;
+                      }
+                      onPressMeal(primary.id);
+                    }}
                     onLongPress={
-                      onLongPressMeal ? () => onLongPressMeal(primary) : undefined
+                      onLongPressMeal && !isMultiItem
+                        ? () => onLongPressMeal(primary)
+                        : undefined
                     }
                     accessibilityRole="button"
-                    accessibilityLabel={`${primary.recipeTitle}, ${slotCals} kcal`}
+                    accessibilityLabel={`${summaryTitle}, ${slotCals} kcal`}
                     testID={`today-meals-figma-meal-row-${slot}`}
                     style={{
                       flexDirection: "row",
@@ -205,7 +223,7 @@ export function TodayMealsFigmaLayout({
                         }}
                         numberOfLines={1}
                       >
-                        {primary.recipeTitle}
+                        {summaryTitle}
                       </Text>
                       <Text
                         style={{

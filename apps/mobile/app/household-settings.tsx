@@ -46,7 +46,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
@@ -88,11 +88,6 @@ import {
   householdMemberFirstName,
   householdMemberInitials,
 } from "@suppr/shared/household/memberAccents";
-
-/** Sage secondary colour — spec §4 / design-system §2.3 eyebrow colour.
- *  Not in Colors.light (that slot is warm-grey textSecondary #6A6072).
- *  The canonical sage for eyebrows is the --secondary role: #7C8466. */
-const SAGE_SECONDARY = "#7C8466";
 
 /** Sheet top radius — design-system §10.3 specifies radius-xl(20pt) for
  *  sheets. theme.ts Radius.xl=12 (card radius), so the sheet value is kept
@@ -613,7 +608,7 @@ export default function HouseholdSettingsScreen() {
                 }}
               >
                 {/* Eyebrow: Type.label token (sage #7C8466, letterSpacing 0.88, uppercase) */}
-                <Text style={[Type.label, { color: SAGE_SECONDARY }]}>
+                <Text style={[Type.label, { color: MacroColors.protein }]}>
                   Members
                 </Text>
                 <Pressable
@@ -749,7 +744,7 @@ export default function HouseholdSettingsScreen() {
             {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
             <View style={{ marginBottom: Spacing.md }} testID="household-settings-privacy">
               {/* Eyebrow: Type.label token (sage secondary) */}
-              <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
+              <Text style={[Type.label, { color: MacroColors.protein, marginBottom: Spacing.sm }]}>
                 Privacy
               </Text>
               {/* Outer wrapper carries the soft lift (elevation system); inner clips border */}
@@ -795,7 +790,7 @@ export default function HouseholdSettingsScreen() {
             {/* Presets */}
             <View style={{ marginBottom: Spacing.md }}>
               {/* Eyebrow: Type.label token (sage secondary) */}
-              <Text style={[Type.label, { color: SAGE_SECONDARY, marginBottom: Spacing.sm }]}>
+              <Text style={[Type.label, { color: MacroColors.protein, marginBottom: Spacing.sm }]}>
                 Which meals are shared?
               </Text>
               {/* Outer wrapper carries the soft lift (elevation system); inner clips border+overflow */}
@@ -872,7 +867,7 @@ export default function HouseholdSettingsScreen() {
                 }}
               >
                 {/* Eyebrow: Type.label token (sage secondary) */}
-                <Text style={[Type.label, { color: SAGE_SECONDARY }]}>
+                <Text style={[Type.label, { color: MacroColors.protein }]}>
                   Weekly plan
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textTertiary }} testID="household-grid-summary">

@@ -65,6 +65,8 @@ function makeResolvedAdaptive(overrides: Partial<ResolvedMaintenance> = {}): Res
     confidence: "high",
     formulaKcal: 1750,
     adaptiveRejectedAsStale: false,
+    adaptiveRejectedBelowFormula: false,
+    rejectedAdaptiveKcal: null,
     ...overrides,
   };
 }

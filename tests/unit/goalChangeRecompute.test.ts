@@ -413,33 +413,46 @@ describe("goal-change recompute — persistence contract", () => {
     expect(updates[1].goal).toBe("cut");
   });
 
-  it("computes the preview off ADAPTIVE maintenance when confident + fresh", async () => {
-    // Stage 2 (target-recompute unification, 2026-05-26): the editor now
-    // passes the adaptive columns. With a LOWER adaptive maintenance than
-    // the sedentary-seeded formula (1,584 for this fixture, TDEE gating
-    // 2026-06-10), the cut target must drop — the core fix.
+  it("rejects below-formula adaptive maintenance for target preview (ENG-1057)", async () => {
+    // When adaptive sits below the sedentary formula, resolveMaintenance
+    // falls back to formula — the preview must not trust the collapsed number.
     const now = new Date("2026-05-26T09:00:00.000Z");
-    const fresh = "2026-05-20T09:00:00.000Z"; // 6 days old → fresh (<14d)
+    const fresh = "2026-05-20T09:00:00.000Z";
 
     const staticCut = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut", now })!;
     const adaptiveCut = recomputeTargetsFromProfile({
       ...FIXTURE,
       goal: "cut",
-      adaptiveTdee: 1400, // lower than the sedentary seed (1,584)
+      adaptiveTdee: 1400,
       adaptiveTdeeConfidence: "high",
       adaptiveTdeeUpdatedAt: fresh,
       now,
     })!;
 
-    // Adaptive maintenance is the deficit baseline → lower target + lower
-    // reported maintenance.
-    expect(adaptiveCut.maintenanceTdee).toBe(1400);
-    expect(staticCut.maintenanceTdee).toBe(1584); // sedentary seed
-    expect(adaptiveCut.target_calories).toBeLessThan(staticCut.target_calories);
-    // steady = 0.5 kg/week → -550 deficit. 1400 - 550 = 850, far below the
-    // female safety floor (1200) — so the floor flag fires more often off
-    // the adaptive number. That's correct, per the spec.
-    expect(adaptiveCut.target_calories).toBe(850);
+    expect(adaptiveCut.maintenanceTdee).toBe(1584);
+    expect(staticCut.maintenanceTdee).toBe(1584);
+    expect(adaptiveCut.target_calories).toBe(staticCut.target_calories);
+  });
+
+  it("computes the preview off ADAPTIVE maintenance when confident + fresh and above formula", async () => {
+    const now = new Date("2026-05-26T09:00:00.000Z");
+    const fresh = "2026-05-20T09:00:00.000Z";
+
+    const staticCut = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut", now })!;
+    const adaptiveCut = recomputeTargetsFromProfile({
+      ...FIXTURE,
+      goal: "cut",
+      adaptiveTdee: 1700,
+      adaptiveTdeeConfidence: "high",
+      adaptiveTdeeUpdatedAt: fresh,
+      now,
+    })!;
+
+    expect(adaptiveCut.maintenanceTdee).toBe(1700);
+    expect(staticCut.maintenanceTdee).toBe(1584);
+    expect(adaptiveCut.target_calories).toBeGreaterThan(staticCut.target_calories);
+    expect(adaptiveCut.target_calories).toBe(1150);
+    expect(staticCut.target_calories).toBe(1034);
   });
 
   it("falls back to the SEDENTARY-seeded formula maintenance when the adaptive value is stale", () => {

@@ -153,7 +153,7 @@ function PanelRow({
         style={{
           flex: 1.4,
           height: 6,
-          borderRadius: 999,
+          borderRadius: Radius.full,
           backgroundColor: `${color}24`,
           overflow: "hidden",
         }}
@@ -164,7 +164,7 @@ function PanelRow({
           style={{
             width: `${barWidthPct}%`,
             height: "100%",
-            borderRadius: 999,
+            borderRadius: Radius.full,
             backgroundColor: color,
           }}
           testID={`full-panel-bar-fill-${row.key}`}

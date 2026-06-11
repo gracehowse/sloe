@@ -15,6 +15,7 @@ import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   addDays,
   sanitizeCopyTargets,
@@ -129,7 +130,7 @@ export default function CopyMealSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable
         onPress={onClose}
-        style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
+        style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
       >
         <Pressable
           onPress={() => {}}

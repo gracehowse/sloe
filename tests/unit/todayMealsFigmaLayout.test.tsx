@@ -58,6 +58,44 @@ describe("TodayMealsFigmaLayout (web)", () => {
     expect(screen.getByTestId("today-log-slot-cta-Lunch")).toBeTruthy();
   });
 
+  it("shows aggregate summary title for multi-item slots (ENG-1058)", () => {
+    render(
+      <TodayMealsFigmaLayout
+        mealsGrouped={[
+          {
+            name: "Breakfast",
+            meals: [
+              {
+                id: "1",
+                name: "Breakfast",
+                recipeTitle: "good culture · 4% Milkfat Classic",
+                calories: 141,
+                protein: 25,
+                carbs: 4,
+                fat: 8,
+              },
+              {
+                id: "2",
+                name: "Breakfast",
+                recipeTitle: "Cherry Tomatoes",
+                calories: 28,
+                protein: 1,
+                carbs: 6,
+                fat: 0,
+              },
+            ],
+          },
+        ]}
+        collapsedSlots={new Set()}
+        onToggleSlot={vi.fn()}
+        onOpenAddForSlot={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("2 items")).toBeTruthy();
+    expect(screen.getByText(/169 kcal • 26g P/)).toBeTruthy();
+    expect(screen.queryByText("good culture · 4% Milkfat Classic")).toBeNull();
+  });
+
   it("uses Sloe stroke icons (not Lucide CircleCheck)", () => {
     const { container } = render(
       <>

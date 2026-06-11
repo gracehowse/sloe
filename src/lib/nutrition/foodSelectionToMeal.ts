@@ -1,0 +1,152 @@
+/**
+ * Food-selection → meal macros (teardown #2 basket, ENG-1042, 2026-06-11).
+ *
+ * The math that turns a `SelectedFood` / `FoodSearchSelection` (the payload the
+ * food-search panel emits on pick) into the scaled per-meal macros + micros was
+ * duplicated verbatim between mobile `handleFoodSearchSelect`
+ * (`apps/mobile/app/(tabs)/index.tsx`) and web `commitFoodSearchSelection`
+ * (`src/app/components/NutritionTracker.tsx`). The multi-add basket needs to
+ * build the SAME row for each pick (so a basketed item logs identically to an
+ * instant-logged one), and a basket of N items must not re-implement the math a
+ * third time. So the scaling core is extracted here — pure, shared, one source
+ * of truth — and both hosts (instant-log AND basket-add) call it.
+ *
+ * Pure: no React, no Supabase, no `Date`. Mobile imports via
+ * `@suppr/shared/nutrition/foodSelectionToMeal`.
+ *
+ * The per-serving vs per-100g branch is the ENG-745 predicate
+ * (`isPerServingPortion`) — kept identical to the preview so what the user sees
+ * is what gets logged.
+ */
+
+import { isPerServingPortion } from "./foodSearchCore";
+import { scaleMicrosForGrams } from "../openFoodFacts/parseOffMicros";
+import { scaleMicrosPerServing } from "./scaleMicrosPerServing";
+import { scaleCaffeineAlcohol } from "./scaleCaffeineAlcoholForGrams";
+
+/** The minimal selection shape this helper needs — a structural subset of both
+ *  the mobile `SelectedFood` and the web `FoodSearchSelection`. */
+export type FoodSelectionLike = {
+  name: string;
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "history" | string;
+  macrosPer100g: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG: number;
+    sugarG?: number;
+    sodiumMg?: number;
+    caffeineMgPer100g?: number | null;
+    alcoholGPer100g?: number | null;
+  } | null;
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
+  microsPer100g?: Record<string, number>;
+  microsPerServing?: Record<string, number>;
+  chosenPortion: { label: string; gramWeight: number; servingFraction?: number };
+  quantity: number;
+  imageUrl?: string | null;
+};
+
+/** The platform-neutral scaled core. Each host assembles its own
+ *  `JournalMeal` / `LoggedMeal` from these numbers + its slot/time/title. */
+export type LoggedMealMacros = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+  /** Scaled micros map (fiber/sugar/sodium/caffeine/alcohol/etc.), already
+   *  rounded per the shared decimal convention; `{}` when none. */
+  micros: Record<string, number>;
+};
+
+/**
+ * Human-readable journal `source` label for a selection — the attribution the
+ * user sees on the logged row. Mirrors the (previously duplicated) mapping in
+ * both hosts. A `"history"` re-log is labelled neutrally ("Manual") rather than
+ * misattributed to a database source (ENG-1033).
+ */
+export function foodSelectionSourceLabel(source: FoodSelectionLike["source"]): string {
+  switch (source) {
+    case "CUSTOM":
+      return "Custom food";
+    case "OFF":
+      return "Open Food Facts";
+    case "Edamam":
+      return "Edamam";
+    case "FatSecret":
+      return "FatSecret";
+    case "history":
+      return "Manual";
+    default:
+      return "USDA FoodData Central";
+  }
+}
+
+/** The `food_logged.source` analytics value for a selection (custom vs the
+ *  canonical shared-food "manual"). */
+export function foodSelectionAnalyticsSource(
+  source: FoodSelectionLike["source"],
+): "custom_food" | "manual" {
+  return source === "CUSTOM" ? "custom_food" : "manual";
+}
+
+/**
+ * Scale a food-search selection into per-meal macros + micros. Single source of
+ * truth for instant-log AND basket-add on both platforms.
+ *
+ * - **Per-serving path** (FatSecret no-metric / count servings like "1 large
+ *   tomato"): `gramWeight === 0` + `macrosPerServing` present →
+ *   `macrosPerServing × (quantity × servingFraction)`, micros via
+ *   `scaleMicrosPerServing`. No caffeine/alcohol (no per-100g basis).
+ * - **Per-100g path**: scale `macrosPer100g` by `grams / 100`; micros via
+ *   `scaleMicrosForGrams` + scaled caffeine/alcohol overrides.
+ *
+ * All outputs are floored at 0 (never negative) and never invented.
+ */
+export function foodSelectionToMealMacros(selection: FoodSelectionLike): LoggedMealMacros {
+  const grams = selection.chosenPortion.gramWeight * selection.quantity;
+  const f = grams / 100;
+
+  const perServing = isPerServingPortion({
+    gramWeight: selection.chosenPortion.gramWeight,
+    hasMacrosPerServing: Boolean(selection.macrosPerServing),
+  });
+
+  if (perServing) {
+    const ps = selection.macrosPerServing!;
+    const fraction = selection.chosenPortion.servingFraction ?? 1;
+    const q = selection.quantity * fraction;
+    const micros = scaleMicrosPerServing(selection.microsPerServing, q);
+    const fiberFromMicros = micros.fiberG;
+    return {
+      calories: Math.max(0, Math.round(ps.calories * q)),
+      protein: Math.max(0, Math.round(ps.protein * q * 10) / 10),
+      carbs: Math.max(0, Math.round(ps.carbs * q * 10) / 10),
+      fat: Math.max(0, Math.round(ps.fat * q * 10) / 10),
+      fiberG: typeof fiberFromMicros === "number" ? fiberFromMicros : 0,
+      micros,
+    };
+  }
+
+  const m = selection.macrosPer100g!;
+  const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+    grams,
+    caffeineMgPer100g: m.caffeineMgPer100g ?? null,
+    alcoholGPer100g: m.alcoholGPer100g ?? null,
+  });
+  const explicitMicros: Record<string, number> = {};
+  if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+  if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+  const micros = scaleMicrosForGrams(selection.microsPer100g ?? {}, grams, explicitMicros);
+
+  return {
+    calories: Math.max(0, Math.round(m.calories * f)),
+    protein: Math.max(0, Math.round(m.protein * f * 10) / 10),
+    carbs: Math.max(0, Math.round(m.carbs * f * 10) / 10),
+    fat: Math.max(0, Math.round(m.fat * f * 10) / 10),
+    fiberG: Math.round(m.fiberG * f * 10) / 10,
+    micros,
+  };
+}

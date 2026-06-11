@@ -43,6 +43,12 @@ describe("mobile nutrition-sources screen parity", () => {
     expect(src).not.toMatch(/\bconst\s+SOURCES\s*=\s*\[/);
   });
 
+  it("uses the shared chevron back affordance (not the legacy text back marker)", () => {
+    expect(src).toMatch(/ChevronLeft/);
+    expect(src).not.toMatch(/‹ Back/);
+    expect(src).not.toMatch(/topTitle/);
+  });
+
   it("SOURCE_DETAILS covers every source in NUTRITION_SOURCES", () => {
     for (const name of NUTRITION_SOURCES) {
       // Each source's canonical name must appear inside the

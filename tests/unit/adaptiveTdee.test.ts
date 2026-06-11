@@ -215,12 +215,11 @@ describe("computeAdaptiveTDEE — R1 completeness gate (Grace's real series)", (
     // is the pure gate signal — trend-independent — vs the ungated 1,369.
     expect(result!.avgDailyIntake).toBe(1675);
 
-    // The PRODUCTION number (R1 gate + R2 least-squares slope): 1,592.
-    //   gated mean 1,675 − slope energy (+0.0107 kg/day × 7,700 = +83) = 1,592.
-    // Inside Grace's expected 1,500–1,600 band. (The forensic's 1,626 figure
-    // is the same gate with the OLD EMA trend, energy +49 — see the gate-
-    // isolation test below; R2 swaps EMA→slope so the shipped number is 1,592.)
-    expect(result!.tdee).toBe(1592);
+    // The PRODUCTION number (R1 gate + R2 daily-interpolated slope, ENG-1024):
+    //   gated mean 1,675 − slope energy (+0.0067 kg/day × 7,700 ≈ +52) = 1,623.
+    // Inside Grace's expected 1,500–1,600 band (upper edge). The pre-ENG-1024
+    // raw-point slope read +83 → 1,592; gap-filling damps sparse-point leverage.
+    expect(result!.tdee).toBe(1623);
     expect(result!.tdee).toBeGreaterThanOrEqual(1500);
     expect(result!.tdee).toBeLessThanOrEqual(1650);
 
@@ -426,6 +425,28 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     expect(result.tdee).toBe(1800 + 385);
   });
 
+  it("ENG-1024: weekly weigh-ins recover the same slope as daily after gap-fill", () => {
+    freeze();
+    const intakeByDay: Record<string, number> = {};
+    const weightByDayDaily: Record<string, number> = {};
+    const weightByDayWeekly: Record<string, number> = {};
+    for (let i = 0; i < 21; i++) {
+      const d = new Date("2026-06-10T16:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() - (20 - i));
+      const key = d.toISOString().slice(0, 10);
+      intakeByDay[key] = 1800;
+      const w = 80 - i * (0.3 / 7);
+      weightByDayDaily[key] = w;
+      if (i % 7 === 0 || i === 20) weightByDayWeekly[key] = w;
+    }
+    const daily = computeAdaptiveTDEE({ intakeByDay, weightByDay: weightByDayDaily })!;
+    const weekly = computeAdaptiveTDEE({ intakeByDay, weightByDay: weightByDayWeekly })!;
+    expect(weekly.smoothedWeightChangeKgPerDay).toBeCloseTo(
+      daily.smoothedWeightChangeKgPerDay,
+      3,
+    );
+  });
+
   it("forensic R2 arithmetic: slope reads Grace's real weigh-ins, not the muted EMA", () => {
     // Grace's 6 raw weigh-ins (forensic §2): 54.4 → 55.0 over 27 days. The
     // forensic showed the OLD per-weigh-in EMA(α=0.1) captured only +0.1716 kg
@@ -457,14 +478,13 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
       weightByDay[d.toISOString().slice(0, 10)] = kg;
     }
     const result = computeAdaptiveTDEE({ intakeByDay, weightByDay })!;
-    // Least-squares slope over the 6 real weigh-ins ≈ +0.0107 kg/day (gaining).
-    expect(result.smoothedWeightChangeKgPerDay).toBeCloseTo(0.0107, 3);
+    // Daily-interpolated least-squares slope (ENG-1024) ≈ +0.0067 kg/day.
+    expect(result.smoothedWeightChangeKgPerDay).toBeCloseTo(0.0067, 3);
     const slopeEnergy = result.smoothedWeightChangeKgPerDay * 7700;
-    // Slope energy ≈ +83 kcal — ~70% stronger than the EMA's muted +49
-    // (forensic §3). Pin the band rather than the exact integer so 4dp
-    // rounding of the surfaced field can't make this brittle.
-    expect(slopeEnergy).toBeGreaterThanOrEqual(80);
-    expect(slopeEnergy).toBeLessThanOrEqual(85);
+    // Still stronger than the OLD EMA's muted +49, but less levered than the
+    // raw 6-point slope (+83) that sparse endpoints used to own.
+    expect(slopeEnergy).toBeGreaterThanOrEqual(48);
+    expect(slopeEnergy).toBeLessThanOrEqual(55);
     expect(slopeEnergy).toBeGreaterThan(49);
   });
 

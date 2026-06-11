@@ -69,7 +69,7 @@ export function GET() {
     <title>Sloe — What's new</title>
     <link>${escapeXml(pageUrl)}</link>
     <atom:link href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml" />
-    <description>New features, fixes, and what's coming in Suppr.</description>
+    <description>New features, fixes, and what's coming in Sloe.</description>
     <language>en</language>
 ${items}
   </channel>

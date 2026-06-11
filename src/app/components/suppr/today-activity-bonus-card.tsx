@@ -137,6 +137,8 @@ export function TodayActivityBonusCard({
             confidence: maintenanceConfidence ?? null,
             formulaKcal: null,
             adaptiveRejectedAsStale: false,
+            adaptiveRejectedBelowFormula: false,
+            rejectedAdaptiveKcal: null,
           })
         : buildTdeeExplainerCopy({
             maintenanceTdeeKcal: maintenanceTdeeKcal!,

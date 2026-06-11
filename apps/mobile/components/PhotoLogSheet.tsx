@@ -58,6 +58,7 @@ import { ArrowRight, Camera, Images, Plus, X } from "lucide-react-native";
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   averageConfidence,
   type AiLoggedItem,
@@ -467,7 +468,7 @@ export default function PhotoLogSheet({
       >
         <Pressable
           onPress={onClose}
-          style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
         >
           <Pressable
             onPress={() => {}}

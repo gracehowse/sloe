@@ -42,7 +42,7 @@ describe("TodayDashboardMacroTiles (web) — per-tile caption (gap 4)", () => {
   it('shows "N g remaining" (sage) under target', () => {
     const { getByTestId } = render(<TodayDashboardMacroTiles {...baseProps} />);
     const cap = getByTestId("today-macro-tile-caption-protein");
-    expect(cap.textContent).toBe("44 g remaining");
+    expect(cap.textContent).toBe("44g remaining");
     expect(cap.className).toMatch(/text-success/);
   });
 
@@ -51,7 +51,7 @@ describe("TodayDashboardMacroTiles (web) — per-tile caption (gap 4)", () => {
       <TodayDashboardMacroTiles {...baseProps} proteinCurrent={210} />,
     );
     const cap = getByTestId("today-macro-tile-caption-protein");
-    expect(cap.textContent).toBe("70 g over");
+    expect(cap.textContent).toBe("70g over");
     // Amber as text uses the AA-safe solid token (inline style).
     expect((cap as HTMLElement).style.color).toBe("var(--accent-warning-solid)");
   });
@@ -61,7 +61,7 @@ describe("TodayDashboardMacroTiles (web) — per-tile caption (gap 4)", () => {
       <TodayDashboardMacroTiles {...baseProps} trackedMacros={["sugar"]} />,
     );
     const cap = getByTestId("today-macro-tile-caption-sugar");
-    expect(cap.textContent).toBe("ref 50 g");
+    expect(cap.textContent).toBe("ref 50g");
     expect(cap.className).toMatch(/text-foreground-tertiary/);
   });
 

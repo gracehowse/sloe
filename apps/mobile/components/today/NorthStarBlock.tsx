@@ -27,7 +27,7 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Colors, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Colors, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -342,7 +342,7 @@ function NorthStarFigmaHero({
         </Svg>
         {showFitsBadge ? (
           <View style={styles.figmaFitsBadge}>
-            <Check size={14} color="#FFFFFF" strokeWidth={2.5} />
+            <Check size={14} color={Accent.primaryForeground} strokeWidth={2.5} />
             <Text style={styles.figmaFitsText}>Fits your day</Text>
           </View>
         ) : null}
@@ -354,7 +354,7 @@ function NorthStarFigmaHero({
             hitSlop={6}
             style={styles.figmaSkipButton}
           >
-            <X size={14} color="#FFFFFF" strokeWidth={2.25} />
+            <X size={14} color={Accent.primaryForeground} strokeWidth={2.25} />
           </Pressable>
         ) : null}
         <View style={styles.figmaHeroFooter}>
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 8,
     paddingVertical: Spacing.xs,
-    borderRadius: 999,
+    borderRadius: Radius.full,
   },
   cta: {
     height: 36,
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: "hidden",
     position: "relative",
-    shadowColor: "#221B26",
+    shadowColor: Colors.light.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 14,
@@ -719,10 +719,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(94,124,90,0.9)",
     paddingHorizontal: Spacing.dense,
     paddingVertical: Spacing.sm,
-    borderRadius: 999,
+    borderRadius: Radius.full,
   },
   figmaFitsText: {
-    color: "#FFFFFF",
+    color: Accent.primaryForeground,
     fontSize: 12,
     fontWeight: "500",
   },
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 999,
+    borderRadius: Radius.full,
     backgroundColor: "rgba(0,0,0,0.3)",
   },
   figmaHeroFooter: {
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 28,
     fontWeight: "500",
-    color: "#FFFFFF",
+    color: Accent.primaryForeground,
     marginBottom: 4,
   },
   figmaKcalRow: {

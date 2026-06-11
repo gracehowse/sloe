@@ -6,6 +6,7 @@ import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 type Theme = {
   text: string;
@@ -71,15 +72,25 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable
         onPress={onClose}
-        style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "center", padding: Spacing.lg }}
+        style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "center", padding: Spacing.lg }}
       >
         <Pressable onPress={() => {}} style={{ backgroundColor: colors.card, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1, borderColor: colors.cardBorder }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.md }}>
-            <Pressable onPress={goPrevMonth} hitSlop={12}>
+            <Pressable
+              onPress={goPrevMonth}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+            >
               <Ionicons name="chevron-back" size={22} color={colors.text} />
             </Pressable>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
-            <Pressable onPress={goNextMonth} hitSlop={12}>
+            <Pressable
+              onPress={goNextMonth}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+            >
               <Ionicons name="chevron-forward" size={22} color={colors.text} />
             </Pressable>
           </View>

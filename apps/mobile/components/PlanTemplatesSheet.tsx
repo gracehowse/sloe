@@ -23,7 +23,7 @@ import {
   View,
   StyleSheet,
 } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { PlanTemplate } from "@suppr/shared/nutrition/planTemplates";
@@ -205,7 +205,7 @@ export function PlanTemplatesSheet({
               ))}
             </View>
             {sourceMealCount === 0 ? (
-              <Text style={{ color: "#b45309", fontSize: 12, marginTop: Spacing.md }}>
+              <Text style={{ color: Accent.warningSolid, fontSize: 12, marginTop: Spacing.md }}>
                 This plan has no meals to save. Generate a plan first.
               </Text>
             ) : (
@@ -214,7 +214,7 @@ export function PlanTemplatesSheet({
               </Text>
             )}
             {error ? (
-              <Text style={{ color: "#dc2626", fontSize: 12, marginTop: Spacing.sm }}>
+              <Text style={{ color: Accent.destructive, fontSize: 12, marginTop: Spacing.sm }}>
                 {error}
               </Text>
             ) : null}
@@ -297,7 +297,7 @@ export function PlanTemplatesSheet({
                     accessibilityLabel={`Delete ${t.name}`}
                     style={styles.rowBtn}
                   >
-                    <Text style={{ color: "#dc2626", fontWeight: "600" }}>Delete</Text>
+                    <Text style={{ color: Accent.destructive, fontWeight: "600" }}>Delete</Text>
                   </Pressable>
                 </View>
               ))

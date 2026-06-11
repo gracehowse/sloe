@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
+import { Beaker, BookOpen, ChevronLeft, Database, ExternalLink, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -79,27 +78,15 @@ export default function NutritionSourcesScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        topBar: {
+        header: {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: Spacing.lg,
+          gap: Spacing.sm,
+          paddingHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: colors.border,
         },
-        backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-        // INFO overline + source links read in `accent.primarySolid` — small
-        // accent text uses the solid variant per the Sloe treatment system
-        // (2026-06-08). On dark, the hook returns the lifted aubergine
-        // `#C4ACD0` so small text stays legible on near-black.
-        topTitle: { color: accent.primarySolid, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+        title: { ...Type.screenTitle, color: colors.text },
         scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
-        // SLOE Spec 3 (2026-06-09): the large in-body H1 ("About nutrition data")
-        // tokenised onto the shared `Type.screenTitle` (Newsreader serif 28/34/600).
-        // Was `Type.title` (serifRegular 24/400) — a step down from the screen-title
-        // voice every sibling sub-screen now shares.
-        heading: { ...Type.screenTitle, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -155,16 +142,19 @@ export default function NutritionSourcesScreen() {
 
   return (
     <View testID="screen-nutrition-sources" style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.topBar}>
-        <Pressable onPress={goBack} hitSlop={12}>
-          <Text style={styles.backText}>‹ Back</Text>
+      <View style={styles.header}>
+        <Pressable
+          onPress={goBack}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={styles.topTitle}>INFO</Text>
-        <View style={{ width: 50 }} />
+        <Text style={styles.title}>Nutrition sources</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.heading}>About nutrition data</Text>
         <Text style={styles.intro}>
           Sloe combines multiple trusted databases to give you the most accurate nutrition information
           possible, wherever you are in the world. When you import a recipe or search for a food, we check
@@ -204,7 +194,7 @@ export default function NutritionSourcesScreen() {
                 <Pressable onPress={() => Linking.openURL(detail.url)}>
                   <Text style={styles.sourceLink}>
                     {detail.url.replace("https://", "")}{" "}
-                    <Ionicons name="open-outline" size={12} color={accent.primarySolid} />
+                    <ExternalLink size={12} color={accent.primarySolid} strokeWidth={1.75} />
                   </Text>
                 </Pressable>
               </View>

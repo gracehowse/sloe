@@ -69,15 +69,15 @@ describe("PlanDayMacroSummary", () => {
     expect(getByText("Fi 29g")).toBeTruthy();
   });
 
-  it("treats a zero target as 'on track' rather than dividing by zero", () => {
+  it("treats a zero target as value-only (no delta row) rather than dividing by zero", () => {
     const { getByText, queryByText } = render(
       <PlanDayMacroSummary
         cells={[{ label: "Fi", value: 12, target: 0, color: "#4A7878" }]}
       />,
     );
-    // No target → nothing to miss → reads "On track" (pct guarded to 0,
-    // which sits inside the close band). No crash, no spurious gap.
-    expect(getByText("On track")).toBeTruthy();
+    // No target → MacroStatPill suppresses the delta line entirely.
+    expect(getByText("Fi 12g")).toBeTruthy();
+    expect(queryByText("On track")).toBeNull();
     expect(queryByText("+12g")).toBeNull();
   });
 });

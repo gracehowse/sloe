@@ -46,7 +46,7 @@ function fireHaptic(haptic: PressableScaleHaptic): void {
     if (haptic === "selection") {
       void Haptics.selectionAsync();
     } else if (haptic === "confirm") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else if (haptic === "success") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }

@@ -46,6 +46,7 @@ import {
 } from "@suppr/shared/recipes/importErrorCopy";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
@@ -947,7 +948,7 @@ export default function CreateRecipeScreen() {
       ...Type.heroValue, color: colors.text, minWidth: 44, textAlign: "center",
       fontVariant: ["tabular-nums"] as any,
     },
-    modalBackdrop: { flex: 1, backgroundColor: "#0007", justifyContent: "flex-end" },
+    modalBackdrop: { flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" },
     modalCard: {
       backgroundColor: colors.background,
       borderTopLeftRadius: SHEET_RADIUS,

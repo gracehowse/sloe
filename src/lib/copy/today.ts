@@ -383,6 +383,17 @@ export function todayRoomForMeal(
  *  `JournalMeal.name` values, already slot-normalised by the caller via
  *  `normalizeJournalSlotName`). Matching is case-insensitive on the slot
  *  word so a stray casing variant ("dinner") still counts as logged. */
+/** Figma `654:2` summary row title — one logged entry shows the food name;
+ *  multi-item slots show an aggregate count (ENG-1058). */
+export function figmaSlotSummaryTitle(
+  meals: ReadonlyArray<{ recipeTitle: string }>,
+): string {
+  if (meals.length <= 1) {
+    return meals[0]?.recipeTitle?.trim() ?? "";
+  }
+  return `${meals.length} items`;
+}
+
 export function nextUnloggedMealSlot(
   loggedSlots: Iterable<string>,
 ): TodayMealSlot | null {
@@ -421,7 +432,7 @@ export function todayHealthConnectActiveCaloriesHint(): string {
 
 /** Energy balance empty-state when no burn data yet (ENG-873). */
 export function todayHealthConnectEnergyEmptyHint(): string {
-  return `No resting or active energy for this day in Suppr yet. Open ${TODAY_HEALTH_CONNECT_ROUTE}, enable Apple Health, then pull to refresh or revisit this tab to sync.`;
+  return `No resting or active energy for this day in Sloe yet. Open ${TODAY_HEALTH_CONNECT_ROUTE}, enable Apple Health, then pull to refresh or revisit this tab to sync.`;
 }
 
 /** 7-day rolling card — avg vs weekly totals use different denominators (F-06). */

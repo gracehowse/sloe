@@ -1685,13 +1685,15 @@ export default function FoodSearchPanel({
   // give the panel `flex: 1` so the FlatList / ScrollView can scroll
   // independently of the caller's surrounding chrome.
   if (preview && previewMacros) {
+    const previewHorizontalPad = mode === "compact" ? Spacing.md : Spacing.xl;
     return (
+      <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingHorizontal: mode === "compact" ? Spacing.md : Spacing.xl,
+          paddingHorizontal: previewHorizontalPad,
           paddingTop: Spacing.lg,
-          paddingBottom: 40,
+          paddingBottom: Spacing.md,
         }}
         keyboardShouldPersistTaps="handled"
       >
@@ -1892,41 +1894,52 @@ export default function FoodSearchPanel({
               </View>
             </View>
           ) : null}
-
-          <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
-            <Pressable
-              testID="food-search-preview-use-this"
-              style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
-              onPress={onConfirmPreview}
-            >
-              <Check size={18} color={colors.primaryForeground} />
-              <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
-            </Pressable>
-            {/* Multi-add basket (teardown #2): "Add" stages this item into the
-                basket and returns to results so the user keeps building — the
-                sheet stays open. Outline secondary so "Use this" remains the
-                one filled CTA. Only shown when the host wires `onAddToBasket`. */}
-            {onAddToBasket ? (
-              <Pressable
-                testID="food-search-preview-add-to-basket"
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${preview.name} to basket`}
-                style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1.5, borderColor: accent.primarySolid }}
-                onPress={onAddPreviewToBasket}
-              >
-                <Plus size={18} color={accent.primarySolid} />
-                <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Add</Text>
-              </Pressable>
-            ) : null}
-          </View>
-          <Pressable
-            style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", marginTop: Spacing.sm }}
-            onPress={() => setPreview(null)}
-          >
-            <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
-          </Pressable>
         </View>
       </ScrollView>
+      {/* ENG-1054 — pin commit CTAs above the keyboard / fold so "Use this"
+          stays visible without scrolling past nutrition + fit-hint rows. */}
+      <View
+        testID="food-search-preview-sticky-footer"
+        style={{
+          paddingHorizontal: previewHorizontalPad,
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.lg,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+          gap: Spacing.sm,
+        }}
+      >
+        <View style={{ flexDirection: "row", gap: Spacing.md }}>
+          <Pressable
+            testID="food-search-preview-use-this"
+            style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+            onPress={onConfirmPreview}
+          >
+            <Check size={18} color={colors.primaryForeground} />
+            <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
+          </Pressable>
+          {onAddToBasket ? (
+            <Pressable
+              testID="food-search-preview-add-to-basket"
+              accessibilityRole="button"
+              accessibilityLabel={`Add ${preview.name} to basket`}
+              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1.5, borderColor: accent.primarySolid }}
+              onPress={onAddPreviewToBasket}
+            >
+              <Plus size={18} color={accent.primarySolid} />
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Add</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Pressable
+          style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center" }}
+          onPress={() => setPreview(null)}
+        >
+          <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
+        </Pressable>
+      </View>
+      </View>
     );
   }
 

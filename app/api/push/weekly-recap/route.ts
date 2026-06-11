@@ -478,7 +478,7 @@ async function runWeeklyRecapPush(req: Request) {
   //    only. `title`/`body` are hoisted onto the composed record so the
   //    web-push fan-out reuses the exact same copy without reaching into
   //    a possibly-null Expo message.
-  const RECAP_TITLE = "Your week in Suppr";
+  const RECAP_TITLE = "Your week in Sloe";
   type Composed = {
     row: ProfileRow;
     message: ExpoPushMessage | null;

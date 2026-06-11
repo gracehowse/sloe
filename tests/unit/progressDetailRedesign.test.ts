@@ -91,7 +91,7 @@ describe("ENG-824 — weight win-moment parity (both platforms)", () => {
       "Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)",
     );
     expect(MOBILE_SHEET).toContain(
-      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)",
+      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)",
     );
   });
 

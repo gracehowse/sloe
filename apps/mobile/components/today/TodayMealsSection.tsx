@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
+import { figmaSlotSummaryTitle } from "@suppr/shared/copy/today";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -777,6 +779,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           onToggleSlotCollapse={onToggleSlotCollapse}
           onOpenFabForSlot={onOpenFabForSlot}
           onPressMeal={onPressMeal}
+          onPressSlotSummary={onPressSlotSummary}
           onLongPressMeal={handleMealLongPress}
           onDeleteMeal={onDeleteMeal}
           renderSlotExpanded={(slot, meals) => {
@@ -788,7 +791,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             // "+ Add food" so the slot stays editable. Mirrors the macro-detail
             // "true duplicate" rule (single entry literally named after the
             // header) from `apps/mobile/app/macro-detail.tsx` (2026-06-10).
-            const headerTitle = (meals[0]?.recipeTitle ?? "").trim();
+            const headerTitle = figmaSlotSummaryTitle(meals);
             const redundantSingleRow =
               meals.length === 1 &&
               (meals[0]?.recipeTitle ?? "").trim() === headerTitle &&
@@ -951,7 +954,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       // live where stronger" call vs the frame's monochrome chip.
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: Radius.lg,
                       backgroundColor: col + "18",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1030,7 +1033,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           gap: 4,
                           paddingHorizontal: Spacing.dense,
                           paddingVertical: 4,
-                          borderRadius: 999,
+                          borderRadius: Radius.full,
                           backgroundColor: col + "18",
                           borderWidth: 1,
                           borderColor: col + "30",
@@ -1121,7 +1124,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       gap: Spacing.sm,
                       paddingHorizontal: Spacing.dense,
                       paddingVertical: Spacing.sm,
-                      borderRadius: 999,
+                      borderRadius: Radius.full,
                       backgroundColor: col + "18",
                       borderWidth: 1,
                       borderColor: col + "30",
@@ -1486,7 +1489,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             setUsualPicker(null);
             setUsualPickerShowAll(false);
           }}
-          style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
         >
           <Pressable
             onPress={() => {}}

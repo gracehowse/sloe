@@ -23,8 +23,13 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     window.localStorage.removeItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
   });
 
-  it("renders exactly four primary nav items in the canonical order", () => {
+  it("renders exactly four primary nav items in the canonical Plan-first order", () => {
     render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const nav = document.getElementById("desktop-sidebar-nav");
+    const labels = Array.from(
+      nav!.querySelectorAll<HTMLButtonElement>(":scope > ul > li > button"),
+    ).map((button) => button.textContent?.trim());
+    expect(labels).toEqual(["Today", "Plan", "Recipes", "Progress"]);
     expect(screen.getByRole("button", { name: /^Today$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Recipes$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Plan$/ })).toBeDefined();

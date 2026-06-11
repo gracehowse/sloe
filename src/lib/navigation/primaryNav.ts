@@ -47,8 +47,9 @@ export interface PrimaryNavItem {
  * The canonical Plan-first order + glyph assignment. The ORDER of this
  * array is the canonical tab order; the `glyph` on each item is the
  * canonical icon. Every nav surface must render these four in this order
- * with these glyphs (web behind the `nav-tab-order-plan-first` flag while
- * it ramps).
+ * with these glyphs. Web defaults to this order (native leads); set the
+ * `nav-tab-order-plan-first` flag to `false` to roll back to legacy
+ * Recipes-first while ramping.
  */
 export const PRIMARY_NAV_CANONICAL: readonly PrimaryNavItem[] = [
   { view: "today", label: "Today", glyph: "Calendar" },
@@ -63,3 +64,13 @@ export const PRIMARY_NAV_ORDER: readonly PrimaryNavView[] =
 
 /** Feature flag gating the web convergence to the canonical Plan-first order. */
 export const NAV_TAB_ORDER_FLAG = "nav-tab-order-plan-first";
+
+/**
+ * Resolve whether web surfaces should render the canonical Plan-first order.
+ * Native iOS already ships it; when PostHog is still loading (`undefined`)
+ * we default ON so web matches iOS on first paint. Set the flag to `false`
+ * explicitly to roll back to the legacy Recipes-first order.
+ */
+export function canonicalNavOrderEnabled(flag: boolean | undefined): boolean {
+  return flag !== false;
+}

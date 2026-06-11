@@ -83,8 +83,12 @@ function formatLastSync(iso: string | null): string {
  * settings.md §3.10: LEADING status dot (green=synced / amber=never synced /
  * muted=connect to enable), not a trailing circle.
  */
-function statusDotColor(connected: boolean, lastSyncedAt: string | null): string {
-  if (!connected) return "#ECEAE4";
+function statusDotColor(
+  connected: boolean,
+  lastSyncedAt: string | null,
+  muted: string,
+): string {
+  if (!connected) return muted;
   if (!lastSyncedAt) return Accent.warning; // amber — connected but never synced
   return Accent.success;                     // green — synced at least once
 }
@@ -1199,7 +1203,7 @@ function HealthCategoryRow({
 }) {
   // Secondary accent (Frost flag → damson, else clay) for the category glyph.
   const accent = useAccent();
-  const dotColor = statusDotColor(connected, lastSyncedAt);
+  const dotColor = statusDotColor(connected, lastSyncedAt, colors.cardBorder);
   const subtitleText = connected ? formatLastSync(lastSyncedAt) : "Connect to enable";
 
   return (

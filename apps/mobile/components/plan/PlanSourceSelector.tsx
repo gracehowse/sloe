@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   radio: {
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: Radius.full,
     borderWidth: 1.8,
     alignItems: "center",
     justifyContent: "center",
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   title: { fontSize: 13, fontWeight: "700" },
-  countBadge: { borderRadius: 999, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs },
+  countBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs },
   countText: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
   subtitle: { fontSize: 11.5, marginTop: Spacing.xs, lineHeight: 16 },
 });

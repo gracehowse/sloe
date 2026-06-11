@@ -192,9 +192,9 @@ describe("Premium parity — household settings redesign (2026-06-09)", () => {
   });
 
   // GAP 5: section eyebrows use sage secondary on both platforms.
-  it("mobile eyebrows use SAGE_SECONDARY (#7C8466), not textTertiary", () => {
-    expect(MOBILE_HOUSEHOLD).toContain("SAGE_SECONDARY");
-    expect(MOBILE_HOUSEHOLD).toContain('"#7C8466"');
+  it("mobile eyebrows use MacroColors.protein sage token via Type.label", () => {
+    expect(MOBILE_HOUSEHOLD).toContain("MacroColors.protein");
+    expect(MOBILE_HOUSEHOLD).toContain("Type.label");
     // Old off-spec letterSpacing 1.4 is gone; Type.label carries 0.88.
     expect(MOBILE_HOUSEHOLD).not.toMatch(/letterSpacing:\s*1\.4/);
   });

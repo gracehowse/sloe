@@ -797,8 +797,8 @@ export function QuickAddPanel({
                 >
                   <StarIcon
                     size={22}
-                    color={starred ? "#F78A32" : colors.textSecondary}
-                    fill={starred ? "#F78A32" : "transparent"}
+                    color={starred ? Accent.warning : colors.textSecondary}
+                    fill={starred ? Accent.warning : "transparent"}
                     strokeWidth={2.25}
                   />
                 </Pressable>

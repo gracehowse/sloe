@@ -44,6 +44,7 @@ import {
   weeklyInsightHeadline,
   weeklyInsightCoachLine,
   todayRoomForMeal,
+  figmaSlotSummaryTitle,
   nextUnloggedMealSlot,
   TODAY_ROOM_MIN_KCAL,
   TODAY_MEAL_SLOT_ORDER,
@@ -357,6 +358,21 @@ describe("Sloe Today under-ring coach line (todayRoomForMeal) — forward + hone
         expect(lower.includes(phrase.toLowerCase())).toBe(false);
       }
     }
+  });
+});
+
+describe("figmaSlotSummaryTitle — ENG-1058 multi-item slot summary", () => {
+  it("shows the food name for a single-item slot", () => {
+    expect(figmaSlotSummaryTitle([{ recipeTitle: "Greek yogurt" }])).toBe("Greek yogurt");
+  });
+
+  it("shows an aggregate count for multi-item slots", () => {
+    expect(
+      figmaSlotSummaryTitle([
+        { recipeTitle: "good culture" },
+        { recipeTitle: "banana" },
+      ]),
+    ).toBe("2 items");
   });
 });
 

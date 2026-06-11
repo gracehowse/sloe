@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { Image, View, type ImageStyle } from "react-native";
 import { UtensilsCrossed } from "lucide-react-native";
-import { RecipeHeroFallback } from "../RecipeHeroFallback";
+import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
 
 /**
  * Library recipe card image with on-error fallback (audit 2026-05-04 #28;
- * B7 hero-fallback rework 2026-05-11).
+ * ENG-1015 painterly samples when no photo loads).
  *
- * Renders the photo when the URL loads cleanly. Swaps to a per-recipe
- * deterministic `<RecipeHeroFallback>` placeholder (gradient + glyph,
- * seeded by recipe id) when:
+ * Renders the photo when the URL loads cleanly. Swaps to
+ * `<FoodFallbackThumb>` (category sample or utensil glyph) when:
  *   - no URI was supplied upstream AND a recipe `id`+`title` are
- *     available (the B7 path — same gradient as the Discover hero so
- *     cards match the detail-screen placeholder), OR
+ *     available, OR
  *   - the Image component reports a load failure (network blip, expired
  *     stock URL, 404 — the actually-live fallback path in production).
  *
@@ -34,7 +32,7 @@ export function RecipeCardImage({
   fallbackTint: string;
   /** Recipe id — required for the per-recipe deterministic placeholder. */
   recipeId?: string;
-  /** Recipe title — used by the placeholder glyph picker. */
+  /** Recipe title — used by the painterly category resolver. */
   recipeTitle?: string;
 }) {
   const [errored, setErrored] = useState(false);
@@ -49,7 +47,11 @@ export function RecipeCardImage({
           ]}
           testID={`recipe-card-image-fallback-${recipeId}`}
         >
-          <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={32} />
+          <FoodFallbackThumb
+            title={recipeTitle}
+            style={{ width: "100%", height: "100%", borderRadius: 0 }}
+            testID={`recipe-card-food-fallback-${recipeId}`}
+          />
         </View>
       );
     }

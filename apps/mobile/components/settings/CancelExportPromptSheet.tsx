@@ -5,6 +5,7 @@ import { Download, Settings as SettingsIcon, X } from "lucide-react-native";
 
 import { Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 /**
  * CancelExportPromptSheet — Suppr-owned interstitial that surfaces the
@@ -65,7 +66,7 @@ export function CancelExportPromptSheet({
         accessibilityLabel="Dismiss subscription management options"
         style={{
           flex: 1,
-          backgroundColor: "#00000066",
+          backgroundColor: MODAL_OVERLAY_SCRIM,
           justifyContent: "flex-end",
         }}
       >
