@@ -25,6 +25,7 @@ import type {
   ShoppingItem,
   UserTier,
 } from "../types/recipe.ts";
+import { normaliseTier } from "../types/recipe.ts";
 import { type AppNotification, type NotificationPrefs } from "../types/notifications.ts";
 import { useNotifications } from "./NotificationContext.tsx";
 import {
@@ -545,7 +546,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setPreferActivityAdjustedCalories(local?.preferActivityAdjustedCalories ?? false);
         return;
       }
-      setProfileTier((data?.user_tier as UserTier) ?? "free");
+      // `lifetime_pro` (ENG-1043 founding comp) is normalised to `pro` so every
+      // downstream `profileTier === "pro"` gate covers founders.
+      setProfileTier(normaliseTier(data?.user_tier as string | null | undefined));
       setProfileDisplayName((data?.display_name as string | null) ?? null);
       const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
       setProfileMeasurementSystem(ms);
@@ -597,7 +600,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error) return;
-    setProfileTier((data?.user_tier as UserTier) ?? "free");
+    setProfileTier(normaliseTier(data?.user_tier as string | null | undefined));
     setProfileDisplayName((data?.display_name as string | null) ?? null);
     const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
     setProfileMeasurementSystem(ms);
@@ -710,7 +713,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return { ok: false, error: "rpc_error", message: err ?? "unknown" };
     }
-    const tier = (payload!.tier as UserTier) ?? "free";
+    // The RPC may return `lifetime_pro` (founding comp) — normalise to the
+    // app-facing tier so the redemption result and every gate agree.
+    const tier = normaliseTier(payload!.tier as string | null | undefined);
     setProfileTier(tier);
     return { ok: true, tier, alreadyRedeemed: Boolean(payload!.already_redeemed) };
   }, [authedUserId]);

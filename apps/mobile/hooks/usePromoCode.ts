@@ -67,7 +67,10 @@ export function normalizeUserTier(raw: string | null | undefined): "free" | "bas
   const t = String(raw ?? "free")
     .toLowerCase()
     .trim();
-  if (t === "pro" || t === "base" || t === "free") return t;
+  // `lifetime_pro` (founding-cohort comp, ENG-1043) gates as `pro` — collapse it
+  // so a founder redeeming the code sees "Pro" and is gated as Pro, not Free.
+  if (t === "pro" || t === "lifetime_pro") return "pro";
+  if (t === "base" || t === "free") return t;
   return "free";
 }
 

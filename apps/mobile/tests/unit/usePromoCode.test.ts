@@ -98,6 +98,12 @@ describe("normalizeUserTier", () => {
     expect(normalizeUserTier("Base")).toBe("base");
   });
 
+  it("maps the lifetime_pro founding comp to pro (ENG-1043)", () => {
+    // A founding member redeeming FOUNDING100 must read as Pro, not Free.
+    expect(normalizeUserTier("lifetime_pro")).toBe("pro");
+    expect(normalizeUserTier("  Lifetime_Pro ")).toBe("pro");
+  });
+
   it("defaults unknown / null / undefined to free", () => {
     expect(normalizeUserTier(null)).toBe("free");
     expect(normalizeUserTier(undefined)).toBe("free");

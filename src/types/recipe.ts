@@ -1,5 +1,20 @@
 export type UserTier = "free" | "base" | "pro";
 
+/**
+ * Normalise a raw `profiles.user_tier` string into the app-facing `UserTier`.
+ *
+ * `lifetime_pro` is the durable founding-cohort comp (ENG-1043 / monetisation
+ * sequencing §1). It gates identically to `pro` everywhere, so it is collapsed
+ * to `"pro"` here at the single point where the raw DB string enters app state —
+ * every downstream `userTier === "pro"` gate then covers lifetime founders
+ * without per-site branching. Any unrecognised value falls back to `"free"`.
+ */
+export function normaliseTier(raw: string | null | undefined): UserTier {
+  if (raw === "pro" || raw === "lifetime_pro") return "pro";
+  if (raw === "base") return "base";
+  return "free";
+}
+
 /** How a recipe ended up in your library (local + synced metadata). */
 export type LibraryEntryKind = "saved" | "created" | "imported";
 

@@ -66,9 +66,21 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
 export type UserTier = "free" | "base" | "pro";
 
 /**
+ * Tiers that resolve to full Pro entitlements. `lifetime_pro` is the durable
+ * founding-cohort comp granted via `redeem_promo_code` (ENG-1043 / monetisation
+ * sequencing §1) — it gates identically to `pro` everywhere and is never
+ * downgraded by a webhook. Any feature gate that reads `getUserTier() === "pro"`
+ * therefore covers lifetime founders without further branching.
+ */
+const PRO_EQUIVALENT_TIERS = new Set(["pro", "lifetime_pro"]);
+
+/**
  * Look up user tier from profiles. Uses the service role key so RLS does not hide the row
  * (call only after `userId` is verified via `getUserIdFromRequest` / JWT).
  * Without `SUPABASE_SERVICE_ROLE_KEY`, returns `"free"` (log in development).
+ *
+ * Note: `lifetime_pro` is normalised to `"pro"` here so every Pro-gated call
+ * site treats founding-cohort comps as Pro with zero new branching.
  */
 export async function getUserTier(userId: string): Promise<UserTier> {
   const sb = createSupabaseServiceRoleClient();
@@ -89,6 +101,8 @@ export async function getUserTier(userId: string): Promise<UserTier> {
     return "free";
   }
   const tier = data?.user_tier as string | undefined;
-  if (tier === "pro" || tier === "base") return tier;
+  // `lifetime_pro` (founding-cohort comp, ENG-1043) gates as Pro everywhere.
+  if (tier && PRO_EQUIVALENT_TIERS.has(tier)) return "pro";
+  if (tier === "base") return "base";
   return "free";
 }
