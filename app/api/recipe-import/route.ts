@@ -31,6 +31,7 @@ import {
   acquireScrapedHtmlRecipe,
   acquireTranscriptCaption,
 } from "@/lib/server/supadata/wireAcquisition";
+import { hasSupadataConfig } from "@/lib/server/supadata/client";
 
 // Supadata acquisition (ENG-994) — the swappable acquisition adapter runs as
 // stage 0 (BEFORE the existing extraction) when the `supadata-acquisition`
@@ -620,7 +621,36 @@ export async function POST(req: Request) {
     const contentType = res?.headers.get("content-type") ?? "";
     const isHtml = supadataHtml != null || contentType.toLowerCase().includes("text/html");
     const html = supadataHtml ?? (res && isHtml ? await res.text() : "");
-    const parsed = parseRecipeFromHtml(html);
+    let parsed = parseRecipeFromHtml(html);
+    let recoveredViaSupadata = false;
+
+    // ENG-1055: popular recipe sites (e.g. AllRecipes) often return 402/403 to
+    // datacenter egress even with an honest SupprBot UA. When the direct fetch
+    // fails and we have no JSON-LD, try Supadata vendor scrape before surfacing
+    // fetch_failed — independent of the stage-0 `supadata-acquisition` flag
+    // (that flag only gates "try Supadata first"; this is a reliability fallback).
+    if (!parsed && !supadataHtml && res && !res.ok && hasSupadataConfig()) {
+      const acq = await acquireScrapedHtmlRecipe(currentUrl);
+      if (acq.ok && acq.data.parsed) {
+        parsed = acq.data.parsed;
+        recoveredViaSupadata = true;
+        traceAcquisition(userId, {
+          outcome: "acquired",
+          adapter: acq.acquisition.source,
+          kind: "scrape",
+          platform: acq.acquisition.platform,
+          contentChars: acq.data.content.length,
+        });
+      } else {
+        traceAcquisition(userId, {
+          outcome: "fallback",
+          adapter: "supadata",
+          platform: acq.ok ? acq.acquisition.platform : detectSocialPlatform(currentUrl) ?? "blog",
+          reason: acq.ok ? "empty" : acq.result.reason,
+        });
+      }
+    }
+
     // Some sites respond with 404/403 while still serving real HTML (geo, bot-mitigation, A/B).
     // If we can extract a Recipe JSON-LD anyway, treat as success.
     if (parsed) {
@@ -767,7 +797,7 @@ export async function POST(req: Request) {
     // `res` is undefined only when Supadata supplied content above — but that
     // path sets `supadataHtml` solely when `parsed` is truthy, so we never
     // reach this tail without a live `res`. Guard anyway for type-safety.
-    if (res && !res.ok) {
+    if (res && !res.ok && !recoveredViaSupadata) {
       return NextResponse.json(
         {
           ok: false,

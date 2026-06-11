@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-11
 - **Area:** Security · Data integrity · Entitlement integrity · Monetisation
-- **Status:** Code complete — **migrations STAGED, NOT applied.** Awaiting `supabase db push --linked` + live re-verification before Done.
+- **Status:** **Applied + live-verified (2026-06-11).** Migrations `20260611120000`–`120200` pushed to production; `scripts/verify-gate0-db.mts` — 5/5 checks pass (exploit dead, view locked, promo RPC callable).
 - **Severity:** P0 (ENG-1035) + P1 (ENG-1036, ENG-1043) — Gate-0 launch blockers per `docs/ux/reviews/2026-06-11-launch-readiness-audit.md` §10/§11/§16.
 - **Branch:** `claude/skia-ring-2026-06-10`
 - **Owner of apply step:** Grace (the migration-apply rule forbids MCP `apply_migration` and Claude running `supabase db push`).
@@ -130,8 +130,12 @@ downgrades a `lifetime_pro` profile.
 
 ## Migration-apply runbook (Grace runs this)
 
-These migrations are **staged, not applied** (CLAUDE.md non-negotiable: never MCP
-`apply_migration`, never Claude `supabase db push` for tracked files).
+These migrations were applied via `supabase db push --linked` on 2026-06-11
+(human-reviewed; CLAUDE.md forbids unattended auto-push). Re-verify any time with:
+
+```bash
+node --import tsx scripts/verify-gate0-db.mts
+```
 
 ```bash
 # 1. From repo root, with the project linked:
