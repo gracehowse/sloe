@@ -97,11 +97,14 @@ describe("TodayHeroRing — SLOE Goal/Eaten/Bonus stats row", () => {
     expect(queryByText("Over")).toBeNull();
   });
 
-  it("hides the stats row entirely on the empty (calm) hero", () => {
-    const { queryByText } = render(
+  it("renders the stats row on the EMPTY hero too — zeros are honest (Grace 2026-06-10)", () => {
+    // Supersedes the calm-empty divergence: the empty page mirrors
+    // populated days; Eaten 0 / Bonus +0 are numbers, not noise.
+    const { getByText, getAllByText } = render(
       <TodayHeroRing {...baseProps} consumed={0} goal={2000} />,
     );
-    expect(queryByText("Goal")).toBeNull();
-    expect(queryByText("Eaten")).toBeNull();
+    expect(getByText("Goal")).toBeTruthy();
+    expect(getByText("Eaten")).toBeTruthy();
+    expect(getAllByText("0").length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -286,7 +286,9 @@ export default function CalorieRing({
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
   // §5: empty hero renders at 72% — see ringGeometry above.
-  const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(isEmpty, !expanded);
+  // 2026-06-10 (Grace): the empty hero matches populated days — full
+  // size, real numbers. The §5 compact-empty experiment is retired.
+  const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(false, !expanded);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   /** Calorie ring colour. SLOE redesign (2026-06-03, `01 · Today` frame +
@@ -328,8 +330,14 @@ export default function CalorieRing({
   // 2026-06-10 (Grace's ring-content spec): the Remaining/Consumed toggle
   // is GONE — it duplicated the EATEN stat directly below the ring, and the
   // collapsed ring ignored it anyway. One semantics: remaining (or over).
-  const centerValue = Math.abs(diff);
-  const centerLabel = isOver ? RING_LABELS.over : RING_LABELS.remaining;
+  // goal<=0 (no profile target yet): judging LEFT/OVER against a zero
+  // goal would lie — show what's logged, no verdict (R03 contract kept).
+  const centerValue = goal > 0 ? Math.abs(diff) : Math.round(consumed);
+  const centerLabel = goal <= 0
+    ? RING_LABELS.logged
+    : isOver
+      ? RING_LABELS.over
+      : RING_LABELS.remaining;
   // Thousands separator to match the ring's centre number + the GOAL/FOOD/
   // BONUS stats ("1,563") — without it the subtitle read "of 1563 kcal"
   // (Grace visual walk, 2026-06-01).
@@ -668,7 +676,7 @@ export default function CalorieRing({
               the centre kcal value remains the clear focal point.
               Hidden in empty state — three nested grey tracks read as
               wireframe placeholder, not an intentional "ready" state. */}
-          {!isEmpty && expanded ? (
+          {expanded ? (
             <>
               <MacroRing
                 cx={CX}
@@ -715,36 +723,11 @@ export default function CalorieRing({
             the user had logged anything). N3 (2026-05-03): centre
             value renders with `.toLocaleString()` so 4-digit kcal
             ("1,832") matches the budget line below. */}
-        {isEmpty ? (
-          // 2026-05-23 (Grace clarification): empty-state ring keeps
-          // "Start your day" + "{goal} kcal goal" — what we needed to
-          // remove was the THIRD line ("of {goal} kcal" from the
-          // budgetLine block below), which was the same number twice.
-          // The budgetLine is now suppressed when `isEmpty` so the ring
-          // shows the invitation + goal exactly once.
-          <View style={{ alignItems: "center", gap: 2 }}>
-            <Text
-              style={{
-                ...Type.headline,
-                color: textColor,
-                textAlign: "center",
-              }}
-            >
-              Start your day
-            </Text>
-            {goal > 0 ? (
-              <Text
-                style={{
-                  ...Type.caption,
-                  color: secondaryColor,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {Math.round(goal).toLocaleString()} kcal goal
-              </Text>
-            ) : null}
-          </View>
-        ) : (
+        {/* 2026-06-10 (Grace): the empty centre shows REAL numbers —
+            "{goal} LEFT" — matching populated days (supersedes the
+            2026-04-29 'Start your day' soft-empty + the 2026-05-23
+            invitation copy). */}
+        {(
           // ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
           // (running daily total — high frequency in replays, valuable
           // signal at aggregate). Wrap in PostHogMaskView so replay
@@ -775,21 +758,19 @@ export default function CalorieRing({
             no inner-arc clipping concern). CONSUMED keeps "LOGGED" + a
             collapsed "of {goal} kcal"; OVER keeps "OVER". Hidden in the
             empty state — the "Start your day" copy above already leads. */}
-        {!isEmpty ? (
-          <Text
-            style={{
-              ...Type.label,
-              color: textColor,
-              marginTop: 1,
-            }}
-          >
-            {centerLabel}
-          </Text>
-        ) : null}
+        <Text
+          style={{
+            ...Type.label,
+            color: textColor,
+            marginTop: 1,
+          }}
+        >
+          {centerLabel}
+        </Text>
         {/* Budget line — collapsed only (Grace 2026-06-10: macros hidden =
             more room, show the goal context; expanded keeps just the label
             and the stats row below carries the explicit goal). */}
-        {goal > 0 && !expanded && !isEmpty ? (
+        {goal > 0 && !expanded ? (
           <PostHogMaskView>
             <Text
               style={{

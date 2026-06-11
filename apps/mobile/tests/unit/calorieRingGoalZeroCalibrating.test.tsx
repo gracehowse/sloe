@@ -50,9 +50,10 @@ describe("CalorieRing — R03 goal<=0 calibrating-empty state", () => {
         displayMode="remaining"
       />,
     );
-    expect(queryByText("Start your day")).not.toBeNull();
-    // Must NOT render the OVER copy or the "of 0 kcal" budget anchor.
-    expect(queryByText(/^OVER$/i)).toBeNull();
+    // 2026-06-10 (Grace): soft-empty copy retired — real numbers always.
+    // With no goal there is no verdict: LOGGED, never OVER.
+    expect(queryByText("LOGGED")).not.toBeNull();
+    expect(queryByText(/^OVER$/)).toBeNull();
     expect(queryByText(/of\s+0\s+kcal/i)).toBeNull();
   });
 
@@ -65,7 +66,8 @@ describe("CalorieRing — R03 goal<=0 calibrating-empty state", () => {
         displayMode="remaining"
       />,
     );
-    expect(queryByText("Start your day")).not.toBeNull();
+    // 2026-06-10: numbers always — cold start reads "0 LOGGED".
+    expect(queryByText("LOGGED")).not.toBeNull();
   });
 
   it("hides the budget line when goal<=0", () => {

@@ -125,6 +125,10 @@ export function SkiaRingArcs({
   const reduceMotion = useReducedMotion();
 
   const mainPath = useMemo(() => circlePath(CX, R), [CX, R]);
+  // Round 7 (Grace: still too subtle): the overage lap rides at a slightly
+  // LARGER radius — the ring visibly spirals outward where it wraps, the
+  // most physical cue available without a hue change.
+  const lapPath = useMemo(() => circlePath(CX, R + STROKE * 0.18), [CX, R, STROKE]);
   const macroPaths = useMemo(
     () => MACRO_R.map((r) => circlePath(CX, r)),
     [CX, MACRO_R],
@@ -270,21 +274,21 @@ export function SkiaRingArcs({
       {!isEmpty && isOver && overFrac > 0 ? (
         <Group>
           <Path
-            path={mainPath}
+            path={lapPath}
             style="stroke"
-            strokeWidth={STROKE * 1.1}
+            strokeWidth={STROKE * 1.18}
             strokeCap="round"
             color="#000000"
-            opacity={0.3}
+            opacity={0.38}
             start={capShadowStart}
             end={overEnd}
           >
-            <BlurMask blur={STROKE * 0.3} style="normal" />
+            <BlurMask blur={STROKE * 0.32} style="normal" />
           </Path>
           <Path
-            path={mainPath}
+            path={lapPath}
             style="stroke"
-            strokeWidth={STROKE * 1.06}
+            strokeWidth={STROKE * 1.12}
             strokeCap="round"
             color={ringColor}
             start={0}
@@ -293,7 +297,7 @@ export function SkiaRingArcs({
         </Group>
       ) : null}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
-      {!isEmpty && expanded
+      {expanded
         ? MACRO_R.map((r, i) => (
             <Group key={i}>
               <Path

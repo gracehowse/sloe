@@ -260,15 +260,11 @@ export function TodayHeroRing({
         expanded={expanded}
         onToggle={onToggleExpanded}
       />
-      {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame:
-          `grid grid-cols-3 divide-x divide-line`, Newsreader values,
-          a hairline top-border above. Renders only when the ring is
-          non-empty so the first-run "Start your day" empty state stays
-          calm (a deliberate divergence from the static mock, which
-          shows a 0/0 row). Bonus shows the exercise-earned headroom
-          (sage); when over-budget it flips to the deficit/over value
-          in red so the row still reads as a legend for the ring. */}
-      {consumed > 0 && goal > 0 ? (
+      {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame.
+          2026-06-10 (Grace): renders on EMPTY days too — the empty page
+          should mirror populated days; Eaten 0 and Bonus +0 are honest
+          numbers, not noise. (Supersedes the calm-empty divergence.) */}
+      {goal > 0 ? (
         <View
           style={{
             width: "100%",
