@@ -118,6 +118,14 @@ import {
   type SectionedSearchRows,
 } from "@/lib/nutrition/foodSearchRanking";
 import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
+import {
+  matchHistoryFoods,
+  historyMatchNameSet,
+  dedupeDbAgainstHistory,
+  normalizeHistoryName,
+  type HistorySearchMatch,
+} from "@/lib/nutrition/foodHistorySearch";
+import { formatMacroTrailer } from "@/lib/nutrition/macroFormat";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -176,7 +184,13 @@ type SearchResult = {
 
 export type FoodSearchSelection = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
+  /**
+   * "history" (ENG-1031) discriminates a re-logged "Past logged" item — the
+   * macros are the user's own prior per-serving totals, so the commit path
+   * labels it neutrally ("Manual"), never misattributing to a database
+   * source.
+   */
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "history";
   /**
    * 2026-05-06 audit (D1): nullable for per-serving-only FatSecret
    * foods (no metric grounding). When null, `macrosPerServing`
@@ -252,6 +266,27 @@ export type FoodSearchPanelProps = {
    * this directly; production callers should leave it undefined.
    */
   localeOverride?: string;
+  /**
+   * History-first search (ENG-1031, MFP grammar) — the user's logging
+   * history, newest-first (from `computeRecentMeals`). When a query is
+   * typed, matching past-logged foods surface FIRST as a visually-distinct
+   * "Past logged" group above the database results, de-duped (history wins).
+   * Mobile parity: `apps/mobile/components/food-search/FoodSearchPanel.tsx`.
+   * Hosts without a foodHistory available can omit; the group simply doesn't
+   * render.
+   */
+  recentFoods?: Array<{
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+    /** Total log count — recency-weighted-frequency tiebreak. */
+    count?: number;
+    imageUrl?: string | null;
+  }>;
 };
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
@@ -769,6 +804,7 @@ export function FoodSearchPanel({
   onScanBarcodePressed,
   inBarcodeMode = false,
   localeOverride,
+  recentFoods,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
   // single commit-action colour. The "Use this" log commit CTA below used
@@ -1207,6 +1243,39 @@ export function FoodSearchPanel({
     [],
   );
 
+  // Log a "Past logged" history row directly (ENG-1031) — per-serving food,
+  // no per-100g basis, so the host commit path uses macrosPerServing ×
+  // quantity. Mirrors the mobile `onSelectHistoryItem`.
+  const onSelectHistoryItem = useCallback(
+    (item: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      imageUrl?: string | null;
+    }) => {
+      onSelect({
+        name: item.recipeTitle,
+        source: "history",
+        macrosPer100g: null,
+        macrosPerServing: {
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+        },
+        portions: [{ label: "1 serving", gramWeight: 0, amount: 1 }],
+        chosenPortion: { label: "1 serving", gramWeight: 0, amount: 1 },
+        quantity: 1,
+        ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+      });
+    },
+    [onSelect],
+  );
+
   const onPickResult = useCallback(async (item: SearchResult) => {
     setLoadingKey(item.key);
     if (item._source === "CUSTOM" && item._custom) {
@@ -1570,19 +1639,45 @@ export function FoodSearchPanel({
     return shouldShowBarcodeFallbackHint(locale ?? null);
   }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
 
+  // ── History-first search (ENG-1031) ──────────────────────────────────
+  // MFP grammar: when the user has TYPED a query, surface matching items from
+  // their own logging history FIRST, as a visually-distinct "Past logged"
+  // group above the database results. The shared matcher ranks + de-dupes +
+  // caps `recentFoods` (newest-first). Group renders only on the All /
+  // Recents filters (Branded/Generic/Custom intents are "search-result
+  // shape"). Mobile sections identically off the same shared functions.
+  const historyMatches = useMemo<HistorySearchMatch[]>(() => {
+    if (!query.trim() || !recentFoods || recentFoods.length === 0) return [];
+    // Only on the "All" filter — Branded / Generic / Custom intents are
+    // explicitly "search-result shape" and shouldn't be topped with history.
+    if (activeCategory !== "All") return [];
+    return matchHistoryFoods(recentFoods, query);
+  }, [query, recentFoods, activeCategory]);
+
+  // De-dupe DB results against the history group — a database row whose name
+  // exactly matches a "Past logged" row shows once (history wins). Catalogue
+  // kcal is per-100g and never matches the per-serving history kcal, so the
+  // honest cross-source identity is the EXACT normalized name.
+  const historyNames = useMemo(() => historyMatchNameSet(historyMatches), [historyMatches]);
+  const dedupedResults = useMemo<SearchResult[]>(() => {
+    if (historyNames.size === 0) return results;
+    return dedupeDbAgainstHistory(results, historyNames, (r) => normalizeHistoryName(r.name));
+  }, [results, historyNames]);
+
   // ENG-815 — apply the active category filter, then split into Best/More via
   // the shared `splitFoodSearchResults` (same threshold + scorer as mobile).
   // Only used on the redesigned path; computed unconditionally so React's
   // hook order is stable when the flag toggles. `All` is identity. Each branch
-  // filters by `_source` exactly like the mobile sibling lane.
+  // filters by `_source` exactly like the mobile sibling lane. Operates over
+  // `dedupedResults` so the "Past logged" group never repeats below (ENG-1031).
   const filteredResults = useMemo<SearchResult[]>(() => {
     switch (activeCategory) {
       case "Custom":
-        return results.filter((r) => r._source === "CUSTOM");
+        return dedupedResults.filter((r) => r._source === "CUSTOM");
       case "Branded":
-        return results.filter((r) => r._source === "FatSecret");
+        return dedupedResults.filter((r) => r._source === "FatSecret");
       case "Generic":
-        return results.filter(
+        return dedupedResults.filter(
           (r) =>
             r._source === "USDA" ||
             r._source === "OFF" ||
@@ -1592,9 +1687,9 @@ export function FoodSearchPanel({
         );
       case "All":
       default:
-        return results;
+        return dedupedResults;
     }
-  }, [results, activeCategory]);
+  }, [dedupedResults, activeCategory]);
   const sectionedResults = useMemo(
     () => splitFoodSearchResults(query.trim(), filteredResults),
     [query, filteredResults],
@@ -2026,6 +2121,52 @@ export function FoodSearchPanel({
           </div>
         )}
 
+        {/* History-first search (ENG-1031, MFP grammar): when the user has
+            TYPED a query, the foods they've logged before that match it
+            surface FIRST as a visually-distinct "Past logged" group above the
+            database results. Reuses the result-row grammar (title + macro
+            trailer) and the uppercase eyebrow used by the result sections.
+            De-dupe (history wins) is applied to the DB list below via
+            `dedupedResults`. Mobile parity:
+            `apps/mobile/components/food-search/FoodSearchPanel.tsx`. */}
+        {historyMatches.length > 0 && (
+          <div data-testid="food-search-past-logged" className="mb-3.5">
+            <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+              Past logged
+            </p>
+            <div className="divide-y divide-border">
+              {historyMatches.map((m, i) => {
+                const item = m.item;
+                return (
+                  <button
+                    key={`past-${m.key}`}
+                    type="button"
+                    data-testid={`food-search-past-logged-${i}`}
+                    onClick={() => onSelectHistoryItem(item)}
+                    className="flex w-full items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    aria-label={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-foreground">
+                        {item.recipeTitle}
+                      </span>
+                      <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
+                        {formatMacroTrailer({
+                          calories: item.calories,
+                          protein: item.protein,
+                          carbs: item.carbs,
+                          fat: item.fat,
+                        })}
+                      </span>
+                    </div>
+                    <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ENG-815 — redesigned results body: elevated grouped result cards,
             Best/More split, legible Verified/Estimated confidence chip. Old
             flat hairline list stays alive in the `else` below. */}
@@ -2061,9 +2202,9 @@ export function FoodSearchPanel({
                 ))
             )}
           </div>
-        ) : results.length > 0 ? (
+        ) : dedupedResults.length > 0 ? (
           <div className="divide-y divide-border">
-            {results.map((item) => {
+            {dedupedResults.map((item) => {
               const isCustom = item._source === "CUSTOM";
               const customFood = isCustom ? item._custom : null;
               const headline = resolveFoodSearchHeadline(item);

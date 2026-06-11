@@ -208,6 +208,21 @@ export interface LogSheetProps {
     /** Inline mode — Supabase client + userId for custom foods. */
     supabase?: InlineSupabaseLike;
     userId?: string | null;
+    /** Inline mode — the user's logging history, newest-first (from
+     *  `computeRecentMeals`). Powers BOTH the empty-query "Recent" strip and
+     *  the typed-query history-first "Past logged" group (ENG-1031). When
+     *  omitted, neither history surface renders. */
+    recentFoods?: Array<{
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      count?: number;
+      imageUrl?: string | null;
+    }>;
     /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -759,6 +774,7 @@ function DefaultComposition({
             macroConsumed={search?.macroConsumed}
             supabase={search?.supabase}
             userId={search?.userId}
+            recentFoods={search?.recentFoods}
             onSelect={(result) => {
               search?.onSelect?.(result);
               // After a successful pick the user has logged something —

@@ -97,6 +97,9 @@ type Props = {
     fat: number;
     fiber?: number;
     source?: string;
+    /** Total log count — recency-weighted-frequency tiebreak in the
+     *  history-first "Past logged" group (ENG-1031). */
+    count?: number;
   }>;
 };
 

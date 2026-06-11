@@ -5663,6 +5663,24 @@ export default function TrackerScreen() {
           },
           supabase: supabase as unknown as { from: (table: string) => unknown },
           userId: userId ?? null,
+          // History-first search (ENG-1031, MFP grammar): the user's logging
+          // history, newest-first, threaded into the inline panel. Powers the
+          // empty-query "Recent" strip AND the typed-query "Past logged"
+          // group that ranks matching past logs above database results. A
+          // 50-row window gives the matcher enough history to match a typed
+          // query against while staying cheap to compute.
+          recentFoods: computeRecentMeals(byDay, 50)
+            .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+            .map((item) => ({
+              recipeTitle: item.recipeTitle,
+              calories: item.calories,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              fiber: item.fiber,
+              source: item.source,
+              count: item.count,
+            })),
         }}
         barcode={{
           // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
@@ -6013,19 +6031,26 @@ export default function TrackerScreen() {
           fiber: totals.fiber,
         }}
         // 2026-05-12 round 5 (premium-bar audit #12 MFP borrow):
-        // recents on mount. Compute the user's last 5 meals from byDay
-        // (the same source the QuickAddPanel reads) and pass through
-        // so the search modal's empty-query state shows tap-to-log
-        // recents — the pattern MFP / Lose It / Cronometer all ship.
-        recentFoods={computeRecentMeals(byDay, 5).map((item) => ({
-          recipeTitle: item.recipeTitle,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          fiber: item.fiber,
-          source: item.source,
-        }))}
+        // recents on mount. Compute the user's meals from byDay (the same
+        // source the QuickAddPanel reads) and pass through so the search
+        // modal's empty-query state shows tap-to-log recents — the pattern
+        // MFP / Lose It / Cronometer all ship.
+        // ENG-1031: widened from 5 → 50 + carry `count` so the typed-query
+        // history-first "Past logged" group has enough history to match
+        // against and rank by recency-weighted frequency. The empty-query
+        // strip still shows only the first 5 (panel-side slice).
+        recentFoods={computeRecentMeals(byDay, 50)
+          .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+          .map((item) => ({
+            recipeTitle: item.recipeTitle,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            source: item.source,
+            count: item.count,
+          }))}
         // Shared commit path — same logic the inline `<FoodSearchPanel>`
         // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
         // F-79 + L6 G1 all live in the shared callback.

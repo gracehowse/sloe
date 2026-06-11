@@ -60,6 +60,20 @@ type Props = {
    *  hidden and the search behaves exactly as before. */
   supabase?: PanelSupabaseLike;
   userId?: string | null;
+  /** History-first search (ENG-1031) — the user's logging history, newest-
+   *  first. Threaded to the panel so the typed-query "Past logged" group
+   *  ranks matching past logs above database results. */
+  recentFoods?: Array<{
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+    count?: number;
+    imageUrl?: string | null;
+  }>;
 };
 
 export function FoodSearch({
@@ -74,6 +88,7 @@ export function FoodSearch({
   macroConsumed,
   supabase,
   userId,
+  recentFoods,
 }: Props) {
   // Caller owns the query; the panel reacts to it. We sync the input
   // back to `initialQuery` whenever the dialog opens so callers that
@@ -118,6 +133,7 @@ export function FoodSearch({
             macroConsumed={macroConsumed}
             supabase={supabase}
             userId={userId}
+            recentFoods={recentFoods}
             mode="full"
             onSelect={(selection) => {
               onSelect(selection);

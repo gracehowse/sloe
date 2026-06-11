@@ -1533,6 +1533,11 @@ export const NutritionTracker = memo(function NutritionTracker({
           ? "Edamam"
           : selection.source === "FatSecret"
           ? "FatSecret"
+          : selection.source === "history"
+          ? // ENG-1031 — a re-logged "Past logged" item; the macros are the
+            // user's own prior totals, so label it neutrally rather than
+            // misattribute to a database source.
+            "Manual"
           : "USDA FoodData Central";
 
       // Per-serving path (FatSecret no-metric / count servings like
@@ -2977,6 +2982,22 @@ export const NutritionTracker = memo(function NutritionTracker({
           fat: totals.fat,
           fiber: totals.fiber,
         }}
+        // History-first search (ENG-1031): the user's logging history,
+        // newest-first, so the typed-query "Past logged" group ranks
+        // matching past logs above database results. HealthKit-import
+        // fallback rows stripped (mobile parity).
+        recentFoods={computeRecentMeals(nutritionByDay, 50)
+          .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+          .map((item) => ({
+            recipeTitle: item.recipeTitle,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            source: item.source,
+            count: item.count,
+          }))}
         onSelect={(selection: FoodSearchSelection) => {
           commitFoodSearchSelection(selection);
           setFoodSearchOpen(false);
@@ -3366,6 +3387,24 @@ export const NutritionTracker = memo(function NutritionTracker({
           },
           supabase,
           userId: authedUserId ?? null,
+          // History-first search (ENG-1031, MFP grammar): the user's logging
+          // history, newest-first, threaded into the inline panel so the
+          // typed-query "Past logged" group ranks matching past logs above
+          // database results. 50-row window + `count` for the recency-
+          // weighted-frequency rank. HealthKit-import fallback rows stripped
+          // (mobile parity).
+          recentFoods: computeRecentMeals(nutritionByDay, 50)
+            .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+            .map((item) => ({
+              recipeTitle: item.recipeTitle,
+              calories: item.calories,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              fiber: item.fiber,
+              source: item.source,
+              count: item.count,
+            })),
           onSelect: (selection) => {
             commitFoodSearchSelection(selection);
             setLogSheetOpen(false);

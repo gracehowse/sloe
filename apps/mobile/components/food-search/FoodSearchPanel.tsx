@@ -127,6 +127,13 @@ import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
 import { foodSearchPreviewPlausibilityWarning } from "@suppr/shared/nutrition/portionPicker";
+import {
+  matchHistoryFoods,
+  historyMatchNameSet,
+  dedupeDbAgainstHistory,
+  normalizeHistoryName,
+  type HistorySearchMatch,
+} from "@suppr/shared/nutrition/foodHistorySearch";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
@@ -260,6 +267,9 @@ export type FoodSearchPanelProps = {
     fat: number;
     fiber?: number;
     source?: string;
+    /** Total log count for this (title, kcal) — recency-weighted-frequency
+     *  tiebreak in the history-first "Past logged" group (ENG-1031). */
+    count?: number;
     imageUrl?: string | null;
   }>;
 };
@@ -1062,6 +1072,44 @@ export default function FoodSearchPanel({
     });
   }, [preview, fitHint, previewMacros]);
 
+  // Log a "Recent" / "Past logged" history row directly — per-serving food,
+  // no per-100g basis, so the host commit path uses macrosPerServing ×
+  // quantity. Single source of truth for both the empty-query recents strip
+  // and the typed-query "Past logged" group (ENG-1031), so the two paths
+  // can't drift in what they commit.
+  const onSelectHistoryItem = useCallback(
+    (item: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      imageUrl?: string | null;
+    }) => {
+      onSelect({
+        name: item.recipeTitle,
+        source: (item.source as never) ?? "history",
+        macrosPer100g: null,
+        macrosPerServing: {
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiberG: item.fiber ?? 0,
+          sugarG: 0,
+          sodiumMg: 0,
+        },
+        quantity: 1,
+        chosenPortion: { label: "1 serving", gramWeight: 0 },
+        portions: [{ label: "1 serving", gramWeight: 0 }],
+        ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+      } as never);
+    },
+    [onSelect],
+  );
+
   const styles = useMemo(() => StyleSheet.create({
     list: {
       paddingHorizontal: mode === "compact" ? Spacing.md : Spacing.xl,
@@ -1176,20 +1224,47 @@ export default function FoodSearchPanel({
     [loadingKey, onPickResult, colors, openCustomFoodActions, styles],
   );
 
+  // ── History-first search (ENG-1031) ──────────────────────────────────
+  // MFP grammar: when the user has TYPED a query, surface matching items from
+  // their own logging history FIRST, as a visually-distinct "Past logged"
+  // group above the database results. `recentFoods` already carries the
+  // user's history newest-first (computeRecentMeals); the shared matcher
+  // ranks + de-dupes + caps it. The group renders only on the All/Recents
+  // filters (Branded/Generic/Custom intents are explicitly "search-result
+  // shape" and shouldn't be topped with history). Web sections identically
+  // off the same shared functions — parity.
+  const historyMatches = useMemo<HistorySearchMatch[]>(() => {
+    if (!query.trim() || !recentFoods || recentFoods.length === 0) return [];
+    if (activeCategory !== "All" && activeCategory !== "Recents") return [];
+    return matchHistoryFoods(recentFoods, query);
+  }, [query, recentFoods, activeCategory]);
+
+  // De-dupe DB results against the history group — a database row whose name
+  // exactly matches a "Past logged" row shows once (history wins). Catalogue
+  // kcal is per-100g and never matches the per-serving history kcal, so the
+  // honest cross-source identity is the EXACT normalized name.
+  const historyNames = useMemo(() => historyMatchNameSet(historyMatches), [historyMatches]);
+  const dedupedResults = useMemo<SearchRow[]>(() => {
+    if (historyNames.size === 0) return results;
+    return dedupeDbAgainstHistory(results, historyNames, (r) => normalizeHistoryName(r.name));
+  }, [results, historyNames]);
+
   // 2026-05-14 premium-bar polish #3: derive the filtered list once
   // per render. `All` is identity. `Recents` suppresses results so
   // only the recent-foods block above shows. `Custom`, `Branded`,
   // `Generic` filter by `_source`. (Favourites removed — see ENG-748 #8.)
+  // Operates over `dedupedResults` so the "Past logged" group never repeats
+  // below in the database list (ENG-1031, history wins).
   const filteredResults = useMemo<SearchRow[]>(() => {
     switch (activeCategory) {
       case "Recents":
         return [];
       case "Custom":
-        return results.filter((r) => r._source === "CUSTOM");
+        return dedupedResults.filter((r) => r._source === "CUSTOM");
       case "Branded":
-        return results.filter((r) => r._source === "FatSecret");
+        return dedupedResults.filter((r) => r._source === "FatSecret");
       case "Generic":
-        return results.filter(
+        return dedupedResults.filter(
           (r) =>
             r._source === "USDA" ||
             r._source === "OFF" ||
@@ -1199,9 +1274,9 @@ export default function FoodSearchPanel({
         );
       case "All":
       default:
-        return results;
+        return dedupedResults;
     }
-  }, [results, activeCategory]);
+  }, [dedupedResults, activeCategory]);
   // Recent-foods strip visibility — the block only renders when the
   // user is on `All` or `Recents` (and the query is empty). On other
   // tabs the filter intent is "search-result-shape", so suppressing
@@ -2053,28 +2128,7 @@ export default function FoodSearchPanel({
               testID={`food-search-recent-${i}`}
               accessibilityRole="button"
               accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
-              onPress={() => {
-                onSelect({
-                  name: item.recipeTitle,
-                  source: (item.source as never) ?? "history",
-                  // Per-serving food — no per-100g basis so the host
-                  // commit path uses macrosPerServing × quantity.
-                  macrosPer100g: null,
-                  macrosPerServing: {
-                    calories: item.calories,
-                    protein: item.protein,
-                    carbs: item.carbs,
-                    fat: item.fat,
-                    fiberG: item.fiber ?? 0,
-                    sugarG: 0,
-                    sodiumMg: 0,
-                  },
-                  quantity: 1,
-                  chosenPortion: { label: "1 serving", gramWeight: 0 },
-                  portions: [{ label: "1 serving", gramWeight: 0 }],
-                  ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
-                } as never);
-              }}
+              onPress={() => onSelectHistoryItem(item)}
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
@@ -2112,6 +2166,86 @@ export default function FoodSearchPanel({
               </Text>
             </Pressable>
           ))}
+        </View>
+      ) : null}
+
+      {/* History-first search (ENG-1031, MFP grammar): when the user has
+          TYPED a query, the foods they've logged before that match it
+          surface FIRST as a visually-distinct "Past logged" group above the
+          database results. Reuses the recent-row grammar (title + macro
+          trailer + chevron) and the Type.label eyebrow used by the empty-
+          query "Recent" strip, so the two history surfaces read identically.
+          De-dupe (history wins) is applied to the DB list above via
+          `dedupedResults`. */}
+      {historyMatches.length > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Spacing.sm,
+            paddingBottom: Spacing.md,
+          }}
+          testID="food-search-past-logged"
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.textTertiary,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 8,
+            }}
+          >
+            Past logged
+          </Text>
+          {historyMatches.map((m, i) => {
+            const item = m.item;
+            return (
+              <Pressable
+                key={`past-${m.key}`}
+                testID={`food-search-past-logged-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+                onPress={() => onSelectHistoryItem(item)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: Spacing.dense,
+                  borderBottomWidth:
+                    i < historyMatches.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                    numberOfLines={1}
+                  >
+                    {item.recipeTitle}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginTop: 2,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatMacroTrailer({
+                      calories: item.calories,
+                      protein: item.protein,
+                      carbs: item.carbs,
+                      fat: item.fat,
+                    })}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
+                  ›
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
 
