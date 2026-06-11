@@ -9,7 +9,9 @@ import {
   // Navigation
   Home,
   Compass,
+  Calendar,
   CalendarDays,
+  Utensils,
   BarChart3,
   User,
   Settings,
@@ -135,6 +137,17 @@ export const Icons = {
   discover: Compass,
   plan: CalendarDays,
   progress: BarChart3,
+
+  // ENG-1044 — canonical primary-nav glyph set. Locked to the native iOS
+  // tab bar (`apps/mobile/app/(tabs)/_layout.tsx`): Today=Calendar,
+  // Plan=BookOpen, Recipes=Utensils, Progress=BarChart3. iOS is the
+  // primary surface and leads; web follows. Resolves the BookOpen
+  // collision (BookOpen meant "Plan" on native but "Recipes" on web) by
+  // making BookOpen = Plan everywhere and Recipes = Utensils everywhere.
+  navToday: Calendar,
+  navPlan: BookOpen,
+  navRecipes: Utensils,
+  navProgress: BarChart3,
   profile: User,
   settings: Settings,
   back: ChevronLeft,

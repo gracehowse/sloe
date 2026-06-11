@@ -43,11 +43,16 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
+import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import {
+  SAFETY_ACK_TITLE,
+  SAFETY_ACK_CONFIRM_LABEL,
+  safetyAckBody,
+} from "@suppr/shared/nutrition/goalEditorPace";
 
 import { useGoalPaceEditor } from "./useGoalPaceEditor";
 import { GoalPaceSlider } from "./GoalPaceSlider";
@@ -270,7 +275,10 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                 </View>
               ) : null}
 
-              {/* Soft-warn below safety floor */}
+              {/* Below safety floor — soft-warn AND acknowledge-to-proceed
+                  (ENG-1027, Cronometer pattern). The warning explains; the
+                  tap below is the explicit, honest confirmation required
+                  before Save unlocks. Body-neutral, no shaming. */}
               {editor.belowSafetyFloor ? (
                 <View
                   testID="goal-pace-editor-safety-warn"
@@ -283,10 +291,66 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                     marginBottom: Spacing.md,
                   }}
                 >
-                  <Text style={{ fontSize: 13, color: colors.text, lineHeight: 19 }}>
-                    This pace lands below the general safety floor for unsupervised dieting.
-                    Consider a gentler pace, or check in with a clinician.
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: colors.text,
+                      marginBottom: Spacing.xs,
+                    }}
+                  >
+                    {SAFETY_ACK_TITLE}
                   </Text>
+                  <Text style={{ fontSize: 13, color: colors.text, lineHeight: 19 }}>
+                    {safetyAckBody(editor.safetyFloorKcal)}
+                  </Text>
+
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: editor.acknowledged }}
+                    accessibilityLabel={SAFETY_ACK_CONFIRM_LABEL}
+                    onPress={() => editor.setAcknowledged(!editor.acknowledged)}
+                    testID="goal-pace-editor-safety-ack"
+                    hitSlop={8}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: Spacing.sm,
+                      marginTop: Spacing.md,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: Radius.sm,
+                        borderWidth: 1.5,
+                        borderColor: editor.acknowledged
+                          ? Accent.warning
+                          : colors.cardBorder,
+                        backgroundColor: editor.acknowledged
+                          ? Accent.warning
+                          : "transparent",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {editor.acknowledged ? (
+                        <Check size={15} color={colors.background} strokeWidth={3} />
+                      ) : null}
+                    </View>
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        fontWeight: "600",
+                        color: colors.text,
+                        lineHeight: 18,
+                      }}
+                    >
+                      {SAFETY_ACK_CONFIRM_LABEL}
+                    </Text>
+                  </Pressable>
                 </View>
               ) : null}
 
@@ -334,6 +398,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
               <GoalPaceFooter
                 saving={editor.saving}
                 dirty={editor.dirty}
+                canSave={editor.canSave}
                 onCancel={onClose}
                 onSave={editor.handleConfirm}
               />

@@ -106,6 +106,23 @@ HTML report: `coverage/index.html` after `npm run test:coverage`.
 | `suppr-natural-language.spec.ts` | AI-driven natural language tests |
 | `views-placeholder.spec.ts` | Placeholder AI view tests |
 
+### Synthetic-user persona testing (exploratory, additive)
+
+Goal-driven exploratory testing by agents that act as different *kinds* of user
+and log structured feedback — the layer that discovers the *unscripted* friction
+Maestro/Playwright can't (a first-timer who can't find the log button; a sparse
+logger who distrusts the maintenance number). **Additive**, never a replacement
+for scripted E2E.
+
+| Asset | Purpose |
+|------|--------|
+| `docs/testing/personas/README.md` | Roster + how a session runs |
+| `docs/testing/personas/<name>.md` | The five persona definitions (input to a session agent) |
+| `docs/testing/personas/RUNNER.md` | Self-contained session prompt + auth reality + feedback schema + closing protocol |
+| `scripts/seed-persona.mts` | Seeds a believable history onto an allowlisted TEST account (`npm run seed:persona`) |
+| `scripts/_lib/personaSeed.ts` | Pure, unit-tested core (allowlist guard + row shaping) |
+| `tests/unit/personaSeed.test.ts` | Guards the safety allowlist + deterministic shaping |
+
 ## Coverage Gaps
 
 | Area | Status | Risk |

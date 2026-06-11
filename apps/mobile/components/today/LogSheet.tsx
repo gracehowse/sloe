@@ -41,6 +41,7 @@ import FoodSearchPanel, {
   type SelectedFood as InlineSelectedFood,
   type SupabaseLike as InlineSupabaseLike,
 } from "@/components/food-search/FoodSearchPanel";
+import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/shared/nutrition/favoriteFoodsSearch";
 import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
 
 /** Re-exported for hosts that want the inline-search payload type. */
@@ -223,6 +224,29 @@ export interface LogSheetProps {
       count?: number;
       imageUrl?: string | null;
     }>;
+    /** Favourites-in-search (teardown #1, ENG-1041) — the user's starred
+     *  foods, surfaced as a "Favourites" group above "Past logged" and
+     *  favourites-first in the empty-query Recent strip. Threaded straight
+     *  through to `<FoodSearchPanel>`. When omitted, no favourites surface. */
+    favoriteFoods?: InlineFavoriteSearchItem[];
+    /** Star/unstar handler — host owns the optimistic write + revert. */
+    onToggleFavorite?: (food: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      favoriteId?: string;
+    }) => void;
+    /** Keys of favourite toggles currently in flight (no double-submit). */
+    favoritePendingKeys?: Set<string>;
+    /** Multi-add basket (teardown #2, ENG-1042) — stage the picked food into
+     *  the host's basket instead of committing immediately. Threaded to
+     *  `<FoodSearchPanel>`; surfaces an "Add" action in the portion preview.
+     *  When omitted, only the instant "Use this" log shows. */
+    onAddToBasket?: (result: LogSheetInlineSelectedFood) => void;
     /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -775,6 +799,9 @@ function DefaultComposition({
             supabase={search?.supabase}
             userId={search?.userId}
             recentFoods={search?.recentFoods}
+            favoriteFoods={search?.favoriteFoods}
+            onToggleFavorite={search?.onToggleFavorite}
+            favoritePendingKeys={search?.favoritePendingKeys}
             onSelect={(result) => {
               search?.onSelect?.(result);
               // After a successful pick the user has logged something —

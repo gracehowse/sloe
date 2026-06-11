@@ -132,6 +132,14 @@ import {
   type SavedMeal,
   type SavedMealItem,
 } from "../../lib/nutrition/savedMeals";
+import {
+  addFavorite,
+  favoriteKey as favoriteFoodKey,
+  listFavorites,
+  removeFavorite,
+  type FavoriteFood,
+} from "../../lib/nutrition/favoriteFoods";
+import { orderRecentWithFavoritesFirst } from "../../lib/nutrition/favoriteFoodsSearch";
 import { isMealSlot, MEAL_SLOTS, type MealSlot } from "../../lib/nutrition/mealSlots";
 import {
   journalSlotFromMealTypes,
@@ -992,6 +1000,108 @@ export const NutritionTracker = memo(function NutritionTracker({
       cancelled = true;
     };
   }, [authedUserId, savedMealsRefreshToken]);
+
+  /** Favourites-in-search (teardown #1, ENG-1041) — the user's starred foods,
+   *  loaded once and threaded into the LogSheet's inline FoodSearchPanel so
+   *  favourites surface IN search (a "Favourites" group above "Past logged"
+   *  + favourites-first in the empty-query Recent strip + a per-row star
+   *  toggle). The same `user_favorite_foods` model QuickAddPanel uses; the
+   *  host owns the list here because the LogSheet is a host-owned surface.
+   *  Mobile parity: `apps/mobile/app/(tabs)/index.tsx`. */
+  const [hostFavorites, setHostFavorites] = useState<FavoriteFood[]>([]);
+  const [favoritePendingKeys, setFavoritePendingKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!authedUserId) {
+      setHostFavorites([]);
+      return;
+    }
+    listFavorites(supabase, authedUserId)
+      .then((rows) => {
+        if (!cancelled) setHostFavorites(rows);
+      })
+      .catch((err) => {
+        console.warn("NutritionTracker listFavorites failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId]);
+
+  /** Optimistic star/unstar from a food-search row. Mirrors the mobile host
+   *  + QuickAddPanel `toggleFavorite`: add/remove immediately, revert on
+   *  Supabase failure, guard double-submit via `favoritePendingKeys`. */
+  const toggleFoodFavorite = useCallback(
+    async (food: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      favoriteId?: string;
+    }) => {
+      if (!authedUserId) return;
+      const key = favoriteFoodKey(food.recipeTitle, food.calories);
+      if (favoritePendingKeys.has(key)) return;
+      setFavoritePendingKeys((s) => new Set(s).add(key));
+      const snapshot = hostFavorites;
+      const wasStarred = Boolean(food.favoriteId);
+      try {
+        if (wasStarred && food.favoriteId) {
+          setHostFavorites((prev) => prev.filter((f) => f.id !== food.favoriteId));
+          await removeFavorite(supabase, authedUserId, food.favoriteId);
+        } else {
+          const tempId = `temp-${key}`;
+          const optimistic: FavoriteFood = {
+            id: tempId,
+            recipeTitle: food.recipeTitle,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            ...(food.fiber != null ? { fiber: food.fiber } : {}),
+            ...(food.source ? { source: food.source } : {}),
+            count: 1,
+            createdAt: new Date().toISOString(),
+          };
+          setHostFavorites((prev) => [optimistic, ...prev]);
+          const saved = await addFavorite(supabase, authedUserId, {
+            recipeTitle: food.recipeTitle,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            source: food.source ?? null,
+          });
+          setHostFavorites((prev) => [saved, ...prev.filter((f) => f.id !== tempId)]);
+        }
+      } catch (err) {
+        setHostFavorites(snapshot);
+        console.warn("NutritionTracker food favourite toggle failed", err);
+      } finally {
+        setFavoritePendingKeys((s) => {
+          const n = new Set(s);
+          n.delete(key);
+          return n;
+        });
+      }
+    },
+    [authedUserId, hostFavorites, favoritePendingKeys],
+  );
+
+  /** Favourite key set — drives favourites-first ordering of the empty-query
+   *  Recent browse list (web's empty-query recent strip lives in the LogSheet
+   *  `recent` browse tab, not the panel, so the ordering is applied here). */
+  const favoriteKeySetForRecent = useMemo(
+    () =>
+      new Set(hostFavorites.map((f) => favoriteFoodKey(f.recipeTitle, f.calories))),
+    [hostFavorites],
+  );
 
   // Ship M1 — usual-meal first-run hint dismiss state. Persisted under a
   // versioned key; hydrated once on mount and rehydrated when a different
@@ -1873,6 +1983,9 @@ export const NutritionTracker = memo(function NutritionTracker({
       avgCaloriesThisWeek: weekData.weekAvg.calories,
       // weightDeltaKg follow-up: see PR body. Honest null for now.
       weightDeltaKg: null,
+      // ENG-1027 — sex-aware suggested-target floor (never suggest a man
+      // below 1,500 / a woman below 1,200).
+      sex: profileSex,
     });
     setWeeklyCheckinContent(content);
     setWeeklyCheckinOpen(true);
@@ -1900,6 +2013,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     profileAdaptiveTdeeRaw,
     profileAdaptiveTdeeConfidenceRaw,
     profileFormulaTdee,
+    profileSex,
     weekData,
     targets.calories,
     weeklyCheckinShownAt,
@@ -3405,6 +3519,20 @@ export const NutritionTracker = memo(function NutritionTracker({
               source: item.source,
               count: item.count,
             })),
+          // Favourites-in-search (teardown #1, ENG-1041) — the user's starred
+          // foods + the optimistic toggle, threaded into the inline panel.
+          favoriteFoods: hostFavorites.map((f) => ({
+            id: f.id,
+            recipeTitle: f.recipeTitle,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            fiber: f.fiber,
+            source: f.source,
+          })),
+          onToggleFavorite: toggleFoodFavorite,
+          favoritePendingKeys,
           onSelect: (selection) => {
             commitFoodSearchSelection(selection);
             setLogSheetOpen(false);
@@ -3435,17 +3563,25 @@ export const NutritionTracker = memo(function NutritionTracker({
             // replaced 2026-05-03 (N1) — the predicate now matches both
             // legacy and new fallback shapes so existing TestFlight user
             // data + new builds both stay filtered.
-            return computeRecentMeals(nutritionByDay, 12)
-              .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
-              .map((item) => ({
-                id: foodHistoryKey(item.recipeTitle, item.calories),
-                title: item.recipeTitle,
-                kcal: Math.round(item.calories),
-                source: mapMealSourceToDot(item.source),
-                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                  ? ("today" as const)
-                  : ("week" as const),
-              }));
+            // Favourites-first (teardown #1, ENG-1041): on web the empty-query
+            // recent strip lives in this LogSheet browse tab (not the panel),
+            // so the favourites-first ordering is applied here via the shared
+            // `orderRecentWithFavoritesFirst`. The RecentList partitions into
+            // today/week buckets; this lifts starred rows ahead within each.
+            return orderRecentWithFavoritesFirst(
+              computeRecentMeals(nutritionByDay, 12).filter(
+                (item) => !isHealthImportFallbackTitle(item.recipeTitle),
+              ),
+              favoriteKeySetForRecent,
+            ).map((item) => ({
+              id: foodHistoryKey(item.recipeTitle, item.calories),
+              title: item.recipeTitle,
+              kcal: Math.round(item.calories),
+              source: mapMealSourceToDot(item.source),
+              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                ? ("today" as const)
+                : ("week" as const),
+            }));
           })(),
           onPick: (picked) => {
             setLogSheetOpen(false);

@@ -43,7 +43,12 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { BrandedSlider } from "../onboarding/branded-slider";
-import { type EditorDbGoal } from "../../../lib/nutrition/goalEditorPace.ts";
+import {
+  SAFETY_ACK_TITLE,
+  SAFETY_ACK_CONFIRM_LABEL,
+  safetyAckBody,
+  type EditorDbGoal,
+} from "../../../lib/nutrition/goalEditorPace.ts";
 import { useGoalPaceEditorDialog } from "./useGoalPaceEditorDialog.ts";
 
 const GOAL_OPTIONS: { value: EditorDbGoal; label: string; desc: string }[] = [
@@ -272,17 +277,34 @@ export function GoalPaceEditorDialog({
               </div>
             ) : null}
 
-            {/* Soft-warn below the safety floor — never blocks Save */}
+            {/* Below the safety floor — soft-warn AND acknowledge-to-proceed
+                (ENG-1027, Cronometer pattern). The warning explains; the
+                checkbox is the explicit, honest confirmation required before
+                Save unlocks. Body-neutral, no shaming. */}
             {e.belowSafetyFloor ? (
               <div
                 role="alert"
                 data-testid="goal-pace-editor-safety-warn"
-                className="rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5"
+                className="rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-3 space-y-2"
               >
-                <p className="text-[11px] text-foreground leading-snug">
-                  This pace lands below the general safety floor for unsupervised
-                  dieting. Consider a gentler pace, or check in with a clinician.
+                <p className="text-[11px] font-bold text-foreground leading-snug">
+                  {SAFETY_ACK_TITLE}
                 </p>
+                <p className="text-[11px] text-foreground leading-snug">
+                  {safetyAckBody(e.safetyFloorKcal)}
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={e.acknowledged}
+                    onChange={(ev) => e.setAcknowledged(ev.target.checked)}
+                    data-testid="goal-pace-editor-safety-ack"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-[var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/50"
+                  />
+                  <span className="text-[11px] font-semibold text-foreground leading-snug">
+                    {SAFETY_ACK_CONFIRM_LABEL}
+                  </span>
+                </label>
               </div>
             ) : null}
 
@@ -330,8 +352,8 @@ export function GoalPaceEditorDialog({
               matches the mobile goal/pace Save. */}
           <Button
             onClick={e.handleSave}
-            disabled={!e.dirty || e.saving || e.loading}
-            aria-disabled={!e.dirty || e.saving || e.loading}
+            disabled={!e.dirty || e.saving || e.loading || !e.canSave}
+            aria-disabled={!e.dirty || e.saving || e.loading || !e.canSave}
             data-testid="goal-pace-editor-save"
             className="bg-transparent border-[1.5px] border-[var(--accent-primary-solid)] text-primary-solid hover:bg-[var(--accent-primary-soft)] hover:text-primary-solid"
           >

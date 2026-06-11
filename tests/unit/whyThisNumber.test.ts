@@ -128,17 +128,26 @@ describe("buildWhyThisNumber", () => {
     expect(r.summary).toContain("still calibrating");
   });
 
-  it("renders a surplus row for a gaining user", () => {
+  it("renders a surplus row for a gaining user — Goal pace derived from the budget (ENG-1025)", () => {
+    // ENG-1025: the Goal row must reflect the EFFECTIVE pace the budget
+    // delivers, not the nominal preset. Here maintenance=2400, target=2700
+    // → +300/day surplus → 300 / (7700/7) ≈ 0.273 kg/wk → "Gain 0.25 kg/wk"
+    // (rounded to the 0.05 display step). The caller still passes the
+    // nominal preset (+0.5 here); the explainer ignores it and reads the
+    // budget so the Goal row and the Result row can never disagree by 2×.
     const r = buildWhyThisNumber({
       targetCalories: 2700,
       maintenanceTdee: 2400,
       confidence: "high",
       loggingDays: 30,
       goal: "gain",
-      paceKgPerWeek: 0.25,
+      paceKgPerWeek: 0.5, // nominal "steady" — NOT echoed; budget wins
     });
     expect(r.lines[1].value).toBe("Gain 0.25 kg/wk");
     expect(r.lines[2].value).toBe("+300 kcal/day surplus");
+    // Parity guard: the surplus the Result row names corresponds to the
+    // pace the Goal row shows (no 2× drift).
+    expect(r.summary).toContain("gain 0.25 kg/wk");
   });
 
   it("renders maintain copy when goal=maintain", () => {

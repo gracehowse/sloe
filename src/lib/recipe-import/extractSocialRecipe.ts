@@ -13,7 +13,14 @@
 
 import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
+import { followWithSsrfGuard } from "./ssrfGuard";
 import { callAiText, callAiVision, type AiCallResult } from "../server/aiProvider";
+import {
+  buildStructuredRecipePrompt,
+  parseStructuredRecipe,
+  toIngredientLines,
+  type StructuredIngredient,
+} from "./structuredRecipeSchema";
 
 export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
 
@@ -49,6 +56,10 @@ export interface SocialPostMeta {
  * Falls back to null so callers can use og:image instead.
  */
 async function fetchInstagramOembed(postUrl: string): Promise<{ thumbnailUrl: string | null; authorName: string | null }> {
+  // ENG-1037 (SSRF): the oEmbed `endpoint` host is HARD-CODED to
+  // instagram.com — the attacker-controlled `postUrl` is only a
+  // URL-encoded query parameter, never the fetch target. So this is not an
+  // SSRF vector and does not need the redirect guard (intentional — not a gap).
   const endpoints = [
     `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(postUrl)}`,
   ];
@@ -206,14 +217,21 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   for (const ua of UA_ATTEMPTS) {
     let html: string;
     try {
-      const res = await fetch(url, {
-        redirect: "follow",
+      // ENG-1037 (SSRF): `url` is the user-pasted social URL — never fetch it
+      // with `redirect: "follow"`. A malicious/compromised post host could
+      // 30x-chain into a cloud-metadata or internal host (169.254.169.254,
+      // 127.0.0.1, RFC-1918). `followWithSsrfGuard` follows redirects MANUALLY
+      // and re-validates every hop against the allowlist + a DNS re-resolve
+      // (ENG-682 / ENG-730). Null = a hop hit the blocklist → skip this UA.
+      const fetched = await followWithSsrfGuard(url, {
         headers: {
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
           "User-Agent": ua,
         },
       });
+      if (!fetched) continue;
+      const { res } = fetched;
       const ct = res.headers.get("content-type") ?? "";
       if (!ct.includes("text/html")) continue;
       html = await res.text();
@@ -590,6 +608,14 @@ export class CaptionExtractionError extends Error {
   }
 }
 
+/** A caption ingredient the model was unsure it parsed correctly. Surfaced
+ *  in the import review/verify UI for explicit user confirmation. */
+export type FlaggedIngredient = {
+  name: string;
+  raw: string;
+  confidence: number;
+};
+
 export async function extractRecipeFromCaption(
   caption: string,
   imageUrl?: string | null,
@@ -603,6 +629,13 @@ export async function extractRecipeFromCaption(
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   /**
+   * Ingredients the model flagged as low-confidence at parse time (distinct
+   * from the downstream nutrition-match confidence). Empty when every line
+   * parsed cleanly. The caller surfaces these in the review UI so uncertain
+   * lines are confirmed, never silently trusted.
+   */
+  flaggedIngredients: FlaggedIngredient[];
+  /**
    * `false` when an `imageUrl` was provided but OpenAI rejected it
    * and the function fell back to a text-only prompt. `true` when
    * the image was actually used. `undefined` when no image was
@@ -613,33 +646,16 @@ export async function extractRecipeFromCaption(
    */
   imageUsed?: boolean;
 }> {
-  const prompt = `You are extracting a recipe from a social media post caption.
+  // Recipe-vision contract (2026-06-11) — the caption extractor now uses the
+  // shared strict structured schema so parse confidence is captured per
+  // ingredient. The caption text is appended to the shared system prompt so
+  // the model has both the schema rules and the content in one place.
+  const prompt = `${buildStructuredRecipePrompt("caption")}
 
 The caption text is:
 """
 ${caption.slice(0, 4000)}
-"""
-
-Return a single JSON object (no markdown fences):
-{
-  "title": string or null,
-  "ingredients": string[],
-  "steps": string[],
-  "notes": string or null,
-  "servings": number or null,
-  "prepTimeMin": number or null,
-  "cookTimeMin": number or null
-}
-
-Rules:
-- ingredients: one string per ingredient line with amounts (e.g. "200g chicken breast")
-- **Do NOT include section headings** like "For the salad:", "For the sauce:", "For the dressing:", or any "For [X]:" prefix in ingredient strings. Treat the whole list as flat — the heading itself is not an ingredient, and repeating it in every line under it creates noisy duplicates (TestFlight ANmFiVpOfYEN, 2026-04-21).
-- steps: ordered cooking instructions; extract from the caption
-- If the caption doesn't contain a recipe, return empty arrays and null title
-- If ingredients or steps are implied but not explicit, use best effort
-- Ignore hashtags, mentions, and promotional text
-- servings: extract if mentioned, otherwise null
-- prepTimeMin / cookTimeMin: total minutes if the caption states prep time or cook time (e.g. "prep 15 min", "20 min cook"); otherwise null`;
+"""`;
 
   // 2026-05-08: migrated from direct OpenAI fetch to the shared
   // `callAiText` / `callAiVision` helpers (vendor-neutral). Default
@@ -651,7 +667,13 @@ Rules:
       // Anthropic vision wants base64 + media_type, not a URL. Fetch
       // the image first, then pass as a data URL — the helper strips
       // it back into base64 + media_type itself.
-      const imgRes = await fetch(imageUrl).catch(() => null);
+      // ENG-1037 (SSRF): `imageUrl` is derived from the post's og:image /
+      // oEmbed thumbnail — attacker-influenceable. A bare `fetch` defaults to
+      // `redirect: "follow"`, so a crafted image URL could 30x-chain into an
+      // internal/metadata host. Route through the SSRF guard (per-hop allowlist
+      // + DNS re-resolve); a refusal (null) is treated as a failed image fetch.
+      const imgFetched = await followWithSsrfGuard(imageUrl).catch(() => null);
+      const imgRes = imgFetched?.res ?? null;
       if (!imgRes || !imgRes.ok) {
         // Image fetch failed — caller will retry without it.
         return {
@@ -739,55 +761,48 @@ Rules:
     });
   }
 
-  const raw = aiResult.text;
-  try {
-    const parsed = JSON.parse(raw) as {
-      title?: string | null;
-      ingredients?: string[];
-      steps?: string[];
-      notes?: string | null;
-      servings?: number | null;
-      prepTimeMin?: number | null;
-      cookTimeMin?: number | null;
-    };
-    const heur = parsePrepCookMinutesFromCaption(caption);
-    const asPosMin = (v: unknown): number | null => {
-      if (v == null) return null;
-      const n = typeof v === "string" ? Number.parseFloat(v.replace(/,/g, "")) : typeof v === "number" ? v : NaN;
-      if (!Number.isFinite(n) || n <= 0) return null;
-      return Math.min(Math.round(n), 24 * 60);
-    };
-    const prepFromModel = asPosMin(parsed.prepTimeMin);
-    const cookFromModel = asPosMin(parsed.cookTimeMin);
-    return {
-      title: sanitiseImportedTitle(parsed.title),
-      ingredients: Array.isArray(parsed.ingredients)
-        ? parsed.ingredients.map((s) => stripSectionPrefix(String(s).trim())).filter(Boolean)
-        : [],
-      steps: Array.isArray(parsed.steps)
-        ? parsed.steps.map((s) => String(s).trim()).filter(Boolean)
-        : [],
-      notes: parsed.notes ?? null,
-      servings: typeof parsed.servings === "number" ? parsed.servings : null,
-      prepTimeMin: prepFromModel ?? heur.prepTimeMin,
-      cookTimeMin: cookFromModel ?? heur.cookTimeMin,
-      imageUsed,
-    };
-  } catch {
-    const heur = parsePrepCookMinutesFromCaption(caption);
+  const heur = parsePrepCookMinutesFromCaption(caption);
+  const result = parseStructuredRecipe(aiResult.text);
+  if (!result.ok) {
+    // Don't echo raw model output — past sanity check failures have
+    // included vendor identifiers / prompt fragments (audit I01,
+    // 2026-05-05). The notes panel was the surface where this leaked
+    // into recipe drafts.
     return {
       title: null,
       ingredients: [],
       steps: [],
-      // Don't echo raw model output — past sanity check failures
-      // have included vendor identifiers / prompt fragments
-      // (audit I01, 2026-05-05). The notes panel was the surface
-      // where this leaked into recipe drafts.
       notes: null,
       servings: null,
       prepTimeMin: heur.prepTimeMin,
       cookTimeMin: heur.cookTimeMin,
+      flaggedIngredients: [],
       imageUsed,
     };
   }
+  const recipe = result.recipe;
+  // `stripSectionPrefix` is still applied to each flattened line for the
+  // belt-and-braces "For the salad:" guard (TestFlight ANmFiVpOfYEN) on top
+  // of the schema's instruction to omit headings.
+  const ingredients = toIngredientLines(recipe)
+    .map((s) => stripSectionPrefix(s.trim()))
+    .filter(Boolean);
+  const flaggedIngredients: FlaggedIngredient[] = recipe.ingredients
+    .filter((ing: StructuredIngredient) => ing.flagged)
+    .map((ing: StructuredIngredient) => ({
+      name: ing.name,
+      raw: ing.raw,
+      confidence: ing.confidence,
+    }));
+  return {
+    title: sanitiseImportedTitle(recipe.title),
+    ingredients,
+    steps: recipe.steps,
+    notes: recipe.notes,
+    servings: recipe.servings,
+    prepTimeMin: recipe.prepTimeMin ?? heur.prepTimeMin,
+    cookTimeMin: recipe.cookTimeMin ?? heur.cookTimeMin,
+    flaggedIngredients,
+    imageUsed,
+  };
 }

@@ -655,7 +655,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       const { data, error } = await supabase
         .from("nutrition_entries")
         .select(
-          "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+          // ENG-1041 — include `nutrition_micros` so the CSV's fibre column
+          // can backfill from `micros.fiberG` for rows logged on mobile
+          // before fibre was promoted to the `fiber_g` column.
+          "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, nutrition_micros, source",
         )
         .eq("user_id", uid)
         .order("date_key", { ascending: true })

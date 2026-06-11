@@ -34,7 +34,7 @@ import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts"
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
-import { stripSectionPrefix } from "../../lib/recipe-import/extractSocialRecipe.ts";
+import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import {
   IMPORT_ERROR_COPY,

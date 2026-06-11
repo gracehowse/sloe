@@ -8,6 +8,12 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import {
+  checkQuota,
+  consumeQuota,
+  getCachedSearch,
+  setCachedSearch,
+} from "@/lib/server/vendorSearchCache";
 
 /**
  * GET /api/fatsecret/search?q=<query>&page=<n>
@@ -68,6 +74,28 @@ export async function GET(req: Request) {
   const rawPage = Number(searchParams.get("page") ?? "1");
   const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
 
+  // ENG-1038 — cross-request cache + account-level quota guard.
+  const locale = searchParams.get("locale");
+
+  // 1) Cache hit — no FatSecret call, no quota spend.
+  const cached = await getCachedSearch<unknown>("fatsecret", q, { locale, page: pageNumber });
+  if (cached) {
+    return NextResponse.json({ ok: true, hits: cached, page: pageNumber, cached: true });
+  }
+
+  // 2) Account-wide quota exhausted — skip FatSecret, return DEGRADED so the
+  //    merge falls through to the next source + the UI shows an honest notice.
+  const quota = await checkQuota("fatsecret");
+  if (!quota.allowed) {
+    return NextResponse.json({
+      ok: true,
+      hits: [],
+      page: pageNumber,
+      degraded: true,
+      degradedReason: "quota_exhausted",
+    });
+  }
+
   if (!hasFatSecretConfig()) {
     const missing = misconfiguredFatSecretResponse();
     if (missing) return missing;
@@ -76,6 +104,8 @@ export async function GET(req: Request) {
   const cfg = fatSecretConfigFromEnv();
 
   try {
+    // Consume one quota unit immediately before the live call (atomic).
+    await consumeQuota("fatsecret");
     // FatSecret's `page_number` is 0-indexed; map from the 1-indexed
     // `page` we accept on the API surface so it lines up with USDA / OFF.
     const results = await fatSecretFoodSearch(cfg, q, {
@@ -134,6 +164,11 @@ export async function GET(req: Request) {
       };
     });
 
+    // Cache only the genuine successful response. The catch block below
+    // returns ok+empty on upstream failure (OAuth, IP block, 502) — that
+    // must NOT be cached as a real empty, or a transient FatSecret blip
+    // would suppress all FatSecret hits for 24h.
+    await setCachedSearch("fatsecret", q, hits, { locale, page: pageNumber });
     return NextResponse.json({ ok: true, hits, page: pageNumber });
   } catch (e) {
     // Log + return empty so the merge pipeline keeps USDA / OFF / Edamam

@@ -2,7 +2,13 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Plus, Sun, BookOpen, CalendarDays, LineChart } from "lucide-react";
+// ENG-1044 — canonical primary-nav glyph set, locked to the native iOS
+// tab bar: Today=Calendar, Plan=BookOpen, Recipes=Utensils,
+// Progress=BarChart3. (Was Sun / BookOpen / CalendarDays / LineChart,
+// which both diverged from native AND collided — BookOpen meant Recipes
+// here but Plan on native.)
+import { Plus, Calendar, BookOpen, Utensils, BarChart3 } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
@@ -159,6 +165,12 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>("today");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
+
+  // ENG-1044 — flag-gated canonical Plan-first tab order (matches native
+  // iOS) for the mobile-web bottom nav. Default-OFF (legacy Recipes-first)
+  // until ramped; `?? false` keeps first paint stable while the flag loads.
+  const navPlanFirst =
+    (useFeatureFlagEnabled("nav-tab-order-plan-first") ?? false) === true;
   // Upgrade-paywall dialog (2026-04-20 Claude Design port). When
   // `upgradePaywallFrom` is non-null the `<UpgradePaywallDialog>`
   // renders with that attribution. Opened via `openUpgradeDialog()`,
@@ -666,24 +678,32 @@ export default function App() {
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           <div className="flex" role="tablist">
-            {/* SLOE (2026-06-07) — tab glyphs are pinned to the mobile
-                `<SupprTabBar>` set (Sun / BookOpen / CalendarDays /
-                LineChart, stroke 2) so the mobile-web bottom nav and the
-                native iOS tab bar read as the same surface. Previously this
-                used the generic `Icons.home` (Home) + `Icons.progress`
-                (BarChart3) which drifted from the Figma Sloe glyph set. */}
-            {([
-              { primary: "today" as const, defaultLeaf: "today" as const, icon: <Sun className="w-5 h-5" strokeWidth={2} />, label: "Today" },
-              { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <BookOpen className="w-5 h-5" strokeWidth={2} />, label: "Recipes" },
-              { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <CalendarDays className="w-5 h-5" strokeWidth={2} />, label: "Plan" },
-              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <LineChart className="w-5 h-5" strokeWidth={2} />, label: "Progress" },
-            ] as const).map((tab, tabIndex) => {
+            {/* ENG-1044 — canonical primary-nav glyph set + order, locked
+                to the native iOS tab bar (Today=Calendar, Plan=BookOpen,
+                Recipes=Utensils, Progress=BarChart3). The order is
+                flag-gated: Plan-first when `navPlanFirst` (matches native),
+                else the legacy Recipes-first order while the change ramps.
+                The raised Log button always lands in the centre (after the
+                2nd tab) regardless of order, mirroring `<SupprTabBar>`. */}
+            {(navPlanFirst
+              ? ([
+                  { primary: "today" as const, defaultLeaf: "today" as const, icon: <Calendar className="w-5 h-5" strokeWidth={2} />, label: "Today" },
+                  { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <BookOpen className="w-5 h-5" strokeWidth={2} />, label: "Plan" },
+                  { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Utensils className="w-5 h-5" strokeWidth={2} />, label: "Recipes" },
+                  { primary: "you" as const, defaultLeaf: "progress" as const, icon: <BarChart3 className="w-5 h-5" strokeWidth={2} />, label: "Progress" },
+                ] as const)
+              : ([
+                  { primary: "today" as const, defaultLeaf: "today" as const, icon: <Calendar className="w-5 h-5" strokeWidth={2} />, label: "Today" },
+                  { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Utensils className="w-5 h-5" strokeWidth={2} />, label: "Recipes" },
+                  { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <BookOpen className="w-5 h-5" strokeWidth={2} />, label: "Plan" },
+                  { primary: "you" as const, defaultLeaf: "progress" as const, icon: <BarChart3 className="w-5 h-5" strokeWidth={2} />, label: "Progress" },
+                ] as const)
+            ).map((tab, tabIndex) => {
               const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
               const isActive = activePrimary === tab.primary;
-              // Inject the raised Log button between visible-index 1
-              // (Recipes) and visible-index 2 (Plan). Render the tab
-              // first, then the button, then the next tabs follow.
-              // Mirrors the mobile `<SupprTabBar>` raised-button slot.
+              // Inject the raised Log button in the CENTRE — after the 2nd
+              // visible tab (index 1) regardless of order — mirroring the
+              // mobile `<SupprTabBar>` raised-button slot.
               const showLogButtonAfterThis = tabIndex === 1;
               return (
                 <Fragment key={tab.primary}>

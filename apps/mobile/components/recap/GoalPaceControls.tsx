@@ -84,11 +84,16 @@ export function GoalPaceFooter({
   dirty,
   onCancel,
   onSave,
+  canSave = true,
 }: {
   saving: boolean;
   dirty: boolean;
   onCancel: () => void;
   onSave: () => void;
+  /** ENG-1027 — false when the live target is below the safety floor and
+   *  the user hasn't acknowledged yet. Disables Save (the ack toggle in
+   *  the sheet body is the next action). Defaults true (above-floor). */
+  canSave?: boolean;
 }) {
   const accent = useAccent();
   const colors = useThemeColors();
@@ -121,7 +126,7 @@ export function GoalPaceFooter({
         accessibilityRole="button"
         accessibilityLabel="Save goal and pace"
         onPress={onSave}
-        disabled={saving || !dirty}
+        disabled={saving || !dirty || !canSave}
         testID="goal-pace-editor-save"
         style={{
           flex: 2,
@@ -132,7 +137,7 @@ export function GoalPaceFooter({
           borderColor: accent.primarySolid,
           alignItems: "center",
           justifyContent: "center",
-          opacity: saving || !dirty ? 0.5 : 1,
+          opacity: saving || !dirty || !canSave ? 0.5 : 1,
         }}
       >
         {saving ? (

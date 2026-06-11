@@ -69,8 +69,10 @@ describe("F-10 food search pagination — shared helper", () => {
   });
 
   it("searchUsda forwards `page` to the USDA route", () => {
+    // 2026-06-11 (ENG-1038) — opts gained `onDegraded?`; pin that `page?` is
+    // still the first opt without anchoring the closing brace.
     expect(VERIFY_SRC).toMatch(
-      /searchUsda\([^)]*opts\?:\s*\{\s*page\?:\s*number\s*\}\)/,
+      /searchUsda\([^)]*opts\?:\s*\{\s*page\?:\s*number\s*;/,
     );
     expect(VERIFY_SRC).toMatch(/\/api\/usda\/search\?q=\$\{[^}]+\}&page=\$\{page\}/);
   });
@@ -175,9 +177,13 @@ describe("F-10 food search pagination — web/mobile parity", () => {
   });
 
   it("web forwards `page` to all three source helpers", () => {
-    expect(WEB_SRC).toMatch(/searchUsda\(query: string, page: number = 1\)/);
+    // 2026-06-11 (ENG-1038) — searchUsda/searchEdamam/searchFatSecret gained
+    // a multi-line signature with an `onDegraded?` param. Pin the `query` +
+    // `page` params remain (the pagination contract) without anchoring the
+    // exact one-line shape, which is no longer valid.
+    expect(WEB_SRC).toMatch(/searchUsda\(\s*query: string,\s*page: number = 1/);
     expect(WEB_SRC).toMatch(/searchOff\(query: string, page: number = 1\)/);
-    expect(WEB_SRC).toMatch(/searchEdamam\(query: string, page: number = 1\)/);
+    expect(WEB_SRC).toMatch(/searchEdamam\(\s*query: string,\s*page: number = 1/);
   });
 
   it("web renders an IntersectionObserver-watched sentinel + spinner at the tail", () => {

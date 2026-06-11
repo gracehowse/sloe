@@ -110,3 +110,4 @@ docs/brand/sloe/assets/gen/
 .playwright-mcp/
 tmp/
 *.tsbuildinfo
+.env.persona

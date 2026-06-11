@@ -6,10 +6,13 @@
  * Three regimes:
  *   - `adjustment`   — abs(currentTdee - prevWeekTdee) > 30 kcal.
  *                      The maintenance estimate moved this week.
- *   - `calibrating`  — confidence is "low" OR fewer than 14 days of
- *                      logging. We're still warming up; show calmer
- *                      copy and don't quote a speculative number with
- *                      false confidence.
+ *   - `calibrating`  — engine has no estimate yet OR the engine itself
+ *                      reports "low" confidence. We're still warming up;
+ *                      show calmer copy and don't quote a speculative
+ *                      number with false confidence. (ENG-1034: we do NOT
+ *                      re-gate on the caller's day count — the engine's
+ *                      "medium"/"high" already encodes ≥14/≥21 cumulative
+ *                      logging days, and callers pass a range-scoped count.)
  *   - `steady`       — confidence is medium/high AND delta is ≤ 30
  *                      kcal vs the previous week.
  *
@@ -79,7 +82,6 @@ export interface ProgressCommentaryResult {
 }
 
 const ADJUSTMENT_DELTA_KCAL = 30;
-const CALIBRATING_MIN_DAYS = 14;
 
 /**
  * Generate the Progress headline + body + confidence chip level.
@@ -93,22 +95,26 @@ export function generateProgressCommentary(
   const { current, prevWeekTdee, avgIntakeOnLossWeeksKcal } = input;
   const loggingDays = input.loggingDays ?? current?.loggingDays ?? 0;
 
-  // Calibrating regime — engine returned null OR confidence is low OR
-  // confidence is medium with <14 days. Per D-2026-04-27-12 we still
-  // surface the headline, but in calibration tone — never hide.
+  // Calibrating regime — engine returned null OR confidence is low. Per
+  // D-2026-04-27-12 we still surface the headline, but in calibration
+  // tone — never hide.
   //
-  // F-124 (Grace, 2026-05-07): "this maintance est says high so there
-  // are two conflicting widgets" — when the adaptive engine says
-  // **high** confidence we trust it and skip the `loggingDays < 14`
-  // gate. Otherwise the top "This Week" card renders "calibrating"
-  // while the bottom Maintenance card claims "High confidence" —
-  // mutually contradictory copy. The engine already weights data
-  // quality into its confidence; we shouldn't second-guess it.
-  if (
-    !current ||
-    current.confidence === "low" ||
-    (current.confidence === "medium" && loggingDays < CALIBRATING_MIN_DAYS)
-  ) {
+  // F-124 (Grace, 2026-05-07) → ENG-1034 (2026-06-11): trust the engine's
+  // stored confidence and do NOT re-gate it on the caller's `loggingDays`.
+  // Both production callers (web ProgressDashboard, mobile Progress tab)
+  // pass a RANGE-scoped day count (this week's `daysWithFood`, ≤7), never
+  // the cumulative history. But the engine only assigns "medium" when it
+  // already has ≥14 cumulative logging days + ≥5 weigh-ins, and "high" at
+  // ≥21 + ≥7 (`adaptiveTdee.ts` confidence ladder). So a stored "medium"
+  // ALREADY guarantees the warm-up is past — re-gating it on the weekly
+  // count (which can never reach 14) forced every medium-confidence user
+  // into "still calibrating" + a Low chip while the Maintenance card below
+  // showed "medium confidence": the two cards contradicted each other (the
+  // exact symptom F-124 flagged for "high", here for "medium" too). The
+  // engine already weights data quality into its confidence; second-
+  // guessing it with a range-scoped count is the category error. Calibrating
+  // now fires only when there is no estimate or the engine itself says low.
+  if (!current || current.confidence === "low") {
     return calibratingCopy(current, loggingDays);
   }
 

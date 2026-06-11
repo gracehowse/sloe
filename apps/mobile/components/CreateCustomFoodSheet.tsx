@@ -12,6 +12,11 @@
  *     fat / sodium — hidden by default so the primary form stays short.
  *   - An optional barcode text input (no scanner — scanner is a
  *     follow-up piece of work that needs `expo-camera` permissions).
+ *   - A "Scan label" OCR entry (2026-06-11) — snaps a nutrition-panel
+ *     photo, posts to /api/nutrition/scan-label, and PRE-FILLS the
+ *     per-100g macro fields. The form stays the source of truth: the user
+ *     confirms every value before saving; low-confidence / implausible
+ *     scans surface a "double-check" warning (never silently accepted).
  *
  * Does no I/O; hands the payload back via `onSave` so the caller
  * can run it through the shared `createCustomFood` / `updateCustomFood`
@@ -28,6 +33,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -37,10 +43,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import Constants from "expo-constants";
 
 import KeyboardSafeView from "./KeyboardSafeView";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   CUSTOM_FOOD_NAME_MAX,
   convertMacrosBetweenBases,
@@ -63,6 +73,12 @@ import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngre
 
 /** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "@suppr/customFood/macroBasis/v1";
+
+// Recipe-vision contract (2026-06-11) — Suppr's mobile app talks to the same
+// Vercel-hosted Next.js routes the web client uses. Mirrors the resolution in
+// BarcodeScannerModal so the scan-label call hits the same origin.
+const API_BASE: string =
+  (Constants.expoConfig?.extra?.supprApiUrl as string | undefined) ?? "https://suppr-club.com";
 
 type Theme = {
   text: string;
@@ -175,6 +191,14 @@ export default function CreateCustomFoodSheet({
   const [conversionNotice, setConversionNotice] = useState<string | null>(null);
   const conversionNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialBasisAppliedRef = useRef(false);
+  // Recipe-vision contract (2026-06-11) — "Scan label" OCR pre-fill state.
+  // The form stays the source of truth: OCR only pre-fills per-100g values
+  // the user confirms before saving. `scanWarning` carries a "double-check"
+  // message when the route flags low confidence or implausible macros — we
+  // never silently accept a scan.
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanWarning, setScanWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -290,6 +314,9 @@ export default function CreateCustomFoodSheet({
     }
     setSaving(false);
     setConversionNotice(null);
+    setScanLoading(false);
+    setScanError(null);
+    setScanWarning(null);
     if (conversionNoticeTimeoutRef.current) {
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
@@ -472,6 +499,135 @@ export default function CreateCustomFoodSheet({
     };
   }, [macros, previewGrams, hasValidBase]);
 
+  // Recipe-vision contract (2026-06-11) — "Scan label" OCR pre-fill.
+  // Captures a photo of a nutrition label, posts it to /api/nutrition/
+  // scan-label (Claude vision, OpenAI fallback), and PRE-FILLS the form's
+  // per-100g macro fields. The form stays the source of truth: the user
+  // reviews every value and taps Save. Low-confidence / implausible scans
+  // surface a "double-check" warning — never silently accepted (repo
+  // nutrition no-guessing rule). Mirrors the established handleSnapLabel
+  // flow in BarcodeScannerModal so the RN FormData + auth shape is identical.
+  const handleScanLabel = async () => {
+    if (scanLoading) return;
+    setScanError(null);
+    setScanWarning(null);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setScanError("Camera permission needed to scan the label.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 0.85,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    setScanLoading(true);
+    try {
+      const asset = result.assets[0];
+      const fd = new FormData();
+      // RN's FormData wants a `{ uri, name, type }` object, not a Blob.
+      // Casting is the established pattern for this RN-native shape.
+      fd.append(
+        "image",
+        ({
+          uri: asset.uri,
+          name: "label.jpg",
+          type: asset.mimeType ?? "image/jpeg",
+        } as unknown) as Blob,
+      );
+
+      const { supabase } = await import("@/lib/supabase");
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess.session?.access_token;
+
+      const ac = new AbortController();
+      const clientTimeout = setTimeout(() => ac.abort(), 50_000);
+      let resp: Response;
+      try {
+        resp = await fetch(`${API_BASE}/api/nutrition/scan-label`, {
+          method: "POST",
+          body: fd,
+          signal: ac.signal,
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
+      } finally {
+        clearTimeout(clientTimeout);
+      }
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.ok) {
+        setScanError(
+          (typeof data?.message === "string" && data.message) ||
+            "Couldn't read the label. Try a sharper, well-lit photo of the nutrition panel.",
+        );
+        return;
+      }
+
+      // The route returns per-100g values — pre-fill in per-100g basis so
+      // the numbers and the basis agree. The basis effect snaps to per_100g
+      // when there's no valid serving, keeping per-100g entry valid.
+      setMacroBasis("per_100g");
+      void AsyncStorage.setItem(MACRO_BASIS_STORAGE_KEY, "per_100g").catch(() => {});
+      if (typeof data.name === "string" && data.name.trim() && !name.trim()) {
+        setName(data.name.trim());
+      }
+      setCaloriesText(formatNumber(Math.round(Number(data.calories) || 0)));
+      setProteinText(formatNumber(Math.round((Number(data.protein) || 0) * 10) / 10));
+      setCarbsText(formatNumber(Math.round((Number(data.carbs) || 0) * 10) / 10));
+      setFatText(formatNumber(Math.round((Number(data.fat) || 0) * 10) / 10));
+      setFiberText(
+        data.fiberG != null && Number(data.fiberG) > 0
+          ? formatNumber(Math.round(Number(data.fiberG) * 10) / 10)
+          : "",
+      );
+      setSugarText(
+        data.sugarG != null && Number(data.sugarG) > 0
+          ? formatNumber(Math.round(Number(data.sugarG) * 10) / 10)
+          : "",
+      );
+      setSatFatText(
+        data.saturatedFatG != null && Number(data.saturatedFatG) > 0
+          ? formatNumber(Math.round(Number(data.saturatedFatG) * 10) / 10)
+          : "",
+      );
+      setSodiumText(
+        data.sodiumMg != null && Number(data.sodiumMg) > 0
+          ? formatNumber(Math.round(Number(data.sodiumMg)))
+          : "",
+      );
+      setDetailsOpen(true);
+
+      // Surface a "double-check" warning when the route flags the scan —
+      // either implausible macros (Atwater failure) or low model confidence.
+      if (data.implausible === true) {
+        setScanWarning(
+          "These numbers look unusual — the label may have been read wrong. Double-check each value before saving.",
+        );
+      } else if (data.confidence === "low") {
+        setScanWarning(
+          "The label was hard to read. Double-check each value before saving.",
+        );
+      }
+
+      try {
+        track(AnalyticsEvents.custom_food_label_scanned, {
+          confidence: typeof data.confidence === "string" ? data.confidence : "unknown",
+          implausible: data.implausible === true,
+          platform: "ios",
+        });
+      } catch {
+        /* noop */
+      }
+    } catch {
+      setScanError(
+        "Couldn't reach the AI service. Check your connection and try again.",
+      );
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -591,6 +747,71 @@ export default function CreateCustomFoodSheet({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
+              {/* Recipe-vision contract (2026-06-11) — "Scan label" OCR
+                  fast-fill. Snaps a photo of the nutrition panel and
+                  pre-fills the per-100g macros below; the user confirms
+                  every value before saving (form stays source of truth).
+                  Secondary outline treatment — the Save CTA is the screen's
+                  one filled button. */}
+              <Pressable
+                onPress={handleScanLabel}
+                disabled={scanLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Scan a nutrition label to pre-fill the macros"
+                accessibilityState={{ disabled: scanLoading, busy: scanLoading }}
+                testID="custom-food-scan-label"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: Spacing.sm,
+                  borderWidth: 1,
+                  borderColor: accent.primary,
+                  backgroundColor: accent.primary + "1f",
+                  borderRadius: Radius.md,
+                  paddingVertical: 11,
+                  marginBottom: Spacing.md,
+                  opacity: scanLoading ? 0.7 : 1,
+                }}
+              >
+                {scanLoading ? (
+                  <ActivityIndicator size="small" color={accent.primary} />
+                ) : (
+                  <Ionicons name="camera-outline" size={18} color={accent.primary} />
+                )}
+                <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
+                  {scanLoading ? "Reading label…" : "Scan label"}
+                </Text>
+              </Pressable>
+              {scanError && (
+                <Text
+                  testID="custom-food-scan-error"
+                  accessibilityLiveRegion="polite"
+                  style={{
+                    fontSize: 11,
+                    color: Accent.destructive,
+                    marginBottom: Spacing.md,
+                    marginTop: -Spacing.sm,
+                  }}
+                >
+                  {scanError}
+                </Text>
+              )}
+              {scanWarning && (
+                <Text
+                  testID="custom-food-scan-warning"
+                  accessibilityLiveRegion="polite"
+                  style={{
+                    fontSize: 11,
+                    color: Accent.warning,
+                    marginBottom: Spacing.md,
+                    marginTop: -Spacing.sm,
+                  }}
+                >
+                  {scanWarning}
+                </Text>
+              )}
+
               <Text
                 style={{
                   fontSize: 12,

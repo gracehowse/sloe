@@ -390,6 +390,7 @@ describe("formatTdeeDelta + formatKcal", () => {
 import {
   buildWeeklyCheckinContent,
   shouldShowWeeklyCheckin,
+  suggestedTargetFloorFor,
   MIN_DAYS_LOGGED_FOR_CHECKIN,
   type WeeklyCheckinGateInput,
 } from "../../src/lib/nutrition/weeklyCheckin";
@@ -516,6 +517,74 @@ describe("buildWeeklyCheckinContent (modal ritual)", () => {
     // raw (pre-clamp) value is exposed as floorAppliedKcal so the
     // UI can render "the math would land at X but we capped at 1,200".
     expect(content.floorAppliedKcal).toBe(600);
+  });
+
+  // ─── ENG-1027: sex-aware suggested-target floor ─────────────────────
+  it("ENG-1027 — clamps a male suggestion at the 1,500 floor, not 1,200", () => {
+    // Same shape as the unisex test above but with sex: "male". The raw
+    // suggestion (600) used to clamp to 1,200 — a value our own safety
+    // classifier flags as a WARNING for men. With the sex-aware floor it
+    // clamps to 1,500.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1300,
+      priorTdee: 2200,
+      currentTargetKcal: 1500,
+      avgCaloriesThisWeek: 1450,
+      weightDeltaKg: null,
+      sex: "male",
+    });
+    expect(content.suggestedTargetKcal).toBe(1500);
+    expect(content.floorAppliedKcal).toBe(600);
+  });
+
+  it("ENG-1027 — clamps a female suggestion at the 1,200 floor", () => {
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1300,
+      priorTdee: 2200,
+      currentTargetKcal: 1500,
+      avgCaloriesThisWeek: 1450,
+      weightDeltaKg: null,
+      sex: "female",
+    });
+    expect(content.suggestedTargetKcal).toBe(1200);
+    expect(content.floorAppliedKcal).toBe(600);
+  });
+
+  it("ENG-1027 — unspecified sex clamps at the 1,350 midpoint floor", () => {
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1300,
+      priorTdee: 2200,
+      currentTargetKcal: 1500,
+      avgCaloriesThisWeek: 1450,
+      weightDeltaKg: null,
+      sex: "unspecified",
+    });
+    expect(content.suggestedTargetKcal).toBe(1350);
+    expect(content.floorAppliedKcal).toBe(600);
+  });
+
+  it("ENG-1027 — a male target of 1,400 is bumped to the 1,500 floor (matches budgetSafety warning band)", () => {
+    // Raw 2000 + (1600-2200) = 1400. Unisex would have passed it through
+    // (above 1,200); sex-aware bumps to 1,500.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1600,
+      priorTdee: 2200,
+      currentTargetKcal: 2000,
+      avgCaloriesThisWeek: 1950,
+      weightDeltaKg: null,
+      sex: "male",
+    });
+    expect(content.suggestedTargetKcal).toBe(1500);
+    expect(content.floorAppliedKcal).toBe(1400);
+  });
+
+  it("ENG-1027 — suggestedTargetFloorFor mirrors budgetSafety hard floors", () => {
+    expect(suggestedTargetFloorFor("male")).toBe(1500);
+    expect(suggestedTargetFloorFor("female")).toBe(1200);
+    expect(suggestedTargetFloorFor("unspecified")).toBe(1350);
+    // No sex supplied → historical unisex behaviour preserved.
+    expect(suggestedTargetFloorFor(null)).toBe(1200);
+    expect(suggestedTargetFloorFor(undefined)).toBe(1200);
   });
 
   it("floorAppliedKcal is null when raw target is at or above the floor", () => {

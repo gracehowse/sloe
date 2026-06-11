@@ -261,7 +261,9 @@ export function useSavedRecipes(userId: string | null) {
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
-  // Load user tier once
+  // Load user tier once. `lifetime_pro` (founding-cohort comp, ENG-1043) gates
+  // as `pro` — normalise it here so the free-save-limit gate below treats
+  // founders as Pro rather than letting the raw string fall through.
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -270,7 +272,12 @@ export function useSavedRecipes(userId: string | null) {
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.user_tier) setUserTier(data.user_tier as "free" | "base" | "pro");
+        const raw = data?.user_tier;
+        if (!raw) return;
+        const normalised = raw === "lifetime_pro" ? "pro" : raw;
+        if (normalised === "free" || normalised === "base" || normalised === "pro") {
+          setUserTier(normalised);
+        }
       });
   }, [userId]);
 

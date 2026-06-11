@@ -10,6 +10,12 @@ import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import {
+  buildStructuredRecipePrompt,
+  parseStructuredRecipe,
+  toIngredientLines,
+  type StructuredIngredient,
+} from "@/lib/recipe-import/structuredRecipeSchema";
+import {
   traceExtraction,
   traceParsing,
   traceNutritionLookup,
@@ -121,18 +127,13 @@ export async function POST(req: Request) {
   const b64 = normalizedBuf.toString("base64");
   const dataUrl = `data:${normalizedMime};base64,${b64}`;
 
-  const SYSTEM_PROMPT = `You are helping import a recipe from a photo or screenshot.
-Return a single JSON object with this shape (no markdown fences):
-{
-  "title": string or null,
-  "ingredients": string[],
-  "steps": string[],
-  "notes": string or null
-}
-Rules:
-- ingredients: one string per ingredient line as a cook would write it (include amounts).
-- steps: ordered cooking steps; empty array if none visible.
-- If text is unreadable, use best effort and short ingredients/steps arrays.`;
+  // Recipe-vision contract (2026-06-11) — route image extraction through the
+  // shared strict structured schema so the per-ingredient parse confidence
+  // (distinct from the downstream nutrition-match confidence) is captured at
+  // extraction time. Low-confidence lines are flagged for review, never
+  // guessed (repo nutrition no-guessing rule). See
+  // `src/lib/recipe-import/structuredRecipeSchema.ts`.
+  const SYSTEM_PROMPT = buildStructuredRecipePrompt("image");
 
   let aiResult;
   try {
@@ -170,19 +171,28 @@ Rules:
     return NextResponse.json(importErrorResponse("openai_http_error"), { status: aiResult.status });
   }
 
-  let parsed: { title?: string | null; ingredients?: string[]; steps?: string[]; notes?: string | null };
-  try {
-    parsed = JSON.parse(aiResult.text) as typeof parsed;
-  } catch {
+  const parseResult = parseStructuredRecipe(aiResult.text);
+  if (!parseResult.ok) {
     // Don't echo the raw model output — occasionally contains chunks of
     // the prompt or vendor identifiers (audit I01, 2026-05-05).
     return NextResponse.json(importErrorResponse("unparseable_model_output"), { status: 502 });
   }
+  const structured = parseResult.recipe;
 
-  const ingredients = Array.isArray(parsed.ingredients)
-    ? parsed.ingredients.map((s) => String(s).trim()).filter(Boolean)
-    : [];
-  const steps = Array.isArray(parsed.steps) ? parsed.steps.map((s) => String(s).trim()).filter(Boolean) : [];
+  // Flatten to the lines the existing nutrition pipeline consumes, but keep
+  // the structured per-ingredient parse confidence so the import review UI
+  // can flag uncertain lines. `flaggedIngredients` lists exactly the lines
+  // the model was unsure of (confidence < threshold) so they surface for
+  // explicit user confirmation rather than being silently trusted.
+  const ingredients = toIngredientLines(structured);
+  const steps = structured.steps;
+  const flaggedIngredients = structured.ingredients
+    .filter((ing: StructuredIngredient) => ing.flagged)
+    .map((ing: StructuredIngredient) => ({
+      name: ing.name,
+      raw: ing.raw,
+      confidence: ing.confidence,
+    }));
 
   // Recipe-wave (2026-05-10) — pipeline telemetry. Fires per stage
   // so the next "wrong nutrition numbers" tester report can be
@@ -215,15 +225,21 @@ Rules:
   // when the input is empty or malformed.
   const attribution = normaliseSource({
     url: sourceUrlInput,
-    name: sourceNameInput,
+    name: sourceNameInput ?? structured.sourceName,
   });
 
   return NextResponse.json({
     ok: true,
-    title: sanitiseImportedTitle(parsed.title),
+    title: sanitiseImportedTitle(structured.title),
     ingredients,
     steps,
-    notes: parsed.notes ?? null,
+    notes: structured.notes ?? null,
+    servings: structured.servings,
+    prepTimeMin: structured.prepTimeMin,
+    cookTimeMin: structured.cookTimeMin,
+    // Per-ingredient parse-confidence flags for the import review/verify UI.
+    // Empty array when every line parsed cleanly.
+    flaggedIngredients,
     sourceUrl: attribution.source_url,
     sourceName: attribution.source_name,
     nutrition: nutrition

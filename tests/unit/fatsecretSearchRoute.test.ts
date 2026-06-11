@@ -44,6 +44,18 @@ vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: vi.fn(async () => ({ ok: true })),
 }));
 
+// ENG-1038 — the route now consults the cross-request cache + account-level
+// quota guard before calling FatSecret. Mock it to a clean pass-through
+// (cache miss, quota healthy, no-op writes) so this suite keeps exercising
+// the route's mapping / error / pagination behaviour, not the cache itself
+// (which has its own coverage in `vendorSearchCache*.test.ts`).
+vi.mock("@/lib/server/vendorSearchCache", () => ({
+  getCachedSearch: vi.fn(async () => null),
+  setCachedSearch: vi.fn(async () => undefined),
+  checkQuota: vi.fn(async () => ({ allowed: true, used: 0, cap: 10000 })),
+  consumeQuota: vi.fn(async () => ({ allowed: true, used: 1, cap: 10000 })),
+}));
+
 const getUserIdFromRequestMock = vi.fn();
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: (req: Request) => getUserIdFromRequestMock(req),

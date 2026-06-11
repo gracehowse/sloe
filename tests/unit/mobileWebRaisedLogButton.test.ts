@@ -89,15 +89,17 @@ describe("mobile-web raised Log button — App.tsx", () => {
     expect(APP).not.toMatch(/rgba\(76,\s*108,\s*224/);
   });
 
-  it("uses the Sloe tab glyph set (Sun / BookOpen / CalendarDays / LineChart)", () => {
-    // SLOE (2026-06-07): the bottom-nav glyphs are pinned to the mobile
-    // `<SupprTabBar>` set so mobile-web and native iOS read as one
-    // surface. Previously Today used `Icons.home` (Home) and Progress
-    // used `Icons.progress` (BarChart3), which drifted from Figma.
-    expect(APP).toMatch(/icon: <Sun className="w-5 h-5" strokeWidth=\{2\}/);
+  it("uses the canonical tab glyph set (Calendar / BookOpen / Utensils / BarChart3), matching native iOS", () => {
+    // ENG-1044 / P1-9 (2026-06-11): the tab order + glyphs are now locked
+    // to ONE set across native iOS + mobile-web + web. The prior Sloe set
+    // (Sun / BookOpen / CalendarDays / LineChart) both DIVERGED from native
+    // AND collided (BookOpen meant Recipes on web but Plan on native).
+    // Canonical: Today=Calendar, Plan=BookOpen, Recipes=Utensils,
+    // Progress=BarChart3.
+    expect(APP).toMatch(/icon: <Calendar className="w-5 h-5" strokeWidth=\{2\}/);
     expect(APP).toMatch(/icon: <BookOpen className="w-5 h-5" strokeWidth=\{2\}/);
-    expect(APP).toMatch(/icon: <CalendarDays className="w-5 h-5" strokeWidth=\{2\}/);
-    expect(APP).toMatch(/icon: <LineChart className="w-5 h-5" strokeWidth=\{2\}/);
+    expect(APP).toMatch(/icon: <Utensils className="w-5 h-5" strokeWidth=\{2\}/);
+    expect(APP).toMatch(/icon: <BarChart3 className="w-5 h-5" strokeWidth=\{2\}/);
   });
 
   it("projects 16px above the bar fill line (relative -top-4)", () => {

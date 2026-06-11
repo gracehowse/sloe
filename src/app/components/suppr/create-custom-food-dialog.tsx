@@ -17,6 +17,12 @@
  *     digits — no camera-scanner here; that's a separate track).
  *  5. Save (disabled until valid) / Cancel.
  *
+ * A "Scan label" OCR entry (2026-06-11) sits at the top: it uploads a
+ * nutrition-panel photo to /api/nutrition/scan-label and PRE-FILLS the
+ * per-100g macros. The form stays the source of truth — the user confirms
+ * every value before saving; low-confidence / implausible scans surface a
+ * "double-check" warning (never silently accepted).
+ *
  * Does no I/O; hands the payload back via `onSave` so the caller can run
  * it through `createCustomFood` / `updateCustomFood`. Shares every piece
  * of pure logic (barcode validation, macro scaling, dedupe) with the
@@ -32,7 +38,9 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftRight, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { ArrowLeftRight, Camera, ChevronDown, ChevronUp, Loader2, Plus, X } from "lucide-react";
+import { track } from "../../../lib/analytics/track";
+import { AnalyticsEvents } from "../../../lib/analytics/events";
 import {
   Dialog,
   DialogContent,
@@ -149,6 +157,13 @@ export function CreateCustomFoodDialog({
   const [conversionNotice, setConversionNotice] = useState<string | null>(null);
   const conversionNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialBasisAppliedRef = useRef(false);
+  // Recipe-vision contract (2026-06-11) — "Scan label" OCR pre-fill state.
+  // Web parity with the mobile CreateCustomFoodSheet. The form stays the
+  // source of truth: OCR only pre-fills per-100g values the user confirms.
+  const scanInputRef = useRef<HTMLInputElement | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanWarning, setScanWarning] = useState<string | null>(null);
 
   // Reset every time the dialog opens so a cancelled edit doesn't leak
   // into a new session.
@@ -254,6 +269,9 @@ export function CreateCustomFoodDialog({
     }
     setSaving(false);
     setConversionNotice(null);
+    setScanLoading(false);
+    setScanError(null);
+    setScanWarning(null);
     if (conversionNoticeTimeoutRef.current) {
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
@@ -421,6 +439,90 @@ export function CreateCustomFoodDialog({
     };
   }, [macros, previewGrams, hasValidBase]);
 
+  // Recipe-vision contract (2026-06-11) — "Scan label" OCR pre-fill (web
+  // parity with the mobile CreateCustomFoodSheet). Uploads a nutrition-label
+  // photo to /api/nutrition/scan-label, pre-fills the per-100g macro fields,
+  // and warns when the route flags low confidence / implausible macros. The
+  // form stays the source of truth: the user confirms every value before
+  // saving. Auth rides the browser's Supabase cookie (no header needed).
+  const handleScanLabelFile = async (file: File) => {
+    setScanLoading(true);
+    setScanError(null);
+    setScanWarning(null);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const ac = new AbortController();
+      const clientTimeout = setTimeout(() => ac.abort(), 55_000);
+      let resp: Response;
+      try {
+        resp = await fetch("/api/nutrition/scan-label", {
+          method: "POST",
+          body: form,
+          signal: ac.signal,
+        });
+      } finally {
+        clearTimeout(clientTimeout);
+      }
+      const data = (await resp.json().catch(() => null)) as
+        | (Record<string, unknown> & { ok: true })
+        | { ok: false; message?: string }
+        | null;
+      if (!data || !resp.ok || data.ok !== true) {
+        setScanError(
+          (data && "message" in data && typeof data.message === "string" && data.message) ||
+            "Couldn't read the label. Try a sharper, well-lit photo of the nutrition panel.",
+        );
+        return;
+      }
+      const d = data as Record<string, unknown>;
+      const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+      setMacroBasis("per_100g");
+      try {
+        localStorage.setItem(MACRO_BASIS_STORAGE_KEY, "per_100g");
+      } catch {
+        /* localStorage may be unavailable (private mode) */
+      }
+      if (typeof d.name === "string" && d.name.trim() && !name.trim()) {
+        setName(d.name.trim());
+      }
+      setCaloriesText(formatNumber(Math.round(num(d.calories))));
+      setProteinText(formatNumber(Math.round(num(d.protein) * 10) / 10));
+      setCarbsText(formatNumber(Math.round(num(d.carbs) * 10) / 10));
+      setFatText(formatNumber(Math.round(num(d.fat) * 10) / 10));
+      setFiberText(num(d.fiberG) > 0 ? formatNumber(Math.round(num(d.fiberG) * 10) / 10) : "");
+      setSugarText(num(d.sugarG) > 0 ? formatNumber(Math.round(num(d.sugarG) * 10) / 10) : "");
+      setSatFatText(
+        num(d.saturatedFatG) > 0 ? formatNumber(Math.round(num(d.saturatedFatG) * 10) / 10) : "",
+      );
+      setSodiumText(num(d.sodiumMg) > 0 ? formatNumber(Math.round(num(d.sodiumMg))) : "");
+      setDetailsOpen(true);
+
+      if (d.implausible === true) {
+        setScanWarning(
+          "These numbers look unusual — the label may have been read wrong. Double-check each value before saving.",
+        );
+      } else if (d.confidence === "low") {
+        setScanWarning("The label was hard to read. Double-check each value before saving.");
+      }
+
+      try {
+        track(AnalyticsEvents.custom_food_label_scanned, {
+          confidence: typeof d.confidence === "string" ? d.confidence : "unknown",
+          implausible: d.implausible === true,
+          platform: "web",
+        });
+      } catch {
+        /* noop */
+      }
+    } catch {
+      setScanError("Couldn't reach the AI service. Check your connection and try again.");
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -480,6 +582,53 @@ export function CreateCustomFoodDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-2 overflow-y-auto">
+          {/* Recipe-vision contract (2026-06-11) — "Scan label" OCR fast-fill
+              (web parity with the mobile sheet). Uploads a nutrition-label
+              photo and pre-fills the per-100g macros below; the user confirms
+              every value before saving. Secondary outline treatment — Save is
+              the dialog's one filled CTA. */}
+          <div className="grid gap-1.5">
+            <input
+              ref={scanInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              data-testid="custom-food-scan-input"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                // Reset so re-selecting the same file re-triggers onChange.
+                e.target.value = "";
+                if (f) void handleScanLabelFile(f);
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={scanLoading}
+              aria-busy={scanLoading}
+              data-testid="custom-food-scan-label"
+              onClick={() => scanInputRef.current?.click()}
+              className="w-full"
+            >
+              {scanLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Camera className="h-4 w-4" aria-hidden />
+              )}
+              {scanLoading ? "Reading label…" : "Scan label"}
+            </Button>
+            {scanError && (
+              <p className="text-xs text-destructive" role="alert" aria-live="polite">
+                {scanError}
+              </p>
+            )}
+            {scanWarning && (
+              <p className="text-xs text-warning" role="status" aria-live="polite">
+                {scanWarning}
+              </p>
+            )}
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="custom-food-name">Name</Label>
             <Input

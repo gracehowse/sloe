@@ -58,6 +58,15 @@ export interface NutritionEntryRow {
   carbs?: number | string | null;
   fat?: number | string | null;
   fiber_g?: number | string | null;
+  /**
+   * ENG-1041 (audit 2026-06-11 P1-6) — the stored micros map. Read only as
+   * a FALLBACK for `fiber_g`: foods logged via mobile food-search before
+   * the fix persisted fibre in `nutrition_micros` but left the `fiber_g`
+   * column null, so those historical rows exported BLANK fibre. The export
+   * now backfills from `micros.fiberG` (matching `mealContributedFiberG`),
+   * so a mobile-logged food exports the same non-null fibre as web.
+   */
+  nutrition_micros?: Record<string, number | null | undefined> | null;
   source?: string | null;
 }
 
@@ -124,6 +133,33 @@ function resolveGrams(entry: NutritionEntryRow): string {
 }
 
 /**
+ * ENG-1041 — fibre column value, with the `nutrition_micros` fallback.
+ * Prefers the `fiber_g` column when it holds a finite, positive number;
+ * otherwise reads `micros.fiberG`. Mirrors `mealContributedFiberG`
+ * (`microNutrientDisplay.ts`) so the CSV agrees with the in-app daily
+ * totals, and so mobile-logged rows (which historically left `fiber_g`
+ * null) export the real value rather than a blank. Re-implemented here —
+ * not imported — to keep this serialiser pure + dependency-free.
+ */
+function resolveFiberG(entry: NutritionEntryRow): string {
+  const col =
+    entry.fiber_g == null || entry.fiber_g === ""
+      ? NaN
+      : typeof entry.fiber_g === "number"
+        ? entry.fiber_g
+        : Number(entry.fiber_g);
+  if (Number.isFinite(col) && col > 0) return roundOrBlank(col, 1);
+  const fromMicros = entry.nutrition_micros?.fiberG;
+  if (typeof fromMicros === "number" && Number.isFinite(fromMicros) && fromMicros > 0) {
+    return roundOrBlank(fromMicros, 1);
+  }
+  // Preserve a legitimate zero from the column (e.g. a food with genuinely
+  // 0 g fibre) rather than blanking it; only a null/absent column blanks.
+  if (Number.isFinite(col)) return roundOrBlank(col, 1);
+  return "";
+}
+
+/**
  * Turn a list of `nutrition_entries` rows into a CSV string.
  * The caller is responsible for sort order; we preserve input order.
  * Always returns at least the header line so the output file is
@@ -141,7 +177,7 @@ export function nutritionLogToCsv(entries: readonly NutritionEntryRow[]): string
       csvField(roundOrBlank(e.protein, 1)),
       csvField(roundOrBlank(e.carbs, 1)),
       csvField(roundOrBlank(e.fat, 1)),
-      csvField(roundOrBlank(e.fiber_g, 1)),
+      csvField(resolveFiberG(e)),
       csvField(e.source ?? ""),
     ];
     return cols.join(",");

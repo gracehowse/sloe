@@ -48,7 +48,34 @@ export function fastingStageNarrative(elapsedMs: number): string {
     return "Ketones often rising; growth hormone tends to climb.";
   }
   if (hours < 36) {
-    return "Autophagy may engage as the fast extends.";
+    // ENG-1028 — population framing, not a personal physiological claim.
+    // Human autophagy timing is not established (the evidence is mostly
+    // animal — see `fastingStageDisclosure`). We say "in studies", name
+    // that they're mostly animal, and keep the hedged verb. We never
+    // assert it's happening to *this* user, and make no benefit claim.
+    return "In studies — mostly in animals — autophagy may increase around this point.";
   }
   return "Extended fast territory — check in with your goals.";
+}
+
+/**
+ * ENG-1028 — optional "how we know this" disclosure line for a given
+ * elapsed duration. Returns `null` for stages whose copy rests on
+ * well-established human physiology (digestion, glycogen depletion, fat
+ * oxidation, ketosis); returns an evidence-honesty line for the
+ * autophagy stage, where the human timing is the app's highest
+ * claims-risk statement (the supporting evidence is largely animal).
+ *
+ * Rendered as a quiet, tappable/secondary line beneath the stage
+ * narrative on both fasting surfaces, so the population framing in the
+ * narrative is backed by a one-line statement of WHY we hedge. No
+ * benefit claims, no prescription, body-neutral — same posture as the
+ * narrative itself.
+ */
+export function fastingStageDisclosure(elapsedMs: number): string | null {
+  const hours = Math.max(0, elapsedMs) / 3_600_000;
+  if (hours >= 24 && hours < 36) {
+    return "How we know this: autophagy timing in humans isn't established — most evidence is from animal studies, so we describe it as a tendency, not a personal result.";
+  }
+  return null;
 }

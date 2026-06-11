@@ -194,25 +194,30 @@ export async function presentCustomerCenter(): Promise<
   }
 }
 
-const tierRank = (t: string) => (t === "pro" ? 2 : t === "base" ? 1 : 0);
+// lifetime_pro (founding-cohort comp, ENG-1043) outranks pro so a stored
+// lifetime_pro is treated as a durable floor and is never downgraded by a
+// later RC sync or a lower-tier promo. Mirrors public.tier_rank in
+// supabase/migrations/20260611120200_redeem_promo_lifetime_pro_eng1043.sql.
+const tierRank = (t: string) =>
+  t === "lifetime_pro" ? 3 : t === "pro" ? 2 : t === "base" ? 1 : 0;
 
 /** Best tier from promo codes the user has redeemed (requires RLS policy on promo_codes). */
 async function bestPromoTierFromRedemptions(
   supabase: SupabaseClient,
   userId: string,
-): Promise<"free" | "base" | "pro"> {
+): Promise<UserTier> {
   const { data, error } = await supabase
     .from("promo_redemptions")
     .select("promo_codes(tier)")
     .eq("user_id", userId);
   if (error || !data?.length) return "free";
-  let best: "free" | "base" | "pro" = "free";
+  let best: UserTier = "free";
   for (const row of data as { promo_codes: { tier: string } | { tier: string }[] | null }[]) {
     const pc = row.promo_codes;
     const embedded = Array.isArray(pc) ? pc[0] : pc;
     const t = (embedded?.tier as string | undefined)?.toLowerCase();
-    if (t === "pro" || t === "base" || t === "free") {
-      if (tierRank(t) > tierRank(best)) best = t;
+    if (t === "lifetime_pro" || t === "pro" || t === "base" || t === "free") {
+      if (tierRank(t) > tierRank(best)) best = t as UserTier;
     }
   }
   return best;
@@ -233,7 +238,7 @@ async function bestPromoTierFromRedemptions(
  * never go through this client-side reconcile path, so a stored Pro
  * always wins over an empty RC response.
  */
-export type UserTier = "free" | "base" | "pro";
+export type UserTier = "free" | "base" | "pro" | "lifetime_pro";
 
 export function resolveNextTier(args: {
   rc: UserTier;
@@ -242,8 +247,16 @@ export function resolveNextTier(args: {
 }): { next: UserTier; write: boolean; reason: "upgrade" | "downgrade-blocked" | "no-change" } {
   const { rc, promo, current } = args;
   const mergedRank = Math.max(tierRank(rc), tierRank(promo));
-  const computed: UserTier = mergedRank >= 2 ? "pro" : mergedRank >= 1 ? "base" : "free";
+  // RC entitlements never resolve above `pro` (lifetime_pro is comp-only, never
+  // an RC/App Store product), so `computed` tops out at pro. A redeemed
+  // lifetime_pro promo flows through `promo` and is preserved by the
+  // downgrade-guard below as the held `current` tier.
+  const computed: UserTier =
+    mergedRank >= 3 ? "lifetime_pro" : mergedRank >= 2 ? "pro" : mergedRank >= 1 ? "base" : "free";
 
+  // Never overwrite a higher held tier. This is what keeps a founding-cohort
+  // lifetime_pro from being clobbered by a later RC sync that resolves to pro
+  // or (on an empty/misconfigured RC response) free.
   if (tierRank(computed) < tierRank(current)) {
     return { next: current, write: false, reason: "downgrade-blocked" };
   }

@@ -31,6 +31,7 @@ import {
   acquireScrapedHtmlRecipe,
   acquireTranscriptCaption,
 } from "@/lib/server/supadata/wireAcquisition";
+import { hasSupadataConfig } from "@/lib/server/supadata/client";
 
 // Supadata acquisition (ENG-994) — the swappable acquisition adapter runs as
 // stage 0 (BEFORE the existing extraction) when the `supadata-acquisition`
@@ -268,19 +269,23 @@ export async function POST(req: Request) {
         if (urlMatch) {
           try {
             const linkUrl = urlMatch[0].replace(/[.,;!?)]+$/, "");
-            if (isAllowedUrl(linkUrl)) {
-              const linkRes = await fetch(linkUrl, {
-                signal: ac.signal,
-                headers: {
-                  Accept: "text/html",
-                  "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
-                },
-                redirect: "follow",
-              });
-              if (linkRes.ok) {
-                const html = await linkRes.text();
-                websiteRecipe = parseRecipeFromHtml(html);
-              }
+            // ENG-1037 (SSRF): `linkUrl` comes from the caption of a user-pasted
+            // social post — fully attacker-controllable. The prior code did an
+            // initial `isAllowedUrl` string check then `fetch(redirect:"follow")`,
+            // so a 30x chain could reach 169.254.169.254 / 127.0.0.1 / RFC-1918
+            // with no per-hop recheck (the exact ENG-682 metadata-SSRF hole).
+            // Route through `followWithSsrfGuard`: manual redirects, every hop
+            // re-validated against the allowlist + a DNS re-resolve (ENG-730).
+            const linkFetched = await followWithSsrfGuard(linkUrl, {
+              signal: ac.signal,
+              headers: {
+                Accept: "text/html",
+                "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
+              },
+            });
+            if (linkFetched && linkFetched.res.ok) {
+              const html = await linkFetched.res.text();
+              websiteRecipe = parseRecipeFromHtml(html);
             }
           } catch { /* link fetch failed — continue to error */ }
         }
@@ -323,7 +328,16 @@ export async function POST(req: Request) {
             ok: true,
             recipe: {
               title: sanitiseImportedTitle(websiteRecipe.title) ?? "Imported recipe",
-              description: websiteRecipe.description,
+              // ENG-857 (P0, legal): this is the web/blog server-fetch posture
+              // (a link found in a caption, then scraped). The JSON-LD
+              // `description` is the creator's verbatim headnote — protected
+              // creative prose (Publications Int'l v. Meredith; UK CDPA).
+              // We extract the FACTS (ingredients, steps, times, nutrition) and
+              // attribute + link back, but we do NOT persist or render the prose.
+              // `extractCaptionNutrition` below still reads the description text
+              // for the macro-sanity check; only the stored/rendered field is
+              // nulled. See docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md.
+              description: null,
               ingredients: ingList,
               instructions: websiteRecipe.instructions ?? [],
               servings: srv,
@@ -515,6 +529,11 @@ export async function POST(req: Request) {
               })),
           primarySource: nutrition?.primarySource ?? "Unverified",
           captionNutrition: extractCaptionNutrition(captionText),
+          // Recipe-vision contract (2026-06-11) — per-ingredient parse-
+          // confidence flags from the structured extractor. The review UI
+          // surfaces these for explicit confirmation; empty when every line
+          // parsed cleanly.
+          flaggedIngredients: recipe.flaggedIngredients,
         },
       });
     }
@@ -578,35 +597,60 @@ export async function POST(req: Request) {
       "Accept-Language": "en-US,en;q=0.9",
       "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
     };
-    // Follow redirects manually to re-validate each hop against the SSRF allowlist.
+    // ENG-1037 / ENG-730: follow redirects through the shared SSRF guard so
+    // every hop is re-validated against the allowlist AND its hostname is
+    // re-resolved via DNS (the prior inline loop checked the redirect URL
+    // string per hop but never the resolved IP, leaving DNS-rebinding TOCTOU
+    // open). `followWithSsrfGuard` returns null for any refusal — a redirect
+    // to a private/metadata host, a rebinding DNS answer, or the hop-limit.
     // Skipped entirely when Supadata already supplied page content above.
     let res: Response | undefined;
     if (!supadataHtml) {
-      for (let hop = 0; hop < 5; hop++) {
-        res = await fetch(currentUrl, {
-          signal: ac.signal,
-          headers: fetchHeaders,
-          redirect: "manual",
-        });
-        const location = res.headers.get("location");
-        if (res.status >= 300 && res.status < 400 && location) {
-          const resolved = new URL(location, currentUrl).href;
-          if (!isAllowedUrl(resolved)) {
-            return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
-          }
-          currentUrl = resolved;
-          continue;
-        }
-        break;
+      const fetched = await followWithSsrfGuard(currentUrl, {
+        signal: ac.signal,
+        headers: fetchHeaders,
+      });
+      if (!fetched) {
+        // currentUrl was already isAllowedUrl-validated above, so a null here
+        // means a redirect hop / DNS resolution hit the SSRF blocklist.
+        return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
       }
-      if (!res) {
-        return NextResponse.json({ ok: false, error: "Failed to fetch URL." }, { status: 502 });
-      }
+      res = fetched.res;
+      currentUrl = fetched.finalUrl;
     }
     const contentType = res?.headers.get("content-type") ?? "";
     const isHtml = supadataHtml != null || contentType.toLowerCase().includes("text/html");
     const html = supadataHtml ?? (res && isHtml ? await res.text() : "");
-    const parsed = parseRecipeFromHtml(html);
+    let parsed = parseRecipeFromHtml(html);
+    let recoveredViaSupadata = false;
+
+    // ENG-1055: popular recipe sites (e.g. AllRecipes) often return 402/403 to
+    // datacenter egress even with an honest SupprBot UA. When the direct fetch
+    // fails and we have no JSON-LD, try Supadata vendor scrape before surfacing
+    // fetch_failed — independent of the stage-0 `supadata-acquisition` flag
+    // (that flag only gates "try Supadata first"; this is a reliability fallback).
+    if (!parsed && !supadataHtml && res && !res.ok && hasSupadataConfig()) {
+      const acq = await acquireScrapedHtmlRecipe(currentUrl);
+      if (acq.ok && acq.data.parsed) {
+        parsed = acq.data.parsed;
+        recoveredViaSupadata = true;
+        traceAcquisition(userId, {
+          outcome: "acquired",
+          adapter: acq.acquisition.source,
+          kind: "scrape",
+          platform: acq.acquisition.platform,
+          contentChars: acq.data.content.length,
+        });
+      } else {
+        traceAcquisition(userId, {
+          outcome: "fallback",
+          adapter: "supadata",
+          platform: acq.ok ? acq.acquisition.platform : detectSocialPlatform(currentUrl) ?? "blog",
+          reason: acq.ok ? "empty" : acq.result.reason,
+        });
+      }
+    }
+
     // Some sites respond with 404/403 while still serving real HTML (geo, bot-mitigation, A/B).
     // If we can extract a Recipe JSON-LD anyway, treat as success.
     if (parsed) {
@@ -724,13 +768,26 @@ export async function POST(req: Request) {
           // be a long meta-tag caption. Override with the sanitised
           // value so the response title always passes the helper.
           title: sanitiseImportedTitle(parsed.title) ?? "Imported recipe",
+          // ENG-857 (P0, legal): the spread above also carries
+          // `parsed.description` — the creator's verbatim JSON-LD headnote,
+          // which is protected creative prose (Publications Int'l v. Meredith;
+          // UK CDPA). On the web/blog server-fetch path we extract the FACTS
+          // (ingredients, steps, times, nutrition) and attribute + link back,
+          // but we never persist or render the prose. The override MUST sit
+          // after the spread so it wins. The raw `parsed.description` is still
+          // fed to `extractCaptionNutrition` below (macro-sanity check only) —
+          // that input is unchanged; only the stored/rendered field is nulled.
+          // See docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md.
+          description: null,
           mealType,
           sourceUrl: attribution.source_url,
           sourceName: attribution.source_name,
           // HTML importer: the recipe description is usually the creator's
           // intro text and frequently contains per-serving macro claims.
           // Pulling it through the same extractor means website imports
-          // also get the caption-vs-calculated sanity check.
+          // also get the caption-vs-calculated sanity check. (Reads the raw
+          // `parsed.description` text — this is the ONLY use of the prose we
+          // keep, and it never leaves the server.)
           captionNutrition: extractCaptionNutrition(
             [parsed.description, parsed.title].filter(Boolean).join("\n\n"),
           ),
@@ -740,7 +797,7 @@ export async function POST(req: Request) {
     // `res` is undefined only when Supadata supplied content above — but that
     // path sets `supadataHtml` solely when `parsed` is truthy, so we never
     // reach this tail without a live `res`. Guard anyway for type-safety.
-    if (res && !res.ok) {
+    if (res && !res.ok && !recoveredViaSupadata) {
       return NextResponse.json(
         {
           ok: false,

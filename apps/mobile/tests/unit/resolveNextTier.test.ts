@@ -91,3 +91,34 @@ describe("resolveNextTier — F-58 downgrade guard", () => {
     expect(r.write).toBe(true);
   });
 });
+
+describe("resolveNextTier — ENG-1043 lifetime_pro founding-cohort floor", () => {
+  it("never downgrades a held lifetime_pro to pro on an RC pro sync", () => {
+    // A founding member buys / restores nothing, but an RC reconcile resolves
+    // to `pro`. lifetime_pro outranks pro, so the comp is preserved.
+    const r = resolveNextTier({ rc: "pro", promo: "free", current: "lifetime_pro" });
+    expect(r.write).toBe(false);
+    expect(r.reason).toBe("downgrade-blocked");
+    expect(r.next).toBe("lifetime_pro");
+  });
+
+  it("never downgrades a held lifetime_pro to free on an empty/misconfigured RC response", () => {
+    const r = resolveNextTier({ rc: "free", promo: "free", current: "lifetime_pro" });
+    expect(r.write).toBe(false);
+    expect(r.reason).toBe("downgrade-blocked");
+    expect(r.next).toBe("lifetime_pro");
+  });
+
+  it("upgrades free → lifetime_pro when a lifetime_pro promo is redeemed", () => {
+    const r = resolveNextTier({ rc: "free", promo: "lifetime_pro", current: "free" });
+    expect(r.write).toBe(true);
+    expect(r.next).toBe("lifetime_pro");
+  });
+
+  it("no-op when already lifetime_pro and the promo re-resolves lifetime_pro", () => {
+    const r = resolveNextTier({ rc: "free", promo: "lifetime_pro", current: "lifetime_pro" });
+    expect(r.write).toBe(false);
+    expect(r.reason).toBe("no-change");
+    expect(r.next).toBe("lifetime_pro");
+  });
+});

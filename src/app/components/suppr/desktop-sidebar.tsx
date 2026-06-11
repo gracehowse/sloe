@@ -6,6 +6,10 @@ import { Icons } from "../ui/icons";
 import { SupprWordmark } from "../ui/suppr-mark";
 import type { UserTier } from "../../../types/recipe";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
+import {
+  NAV_TAB_ORDER_FLAG,
+  PRIMARY_NAV_ORDER,
+} from "../../../lib/navigation/primaryNav";
 
 /**
  * DesktopSidebar — left-hand navigation for the web app on desktop +
@@ -106,36 +110,61 @@ interface SubTabItem {
   badge?: (props: DesktopSidebarProps) => number;
 }
 
+/**
+ * Primary nav items keyed by view. Icons are the ENG-1044 canonical set
+ * (locked to the native iOS tab bar): Today=Calendar, Plan=BookOpen,
+ * Recipes=Utensils, Progress=BarChart3 — applied regardless of order so
+ * the glyph collision (BookOpen meant Plan on native, Recipes on web) is
+ * gone. Declaration order here is the LEGACY order (Recipes before Plan);
+ * the canonical Plan-first order is produced by `orderedPrimaryItems`
+ * below, gated on the `nav-tab-order-plan-first` flag.
+ */
 const PRIMARY_ITEMS: PrimaryItem[] = [
   {
     view: "today",
     label: "Today",
-    icon: "home",
+    icon: "navToday",
     defaultLeaf: "today",
     leaves: ["today"],
   },
   {
     view: "recipes",
     label: "Recipes",
-    icon: "recipe",
+    icon: "navRecipes",
     defaultLeaf: "library",
     leaves: ["library", "discover", "create", "import"],
   },
   {
     view: "plan",
     label: "Plan",
-    icon: "plan",
+    icon: "navPlan",
     defaultLeaf: "plan",
     leaves: ["plan", "shopping"],
   },
   {
     view: "you",
     label: "Progress",
-    icon: "progress",
+    icon: "navProgress",
     defaultLeaf: "progress",
     leaves: ["progress", "household-settings", "targets"],
   },
 ];
+
+/**
+ * ENG-1044 — canonical primary-nav order. iOS is the primary surface and
+ * its documented Plan-first order (Today · Plan · Recipes · Progress, with
+ * a 2026-05-13 premium-bar + 2026-04-29 customer-lens rationale) is the
+ * canonical one. When the flag is ON web matches native; OFF keeps the
+ * legacy Recipes-first order while the change ramps via PostHog.
+ */
+const PLAN_FIRST_ORDER: PrimaryView[] = ["today", "plan", "recipes", "you"];
+
+export function orderedPrimaryItems(planFirst: boolean): PrimaryItem[] {
+  if (!planFirst) return PRIMARY_ITEMS;
+  return PLAN_FIRST_ORDER.map(
+    (view) => PRIMARY_ITEMS.find((it) => it.view === view)!,
+  );
+}
 
 /** Sub-tab rows shown below the active primary entry. */
 const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
@@ -202,6 +231,16 @@ const WIDTH_COLLAPSED_PX = 64;
 export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
   const activePrimary = resolvePrimaryFromView(currentView);
+
+  // ENG-1044 — flag-gated canonical Plan-first tab order (matches native
+  // iOS). Default-OFF (legacy Recipes-first) until ramped via PostHog; the
+  // hook returns `undefined` while the flag is loading, which `?? false`
+  // resolves to the legacy order so first paint is stable.
+  const planFirst = useFeatureFlagEnabled("nav-tab-order-plan-first") ?? false;
+  const primaryItems = React.useMemo(
+    () => orderedPrimaryItems(planFirst),
+    [planFirst],
+  );
 
   // Collapsed state — initialised lazily from localStorage so SSR is
   // safe (read returns false on the server, then hydrates to the real
@@ -344,7 +383,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         aria-label="Sidebar navigation"
       >
         <ul className={collapsed ? "px-2 space-y-1" : "px-3 space-y-1"}>
-          {PRIMARY_ITEMS.map((item) => {
+          {primaryItems.map((item) => {
             const isActive = activePrimary === item.view;
             return (
               <li key={item.view}>

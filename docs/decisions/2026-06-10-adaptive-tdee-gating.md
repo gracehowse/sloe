@@ -124,6 +124,34 @@ mobile-side fork, no UI change. The only mobile-local TDEE copy
 (`apps/mobile/lib/calcTargets.ts` `getEffectiveTDEE`/`calculateTDEE`) is the
 *static budget* path, deliberately untouched.
 
+## Display-layer follow-on — ENG-1034 (2026-06-11)
+
+Once the gated estimator started correctly storing **`adaptive_tdee_confidence
+= "medium"`** (value ~1,699), a display bug surfaced: the Progress **THIS WEEK**
+card still showed the *"still calibrating"* headline + a **Low** confidence chip,
+while the Maintenance card below it showed *"medium confidence"* — the two cards
+contradicted each other for the same number (the same symptom F-124 flagged for
+"high" in May, here for "medium").
+
+Root cause: `generateProgressCommentary` (`src/lib/nutrition/progressCommentary.ts`)
+re-gated a stored *medium* confidence on the caller's `loggingDays` (`calibrating`
+when `< 14`). But both production callers — web `ProgressDashboard` and mobile
+`Progress` tab — pass a **range-scoped** day count (this week's `daysWithFood`,
+≤ 7), never the cumulative history. And the engine's confidence ladder
+(`adaptiveTdee.ts`) only assigns "medium" at **≥ 14** cumulative logging days
+(+ ≥ 5 weigh-ins) and "high" at ≥ 21 (+ ≥ 7). So a stored "medium" *already*
+guarantees the warm-up is past; the weekly count can never reach 14, so the
+re-gate forced every medium-confidence user into calibrating copy.
+
+Fix: trust the engine's stored confidence — `calibrating` fires only when there
+is **no estimate** or the engine itself reports **low**. The redundant
+`loggingDays < 14` re-gate (and its `CALIBRATING_MIN_DAYS` constant) is removed.
+The confidence chip + copy variant now follow the stored confidence on both
+platforms. Pinned by `progressCommentaryPhase4.test.ts` (web) +
+`progressHeadlinePhase4.test.tsx` (mobile), mapping each stored level →
+chip + regime. Verified in-sim: the card shows *"Maintenance held steady this
+week … 1,699 kcal with medium confidence"* + a **Medium** chip.
+
 ## One-time refresh for Grace's stored stale value
 
 The fix changes the algorithm, but `daily_targets.maintenance_tdee` /

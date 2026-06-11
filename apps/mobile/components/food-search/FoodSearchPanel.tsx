@@ -134,6 +134,16 @@ import {
   normalizeHistoryName,
   type HistorySearchMatch,
 } from "@suppr/shared/nutrition/foodHistorySearch";
+import {
+  matchFavoriteFoods,
+  favoriteFoodKeySet,
+  orderRecentWithFavoritesFirst,
+  isFavoriteRow,
+  type FavoriteSearchItem,
+  type FavoriteSearchMatch,
+} from "@suppr/shared/nutrition/favoriteFoodsSearch";
+import { favoriteKey } from "@suppr/shared/nutrition/favoriteFoods";
+import { FavoriteStarButton } from "./FavoriteStarButton";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
@@ -272,6 +282,42 @@ export type FoodSearchPanelProps = {
     count?: number;
     imageUrl?: string | null;
   }>;
+  /**
+   * Favourites-in-search (teardown #1, ENG-1041, 2026-06-11). The user's
+   * `user_favorite_foods` rows, threaded so the panel can (a) surface a
+   * "Favourites" group above "Past logged" when the typed query matches a
+   * favourite, (b) order the empty-query "Recent" strip favourites-first, and
+   * (c) render the correct star state on every history-style row. When
+   * omitted, no favourites surface and the star is hidden. Mirrors the web prop.
+   */
+  favoriteFoods?: FavoriteSearchItem[];
+  /**
+   * Star/unstar handler. The host owns the optimistic add/remove + Supabase
+   * write + revert. `favoriteId` is the row id when unstarring, else undefined
+   * (the host adds). When omitted, the star affordance is hidden.
+   */
+  onToggleFavorite?: (food: {
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+    favoriteId?: string;
+  }) => void;
+  /** Keys of favourite toggles currently in flight (disabled + dimmed star —
+   *  no double-submit). Optional; host owns the pending set. */
+  favoritePendingKeys?: Set<string>;
+  /**
+   * Multi-add basket (teardown #2, ENG-1042). When wired, the portion preview
+   * shows an "Add" action alongside "Use this": "Add" stages the selection into
+   * the host's basket (the panel returns to results so the user keeps building)
+   * WITHOUT committing or closing the sheet; "Use this" stays the instant
+   * single-item log. The host commits the whole basket in one round-trip via
+   * the LogSheet's basket bar. When omitted, only "Use this" shows (today's
+   * behaviour). Same `SelectedFood` payload as `onSelect`. */
+  onAddToBasket?: (result: SelectedFood) => void;
 };
 
 // 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
@@ -301,6 +347,10 @@ export default function FoodSearchPanel({
   inBarcodeMode = false,
   localeOverride,
   recentFoods,
+  favoriteFoods,
+  onToggleFavorite,
+  favoritePendingKeys,
+  onAddToBasket,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
@@ -334,6 +384,10 @@ export default function FoodSearchPanel({
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // ENG-1038 — true when a keyed vendor (USDA / Edamam / FatSecret) was
+  // skipped because its account-wide quota was exhausted. Drives an honest
+  // "showing saved results" notice instead of a silent blank at viral scale.
+  const [searchDegraded, setSearchDegraded] = useState(false);
   // 2026-05-14 premium-bar polish #3: lightweight category-filter tab
   // row. The active category is a presentational filter over the
   // existing `results` list (and gates whether `recentFoods` renders).
@@ -511,9 +565,13 @@ export default function FoodSearchPanel({
     if (!q) {
       setResults([]);
       setLoading(false);
+      setSearchDegraded(false);
       return;
     }
     setLoading(true);
+    // ENG-1038 — clear any prior degraded notice when a fresh query starts;
+    // the new fan-out re-asserts it only if a vendor is still exhausted.
+    setSearchDegraded(false);
     debounceRef.current = setTimeout(async () => {
       // F-114 broader sweep (2026-05-07): wrap the debounced first-page
       // search in try/catch/finally. Pre-fix shape was bare `await
@@ -526,7 +584,7 @@ export default function FoodSearchPanel({
         const externalP = searchFoods(
           q,
           (partial) => setResults(partial as SearchRow[]),
-          { page: 1 },
+          { page: 1, onDegraded: () => setSearchDegraded(true) },
         );
         const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
           ? searchCustomFoods(
@@ -939,44 +997,65 @@ export default function FoodSearchPanel({
     setPreview((p) => p ? { ...p, quantityText: text, quantity: Math.max(0, num) } : p);
   }, [parseQuantityText]);
 
-  const onConfirmPreview = useCallback(() => {
-    if (preview) {
-      const servingLabel =
-        preview.source === "CUSTOM" &&
-        preview.chosenPortion.label !== "g" &&
-        preview.chosenPortion.label !== "ml"
-          ? preview.chosenPortion.label
-          : undefined;
-      if (preview.source === "CUSTOM") {
-        try {
-          const grams = Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
-          const evt: Record<string, unknown> = { grams };
-          if (servingLabel) evt.servingLabel = servingLabel;
-          track(AnalyticsEvents.custom_food_logged, evt);
-        } catch {
-          // noop
-        }
+  // Build the canonical SelectedFood payload from the current preview. Shared
+  // by "Use this" (instant log) and "Add" (basket-stage, teardown #2) so the
+  // two paths emit an identical selection — a basketed item logs exactly like
+  // an instant-logged one. Fires the custom-food-logged analytics for the
+  // CUSTOM source on either path.
+  const buildSelectionFromPreview = useCallback((): SelectedFood | null => {
+    if (!preview) return null;
+    const servingLabel =
+      preview.source === "CUSTOM" &&
+      preview.chosenPortion.label !== "g" &&
+      preview.chosenPortion.label !== "ml"
+        ? preview.chosenPortion.label
+        : undefined;
+    if (preview.source === "CUSTOM") {
+      try {
+        const grams = Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
+        const evt: Record<string, unknown> = { grams };
+        if (servingLabel) evt.servingLabel = servingLabel;
+        track(AnalyticsEvents.custom_food_logged, evt);
+      } catch {
+        // noop
       }
-      onSelect({
-        name: preview.name,
-        source: preview.source,
-        macrosPer100g: preview.macrosPer100g,
-        ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
-        ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
-        ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
-        portions: preview.portions,
-        chosenPortion: preview.chosenPortion,
-        quantity: preview.quantity,
-        fdcId: preview.fdcId,
-        barcode: preview.barcode,
-        ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
-        ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
-        ...(servingLabel ? { servingLabel } : {}),
-        ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
-      });
-      setPreview(null);
     }
-  }, [preview, onSelect]);
+    return {
+      name: preview.name,
+      source: preview.source,
+      macrosPer100g: preview.macrosPer100g,
+      ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
+      ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+      ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
+      portions: preview.portions,
+      chosenPortion: preview.chosenPortion,
+      quantity: preview.quantity,
+      fdcId: preview.fdcId,
+      barcode: preview.barcode,
+      ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+      ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
+      ...(servingLabel ? { servingLabel } : {}),
+      ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+    };
+  }, [preview]);
+
+  const onConfirmPreview = useCallback(() => {
+    const selection = buildSelectionFromPreview();
+    if (!selection) return;
+    onSelect(selection);
+    setPreview(null);
+  }, [buildSelectionFromPreview, onSelect]);
+
+  // Multi-add basket (teardown #2): stage the current preview into the host's
+  // basket and return to the results list (the sheet stays open). The host
+  // commits the whole basket in one round-trip via the LogSheet basket bar.
+  const onAddPreviewToBasket = useCallback(() => {
+    if (!onAddToBasket) return;
+    const selection = buildSelectionFromPreview();
+    if (!selection) return;
+    onAddToBasket(selection);
+    setPreview(null);
+  }, [buildSelectionFromPreview, onAddToBasket]);
 
   const previewMacros = useMemo(() => {
     if (!preview) return null;
@@ -1147,6 +1226,24 @@ export default function FoodSearchPanel({
     },
     centered: { alignItems: "center", paddingTop: mode === "compact" ? 24 : 60, gap: Spacing.md },
     hint: { color: colors.textSecondary, fontSize: 14 },
+    // ENG-1038 — graceful-degradation notice. Amber (warning) family: this is
+    // an advisory "some sources paused", not an error (never destructive red).
+    degradedNotice: {
+      marginHorizontal: Spacing.lg,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Accent.warning,
+      backgroundColor: Accent.warning + "14",
+    },
+    degradedNoticeText: {
+      color: Accent.warningSolid,
+      fontSize: 13,
+      lineHeight: 18,
+    },
   }), [colors, mode]);
 
   const renderItem = useCallback(
@@ -1239,6 +1336,57 @@ export default function FoodSearchPanel({
     return matchHistoryFoods(recentFoods, query);
   }, [query, recentFoods, activeCategory]);
 
+  // ── Favourites-in-search (teardown #1, ENG-1041) ─────────────────────
+  // The set of favourite keys drives the per-row star state (filled vs
+  // outline) on every history-style row, with no per-row Supabase call.
+  const favoriteKeys = useMemo(
+    () => favoriteFoodKeySet(favoriteFoods ?? []),
+    [favoriteFoods],
+  );
+  // Typed-query "Favourites" group — favourites matching the query, ranked +
+  // capped by the shared matcher, rendered ABOVE "Past logged". Same gate as
+  // the history group (All / Recents filters only).
+  const favoriteMatches = useMemo<FavoriteSearchMatch[]>(() => {
+    if (!query.trim() || !favoriteFoods || favoriteFoods.length === 0) return [];
+    if (activeCategory !== "All" && activeCategory !== "Recents") return [];
+    return matchFavoriteFoods(favoriteFoods, query);
+  }, [query, favoriteFoods, activeCategory]);
+  // De-dupe: a food that's BOTH a favourite and in recent history shows once,
+  // in the Favourites group (favourites win — the user deliberately starred
+  // it). Suppress it from "Past logged" by key.
+  const favoriteMatchKeys = useMemo(
+    () => new Set(favoriteMatches.map((m) => favoriteKey(m.item.recipeTitle, m.item.calories))),
+    [favoriteMatches],
+  );
+  const historyMatchesDeduped = useMemo<HistorySearchMatch[]>(() => {
+    if (favoriteMatchKeys.size === 0) return historyMatches;
+    return historyMatches.filter(
+      (m) => !favoriteMatchKeys.has(favoriteKey(m.item.recipeTitle, m.item.calories)),
+    );
+  }, [historyMatches, favoriteMatchKeys]);
+
+  // Toggle a star from any history-style row. Resolve the favourite id (when
+  // unstarring) from the favourites list so the host can remove by id.
+  const toggleFavoriteFor = useCallback(
+    (food: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+    }) => {
+      if (!onToggleFavorite) return;
+      const key = favoriteKey(food.recipeTitle, food.calories);
+      const existing = (favoriteFoods ?? []).find(
+        (f) => favoriteKey(f.recipeTitle, f.calories) === key,
+      );
+      onToggleFavorite({ ...food, favoriteId: existing?.id });
+    },
+    [onToggleFavorite, favoriteFoods],
+  );
+
   // De-dupe DB results against the history group — a database row whose name
   // exactly matches a "Past logged" row shows once (history wins). Catalogue
   // kcal is per-100g and never matches the per-serving history kcal, so the
@@ -1286,6 +1434,13 @@ export default function FoodSearchPanel({
     !!recentFoods &&
     recentFoods.length > 0 &&
     (activeCategory === "All" || activeCategory === "Recents");
+  // Empty-query "Recent" strip ordered favourites-first (teardown #1) —
+  // starred foods lead, then the rest of recents in their existing recency
+  // order. A no-op when the user has no favourites.
+  const recentFoodsOrdered = useMemo(
+    () => orderRecentWithFavoritesFirst(recentFoods ?? [], favoriteKeys),
+    [recentFoods, favoriteKeys],
+  );
 
   // ── Redesign (ENG-814) — unified segmented control + sectioned cards ──
   // The redesigned filter uses the prototype's friendlier wording while
@@ -1740,19 +1895,36 @@ export default function FoodSearchPanel({
 
           <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
             <Pressable
+              testID="food-search-preview-use-this"
               style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
               onPress={onConfirmPreview}
             >
               <Check size={18} color={colors.primaryForeground} />
               <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
             </Pressable>
-            <Pressable
-              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
-              onPress={() => setPreview(null)}
-            >
-              <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
-            </Pressable>
+            {/* Multi-add basket (teardown #2): "Add" stages this item into the
+                basket and returns to results so the user keeps building — the
+                sheet stays open. Outline secondary so "Use this" remains the
+                one filled CTA. Only shown when the host wires `onAddToBasket`. */}
+            {onAddToBasket ? (
+              <Pressable
+                testID="food-search-preview-add-to-basket"
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${preview.name} to basket`}
+                style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1.5, borderColor: accent.primarySolid }}
+                onPress={onAddPreviewToBasket}
+              >
+                <Plus size={18} color={accent.primarySolid} />
+                <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Add</Text>
+              </Pressable>
+            ) : null}
           </View>
+          <Pressable
+            style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", marginTop: Spacing.sm }}
+            onPress={() => setPreview(null)}
+          >
+            <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
+          </Pressable>
         </View>
       </ScrollView>
     );
@@ -2122,88 +2294,15 @@ export default function FoodSearchPanel({
           >
             Recent
           </Text>
-          {recentFoods.slice(0, 5).map((item, i) => (
-            <Pressable
-              key={`recent-${i}-${item.recipeTitle}`}
-              testID={`food-search-recent-${i}`}
-              accessibilityRole="button"
-              accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
-              onPress={() => onSelectHistoryItem(item)}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: Spacing.dense,
-                borderBottomWidth: i < Math.min(4, recentFoods.length - 1) ? StyleSheet.hairlineWidth : 0,
-                borderBottomColor: colors.border,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
-                  numberOfLines={1}
-                >
-                  {item.recipeTitle}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginTop: 2,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {formatMacroTrailer({
-                    calories: item.calories,
-                    protein: item.protein,
-                    carbs: item.carbs,
-                    fat: item.fat,
-                  })}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
-                ›
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      {/* History-first search (ENG-1033, MFP grammar): when the user has
-          TYPED a query, the foods they've logged before that match it
-          surface FIRST as a visually-distinct "Past logged" group above the
-          database results. Reuses the recent-row grammar (title + macro
-          trailer + chevron) and the Type.label eyebrow used by the empty-
-          query "Recent" strip, so the two history surfaces read identically.
-          De-dupe (history wins) is applied to the DB list above via
-          `dedupedResults`. */}
-      {historyMatches.length > 0 ? (
-        <View
-          style={{
-            paddingHorizontal: Spacing.lg,
-            paddingTop: Spacing.sm,
-            paddingBottom: Spacing.md,
-          }}
-          testID="food-search-past-logged"
-        >
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: "700",
-              color: colors.textTertiary,
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              marginBottom: 8,
-            }}
-          >
-            Past logged
-          </Text>
-          {historyMatches.map((m, i) => {
-            const item = m.item;
+          {recentFoodsOrdered.slice(0, 5).map((item, i) => {
+            const starred = isFavoriteRow(favoriteKeys, item.recipeTitle, item.calories);
+            const pending = favoritePendingKeys?.has(
+              favoriteKey(item.recipeTitle, item.calories),
+            );
             return (
               <Pressable
-                key={`past-${m.key}`}
-                testID={`food-search-past-logged-${i}`}
+                key={`recent-${i}-${item.recipeTitle}`}
+                testID={`food-search-recent-${i}`}
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
                 onPress={() => onSelectHistoryItem(item)}
@@ -2212,7 +2311,9 @@ export default function FoodSearchPanel({
                   alignItems: "center",
                   paddingVertical: Spacing.dense,
                   borderBottomWidth:
-                    i < historyMatches.length - 1 ? StyleSheet.hairlineWidth : 0,
+                    i < Math.min(4, recentFoodsOrdered.length - 1)
+                      ? StyleSheet.hairlineWidth
+                      : 0,
                   borderBottomColor: colors.border,
                   opacity: pressed ? 0.6 : 1,
                 })}
@@ -2240,12 +2341,214 @@ export default function FoodSearchPanel({
                     })}
                   </Text>
                 </View>
+                {onToggleFavorite ? (
+                  <FavoriteStarButton
+                    starred={starred}
+                    pending={pending}
+                    onToggle={() => toggleFavoriteFor(item)}
+                    testID={`food-search-recent-${i}-star`}
+                  />
+                ) : null}
                 <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
                   ›
                 </Text>
               </Pressable>
             );
           })}
+        </View>
+      ) : null}
+
+      {/* Favourites-in-search (teardown #1, ENG-1041, MFP/Lifesum grammar):
+          when the user has TYPED a query, the foods they've STARRED that match
+          it surface in a "Favourites" group ABOVE "Past logged" — the curated
+          set leads the recall set. Same row grammar (title + macro trailer +
+          star + chevron) so the three history-style groups read identically. */}
+      {favoriteMatches.length > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Spacing.sm,
+            paddingBottom: Spacing.md,
+          }}
+          testID="food-search-favourites"
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.textTertiary,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 8,
+            }}
+          >
+            Favourites
+          </Text>
+          {favoriteMatches.map((m, i) => {
+            const item = m.item;
+            const pending = favoritePendingKeys?.has(
+              favoriteKey(item.recipeTitle, item.calories),
+            );
+            return (
+              <Pressable
+                key={`fav-${m.key}`}
+                testID={`food-search-favourites-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+                onPress={() => onSelectHistoryItem(item)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: Spacing.dense,
+                  borderBottomWidth:
+                    i < favoriteMatches.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                    numberOfLines={1}
+                  >
+                    {item.recipeTitle}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginTop: 2,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatMacroTrailer({
+                      calories: item.calories,
+                      protein: item.protein,
+                      carbs: item.carbs,
+                      fat: item.fat,
+                    })}
+                  </Text>
+                </View>
+                {onToggleFavorite ? (
+                  <FavoriteStarButton
+                    starred
+                    pending={pending}
+                    onToggle={() => toggleFavoriteFor(item)}
+                    testID={`food-search-favourites-${i}-star`}
+                  />
+                ) : null}
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
+                  ›
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* History-first search (ENG-1033, MFP grammar): when the user has
+          TYPED a query, the foods they've logged before that match it
+          surface as a visually-distinct "Past logged" group above the
+          database results. Reuses the recent-row grammar (title + macro
+          trailer + chevron) and the Type.label eyebrow used by the empty-
+          query "Recent" strip. De-dupe (history wins) is applied to the DB
+          list above via `dedupedResults`; favourites win over history within
+          this sheet via `historyMatchesDeduped`. */}
+      {historyMatchesDeduped.length > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Spacing.sm,
+            paddingBottom: Spacing.md,
+          }}
+          testID="food-search-past-logged"
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.textTertiary,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 8,
+            }}
+          >
+            Past logged
+          </Text>
+          {historyMatchesDeduped.map((m, i) => {
+            const item = m.item;
+            const starred = isFavoriteRow(favoriteKeys, item.recipeTitle, item.calories);
+            const pending = favoritePendingKeys?.has(
+              favoriteKey(item.recipeTitle, item.calories),
+            );
+            return (
+              <Pressable
+                key={`past-${m.key}`}
+                testID={`food-search-past-logged-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+                onPress={() => onSelectHistoryItem(item)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: Spacing.dense,
+                  borderBottomWidth:
+                    i < historyMatchesDeduped.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                    numberOfLines={1}
+                  >
+                    {item.recipeTitle}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginTop: 2,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatMacroTrailer({
+                      calories: item.calories,
+                      protein: item.protein,
+                      carbs: item.carbs,
+                      fat: item.fat,
+                    })}
+                  </Text>
+                </View>
+                {onToggleFavorite ? (
+                  <FavoriteStarButton
+                    starred={starred}
+                    pending={pending}
+                    onToggle={() => toggleFavoriteFor(item)}
+                    testID={`food-search-past-logged-${i}-star`}
+                  />
+                ) : null}
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
+                  ›
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* ENG-1038 — graceful degradation notice. When a keyed vendor's
+          account-wide quota is exhausted at viral scale, the search layer
+          flags it and we tell the user honestly that some live sources are
+          paused — rather than letting search silently look broken. Tokens
+          only. */}
+      {searchDegraded && !loading ? (
+        <View testID="food-search-degraded-notice" style={styles.degradedNotice}>
+          <Text style={styles.degradedNoticeText}>
+            Some live food sources are busy right now — showing saved and
+            verified results. Try again shortly for the full list.
+          </Text>
         </View>
       ) : null}
 
