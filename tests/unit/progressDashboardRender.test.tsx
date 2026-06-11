@@ -138,10 +138,19 @@ describe("ProgressDashboard render harness", () => {
     });
   });
 
-  it("shows the range picker once loaded", async () => {
+  it("shows the Apple Health period control once loaded (ENG-1030)", async () => {
     render(<ProgressDashboard />);
     await waitFor(() => {
-      expect(screen.getByTestId("progress-range-picker")).toBeInTheDocument();
+      // The picker is the period control: D/W/M/6M/Y segments + the ‹ label ›
+      // paging row (was the `progress-range-picker` 7d/30d/90d/All pills).
+      expect(screen.getByTestId("progress-period-segments")).toBeInTheDocument();
     });
+    // The five segments + the paging label render.
+    for (const seg of ["D", "W", "M", "6M", "Y"]) {
+      expect(screen.getByTestId(`progress-period-segment-${seg}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("progress-period-label")).toBeInTheDocument();
+    // The retired relative-range picker is gone.
+    expect(screen.queryByTestId("progress-range-picker")).not.toBeInTheDocument();
   });
 });

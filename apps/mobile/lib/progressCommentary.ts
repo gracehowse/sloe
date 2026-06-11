@@ -12,4 +12,5 @@ export {
   type ProgressCommentaryRegime,
   type ProgressCommentaryResult,
   type ProgressCommentaryConfidence,
+  type ProgressCommentaryTdee,
 } from "@suppr/shared/nutrition/progressCommentary";

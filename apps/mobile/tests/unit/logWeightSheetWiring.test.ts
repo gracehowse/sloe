@@ -59,8 +59,12 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
     expect(src).toContain('from "@/components/progress/WeightChart"');
     expect(src).toMatch(/<WeightChart\s/);
     expect(src).toContain("trend={weightChartTrend}");
-    // The chart range must follow the page range picker, not a literal.
-    expect(src).toContain("progressRangeKeyToWeightRange(rangeKey)");
+    // The chart range must follow the page period picker, not a literal.
+    // ENG-1030 (2026-06-10): the picker moved to the Apple Health range
+    // grammar, so the chart range now derives from the period TYPE (was the
+    // relative `rangeKey`). The intent — "range follows the picker, never a
+    // hardcoded literal" — is unchanged.
+    expect(src).toContain("progressPeriodToWeightRange(period.type)");
     // The retired Sparkline must be fully gone (no dead component / usage).
     expect(src).not.toContain("function Sparkline(");
     expect(src).not.toContain("<Sparkline ");

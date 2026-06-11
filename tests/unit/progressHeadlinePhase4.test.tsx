@@ -9,18 +9,18 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ProgressHeadline } from "../../src/app/components/suppr/progress-headline";
-import { generateProgressCommentary } from "../../src/lib/nutrition/progressCommentary";
-import type { AdaptiveTdeeResult } from "../../src/lib/nutrition/adaptiveTdee";
+import {
+  generateProgressCommentary,
+  type ProgressCommentaryTdee,
+} from "../../src/lib/nutrition/progressCommentary";
 
-function tdee(overrides: Partial<AdaptiveTdeeResult> = {}): AdaptiveTdeeResult {
+function tdee(
+  overrides: Partial<ProgressCommentaryTdee> = {},
+): ProgressCommentaryTdee {
   return {
     tdee: 2100,
     confidence: "medium",
     loggingDays: 21,
-    weighInCount: 6,
-    avgDailyIntake: 1900,
-    smoothedWeightChangeKgPerDay: -0.025,
-    windowDays: 28,
     ...overrides,
   };
 }
