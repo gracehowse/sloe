@@ -2152,7 +2152,9 @@ function WeightTrendOnlyCard({
         borderWidth: cardElev.useBorder ? StyleSheet.hairlineWidth : 0,
         borderColor: theme.border,
         padding: 16,
-        marginBottom: Spacing.md,
+        // No marginBottom — this card sits inside the heroEntrance wrapper,
+        // whose gap: Spacing.lg owns the seam to the next card. A self-margin
+        // here double-stacked to 36pt (rhythm sweep 2026-06-10).
       }, cardElev.shadowStyle]}
     >
       {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
