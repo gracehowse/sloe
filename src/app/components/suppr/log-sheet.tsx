@@ -193,7 +193,7 @@ export interface LogSheetProps {
     userId?: string | null;
     /** Inline mode — the user's logging history, newest-first (from
      *  `computeRecentMeals`). Powers the history-first "Past logged" group
-     *  that ranks matching past logs above database results (ENG-1031).
+     *  that ranks matching past logs above database results (ENG-1033).
      *  When omitted, the group doesn't render. */
     recentFoods?: Array<{
       recipeTitle: string;

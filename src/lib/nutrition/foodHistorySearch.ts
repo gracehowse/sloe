@@ -1,5 +1,5 @@
 /**
- * History-first food search (ENG-1031, 2026-06-10).
+ * History-first food search (ENG-1033, 2026-06-10).
  *
  * The behaviour Grace asked for (MFP grammar): when the user types a query in
  * the food-log search, FIRST surface matching items from their OWN logging

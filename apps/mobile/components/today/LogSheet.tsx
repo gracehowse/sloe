@@ -210,7 +210,7 @@ export interface LogSheetProps {
     userId?: string | null;
     /** Inline mode — the user's logging history, newest-first (from
      *  `computeRecentMeals`). Powers BOTH the empty-query "Recent" strip and
-     *  the typed-query history-first "Past logged" group (ENG-1031). When
+     *  the typed-query history-first "Past logged" group (ENG-1033). When
      *  omitted, neither history surface renders. */
     recentFoods?: Array<{
       recipeTitle: string;

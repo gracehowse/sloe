@@ -1534,7 +1534,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           : selection.source === "FatSecret"
           ? "FatSecret"
           : selection.source === "history"
-          ? // ENG-1031 — a re-logged "Past logged" item; the macros are the
+          ? // ENG-1033 — a re-logged "Past logged" item; the macros are the
             // user's own prior totals, so label it neutrally rather than
             // misattribute to a database source.
             "Manual"
@@ -2982,7 +2982,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           fat: totals.fat,
           fiber: totals.fiber,
         }}
-        // History-first search (ENG-1031): the user's logging history,
+        // History-first search (ENG-1033): the user's logging history,
         // newest-first, so the typed-query "Past logged" group ranks
         // matching past logs above database results. HealthKit-import
         // fallback rows stripped (mobile parity).
@@ -3387,7 +3387,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           },
           supabase,
           userId: authedUserId ?? null,
-          // History-first search (ENG-1031, MFP grammar): the user's logging
+          // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel so the
           // typed-query "Past logged" group ranks matching past logs above
           // database results. 50-row window + `count` for the recency-

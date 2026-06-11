@@ -185,7 +185,7 @@ type SearchResult = {
 export type FoodSearchSelection = {
   name: string;
   /**
-   * "history" (ENG-1031) discriminates a re-logged "Past logged" item — the
+   * "history" (ENG-1033) discriminates a re-logged "Past logged" item — the
    * macros are the user's own prior per-serving totals, so the commit path
    * labels it neutrally ("Manual"), never misattributing to a database
    * source.
@@ -267,7 +267,7 @@ export type FoodSearchPanelProps = {
    */
   localeOverride?: string;
   /**
-   * History-first search (ENG-1031, MFP grammar) — the user's logging
+   * History-first search (ENG-1033, MFP grammar) — the user's logging
    * history, newest-first (from `computeRecentMeals`). When a query is
    * typed, matching past-logged foods surface FIRST as a visually-distinct
    * "Past logged" group above the database results, de-duped (history wins).
@@ -1243,7 +1243,7 @@ export function FoodSearchPanel({
     [],
   );
 
-  // Log a "Past logged" history row directly (ENG-1031) — per-serving food,
+  // Log a "Past logged" history row directly (ENG-1033) — per-serving food,
   // no per-100g basis, so the host commit path uses macrosPerServing ×
   // quantity. Mirrors the mobile `onSelectHistoryItem`.
   const onSelectHistoryItem = useCallback(
@@ -1639,7 +1639,7 @@ export function FoodSearchPanel({
     return shouldShowBarcodeFallbackHint(locale ?? null);
   }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
 
-  // ── History-first search (ENG-1031) ──────────────────────────────────
+  // ── History-first search (ENG-1033) ──────────────────────────────────
   // MFP grammar: when the user has TYPED a query, surface matching items from
   // their own logging history FIRST, as a visually-distinct "Past logged"
   // group above the database results. The shared matcher ranks + de-dupes +
@@ -1669,7 +1669,7 @@ export function FoodSearchPanel({
   // Only used on the redesigned path; computed unconditionally so React's
   // hook order is stable when the flag toggles. `All` is identity. Each branch
   // filters by `_source` exactly like the mobile sibling lane. Operates over
-  // `dedupedResults` so the "Past logged" group never repeats below (ENG-1031).
+  // `dedupedResults` so the "Past logged" group never repeats below (ENG-1033).
   const filteredResults = useMemo<SearchResult[]>(() => {
     switch (activeCategory) {
       case "Custom":
@@ -2121,7 +2121,7 @@ export function FoodSearchPanel({
           </div>
         )}
 
-        {/* History-first search (ENG-1031, MFP grammar): when the user has
+        {/* History-first search (ENG-1033, MFP grammar): when the user has
             TYPED a query, the foods they've logged before that match it
             surface FIRST as a visually-distinct "Past logged" group above the
             database results. Reuses the result-row grammar (title + macro

@@ -5663,7 +5663,7 @@ export default function TrackerScreen() {
           },
           supabase: supabase as unknown as { from: (table: string) => unknown },
           userId: userId ?? null,
-          // History-first search (ENG-1031, MFP grammar): the user's logging
+          // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel. Powers the
           // empty-query "Recent" strip AND the typed-query "Past logged"
           // group that ranks matching past logs above database results. A
@@ -6035,7 +6035,7 @@ export default function TrackerScreen() {
         // source the QuickAddPanel reads) and pass through so the search
         // modal's empty-query state shows tap-to-log recents — the pattern
         // MFP / Lose It / Cronometer all ship.
-        // ENG-1031: widened from 5 → 50 + carry `count` so the typed-query
+        // ENG-1033: widened from 5 → 50 + carry `count` so the typed-query
         // history-first "Past logged" group has enough history to match
         // against and rank by recency-weighted frequency. The empty-query
         // strip still shows only the first 5 (panel-side slice).

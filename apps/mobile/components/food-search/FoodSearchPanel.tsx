@@ -268,7 +268,7 @@ export type FoodSearchPanelProps = {
     fiber?: number;
     source?: string;
     /** Total log count for this (title, kcal) — recency-weighted-frequency
-     *  tiebreak in the history-first "Past logged" group (ENG-1031). */
+     *  tiebreak in the history-first "Past logged" group (ENG-1033). */
     count?: number;
     imageUrl?: string | null;
   }>;
@@ -1075,7 +1075,7 @@ export default function FoodSearchPanel({
   // Log a "Recent" / "Past logged" history row directly — per-serving food,
   // no per-100g basis, so the host commit path uses macrosPerServing ×
   // quantity. Single source of truth for both the empty-query recents strip
-  // and the typed-query "Past logged" group (ENG-1031), so the two paths
+  // and the typed-query "Past logged" group (ENG-1033), so the two paths
   // can't drift in what they commit.
   const onSelectHistoryItem = useCallback(
     (item: {
@@ -1224,7 +1224,7 @@ export default function FoodSearchPanel({
     [loadingKey, onPickResult, colors, openCustomFoodActions, styles],
   );
 
-  // ── History-first search (ENG-1031) ──────────────────────────────────
+  // ── History-first search (ENG-1033) ──────────────────────────────────
   // MFP grammar: when the user has TYPED a query, surface matching items from
   // their own logging history FIRST, as a visually-distinct "Past logged"
   // group above the database results. `recentFoods` already carries the
@@ -1254,7 +1254,7 @@ export default function FoodSearchPanel({
   // only the recent-foods block above shows. `Custom`, `Branded`,
   // `Generic` filter by `_source`. (Favourites removed — see ENG-748 #8.)
   // Operates over `dedupedResults` so the "Past logged" group never repeats
-  // below in the database list (ENG-1031, history wins).
+  // below in the database list (ENG-1033, history wins).
   const filteredResults = useMemo<SearchRow[]>(() => {
     switch (activeCategory) {
       case "Recents":
@@ -2169,7 +2169,7 @@ export default function FoodSearchPanel({
         </View>
       ) : null}
 
-      {/* History-first search (ENG-1031, MFP grammar): when the user has
+      {/* History-first search (ENG-1033, MFP grammar): when the user has
           TYPED a query, the foods they've logged before that match it
           surface FIRST as a visually-distinct "Past logged" group above the
           database results. Reuses the recent-row grammar (title + macro
