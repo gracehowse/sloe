@@ -502,7 +502,12 @@ export const AnalyticsEvents = {
    *   - `recomputed`: boolean — true when calories + macros were
    *     recomputed (goal/pace changed); false on a goal-weight-only save.
    *   - `newTargetKcal`: number | null — the new target when recomputed,
-   *     else null. */
+   *     else null.
+   *   - `belowFloorAcknowledged`: boolean (ENG-1027) — true when the
+   *     saved target is below the sex-aware safety floor AND the user
+   *     explicitly ticked the acknowledgment to proceed (Cronometer
+   *     pattern). false otherwise. Lets product see how often users
+   *     knowingly go below the floor. */
   goal_pace_adjusted: "goal_pace_adjusted",
   /** User dismissed the Sunday "Weekly check-in available" banner on
    * Today (mobile-only — web does not surface the same banner because

@@ -1983,6 +1983,9 @@ export const NutritionTracker = memo(function NutritionTracker({
       avgCaloriesThisWeek: weekData.weekAvg.calories,
       // weightDeltaKg follow-up: see PR body. Honest null for now.
       weightDeltaKg: null,
+      // ENG-1027 — sex-aware suggested-target floor (never suggest a man
+      // below 1,500 / a woman below 1,200).
+      sex: profileSex,
     });
     setWeeklyCheckinContent(content);
     setWeeklyCheckinOpen(true);
@@ -2010,6 +2013,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     profileAdaptiveTdeeRaw,
     profileAdaptiveTdeeConfidenceRaw,
     profileFormulaTdee,
+    profileSex,
     weekData,
     targets.calories,
     weeklyCheckinShownAt,

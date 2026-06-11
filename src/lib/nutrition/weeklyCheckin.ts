@@ -469,8 +469,26 @@ const COOLDOWN_MS = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 /** Minimum days logged in the current week to claim "expenditure changed". */
 export const MIN_DAYS_LOGGED_FOR_CHECKIN = 5;
 
-/** Floor for any suggested target — never recommend below this. */
-const MIN_SUGGESTED_TARGET_KCAL = 1200;
+/**
+ * ENG-1027 — sex-aware floor for any suggested target.
+ *
+ * Mirrors `safetyFloorFor` / `budgetSafety` in the targets engine: 1,500
+ * (male) / 1,200 (female) / 1,350 (unspecified). The check-in used to
+ * clamp every suggestion at a flat 1,200, which meant a man could be
+ * suggested 1,200 kcal — a value our own safety classifier flags as a
+ * "warning" for males (audit #24). Sex is optional for back-compat:
+ * callers that don't pass it get the historical 1,200 unisex floor, but
+ * every real call site passes the profile's sex.
+ */
+export type CheckinSex = "male" | "female" | "unspecified";
+
+export function suggestedTargetFloorFor(sex: CheckinSex | null | undefined): number {
+  if (sex === "male") return 1500;
+  if (sex === "female") return 1200;
+  if (sex === "unspecified") return 1350;
+  // No sex supplied → preserve the historical unisex 1,200 floor.
+  return 1200;
+}
 
 /**
  * Decide whether to show the weekly check-in modal on this Today
@@ -535,6 +553,14 @@ export interface WeeklyCheckinContentInput {
    *  `null` when fewer than 2 weigh-ins in the window — we never
    *  fabricate a "+0.0 kg" delta. */
   weightDeltaKg: number | null;
+  /**
+   * ENG-1027 — the user's sex, used to pick the suggested-target floor
+   * (`suggestedTargetFloorFor`). Optional for back-compat: when omitted
+   * the floor stays at the historical unisex 1,200 kcal. Every real call
+   * site passes the profile's sex so a man is never suggested below the
+   * 1,500 male floor our safety classifier enforces elsewhere.
+   */
+  sex?: CheckinSex | null;
 }
 
 export interface WeeklyCheckinContent {
@@ -543,7 +569,8 @@ export interface WeeklyCheckinContent {
   /** Suggested new daily target. Preserves the user's current
    *  deficit/surplus by adding `tdeeDeltaKcal` to the current target.
    *  Falls back to the current target when `tdeeDeltaKcal` is null.
-   *  Never returns a value below `MIN_SUGGESTED_TARGET_KCAL`. */
+   *  Never returns a value below the sex-aware floor
+   *  (`suggestedTargetFloorFor`, ENG-1027). */
   suggestedTargetKcal: number;
   /**
    * 2026-05-08 (build-47 follow-up, Grace `APPzhqLXgb64_9reZ44rGk4`):
@@ -592,6 +619,7 @@ export function buildWeeklyCheckinContent(
     currentTargetKcal,
     avgCaloriesThisWeek,
     weightDeltaKg,
+    sex,
   } = input;
 
   const tdeeDeltaKcal =
@@ -599,13 +627,15 @@ export function buildWeeklyCheckinContent(
       ? Math.round(adaptiveTdee - priorTdee)
       : null;
 
+  // ENG-1027 — clamp at the SEX-AWARE floor, not a flat 1,200.
+  const minSuggestedTargetKcal = suggestedTargetFloorFor(sex);
   const rawTargetKcal =
     tdeeDeltaKcal == null
       ? Math.round(currentTargetKcal)
       : Math.round(currentTargetKcal + tdeeDeltaKcal);
-  const suggestedTargetKcal = Math.max(MIN_SUGGESTED_TARGET_KCAL, rawTargetKcal);
+  const suggestedTargetKcal = Math.max(minSuggestedTargetKcal, rawTargetKcal);
   const floorAppliedKcal =
-    rawTargetKcal < MIN_SUGGESTED_TARGET_KCAL ? rawTargetKcal : null;
+    rawTargetKcal < minSuggestedTargetKcal ? rawTargetKcal : null;
 
   const headline = "Your weekly check-in is ready";
 

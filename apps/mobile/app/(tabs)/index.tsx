@@ -2698,6 +2698,9 @@ export default function TrackerScreen() {
       avgCaloriesThisWeek: weekData.weekAvg.calories,
       // weightDeltaKg follow-up: see PR body. Honest null for now.
       weightDeltaKg: null,
+      // ENG-1027 — sex-aware suggested-target floor (never suggest a man
+      // below 1,500 / a woman below 1,200).
+      sex: profileSex,
     });
     setWeeklyCheckinContent(content);
     // ENG-805: flag-ON skips the cold-open modal (banner is the entry instead).

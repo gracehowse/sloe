@@ -276,5 +276,54 @@ export function parseHeightInputToCm(
   return Math.round(cm);
 }
 
+/**
+ * ENG-1027 — copy for the below-safety-floor acknowledge step.
+ *
+ * Locked here so web (`goal-pace-editor-dialog.tsx`) and mobile
+ * (`GoalPaceEditorSheet.tsx`) render the EXACT same words — a drift would
+ * fail `tests/unit/goalEditorPace.test.ts`. We keep the soft-warn (it has
+ * precedent at the higher-trust end of the market) but require an explicit
+ * acknowledgment before saving below the floor — Cronometer's pattern,
+ * which closes the gap with MFP / Lose It (who hard-refuse) without
+ * paternalistic hard-blocking.
+ *
+ * Voice (per `_project-context.md` voice rules + trust posture): honest,
+ * body-neutral, no shaming, no health claims, names the sources, gives the
+ * user agency. The floor value is interpolated by sex so a man sees 1,500
+ * and a woman 1,200.
+ */
+export const SAFETY_ACK_TITLE = "Confirm a target below the safety floor";
+
+export function safetyAckBody(floorKcal: number): string {
+  return (
+    `This pace puts your daily target below ${floorKcal.toLocaleString()} kcal. ` +
+    `NHS and NIH guidance generally advises against eating below ` +
+    `${floorKcal.toLocaleString()} kcal/day without medical supervision. ` +
+    `You can still set it — if a clinician has prescribed a lower intake, ` +
+    `continue under their care. Not suitable if you're pregnant, under 18, ` +
+    `or managing a medical condition.`
+  );
+}
+
+/** The explicit checkbox / toggle label the user taps to acknowledge. */
+export const SAFETY_ACK_CONFIRM_LABEL =
+  "I understand this is below the recommended minimum";
+
+/**
+ * Pure gate: may the editor save right now, given the floor + ack state?
+ *
+ * Returns `false` ONLY when the target is below the safety floor AND the
+ * user has not acknowledged. Everything else (above floor, or below +
+ * acknowledged) returns `true`. The composition roots call this so the
+ * web dialog and the mobile sheet can't implement the gate differently.
+ */
+export function canSaveBelowFloor(input: {
+  belowSafetyFloor: boolean;
+  acknowledged: boolean;
+}): boolean {
+  if (!input.belowSafetyFloor) return true;
+  return input.acknowledged;
+}
+
 /** Re-export so a single import covers the editor's pace types. */
 export type { Goal, PlanPace };

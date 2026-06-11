@@ -26,6 +26,7 @@ import { persistRecomputedTargets } from "../../../lib/nutrition/persistRecomput
 import { safetyFloorFor } from "../../../lib/onboarding/targets.ts";
 import { mapPaceToPreset } from "../../../lib/onboarding/persist.ts";
 import {
+  canSaveBelowFloor,
   dbGoalToSliderGoal,
   paceChanged,
   paceRangeForDbGoal,
@@ -68,12 +69,15 @@ export function useGoalPaceEditorDialog({
   const [heightCmInput, setHeightCmInput] = React.useState("");
   const [heightFeetInput, setHeightFeetInput] = React.useState("");
   const [heightInchesInput, setHeightInchesInput] = React.useState("");
+  // ENG-1027 — explicit below-floor acknowledgment (Cronometer pattern).
+  const [acknowledged, setAcknowledged] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setAcknowledged(false);
     (async () => {
       const { data: session } = await supabase.auth.getSession();
       const uid = session.session?.user.id;
@@ -231,8 +235,27 @@ export function useGoalPaceEditorDialog({
     goal === "cut" &&
     preview.target_calories < safetyFloorFor(loaded?.sex ?? null);
 
+  // ENG-1027 — drop a stale acknowledgment the moment the target climbs
+  // back above the floor, so a user can't acknowledge once and then keep
+  // ratcheting the pace down under cover of an old confirmation.
+  React.useEffect(() => {
+    if (!belowSafetyFloor && acknowledged) setAcknowledged(false);
+  }, [belowSafetyFloor, acknowledged]);
+
+  // The sex floor for the live target — surfaced so the dialog can name
+  // the exact number in the acknowledge copy (1,500 male / 1,200 female).
+  const safetyFloorKcal = safetyFloorFor(loaded?.sex ?? null);
+
+  // Gate: when below the floor, Save is disabled until the user ticks the
+  // acknowledgment. Above the floor this is always true.
+  const canSave = canSaveBelowFloor({ belowSafetyFloor, acknowledged });
+
   const handleSave = React.useCallback(async () => {
     if (!dirty || saving || !loaded) return;
+    // ENG-1027 — never persist a below-floor target without the explicit
+    // acknowledgment. The button is disabled in this state, but guard the
+    // commit path too so a programmatic call can't bypass it.
+    if (!canSaveBelowFloor({ belowSafetyFloor, acknowledged })) return;
     setSaving(true);
     setError(null);
     try {
@@ -285,6 +308,8 @@ export function useGoalPaceEditorDialog({
           recomputed: recomputed != null,
           newTargetKcal: recomputed?.target_calories ?? null,
           belowSafetyFloor,
+          // ENG-1027 — record explicit below-floor acknowledgment.
+          belowFloorAcknowledged: belowSafetyFloor ? acknowledged : false,
           surface: "settings_targets",
         });
       } catch {
@@ -314,6 +339,7 @@ export function useGoalPaceEditorDialog({
     goalWeightKg,
     preview,
     belowSafetyFloor,
+    acknowledged,
     onSaved,
     onOpenChange,
   ]);
@@ -343,6 +369,11 @@ export function useGoalPaceEditorDialog({
     setGoalWeightInput,
     preview,
     belowSafetyFloor,
+    safetyFloorKcal,
+    // ENG-1027 — acknowledge-to-proceed gate
+    acknowledged,
+    setAcknowledged,
+    canSave,
     handleSave,
   };
 }

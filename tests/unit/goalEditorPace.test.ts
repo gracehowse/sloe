@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  canSaveBelowFloor,
   dbGoalToSliderGoal,
   defaultPaceForDbGoal,
   paceChanged,
@@ -17,8 +18,11 @@ import {
   parseGoalEditorProfileRow,
   parseHeightInputToCm,
   parseWeightInputToKg,
+  safetyAckBody,
   seatPaceForEditor,
   normalizeEditorGoal,
+  SAFETY_ACK_CONFIRM_LABEL,
+  SAFETY_ACK_TITLE,
 } from "../../src/lib/nutrition/goalEditorPace";
 import { lbToKg, feetInchesToCm } from "../../src/lib/units/imperial";
 import { PACE_RANGES } from "../../src/lib/onboarding/state";
@@ -215,5 +219,58 @@ describe("goalEditorPace — profile row parsing", () => {
   it("tolerates null / undefined data", () => {
     expect(parseGoalEditorProfileRow(null).goal).toBe("cut");
     expect(parseGoalEditorProfileRow(undefined).sex).toBe("unspecified");
+  });
+});
+
+// ─── ENG-1027: below-safety-floor acknowledge-to-proceed gate ───────────
+//
+// The shared gate + copy back the acknowledge step on BOTH editor UIs
+// (web dialog + mobile sheet), so pinning them here proves web == mobile
+// for the gate logic and the exact words shown, without rendering either.
+describe("canSaveBelowFloor (ENG-1027)", () => {
+  it("always allows saving when the target is at or above the floor", () => {
+    expect(
+      canSaveBelowFloor({ belowSafetyFloor: false, acknowledged: false }),
+    ).toBe(true);
+    // Above floor, acknowledgment is irrelevant.
+    expect(
+      canSaveBelowFloor({ belowSafetyFloor: false, acknowledged: true }),
+    ).toBe(true);
+  });
+
+  it("blocks saving below the floor until the user acknowledges", () => {
+    expect(
+      canSaveBelowFloor({ belowSafetyFloor: true, acknowledged: false }),
+    ).toBe(false);
+    expect(
+      canSaveBelowFloor({ belowSafetyFloor: true, acknowledged: true }),
+    ).toBe(true);
+  });
+});
+
+describe("safety acknowledge copy (ENG-1027)", () => {
+  it("names the exact floor value and stays body-neutral / non-shaming", () => {
+    const body = safetyAckBody(1500);
+    expect(body).toContain("1,500 kcal");
+    // Names the sources explicitly (no vague "health authorities").
+    expect(body).toContain("NHS and NIH");
+    // Gives the user agency — "You can still set it" (no hard block).
+    expect(body).toContain("You can still set it");
+    // Carries the legal carve-outs surfaced in the onboarding danger banner.
+    expect(body).toContain("clinician");
+    expect(body).toContain("pregnant");
+    // No shaming / performance language.
+    expect(body).not.toMatch(/should not|must not|bad|fail|cheat/i);
+  });
+
+  it("interpolates the female floor too", () => {
+    expect(safetyAckBody(1200)).toContain("1,200 kcal");
+  });
+
+  it("exposes a stable title + confirm label for both platforms", () => {
+    expect(SAFETY_ACK_TITLE).toBe("Confirm a target below the safety floor");
+    expect(SAFETY_ACK_CONFIRM_LABEL).toBe(
+      "I understand this is below the recommended minimum",
+    );
   });
 });

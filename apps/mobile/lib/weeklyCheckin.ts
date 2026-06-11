@@ -25,6 +25,9 @@ export {
   buildWeeklyCheckinContent,
   shouldShowWeeklyCheckin,
   MIN_DAYS_LOGGED_FOR_CHECKIN,
+  // ENG-1027 — sex-aware suggested-target floor.
+  suggestedTargetFloorFor,
+  type CheckinSex,
   type WeeklyCheckinConfidence,
   type WeeklyCheckinContent,
   type WeeklyCheckinContentInput,
