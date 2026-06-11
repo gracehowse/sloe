@@ -295,17 +295,11 @@ export function TodayHeroRing({
             textSecondaryColor={secondaryColor}
             dividerColor={borderColor}
           />
-          {isOver ? (
-            <Stat
-              label="Over"
-              testID="today-ring-bonus"
-              value={`−${Math.round(consumed - goal).toLocaleString()}`}
-              valueColor={isDark ? Accent.destructiveLight : Accent.destructive}
-              labelColor={textTertiaryColor}
-              textSecondaryColor={secondaryColor}
-              dividerColor={borderColor}
-            />
-          ) : (
+          {/* 2026-06-10 (Grace): the right stat is ALWAYS Bonus — the
+              over amount already reads in the centre + the chip, and the
+              slot-switch hid the earned-burn number exactly when an
+              over-budget user most wants to see it. */}
+
             <Stat
               label="Bonus"
               testID="today-ring-bonus"
@@ -333,7 +327,7 @@ export function TodayHeroRing({
               textSecondaryColor={secondaryColor}
               dividerColor={borderColor}
             />
-          )}
+
         </View>
       ) : null}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to

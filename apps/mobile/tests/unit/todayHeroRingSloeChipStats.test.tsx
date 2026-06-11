@@ -85,14 +85,16 @@ describe("TodayHeroRing — SLOE Goal/Eaten/Bonus stats row", () => {
     expect(getByText("+120")).toBeTruthy();
   });
 
-  it("flips the third stat to 'Over' (red, negative) when over budget", () => {
+  it("keeps Bonus as the third stat even when over budget (Grace 2026-06-10)", () => {
+    // The over amount already reads in the centre + the status chip; the
+    // old slot-flip hid the earned-burn number exactly when an over-budget
+    // user most wants it.
     const { getByText, queryByText } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
+      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} baseGoal={1800} />,
     );
-    expect(getByText("Over")).toBeTruthy();
-    expect(getByText("−400")).toBeTruthy();
-    // The non-over "Bonus" label must not also be present.
-    expect(queryByText("Bonus")).toBeNull();
+    expect(getByText("Bonus")).toBeTruthy();
+    expect(getByText("+200")).toBeTruthy();
+    expect(queryByText("Over")).toBeNull();
   });
 
   it("hides the stats row entirely on the empty (calm) hero", () => {
