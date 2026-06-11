@@ -115,6 +115,19 @@ export const AnalyticsEvents = {
   meal_plan_generated: "meal_plan_generated",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
+  /** Coach engine ("what to eat next") — fires when the Today suggestion
+   *  surface shows a coach-ranked suggestion. `source` distinguishes the
+   *  AI re-rank from the deterministic fallback so we can watch the AI
+   *  hit-rate + fall-back rate. Same name web + mobile. Payload:
+   *  `{ source: "ai" | "deterministic", candidateCount, slot?, platform }`.
+   *  No PII; recipe ids are not sent. */
+  meal_coach_suggestion_shown: "meal_coach_suggestion_shown",
+  /** Grounded digest narrative — fires when the weekly digest renders its
+   *  coach narrative. `source` distinguishes the AI narrative from the
+   *  deterministic template; `maintenanceMoved` flags the adaptive-TDEE
+   *  story. Same name web + mobile. Payload:
+   *  `{ source: "ai" | "template", maintenanceMoved, platform }`. */
+  digest_narrative_shown: "digest_narrative_shown",
   profile_targets_saved: "profile_targets_saved",
   cook_mode_first_step_advanced: "cook_mode_first_step_advanced",
   cook_mode_completed: "cook_mode_completed",
@@ -269,6 +282,14 @@ export const AnalyticsEvents = {
    * Payload: `{ servingLabel?, grams }`. Fires in addition to `food_logged` so
    * analytics can slice custom-food usage without double-counting total logs. */
   custom_food_logged: "custom_food_logged",
+  /** Recipe-vision contract (2026-06-11) — user tapped "Scan label" inside
+   * the Create/Edit custom-food sheet and the AI label-extraction succeeded;
+   * the form is now pre-filled (per-100g, user confirms before save). Payload:
+   * `{ confidence: "high"|"medium"|"low"|"unknown", implausible: boolean,
+   * platform }`. Same name web + mobile so the scan-to-save funnel compares
+   * 1:1. Distinct from `barcode_scan_label_succeeded` (the not-found-barcode
+   * path); this fires from the standalone custom-food form. */
+  custom_food_label_scanned: "custom_food_label_scanned",
   /** User moved a planned meal from one slot/day to another (Batch 3.10 — drag-drop
    * on web, long-press + drag on mobile). Payload: `{ fromSlot, toSlot, crossDay }`.
    * `crossDay` is true iff the source and destination days differ. */

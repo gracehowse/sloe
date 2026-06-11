@@ -5,6 +5,7 @@ import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
+import { checkMacroPlausibility } from "@/lib/nutrition/macroPlausibility";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -52,8 +53,14 @@ const AI_TIMEOUT_MS = 40_000;
  *     sodiumMg: number | null,
  *     saturatedFatG: number | null,
  *     servingSizeG: number | null,
- *     // Diagnostic, surfaced in the UI as a confidence chip.
- *     confidence: "high" | "medium" | "low"
+ *     // Diagnostic, surfaced in the UI as a confidence chip. Forced to
+ *     // "low" when the Atwater plausibility check fails.
+ *     confidence: "high" | "medium" | "low",
+ *     // True when the resolved per-100g macros fail the shared Atwater
+ *     // plausibility gate (kcal vs 4/4/9). The client warns the user to
+ *     // double-check before saving; we never silently accept (2026-06-11).
+ *     implausible: boolean,
+ *     plausibilityReason: string | null
  *   }
  *
  * Response (error):
@@ -331,6 +338,26 @@ export async function POST(req: Request) {
     );
   }
 
+  // Plausibility gate (2026-06-11) — run the resolved per-100g macros
+  // through the shared Atwater check before handing them to the client to
+  // pre-fill a form. An OCR mis-read (e.g. "21g protein" read as "210g", or
+  // a kcal value that doesn't match the macros) is FLAGGED, never silently
+  // accepted: we downgrade confidence to "low" and set `implausible: true`
+  // so the custom-food / correction form can warn the user to double-check
+  // before saving. We do NOT hard-reject — the user is the source of truth
+  // and may be reading a genuinely unusual product (e.g. pure oil).
+  const plausibility = checkMacroPlausibility({
+    calories: calories ?? 0,
+    protein: protein ?? 0,
+    carbs: carbs ?? 0,
+    fat: fat ?? 0,
+  });
+  const modelConfidence =
+    parsed.confidence === "high" || parsed.confidence === "medium" || parsed.confidence === "low"
+      ? parsed.confidence
+      : "medium";
+  const confidence: "high" | "medium" | "low" = plausibility.ok ? modelConfidence : "low";
+
   return NextResponse.json({
     ok: true,
     name: typeof parsed.name === "string" ? parsed.name.trim() || null : null,
@@ -343,9 +370,12 @@ export async function POST(req: Request) {
     sodiumMg,
     saturatedFatG,
     servingSizeG,
-    confidence:
-      parsed.confidence === "high" || parsed.confidence === "medium" || parsed.confidence === "low"
-        ? parsed.confidence
-        : "medium",
+    confidence,
+    // True when the extracted per-100g macros fail the Atwater plausibility
+    // check (kcal vs 4/4/9, range, single-macro). The client surfaces a
+    // "double-check these numbers" warning on pre-fill. `reason` is the
+    // specific failure for telemetry / copy.
+    implausible: !plausibility.ok,
+    plausibilityReason: plausibility.ok ? null : plausibility.reason,
   });
 }

@@ -309,6 +309,45 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
     }
   });
 
+  // Recipe-vision contract (2026-06-11) — "Scan label" OCR pre-fill must
+  // exist on BOTH surfaces (the wedge feature). Pinned so it can't ship on
+  // one platform and silently drift on the other.
+  it("both surfaces render a 'Scan label' OCR entry with the same test id", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/Scan label/);
+      expect(src).toMatch(/custom-food-scan-label/);
+    }
+  });
+
+  it("both surfaces POST the scan to /api/nutrition/scan-label", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/\/api\/nutrition\/scan-label/);
+    }
+  });
+
+  it("both surfaces pre-fill in per-100g basis (form stays source of truth)", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      // Both flip the basis to per_100g before pre-filling the macro fields.
+      expect(src).toMatch(/setMacroBasis\("per_100g"\)/);
+      expect(src).toMatch(/setCaloriesText\(/);
+    }
+  });
+
+  it("both surfaces warn (never silently accept) on a flagged / implausible scan", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/scanWarning/);
+      expect(src).toMatch(/[Dd]ouble-check/);
+      // The implausible flag from the route drives the warning.
+      expect(src).toMatch(/implausible/);
+    }
+  });
+
+  it("both surfaces fire the same custom_food_label_scanned analytics event", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/custom_food_label_scanned/);
+    }
+  });
+
   it("the BarcodeScannerModal exposes an onAddAsCustomFood callback for the not-found CTA (mobile)", () => {
     const scanner = readFileSync(
       resolve(__dirname, "../../components/BarcodeScannerModal.tsx"),
