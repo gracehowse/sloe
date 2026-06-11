@@ -76,6 +76,43 @@ describe("TodayMealsSection (mobile) — swipe delete on Figma layout", () => {
     expect(onDeleteMeal).toHaveBeenCalledWith("m1");
   });
 
+  it("opens meal nutrition when the Figma summary row is tapped", () => {
+    const onPressMeal = vi.fn();
+    const only = journalMeal({ id: "solo", recipeTitle: "Greek yogurt" });
+    render(
+      <TodayMealsSection
+        slots={["Breakfast", "Lunch", "Dinner", "Snacks"]}
+        mealGroups={{ Breakfast: [only], Lunch: [], Dinner: [], Snacks: [] }}
+        mealsTodayCount={1}
+        collapsedSlots={new Set()}
+        onToggleSlotCollapse={NOOP}
+        onOpenFabForSlot={NOOP}
+        onOpenSaveUsualMealForSlot={NOOP}
+        onOpenDuplicateDay={NOOP}
+        onPressMeal={onPressMeal}
+        onLongPressEdit={NOOP}
+        onRequestCopyMeal={NOOP}
+        onDeleteMeal={NOOP}
+        showMealTimestamps={false}
+        formatMealMacroDetail={() => ""}
+        formatMealTimeDisplay={() => ""}
+        formatMealSourceLabelForRow={() => null}
+        textColor="#111"
+        textSecondaryColor="#666"
+        textTertiaryColor="#999"
+        cardColor="#fff"
+        cardBorderColor="#ddd"
+        savedMeals={[]}
+        onLogSavedMeal={NOOP}
+        hintVisibleForSlot={() => false}
+        onDismissUsualMealHint={NOOP}
+        onAcceptUsualMealHint={NOOP}
+      />,
+    );
+    fireEvent.press(screen.getByTestId("today-meals-figma-meal-row-Breakfast"));
+    expect(onPressMeal).toHaveBeenCalledWith("solo");
+  });
+
   it("exposes Remove meal on the summary card when a slot has only one item", () => {
     const onDeleteMeal = vi.fn();
     const only = journalMeal({ id: "solo", recipeTitle: "Greek yogurt" });

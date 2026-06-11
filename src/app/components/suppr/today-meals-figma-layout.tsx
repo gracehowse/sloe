@@ -11,6 +11,7 @@ import {
 } from "../../../lib/copy/today";
 import type { TodayMealSectionMeal } from "./today-meals-section";
 import { SwipeDeleteRow } from "../ui/swipe-delete-row";
+import { Icons } from "../ui/icons";
 
 /** Sloe stroke check — Figma `654:2` / `today.html` Logged badge. */
 export function SloeCheckIcon({ className }: { className?: string }) {
@@ -55,6 +56,8 @@ export interface TodayMealsFigmaLayoutProps {
   collapsedSlots: Set<string>;
   onToggleSlot: (name: string) => void;
   onOpenAddForSlot: (slot: string) => void;
+  /** Tap the meal row — nutrition detail (MFP chevron-row parity). */
+  onPressMeal?: (mealId: string) => void;
   /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
   onRequestDeleteMeal?: (mealId: string, recipeTitle: string) => void;
   /** Item rows + slot actions when a summary card is expanded. */
@@ -74,6 +77,7 @@ export function TodayMealsFigmaLayout({
   collapsedSlots,
   onToggleSlot,
   onOpenAddForSlot,
+  onPressMeal,
   onRequestDeleteMeal,
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
@@ -131,48 +135,60 @@ export function TodayMealsFigmaLayout({
               className="overflow-hidden"
               data-testid={`today-meals-figma-card-${slotName}`}
             >
-              {(() => {
-                const header = (
               <button
                 type="button"
                 onClick={() => onToggleSlot(slotName)}
-                className="flex w-full items-center gap-4 p-3 text-left"
+                className="flex w-full items-center justify-between gap-2 border-b border-border/25 px-3 pb-1.5 pt-3 text-left"
                 aria-expanded={isOpen}
                 aria-label={`${slotName}, ${meals.length} item${meals.length === 1 ? "" : "s"} — ${isOpen ? "collapse" : "expand"}`}
               >
-                {thumbUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbUrl}
-                    alt=""
-                    className="h-16 w-16 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div
-                    className="h-16 w-16 shrink-0 rounded-lg bg-card flex items-center justify-center"
-                    aria-hidden
-                  >
-                    <Utensils className="h-6 w-6 text-foreground-tertiary" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-foreground-secondary">
-                      {slotName}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-foreground-tertiary">
-                      <SloeCheckIcon className="h-3.5 w-3.5 shrink-0" />
-                      Logged
-                    </span>
-                  </div>
-                  <h4 className="truncate font-[family-name:var(--font-headline)] text-lg font-normal text-foreground">
-                    {primary.recipeTitle}
-                  </h4>
-                  <p className="mt-0.5 text-xs text-foreground-secondary tabular-nums">
-                    {slotCals.toLocaleString()} kcal • {slotProtein}g P
-                  </p>
-                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-foreground-secondary">
+                  {slotName}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-foreground-tertiary">
+                  <SloeCheckIcon className="h-3.5 w-3.5 shrink-0" />
+                  Logged
+                </span>
               </button>
+              {(() => {
+                const mealRow = (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onPressMeal ? onPressMeal(primary.id) : onToggleSlot(slotName)
+                    }
+                    className="flex w-full items-center gap-4 bg-card px-3 pb-3 text-left"
+                    data-testid={`today-meals-figma-meal-row-${slotName}`}
+                    aria-label={`${primary.recipeTitle}, ${slotCals} kcal`}
+                  >
+                    {thumbUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumbUrl}
+                        alt=""
+                        className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-card"
+                        aria-hidden
+                      >
+                        <Utensils className="h-6 w-6 text-foreground-tertiary" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="truncate font-[family-name:var(--font-headline)] text-lg font-normal text-foreground">
+                        {primary.recipeTitle}
+                      </h4>
+                      <p className="mt-0.5 text-xs text-foreground-secondary tabular-nums">
+                        {slotCals.toLocaleString()} kcal • {slotProtein}g P
+                      </p>
+                    </div>
+                    <Icons.forward
+                      className="h-4 w-4 shrink-0 text-foreground-tertiary"
+                      aria-hidden
+                    />
+                  </button>
                 );
                 return onRequestDeleteMeal ? (
                   <SwipeDeleteRow
@@ -180,10 +196,10 @@ export function TodayMealsFigmaLayout({
                       onRequestDeleteMeal(primary.id, primary.recipeTitle)
                     }
                   >
-                    {header}
+                    {mealRow}
                   </SwipeDeleteRow>
                 ) : (
-                  header
+                  mealRow
                 );
               })()}
               {isOpen && renderSlotExpanded

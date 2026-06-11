@@ -646,6 +646,26 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     }
   };
 
+  const handleMealLongPress = (m: JournalMeal) => {
+    if (brandedSheets) {
+      void Haptics.selectionAsync();
+      setActionSheetMeal(m);
+      return;
+    }
+    Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
+      { text: "Cancel", style: "cancel" },
+      { text: "Edit", onPress: () => onLongPressEdit(m) },
+      { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
+      {
+        text: "Share meal",
+        onPress: () => {
+          void shareMeal(m);
+        },
+      },
+      { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
+    ]);
+  };
+
   // NOTE — NO "Today's Meals" section title (deliberate, not an oversight).
   // The Sloe `_buildtoday.mjs mealsSection` prototype shows a Title-case
   // "Today's Meals" header, but that exact string is on the locked
@@ -756,6 +776,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           collapsedSlots={collapsedSlots}
           onToggleSlotCollapse={onToggleSlotCollapse}
           onOpenFabForSlot={onOpenFabForSlot}
+          onPressMeal={onPressMeal}
+          onLongPressMeal={handleMealLongPress}
           onDeleteMeal={onDeleteMeal}
           renderSlotExpanded={(slot, meals) => {
             // e2e walk 2026-06-10: the Figma card header already shows the
@@ -779,7 +801,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 <MealRowSwipeable key={m.id} mealId={m.id} onDeleteMeal={onDeleteMeal}>
                   <Pressable
                     onPress={() => onPressMeal(m.id)}
-                    onLongPress={() => onLongPressEdit(m)}
+                    onLongPress={() => handleMealLongPress(m)}
                     style={{
                       paddingVertical: Spacing.sm,
                       paddingHorizontal: Spacing.md,
@@ -797,9 +819,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     >
                       {m.recipeTitle}
                     </Text>
-                    <Text style={{ ...Type.caption, color: textSecondaryColor, marginLeft: 8 }}>
-                      {Math.round(m.calories)} kcal
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ ...Type.caption, color: textSecondaryColor }}>
+                        {Math.round(m.calories)} kcal
+                      </Text>
+                      <ChevronRight size={16} color={textTertiaryColor} />
+                    </View>
                   </Pressable>
                 </MealRowSwipeable>
               ))}

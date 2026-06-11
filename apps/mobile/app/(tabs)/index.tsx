@@ -6215,7 +6215,8 @@ export default function TrackerScreen() {
       {/* Barcode scanner */}
       <BarcodeScannerModal
         visible={barcodeOpen}
-        onScan={(_code: string, product) => {
+        initialMealSlot={activeMealSlot as (typeof MEAL_SLOTS)[number]}
+        onScan={(_code: string, product, mealSlot) => {
           setBarcodeOpen(false);
           // F-13 (2026-04-19) — auto-track caffeine + alcohol from the
           // scaled scanned product. `product.servingSizeG` already holds
@@ -6233,7 +6234,7 @@ export default function TrackerScreen() {
           });
           const meal: JournalMeal = {
             id: newMealId(),
-            name: activeMealSlot,
+            name: mealSlot,
             recipeTitle: product.portionSummary ? `${product.name} (${product.portionSummary})` : product.name,
             time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
             calories: Math.round(product.calories),
@@ -6260,10 +6261,10 @@ export default function TrackerScreen() {
           // SoT. The barcode commit above wrote `micros.caffeineMg` /
           // `alcoholG` onto the meal row; `caffeineFromMealsMg` /
           // `alcoholByDayMerged` will sum it at render. No ledger bump.
-          track(AnalyticsEvents.food_logged, { source: "barcode", slot: activeMealSlot });
+          track(AnalyticsEvents.food_logged, { source: "barcode", slot: mealSlot });
           // DC12 (2026-05-14, premium-bar audit) — specific log
           // confirmation. Mobile parity sweep.
-          Alert.alert(`${product.name} logged`, `Added to ${activeMealSlot}.`);
+          Alert.alert(`${product.name} logged`, `Added to ${mealSlot}.`);
         }}
         onClose={() => setBarcodeOpen(false)}
         onPhotoFallback={() => {

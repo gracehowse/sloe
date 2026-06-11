@@ -1,7 +1,7 @@
 import React, { type ReactNode } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Utensils } from "lucide-react-native";
+import { ChevronRight, Utensils } from "lucide-react-native";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import {
@@ -44,6 +44,10 @@ export interface TodayMealsFigmaLayoutProps {
   collapsedSlots: Set<string>;
   onToggleSlotCollapse: (slot: string) => void;
   onOpenFabForSlot: (slot: string) => void;
+  /** Tap the meal row — nutrition detail (legacy parity / MFP chevron row). */
+  onPressMeal: (mealId: string) => void;
+  /** Long-press the meal row — edit / action sheet (host decides). */
+  onLongPressMeal?: (meal: JournalMeal) => void;
   /** Swipe-left on the summary card deletes the primary (first) meal in the slot. */
   onDeleteMeal?: (mealId: string) => void;
   renderSlotExpanded?: (slot: string, meals: JournalMeal[]) => ReactNode;
@@ -55,6 +59,8 @@ export function TodayMealsFigmaLayout({
   collapsedSlots,
   onToggleSlotCollapse,
   onOpenFabForSlot,
+  onPressMeal,
+  onLongPressMeal,
   onDeleteMeal,
   renderSlotExpanded,
 }: TodayMealsFigmaLayoutProps) {
@@ -118,10 +124,9 @@ export function TodayMealsFigmaLayout({
               // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
               lift="soft"
               padding="none"
+              innerStyle={{ overflow: "hidden" }}
               testID={`today-meals-figma-card-${slot}`}
             >
-              {(() => {
-                const header = (
               <Pressable
                 onPress={() => onToggleSlotCollapse(slot)}
                 accessibilityRole="button"
@@ -129,82 +134,98 @@ export function TodayMealsFigmaLayout({
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 16,
-                  padding: Spacing.dense,
+                  justifyContent: "space-between",
+                  paddingHorizontal: Spacing.dense,
+                  paddingTop: Spacing.dense,
+                  paddingBottom: Spacing.xs,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.border + "40",
                 }}
               >
-                {thumbUrl ? (
-                  <Image
-                    source={{ uri: thumbUrl }}
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: Radius.lg,
-                    }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: Radius.lg,
-                      backgroundColor: colors.card,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Utensils size={24} color={colors.textTertiary} />
-                  </View>
-                )}
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: 4,
-                    }}
-                  >
-                    <Text
-                      // headers census 2026-06-10: slot eyebrow → Type.label.
-                      style={{ ...Type.label, color: colors.textSecondary }}
-                    >
-                      {slot}
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <SloeCheckIcon size={14} color={colors.textTertiary} />
-                      <Text style={{ ...Type.caption, color: colors.textTertiary }}>
-                        Logged
-                      </Text>
-                    </View>
-                  </View>
-                  <Text
-                    style={{
-                      ...Type.headline,
-                      color: colors.text,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {primary.recipeTitle}
-                  </Text>
-                  <Text
-                    style={{
-                      ...Type.caption,
-                      color: colors.textSecondary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {slotCals.toLocaleString()} kcal • {slotProtein}g P
+                <Text
+                  // headers census 2026-06-10: slot eyebrow → Type.label.
+                  style={{ ...Type.label, color: colors.textSecondary }}
+                >
+                  {slot}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <SloeCheckIcon size={14} color={colors.textTertiary} />
+                  <Text style={{ ...Type.caption, color: colors.textTertiary }}>
+                    Logged
                   </Text>
                 </View>
               </Pressable>
+              {(() => {
+                const mealRow = (
+                  <Pressable
+                    onPress={() => onPressMeal(primary.id)}
+                    onLongPress={
+                      onLongPressMeal ? () => onLongPressMeal(primary) : undefined
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${primary.recipeTitle}, ${slotCals} kcal`}
+                    testID={`today-meals-figma-meal-row-${slot}`}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 16,
+                      paddingHorizontal: Spacing.dense,
+                      paddingBottom: Spacing.dense,
+                      backgroundColor: colors.card,
+                    }}
+                  >
+                    {thumbUrl ? (
+                      <Image
+                        source={{ uri: thumbUrl }}
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: Radius.lg,
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: Radius.lg,
+                          backgroundColor: colors.card,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Utensils size={24} color={colors.textTertiary} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{
+                          ...Type.headline,
+                          color: colors.text,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {primary.recipeTitle}
+                      </Text>
+                      <Text
+                        style={{
+                          ...Type.caption,
+                          color: colors.textSecondary,
+                          marginTop: 2,
+                        }}
+                      >
+                        {slotCals.toLocaleString()} kcal • {slotProtein}g P
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={colors.textTertiary} />
+                  </Pressable>
                 );
                 return onDeleteMeal ? (
                   <MealRowSwipeable mealId={primary.id} onDeleteMeal={onDeleteMeal}>
-                    {header}
+                    {mealRow}
                   </MealRowSwipeable>
                 ) : (
-                  header
+                  mealRow
                 );
               })()}
               {isOpen && renderSlotExpanded

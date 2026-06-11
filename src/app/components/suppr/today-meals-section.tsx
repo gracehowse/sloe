@@ -385,6 +385,7 @@ export function TodayMealsSection({
             collapsedSlots={collapsedSlots}
             onToggleSlot={onToggleSlot}
             onOpenAddForSlot={onOpenAddForSlot}
+            onPressMeal={onOpenMealNutrition}
             onRequestDeleteMeal={(mealId, recipeTitle) =>
               setDeleteCandidate({ id: mealId, recipeTitle })
             }
@@ -416,7 +417,26 @@ export function TodayMealsSection({
                     }
                   >
                   <div
-                    className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10"
+                    role={onOpenMealNutrition ? "button" : undefined}
+                    tabIndex={onOpenMealNutrition ? 0 : undefined}
+                    onClick={
+                      onOpenMealNutrition
+                        ? () => onOpenMealNutrition(meal.id)
+                        : undefined
+                    }
+                    onKeyDown={
+                      onOpenMealNutrition
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onOpenMealNutrition(meal.id);
+                            }
+                          }
+                        : undefined
+                    }
+                    className={`flex items-center justify-between px-3.5 py-2.5 border-b border-border/10${
+                      onOpenMealNutrition ? " cursor-pointer hover:bg-muted/20" : ""
+                    }`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       {(() => {

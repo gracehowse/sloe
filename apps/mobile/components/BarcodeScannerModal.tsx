@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -57,6 +57,10 @@ import {
   formatHelpedLine,
   type ContributorStats,
 } from "@/lib/contributorStats";
+import { fallbackSlotFromTimeOfDay } from "@suppr/shared/nutrition/recipeJournalSlot";
+
+const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
+type MealSlot = (typeof MEAL_SLOTS)[number];
 
 // Resolve the API origin once. Suppr's mobile app talks to the same
 // Vercel-hosted Next.js routes the web client uses.
@@ -65,7 +69,13 @@ const API_BASE: string =
 
 type Props = {
   visible: boolean;
-  onScan: (barcode: string, product: BarcodeProduct) => void;
+  /**
+   * Meal slot seeded when the modal opens (e.g. Today LogSheet's
+   * `activeMealSlot`). The user can override via the in-modal picker
+   * before logging. Defaults to the time-of-day ladder when omitted.
+   */
+  initialMealSlot?: MealSlot;
+  onScan: (barcode: string, product: BarcodeProduct, mealSlot: MealSlot) => void;
   onClose: () => void;
   /**
    * Audit 2026-04-30 (Lose It "Closer" parity, Fix 2). When a barcode
@@ -90,7 +100,14 @@ type Props = {
   onAddAsCustomFood?: (barcode: string) => void;
 };
 
-export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoFallback, onAddAsCustomFood }: Props) {
+export default function BarcodeScannerModal({
+  visible,
+  initialMealSlot,
+  onScan,
+  onClose,
+  onPhotoFallback,
+  onAddAsCustomFood,
+}: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for this sheet's CTAs,
@@ -140,6 +157,20 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualFat, setManualFat] = useState("");
   const [manualServing, setManualServing] = useState("100");
+
+  // Gap #5 parity (2026-06-09) — meal-slot picker on the scan result
+  // card. Seeded from the host's active slot when the modal opens; user
+  // can override before logging (same ladder as barcode.tsx + LogSheet).
+  const [mealSlot, setMealSlot] = useState<MealSlot>(
+    () => (initialMealSlot ?? fallbackSlotFromTimeOfDay()) as MealSlot,
+  );
+  const prevVisibleRef = useRef(false);
+  useEffect(() => {
+    if (visible && !prevVisibleRef.current) {
+      setMealSlot((initialMealSlot ?? fallbackSlotFromTimeOfDay()) as MealSlot);
+    }
+    prevVisibleRef.current = visible;
+  }, [visible, initialMealSlot]);
 
   // P0 (2026-05-26) — physical-plausibility override. Once the user
   // confirms past a "numbers look unusually high" warning, the next Confirm
@@ -361,13 +392,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       // (and runs `writeMealToHealthKitIfEnabled` when wired); the
       // memory only needs the barcode + grams the user committed to.
       void recordPortion(scanned, grams);
-      onScan(scanned, scaledProduct);
+      onScan(scanned, scaledProduct, mealSlot);
       setScanned(null);
       setProduct(null);
       setPickerState(null);
       setRememberedPortion(null);
     }
-  }, [scanned, product, scaled, grams, portionSummary, onScan]);
+  }, [scanned, product, scaled, grams, portionSummary, onScan, mealSlot]);
   onConfirmRef.current = onConfirm;
 
   const onManualSubmit = useCallback(() => {
@@ -382,7 +413,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       fiberG: 0,
       servingSizeG: Number(manualServing) || 100,
     };
-    onScan(scanned ?? "manual", manualProduct);
+    onScan(scanned ?? "manual", manualProduct, mealSlot);
     // Reset
     setScanned(null);
     setProduct(null);
@@ -393,7 +424,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setManualCarbs("");
     setManualFat("");
     setManualServing("100");
-  }, [scanned, manualName, manualCalories, manualProtein, manualCarbs, manualFat, manualServing, onScan]);
+  }, [scanned, manualName, manualCalories, manualProtein, manualCarbs, manualFat, manualServing, onScan, mealSlot]);
 
   const openCorrectionMode = useCallback(() => {
     if (!product) return;
@@ -794,6 +825,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       color: colors.textSecondary,
     },
     productBody: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+    slotRow: {
+      flexDirection: "row",
+      gap: Spacing.xs,
+      marginBottom: Spacing.sm,
+    },
+    slotPill: {
+      flex: 1,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     macroRow: { flexDirection: "row", gap: Spacing.lg },
     macroItem: { fontSize: 14, color: colors.textSecondary, fontWeight: "500" },
     per100g: { fontSize: 12, color: colors.textTertiary },
@@ -1350,12 +1394,50 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                           onChangeText={setManualFat}
                         />
                       </View>
+                      <View
+                        style={styles.slotRow}
+                        accessibilityRole="radiogroup"
+                        accessibilityLabel="Meal to log to"
+                        testID="barcode-modal-manual-slot-row"
+                      >
+                        {MEAL_SLOTS.map((s) => {
+                          const active = mealSlot === s;
+                          return (
+                            <Pressable
+                              key={s}
+                              onPress={() => setMealSlot(s)}
+                              accessibilityRole="radio"
+                              accessibilityState={{ selected: active }}
+                              accessibilityLabel={`Log to ${s}`}
+                              testID={`barcode-modal-manual-slot-${s.toLowerCase()}`}
+                              style={[
+                                styles.slotPill,
+                                {
+                                  borderColor: active ? accent.primary : colors.border,
+                                  backgroundColor: active ? accent.primarySoft : "transparent",
+                                },
+                              ]}
+                            >
+                              <Text
+                                numberOfLines={1}
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: "700",
+                                  color: active ? colors.text : colors.textSecondary,
+                                }}
+                              >
+                                {s}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
                       <Pressable
                         style={[styles.manualSubmitBtn, { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 }]}
                         onPress={onManualSubmit}
                         disabled={!manualName.trim() || !(Number(manualCalories) > 0)}
                       >
-                        <Text style={styles.manualSubmitText}>Add to Tracker</Text>
+                        <Text style={styles.manualSubmitText}>Log to {mealSlot}</Text>
                       </Pressable>
                       <Pressable style={styles.scanAgainBtn} onPress={onReset}>
                         <Text style={styles.scanAgainText}>Back to scanner</Text>
@@ -1392,6 +1474,44 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     </View>
                   </View>
                   <View style={styles.productBody}>
+                    <View
+                      style={styles.slotRow}
+                      accessibilityRole="radiogroup"
+                      accessibilityLabel="Meal to log to"
+                      testID="barcode-modal-slot-row"
+                    >
+                      {MEAL_SLOTS.map((s) => {
+                        const active = mealSlot === s;
+                        return (
+                          <Pressable
+                            key={s}
+                            onPress={() => setMealSlot(s)}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected: active }}
+                            accessibilityLabel={`Log to ${s}`}
+                            testID={`barcode-modal-slot-${s.toLowerCase()}`}
+                            style={[
+                              styles.slotPill,
+                              {
+                                borderColor: active ? accent.primary : colors.border,
+                                backgroundColor: active ? accent.primarySoft : "transparent",
+                              },
+                            ]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={{
+                                fontSize: 11,
+                                fontWeight: "700",
+                                color: active ? colors.text : colors.textSecondary,
+                              }}
+                            >
+                              {s}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                     {pickerState && pickerOptions ? (
                       <PortionPicker
                         product={{ servingSizeG: product.servingSizeG, servingOptions: product.servingOptions }}
@@ -1415,14 +1535,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       </Text>
                     ) : null}
                     <View style={[styles.btnRow, { marginTop: Spacing.md }]}>
-                      <Pressable style={styles.useBtn} onPress={onConfirm} accessibilityRole="button" accessibilityLabel="Log this portion">
+                      <Pressable
+                        style={styles.useBtn}
+                        onPress={onConfirm}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Log to ${mealSlot}`}
+                      >
                         {useLucideIcons ? (
                           <Check size={16} color={colors.primaryForeground} />
                         ) : (
                           <Ionicons name="checkmark" size={16} color={colors.primaryForeground} />
                         )}
                         <Text style={styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
-                          Log · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
+                          Log to {mealSlot} · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
                         </Text>
                       </Pressable>
                       <Pressable style={styles.scanAgainBtn} onPress={onReset} accessibilityRole="button" accessibilityLabel="Scan again">

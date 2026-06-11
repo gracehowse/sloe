@@ -24,6 +24,14 @@ const BARCODE_SRC = readFileSync(
   resolve(REPO, "apps/mobile/app/(tabs)/barcode.tsx"),
   "utf8",
 );
+const BARCODE_MODAL_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/components/BarcodeScannerModal.tsx"),
+  "utf8",
+);
+const TODAY_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/app/(tabs)/index.tsx"),
+  "utf8",
+);
 
 // ── Static-pin: slot correctness ────────────────────────────────────────────
 
@@ -54,6 +62,28 @@ describe("fallbackSlotFromTimeOfDay", () => {
 });
 
 // ── Static-pin: barcode.tsx ──────────────────────────────────────────────────
+
+describe("BarcodeScannerModal — gap #5: meal slot picker on Today scan", () => {
+  it("imports fallbackSlotFromTimeOfDay and exposes MEAL_SLOTS picker UI", () => {
+    expect(BARCODE_MODAL_SRC).toContain("fallbackSlotFromTimeOfDay");
+    expect(BARCODE_MODAL_SRC).toContain('testID="barcode-modal-slot-row"');
+    expect(BARCODE_MODAL_SRC).toContain("MEAL_SLOTS.map");
+  });
+
+  it("passes mealSlot through onScan on confirm and manual submit", () => {
+    expect(BARCODE_MODAL_SRC).toMatch(/onScan\(scanned,\s*scaledProduct,\s*mealSlot\)/);
+    expect(BARCODE_MODAL_SRC).toMatch(/onScan\(scanned \?\? "manual",\s*manualProduct,\s*mealSlot\)/);
+  });
+
+  it("accepts initialMealSlot from the Today host and logs with returned slot", () => {
+    expect(TODAY_SRC).toContain("initialMealSlot={activeMealSlot");
+    expect(TODAY_SRC).toMatch(/onScan=\{\(_code: string, product, mealSlot\) =>/);
+    expect(TODAY_SRC).toMatch(/name:\s*mealSlot/);
+    expect(TODAY_SRC).not.toMatch(
+      /onScan=\{\(_code: string, product\) =>[\s\S]{0,400}name:\s*activeMealSlot/,
+    );
+  });
+});
 
 describe("barcode.tsx — gap #5: meal slot correctness", () => {
   it('does NOT hardcode name: "Snacks" in either insert call', () => {
