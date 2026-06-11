@@ -125,6 +125,15 @@ import {
   normalizeHistoryName,
   type HistorySearchMatch,
 } from "@/lib/nutrition/foodHistorySearch";
+import {
+  matchFavoriteFoods,
+  favoriteFoodKeySet,
+  isFavoriteRow,
+  type FavoriteSearchItem,
+  type FavoriteSearchMatch,
+} from "@/lib/nutrition/favoriteFoodsSearch";
+import { favoriteKey } from "@/lib/nutrition/favoriteFoods";
+import { Star } from "lucide-react";
 import { formatMacroTrailer } from "@/lib/nutrition/macroFormat";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -287,6 +296,26 @@ export type FoodSearchPanelProps = {
     count?: number;
     imageUrl?: string | null;
   }>;
+  /**
+   * Favourites-in-search (teardown #1, ENG-1041) — the user's
+   * `user_favorite_foods` rows. Surfaces a "Favourites" group above "Past
+   * logged" when the typed query matches a favourite and drives the per-row
+   * star state. When omitted, no favourites surface. Mobile parity.
+   */
+  favoriteFoods?: FavoriteSearchItem[];
+  /** Star/unstar handler — host owns the optimistic write + revert. */
+  onToggleFavorite?: (food: {
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+    favoriteId?: string;
+  }) => void;
+  /** Keys of favourite toggles in flight (disabled + dimmed star). */
+  favoritePendingKeys?: Set<string>;
 };
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
@@ -805,6 +834,9 @@ export function FoodSearchPanel({
   inBarcodeMode = false,
   localeOverride,
   recentFoods,
+  favoriteFoods,
+  onToggleFavorite,
+  favoritePendingKeys,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
   // single commit-action colour. The "Use this" log commit CTA below used
@@ -1654,6 +1686,56 @@ export function FoodSearchPanel({
     return matchHistoryFoods(recentFoods, query);
   }, [query, recentFoods, activeCategory]);
 
+  // ── Favourites-in-search (teardown #1, ENG-1041) ─────────────────────
+  // Per-row star state (filled vs outline) on every history-style row,
+  // without a per-row Supabase call.
+  const favoriteKeys = useMemo(
+    () => favoriteFoodKeySet(favoriteFoods ?? []),
+    [favoriteFoods],
+  );
+  // Typed-query "Favourites" group — favourites matching the query, ranked +
+  // capped, rendered ABOVE "Past logged" (same All-only gate as history).
+  const favoriteMatches = useMemo<FavoriteSearchMatch[]>(() => {
+    if (!query.trim() || !favoriteFoods || favoriteFoods.length === 0) return [];
+    if (activeCategory !== "All") return [];
+    return matchFavoriteFoods(favoriteFoods, query);
+  }, [query, favoriteFoods, activeCategory]);
+  // A food that's BOTH favourite and in history shows once, in Favourites
+  // (favourites win — the user deliberately starred it).
+  const favoriteMatchKeys = useMemo(
+    () =>
+      new Set(favoriteMatches.map((m) => favoriteKey(m.item.recipeTitle, m.item.calories))),
+    [favoriteMatches],
+  );
+  const historyMatchesDeduped = useMemo<HistorySearchMatch[]>(() => {
+    if (favoriteMatchKeys.size === 0) return historyMatches;
+    return historyMatches.filter(
+      (m) => !favoriteMatchKeys.has(favoriteKey(m.item.recipeTitle, m.item.calories)),
+    );
+  }, [historyMatches, favoriteMatchKeys]);
+
+  // Toggle a star from any history-style row — resolve the favourite id (when
+  // unstarring) so the host can remove by id.
+  const toggleFavoriteFor = useCallback(
+    (food: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+    }) => {
+      if (!onToggleFavorite) return;
+      const key = favoriteKey(food.recipeTitle, food.calories);
+      const existing = (favoriteFoods ?? []).find(
+        (f) => favoriteKey(f.recipeTitle, f.calories) === key,
+      );
+      onToggleFavorite({ ...food, favoriteId: existing?.id });
+    },
+    [onToggleFavorite, favoriteFoods],
+  );
+
   // De-dupe DB results against the history group — a database row whose name
   // exactly matches a "Past logged" row shows once (history wins). Catalogue
   // kcal is per-100g and never matches the per-serving history kcal, so the
@@ -2121,22 +2203,78 @@ export function FoodSearchPanel({
           </div>
         )}
 
+        {/* Favourites-in-search (teardown #1, ENG-1041, MFP/Lifesum grammar):
+            when the user has TYPED a query, the foods they've STARRED that
+            match it surface in a "Favourites" group ABOVE "Past logged" — the
+            curated set leads the recall set. Mobile parity. */}
+        {favoriteMatches.length > 0 && (
+          <div data-testid="food-search-favourites" className="mb-3.5">
+            <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+              Favourites
+            </p>
+            <div className="divide-y divide-border">
+              {favoriteMatches.map((m, i) => {
+                const item = m.item;
+                const pending = favoritePendingKeys?.has(
+                  favoriteKey(item.recipeTitle, item.calories),
+                );
+                return (
+                  <button
+                    key={`fav-${m.key}`}
+                    type="button"
+                    data-testid={`food-search-favourites-${i}`}
+                    onClick={() => onSelectHistoryItem(item)}
+                    className="flex w-full items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    aria-label={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-foreground">
+                        {item.recipeTitle}
+                      </span>
+                      <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
+                        {formatMacroTrailer({
+                          calories: item.calories,
+                          protein: item.protein,
+                          carbs: item.carbs,
+                          fat: item.fat,
+                        })}
+                      </span>
+                    </div>
+                    {onToggleFavorite ? (
+                      <FavoriteStar
+                        starred
+                        pending={pending}
+                        onToggle={() => toggleFavoriteFor(item)}
+                        testId={`food-search-favourites-${i}-star`}
+                      />
+                    ) : null}
+                    <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* History-first search (ENG-1033, MFP grammar): when the user has
             TYPED a query, the foods they've logged before that match it
-            surface FIRST as a visually-distinct "Past logged" group above the
-            database results. Reuses the result-row grammar (title + macro
-            trailer) and the uppercase eyebrow used by the result sections.
-            De-dupe (history wins) is applied to the DB list below via
-            `dedupedResults`. Mobile parity:
+            surface as a visually-distinct "Past logged" group above the
+            database results. De-dupe (history wins) is applied to the DB list
+            below via `dedupedResults`; favourites win over history within this
+            sheet via `historyMatchesDeduped`. Mobile parity:
             `apps/mobile/components/food-search/FoodSearchPanel.tsx`. */}
-        {historyMatches.length > 0 && (
+        {historyMatchesDeduped.length > 0 && (
           <div data-testid="food-search-past-logged" className="mb-3.5">
             <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
               Past logged
             </p>
             <div className="divide-y divide-border">
-              {historyMatches.map((m, i) => {
+              {historyMatchesDeduped.map((m, i) => {
                 const item = m.item;
+                const starred = isFavoriteRow(favoriteKeys, item.recipeTitle, item.calories);
+                const pending = favoritePendingKeys?.has(
+                  favoriteKey(item.recipeTitle, item.calories),
+                );
                 return (
                   <button
                     key={`past-${m.key}`}
@@ -2159,6 +2297,14 @@ export function FoodSearchPanel({
                         })}
                       </span>
                     </div>
+                    {onToggleFavorite ? (
+                      <FavoriteStar
+                        starred={starred}
+                        pending={pending}
+                        onToggle={() => toggleFavoriteFor(item)}
+                        testId={`food-search-past-logged-${i}-star`}
+                      />
+                    ) : null}
                     <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground/60" />
                   </button>
                 );
@@ -2471,6 +2617,65 @@ export function FoodSearchPanel({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * FavoriteStar — the star toggle on history-style search rows (teardown #1,
+ * ENG-1041). Rendered as a `role="button"` span (not a `<button>`) because the
+ * row itself is a `<button>` and nested buttons are invalid HTML — same
+ * pattern as the LogSheet `RightEdgeIcons`. `stopPropagation` so a star tap
+ * doesn't also fire the row's log action. Filled amber = starred, outline
+ * muted = not; disabled + dimmed while a toggle is in flight (no double
+ * submit). Tokenised on `--accent-win` (Sloe amber/win family) to match the
+ * mobile `FavoriteStarButton`.
+ */
+function FavoriteStar({
+  starred,
+  pending,
+  onToggle,
+  testId,
+}: {
+  starred: boolean;
+  pending?: boolean;
+  onToggle: () => void;
+  testId?: string;
+}) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      data-testid={testId}
+      aria-label={starred ? "Unstar food" : "Favourite this food"}
+      aria-pressed={starred}
+      aria-disabled={pending}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (pending) return;
+        onToggle();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (pending) return;
+          onToggle();
+        }
+      }}
+      className={`grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        pending ? "opacity-50" : ""
+      }`}
+    >
+      <Star
+        className="h-5 w-5"
+        style={{
+          color: starred ? "var(--accent-win)" : "var(--muted-foreground)",
+          fill: starred ? "var(--accent-win)" : "transparent",
+        }}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+    </span>
   );
 }
 

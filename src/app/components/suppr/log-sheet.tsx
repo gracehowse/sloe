@@ -72,6 +72,7 @@ import {
   type FoodSearchSelection as InlineSelectedFood,
   type SupabaseLike as InlineSupabaseLike,
 } from "../food-search/FoodSearchPanel";
+import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@/lib/nutrition/favoriteFoodsSearch";
 import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacros";
 import { isPremiumMotionV1Enabled } from "@/lib/preferences/premiumMotionWeb";
 import { isFeatureEnabled } from "@/lib/analytics/track";
@@ -206,6 +207,23 @@ export interface LogSheetProps {
       count?: number;
       imageUrl?: string | null;
     }>;
+    /** Favourites-in-search (teardown #1, ENG-1041) — the user's starred
+     *  foods, surfaced as a "Favourites" group above "Past logged". Threaded
+     *  straight through to `<FoodSearchPanel>`. When omitted, none surface. */
+    favoriteFoods?: InlineFavoriteSearchItem[];
+    /** Star/unstar handler — host owns the optimistic write + revert. */
+    onToggleFavorite?: (food: {
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      favoriteId?: string;
+    }) => void;
+    /** Keys of favourite toggles in flight (no double-submit). */
+    favoritePendingKeys?: Set<string>;
     /** Legacy mode — tap-to-open the host's separate FoodSearch dialog. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -758,6 +776,9 @@ function DefaultComposition({
             supabase={search?.supabase}
             userId={search?.userId}
             recentFoods={search?.recentFoods}
+            favoriteFoods={search?.favoriteFoods}
+            onToggleFavorite={search?.onToggleFavorite}
+            favoritePendingKeys={search?.favoritePendingKeys}
             mode="compact"
             onSelect={(result) => {
               search?.onSelect?.(result);

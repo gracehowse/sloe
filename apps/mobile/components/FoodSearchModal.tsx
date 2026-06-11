@@ -52,6 +52,7 @@ import KeyboardSafeView from "./KeyboardSafeView";
 import FoodSearchPanel, {
   type SelectedFood as PanelSelectedFood,
   type SupabaseLike,
+  type FoodSearchPanelProps,
 } from "./food-search/FoodSearchPanel";
 import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
 
@@ -101,6 +102,12 @@ type Props = {
      *  history-first "Past logged" group (ENG-1031). */
     count?: number;
   }>;
+  /** Favourites-in-search (teardown #1, ENG-1041) — pass-through to the
+   *  underlying FoodSearchPanel. Surfaces a "Favourites" group above "Past
+   *  logged" + a per-row star toggle. */
+  favoriteFoods?: FoodSearchPanelProps["favoriteFoods"];
+  onToggleFavorite?: FoodSearchPanelProps["onToggleFavorite"];
+  favoritePendingKeys?: FoodSearchPanelProps["favoritePendingKeys"];
 };
 
 export default function FoodSearchModal({
@@ -119,6 +126,9 @@ export default function FoodSearchModal({
   onVoiceLog,
   onPhotoLog,
   recentFoods,
+  favoriteFoods,
+  onToggleFavorite,
+  favoritePendingKeys,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -299,6 +309,9 @@ export default function FoodSearchModal({
           onSelect={onSelect}
           mode="full"
           recentFoods={recentFoods}
+          favoriteFoods={favoriteFoods}
+          onToggleFavorite={onToggleFavorite}
+          favoritePendingKeys={favoritePendingKeys}
         />
       </KeyboardSafeView>
     </Modal>
