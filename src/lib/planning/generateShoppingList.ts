@@ -1,6 +1,10 @@
-import type { ShoppingItem } from "../../types/recipe.ts";
-import { guessGroceryCategory } from "./category.ts";
-import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow.ts";
+// Extensionless relative imports so this module is mobile-safe (Metro +
+// the mobile tsconfig, which rejects `.ts` import paths). ENG-1040 routes
+// the mobile shopping list through this shared generator, pulling it into
+// the mobile module graph for the first time.
+import type { ShoppingItem } from "../../types/recipe";
+import { guessGroceryCategory } from "./category";
+import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow";
 
 function normalizeKey(name: string, unit: string): string {
   return `${name.trim().toLowerCase()}|${unit.trim().toLowerCase()}`;

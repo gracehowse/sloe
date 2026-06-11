@@ -109,6 +109,51 @@ describe("nutritionLogToCsv", () => {
     expect(cols[9]).toBe(""); // source null
   });
 
+  // ENG-1041 (audit 2026-06-11 P1-6) — fibre column backfills from
+  // `nutrition_micros` when the `fiber_g` column is null. Mobile
+  // food-search logs historically persisted fibre only in the micros map,
+  // so without this fallback a mobile-logged food exported blank fibre
+  // while the same food logged on web exported the real value.
+  describe("ENG-1041 fibre micros fallback (mobile parity)", () => {
+    it("backfills fibre from nutrition_micros when fiber_g column is null", () => {
+      const csv = nutritionLogToCsv([
+        { ...row, fiber_g: null, nutrition_micros: { fiberG: 4.2 } },
+      ]);
+      const cols = csv.split("\r\n")[1]!.split(",");
+      expect(cols[8]).toBe("4.2"); // fibre from micros, not blank
+    });
+
+    it("prefers the fiber_g column when both are present", () => {
+      const csv = nutritionLogToCsv([
+        { ...row, fiber_g: 5.3, nutrition_micros: { fiberG: 99 } },
+      ]);
+      const cols = csv.split("\r\n")[1]!.split(",");
+      expect(cols[8]).toBe("5.3"); // column wins
+    });
+
+    it("stays blank when neither column nor micros has fibre", () => {
+      const csv = nutritionLogToCsv([
+        { ...row, fiber_g: null, nutrition_micros: { sodiumMg: 200 } },
+      ]);
+      const cols = csv.split("\r\n")[1]!.split(",");
+      expect(cols[8]).toBe("");
+    });
+
+    it("a mobile-logged food and a web-logged food export the SAME fibre", () => {
+      // Web persists fiber_g directly; mobile (post-ENG-1041) persists both,
+      // but a pre-fix mobile row has fibre only in micros. All three must
+      // export an identical fibre cell for the same food.
+      const webRow = { ...row, fiber_g: 4.2, nutrition_micros: { fiberG: 4.2 } };
+      const mobilePostFix = { ...row, fiber_g: 4.2, nutrition_micros: { fiberG: 4.2 } };
+      const mobilePreFix = { ...row, fiber_g: null, nutrition_micros: { fiberG: 4.2 } };
+      const cell = (r: NutritionEntryRow) =>
+        nutritionLogToCsv([r]).split("\r\n")[1]!.split(",")[8];
+      expect(cell(webRow)).toBe("4.2");
+      expect(cell(mobilePostFix)).toBe("4.2");
+      expect(cell(mobilePreFix)).toBe("4.2");
+    });
+  });
+
   it("preserves input order (no implicit sort)", () => {
     const rows: NutritionEntryRow[] = [
       { ...row, date_key: "2026-04-18", recipe_title: "First" },

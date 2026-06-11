@@ -1,4 +1,5 @@
 import { dateKeyFromDate } from "./nutrition/trackerStats";
+import { smoothedWeeklyRateKg } from "./nutrition/weightTrendSmoothing";
 
 /**
  * Weight projection utility.
@@ -541,37 +542,58 @@ export const MAX_DAYS_TO_GOAL = 365;
 
 /**
  * Calculate timeline to goal weight based on recent weight trend.
+ *
+ * ENG-1039 (2026-06-11): the weekly rate that drives the goal DATE — and
+ * that feeds `projectWeight({ observedKgPerWeek })`, which OVERRIDES the
+ * formula projection when `|rate| ≥ 0.05` — used to be a **raw** two-point
+ * delta (first-vs-last weigh-in in the 28-day window). Raw scale weight
+ * swings 1–2 kg/day on water + glycogen, so a single noisy endpoint (a
+ * salty dinner, a hard session) could swing the projected goal date by
+ * months. This is the identical class ENG-1026 fixed for the on-track
+ * tile. We now smooth the rate through the SAME shared model
+ * (`smoothedWeeklyRateKg`, interpolate-to-daily + EMA α=0.1) so the goal
+ * date and the on-track tile can never disagree on whether a blip moved
+ * the trend. Smoothing engages at ≥3 weigh-ins; below that (2 readings,
+ * no surrounding context to damp a blip) it falls back to the raw
+ * two-point delta — the prior behaviour — so first-week users still get a
+ * date. `now` is injectable for deterministic tests of the 28-day window.
+ *
+ * Pinned by `tests/unit/calcGoalTimelineSmoothing.test.ts`.
  */
 export function calcGoalTimeline(opts: {
   currentWeightKg: number;
   goalWeightKg: number;
   weightKgByDay: Record<string, number>;
+  now?: Date;
 }): WeightGoalTimeline {
-  const { currentWeightKg, goalWeightKg, weightKgByDay } = opts;
+  const { currentWeightKg, goalWeightKg, weightKgByDay, now } = opts;
 
   const remainingKg = Math.round((currentWeightKg - goalWeightKg) * 10) / 10;
 
-  const keys = Object.keys(weightKgByDay).sort();
+  const keys = Object.keys(weightKgByDay)
+    .filter((k) => {
+      const v = weightKgByDay[k];
+      return typeof v === "number" && Number.isFinite(v);
+    })
+    .sort();
   let weeklyRateKg = 0;
 
   if (keys.length >= 2) {
-    const cutoff = new Date();
+    const cutoff = now ? new Date(now) : new Date();
     cutoff.setHours(0, 0, 0, 0);
     cutoff.setDate(cutoff.getDate() - 28);
     const cutoffStr = dateKeyFromDate(cutoff);
     const recentKeys = keys.filter((k) => k >= cutoffStr);
     const useKeys = recentKeys.length >= 2 ? recentKeys : keys;
-    const firstKey = useKeys[0];
-    const lastKey = useKeys[useKeys.length - 1];
-    const first = weightKgByDay[firstKey];
-    const last = weightKgByDay[lastKey];
-    const daySpan = Math.max(
-      1,
-      Math.round(
-        (new Date(`${lastKey}T12:00:00`).getTime() - new Date(`${firstKey}T12:00:00`).getTime()) / 86400000,
-      ),
-    );
-    weeklyRateKg = Math.round(((last - first) / daySpan) * 7 * 10) / 10;
+    // Smooth the rate over the selected window (≥3 weigh-ins → EMA trend;
+    // 2 → raw two-point fallback). Single source of truth shared with the
+    // on-track tile so the two surfaces can't drift (ENG-1039).
+    const ascending: Array<[string, number]> = useKeys.map((k) => [
+      k,
+      weightKgByDay[k],
+    ]);
+    const { weeklyRateKg: rate } = smoothedWeeklyRateKg(ascending);
+    weeklyRateKg = Math.round(rate * 10) / 10;
   }
 
   const trendDirection: WeightGoalTimeline["trendDirection"] =

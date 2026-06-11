@@ -242,6 +242,11 @@ export interface LogSheetProps {
     }) => void;
     /** Keys of favourite toggles currently in flight (no double-submit). */
     favoritePendingKeys?: Set<string>;
+    /** Multi-add basket (teardown #2, ENG-1042) — stage the picked food into
+     *  the host's basket instead of committing immediately. Threaded to
+     *  `<FoodSearchPanel>`; surfaces an "Add" action in the portion preview.
+     *  When omitted, only the instant "Use this" log shows. */
+    onAddToBasket?: (result: LogSheetInlineSelectedFood) => void;
     /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;

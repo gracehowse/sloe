@@ -86,7 +86,11 @@ import {
   recipeSlotFitScore,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
-import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
+import {
+  effectivePortionMultiplier,
+  isMealPlanPlaceholderLikeTitle,
+} from "@suppr/shared/nutrition/portionMultiplier";
+import { generateShoppingListFromRecipeEntriesAsync } from "@suppr/shared/planning/generateShoppingList";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import {
@@ -96,7 +100,6 @@ import {
   stripMidnight,
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
-import { normalizeShoppingIngredientRow } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import {
   planWeekHeadlineTone,
   type PlanWeekHeadlineTone,
@@ -1789,19 +1792,6 @@ export default function PlannerScreen() {
         },
 
 
-        actionsRow: { gap: Spacing.md },
-        // Sloe treatment system (2026-06-08, §1): secondary "New Plan" /
-        // "Templates" actions read as the canonical aubergine OUTLINE — 1.5px
-        // primarySolid border + primarySolid label (was a faint 50%-alpha
-        // primary border + primary-fill-coloured text).
-        regenBtn: {
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          borderRadius: Radius.md,
-          paddingVertical: Spacing.md,
-          alignItems: "center",
-        },
-        regenBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
       }),
     [colors, accent],
   );
@@ -1916,15 +1906,67 @@ export default function PlannerScreen() {
     ): Promise<{ ok: true; count: number } | { ok: false; error: string }> => {
       if (!userId) return { ok: false, error: "Not signed in" };
       const allRecipes = [...savedRecipes, ...discoverRecipes];
-      const recipeIds: string[] = [];
-      for (const dp of planForGeneration) {
-        for (const m of dp.meals) {
-          const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
-          if (rid && !recipeIds.includes(rid)) recipeIds.push(rid);
+
+      // ENG-1040 (audit 2026-06-11 P1-5) — route through the SAME shared
+      // generator as web (`generateShoppingListFromRecipeEntriesAsync`) so
+      // quantities (portion-multiplier-scaled), categories/aisles, and
+      // non-numeric amounts match web by construction. Mobile previously
+      // counted plain recipe occurrences and IGNORED `portionMultiplier`,
+      // so a planned meal at 2× bought 2× on web but 1× on iOS — the
+      // primary surface under-buying. We resolve each meal's recipe id, map
+      // its title → id, and build portion-scaled entries (skipping leftover
+      // + placeholder slots, exactly as web does in `AppDataContext`).
+      const titleToRecipe = new Map<string, { id: string; title: string }>();
+      for (const r of allRecipes) {
+        if (r.id && r.title && !titleToRecipe.has(r.title)) {
+          titleToRecipe.set(r.title, { id: r.id, title: r.title });
         }
       }
-      if (recipeIds.length === 0) return { ok: false, error: "No recipe ids in plan" };
+      const titleToId = (title: string): string | null =>
+        titleToRecipe.get(title)?.id ?? null;
 
+      const entries: Array<{ title: string; multiplier: number }> = [];
+      for (const dp of planForGeneration) {
+        for (const m of dp.meals) {
+          const pm = m as PlanMeal;
+          if (pm.leftoverOf) continue; // servings of an already-bought parent
+          if (
+            !m.recipeTitle ||
+            isMealPlanPlaceholderLikeTitle(m.recipeTitle, {
+              isPlaceholder: pm.isPlaceholder,
+            })
+          ) {
+            continue;
+          }
+          // Resolve a title that maps to a known recipe. Meals may carry a
+          // recipeId without a title match (or vice versa); the shared
+          // generator keys on title, so we register the meal's id under its
+          // title if the title alone doesn't resolve yet.
+          if (!titleToRecipe.has(m.recipeTitle) && pm.recipeId) {
+            titleToRecipe.set(m.recipeTitle, {
+              id: pm.recipeId,
+              title: m.recipeTitle,
+            });
+          }
+          if (!titleToId(m.recipeTitle)) continue;
+          entries.push({
+            title: m.recipeTitle,
+            multiplier: effectivePortionMultiplier(pm.portionMultiplier),
+          });
+        }
+      }
+      if (entries.length === 0) return { ok: false, error: "No recipe ids in plan" };
+
+      const recipeIds = [
+        ...new Set(
+          entries
+            .map((e) => titleToId(e.title))
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+
+      // Batch-fetch ingredients once and hand the shared generator a
+      // pre-built map (matches web's single `.in(recipe_id, …)` query).
       const { data: ingredients, error: ingErr } = await supabase
         .from("recipe_ingredients")
         .select("name, amount, unit, recipe_id")
@@ -1933,68 +1975,38 @@ export default function PlannerScreen() {
       if (!ingredients || ingredients.length === 0) {
         return { ok: false, error: "No ingredient data on these recipes" };
       }
-
-      // Count recipe occurrences (skip leftover rows so a single batch
-      // cook isn't triple-bought).
-      const recipeCounts: Record<string, number> = {};
-      const recipeTitles: Record<string, string> = {};
-      for (const dp of planForGeneration) {
-        for (const m of dp.meals) {
-          if ((m as PlanMeal).leftoverOf) continue;
-          const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
-          if (rid) {
-            recipeCounts[rid] = (recipeCounts[rid] ?? 0) + 1;
-            recipeTitles[rid] = m.recipeTitle;
-          }
-        }
-      }
-
-      const merged = new Map<
+      const ingredientsByRecipeId = new Map<
         string,
-        { name: string; amount: number; unit: string; from: Set<string> }
+        Array<{ name: string; amount: string; unit: string }>
       >();
       for (const ing of ingredients) {
-        const normalized = normalizeShoppingIngredientRow({
+        const rid = String(ing.recipe_id ?? "");
+        if (!rid) continue;
+        const bucket = ingredientsByRecipeId.get(rid) ?? [];
+        bucket.push({
           name: String(ing.name ?? ""),
           amount: ing.amount != null ? String(ing.amount) : "",
           unit: String(ing.unit ?? ""),
         });
-        const key = `${normalized.name.toLowerCase().trim()}|${normalized.unit.toLowerCase().trim()}`;
-        const multiplier = recipeCounts[ing.recipe_id] ?? 1;
-        const parsed = Number.parseFloat(normalized.amount);
-        const baseAmount = Number.isFinite(parsed) ? parsed : 1;
-        const existing = merged.get(key);
-        if (existing) {
-          existing.amount += baseAmount * multiplier;
-          existing.from.add(recipeTitles[ing.recipe_id] ?? "");
-        } else {
-          merged.set(key, {
-            name: normalized.name,
-            amount: baseAmount * multiplier,
-            unit: normalized.unit,
-            from: new Set([recipeTitles[ing.recipe_id] ?? ""]),
-          });
-        }
+        ingredientsByRecipeId.set(rid, bucket);
       }
 
-      const categorise = (name: string): string => {
-        const n = name.toLowerCase();
-        if (/chicken|beef|pork|lamb|turkey|fish|salmon|prawn|shrimp|bacon|ham|sausage|mince/.test(n)) return "Meat & Fish";
-        if (/milk|cream|cheese|yoghurt|yogurt|butter|egg/.test(n)) return "Dairy & Eggs";
-        if (/bread|flour|pasta|rice|noodle|oat|cereal/.test(n)) return "Carbs & Grains";
-        if (/oil|vinegar|sauce|mustard|ketchup|soy|stock|honey|sugar|salt|pepper|spice|cumin|paprika|cinnamon/.test(n)) return "Pantry";
-        return "Fruit & Veg";
-      };
+      const shared = await generateShoppingListFromRecipeEntriesAsync({
+        entries,
+        recipeTitleToId: titleToId,
+        fetchDbIngredients: async (recipeId) =>
+          ingredientsByRecipeId.get(recipeId) ?? [],
+        fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
+      });
 
-      const items = [...merged.values()].map((item) => ({
-        name: item.name,
-        amount: item.amount % 1 === 0 ? String(item.amount) : item.amount.toFixed(1),
-        unit: item.unit,
-        category: categorise(item.name),
+      const items = shared.map((it) => ({
+        name: it.name,
+        amount: it.amount,
+        unit: it.unit,
+        category: it.category,
         checked: false,
-        source: [...item.from].filter(Boolean).join(", "),
+        source: it.from,
       }));
-      items.sort((a, b) => a.category.localeCompare(b.category));
 
       // Honeydew parity (2026-04-30) — stamp `household_id` so generated
       // items show up for every household member instantly; solo users
@@ -3630,193 +3642,15 @@ export default function PlannerScreen() {
             was visual duplication. */}
 
         {/* Actions row removed 2026-04-20 per Grace's review — the
-            summary card above carries Shopping list + Regenerate.
-            "New plan" + "Templates" still reachable via the options
-            pill in the header. Leaving `plan && false` to keep the
-            JSX tree valid while preserving the branch structure for
-            future iteration; dead block is collapsed via `false`. */}
-        {false && plan && (
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={styles.generateBtn}
-              onPress={async () => {
-                if (!userId || !plan) return;
-                setGenerating(true);
-                try {
-                  // Collect recipe IDs from plan meals
-                  const allRecipes = [...savedRecipes, ...discoverRecipes];
-                  const recipeIds: string[] = [];
-                  for (const dp of plan) {
-                    for (const m of dp.meals) {
-                      const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
-                      if (rid && !recipeIds.includes(rid)) recipeIds.push(rid);
-                    }
-                  }
-                  if (__DEV__) console.log("[shopping] Recipe IDs from plan:", recipeIds.length, recipeIds);
-                  if (recipeIds.length === 0) {
-                    const mealTitles = plan.flatMap((dp) => dp.meals.map((m) => `${m.recipeTitle} (id: ${m.recipeId ?? "none"})`));
-                    Alert.alert("No recipe IDs found", `Meals in plan:\n${mealTitles.join("\n")}\n\nGenerate a new plan to fix this.`);
-                    setGenerating(false);
-                    return;
-                  }
-
-                  // Fetch ingredients for all planned recipes
-                  const { data: ingredients, error: ingErr } = await supabase
-                    .from("recipe_ingredients")
-                    .select("name, amount, unit, recipe_id")
-                    .in("recipe_id", recipeIds);
-
-                  if (__DEV__) console.log("[shopping] Ingredients fetched:", ingredients?.length ?? 0, ingErr?.message ?? "ok");
-                  if (ingErr) {
-                    Alert.alert("Error", "Couldn't fetch ingredients: " + ingErr.message);
-                    setGenerating(false);
-                    return;
-                  }
-                  if (!ingredients || ingredients.length === 0) {
-                    Alert.alert("No ingredients found", `Looked up ${recipeIds.length} recipe(s) but none had ingredient data.\n\nThis can happen with community recipes that haven't been verified yet. Try re-importing or verifying the recipes first.`);
-                    setGenerating(false);
-                    return;
-                  }
-
-                  // Count how many times each recipe appears in the plan.
-                  // Batch 3.10 — leftover rows represent servings of an already-counted
-                  // parent recipe. Skip them so the shopping list doesn't triple-buy
-                  // ingredients for a single batch cook.
-                  const recipeCounts: Record<string, number> = {};
-                  const recipeTitles: Record<string, string> = {};
-                  for (const dp of plan) {
-                    for (const m of dp.meals) {
-                      if ((m as PlanMeal).leftoverOf) continue;
-                      const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
-                      if (rid) {
-                        recipeCounts[rid] = (recipeCounts[rid] ?? 0) + 1;
-                        recipeTitles[rid] = m.recipeTitle;
-                      }
-                    }
-                  }
-
-                  // Merge ingredients — combine same name+unit, multiply by recipe count
-                  const merged = new Map<string, { name: string; amount: number; unit: string; from: Set<string> }>();
-                  for (const ing of ingredients) {
-                    const key = `${(ing.name ?? "").toLowerCase().trim()}|${(ing.unit ?? "").toLowerCase().trim()}`;
-                    const multiplier = recipeCounts[ing.recipe_id] ?? 1;
-                    const existing = merged.get(key);
-                    if (existing) {
-                      existing.amount += (ing.amount ?? 1) * multiplier;
-                      existing.from.add(recipeTitles[ing.recipe_id] ?? "");
-                    } else {
-                      merged.set(key, {
-                        name: ing.name ?? "Unknown",
-                        amount: (ing.amount ?? 1) * multiplier,
-                        unit: ing.unit ?? "",
-                        from: new Set([recipeTitles[ing.recipe_id] ?? ""]),
-                      });
-                    }
-                  }
-
-                  // Categorise simply by name heuristics
-                  const categorise = (name: string): string => {
-                    const n = name.toLowerCase();
-                    if (/chicken|beef|pork|lamb|turkey|fish|salmon|prawn|shrimp|bacon|ham|sausage|mince/.test(n)) return "Meat & Fish";
-                    if (/milk|cream|cheese|yoghurt|yogurt|butter|egg/.test(n)) return "Dairy & Eggs";
-                    if (/bread|flour|pasta|rice|noodle|oat|cereal/.test(n)) return "Carbs & Grains";
-                    if (/oil|vinegar|sauce|mustard|ketchup|soy|stock|honey|sugar|salt|pepper|spice|cumin|paprika|cinnamon/.test(n)) return "Pantry";
-                    return "Fruit & Veg";
-                  };
-
-                  const items = [...merged.values()].map((item) => ({
-                    name: item.name,
-                    amount: item.amount % 1 === 0 ? String(item.amount) : item.amount.toFixed(1),
-                    unit: item.unit,
-                    category: categorise(item.name),
-                    checked: false,
-                    source: [...item.from].filter(Boolean).join(", "),
-                  }));
-
-                  items.sort((a, b) => a.category.localeCompare(b.category));
-                  if (__DEV__) console.log("[shopping] Merged items:", items.length, items.slice(0, 3));
-
-                  // Build inserts — omit id so Supabase auto-generates UUIDs.
-                  // 2026-04-30 (Honeydew parity): stamp `household_id`
-                  // when in a household so the list is shared.
-                  const stamp = shoppingScope
-                    ? shoppingScopeInsertStamp(shoppingScope)
-                    : { user_id: userId!, household_id: null as string | null };
-                  const inserts = items.map((item) => ({
-                    user_id: stamp.user_id,
-                    household_id: stamp.household_id,
-                    name: item.name,
-                    amount: item.amount,
-                    unit: item.unit,
-                    category: item.category,
-                    checked: item.checked,
-                    source: item.source,
-                  }));
-                  // Clear existing items then insert new ones — scope-aware
-                  let inlineDelQ = supabase.from("shopping_items").delete();
-                  if (shoppingScope?.kind === "household") {
-                    inlineDelQ = inlineDelQ.eq("household_id", shoppingScope.householdId);
-                  } else {
-                    inlineDelQ = inlineDelQ.eq("user_id", userId!).is("household_id", null);
-                  }
-                  const { error: delErr } = await inlineDelQ;
-                  if (delErr) {
-                    console.log("[planner] shopping_items delete failed, trying legacy:", delErr.message);
-                    // Relational table doesn't exist — try legacy JSONB fallback
-                    const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId!, items);
-                    if (upErr) throw new Error(upErr.message);
-                  } else if (inserts.length > 0) {
-                    // Insert in batches of 50 to avoid payload limits
-                    for (let i = 0; i < inserts.length; i += 50) {
-                      const batch = inserts.slice(i, i + 50);
-                      const { error: insErr } = await supabase.from("shopping_items").insert(batch);
-                      if (insErr) {
-                        console.error("[planner] shopping_items insert failed:", insErr.message, JSON.stringify(batch[0]));
-                        throw new Error(insErr.message);
-                      }
-                    }
-                  }
-
-                  if (inserts.length === 0) {
-                    Alert.alert("Empty list", "Ingredients were found but none had quantities to add to a shopping list.");
-                    setGenerating(false);
-                    return;
-                  }
-                  setShoppingItemCount(inserts.length);
-                  setGenerating(false);
-                  Alert.alert(
-                    "Shopping list ready",
-                    `${inserts.length} item${inserts.length !== 1 ? "s" : ""} from ${plan.flatMap(d => d.meals).length} meals.`,
-                    [
-                      { text: "View list", onPress: () => router.push("/shopping") },
-                      { text: "Stay here", style: "cancel" },
-                    ],
-                  );
-                } catch (e) {
-                  setGenerating(false);
-                  Alert.alert("Error", `Failed to generate shopping list: ${e instanceof Error ? e.message : "Unknown error"}`);
-                }
-              }}
-              disabled={generating}
-            >
-              {generating ? (
-                <ActivityIndicator color={accent.primarySolid} />
-              ) : (
-                <Text style={styles.generateBtnText}>Generate Shopping List</Text>
-              )}
-            </Pressable>
-            <Pressable style={styles.regenBtn} onPress={() => setPlan(null)}>
-              <Text style={styles.regenBtnText}>New Plan</Text>
-            </Pressable>
-            <Pressable
-              style={styles.regenBtn}
-              onPress={() => setTemplatesOpen(true)}
-              accessibilityLabel="Save or apply a plan template"
-            >
-              <Text style={styles.regenBtnText}>Templates</Text>
-            </Pressable>
-          </View>
-        )}
+            summary card above carries Shopping list + Regenerate, and
+            "New plan" + "Templates" are reachable via the options pill
+            in the header. The dead `{false && …}` block that lived here
+            carried a SECOND inline shopping-list generator that ignored
+            the portion multiplier and used divergent aisle labels +
+            non-numeric fallbacks. Deleted with ENG-1040 (audit P1-5) —
+            the only live generator is `generateShoppingListFromPlan`
+            above, which routes through the shared generator for web
+            parity. */}
         </ReAnimated.View>
       </ScrollView>
       <PlanTemplatesSheet

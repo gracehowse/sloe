@@ -36,11 +36,18 @@
  * interpolate the weigh-ins to a daily series (so a weekly weigher and a
  * daily weigher get the same smoothing per unit time — the #3 gap-fill),
  * then EMA at α=0.1 so each raw reading nudges the trend by ~10%. It is
- * implemented here rather than imported from `adaptiveTdee.ts` to keep
- * this helper React-Native-safe + dependency-free.
+ * imported from the shared `weightTrendSmoothing` module (React-Native-
+ * safe, dependency-free) so the goal-date timeline (`calcGoalTimeline`,
+ * ENG-1039) and this on-track tile smooth through the SAME code — they can
+ * never disagree on whether a water blip moved the trend.
  *
  * Pinned by `tests/unit/weightTrendTile.test.ts`.
  */
+
+import {
+  MIN_WEIGH_INS_FOR_SMOOTHING,
+  smoothedTrendByDate,
+} from "./weightTrendSmoothing";
 
 export type GoalDirection = "lose" | "gain" | "maintain";
 
@@ -87,75 +94,6 @@ function resolveDirection(
   }
   if (Math.abs(goalKg - weightKg) < 0.1) return "maintain";
   return goalKg < weightKg ? "lose" : "gain";
-}
-
-/** EMA smoothing constant — the Hacker's Diet / TrendWeight standard. */
-const TREND_EMA_ALPHA = 0.1;
-
-function dayKeyToMs(key: string): number {
-  return new Date(`${key}T12:00:00`).getTime();
-}
-
-/**
- * ENG-1026 — smoothed trend value (kg) at each weigh-in's date.
- *
- * Mirrors the TrendWeight / Hacker's Diet model the audit cites: fill the
- * gaps between weigh-ins by linear interpolation to a daily series, then
- * run an EMA (α=0.1) over that daily series so each raw reading only
- * nudges the trend by ~10%. A single water blip on the latest reading
- * therefore moves the trend by ~0.1 kg, not the full swing — which is the
- * whole point. Returns a map of the SAME date keys passed in (ascending)
- * to their smoothed trend value, so callers can read the trend at the
- * comparison and recent dates and difference them.
- *
- * Interpolating to daily first (rather than EMA-ing per weigh-in) is what
- * makes the smoothing time-uniform: a weekly weigher and a daily weigher
- * get the same smoothing per unit time (the #3 gap-fill the audit wants).
- */
-function smoothedTrendByDate(
-  ascendingEntries: Array<[string, number]>,
-): Map<string, number> {
-  const out = new Map<string, number>();
-  if (ascendingEntries.length === 0) return out;
-  if (ascendingEntries.length === 1) {
-    out.set(ascendingEntries[0][0], ascendingEntries[0][1]);
-    return out;
-  }
-
-  // Build the gap-filled daily series across the full span.
-  const firstMs = dayKeyToMs(ascendingEntries[0][0]);
-  const daily: number[] = [];
-  for (let i = 0; i < ascendingEntries.length - 1; i++) {
-    const [kA, vA] = ascendingEntries[i];
-    const [kB, vB] = ascendingEntries[i + 1];
-    const msA = dayKeyToMs(kA);
-    const msB = dayKeyToMs(kB);
-    const gapDays = Math.max(1, Math.round((msB - msA) / 86_400_000));
-    for (let d = 0; d < gapDays; d++) {
-      const frac = d / gapDays;
-      daily.push(vA + (vB - vA) * frac);
-    }
-  }
-  // Append the final actual reading.
-  const last = ascendingEntries[ascendingEntries.length - 1];
-  daily.push(last[1]);
-
-  // EMA over the daily series, seeded at the first daily value.
-  const trend: number[] = [];
-  let ema = daily[0];
-  for (let i = 0; i < daily.length; i++) {
-    ema = i === 0 ? daily[i] : ema + TREND_EMA_ALPHA * (daily[i] - ema);
-    trend.push(ema);
-  }
-
-  // Map each ORIGINAL weigh-in date to its smoothed trend value (nearest
-  // daily index — keys align because the daily grid starts at firstMs).
-  for (const [k] of ascendingEntries) {
-    const idx = Math.round((dayKeyToMs(k) - firstMs) / 86_400_000);
-    const clamped = Math.max(0, Math.min(trend.length - 1, idx));
-    out.set(k, trend[clamped]);
-  }
-  return out;
 }
 
 /**
@@ -255,7 +193,7 @@ export function computeWeightTrendCopy(opts: {
   // weigh-ins we EMA-smooth and difference the trend endpoints, so a lone
   // water spike can't flip the verdict.
   let trendDelta = delta;
-  if (ascendingFromComparison.length >= 3) {
+  if (ascendingFromComparison.length >= MIN_WEIGH_INS_FOR_SMOOTHING) {
     const trendByDate = smoothedTrendByDate(ascendingFromComparison);
     const trendRecent = trendByDate.get(recentKey);
     const trendComparison = trendByDate.get(comparisonEntry[0]);

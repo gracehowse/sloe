@@ -51,14 +51,60 @@ scale); only the verdict is smoothed. Smoothing engages at **≥ 3 weigh-ins**
 (with only two readings there's no surrounding context to tell a blip from a
 real move, so the long-standing two-point behaviour is preserved).
 
-**Web-only surface.** This helper backs the web `ProgressDashboard` Trend tile.
-Mobile Progress shows `weekDeltaKg` + an observed-rate goal-date label
-(`calcGoalTimeline`), not this raw on-track copy — so there's no parallel
-mobile bug. If mobile ever adopts the helper it gets the smoothed verdict for
-free.
+**Surface scope — corrected by ENG-1039 (2026-06-11).** The original note here
+said the raw-delta noise bug was "web-only" because mobile Progress shows
+`weekDeltaKg` + the goal-date label rather than this on-track copy. That was
+wrong about the *class*: the goal-date label is driven by
+`calcGoalTimeline().weeklyRateKg`, which was **itself** a raw two-point delta —
+on **both** platforms. So the same noise lived in the goal date and in the
+projection override on mobile and web. ENG-1039 fixes that path; see below.
+`computeWeightTrendCopy` (this helper) is still the web Trend-tile copy; if
+mobile adopts it, it gets the smoothed verdict for free.
 
 **Pinned by** `tests/unit/weightTrendTile.test.ts` — water-blip fixtures (one
 +1 kg spike on a flat/declining trend must NOT flip the copy).
+
+## ENG-1039 — `calcGoalTimeline` weekly rate was a raw two-point delta (audit 2026-06-11 P1-4)
+
+**Problem.** `calcGoalTimeline().weeklyRateKg` was computed from the **raw**
+first-vs-last weigh-in in the 28-day window — no smoothing. That rate (a) sets
+the days-to-goal **date** and (b) feeds `projectWeight({ observedKgPerWeek })`,
+which **overrides** the formula projection when `|rate| ≥ 0.05`. Raw scale
+weight swings 1–2 kg/day on water + glycogen, so one noisy endpoint could swing
+the projected goal date by months and flip the trajectory. Identical class to
+ENG-1026 — and live on **both** web (ProgressDashboard / Targets / trajectory
+card) and mobile (`progress.tsx`), because both import the same shared
+`calcGoalTimeline`.
+
+**Fix.** A new shared module `src/lib/nutrition/weightTrendSmoothing.ts` holds
+the canonical smoothing model. The on-track tile and the goal-date timeline both
+consume it, but with **different exports for different needs**:
+
+- `smoothedTrendByDate` (EMA, interpolate-to-daily, α = 0.1) — used by the
+  on-track tile, which reads only the trend's **direction** (EMA lag is
+  harmless there). This is the exact ENG-1026 model, lifted out of
+  `weightTrendTile.ts` so it's no longer a private duplicate.
+- `smoothedWeeklyRateKg` (least-squares slope ×7) — used by the timeline, which
+  needs the rate's **magnitude** to compute a date. EMA lag would understate a
+  short-window rate and push the date too far out, so least-squares (the same
+  unbiased best-fit model `adaptiveTdee.ts` already trusts) is the right tool:
+  it recovers the true rate on a clean series yet bounds a single endpoint
+  spike's leverage to ~1/N.
+
+Smoothing engages at **≥3 weigh-ins** (`MIN_WEIGH_INS_FOR_SMOOTHING`); below
+that (2 readings, no surrounding context to damp a blip) it falls back to the
+**raw two-point delta** — the prior behaviour — so first-week users still get a
+date.
+
+**Parity.** Both platforms run the identical shared `calcGoalTimeline` →
+`smoothedWeeklyRateKg`. Mobile imports it via `@suppr/shared/weightProjection`.
+Byte-identical output for the same series is parity-by-construction.
+
+**Pinned by** `tests/unit/weightTrendSmoothing.test.ts` (the smoother) and
+`tests/unit/calcGoalTimelineSmoothing.test.ts` — a single +1 kg water spike on
+the latest weigh-in must NOT flip the trend or null the goal date, and the
+smoothed spiked rate must stay far closer to the clean rate than a raw
+two-point delta (~3× error) would.
 
 ## ENG-1027 — safety floor acknowledge-to-proceed + sex-aware check-in floor (audit #5, #24)
 

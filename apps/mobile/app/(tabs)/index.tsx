@@ -2149,6 +2149,14 @@ export default function TrackerScreen() {
       let mealProtein: number;
       let mealCarbs: number;
       let mealFat: number;
+      // ENG-1041 (audit 2026-06-11 P1-6) — set a TOP-LEVEL `fiberG` on the
+      // food-search meal (mirrors web `mealFiberG`). Previously mobile left
+      // fibre only in the `micros` map, so `persistMealsImmediate` wrote
+      // `fiber_g: null`. Daily totals stayed correct via the micros
+      // fallback, but the web CSV export reads the `fiber_g` column
+      // directly — so a mobile-logged food exported BLANK fibre while the
+      // same food logged on web exported the real value.
+      let mealFiberG = 0;
       let micros: Record<string, number> = {};
       if (isPerServingOnly) {
         const ps = result.macrosPerServing!;
@@ -2170,6 +2178,9 @@ export default function TrackerScreen() {
         // helper used by web + mobile + audit-pinned for rounding
         // conventions.
         micros = scaleMicrosPerServing(result.microsPerServing, q);
+        // Promote the scaled fibre to the top-level column (web parity).
+        const fiberFromMicros = micros.fiberG;
+        if (typeof fiberFromMicros === "number") mealFiberG = fiberFromMicros;
       } else {
         const m = result.macrosPer100g!;
         const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
@@ -2189,6 +2200,7 @@ export default function TrackerScreen() {
         mealProtein = Math.round(m.protein * f * 10) / 10;
         mealCarbs = Math.round(m.carbs * f * 10) / 10;
         mealFat = Math.round(m.fat * f * 10) / 10;
+        mealFiberG = Math.round(m.fiberG * f * 10) / 10;
       }
       const meal: JournalMeal = {
         id: newMealId(),
@@ -2200,6 +2212,7 @@ export default function TrackerScreen() {
         carbs: mealCarbs,
         fat: mealFat,
         source,
+        ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
         ...(result.imageUrl
           ? { recipeImageUrl: String(result.imageUrl).trim() }
