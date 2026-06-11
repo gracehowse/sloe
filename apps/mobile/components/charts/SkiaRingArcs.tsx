@@ -31,9 +31,9 @@ import {
   BlurMask,
   Canvas,
   Group,
+  LinearGradient,
   Path,
   Skia,
-  SweepGradient,
   vec,
 } from "@shopify/react-native-skia";
 import {
@@ -136,6 +136,17 @@ export function SkiaRingArcs({
     fill.value = withSpring(fillPct, Motion.springSoft);
   }, [fillPct, reduceMotion, fill]);
   const fillEnd = useDerivedValue(() => Math.min(fill.value, 0.999));
+
+  // ── Overage hash sweep (the segment past goal, from 12 o'clock) ──
+  const over = useSharedValue(reduceMotion ? overFrac : 0);
+  useEffect(() => {
+    if (reduceMotion) {
+      over.value = overFrac;
+      return;
+    }
+    over.value = withSpring(overFrac, Motion.springSoft);
+  }, [overFrac, reduceMotion, over]);
+  const overEnd = useDerivedValue(() => Math.min(over.value, 0.999));
 
   // ── Macro arcs (200ms timing — parity with the SVG MacroRing) ──
   const m0 = useSharedValue(0);
@@ -244,12 +255,36 @@ export function SkiaRingArcs({
           <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
-      {/* Over-budget: NO second lap (2026-06-10 category survey —
-          Lifesum/MFP/Cal AI/Bevel all cap the ring at full and let the
-          CENTRE verdict carry the overage; the wrap-again grammar is an
-          ACTIVITY-ring idiom where more = achievement. The 2026-06-04
-          Apple-wrap decision benchmarked the wrong comparable.) The base
-          fill clamps at 1.0 → one complete ring. */}
+      {/* Over-budget — the MFP hash, in plum (2026-06-10, Grace's call
+          after the category survey: MFP marks the over portion with a
+          diagonal ridge-line texture, and our MFP-refugee audience reads
+          it natively; Suppr itself had this until 2026-06-03). The base
+          ring caps at full; the OVERAGE SEGMENT (from 12 o'clock, the
+          amount past goal) carries 45° light stripes — texture, not a
+          second colour, not a lap. */}
+      {!isEmpty && isOver && overFrac > 0 ? (
+        <Path
+          path={mainPath}
+          style="stroke"
+          strokeWidth={STROKE}
+          strokeCap="butt"
+          start={0}
+          end={overEnd}
+        >
+          <LinearGradient
+            start={vec(0, 0)}
+            end={vec(7, 7)}
+            colors={[
+              "rgba(255,255,255,0)",
+              "rgba(255,255,255,0)",
+              "rgba(255,255,255,0.42)",
+              "rgba(255,255,255,0.42)",
+            ]}
+            positions={[0, 0.5, 0.5, 1]}
+            mode="repeat"
+          />
+        </Path>
+      ) : null}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
       {expanded
         ? MACRO_R.map((r, i) => (
