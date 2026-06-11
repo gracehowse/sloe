@@ -323,8 +323,10 @@
   /** Ring empty track — Sloe frost-mist (readable on white hero; parity
    *  mobile `ringTrack`). */
   --ring-bg: #EDEAF1;
-  /** Alias of `--ring-bg`; progress arc uses `--macro-calories` (plum) /
-   *  `--destructive` (over). */
+  /** Alias of `--ring-bg`. The progress arc is `--macro-calories` (plum) in
+   *  EVERY state — under AND over budget (web ring parity 2026-06-10; the old
+   *  `--destructive` over-recolour is retired, the over verdict lives in the
+   *  centre + status chip). */
   --ring-track: #EDEAF1;
 
   /** Font weights */

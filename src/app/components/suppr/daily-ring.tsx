@@ -107,9 +107,13 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   expanded?: boolean;
   /** Toggle expanded */
   onToggle?: () => void;
-  /** Mobile parity: long-press flips display mode + macro rings (host-coupled). */
+  /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — the
+   *  Remaining/Consumed toggle is retired; long-press matches tap (macro
+   *  toggle) and this handler is ignored. Kept for call-site stability. */
   onLongPressToggleDisplayMode?: () => void;
-  /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
+  /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — the
+   *  Remaining/Consumed toggle is retired; the centre always reads
+   *  remaining/over. Ignored. Kept for call-site stability. */
   displayMode?: CalorieRingDisplayMode;
   /**
    * ENG-798 (Redesign — Design Direction 2026) win-moment ring pulse.
@@ -145,73 +149,56 @@ function DailyRing({
   fatPct = 0,
   expanded = false,
   onToggle,
-  onLongPressToggleDisplayMode,
-  displayMode = "remaining",
+  // 2026-06-10 (web ring parity 2026-06-10): the Remaining/Consumed toggle is
+  // retired. These two props are accepted for call-site stability but ignored —
+  // long-press now matches tap (macro toggle), and the centre always reads
+  // remaining/over. Mirrors mobile `CalorieRing.tsx`'s deprecated `displayMode`.
+  onLongPressToggleDisplayMode: _onLongPressToggleDisplayMode,
+  displayMode: _displayMode,
   pulse = false,
   ...props
 }: DailyRingProps) {
-  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const clearLongPressTimer = React.useCallback(() => {
-    if (longPressTimerRef.current != null) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  }, []);
-  React.useEffect(() => () => clearLongPressTimer(), [clearLongPressTimer]);
   const cx = size / 2;
   const radius = ringRadius ?? Math.round(size * 0.44);
   const circumference = 2 * Math.PI * radius;
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
   const offset = circumference * (1 - pct);
   const isOverBudget = consumed > target;
-  // Build 41 (2026-05-01) — the legacy `ringColor` ladder (warning /
-  // success / macro-calories per displayMode + over-budget) was used
-  // to colour the ring stroke before the gradient was introduced.
-  // Post-59cc821 the stroke is gradient-or-success, so the ladder is
-  // unused. Centre text colour still flips to warning when over.
-  //
-  // B6 (2026-05-03): when over-budget in `remaining` mode, show the
-  // *amount over* (positive integer). Previous code rendered the
-  // clamped `remaining` value (always 0 once over-budget) beneath
-  // the "OVER" label — Grace's screenshot showed `0 / OVER / of
-  // 1,132 kcal` when she was actually 506 kcal over. "0 OVER" reads
-  // as "you're at goal", which is the opposite of the truth.
-  const overBy = Math.max(Math.round(consumed - target), 0);
-  const remaining = Math.max(Math.round(target - consumed), 0);
-  const centerValue =
-    displayMode === "consumed"
-      ? Math.round(consumed)
-      : isOverBudget
-        ? overBy
-        : remaining;
+  // 2026-06-10 (web ring parity 2026-06-10 — mobile ring wave): the
+  // Remaining/Consumed toggle is RETIRED. It duplicated the EATEN stat
+  // directly below the ring, and the collapsed ring ignored it anyway.
+  // One centre grammar — `Math.abs(target − consumed)` with a LEFT/OVER
+  // verdict — exactly mirrors mobile `CalorieRing.tsx`'s `centerValue` /
+  // `centerLabel` block.
+  //   - target > 0, under  → "{n} LEFT"
+  //   - target > 0, over   → "{n} OVER"   (the over amount, positive)
+  //   - target <= 0        → "{consumed} LOGGED" (no profile target yet —
+  //     judging LEFT/OVER against a zero goal would lie; R03 contract kept).
+  const diff = Math.round(target - consumed);
+  const centerValue = target > 0 ? Math.abs(diff) : Math.round(consumed);
   const centerLabel =
-    displayMode === "consumed"
+    target <= 0
       ? RING_LABELS.logged
       : isOverBudget
         ? RING_LABELS.over
         : RING_LABELS.remaining;
   const isEmpty = consumed === 0 || target <= 0;
-  /** Centre copy stays ink — ring stroke carries green/red budget state. */
-  const centerValueColor = isEmpty ? undefined : "var(--foreground)";
+  /** Centre copy stays ink — the plum ring (always plum, never recoloured)
+   *  is the only state surface; the LEFT/OVER verdict carries the rest. */
+  const centerValueColor = "var(--foreground)";
   const centerLabelColor = centerValueColor;
-  // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
-  // dominated Today's first impression. Soft-mode the centre when
-  // consumed is exactly 0 so the suggestion card + macro tiles can
-  // lead the visual hierarchy instead of a giant ring number.
-  // N5 (2026-05-03): extended to fire in `remaining` mode too — the
-  // original guard only triggered in `consumed` mode, which left the
-  // default Today view (REMAINING) showing `1,132 / REMAINING / of
-  // 1,132 kcal` for users who hadn't logged yet. The empty state
-  // should look the same regardless of which display mode the user
-  // has selected. Mirror of the same change in mobile `CalorieRing.tsx`.
-  // 2026-05-05 (audit R03) — also treat `target <= 0` as empty (no
-  // profile target yet). Without this guard, mobile renders gradient
-  // stroke ("calibrating") while web renders over-budget amber for
-  // the same input — cross-platform contradiction. Both platforms now
-  // fall into the calibrating-empty state until a profile target is
-  // set.
+  // 2026-06-10 (web ring parity 2026-06-10 — mobile ring wave): the empty
+  // hero now matches a populated day — the FULL-size ring with REAL numbers
+  // ("{goal} LEFT") instead of the retired "Start your day" soft copy. This
+  // supersedes the 2026-04-29 papercut-#2 / N5 soft-empty experiment. The
+  // empty ring still earns the stronger track + inner hairline below
+  // (`isEmpty` track contrast, audit gap 1) so its shape reads on a cold
+  // open; only the centre copy changes.
+  // 2026-05-05 (audit R03) — `target <= 0` (no profile target yet) still
+  // falls into the calibrating-empty state, and the centre shows what's
+  // logged with the LOGGED label rather than a verdict against a zero goal
+  // (handled by the `centerValue` / `centerLabel` block above). Mirrors
+  // mobile `CalorieRing.tsx`.
 
   const premiumMotion = isPremiumMotionV1Enabled();
   // Design Direction 2026 (ENG-812): the calorie total is the "counting
@@ -223,19 +210,20 @@ function DailyRing({
   // rules of hooks; only the flagged one's output is rendered.
   const motionEnabled = isFeatureEnabled("redesign_motion");
 
-  // Tween the displayed centre value over 800ms / cubic-out — same
-  // curve as the SVG ring sweep so the number and arc finish
-  // together. Snaps on display-mode toggle.
+  // Tween the displayed centre value over 800ms / cubic-out — same curve as
+  // the SVG ring sweep so the number and arc finish together. The
+  // display-mode toggle that this used to snap across is retired (web ring
+  // parity 2026-06-10), so `snapOn` is a stable constant — mirrors mobile
+  // `CalorieRing.tsx` (`snapOn: "remaining"`).
   const animatedLegacy = useAnimatedNumber(centerValue, {
-    snapOn: displayMode,
+    snapOn: "remaining",
     duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 800,
     animateFromZeroOnMount: premiumMotion,
   });
-  // Canonical odometer (ODOMETER_MS / cubic-out). Snaps across a display-mode
-  // switch (remaining ↔ consumed) and counts up from zero on mount; honours
-  // `prefers-reduced-motion` itself.
+  // Canonical odometer (ODOMETER_MS / cubic-out). Counts up from zero on
+  // mount; honours `prefers-reduced-motion` itself.
   const animatedOdometer = useOdometer(centerValue, {
-    snapOn: displayMode,
+    snapOn: "remaining",
     animateFromZeroOnMount: true,
   });
   const animatedCenterValue = motionEnabled ? animatedOdometer : animatedLegacy;
@@ -267,7 +255,11 @@ function DailyRing({
     { r: macroRadii[2], pct: fatPct, color: "var(--macro-fat)" },
   ];
 
-  const interactive = Boolean(onToggle || onLongPressToggleDisplayMode);
+  // 2026-06-10 (web ring parity 2026-06-10): the long-press gesture only ever
+  // toggled the retired Remaining/Consumed display mode — with that gone, tap
+  // is the single macro-rings toggle (mobile parity: there, tap and long-press
+  // both fire the macro toggle). The long-press timer machinery is removed.
+  const interactive = Boolean(onToggle);
 
   return (
     <div
@@ -278,24 +270,6 @@ function DailyRing({
       )}
       style={{ width: size, height: size }}
       onClick={onToggle ? onToggle : undefined}
-      onPointerDown={
-        onLongPressToggleDisplayMode
-          ? () => {
-              clearLongPressTimer();
-              longPressTimerRef.current = setTimeout(() => {
-                longPressTimerRef.current = null;
-                onLongPressToggleDisplayMode();
-              }, 500);
-            }
-          : undefined
-      }
-      onPointerUp={onLongPressToggleDisplayMode ? clearLongPressTimer : undefined}
-      onPointerLeave={
-        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
-      }
-      onPointerCancel={
-        onLongPressToggleDisplayMode ? clearLongPressTimer : undefined
-      }
       role={onToggle ? "button" : undefined}
       tabIndex={onToggle ? 0 : undefined}
       onKeyDown={
@@ -394,47 +368,20 @@ function DailyRing({
               : undefined,
           }}
         />
-        {/* Over-budget overage lap — Apple-Watch wrap (2026-06-04, mobile
-            CalorieRing parity). Base ring stays plum; portion past 100% is a
-            second lap in lifted plum with a soft glow on the leading cap. */}
-        {!isEmpty && isOverBudget && target > 0
-          ? (() => {
-              const overFrac = Math.min(consumed / target - 1, 1);
-              const overLen = circumference * overFrac;
-              const capAngle = (-90 + overFrac * 360) * (Math.PI / 180);
-              const capX = cx + radius * Math.cos(capAngle);
-              const capY = cx + radius * Math.sin(capAngle);
-              return (
-                <g data-testid="daily-ring-overage-lap">
-                  <circle
-                    cx={cx}
-                    cy={cx}
-                    r={radius}
-                    fill="none"
-                    stroke="var(--ring-overage-lap)"
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={`${overLen} ${circumference}`}
-                    strokeDashoffset={0}
-                    strokeLinecap="round"
-                  />
-                  <circle
-                    cx={capX}
-                    cy={capY}
-                    r={strokeWidth * 0.95}
-                    fill="var(--ring-overage-glow)"
-                    opacity={0.28}
-                  />
-                  <circle
-                    cx={capX}
-                    cy={capY}
-                    r={strokeWidth * 0.5}
-                    fill="var(--ring-overage-glow)"
-                    opacity={0.65}
-                  />
-                </g>
-              );
-            })()
-          : null}
+        {/* Over-budget: the ring CAPS AT FULL — one complete plum lap, NO
+            second overage lap, NO red recolour of the ring itself (the centre
+            "{n} OVER" verdict + the hero status chip carry the over-budget
+            signal). web ring parity 2026-06-10 — mobile decisions apply to web
+            (2026-06-10 ring wave): mobile's `calorieRingColor` is `navPrimary`
+            (plum) at ALL times and its 2026-06-04 Apple-wrap overage lap was
+            retired in the same wave. This supersedes BOTH the old 3-state
+            colour map (empty=gradient / under=green / over=destructive-red) and
+            the web overage lap — neither is the current state.
+            The `--macro-calories` stroke above is plum (#3B2A4D light / #815E91
+            dark), so the arc is already plum-always; `pct` is clamped to 1, so
+            the plum arc is a full circle when over.
+            // deferred: overage texture pending Grace's call on docs/ux/research/2026-06-10-overage-treatments-survey.md
+        */}
         {/* Macro rings (shown when expanded).
             2026-05-14 — Grace's call: macro arcs always render in
             their own colour at full opacity, even when over-budget.
@@ -476,71 +423,44 @@ function DailyRing({
         })}
       </svg>
 
-      {/* Centre text — number tweens to `centerValue` via
-          `useAnimatedNumber`. Counts up smoothly when consumed
-          changes; snaps on displayMode toggle. Empty state (audit
-          2026-04-29 papercut #2) replaces the giant `0` with a
-          softer "Start your day" invitation so the empty ring stops
-          dominating Today's first impression. */}
+      {/* Centre text — one grammar for every state (web ring parity
+          2026-06-10 — mobile ring wave): the big number tweens to
+          `centerValue` via the odometer / `useAnimatedNumber`, then the
+          LEFT / OVER / LOGGED label, then (collapsed only) the "of {goal}
+          kcal" budget line. The EMPTY day renders the SAME way — real
+          numbers ("{goal} LEFT"), no "Start your day" soft copy — so a cold
+          open mirrors a populated day. Mirrors mobile `CalorieRing.tsx`. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {isEmpty ? (
-          <div className="flex flex-col items-center justify-center gap-1 px-2">
-            <span className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-snug text-center text-foreground">
-              Start your day
-            </span>
-            {target > 0 ? (
-              <span className="text-[11px] text-muted-foreground tabular-nums">
-                {Math.round(target).toLocaleString()} kcal goal
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            {/* ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
-                (running daily total — high frequency in replays). Mask
-                so PostHog replay renders the number as a grey block;
-                the label below + budget line are also masked. The
-                "Start your day" empty-state copy above is intentionally
-                NOT masked (generic UI string). See
-                `docs/operations/session-replay-masking-audit.md`. */}
-            {/* Centre value scales WITH the ring (like its radii/strokes/arcs,
-                all `size * k`) so it holds mobile's proportion at every ring
-                size. A fixed 48px — tuned for the ~207-230px mobile ring —
-                overflowed the smaller 160px DESKTOP ring and crowded the macro
-                arcs (Grace, 2026-06-07). 0.23 ≈ mobile's 48/207 ratio: 160 → 37. */}
-            <span
-              className="font-[family-name:var(--font-headline)] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
-              style={{ fontSize: Math.round(size * 0.23), color: centerValueColor ?? undefined }}
-            >
-              {animatedCenterValue.toLocaleString()}
-            </span>
-            {/* Mobile parity (2026-06-06): remaining + under-budget shows
-                only "of X kcal"; over/consumed show the status label. */}
-            {!isOverBudget &&
-            displayMode === "remaining" &&
-            target > 0 ? (
-              <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
-                of {Math.round(target).toLocaleString()} kcal
-              </span>
-            ) : (
-              <>
-                <span
-                  className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground ph-mask"
-                  style={{ color: centerLabelColor ?? undefined }}
-                >
-                  {centerLabel}
-                </span>
-                {!expanded &&
-                displayMode === "consumed" &&
-                target > 0 ? (
-                  <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
-                    of {Math.round(target).toLocaleString()} kcal
-                  </span>
-                ) : null}
-              </>
-            )}
-          </>
-        )}
+        {/* ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
+            (running daily total — high frequency in replays). Mask so
+            PostHog replay renders the number as a grey block; the label +
+            budget line are also masked. See
+            `docs/operations/session-replay-masking-audit.md`. */}
+        {/* Centre value scales WITH the ring (like its radii/strokes/arcs,
+            all `size * k`) so it holds mobile's proportion at every ring
+            size. A fixed 48px — tuned for the ~207-230px mobile ring —
+            overflowed the smaller 160px DESKTOP ring and crowded the macro
+            arcs (Grace, 2026-06-07). 0.23 ≈ mobile's 48/207 ratio: 160 → 37. */}
+        <span
+          className="font-[family-name:var(--font-headline)] font-normal tabular-nums tracking-[-0.02em] leading-none text-foreground ph-mask"
+          style={{ fontSize: Math.round(size * 0.23), color: centerValueColor }}
+        >
+          {animatedCenterValue.toLocaleString()}
+        </span>
+        <span
+          className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground ph-mask"
+          style={{ color: centerLabelColor }}
+        >
+          {centerLabel}
+        </span>
+        {/* Budget line — collapsed only (Grace 2026-06-10: macros hidden =
+            more room, show the goal context; expanded keeps just the label
+            and the hero stats row carries the explicit goal). */}
+        {target > 0 && !expanded ? (
+          <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
+            of {Math.round(target).toLocaleString()} kcal
+          </span>
+        ) : null}
       </div>
     </div>
   );

@@ -100,10 +100,10 @@ describe("ENG-753 — Today hero status pills (web)", () => {
         {...baseProps({ loggedKcal: 0, consumed: 0, isOnTrack: true, tdeeLearnDays: 6 })}
       />,
     );
-    // An empty day means nothing consumed: `showStatRow = consumed > 0 && target
-    // > 0` is false, so the pills block (which sits under the stat row) is gated
-    // off. `consumed` must be 0 too — it's the canonical "did you eat" signal the
-    // gate reads (loggedKcal alone no longer drives it).
+    // An empty day means nothing consumed. The pills gate reads `consumed > 0`
+    // (web ring parity 2026-06-10 — the stat row now renders on empty days too,
+    // so it can't gate the pills). `consumed = 0` → no pills, even with the flag
+    // on and isOnTrack forced true.
     expect(screen.queryByTestId("today-status-pills")).toBeNull();
   });
 });

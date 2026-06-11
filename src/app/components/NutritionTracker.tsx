@@ -59,7 +59,6 @@ import {
   sumMicrosFromLoggedMeals,
 } from "../../lib/nutrition/microNutrientDisplay.ts";
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
-import { type CalorieRingDisplayMode } from "./suppr/daily-ring";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
@@ -774,7 +773,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       }
     }
   }, [protectedStreakLength]);
-  const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
@@ -2428,13 +2426,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
-        displayMode={ringDisplayMode}
-        onToggleDisplayMode={() => {
-          setRingDisplayMode((m) =>
-            m === "remaining" ? "consumed" : "remaining",
-          );
-          setRingExpanded((e) => !e);
-        }}
         pulse={winPulse}
         isOnTrack={
           totals.calories > 100 &&
