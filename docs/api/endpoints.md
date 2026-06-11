@@ -10,12 +10,15 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 
 | Path | Methods | Auth | Purpose |
 |------|---------|------|---------|
-| `/api/recipe-import` | POST | Bearer (see route) | URL / social recipe import |
-| `/api/recipe-import/image` | POST | Bearer + tier | Multipart image → ingredient lines (OpenAI); Free tier **403** |
+| `/api/recipe-import` | POST | Bearer (see route) | URL / social recipe import (structured-schema extraction + flagged ingredients) |
+| `/api/recipe-import/image` | POST | Bearer + tier | Multipart image → structured recipe (Claude vision, OpenAI fallback) with per-ingredient parse confidence; Free tier **403** |
+| `/api/nutrition/scan-label` | POST | Bearer | Multipart nutrition-label photo → per-100g macros (vision OCR) + Atwater plausibility flag; pre-fills custom-food form |
 | `/api/nutrition/verify-recipe` | POST | Bearer | Ingredient verification pipeline |
 | `/api/nutrition/voice-log` | POST | Bearer + **Pro** | Transcript → parsed items; **403** if not Pro; daily rate limit |
 | `/api/nutrition/photo-log` | POST | Bearer + **Pro** | Multipart photo → items; **403** if not Pro |
 | `/api/nutrition/adaptive-tdee` | GET | Bearer | Static vs adaptive TDEE snapshot for user |
+| `/api/nutrition/coach` | POST | Bearer | "What to eat next" — AI-ranked from the user's own library, deterministic fallback |
+| `/api/nutrition/digest-narrative` | POST | Bearer | Grounded weekly-digest narrative (coach voice), deterministic template fallback |
 | `/api/nutrition/analyze-recipe` | POST | Bearer | Edamam full-recipe analysis |
 | `/api/usda/search` | GET | Bearer | USDA FDC search |
 | `/api/usda/food` | GET | Bearer | USDA FDC food detail |
@@ -402,6 +405,104 @@ Implementation: [app/api/nutrition/adaptive-tdee/route.ts](../../app/api/nutriti
 
 ---
 
+## Nutrition — Coach ("what to eat next")
+
+### `POST /api/nutrition/coach`
+
+The north-star engine. Ranks the user's **own** saved library against the
+macros they have left and returns a small set of suggestions, each with a
+one-line WHY.
+
+**Contract — the LLM never invents food or numbers.** The deterministic
+scorer (`src/lib/nutrition/mealCoach.ts` → `assembleCandidates`, built on
+`northStarSuggestion.ts`) assembles + ranks the candidates from verified
+data. Only that pre-scored, pre-filtered set is handed to the model
+(Claude Haiku), which may **only** re-order it and phrase a grounded
+reason for each. The model's output is schema-validated
+(`parseCoachRanking`): invented ids are dropped, duplicates collapsed,
+reasons that make health/diet-culture claims or run over-length are
+rejected. `applyCoachRanking` folds the model's ranking back onto **our**
+candidates — numbers stay ours, no candidate is ever lost.
+
+**Auth:** Bearer. Uses **service-role** client scoped to the authenticated
+`userId` (reads `saves` + `recipes`).
+
+**Request body:**
+```json
+{
+  "remaining": { "calories": 1200, "protein": 60, "carbs": 120, "fat": 40, "dailyCalorieTarget": 2000 },
+  "slot": "dinner",
+  "excludeIds": ["..."],
+  "recentlySuggestedIds": ["..."],
+  "limit": 4
+}
+```
+
+**Returns:** `{ ok: true, candidates: CoachCandidate[], source: "ai" | "deterministic" }`.
+`candidates` is empty when no recipe fits the remaining budget (not an
+error — the surface shows its no-fit state).
+
+**Fallback (surface never empties):** any AI failure — provider error,
+timeout, budget exceeded (`AiBudgetExceededError`), unparseable output, or
+the `kill_meal_coach_ai` flag — returns the deterministic candidate order
+with `source: "deterministic"`. The AI call is also skipped when fewer than
+two candidates fit (nothing to re-rank).
+
+**Errors:** `401`; `400` invalid_body / invalid_remaining; `429`
+rate_limited (120/hr); `503` server_misconfigured.
+
+Implementation: [app/api/nutrition/coach/route.ts](../../app/api/nutrition/coach/route.ts).
+Client hooks: [src/lib/today/useCoach.ts](../../src/lib/today/useCoach.ts) (web) ·
+[apps/mobile/lib/useCoach.ts](../../apps/mobile/lib/useCoach.ts) (mobile).
+
+---
+
+## Nutrition — Digest narrative
+
+### `POST /api/nutrition/digest-narrative`
+
+Takes the already-computed weekly-digest payload and returns a warm 2–3
+sentence coach narrative — including the adaptive-TDEE move story when the
+maintenance estimate changed this week.
+
+**Strict grounding contract.** The model receives **only** computed facts
+(`buildNarrativeFacts` in `src/lib/nutrition/digestNarrative.ts`) and is
+instructed to invent no numbers and make no claims. Output is
+schema-validated (`parseNarrative`): any multi-digit number not present in
+the facts, any banned health/diet-culture phrase, or unparseable/empty
+output is rejected. The maintenance-move *reason* is a closed enum mapped
+to a fixed honest phrase server-side, so the physiological framing is
+never the model's to invent.
+
+**Auth:** Bearer.
+
+**Request body:**
+```json
+{
+  "weekLabel": "May 5 – May 11",
+  "daysLogged": 5,
+  "avgCalories": 1940,
+  "targetCalories": 2100,
+  "proteinOnTargetDays": 3,
+  "closestDayLabel": "Tuesday",
+  "maintenanceMove": { "direction": "rose", "previousKcal": 2200, "newKcal": 2350, "reason": "ate_more_held_weight" }
+}
+```
+
+**Returns:** `{ ok: true, narrative: string, source: "ai" | "template" }`.
+
+**Fallback (surface never empties):** any AI failure — provider error,
+budget exceeded, off-contract output, or the `kill_digest_narrative_ai`
+flag — returns the deterministic `buildTemplateNarrative` text (grounded in
+the same facts) with `source: "template"`.
+
+**Errors:** `401`; `400` invalid_body / missing_week_label; `429`
+rate_limited (60/hr).
+
+Implementation: [app/api/nutrition/digest-narrative/route.ts](../../app/api/nutrition/digest-narrative/route.ts).
+
+---
+
 ## Nutrition — Analyze recipe (Edamam)
 
 ### `POST /api/nutrition/analyze-recipe`
@@ -424,11 +525,25 @@ Implementation: [app/api/nutrition/analyze-recipe/route.ts](../../app/api/nutrit
 
 **Auth:** Bearer. **Tier:** `free` → **403** `pro_required` (Base/Pro allowed).
 
-**Body:** `multipart/form-data`. **Rate limit:** 15/min per user.
+**Body:** `multipart/form-data` (`image`, optional `sourceUrl` / `sourceName`). **Rate limit:** 15/min per user.
 
-**Errors:** `401`; `403` pro_required; `429`; `400` expected_multipart / invalid_body; `503` OpenAI not configured.
+Extraction runs through the **structured recipe contract** (`src/lib/recipe-import/structuredRecipeSchema.ts`, 2026-06-11): the model returns ingredients split into `quantity` / `unit` / `name` / `prep` with a per-ingredient parse `confidence` (0–1). Lines below the threshold (0.6) are returned in `flaggedIngredients` (`{ name, raw, confidence }[]`) for the import review/verify UI — never silently guessed or dropped. The flat `ingredients[]` (for the existing `verifyIngredients` nutrition pipeline) and `nutrition` block are unchanged. Response also carries `servings`, `prepTimeMin`, `cookTimeMin`.
+
+**Errors:** `401`; `403` pro_required; `429`; `400` expected_multipart / invalid_body; `502` unparseable_model_output; `503` AI not configured.
 
 Implementation: [app/api/recipe-import/image/route.ts](../../app/api/recipe-import/image/route.ts).
+
+### `POST /api/nutrition/scan-label`
+
+**Auth:** Bearer. **Body:** `multipart/form-data` (`image`, optional `barcode`). **Rate limit:** 30/day per user.
+
+Reads a nutrition-label photo via vision OCR (Claude preferred, OpenAI fallback) and resolves to **per-100g** macros (scaling from per-serving when only that column is present). The resolved macros run through the shared Atwater plausibility gate (`checkMacroPlausibility`) before returning: an OCR mis-read (kcal disagreeing with the macros, out-of-range, single-macro) sets `implausible: true`, `plausibilityReason`, and forces `confidence: "low"` — flagged, never silently accepted. The custom-food form (web + mobile) pre-fills from this and warns the user to double-check before saving; the form stays the source of truth.
+
+**Response (ok):** `{ ok, name, calories, protein, carbs, fat, fiberG, sugarG, sodiumMg, saturatedFatG, servingSizeG, confidence, implausible, plausibilityReason }` (all macros per-100g).
+
+**Errors:** `401`; `429`; `400` expected_multipart / invalid_body / missing_image; `413` file_too_large; `415` image_unreadable; `422` label_unreadable; `502` model_unparseable; `503` AI not configured / kill switch.
+
+Implementation: [app/api/nutrition/scan-label/route.ts](../../app/api/nutrition/scan-label/route.ts).
 
 ---
 

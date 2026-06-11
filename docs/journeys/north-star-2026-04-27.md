@@ -215,3 +215,43 @@ render the same `X` whenever an `onSkip` handler is supplied
   (customer-lens to read 3 testers' reactions).
 - **V-6** — Library-size threshold (5 vs 3 vs 1-with-apologetic
   copy). Default ships at 5; flag-driven adjustment supported.
+
+## Coach engine — AI ranking layer (2026-06-11)
+
+The deterministic single-pick scorer above is now the *spine* under an AI
+coach layer, not the whole brain. Decision:
+`docs/decisions/2026-06-11-meal-coach-and-digest-narrative.md`.
+
+- **Engine:** `src/lib/nutrition/mealCoach.ts` (`assembleCandidates` →
+  ranked candidate set; `parseCoachRanking` / `applyCoachRanking` fold the
+  model's re-rank + phrasing back onto OUR numbers).
+- **Route:** `POST /api/nutrition/coach` (Claude Haiku; deterministic
+  fallback on every failure; `kill_meal_coach_ai` flag).
+- **Hooks (non-blocking, parity):** `src/lib/today/useCoach.ts` (web) +
+  `apps/mobile/lib/useCoach.ts` (mobile). Both render the deterministic
+  candidates synchronously and swap in the AI ranking when it arrives — the
+  surface never shows a spinner or an empty flash.
+- **Contract:** the LLM only re-orders + phrases over the pre-scored
+  candidates. It never invents food and never states a number that isn't
+  ours. Validation drops invented ids and rejects health/diet-culture
+  reason copy.
+
+### Today wiring — DEFERRED (not silent)
+
+The one-line swap of the suggestion brain inside
+`apps/mobile/app/(tabs)/index.tsx#NorthStarBlockHost` (call `useCoach` and
+pass the top candidate's `whyLine` into the existing block) is **not yet
+landed**: the file is under active edit by the rhythm-sweep agent
+(uncommitted hunks present; the gating `fix(rhythm): ENG-1032` commit had
+not landed at build time). The engine, route, hooks, tests, and docs are
+all complete and green — only the in-screen wiring remains.
+
+**Next step (Linear-ready):** wire `useCoach` into `NorthStarBlockHost`
+(web `src/app/components/NutritionTracker.tsx` + mobile
+`apps/mobile/components/today/NorthStarBlockHost.tsx`) once index.tsx is
+clean — replace the direct `pickNorthStarSuggestion` call with the hook's
+top candidate, keeping the existing block surface unchanged. Title for the
+ticket: "Wire coach engine into Today NorthStar surface (web + mobile)";
+label `launch-blocker` is appropriate (Today = retention critical path).
+The hook is a drop-in: it returns the same suggestion shape the block
+already consumes.
