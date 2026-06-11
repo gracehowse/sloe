@@ -200,6 +200,76 @@ describe("computeWeightTrendCopy", () => {
     expect(r.copy).toBe("on track");
   });
 
+  // ─── ENG-1026: on-track copy judges the SMOOTHED trend, not raw scale ───
+  describe("ENG-1026 water-blip resilience", () => {
+    it("one +1 kg water spike on the latest reading does NOT flip a losing user off track", () => {
+      // A clearly-losing user (80.0 → 79.4 over the week) whose most
+      // recent reading jumps +1 kg on water (a salty dinner / hard
+      // session). The RAW recent-vs-week-ago delta is positive (+0.4),
+      // which the old logic read as "off track". The smoothed trend is
+      // still firmly downward, so the verdict stays "on track" — the blip
+      // can't dominate.
+      const r = computeWeightTrendCopy({
+        weightKgByDay: makeMap([
+          ["2026-04-12", 80.0],
+          ["2026-04-14", 79.8],
+          ["2026-04-16", 79.6],
+          ["2026-04-18", 79.4],
+          ["2026-04-19", 80.4], // water blip on the latest reading
+        ]),
+        weightKg: 80.4,
+        goalKg: 75,
+        now: NOW,
+      });
+      // Headline delta is still the raw figure the user sees on the scale.
+      expect(r.delta).toBe(0.4);
+      // …but the verdict is judged on the (downward) trend.
+      expect(r.copy).toBe("on track");
+    });
+
+    it("one +1 kg water spike does NOT flip a maintenance user off track", () => {
+      // Daily weigh-ins flat around 75 kg with a single +1 kg spike on the
+      // last day (a real water blip). Spread across a full week of flat
+      // readings, the spike's leverage on the smoothed trend is small, so
+      // the trend stays inside the maintenance ±0.5 kg band and the copy
+      // holds at "on track" despite the raw +1.0 kg recent delta the old
+      // two-point logic would have flipped.
+      const r = computeWeightTrendCopy({
+        weightKgByDay: makeMap([
+          ["2026-04-13", 75.0],
+          ["2026-04-14", 74.9],
+          ["2026-04-15", 75.1],
+          ["2026-04-16", 75.0],
+          ["2026-04-17", 74.9],
+          ["2026-04-18", 75.1],
+          ["2026-04-19", 76.0], // water blip on the latest reading
+        ]),
+        weightKg: 75.0,
+        goalKg: 75.0,
+        now: NOW,
+      });
+      expect(r.delta).toBe(1.0);
+      expect(r.copy).toBe("on track");
+    });
+
+    it("a genuine upward trend (not a blip) still reads off track for a losing user", () => {
+      // Sanity: smoothing must not mask a real gain. Every reading climbs.
+      const r = computeWeightTrendCopy({
+        weightKgByDay: makeMap([
+          ["2026-04-12", 79.4],
+          ["2026-04-14", 79.6],
+          ["2026-04-16", 79.8],
+          ["2026-04-18", 80.0],
+          ["2026-04-19", 80.2],
+        ]),
+        weightKg: 80.2,
+        goalKg: 75,
+        now: NOW,
+      });
+      expect(r.copy).toBe("this week");
+    });
+  });
+
   it("explicit direction overrides goal-derived direction", () => {
     // User on a "gain" plan with goal 75 → derived direction = "lose"
     // (current 80 > goal 75). Overriding to "gain" flips on-track.
