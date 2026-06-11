@@ -132,4 +132,27 @@ describe("WhyThisNumberSheet", () => {
     expect(getAllByText(/Log your weight 3\+ times/).length).toBeGreaterThanOrEqual(1);
     expect(getByTestId("why-this-number-calibrating-ask")).toBeTruthy();
   });
+
+  // Story beats — "How we work this out" section -------------------
+  it("renders the 'How we work this out' story section with the gate beat", () => {
+    const { getByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
+    expect(getByTestId("why-this-number-story")).toBeTruthy();
+    expect(getByTestId("why-this-number-beat-seed")).toBeTruthy();
+    expect(getByTestId("why-this-number-beat-learn")).toBeTruthy();
+    expect(getByTestId("why-this-number-beat-gate")).toBeTruthy();
+    expect(getByTestId("why-this-number-beat-range")).toBeTruthy();
+  });
+
+  it("shows the watch beat when hasWearable is true (mobile supplies it)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} hasWearable />,
+    );
+    expect(getByTestId("why-this-number-beat-watch")).toBeTruthy();
+    // Sanity: the no-wearable default omits it.
+    const { queryByTestId: queryDefault } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} />,
+    );
+    expect(queryDefault("why-this-number-beat-watch")).toBeNull();
+    void queryByTestId;
+  });
 });

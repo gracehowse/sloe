@@ -99,6 +99,33 @@ export function WhyThisNumberDialog({
           {result.summary}
         </p>
 
+        {/* How we work this out — plain-English story of the maintenance
+            architecture (2026-06-10 adaptive-TDEE decision). Same beats as
+            the mobile sheet via the shared `buildWhyThisNumber` helper, so a
+            copy drift fails the shared test. */}
+        {result.storyBeats.length > 0 ? (
+          <div data-testid="why-this-number-story" className="flex flex-col gap-3">
+            <p className="text-[11px] font-extrabold tracking-wider text-muted-foreground">
+              HOW WE WORK THIS OUT
+            </p>
+            <ul className="flex flex-col gap-3">
+              {result.storyBeats.map((beat) => (
+                <li
+                  key={beat.key}
+                  data-testid={`why-this-number-beat-${beat.key}`}
+                  className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-[7px] h-[5px] w-[5px] shrink-0 rounded-full bg-primary"
+                  />
+                  <span>{beat.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {/* Adjust target CTA */}
         {onAdjustTarget ? (
           <button

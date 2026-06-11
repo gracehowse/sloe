@@ -123,6 +123,11 @@ export default function TargetsScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [planPace, setPlanPace] = useState<string | null>(null);
+  // Whether a wearable is feeding resting-burn data, used to gate the
+  // "Your Watch" story beat in the WhyThisNumberSheet (we only tell the
+  // watch story to people who have one). True when the profile carries
+  // any `basal_burn_by_day` reading — the resting burn the watch supplies.
+  const [hasWearable, setHasWearable] = useState(false);
   // Premium-bar audit Group J line 442 — Recalculate button feedback.
   // When the user taps the action we briefly show "Recalculating…" so
   // the press has confirmation; falls back to a Saved-style "Updated"
@@ -157,7 +162,7 @@ export default function TargetsScreen() {
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories, adaptive_tdee, adaptive_tdee_confidence",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories, adaptive_tdee, adaptive_tdee_confidence, basal_burn_by_day",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -217,6 +222,19 @@ export default function TargetsScreen() {
         typeof d.adaptive_tdee_confidence === "string" ? d.adaptive_tdee_confidence : null,
       );
       setPlanPace(typeof d.plan_pace === "string" ? d.plan_pace : null);
+      // Wearable signal for the "Your Watch" story beat: true when the
+      // profile carries any basal-burn reading (the resting burn the
+      // watch supplies). Plain object presence check — no value parse
+      // needed, we only care that data exists.
+      const basalMap = d.basal_burn_by_day;
+      setHasWearable(
+        Boolean(
+          basalMap &&
+            typeof basalMap === "object" &&
+            !Array.isArray(basalMap) &&
+            Object.keys(basalMap as Record<string, unknown>).length > 0,
+        ),
+      );
       const wMap = d.weight_kg_by_day;
       if (wMap && typeof wMap === "object" && !Array.isArray(wMap)) {
         const parsed: Record<string, number> = {};
@@ -974,6 +992,7 @@ export default function TargetsScreen() {
         )}
         mealLogDays={null}
         weightLogCount={Object.keys(weightKgByDay).length}
+        hasWearable={hasWearable}
         onPressAdjustTarget={() => {
           setWhySheetOpen(false);
           // When the goal editor is live, "Adjust target" opens it in

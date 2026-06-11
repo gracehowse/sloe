@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   buildWhyThisNumber,
@@ -196,6 +196,61 @@ export function WhyThisNumberSheet({
               {result.summary}
             </Text>
           </View>
+
+          {/* How we work this out — plain-English story of the maintenance
+              architecture (2026-06-10 adaptive-TDEE decision). Renders the
+              same beats as the web dialog via the shared `buildWhyThisNumber`
+              helper, so a copy drift fails the shared test. */}
+          {result.storyBeats.length > 0 ? (
+            <View
+              testID="why-this-number-story"
+              style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg, gap: Spacing.dense }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "800",
+                  letterSpacing: 1.2,
+                  color: textTertiaryColor,
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                HOW WE WORK THIS OUT
+              </Text>
+              {result.storyBeats.map((beat) => (
+                <View
+                  key={beat.key}
+                  testID={`why-this-number-beat-${beat.key}`}
+                  style={{ flexDirection: "row", gap: Spacing.sm }}
+                >
+                  <View
+                    // Bullet dot: a 5px dot optically centred on the first
+                    // text line. The 5px size + 7px top offset are sub-scale
+                    // *optical* values, matched 1:1 to the web mirror's
+                    // `h-[5px] w-[5px] mt-[7px]` — a deliberate, parity-locked
+                    // pair, not an accidental off-scale number.
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: Radius.full,
+                      backgroundColor: accent.primary,
+                      marginTop: 7,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: textSecondaryColor,
+                      lineHeight: 19,
+                    }}
+                  >
+                    {beat.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* Adjust target CTA */}
           {onPressAdjustTarget ? (
