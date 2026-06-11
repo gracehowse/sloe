@@ -309,6 +309,15 @@ export type FoodSearchPanelProps = {
   /** Keys of favourite toggles currently in flight (disabled + dimmed star —
    *  no double-submit). Optional; host owns the pending set. */
   favoritePendingKeys?: Set<string>;
+  /**
+   * Multi-add basket (teardown #2, ENG-1042). When wired, the portion preview
+   * shows an "Add" action alongside "Use this": "Add" stages the selection into
+   * the host's basket (the panel returns to results so the user keeps building)
+   * WITHOUT committing or closing the sheet; "Use this" stays the instant
+   * single-item log. The host commits the whole basket in one round-trip via
+   * the LogSheet's basket bar. When omitted, only "Use this" shows (today's
+   * behaviour). Same `SelectedFood` payload as `onSelect`. */
+  onAddToBasket?: (result: SelectedFood) => void;
 };
 
 // 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
@@ -341,6 +350,7 @@ export default function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
+  onAddToBasket,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
@@ -374,6 +384,10 @@ export default function FoodSearchPanel({
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // ENG-1038 — true when a keyed vendor (USDA / Edamam / FatSecret) was
+  // skipped because its account-wide quota was exhausted. Drives an honest
+  // "showing saved results" notice instead of a silent blank at viral scale.
+  const [searchDegraded, setSearchDegraded] = useState(false);
   // 2026-05-14 premium-bar polish #3: lightweight category-filter tab
   // row. The active category is a presentational filter over the
   // existing `results` list (and gates whether `recentFoods` renders).
@@ -551,9 +565,13 @@ export default function FoodSearchPanel({
     if (!q) {
       setResults([]);
       setLoading(false);
+      setSearchDegraded(false);
       return;
     }
     setLoading(true);
+    // ENG-1038 — clear any prior degraded notice when a fresh query starts;
+    // the new fan-out re-asserts it only if a vendor is still exhausted.
+    setSearchDegraded(false);
     debounceRef.current = setTimeout(async () => {
       // F-114 broader sweep (2026-05-07): wrap the debounced first-page
       // search in try/catch/finally. Pre-fix shape was bare `await
@@ -566,7 +584,7 @@ export default function FoodSearchPanel({
         const externalP = searchFoods(
           q,
           (partial) => setResults(partial as SearchRow[]),
-          { page: 1 },
+          { page: 1, onDegraded: () => setSearchDegraded(true) },
         );
         const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
           ? searchCustomFoods(
@@ -979,44 +997,65 @@ export default function FoodSearchPanel({
     setPreview((p) => p ? { ...p, quantityText: text, quantity: Math.max(0, num) } : p);
   }, [parseQuantityText]);
 
-  const onConfirmPreview = useCallback(() => {
-    if (preview) {
-      const servingLabel =
-        preview.source === "CUSTOM" &&
-        preview.chosenPortion.label !== "g" &&
-        preview.chosenPortion.label !== "ml"
-          ? preview.chosenPortion.label
-          : undefined;
-      if (preview.source === "CUSTOM") {
-        try {
-          const grams = Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
-          const evt: Record<string, unknown> = { grams };
-          if (servingLabel) evt.servingLabel = servingLabel;
-          track(AnalyticsEvents.custom_food_logged, evt);
-        } catch {
-          // noop
-        }
+  // Build the canonical SelectedFood payload from the current preview. Shared
+  // by "Use this" (instant log) and "Add" (basket-stage, teardown #2) so the
+  // two paths emit an identical selection — a basketed item logs exactly like
+  // an instant-logged one. Fires the custom-food-logged analytics for the
+  // CUSTOM source on either path.
+  const buildSelectionFromPreview = useCallback((): SelectedFood | null => {
+    if (!preview) return null;
+    const servingLabel =
+      preview.source === "CUSTOM" &&
+      preview.chosenPortion.label !== "g" &&
+      preview.chosenPortion.label !== "ml"
+        ? preview.chosenPortion.label
+        : undefined;
+    if (preview.source === "CUSTOM") {
+      try {
+        const grams = Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
+        const evt: Record<string, unknown> = { grams };
+        if (servingLabel) evt.servingLabel = servingLabel;
+        track(AnalyticsEvents.custom_food_logged, evt);
+      } catch {
+        // noop
       }
-      onSelect({
-        name: preview.name,
-        source: preview.source,
-        macrosPer100g: preview.macrosPer100g,
-        ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
-        ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
-        ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
-        portions: preview.portions,
-        chosenPortion: preview.chosenPortion,
-        quantity: preview.quantity,
-        fdcId: preview.fdcId,
-        barcode: preview.barcode,
-        ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
-        ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
-        ...(servingLabel ? { servingLabel } : {}),
-        ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
-      });
-      setPreview(null);
     }
-  }, [preview, onSelect]);
+    return {
+      name: preview.name,
+      source: preview.source,
+      macrosPer100g: preview.macrosPer100g,
+      ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
+      ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+      ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
+      portions: preview.portions,
+      chosenPortion: preview.chosenPortion,
+      quantity: preview.quantity,
+      fdcId: preview.fdcId,
+      barcode: preview.barcode,
+      ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+      ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
+      ...(servingLabel ? { servingLabel } : {}),
+      ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+    };
+  }, [preview]);
+
+  const onConfirmPreview = useCallback(() => {
+    const selection = buildSelectionFromPreview();
+    if (!selection) return;
+    onSelect(selection);
+    setPreview(null);
+  }, [buildSelectionFromPreview, onSelect]);
+
+  // Multi-add basket (teardown #2): stage the current preview into the host's
+  // basket and return to the results list (the sheet stays open). The host
+  // commits the whole basket in one round-trip via the LogSheet basket bar.
+  const onAddPreviewToBasket = useCallback(() => {
+    if (!onAddToBasket) return;
+    const selection = buildSelectionFromPreview();
+    if (!selection) return;
+    onAddToBasket(selection);
+    setPreview(null);
+  }, [buildSelectionFromPreview, onAddToBasket]);
 
   const previewMacros = useMemo(() => {
     if (!preview) return null;
@@ -1187,6 +1226,24 @@ export default function FoodSearchPanel({
     },
     centered: { alignItems: "center", paddingTop: mode === "compact" ? 24 : 60, gap: Spacing.md },
     hint: { color: colors.textSecondary, fontSize: 14 },
+    // ENG-1038 — graceful-degradation notice. Amber (warning) family: this is
+    // an advisory "some sources paused", not an error (never destructive red).
+    degradedNotice: {
+      marginHorizontal: Spacing.lg,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Accent.warning,
+      backgroundColor: Accent.warning + "14",
+    },
+    degradedNoticeText: {
+      color: Accent.warningSolid,
+      fontSize: 13,
+      lineHeight: 18,
+    },
   }), [colors, mode]);
 
   const renderItem = useCallback(
@@ -1838,19 +1895,36 @@ export default function FoodSearchPanel({
 
           <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
             <Pressable
+              testID="food-search-preview-use-this"
               style={{ flex: 1, backgroundColor: commitCtaColor, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
               onPress={onConfirmPreview}
             >
               <Check size={18} color={colors.primaryForeground} />
               <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
             </Pressable>
-            <Pressable
-              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
-              onPress={() => setPreview(null)}
-            >
-              <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
-            </Pressable>
+            {/* Multi-add basket (teardown #2): "Add" stages this item into the
+                basket and returns to results so the user keeps building — the
+                sheet stays open. Outline secondary so "Use this" remains the
+                one filled CTA. Only shown when the host wires `onAddToBasket`. */}
+            {onAddToBasket ? (
+              <Pressable
+                testID="food-search-preview-add-to-basket"
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${preview.name} to basket`}
+                style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1.5, borderColor: accent.primarySolid }}
+                onPress={onAddPreviewToBasket}
+              >
+                <Plus size={18} color={accent.primarySolid} />
+                <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Add</Text>
+              </Pressable>
+            ) : null}
           </View>
+          <Pressable
+            style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", marginTop: Spacing.sm }}
+            onPress={() => setPreview(null)}
+          >
+            <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
+          </Pressable>
         </View>
       </ScrollView>
     );
@@ -2461,6 +2535,20 @@ export default function FoodSearchPanel({
               </Pressable>
             );
           })}
+        </View>
+      ) : null}
+
+      {/* ENG-1038 — graceful degradation notice. When a keyed vendor's
+          account-wide quota is exhausted at viral scale, the search layer
+          flags it and we tell the user honestly that some live sources are
+          paused — rather than letting search silently look broken. Tokens
+          only. */}
+      {searchDegraded && !loading ? (
+        <View testID="food-search-degraded-notice" style={styles.degradedNotice}>
+          <Text style={styles.degradedNoticeText}>
+            Some live food sources are busy right now — showing saved and
+            verified results. Try again shortly for the full list.
+          </Text>
         </View>
       ) : null}
 

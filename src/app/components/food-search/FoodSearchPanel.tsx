@@ -347,12 +347,40 @@ function scaleMacros(per100g: MacrosPer100g, grams: number): MacrosPer100g {
 
 // ── Search API calls (carried over verbatim from FoodSearch.tsx) ────
 
-async function searchUsda(query: string, page: number = 1): Promise<SearchResult[]> {
+/**
+ * ENG-1038 — resolved locale appended to vendor-search URLs so the server
+ * cache partitions hits by region (parity with mobile `verifyRecipe.ts`).
+ */
+function localeQueryParam(): string {
+  try {
+    const loc = Intl.DateTimeFormat().resolvedOptions().locale;
+    return loc ? `&locale=${encodeURIComponent(loc)}` : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * ENG-1038 — a vendor route returns `degraded: true` when its account-wide
+ * quota is exhausted and it was SKIPPED. The search clients propagate this
+ * so the UI shows an honest "showing saved results" notice, not a silent
+ * blank (parity with mobile).
+ */
+function responseIsDegraded(json: unknown): boolean {
+  return Boolean(json && typeof json === "object" && (json as { degraded?: unknown }).degraded === true);
+}
+
+async function searchUsda(
+  query: string,
+  page: number = 1,
+  onDegraded?: () => void,
+): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
+    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
     const json = await res.json();
+    if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return json.hits.map((h: any) => {
       const per100g = {
@@ -456,12 +484,17 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
   } catch { return []; }
 }
 
-async function searchEdamam(query: string, page: number = 1): Promise<SearchResult[]> {
+async function searchEdamam(
+  query: string,
+  page: number = 1,
+  onDegraded?: () => void,
+): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
+    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
     const json = await res.json();
+    if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return (json.hits as Array<{
       foodId: string; label: string; brand: string | null;
@@ -527,12 +560,17 @@ async function searchEdamam(query: string, page: number = 1): Promise<SearchResu
  * inline macros so the on-tap `food.get` path can fetch the canonical
  * panel. We never invent macros.
  */
-async function searchFatSecret(query: string, page: number = 1): Promise<SearchResult[]> {
+async function searchFatSecret(
+  query: string,
+  page: number = 1,
+  onDegraded?: () => void,
+): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
+    const res = await fetch(`/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
     const json = await res.json();
+    if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return (json.hits as Array<{
       foodId: string;
@@ -880,6 +918,11 @@ export function FoodSearchPanel({
   const SEARCH_CATEGORIES = ["All", "Custom", "Branded", "Generic"] as const;
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // ENG-1038 — true when a keyed vendor (USDA / Edamam / FatSecret) was
+  // skipped because its account-wide quota was exhausted. Drives an honest
+  // "showing saved results" notice instead of a silent blank at viral scale.
+  // Parity with mobile `FoodSearchPanel`.
+  const [searchDegraded, setSearchDegraded] = useState(false);
   /**
    * Premier-tier autocomplete suggestions (2026-04-26 — FatSecret
    * Premier Free). Surfaced as a fast typeahead row that renders
@@ -1123,9 +1166,13 @@ export function FoodSearchPanel({
     if (!q) {
       setResults([]);
       setLoading(false);
+      setSearchDegraded(false);
       return;
     }
     setLoading(true);
+    // ENG-1038 — clear any prior degraded notice when a fresh query starts;
+    // the new fan-out re-asserts it only if a vendor is still exhausted.
+    setSearchDegraded(false);
     debounceRef.current = setTimeout(async () => {
       // F-114 broader sweep (2026-05-07): mirror mobile — wrap the
       // debounced first-page search in try/catch/finally so a
@@ -1179,11 +1226,15 @@ export function FoodSearchPanel({
         return merged;
       };
 
+      // ENG-1038 — flip the degraded notice if any keyed vendor was skipped
+      // for account-wide quota. Fired from inside each source fetch.
+      const onVendorDegraded = () => setSearchDegraded(true);
+
       // Label each external source so Promise.race can identify the winner.
-      const usdaL = searchUsda(q, 1).catch(() => [] as typeof partialUsda).then(r => { partialUsda = r; return "usda" as const; });
+      const usdaL = searchUsda(q, 1, onVendorDegraded).catch(() => [] as typeof partialUsda).then(r => { partialUsda = r; return "usda" as const; });
       const offL = searchOff(q, 1).catch(() => [] as typeof partialOff).then(r => { partialOff = r; return "off" as const; });
-      const edamamL = searchEdamam(q, 1).catch(() => [] as typeof partialEdamam).then(r => { partialEdamam = r; return "edamam" as const; });
-      const fatsecretL = searchFatSecret(q, 1).catch(() => [] as typeof partialFatSecret).then(r => { partialFatSecret = r; return "fatsecret" as const; });
+      const edamamL = searchEdamam(q, 1, onVendorDegraded).catch(() => [] as typeof partialEdamam).then(r => { partialEdamam = r; return "edamam" as const; });
+      const fatsecretL = searchFatSecret(q, 1, onVendorDegraded).catch(() => [] as typeof partialFatSecret).then(r => { partialFatSecret = r; return "fatsecret" as const; });
       const sourceMap = { usda: usdaL, off: offL, edamam: edamamL, fatsecret: fatsecretL } as const;
       const pending = new Set<Promise<keyof typeof sourceMap>>([usdaL, offL, edamamL, fatsecretL]);
 
@@ -2194,6 +2245,22 @@ export function FoodSearchPanel({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* ENG-1038 — graceful degradation notice. When a keyed vendor's
+            account-wide quota is exhausted at viral scale, the search layer
+            flags it and we tell the user honestly that some live sources are
+            paused — rather than letting search silently look broken. Amber
+            (warning) family: advisory, never destructive red. Mobile parity. */}
+        {searchDegraded && !loading && (
+          <div
+            data-testid="food-search-degraded-notice"
+            className="mx-1 mt-2 mb-1 rounded-md border border-warning bg-warning-soft px-3 py-2 text-[13px] leading-snug text-warning-solid"
+            role="status"
+          >
+            Some live food sources are busy right now — showing saved and
+            verified results. Try again shortly for the full list.
           </div>
         )}
 
