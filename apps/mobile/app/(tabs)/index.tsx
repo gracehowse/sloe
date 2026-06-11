@@ -4713,13 +4713,20 @@ export default function TrackerScreen() {
             header) owns day-selection (taps); the calendar icon in the
             strip covers far dates. Order top→bottom is now: wordmark
             header → greeting → week strip → ring card. */}
+        {/* Rhythm sweep ENG-1032 (2026-06-11): the wordmark row's
+            `marginBottom: sm` double-stacked on the scroll container's
+            `gap: todayScrollGap (8)` → a 16pt seam that matched neither the
+            8pt header-cluster rhythm nor a deliberate break (measured
+            seam, bd76ed95 method). Dropped — the scroll `gap` owns the seam
+            to the greeting/strip below. `marginTop: xs` stays: it pairs with
+            the scroll `paddingTop: sm` as the top inset against the screen
+            edge, not a margin+gap stack against another element. */}
         <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
             marginTop: Spacing.xs,
-            marginBottom: Spacing.sm,
           }}
         >
           <SloeHeaderWordmark testID="today-wordmark" />
@@ -4762,7 +4769,10 @@ export default function TrackerScreen() {
           // block spent ~25% of the viewport on header moments. Compacted to
           // ONE left-aligned sans context line (greeting · date) — the hero
           // number is the page's display moment now, not the greeting.
-          <View style={{ marginTop: Spacing.xs, marginBottom: Spacing.sm }}>
+          // Rhythm sweep ENG-1032 (2026-06-11): self-margins dropped — the
+          // greeting is a header-cluster member; the scroll `gap` (8) owns
+          // both its seams (was margin+gap double-stacking, off-rhythm).
+          <View>
             <Text testID="today-hero-greeting" numberOfLines={1}>
               <Text style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "600", color: colors.text }}>
                 {headline}
@@ -4793,11 +4803,16 @@ export default function TrackerScreen() {
             The header still owns the supportive streak-reset copy
             (rendered under the strip in `stripOnly` mode). */}
         {/* Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
-            (`mb-7` ≈ 28px between the week strip and the ring hero). The
-            parent scroll `gap` (8) was leaving the strip cramped against the
-            hero card; the extra bottom margin restores the frame's breathing
-            room. */}
-        <View style={{ marginBottom: Spacing.lg }}>
+            (`mb-7` ≈ 28px between the week strip and the ring hero) — the
+            strip→ring transition is the one deliberate break in the header.
+            Rhythm sweep ENG-1032 (2026-06-11): was `marginBottom: lg (20)`
+            which, on the scroll `gap (8)`, summed to a 28pt OFF-SCALE seam
+            (measured, bd76ed95 method — snaps to neither 24 nor 32). Snapped
+            onto the scale at `md (16)` so the break lands on a clean 24pt
+            (16 + the 8pt gap) — the nearest on-scale value to the Figma 28px
+            target, and the header's single intentional break vs the 8pt
+            cluster rhythm above it. */}
+        <View style={{ marginBottom: Spacing.md }}>
           <TodayDateHeader
           stripOnly
           viewMode={viewMode}
