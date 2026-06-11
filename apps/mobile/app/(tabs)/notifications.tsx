@@ -78,6 +78,7 @@ export default function NotificationsScreen() {
   const accent = useAccent();
 
   const [loading, setLoading] = useState(true);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<InboxItem[]>([]);
@@ -281,9 +282,10 @@ export default function NotificationsScreen() {
   // returned, looking like the action didn't take. Now: snapshot the
   // pre-mark items, restore on failure.
   async function markAllRead() {
-    if (!userId) return;
+    if (!userId || markingAllRead) return;
     const now = new Date().toISOString();
     const prev = items;
+    setMarkingAllRead(true);
     setItems((cur) => cur.map((n) => (n.readAt ? n : { ...n, readAt: now })));
     try {
       const [appRes, creatorRes] = await Promise.all([
@@ -304,6 +306,8 @@ export default function NotificationsScreen() {
       setItems(prev);
       console.error("[markAllRead] threw:", err instanceof Error ? err.message : err);
       Alert.alert("Couldn't mark all read", "Try again.");
+    } finally {
+      setMarkingAllRead(false);
     }
   }
 
@@ -364,10 +368,18 @@ export default function NotificationsScreen() {
         </View>
         <Pressable
           onPress={() => void markAllRead()}
-          disabled={items.length === 0 || unreadCount === 0}
-          style={[styles.btn, (items.length === 0 || unreadCount === 0) && styles.btnDisabled]}
+          disabled={markingAllRead || items.length === 0 || unreadCount === 0}
+          style={[
+            styles.btn,
+            (markingAllRead || items.length === 0 || unreadCount === 0) && styles.btnDisabled,
+          ]}
+          accessibilityState={{ disabled: markingAllRead || items.length === 0 || unreadCount === 0, busy: markingAllRead }}
         >
-          <Text style={styles.btnText}>Mark all read</Text>
+          {markingAllRead ? (
+            <ActivityIndicator size="small" color={accent.primary} />
+          ) : (
+            <Text style={styles.btnText}>Mark all read</Text>
+          )}
         </Pressable>
       </View>
 
