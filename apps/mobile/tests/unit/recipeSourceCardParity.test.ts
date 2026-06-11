@@ -16,14 +16,17 @@
  *                              synthesised URL
  *
  * Web counterpart: `src/app/components/RecipeDetail.tsx` is the in-app
- * recipe viewer. It does NOT fetch `source_url` / `source_name` and does
- * NOT render a source card in any mode — that surface predates the
- * `source_*` columns (migration `20260411180000`). The public SSR recipe
- * page at `app/recipe/[id]/page.tsx` also omits a source card. There is
- * therefore no web gate to mirror right now; the parity test captures
- * that gap so the next web detail refactor closes it rather than
- * silently diverging further. When that web card lands, extend this test
- * with the same three render-mode assertions against the new file.
+ * recipe viewer. It renders an attribution byline (`via {creator} · See
+ * original`) and, as of ENG-858/ENG-1042 (2026-06-11), the import
+ * source-card disclaimer for imported (non-first-party) recipes. The
+ * public SSR recipe page at `app/recipe/[id]/page.tsx` still omits a
+ * source card.
+ *
+ * ENG-858 / ENG-1042 (2026-06-11) — the import disclaimer is now a SHARED
+ * constant (`src/lib/recipes/importSourceDisclaimer.ts`, legal-approved
+ * wording) rendered on BOTH platforms. This test asserts both detail
+ * surfaces import + render it via the shared helper so the legally-required
+ * notice can't silently drop on one platform.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -92,24 +95,38 @@ describe("mobile source card — widened render gate (E-4)", () => {
   });
 });
 
-describe("web recipe detail — known-gap parity note (E-4)", () => {
-  it("web in-app RecipeDetail still does not render a source card", () => {
-    // Latent gap recorded in docs/testflight-feedback/resolved.md
-    // (build 10 entry, 2026-04-19). When this assertion starts failing
-    // because someone added a web source card, replace it with the same
-    // three render-mode pins used for mobile above.
-    //
-    // 2026-04-30 — narrowed from a blanket `/source_url/` scan to the
-    // canonical mobile source-card markers (`Source · `, `View original
-    // recipe`). The Recime parity quick-win added a `source_url` JS
-    // property key in a helper call (`pickHeroImageUrl({ source_url:
-    // recipe.sourceUrl })`) — that's a hero-image fallback, not a
-    // source attribution card, and shouldn't trip this gap tracker.
-    expect(WEB_DETAIL_SRC).not.toMatch(/Source · \$\{recipe\.source_name/);
-    expect(WEB_DETAIL_SRC).not.toMatch(/View original recipe/);
+describe("web recipe detail — attribution byline (E-4 follow-up)", () => {
+  it("web in-app RecipeDetail renders an attribution byline + See original link", () => {
+    // The web detail uses a `via {creator} · See original` byline rather than
+    // the mobile `Source · {name}` card shell, but both attribute the source
+    // and link back. The mobile-specific card markers stay mobile-only by
+    // design (different layout, same intent).
+    expect(WEB_DETAIL_SRC).toMatch(/See original/);
+    expect(WEB_DETAIL_SRC).toMatch(/recipe-attribution/);
   });
 
-  it("public SSR recipe page still does not render a source card", () => {
+  it("public SSR recipe page still does not render the mobile source card", () => {
     expect(WEB_PUBLIC_SRC).not.toMatch(/View original recipe/);
+  });
+});
+
+describe("import source-card disclaimer parity (ENG-858 / ENG-1042)", () => {
+  const DISCLAIMER_HELPER = "importSourceDisclaimer";
+  const DISCLAIMER_TESTID = "recipe-import-disclaimer";
+
+  it("mobile detail imports + renders the shared disclaimer helper", () => {
+    expect(MOBILE_SRC).toMatch(/from\s+["']@suppr\/shared\/recipes\/importSourceDisclaimer["']/);
+    expect(MOBILE_SRC).toContain(DISCLAIMER_HELPER);
+    expect(MOBILE_SRC).toContain(DISCLAIMER_TESTID);
+  });
+
+  it("web detail imports + renders the shared disclaimer helper", () => {
+    expect(WEB_DETAIL_SRC).toMatch(/importSourceDisclaimer/);
+    expect(WEB_DETAIL_SRC).toContain(DISCLAIMER_TESTID);
+  });
+
+  it("both platforms gate the disclaimer on isImportedRecipe (not shown on first-party)", () => {
+    expect(MOBILE_SRC).toContain("isImportedRecipe");
+    expect(WEB_DETAIL_SRC).toContain("isImportedRecipe");
   });
 });

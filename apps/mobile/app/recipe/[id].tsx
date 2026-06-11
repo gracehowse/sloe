@@ -53,6 +53,7 @@ import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "@suppr/shar
 import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "@suppr/shared/recipes/sanitizeRecipeDescription";
+import { isImportedRecipe, importSourceDisclaimer } from "@suppr/shared/recipes/importSourceDisclaimer";
 import {
   pickHeroImageUrl,
   extractVideoHost,
@@ -1380,6 +1381,14 @@ export default function RecipeDetailScreen() {
       borderColor: accent.primary + "55",
     },
     sourceLinkText: { color: accent.primary, fontSize: 14, fontWeight: "600" },
+    // ENG-858 — import disclaimer caption. Matches the gluten-disclaimer
+    // treatment (the nearest disclaimer sibling): 11/15, textSecondary.
+    sourceDisclaimer: {
+      fontSize: 11,
+      lineHeight: 15,
+      color: colors.textSecondary,
+      marginTop: Spacing.sm,
+    },
   }), [colors, cardElevation, accent]);
 
   if (loading) {
@@ -1836,6 +1845,24 @@ export default function RecipeDetailScreen() {
               ) : (
                 <Text style={styles.sourceName}>{`Source · ${recipe.source_name}`}</Text>
               )}
+              {/*
+                ENG-858 / ENG-1042 — import source-card disclaimer. The card is
+                shown only for imported (non-first-party) recipes, so the
+                body-neutral legal line lives at the foot of it: facts extracted
+                + nutrition estimated by Suppr, no affiliation/endorsement.
+                Wording is the single shared constant (legal-approved); see
+                `src/lib/recipes/importSourceDisclaimer.ts`. Parity with web
+                `RecipeDetail.tsx` (recipe-import-disclaimer).
+              */}
+              {isImportedRecipe({ sourceUrl: recipe.source_url, sourceName: recipe.source_name }) ? (
+                <Text
+                  style={styles.sourceDisclaimer}
+                  accessibilityRole="text"
+                  testID="recipe-import-disclaimer"
+                >
+                  {importSourceDisclaimer(recipe.source_name)}
+                </Text>
+              ) : null}
             </View>
           ) : null}
         </View>

@@ -1,7 +1,13 @@
 # Recipe-import legal posture — hardening + creator-claim rules (2026-06-03)
 
-**Status:** Decided (legal-reviewer, 8/10) — APPROVE-with-required-changes. Part 1 has a LIVE P0.
-**Linear:** initiative "Recipe import, AI imagery & creators" → project "Import posture & legal" (ENG-857/858/859/860).
+**Status:** Decided (legal-reviewer, 8/10) — APPROVE-with-required-changes. Part 1 P0 + disclaimer + SSRF **SHIPPED 2026-06-11** (Gate-0 hardening, audit P0-2 / P1-2 / P1-7). ENG-859 (DMCA agent) remains open — incorporation-dependent, Grace-owned.
+**Linear:** initiative "Recipe import, AI imagery & creators" → project "Import posture & legal" (ENG-857/858/859/860 + ENG-1037/1042).
+
+## Shipped state (2026-06-11)
+- **ENG-857 (P0) — DONE.** Web/blog + social-website-fallback import branches null `description` at the route boundary (`app/api/recipe-import/route.ts`): the web-scrape branch spreads `...parsed` then overrides `description: null` (override sits AFTER the spread so it wins); the social-website-fallback branch sets `description: null` directly. `parsed.description` is still passed to `extractCaptionNutrition` for the macro-sanity check ONLY (server-side; never persisted/rendered). The social-caption + caption-text + image routes already returned `description: null`. Neither persist layer (`apps/mobile/lib/saveImportedRecipe.ts`, web editor form in `RecipeUpload.tsx`) can now receive creator prose for an import. First-party authoring (create-recipe screen) keeps its own description. Test: `tests/integration/recipeImportDescriptionNull.test.ts`.
+- **ENG-858 / ENG-1042 (disclaimer) — DONE.** The legal-approved disclaimer (wording below) is a single shared constant `src/lib/recipes/importSourceDisclaimer.ts` (`isImportedRecipe` gate + `importSourceDisclaimer(sourceName)` builder), rendered on both detail surfaces (`src/app/components/RecipeDetail.tsx` + `apps/mobile/app/recipe/[id].tsx`, testID `recipe-import-disclaimer`), gated on `isImportedRecipe` so first-party recipes never show it. Tests: `tests/unit/importSourceDisclaimer.test.ts`, `apps/mobile/tests/unit/recipeSourceCardParity.test.ts`.
+- **ENG-1037 (SSRF) — DONE.** Every import fetch on a user-supplied/derived URL routes through `followWithSsrfGuard` (per-hop allowlist + DNS re-resolve): caption-link Tier-4 fallback, social-meta UA loop, social image fetch, and the main hop loop (the loop previously re-checked the redirect string per hop but never the resolved IP — DNS-rebinding TOCTOU now closed). The oEmbed fetches hit hard-coded trusted hosts (instagram/tiktok/youtube) with the user URL only as a query param — not an SSRF vector (documented in-code). CI grep guard: `tests/unit/recipeImportSsrfGuardCallsites.test.ts`.
+- **ENG-859 (DMCA agent) — OPEN.** §512(c) safe harbour still not effective until filed; incorporation-dependent. Owner: Grace.
 **Cross-link:** `docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md`, `docs/research/2026-06-03-recipe-import-competitive-posture.md`, `docs/decisions/2026-06-03-creator-content-model-two-plane.md`.
 
 ## The legal basis (why importing is OK)

@@ -69,6 +69,41 @@ function apiBase(): string {
   return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
+/**
+ * ENG-1038 — resolved locale appended to vendor-search URLs so the
+ * server-side cache partitions hits by region (FatSecret is a US-only
+ * dataset; bucketing keeps the cache from cross-serving US ↔ non-US rows).
+ * Hermes supports `Intl` from SDK 53; guard for safety and return "" when
+ * unavailable so the URL stays well-formed.
+ */
+function localeQueryParam(): string {
+  try {
+    const loc = Intl.DateTimeFormat().resolvedOptions().locale;
+    return loc ? `&locale=${encodeURIComponent(loc)}` : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * ENG-1038 — keyed vendors that share an account-wide quota and can be
+ * skipped when exhausted. OFF is excluded: it's free, keyless, and called
+ * directly from the client (not via a Suppr route), so it has no shared
+ * ceiling to guard. Kept as a local type so this RN module never imports the
+ * server-only `vendorSearchCache.ts` (which pulls in `@upstash/redis`).
+ */
+export type VendorId = "usda" | "edamam" | "fatsecret";
+
+/**
+ * ENG-1038 — a route returns `degraded: true` when a vendor's account-wide
+ * quota is exhausted and it was SKIPPED (not a genuine empty). The food
+ * search clients propagate this so the UI can show an honest "showing saved
+ * results" notice rather than a silent blank.
+ */
+function responseIsDegraded(json: unknown): boolean {
+  return Boolean(json && typeof json === "object" && (json as { degraded?: unknown }).degraded === true);
+}
+
 export type MacrosPer100g = {
   calories: number;
   protein: number;
@@ -450,7 +485,10 @@ export async function fetchIngredientsForVerification(
 /** Search USDA foods via the Next.js API. `page` is 1-indexed and
  *  forwarded as `pageNumber`. TestFlight F-10
  *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
-export async function searchUsda(query: string, opts?: { page?: number }): Promise<FoodSearchResult[]> {
+export async function searchUsda(
+  query: string,
+  opts?: { page?: number; onDegraded?: () => void },
+): Promise<FoodSearchResult[]> {
   const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
   if (!base || !q.trim()) return [];
@@ -460,11 +498,12 @@ export async function searchUsda(query: string, opts?: { page?: number }): Promi
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 15000);
     const res = await authedFetch(
-      `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}`,
+      `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
     const json = await res.json();
+    if (responseIsDegraded(json)) opts?.onDegraded?.();
     // 2026-05-06 (Grace) — surface why a search returned empty so
     // TestFlight / sim logs show the actual failure mode (env var,
     // OAuth, rate-limit, etc.) instead of silently disappearing.
@@ -779,7 +818,7 @@ export type EdamamSearchResult = {
  */
 export async function searchEdamam(
   query: string,
-  opts?: { mode?: "foods" | "meals"; page?: number },
+  opts?: { mode?: "foods" | "meals"; page?: number; onDegraded?: () => void },
 ): Promise<EdamamSearchResult[]> {
   const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
@@ -793,11 +832,12 @@ export async function searchEdamam(
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await authedFetch(
-      `${base}/api/edamam/search?q=${encodeURIComponent(q.trim())}&mode=${mode}&page=${page}`,
+      `${base}/api/edamam/search?q=${encodeURIComponent(q.trim())}&mode=${mode}&page=${page}${localeQueryParam()}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
     const json = await res.json();
+    if (responseIsDegraded(json)) opts?.onDegraded?.();
     // 2026-05-06 (Grace) — surface why a search returned empty.
     if (!json.ok || !Array.isArray(json.hits)) {
       const errCode = typeof json?.error === "string" ? json.error : "unknown";
@@ -870,7 +910,7 @@ export type FatSecretSearchResult = {
  */
 export async function searchFatSecret(
   query: string,
-  opts?: { page?: number },
+  opts?: { page?: number; onDegraded?: () => void },
 ): Promise<FatSecretSearchResult[]> {
   const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
@@ -880,11 +920,12 @@ export async function searchFatSecret(
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await authedFetch(
-      `${base}/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}`,
+      `${base}/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
     const json = await res.json();
+    if (responseIsDegraded(json)) opts?.onDegraded?.();
     // 2026-05-06 (Grace) — production smoke test showed no FatSecret
     // hits surfacing in the merge. Was: silently returned [] on any
     // non-ok shape, so the cause (server_misconfigured / OAuth
@@ -937,7 +978,19 @@ export async function searchFatSecret(
 export async function searchFoods(
   query: string,
   onPartial?: (results: UnifiedSearchResult[]) => void,
-  opts?: { page?: number; limit?: number },
+  opts?: {
+    page?: number;
+    limit?: number;
+    /**
+     * ENG-1038 — called once when ≥1 keyed vendor (USDA / Edamam /
+     * FatSecret) was skipped because its account-wide quota was exhausted.
+     * The UI uses this to show an honest "showing saved results" notice
+     * rather than a silent blank. OFF (free, direct) is not gated, so when
+     * it has hits the search is still useful — the notice is advisory, not
+     * an error.
+     */
+    onDegraded?: (info: { sources: VendorId[] }) => void;
+  },
 ): Promise<UnifiedSearchResult[]> {
   const t = query.trim();
   if (!t) return [];
@@ -945,6 +998,11 @@ export async function searchFoods(
   if (!qRank.trim()) return [];
   const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
   const limit = opts?.limit && opts.limit > 0 ? Math.floor(opts.limit) : 24;
+
+  // ENG-1038 — collect which keyed vendors were skipped for quota so we can
+  // emit a single degraded notice after the fan-out resolves.
+  const degradedSources = new Set<VendorId>();
+  const noteDegraded = (v: VendorId) => () => degradedSources.add(v);
 
   // F-73 (2026-04-27) — generic-beverages preempt USDA Branded for known
   // coffee-drink queries ("cortado" returning Spanish cheese was the
@@ -961,10 +1019,10 @@ export async function searchFoods(
   const genericBeverage = matchGenericBeverage(t);
   const genericFood = genericBeverage ? null : matchGenericFood(t);
 
-  const usdaP = searchUsda(t, { page });
+  const usdaP = searchUsda(t, { page, onDegraded: noteDegraded("usda") });
   const offP = searchOpenFoodFacts(t, { page });
-  const edamamP = searchEdamam(t, { page });
-  const fatsecretP = searchFatSecret(t, { page });
+  const edamamP = searchEdamam(t, { page, onDegraded: noteDegraded("edamam") });
+  const fatsecretP = searchFatSecret(t, { page, onDegraded: noteDegraded("fatsecret") });
 
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
@@ -1032,6 +1090,13 @@ export async function searchFoods(
   console.log(
     `[searchFoods] q="${t}" page=${page} hits — usda=${usda.length} off=${off.length} edamam=${eda.length} fatsecret=${fs.length}`,
   );
+
+  // ENG-1038 — if any keyed vendor was skipped for quota, tell the UI so it
+  // can render an honest "showing saved results" notice. Fired once, after
+  // the fan-out resolves, with the set of degraded sources.
+  if (degradedSources.size > 0 && opts?.onDegraded) {
+    opts.onDegraded({ sources: [...degradedSources] });
+  }
 
   return [...genericRows, ...mergeResults(qRank, usda, off, eda, fs, limit - genericRows.length)];
 }

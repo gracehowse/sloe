@@ -63,6 +63,12 @@ export interface RecipeCard {
    * 2026-04-18). Parity with mobile `RecipeCard.sourceUrl`.
    */
   sourceUrl?: string | null;
+  /**
+   * Human attribution for an imported recipe (creator handle / site name).
+   * Parity with mobile `recipe.source_name`. Used by the import source-card
+   * disclaimer (ENG-858) to name the non-endorsement clause.
+   */
+  sourceName?: string | null;
   /** Human-readable prep time (e.g. "15 min"). */
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */

@@ -25,6 +25,7 @@ import {
   isSeedRecipeId,
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
+import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { fetchIngredientImages } from "../../lib/recipe/ingredientImages.ts";
 import { enqueueIngredientImages } from "../../lib/recipe/enqueueIngredientImages.ts";
@@ -1633,6 +1634,28 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       </a>
                     </>
                   ) : null}
+                </p>
+              ) : null}
+              {/*
+                ENG-858 / ENG-1042 — import source-card disclaimer. Imported
+                (non-first-party) recipes must carry the body-neutral legal
+                line: facts extracted + nutrition estimated by Suppr, no
+                affiliation/endorsement. Gated on a persisted source (url or
+                name) and never shown on catalog/first-party recipes. Wording
+                is the single shared constant (legal-approved); see
+                `src/lib/recipes/importSourceDisclaimer.ts`.
+              */}
+              {!isCatalogRecipe &&
+              isImportedRecipe({
+                sourceUrl: recipe.sourceUrl,
+                sourceName: recipe.sourceName ?? bylineLabel,
+              }) ? (
+                <p
+                  className="text-[11px] leading-snug text-muted-foreground"
+                  role="note"
+                  data-testid="recipe-import-disclaimer"
+                >
+                  {importSourceDisclaimer(recipe.sourceName ?? bylineLabel)}
                 </p>
               ) : null}
               {verdict && verdictChip ? (

@@ -13,6 +13,7 @@
 
 import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
+import { followWithSsrfGuard } from "./ssrfGuard";
 import { callAiText, callAiVision, type AiCallResult } from "../server/aiProvider";
 import {
   buildStructuredRecipePrompt,
@@ -55,6 +56,10 @@ export interface SocialPostMeta {
  * Falls back to null so callers can use og:image instead.
  */
 async function fetchInstagramOembed(postUrl: string): Promise<{ thumbnailUrl: string | null; authorName: string | null }> {
+  // ENG-1037 (SSRF): the oEmbed `endpoint` host is HARD-CODED to
+  // instagram.com — the attacker-controlled `postUrl` is only a
+  // URL-encoded query parameter, never the fetch target. So this is not an
+  // SSRF vector and does not need the redirect guard (intentional — not a gap).
   const endpoints = [
     `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(postUrl)}`,
   ];
@@ -212,14 +217,21 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   for (const ua of UA_ATTEMPTS) {
     let html: string;
     try {
-      const res = await fetch(url, {
-        redirect: "follow",
+      // ENG-1037 (SSRF): `url` is the user-pasted social URL — never fetch it
+      // with `redirect: "follow"`. A malicious/compromised post host could
+      // 30x-chain into a cloud-metadata or internal host (169.254.169.254,
+      // 127.0.0.1, RFC-1918). `followWithSsrfGuard` follows redirects MANUALLY
+      // and re-validates every hop against the allowlist + a DNS re-resolve
+      // (ENG-682 / ENG-730). Null = a hop hit the blocklist → skip this UA.
+      const fetched = await followWithSsrfGuard(url, {
         headers: {
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
           "User-Agent": ua,
         },
       });
+      if (!fetched) continue;
+      const { res } = fetched;
       const ct = res.headers.get("content-type") ?? "";
       if (!ct.includes("text/html")) continue;
       html = await res.text();
@@ -655,7 +667,13 @@ ${caption.slice(0, 4000)}
       // Anthropic vision wants base64 + media_type, not a URL. Fetch
       // the image first, then pass as a data URL — the helper strips
       // it back into base64 + media_type itself.
-      const imgRes = await fetch(imageUrl).catch(() => null);
+      // ENG-1037 (SSRF): `imageUrl` is derived from the post's og:image /
+      // oEmbed thumbnail — attacker-influenceable. A bare `fetch` defaults to
+      // `redirect: "follow"`, so a crafted image URL could 30x-chain into an
+      // internal/metadata host. Route through the SSRF guard (per-hop allowlist
+      // + DNS re-resolve); a refusal (null) is treated as a failed image fetch.
+      const imgFetched = await followWithSsrfGuard(imageUrl).catch(() => null);
+      const imgRes = imgFetched?.res ?? null;
       if (!imgRes || !imgRes.ok) {
         // Image fetch failed — caller will retry without it.
         return {

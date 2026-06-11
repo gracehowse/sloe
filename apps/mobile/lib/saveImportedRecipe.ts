@@ -160,6 +160,14 @@ export async function saveImportedRecipe(
     .insert({
       author_id: userId,
       title,
+      // ENG-857 (P0, legal): this helper only ever persists IMPORTED recipes
+      // (every call carries a `source_url`). The web/blog + social import
+      // routes now null the creator's verbatim `description` headnote at the
+      // response boundary (protected creative prose — not a fact we may
+      // reproduce), so `recipe.description` arrives null for those paths and
+      // this insert stores null. First-party authoring goes through the
+      // create-recipe screen, not this helper. See
+      // docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md.
       description: recipe.description ?? null,
       instructions,
       image_url: recipe.imageUrl ?? null,
