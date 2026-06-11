@@ -76,6 +76,7 @@
     "maestro:worktree-up": "bash scripts/maestro-worktree-up.sh",
     "e2e:seed:today-snacks": "node --import tsx scripts/e2e-seed-today-snacks.ts",
     "e2e:seed:today-snacks:clean": "node --import tsx scripts/e2e-seed-today-snacks.ts --clean",
+    "seed:persona": "node --import tsx scripts/seed-persona.mts",
     "e2e:today-snacks": "npm run maestro:worktree-up && npm run maestro:reset && npm run e2e:seed:today-snacks && /Users/graceturner/.maestro/bin/maestro test apps/mobile/.maestro/validation/today_snacks_v2.yaml",
     "mobile:sync-ios-brand": "npm run sync-ios-brand --prefix apps/mobile",
     "build:brand-icons": "node scripts/render-sloe-brand-png.mjs && npm run sync-ios-brand --prefix apps/mobile",
