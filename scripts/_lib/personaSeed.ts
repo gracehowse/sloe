@@ -136,8 +136,8 @@ export type DayKind =
   | "empty";
 
 export type PersonaProfile = {
-  goal: "lose" | "maintain" | "gain";
-  activity_level: "sedentary" | "light" | "moderate" | "very" | "extra";
+  goal: "cut" | "maintain" | "bulk"; // DB vocabulary (goalEditorPace.ts:41)
+  activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active"; // tdee.ts ActivityLevel
   sex: "female" | "male";
   age: number;
   height_cm: number;
@@ -232,7 +232,7 @@ export const PERSONAS: Record<PersonaName, PersonaDefinition> = {
     // Dense, complete logging — this cohort logs every meal, every day.
     dayKinds: allFull(21),
     profile: {
-      goal: "lose",
+      goal: "cut",
       activity_level: "moderate",
       sex: "female",
       age: 34,
@@ -300,7 +300,7 @@ export const PERSONAS: Record<PersonaName, PersonaDefinition> = {
     libraryRecipes: 2,
     dayKinds: LAZY_LOGGER_DAY_KINDS,
     profile: {
-      goal: "lose",
+      goal: "cut",
       activity_level: "light",
       sex: "female",
       age: 31,
@@ -327,7 +327,7 @@ export const PERSONAS: Record<PersonaName, PersonaDefinition> = {
     dayKinds: allFull(21),
     profile: {
       goal: "maintain",
-      activity_level: "very",
+      activity_level: "active",
       sex: "male",
       age: 29,
       height_cm: 182,
@@ -352,7 +352,7 @@ export const PERSONAS: Record<PersonaName, PersonaDefinition> = {
     libraryRecipes: 0,
     dayKinds: [],
     profile: {
-      goal: "lose",
+      goal: "cut",
       activity_level: "sedentary",
       sex: "female",
       age: 26,
