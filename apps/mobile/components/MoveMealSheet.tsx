@@ -10,6 +10,7 @@
  * duplicates that logic.
  */
 import { useMemo } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Pressable,
@@ -290,8 +291,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xl,

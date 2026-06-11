@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import {
@@ -38,7 +39,7 @@ import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
 import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Colors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Colors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1340,11 +1341,14 @@ export default function RecipeDetailScreen() {
       color: colors.textSecondary,
     },
 
-    // White slab card on the cream page (description / allergen / notes).
+    // Canonical card shell (2026-06-10 §1/§2: the app converged to recipe
+    // detail's white-on-cream grammar, so the standard tokens now ARE that
+    // grammar — the old `colors.background` fill silently went cream-on-cream
+    // when the ground inverted).
     card: {
-      backgroundColor: cardElevation.liftBg ?? colors.background,
-      borderRadius: 16,
-      borderWidth: 1,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: CARD_RADIUS,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.cardBorder,
       padding: Spacing.xl,
       gap: Spacing.md,
@@ -1353,15 +1357,17 @@ export default function RecipeDetailScreen() {
     descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
     sourceCard: {
-      backgroundColor: cardElevation.liftBg ?? colors.background,
-      borderRadius: 16,
-      borderWidth: 1,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: CARD_RADIUS,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.cardBorder,
       padding: Spacing.xl,
       gap: Spacing.sm,
       ...(cardElevation.shadowStyle ?? {}),
     },
-    sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
+    // headers census 2026-06-10: eyebrow → Type.label (was the app's heaviest +
+    // widest hand-rolled eyebrow at 11/800/ls2).
+    sourceLabel: { ...Type.label, color: colors.textTertiary },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
     sourceNameLink: { color: accent.primary, textDecorationLine: "underline" },
     sourceLinkBtn: {

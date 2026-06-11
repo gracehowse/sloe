@@ -1,5 +1,5 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, MacroColors, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -46,13 +46,8 @@ export function ProgressEnergyTriad({
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
 
-  const eyebrow: TextStyle = {
-    fontSize: 10,
-    fontWeight: "600",
-    color: dim,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  };
+  // headers census 2026-06-10: triad eyebrow → Type.label token.
+  const eyebrow: TextStyle = { ...Type.label, color: dim };
   const value: TextStyle = {
     // 18 (on the ENG-119 type scale), matching the web twin
     // (suppr/progress-energy-triad.tsx text-[18px]). Was off-scale 20.
@@ -69,7 +64,7 @@ export function ProgressEnergyTriad({
         // One-card-treatment soft lift (2026-06-09): each triad cell is its own
         // card sitting directly on the page ground (not nested), so all three
         // take the soft lift like the sibling cards. Mirrors web `elevation="card"`.
-        lift="soft"
+        lift="flat"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
@@ -82,7 +77,7 @@ export function ProgressEnergyTriad({
 
       <SupprCard
         testID="progress-energy-tdee"
-        lift="soft"
+        lift="flat"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
@@ -93,8 +88,10 @@ export function ProgressEnergyTriad({
             ? maintenanceKcal.toLocaleString()
             : "—"}
         </Text>
+        {/* headers census 2026-06-10: 9px sub-label → Type.label (kills the
+            sub-ramp 9px; pill hue kept). */}
         {maintenanceKcal != null && maintenanceKcal > 0 ? (
-          <Text style={{ fontSize: 9, fontWeight: "600", color: sage, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+          <Text style={{ ...Type.label, color: sage, marginTop: 2 }}>
             {isAdaptive ? "Adaptive" : "Formula"}
           </Text>
         ) : null}
@@ -102,7 +99,7 @@ export function ProgressEnergyTriad({
 
       <SupprCard
         testID="progress-energy-deficit"
-        lift="soft"
+        lift="flat"
         padding="none"
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
@@ -128,8 +125,9 @@ export function ProgressEnergyTriad({
                 : `+${Math.abs(deficitKcal).toLocaleString()}`
             : "—"}
         </Text>
+        {/* headers census 2026-06-10: 9px sub-label → Type.label. */}
         {isSurplus ? (
-          <Text style={{ fontSize: 9, fontWeight: "600", color: Accent.warning, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+          <Text style={{ ...Type.label, color: Accent.warning, marginTop: 2 }}>
             Surplus
           </Text>
         ) : null}

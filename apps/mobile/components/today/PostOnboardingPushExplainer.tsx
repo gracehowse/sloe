@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Platform,
@@ -10,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -159,8 +160,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderTopWidth: 1,
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryBtnText: {
-    color: "#fff",
+    color: Colors.light.primaryForeground,
     fontSize: 16,
     fontWeight: "700",
   },

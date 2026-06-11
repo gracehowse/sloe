@@ -35,10 +35,22 @@ export type ProgressCommentaryRegime = "adjustment" | "calibrating" | "steady";
 
 export type ProgressCommentaryConfidence = "low" | "medium" | "high";
 
+/**
+ * The subset of `AdaptiveTdeeResult` the commentary actually reads. Narrowed
+ * to a `Pick` so synthetic callers (e.g. the Progress dashboard, which only
+ * has the persisted `adaptive_tdee` + confidence columns, not the full
+ * compute result) don't have to fabricate the gate/clamp fields they have no
+ * value for. Keeps the commentary decoupled from the estimator's internals.
+ */
+export type ProgressCommentaryTdee = Pick<
+  AdaptiveTdeeResult,
+  "tdee" | "confidence" | "loggingDays"
+>;
+
 export interface ProgressCommentaryInput {
   /** Latest adaptive TDEE result. May be `null` when the engine
    *  has too little data to compute (returns `calibrating` regime). */
-  current: AdaptiveTdeeResult | null;
+  current: ProgressCommentaryTdee | null;
   /** Previous-week TDEE estimate, when known. Used for delta detection. */
   prevWeekTdee?: number | null;
   /** Avg intake on weeks the user lost weight, when known.
@@ -123,7 +135,7 @@ export function generateProgressCommentary(
 }
 
 function calibratingCopy(
-  current: AdaptiveTdeeResult | null,
+  current: ProgressCommentaryTdee | null,
   loggingDays: number,
 ): ProgressCommentaryResult {
   // First-3-days (loggingDays < 3) — Welcome variant per spec §State coverage.

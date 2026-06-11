@@ -59,7 +59,6 @@ import {
   sumMicrosFromLoggedMeals,
 } from "../../lib/nutrition/microNutrientDisplay.ts";
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
-import { type CalorieRingDisplayMode } from "./suppr/daily-ring";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
@@ -774,7 +773,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       }
     }
   }, [protectedStreakLength]);
-  const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
@@ -1535,6 +1533,11 @@ export const NutritionTracker = memo(function NutritionTracker({
           ? "Edamam"
           : selection.source === "FatSecret"
           ? "FatSecret"
+          : selection.source === "history"
+          ? // ENG-1033 — a re-logged "Past logged" item; the macros are the
+            // user's own prior totals, so label it neutrally rather than
+            // misattribute to a database source.
+            "Manual"
           : "USDA FoodData Central";
 
       // Per-serving path (FatSecret no-metric / count servings like
@@ -2307,22 +2310,25 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
         >
       {viewMode === "day" ? (
-        <div className="text-center mb-5 mt-1">
-          <h2
-            data-testid="today-hero-greeting"
-            className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-none tracking-tight text-foreground-brand"
-          >
+        // Fresh-eyes §4 (web parity 2026-06-10, ENG-1022): the centred two-line
+        // serif greeting block spent ~25% of the header viewport on a non-action
+        // moment. Compacted to ONE left-aligned sans context line
+        // (greeting · date) — parity with mobile `today-hero-greeting`
+        // (apps/mobile/app/(tabs)/index.tsx). The ring number is the page's
+        // display moment now, not the greeting.
+        <p data-testid="today-hero-greeting" className="mt-1 text-sm">
+          <span className="font-semibold text-foreground">
             {sloceHeroGreeting.headline}
-          </h2>
+          </span>
           {sloceHeroGreeting.subline ? (
-            <p
+            <span
               data-testid="today-hero-greeting-subline"
-              className="text-[13px] text-foreground-secondary mt-1"
+              className="text-foreground-secondary"
             >
-              {sloceHeroGreeting.subline}
-            </p>
+              {"  ·  " + sloceHeroGreeting.subline}
+            </span>
           ) : null}
-        </div>
+        </p>
       ) : null}
 
       <TodayDateHeader
@@ -2425,13 +2431,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
-        displayMode={ringDisplayMode}
-        onToggleDisplayMode={() => {
-          setRingDisplayMode((m) =>
-            m === "remaining" ? "consumed" : "remaining",
-          );
-          setRingExpanded((e) => !e);
-        }}
         pulse={winPulse}
         isOnTrack={
           totals.calories > 100 &&
@@ -2983,6 +2982,22 @@ export const NutritionTracker = memo(function NutritionTracker({
           fat: totals.fat,
           fiber: totals.fiber,
         }}
+        // History-first search (ENG-1033): the user's logging history,
+        // newest-first, so the typed-query "Past logged" group ranks
+        // matching past logs above database results. HealthKit-import
+        // fallback rows stripped (mobile parity).
+        recentFoods={computeRecentMeals(nutritionByDay, 50)
+          .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+          .map((item) => ({
+            recipeTitle: item.recipeTitle,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            source: item.source,
+            count: item.count,
+          }))}
         onSelect={(selection: FoodSearchSelection) => {
           commitFoodSearchSelection(selection);
           setFoodSearchOpen(false);
@@ -3372,6 +3387,24 @@ export const NutritionTracker = memo(function NutritionTracker({
           },
           supabase,
           userId: authedUserId ?? null,
+          // History-first search (ENG-1033, MFP grammar): the user's logging
+          // history, newest-first, threaded into the inline panel so the
+          // typed-query "Past logged" group ranks matching past logs above
+          // database results. 50-row window + `count` for the recency-
+          // weighted-frequency rank. HealthKit-import fallback rows stripped
+          // (mobile parity).
+          recentFoods: computeRecentMeals(nutritionByDay, 50)
+            .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+            .map((item) => ({
+              recipeTitle: item.recipeTitle,
+              calories: item.calories,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              fiber: item.fiber,
+              source: item.source,
+              count: item.count,
+            })),
           onSelect: (selection) => {
             commitFoodSearchSelection(selection);
             setLogSheetOpen(false);

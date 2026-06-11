@@ -1,20 +1,23 @@
 /**
- * Mobile + web Progress screens — prototype port pins (2026-04-20).
+ * Mobile + web Progress screens — period-control + rhythm pins.
  *
- * Pins the header + range-picker shape that landed when the Progress
- * tab was ported to the Claude Design prototype, plus the skeleton-
- * gate fix that wraps `loadData` / `load` in try/finally so a thrown
- * supabase error can't pin the skeleton indefinitely (Grace's
- * 2026-04-20 testflight screenshot).
+ * ENG-1030 (2026-06-10) replaced the Claude Design prototype's
+ * `[7d, 30d, 90d, All]` relative-window pills with Apple Health's
+ * calendar-anchored range grammar: D / W / M / 6M / Y segments + a
+ * ‹ label › paging row, driven by the shared `progressPeriod.ts`
+ * model so web + mobile compute identical windows and labels.
+ *
+ * This file pins:
+ *  - the period control is wired on BOTH platforms (segments + paging),
+ *  - the old `rangeKey` / `rangeDays` / pill source is GONE,
+ *  - the skeleton mirrors the period control (no load→loaded jump),
+ *  - the one-vertical-rhythm sweep (Spacing.lg seam, no double-stacked
+ *    margins) survived the picker swap,
+ *  - the skeleton-gate try/finally fix that keeps the loading flag from
+ *    pinning the skeleton on a thrown supabase error.
  *
  * These are structural source-grep pins — cheap, survive RNTL / mock
  * drift, and run in plain node.
- *
- * Deferred (flagged in the port summary): the deeper card-level
- * restructure (sparkline weight card, calories bar card, protein bar
- * card matching the prototype's exact bordered-14px-radius shape).
- * The existing cards below the range picker are left in place; this
- * pass only aligns the header + picker + skeleton-gate.
  */
 
 import { describe, expect, it } from "vitest";
@@ -27,58 +30,83 @@ function read(relPath: string): string {
   return readFileSync(resolve(REPO_ROOT, relPath), "utf8");
 }
 
-describe("Progress prototype port — header + range picker", () => {
+describe("Progress period control (ENG-1030) — header + picker + rhythm", () => {
   const mobileSrc = read("apps/mobile/app/(tabs)/progress.tsx");
   const mobileChromeSrc = read("apps/mobile/components/tabs/ProgressTabChrome.tsx");
   const mobileSectionSrc = read("apps/mobile/components/suppr/screen-section-chrome.tsx");
+  const mobilePeriodSrc = read("apps/mobile/components/progress/ProgressPeriodControl.tsx");
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
+  const webPeriodSrc = read("src/app/components/suppr/progress-period-control.tsx");
 
-  it("mobile header omits the range overline (pills + subtitle carry time context)", () => {
-    // Sloe Figma 492:2 retired the `LAST N DAYS` overline entirely — the
-    // 7d/30d/90d/All pills + the calm subtitle carry the range. Default
-    // range is `30d`.
-    expect(mobileSrc).toMatch(/const \[rangeKey, setRangeKey\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    // The retired overline labels must be gone from the rendered source.
+  it("mobile header omits the range overline (the period control carries time context)", () => {
+    // ENG-1030 — the period model defaults to the current week (DEFAULT_PERIOD
+    // = { type: "W", offset: 0 }). The retired `LAST N DAYS` overline stays
+    // gone; the period label ("15–21 Jun") is the time context now.
+    expect(mobileSrc).toMatch(/const \[period, setPeriod\] = useState<ProgressPeriod>\(DEFAULT_PERIOD\)/);
     expect(mobileSrc).not.toContain("LAST 30 DAYS");
     expect(mobileSrc).not.toContain("LAST 7 DAYS");
     expect(mobileSrc).not.toContain("ALL TIME");
-    // The old static "Weekly report" subtitle must be gone.
     expect(mobileSrc).not.toContain("Weekly report");
-    // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
     expect(mobileChromeSrc).toContain("overline={null}");
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
-    // Progress chrome uses compact title sizing (22pt) + the Sloe Newsreader
-    // serif with tuned -0.3 tracking, via ScreenSectionChrome.
-    expect(mobileSectionSrc).toMatch(/fontFamily:\s*"Newsreader_400Regular"/);
-    expect(mobileSectionSrc).toMatch(/fontSize:\s*compact\s*\?\s*22\s*:\s*Layout\.titleSize/);
-    expect(mobileSectionSrc).toMatch(/letterSpacing:\s*compact\s*\?\s*-0\.3\s*:\s*-0\.3/);
+    // headers census 2026-06-10: chrome title on the canonical Type.title token.
+    expect(mobileSectionSrc).toMatch(/title:\s*\{\s*\.\.\.Type\.title,\s*color:\s*colors\.navPrimary\s*\}/);
+    expect(mobileSectionSrc).not.toMatch(/compact\s*\?\s*22/);
+    expect(mobileSectionSrc).not.toContain('"Newsreader_400Regular"');
   });
 
   it("mobile header carries a trailing log-weight control", () => {
-    // Trailing chrome button — `Scale` glyph, test id kept for e2e parity.
     expect(mobileSrc).toMatch(/<Scale\b/);
     expect(mobileSrc).toContain('testID="progress-calendar-button"');
   });
 
-  it("mobile renders [7d, 30d, 90d, All] range-picker pills with test IDs", () => {
-    expect(mobileSrc).toContain('testID="progress-range-picker"');
-    expect(mobileSrc).toContain('testID={`progress-range-pill-${k}`}');
-    // The pill list maps over the full 4-range tuple.
-    expect(mobileSrc).toMatch(/\["7d", "30d", "90d", "all"\] as const\)\.map/);
-    // Pressing a pill calls setRangeKey(k) — may be inline or inside
-    // a multi-line handler that also fires a haptic.
-    expect(mobileSrc).toContain("setRangeKey(k)");
+  it("mobile renders the ProgressPeriodControl (D/W/M/6M/Y + paging), not the old pills", () => {
+    // The live picker is the shared period control, fed the period state +
+    // the user's weekStart, paging via setPeriod.
+    expect(mobileSrc).toContain("<ProgressPeriodControl");
+    expect(mobileSrc).toMatch(/period=\{period\}/);
+    expect(mobileSrc).toMatch(/weekStart=\{weekStartDay\}/);
+    expect(mobileSrc).toMatch(/onChange=\{setPeriod\}/);
+    // The old relative-range model is fully gone from the rendered source.
+    expect(mobileSrc).not.toContain('testID={`progress-range-pill-${k}`}');
+    expect(mobileSrc).not.toContain("setRangeKey");
+    expect(mobileSrc).not.toMatch(/\["7d", "30d", "90d", "all"\] as const\)\.map/);
+  });
+
+  it("mobile period control is the §8 segmented rail + ‹ label › pager", () => {
+    // Two stacked rows: a tablist segmented control on the inputBg rail, and a
+    // paging row with prev/label/next. Forward chevron disabled at the present.
+    expect(mobilePeriodSrc).toContain('accessibilityRole="tablist"');
+    expect(mobilePeriodSrc).toContain('testID="progress-period-segments"');
+    expect(mobilePeriodSrc).toContain("testID={`progress-period-segment-${type}`}");
+    expect(mobilePeriodSrc).toContain('testID="progress-period-prev"');
+    expect(mobilePeriodSrc).toContain('testID="progress-period-next"');
+    expect(mobilePeriodSrc).toContain('testID="progress-period-label"');
+    // Active segment elevates onto the card; rail is the inputBg §8 track.
+    expect(mobilePeriodSrc).toMatch(/backgroundColor: colors\.inputBg/);
+    expect(mobilePeriodSrc).toMatch(/backgroundColor: colors\.card/);
+    // Forward paging is clamped at the current period (no future).
+    expect(mobilePeriodSrc).toMatch(/disabled=\{atCurrent\}/);
+  });
+
+  it("mobile drives every range stat off the period window (shared *ForWindow helpers)", () => {
+    // The period resolves to an inclusive window + chart anchor + label, and
+    // the weight/calorie/macro stats read the window variants (no rangeKey).
+    expect(mobileSrc).toMatch(/periodWindow\(period, weekStartDay/);
+    expect(mobileSrc).toMatch(/periodLabel\(period, weekStartDay/);
+    expect(mobileSrc).toMatch(/periodChartAnchorISO\(period, weekStartDay/);
+    expect(mobileSrc).toMatch(/progressPeriodToWeightRange\(period\.type\)/);
+    expect(mobileSrc).toContain("buildWeightRangeStatsForWindow(weightKgByDay, periodWin)");
+    expect(mobileSrc).toMatch(/buildCaloriesRangeStatsForWindow\(byDay as any, targets\.calories, periodWin\)/);
+    expect(mobileSrc).toMatch(/buildMacroAdherenceRangeStatsForWindow\(/);
+    // The chart remounts on the period (type + offset), not the old rangeKey.
+    expect(mobileSrc).toMatch(/key=\{`\$\{period\.type\}:\$\{period\.offset\}`\}/);
   });
 
   it("mobile skeleton-gate fix — loadData wraps fetch+hydrate in try/finally", () => {
-    // Try block opens right after the early-return + setLoading(true).
     expect(mobileSrc).toMatch(/setLoading\(true\);[\s\S]*?try \{/);
-    // Finally backstop flips loading regardless of sad-path throws.
     expect(mobileSrc).toMatch(/\} finally \{\s*setLoading\(false\);\s*\}/);
-    // Happy-path setLoading(false) is still before the deferred fetch
-    // so the H-4 first-paint order pin in `progressSkeletonSource.test.ts`
-    // keeps passing.
     const happyPathIdx = mobileSrc.indexOf("setLoading(false)");
     const deferredIdx = mobileSrc.indexOf("void getDailyTargets(supabase, userId, weekKeys)");
     expect(happyPathIdx).toBeGreaterThan(-1);
@@ -86,46 +114,62 @@ describe("Progress prototype port — header + range picker", () => {
     expect(happyPathIdx).toBeLessThan(deferredIdx);
   });
 
+  it("mobile skeleton mirrors the period control (segments + ‹ label › row), no rangeKey pills", () => {
+    // The load-state picker must render the same §8 segmented rail + paging
+    // placeholder so loading → loaded has no jump. It must NOT render the old
+    // 7d/30d/90d pill tuple.
+    expect(mobileSrc).toContain('testID="progress-range-picker-skeleton"');
+    expect(mobileSrc).toMatch(/testID="progress-range-picker-skeleton"[\s\S]*?PERIOD_TYPES\.map/);
+    expect(mobileSrc).not.toMatch(
+      /testID="progress-range-picker-skeleton"[\s\S]*?\["7d", "30d", "90d", "all"\]/,
+    );
+  });
+
   it("web header shows the calm subtitle, not the retired range overline", () => {
-    expect(webSrc).toMatch(/const \[range, setRange\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
-    // Sloe Figma 492:2 retired the `LAST N DAYS` overline — only a stray
-    // mention may survive in a code comment, never the rendered labels.
+    expect(webSrc).toMatch(/const \[period, setPeriod\] = useState<ProgressPeriod>\(DEFAULT_PERIOD\)/);
     expect(webSrc).not.toContain("LAST 7 DAYS");
     expect(webSrc).not.toContain("LAST 90 DAYS");
     expect(webSrc).not.toContain("ALL TIME");
     expect(webSrc).not.toContain("Weekly report");
-    // The chrome renders the calm subtitle slot (`progress-subtitle`).
     expect(webChromeSrc).toContain('data-testid="progress-subtitle"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
-    // Sloe Figma 492:2 redesign sized the serif "Progress" title at 28px
-    // (the calm subtitle replaced the uppercase range overline). Web/mobile
-    // Progress header-size + subtitle parity tracked in ENG-985.
     expect(webChromeSrc).toMatch(/text-\[28px\]/);
     expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
   });
 
   it("web header carries a calendar icon button", () => {
-    // Uses the new `Icons.calendar` alias (CalendarDays lucide glyph),
-    // the shared equivalent of the mobile `calendar-outline` Ionicon.
     expect(webSrc).toContain("Icons.calendar");
     expect(webSrc).toContain('data-testid="progress-calendar-button"');
   });
 
-  it("web renders [7d, 30d, 90d, All] range-picker pills with test IDs", () => {
-    expect(webSrc).toContain('data-testid="progress-range-picker"');
-    expect(webSrc).toContain('data-testid={`progress-range-pill-${k}`}');
-    expect(webSrc).toMatch(/\["7d", "30d", "90d", "all"\] as const\)\.map/);
-    // Clicking a pill updates `range`.
-    expect(webSrc).toContain("onClick={() => setRange(k)}");
+  it("web renders the ProgressPeriodControl (mobile parity), not the old pills", () => {
+    expect(webSrc).toContain("<ProgressPeriodControl");
+    expect(webSrc).toMatch(/period=\{period\}/);
+    expect(webSrc).toMatch(/weekStart=\{weekStartDay\}/);
+    expect(webSrc).toMatch(/onChange=\{setPeriod\}/);
+    // The old relative-range pills + arithmetic are gone.
+    expect(webSrc).not.toContain('data-testid={`progress-range-pill-${k}`}');
+    expect(webSrc).not.toContain("onClick={() => setRange(k)}");
+    expect(webSrc).not.toMatch(/const rangeDays = range === "7d"/);
+  });
+
+  it("web period control mirrors the mobile segments + paging + a11y", () => {
+    expect(webPeriodSrc).toContain('role="tablist"');
+    expect(webPeriodSrc).toContain('data-testid="progress-period-segments"');
+    expect(webPeriodSrc).toContain("data-testid={`progress-period-segment-${type}`}");
+    expect(webPeriodSrc).toContain('data-testid="progress-period-prev"');
+    expect(webPeriodSrc).toContain('data-testid="progress-period-next"');
+    expect(webPeriodSrc).toContain('data-testid="progress-period-label"');
+    // Selected segment in the chip grammar; forward chevron disabled at present.
+    expect(webPeriodSrc).toContain("bg-primary-soft text-primary-solid font-semibold");
+    expect(webPeriodSrc).toMatch(/disabled=\{atCurrent\}/);
+    // Keyboard arrow movement on the tablist (a11y parity with mobile).
+    expect(webPeriodSrc).toMatch(/ArrowLeft|ArrowRight/);
   });
 
   it("web skeleton-gate fix — load wraps fetch+hydrate in try/finally", () => {
-    // Try block opens inside the callback.
     expect(webSrc).toMatch(/setLoading\(true\);[\s\S]*?try \{/);
-    // Finally backstop flips loading regardless of thrown errors.
     expect(webSrc).toMatch(/\} finally \{\s*setLoading\(false\);\s*\}/);
-    // The happy-path `setLoading(false)` remains before the deferred
-    // daily-targets fetch — the H-4 perf pin's ordering keeps holding.
     const happyPathIdx = webSrc.indexOf("setLoading(false)");
     const deferredIdx = webSrc.indexOf(
       "void getDailyTargets(supabase, authedUserId, weekKeys)",
@@ -135,60 +179,41 @@ describe("Progress prototype port — header + range picker", () => {
     expect(happyPathIdx).toBeLessThan(deferredIdx);
   });
 
-  it("web skeleton uses the prototype header (no 'Loading progress…' line)", () => {
-    // Pinned text is gone from the rendered tree — the loading branch
-    // now renders the prototype header + 2x2 tile skeleton and the
-    // Suspense fallback mirrors the same chrome. Remaining matches
-    // only appear inside the code-comment trail explaining the
-    // regression, so we pin the absence of the rendered string rather
-    // than every mention.
+  it("web skeleton mirrors the period control (segments + ‹ label › row), no rangeKey pills", () => {
     expect(webSrc).not.toMatch(/>Loading progress…</);
     expect(webSrc).toContain('data-testid="progress-loading-skeleton"');
     expect(webSrc).toContain('data-testid="progress-suspense-fallback"');
-    // Stat-tile placeholders mirror mobile's four testIDs.
+    // The skeleton picker maps the period segments (not the old pill tuple).
+    expect(webSrc).toMatch(/PERIOD_TYPES\.map\(\(seg\)/);
     expect(webSrc).toContain("progress-skeleton-tile-");
     expect(webSrc).toMatch(/\[0, 1, 2, 3\]\.map/);
   });
 
-  it("mobile range picker is the Sloe aubergine soft-tint pill rail (web parity)", () => {
-    // 2026-06-08 Sloe treatment system (docs/prototypes/sloe-component-
-    // treatments.html §7): the selected range pill moved off the solid plum
-    // fill onto the aubergine SOFT-TINT — `accent.primarySoft` fill +
-    // `accent.primarySolid` border/label — rationing the accent (the solid
-    // fill is reserved for the FAB + conversion CTAs). The old inset
-    // segmented-control container stays gone.
-    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?style=\{\{ flexDirection: "row", gap: (?:6|Spacing\.sm) \}\}/);
-    expect(mobileSrc).not.toMatch(/testID="progress-range-picker"[\s\S]*?borderRadius: 10,\s*\n\s*padding: 4,/);
-    // Active pill = soft-tint fill + primarySolid border/label; inactive =
-    // bordered cream pill. `t.accentSoft` / `t.accentSolid` thread the tokens.
-    expect(mobileSrc).toMatch(/backgroundColor: active \? t\.accentSoft : t\.elevated/);
-    expect(mobileSrc).toMatch(/borderColor: active \? t\.accentSolid : t\.border/);
-    expect(mobileSrc).toMatch(/color: active \? t\.accentSolid : t\.sub/);
-    // The treatment tokens resolve from the aubergine accent.
-    expect(mobileSrc).toMatch(/accentSolid: accent\.primarySolid/);
-    expect(mobileSrc).toMatch(/accentSoft: accent\.primarySoft/);
-    // The solid-plum range-pill fill is gone.
-    expect(mobileSrc).not.toMatch(/backgroundColor: active \? t\.plum : t\.elevated/);
+  it("mobile picker→THIS WEEK seam is on the page rhythm (Spacing.lg), not a cramped abut", () => {
+    // Rhythm sweep 2026-06-10: the heroEntrance wrapper holds the period
+    // control AND the THIS WEEK card. It MUST carry gap: Spacing.lg so the
+    // picker→card seam matches the 20pt rhythm of every other inter-card gap
+    // (the scroll container + the charts/details wrappers all use Spacing.lg).
+    expect(mobileSrc).toMatch(
+      /<ReAnimated\.View style=\{\[heroEntrance\.style,\s*\{ gap: Spacing\.lg \}\]\}>/,
+    );
+    expect(mobileSrc).toMatch(/chartsEntrance\.style,\s*\{ gap: Spacing\.lg \}/);
+    expect(mobileSrc).toMatch(/detailsEntrance\.style,\s*\{ gap: Spacing\.lg \}/);
+    // The scroll container owns the same 20pt rhythm between top-level blocks.
+    expect(mobileSrc).toMatch(/gap: Spacing\.lg,\s*\/\/ 20px/);
   });
 
-  it("web range picker uses aubergine soft-tint active pills (mobile parity)", () => {
-    // 2026-06-08 Sloe treatment system §7: the web picker matches mobile —
-    // active range = aubergine soft-tint (`bg-primary/10`) + primarySolid
-    // border/label, inactive = bordered cream pill. The solid-plum
-    // `bg-foreground-brand` active fill is gone (web↔mobile parity preserved).
-    expect(webSrc).toMatch(/data-testid="progress-range-picker"/);
-    expect(webSrc).toContain("bg-primary/10 border-primary-solid text-primary-solid");
-    expect(webSrc).toMatch(/bg-card border-border text-muted-foreground/);
-    // Neither the old plum fill nor the old primary-fill chip styling.
-    expect(webSrc).not.toContain("bg-foreground-brand text-white");
-    expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);
-  });
-
-  it("web rangeDays still maps correctly for the new 4-pill layout", () => {
-    // `rangeDays` feeds the weight + steps chart windows below the
-    // picker. All-time stays at the existing 9999-day sentinel.
-    expect(webSrc).toMatch(
-      /const rangeDays = range === "7d" \? 7 : range === "30d" \? 30 : range === "90d" \? 90 : 9999/,
+  it("mobile rows don't double-stack margin + container gap", () => {
+    // Rhythm sweep 2026-06-10: the skeleton ScrollView + the heroEntrance
+    // wrapper already own the 20pt rhythm via gap: Spacing.lg. The skeleton
+    // picker, the skeleton tile grid, and the WeightTrendOnlyCard must NOT
+    // also carry a marginBottom — that double-stacked to 36pt (gap 20 +
+    // margin 16) and made the load state jump vs the live layout.
+    expect(mobileSrc).not.toMatch(
+      /testID="progress-range-picker-skeleton"[\s\S]{0,400}?marginBottom: Spacing\.md/,
+    );
+    expect(mobileSrc).not.toMatch(
+      /testID="progress-weight-trend-only-card"[\s\S]*?marginBottom: Spacing\.md/,
     );
   });
 });

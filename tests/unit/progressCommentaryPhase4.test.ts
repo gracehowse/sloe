@@ -10,18 +10,16 @@ import { describe, expect, it } from "vitest";
 import {
   generateProgressCommentary,
   splitBodyIntoSegments,
+  type ProgressCommentaryTdee,
 } from "../../src/lib/nutrition/progressCommentary";
-import type { AdaptiveTdeeResult } from "../../src/lib/nutrition/adaptiveTdee";
 
-function tdee(overrides: Partial<AdaptiveTdeeResult> = {}): AdaptiveTdeeResult {
+function tdee(
+  overrides: Partial<ProgressCommentaryTdee> = {},
+): ProgressCommentaryTdee {
   return {
     tdee: 2100,
     confidence: "medium",
     loggingDays: 21,
-    weighInCount: 6,
-    avgDailyIntake: 1900,
-    smoothedWeightChangeKgPerDay: -0.025,
-    windowDays: 28,
     ...overrides,
   };
 }

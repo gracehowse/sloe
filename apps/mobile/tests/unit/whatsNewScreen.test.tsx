@@ -185,41 +185,30 @@ describe("WhatsNewScreen (mobile) — F-0 'What's new' surface", () => {
     }
   });
 
-  it("installs a 'Done' button in the native header that pops via useSafeBack", () => {
-    setOptionsSpy.mockClear();
+  it("renders a 'Done' button that pops via useSafeBack", () => {
+    // Re-pinned: headers census 2026-06-10. The screen moved off the native
+    // stack header (centred system-font title + `setOptions` headerRight) onto
+    // the canonical PushScreenHeader. The "Done" dismissal survives as the
+    // header's `rightSlot`. We now assert the rendered button + its press
+    // behaviour directly instead of inspecting native `setOptions`.
     backSpy.mockClear();
     canGoBackSpy.mockReturnValue(true);
 
-    render(<WhatsNewScreen />);
-    // The screen calls setOptions at least once with a title and a
-    // headerRight factory.
-    expect(setOptionsSpy).toHaveBeenCalled();
-    const lastCall = setOptionsSpy.mock.calls[setOptionsSpy.mock.calls.length - 1];
-    const opts = lastCall[0] as {
-      title?: string;
-      headerTitleStyle?: object;
-      headerRight?: () => React.ReactElement;
-    };
-    expect(opts.title).toBe("What's new");
-    expect(typeof opts.headerRight).toBe("function");
-
-    // Render the headerRight in isolation and tap it — it must call
-    // the navigation's `back` (the stack is not empty in this test).
-    const { getByLabelText } = render(opts.headerRight!());
+    const { getByLabelText } = render(<WhatsNewScreen />);
     fireEvent.press(getByLabelText("Done"));
     expect(backSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("installs a serif headerTitleStyle (Newsreader) in setOptions (gap 2 — typography)", () => {
-    setOptionsSpy.mockClear();
-    render(<WhatsNewScreen />);
-
-    const lastCall = setOptionsSpy.mock.calls[setOptionsSpy.mock.calls.length - 1];
-    const opts = lastCall[0] as { headerTitleStyle?: { fontFamily?: string } };
-    // The nav bar title must use a Newsreader weight family — not the
-    // system sans default. This ensures the editorial register on the
-    // native header.
-    expect(opts.headerTitleStyle).toBeDefined();
-    expect(opts.headerTitleStyle?.fontFamily).toMatch(/Newsreader/);
+  it("renders a serif Newsreader nav title (gap 2 — typography)", () => {
+    // Re-pinned: headers census 2026-06-10. The title now renders via
+    // PushScreenHeader using `Type.navTitle` (Newsreader serif 18/22) instead of
+    // a native `headerTitleStyle`. Assert the rendered title text carries a
+    // Newsreader family in its resolved style.
+    const { getByText } = render(<WhatsNewScreen />);
+    const titleEl = getByText("What's new");
+    const flat = Array.isArray(titleEl.props.style)
+      ? Object.assign({}, ...titleEl.props.style.flat(Infinity))
+      : titleEl.props.style;
+    expect(String(flat?.fontFamily ?? "")).toMatch(/Newsreader/);
   });
 });

@@ -115,7 +115,7 @@ export default function MacroDetailScreen() {
             accessibilityLabel="Breakdown mode"
             style={{
               flexDirection: "row",
-              padding: Spacing.xs,
+              padding: 2, // §8 track padding (chips census 2026-06-10)
               backgroundColor: colors.inputBg,
               borderRadius: Radius.full,
               marginBottom: Spacing.md,

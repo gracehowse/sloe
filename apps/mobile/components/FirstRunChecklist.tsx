@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 
 const STORAGE_KEY = "suppr-checklist-dismissed";
 
@@ -19,7 +20,7 @@ type Props = {
 
 export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, onGoDiscover, onGoPlanner, onGoTracker }: Props) {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  const cardElevation = useCardElevation({ variant: "soft" });
   const [dismissed, setDismissed] = useState(true); // Hidden by default until loaded
 
   useEffect(() => {
@@ -44,8 +45,8 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
-      backgroundColor: cardElevation.liftBg ?? colors.card, borderRadius: Radius.lg,
-      borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: Accent.success + "30",
+      backgroundColor: cardElevation.liftBg ?? colors.card, borderRadius: CARD_RADIUS,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0, borderColor: Accent.success + "30",
       padding: Spacing.lg, gap: Spacing.md,
       ...(cardElevation.shadowStyle ?? {}),
     },

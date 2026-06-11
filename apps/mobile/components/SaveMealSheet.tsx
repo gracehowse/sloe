@@ -16,6 +16,7 @@
  *  - Up/down/remove buttons have per-item accessibility labels
  */
 import { useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -42,6 +43,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
@@ -144,8 +146,8 @@ export default function SaveMealSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
               maxHeight: "85%",
@@ -432,7 +434,7 @@ export default function SaveMealSheet({
                 accessibilityLabel="Save usual meal"
                 accessibilityState={{ disabled: !canSave }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
                   {saving ? "Saving…" : "Save"}
                 </Text>
               </Pressable>

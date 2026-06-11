@@ -226,14 +226,98 @@ const HEALTH_KIT_NUTRITION_WRITE = [
  */
 const HEALTH_KIT_DIETARY_INIT_READ: readonly string[] = [...HEALTH_DIETARY_CORE_PERMISSION_KEYS];
 
-/** Serialize native HealthKit calls — concurrent probe + initHealthKit has crashed on device. */
-let healthKitOpChain: Promise<unknown> = Promise.resolve();
+/**
+ * GLOBAL HEALTHKIT CALL MUTEX (ENG-1019, 2026-06-10)
+ *
+ * Every native `react-native-health` invocation in the app flows through this
+ * single promise-chain queue so **only one HealthKit bridge call is ever in
+ * flight at a time, app-wide**. The native bridge has crashed on device when a
+ * probe + `initHealthKit` (or any two reads) overlap on iOS 26+ — the screen
+ * guards its own probe-vs-connect/sync race, but fire-and-forget call sites
+ * (Today's steps/active-energy reads, per-meal `saveFood` exports, the focus
+ * nutrition import) can still overlap each other. Serialising at the leaf — the
+ * boundary between our JS wrappers and the native callback — closes every
+ * overlap regardless of which screen fired the call.
+ *
+ * Hang-proof by construction:
+ *  - Each enqueued fn is a leaf that wraps its native call in a timeout race
+ *    (`withHealthCallbackTimeout` / the init + isAvailable timeouts). When the
+ *    native callback never fires, the timeout settles the promise (reject), the
+ *    chain advances, and the NEXT queued call runs. A hung native call delays
+ *    by at most its own timeout — it never deadlocks the queue.
+ *  - The chain advances on settle (resolve OR reject OR timeout), so a rejected
+ *    or timed-out call never poisons the chain for the next caller.
+ *
+ * Re-entrancy rule (DO NOT enqueue from inside an enqueued fn):
+ *  - The only functions that call `enqueueHk` are the leaf native wrappers
+ *    (`withHealthCallbackTimeout`, `isAvailableDetailed`,
+ *    `initHealthKitPromiseWithTimeout`). Each performs exactly one native call.
+ *  - Higher-level orchestrators (`syncHealthData`, `syncNutritionFromHealthImpl`,
+ *    `requestHealthPermissions`, etc.) compose those leaves at the call site and
+ *    must NOT wrap themselves in `enqueueHk` — that would await the chain held by
+ *    their own already-enqueued leaf and deadlock. The legacy
+ *    `runWithHealthKitLock` (which wrapped whole orchestrators) was removed for
+ *    exactly this reason: it now lives at the leaf, so there is one enqueue per
+ *    native invocation and no nesting.
+ */
+let hkQueue: Promise<unknown> = Promise.resolve();
+/** Pending+running native HK calls; logged so the next device hang is diagnosable from Metro alone. */
+let hkQueueDepth = 0;
 
-function runWithHealthKitLock<T>(fn: () => Promise<T>): Promise<T> {
-  const run = healthKitOpChain.then(() => fn());
-  healthKitOpChain = run.catch(() => undefined);
+function isHealthTimeoutError(err: unknown): boolean {
+  return err instanceof Error && /did not respond within/i.test(err.message);
+}
+
+function enqueueHk<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  hkQueueDepth += 1;
+  const run = hkQueue.then(async () => {
+    const startedAt = Date.now();
+    console.log(`[hk.queue] ${label} start (depth ${hkQueueDepth})`);
+    try {
+      const out = await fn();
+      console.log(`[hk.queue] ${label} settled ok (${Date.now() - startedAt}ms, depth ${hkQueueDepth})`);
+      return out;
+    } catch (err) {
+      const elapsed = Date.now() - startedAt;
+      if (isHealthTimeoutError(err)) {
+        console.warn(`[hk.queue] ${label} TIMEOUT after ${elapsed}ms — chain released (depth ${hkQueueDepth})`);
+      } else {
+        console.log(
+          `[hk.queue] ${label} settled error (${elapsed}ms, depth ${hkQueueDepth}): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      throw err;
+    } finally {
+      hkQueueDepth = Math.max(0, hkQueueDepth - 1);
+    }
+  });
+  // Advance the chain on settle (resolve, reject, OR timeout) so a hung/rejected
+  // call can never block the next enqueued call — the next call starts the
+  // moment this one settles, whichever way it settles.
+  hkQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
   return run;
 }
+
+/**
+ * Test-only handles for the global HealthKit mutex (ENG-1019). Exercised by
+ * `tests/unit/healthSyncQueue.test.ts` so the queue's serialization /
+ * hang-release / poison-resistance guarantees are pinned without standing up
+ * the native bridge. Not for production use.
+ */
+export const _hkQueueTestHooks = {
+  enqueue: <T>(label: string, fn: () => Promise<T>): Promise<T> => enqueueHk(label, fn),
+  depth: (): number => hkQueueDepth,
+  /** Reset the chain to idle between tests so a prior test's queue can't bleed in. */
+  reset: (): void => {
+    hkQueue = Promise.resolve();
+    hkQueueDepth = 0;
+  },
+};
 
 function logHealthPermission(message: string, detail?: string): void {
   const line = detail ? `${message} — ${detail}` : message;
@@ -243,26 +327,33 @@ function logHealthPermission(message: string, detail?: string): void {
 const HEALTH_IS_AVAILABLE_TIMEOUT_MS = 20_000;
 
 function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | { ok: false; error: string }> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (out: { ok: true } | { ok: false; error: string }) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(t);
-      resolve(out);
-    };
-    const t = setTimeout(() => {
-      finish({
-        ok: false,
-        error: `HealthKit “isAvailable” did not respond within ${HEALTH_IS_AVAILABLE_TIMEOUT_MS / 1000}s. Restart the app, then try Connect again from More → Health Sync.`,
-      });
-    }, HEALTH_IS_AVAILABLE_TIMEOUT_MS);
-    hk.isAvailable((err, results) => {
-      if (err) finish({ ok: false, error: stringifyBridgeUnknown(err) });
-      else if (!results) finish({ ok: false, error: "HealthKit reported not available on this device." });
-      else finish({ ok: true });
-    });
-  });
+  // Leaf native call — routes through the global HK mutex so it can't overlap a
+  // concurrent read/init from another screen. The timeout settles the promise
+  // (and releases the queue) if the bridge never calls back.
+  return enqueueHk(
+    "isAvailable",
+    () =>
+      new Promise((resolve) => {
+        let settled = false;
+        const finish = (out: { ok: true } | { ok: false; error: string }) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(t);
+          resolve(out);
+        };
+        const t = setTimeout(() => {
+          finish({
+            ok: false,
+            error: `HealthKit “isAvailable” did not respond within ${HEALTH_IS_AVAILABLE_TIMEOUT_MS / 1000}s. Restart the app, then try Connect again from More → Health Sync.`,
+          });
+        }, HEALTH_IS_AVAILABLE_TIMEOUT_MS);
+        hk.isAvailable((err, results) => {
+          if (err) finish({ ok: false, error: stringifyBridgeUnknown(err) });
+          else if (!results) finish({ ok: false, error: "HealthKit reported not available on this device." });
+          else finish({ ok: true });
+        });
+      }),
+  );
 }
 
 /** Permission `initHealthKit` can wait while the system sheet stays open; 45s was too short. */
@@ -290,35 +381,42 @@ function withHealthCallbackTimeout<T>(
   label: string,
   exec: (resolve: (val: T) => void, reject: (err: Error) => void) => void,
 ): Promise<T> {
-  return new Promise<T>((outerResolve, outerReject) => {
-    let settled = false;
-    const t = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      outerReject(
-        new Error(
-          `HealthKit ${label} did not respond within ${HEALTH_SAMPLE_TIMEOUT_MS}ms`,
-        ),
-      );
-    }, HEALTH_SAMPLE_TIMEOUT_MS);
-    const resolveOnce = (val: T) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(t);
-      outerResolve(val);
-    };
-    const rejectOnce = (err: Error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(t);
-      outerReject(err);
-    };
-    try {
-      exec(resolveOnce, rejectOnce);
-    } catch (err) {
-      rejectOnce(err instanceof Error ? err : new Error(String(err)));
-    }
-  });
+  // Universal leaf for every `hk.getX` / `saveFood` / `getFoodCorrelation`
+  // read — routes through the global HK mutex (one native call in flight
+  // app-wide). The timeout below settles the inner promise on a non-firing
+  // bridge callback, which releases the queue for the next call. Callers must
+  // NOT additionally enqueue (see the `enqueueHk` re-entrancy rule).
+  return enqueueHk(
+    label,
+    () =>
+      new Promise<T>((outerResolve, outerReject) => {
+        let settled = false;
+        const t = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          outerReject(
+            new Error(`HealthKit ${label} did not respond within ${HEALTH_SAMPLE_TIMEOUT_MS}ms`),
+          );
+        }, HEALTH_SAMPLE_TIMEOUT_MS);
+        const resolveOnce = (val: T) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(t);
+          outerResolve(val);
+        };
+        const rejectOnce = (err: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(t);
+          outerReject(err);
+        };
+        try {
+          exec(resolveOnce, rejectOnce);
+        } catch (err) {
+          rejectOnce(err instanceof Error ? err : new Error(String(err)));
+        }
+      }),
+  );
 }
 
 function initHealthKitPromiseWithTimeout(
@@ -327,20 +425,28 @@ function initHealthKitPromiseWithTimeout(
   stepLabel: string,
 ): Promise<void> {
   const waitMin = Math.max(1, Math.round(HEALTH_PERMISSION_INIT_TIMEOUT_MS / 60_000));
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => {
-      reject(
-        new Error(
-          `HealthKit did not respond within ${waitMin} min (step: ${stepLabel}). If the Apple Health permission sheet is open, tap Allow or Don’t Allow first. Stay on the Health Sync screen until it finishes. Otherwise close this screen and try again, or restart the app.`,
-        ),
-      );
-    }, HEALTH_PERMISSION_INIT_TIMEOUT_MS);
-    hk.initHealthKit(permissions, (error) => {
-      clearTimeout(t);
-      if (error) reject(new Error(stringifyBridgeUnknown(error)));
-      else resolve();
-    });
-  });
+  // Leaf native call — routes through the global HK mutex. This is the call the
+  // concurrent-probe crash on iOS 26+ was specifically about; serialising it
+  // means no read/probe can be in flight while the permission sheet is open.
+  // The 180s timeout rejects (and releases the queue) if the sheet never resolves.
+  return enqueueHk(
+    `initHealthKit(${stepLabel})`,
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const t = setTimeout(() => {
+          reject(
+            new Error(
+              `HealthKit did not respond within ${waitMin} min (step: ${stepLabel}). If the Apple Health permission sheet is open, tap Allow or Don’t Allow first. Stay on the Health Sync screen until it finishes. Otherwise close this screen and try again, or restart the app.`,
+            ),
+          );
+        }, HEALTH_PERMISSION_INIT_TIMEOUT_MS);
+        hk.initHealthKit(permissions, (error) => {
+          clearTimeout(t);
+          if (error) reject(new Error(stringifyBridgeUnknown(error)));
+          else resolve();
+        });
+      }),
+  );
 }
 
 function getDailyStepCountSamplesPromise(
@@ -1094,19 +1200,20 @@ export async function probeHealthAccess(): Promise<
 > {
   const hk = loadAppleHealthKit();
   if (!hk) return "unavailable";
-  return runWithHealthKitLock(async () => {
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
-    try {
-      await getDailyStepCountSamplesPromise(hk, {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
-      return "connected" as const;
-    } catch {
-      return "denied" as const;
-    }
-  });
+  // The single native read below routes through the global HK mutex inside
+  // `getDailyStepCountSamplesPromise` → `withHealthCallbackTimeout` → `enqueueHk`,
+  // so no outer lock is needed (and an outer lock here would deadlock the leaf).
+  const endDate = new Date();
+  const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+  try {
+    await getDailyStepCountSamplesPromise(hk, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+    return "connected" as const;
+  } catch {
+    return "denied" as const;
+  }
 }
 
 export type HealthKitPermissionOutcome = {
@@ -1130,18 +1237,15 @@ function formatHealthKitStepError(error: unknown, step: string): string {
  * system sheet to appear reliably; (2) dietary + food correlation reads for meal import.
  * Surfaces native errors instead of returning an opaque `false`.
  *
- * Not deduped globally: a stuck native callback would otherwise make every later tap await
- * the same hung promise forever. The Health Sync screen disables the button while `connecting`.
+ * The two native calls it makes — `isAvailable` then `initHealthKit` — each route
+ * through the global HK mutex (`enqueueHk`) individually, so no two HealthKit
+ * calls (here or from any other screen) are ever in flight at once. This
+ * orchestrator must NOT itself enqueue — that would await the chain held by its
+ * own enqueued leaf and deadlock (ENG-1019). The Health Sync screen disables the
+ * Connect button while `connecting`, and the 180s init timeout releases the queue
+ * if the system sheet never resolves.
  */
 export async function requestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
-  return runRequestHealthPermissions();
-}
-
-async function runRequestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
-  return runWithHealthKitLock(() => runRequestHealthPermissionsUnlocked());
-}
-
-async function runRequestHealthPermissionsUnlocked(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     const debugDetail = "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
@@ -1212,12 +1316,12 @@ async function runRequestHealthPermissionsUnlocked(): Promise<HealthKitPermissio
 /**
  * Retry the second-stage HealthKit read set (dietary quantity types) after body sync
  * already succeeded — e.g. when the user enables “Import meals from Health”.
+ *
+ * Its `isAvailable` + `initHealthKit` native calls each route through the global
+ * HK mutex (`enqueueHk`) at the leaf; this orchestrator must NOT itself enqueue
+ * (deadlock — see ENG-1019).
  */
 export async function requestDietaryHealthPermissions(): Promise<HealthKitPermissionOutcome> {
-  return runWithHealthKitLock(() => requestDietaryHealthPermissionsUnlocked());
-}
-
-async function requestDietaryHealthPermissionsUnlocked(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     return {
@@ -1681,8 +1785,10 @@ export async function probeNutritionImport(
   if (!hk) {
     return { ok: false, reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null)." };
   }
+  // The single native read routes through the global HK mutex inside
+  // `getDietaryImportSamplesSafe` → … → `withHealthCallbackTimeout` → `enqueueHk`;
+  // no outer lock is needed (and one here would deadlock the leaf — ENG-1019).
   try {
-    return await runWithHealthKitLock(async () => {
     const startDate = daysAgo(lookbackDays).toISOString();
     const endDate = new Date().toISOString();
     const energy = await getDietaryImportSamplesSafe(hk, "EnergyConsumed", { startDate, endDate });
@@ -1701,7 +1807,6 @@ export async function probeNutritionImport(
       sourceApps,
       ownSamplesSkipped: energy.length - extEnergy.length,
     };
-    });
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }

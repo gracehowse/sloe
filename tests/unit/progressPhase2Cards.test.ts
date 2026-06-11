@@ -35,20 +35,28 @@ const MOBILE_ADHERENCE = readFileSync(
 );
 
 describe("Progress — Sloe Figma 492:2 frame", () => {
-  it("shared helper exports the range-stats functions (incl. macro adherence)", () => {
-    expect(HELPER).toMatch(/export function buildWeightRangeStats\(/);
-    expect(HELPER).toMatch(/export function buildCaloriesRangeStats\(/);
-    expect(HELPER).toMatch(/export function buildMacroAdherenceRangeStats\(/);
-    expect(HELPER).toMatch(/export type RangeKey\b/);
+  it("shared helper exports the window range-stats functions (incl. macro adherence)", () => {
+    // ENG-1030 (2026-06-10): the Progress consumers moved to the calendar
+    // window variants (`*ForWindow`) that take a `[startKey, endKey]` period
+    // window instead of the relative `RangeKey`. The legacy `RangeKey`
+    // builders are kept (their pinned tests stay green) but no Progress
+    // surface calls them.
+    expect(HELPER).toMatch(/export function buildWeightRangeStatsForWindow\(/);
+    expect(HELPER).toMatch(/export function buildCaloriesRangeStatsForWindow\(/);
+    expect(HELPER).toMatch(/export function buildMacroAdherenceRangeStatsForWindow\(/);
   });
 
-  it("both platforms import the shared range helpers and pass the active range", () => {
+  it("both platforms import the shared window helpers and pass the period window", () => {
+    // The picker is the Apple Health range grammar (ENG-1030): the selected
+    // period resolves to an inclusive window (`periodWin`) that drives every
+    // range stat. Both platforms read the SAME `*ForWindow` helpers so they
+    // can't drift.
     expect(MOBILE).toMatch(/from\s+["'][^"']*progressRangeStats["']/);
-    expect(MOBILE).toMatch(/buildCaloriesRangeStats\(byDay as any, targets\.calories, rangeKey as RangeKey/);
-    expect(MOBILE).toMatch(/buildMacroAdherenceRangeStats\(/);
+    expect(MOBILE).toMatch(/buildCaloriesRangeStatsForWindow\(byDay as any, targets\.calories, periodWin\)/);
+    expect(MOBILE).toMatch(/buildMacroAdherenceRangeStatsForWindow\(/);
     expect(WEB).toMatch(/from\s+["'][^"']*progressRangeStats(?:\.ts)?["']/);
-    expect(WEB).toMatch(/buildCaloriesRangeStats\(nutritionByDay, nutritionTargets\.calories, range as RangeKey/);
-    expect(WEB).toMatch(/buildMacroAdherenceRangeStats\(/);
+    expect(WEB).toMatch(/buildCaloriesRangeStatsForWindow\(nutritionByDay, nutritionTargets\.calories, periodWin\)/);
+    expect(WEB).toMatch(/buildMacroAdherenceRangeStatsForWindow\(/);
   });
 
   it("both platforms render the THIS WEEK insight + AVERAGE ADHERENCE cards", () => {

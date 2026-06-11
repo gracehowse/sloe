@@ -464,6 +464,13 @@ const STACK_HEADER_HIDDEN = new Set([
   // mode only). Suppress the auto-stack header so the two don't double
   // up — same fix shape as macro-detail / burn-detail above.
   "meal-nutrition",
+  // headers census 2026-06-10: whats-new + weekly-recap moved off the native
+  // stack header (centred system-font / bespoke serif `headerTitleStyle` — the
+  // two extra stack-header systems the census flagged as DRIFT) onto the
+  // canonical PushScreenHeader (left chevron + Type.navTitle). Suppress the
+  // native header so the in-screen one doesn't double up.
+  "whats-new",
+  "weekly-recap",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */
@@ -559,10 +566,13 @@ function RootLayoutInner() {
           options={{ headerShown: false, animation: "none" }}
         />
         {/* 2026-04-30 — StreakPip destination. iOS-only mobile feature;
-            web pip stays display-only (no /weekly-recap route on web). */}
+            web pip stays display-only (no /weekly-recap route on web).
+            headers census 2026-06-10: native header suppressed (in
+            STACK_HEADER_HIDDEN) — the screen now renders its own
+            PushScreenHeader, matching every other push screen. */}
         <Stack.Screen
           name="weekly-recap"
-          options={{ headerShown: true, title: "Weekly recap", headerBackTitle: "Today" }}
+          options={{ headerShown: false }}
         />
         </Stack>
         <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />

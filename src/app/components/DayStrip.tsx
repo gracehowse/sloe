@@ -178,7 +178,9 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                   // NO filled background. Logged days carry a sage dot; the
                   // clay (selected) indicator takes precedence on the both-case.
                   // The state→treatment rule is shared via `dayStripIndicator`.
-                  const { dotKind, isActive } = dayStripIndicator({
+                  // §7 (2026-06-10): soft-tint pill carries selection — see
+                  // dayStripIndicator.ts for the treatment history.
+                  const { dotKind, isActive, showsPill } = dayStripIndicator({
                     isSelected,
                     isToday,
                     hasLogs,
@@ -202,7 +204,12 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       <span className="text-[10px] font-semibold uppercase tracking-wide leading-none text-foreground-tertiary">
                         {label}
                       </span>
-                      <div className="relative">
+                      <div
+                        className={[
+                          "relative flex items-center justify-center min-w-7 h-7 rounded-full",
+                          showsPill ? "bg-primary-soft" : "bg-transparent",
+                        ].join(" ")}
+                      >
                         <span
                           className={[
                             "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",

@@ -57,27 +57,34 @@ describe("web DayStrip — minimal current-day indicator", () => {
     expect(dots.length).toBeGreaterThan(0);
   });
 
-  it("drops the old filled-circle treatment entirely", () => {
+  it("never renders the SOLID filled-circle treatment (soft pill only, §7 2026-06-10)", () => {
     const { container } = renderStrip();
-    // The old selected circle was `w-[30px] h-[30px] rounded-full ... bg-primary
-    // text-primary-foreground`. None of those load-bearing class fragments may
-    // survive on any element.
+    // 2026-06-03 rejected the SOLID clay circle (`bg-primary` +
+    // `text-primary-foreground`); §7 (2026-06-10) added a SOFT-tint pill
+    // (`bg-primary-soft`) behind the selected number. The solid treatment
+    // must never return.
     const html = container.innerHTML;
     expect(html).not.toContain("w-[30px]");
     expect(html).not.toContain("text-primary-foreground");
-    // a 30px filled circle had `rounded-full` on the day node + bg-primary as a
-    // *background*; the new clay dot uses `bg-primary` only on a 1x1 (`w-1 h-1`)
-    // dot. Assert there is no `rounded-full` element that is NOT the tiny dot.
+    expect(html).toContain("bg-primary-soft");
+    // rounded-full now legitimately appears on the soft pill + the tiny
+    // status dots — but never with a SOLID bg-primary fill.
+    // No rounded-full element may carry a SOLID accent fill (the soft pill
+    // and transparent number-wrappers are fine; tiny status dots are fine).
     const roundedEls = Array.from(container.querySelectorAll(".rounded-full"));
     for (const el of roundedEls) {
-      expect(el.className).toMatch(/\bw-1\b/);
+      const cls = el.className;
+      const solidAccent = /\bbg-primary\b/.test(cls) && !cls.includes("bg-primary-soft");
+      expect(solidAccent).toBe(false);
     }
   });
 
-  it("today (selected) renders a clay dot", () => {
+  it("today (selected) renders the soft pill and NO dot (§7 2026-06-10)", () => {
     const { container } = renderStrip();
-    const clay = container.querySelectorAll('[data-testid="daystrip-dot-minimal-clay"]');
-    expect(clay.length).toBeGreaterThanOrEqual(1);
+    // The pill carries selection; a dot under it would double-signal.
+    const none = container.querySelectorAll('[data-testid="daystrip-dot-minimal-none"]');
+    expect(none.length).toBeGreaterThanOrEqual(1);
+    expect(container.innerHTML).toContain("bg-primary-soft");
   });
 
   it("a logged non-selected day renders a sage dot, not a check icon", () => {

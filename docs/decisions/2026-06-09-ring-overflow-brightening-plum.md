@@ -46,3 +46,17 @@ amber variant to ramp separately.
   bloom at goal).
 - The locked empty=calm / logged-under=success-at-goal mappings.
 - The macro/bonus arc colours.
+
+---
+
+## SUPERSEDED — 2026-06-10 (category survey)
+
+Grace: "look at Mobbin — how does every other app do overage?" Survey of
+Lifesum / MFP / Cal AI / Bevel / Yazio / Alma: **no food app draws a
+second lap** — rings cap at full and the centre verdict ("356 OVER") +
+chip + stats carry the overage. The wrap grammar (incl. this doc's
+brightening-plum treatment and the 2026-06-04 Apple-wrap decision it
+refined) benchmarked ACTIVITY rings, the wrong comparable for a food
+budget. After seven rendered rounds the lap was removed entirely:
+over-budget = one complete plum ring. See commit "over-budget caps at
+FULL" on the 2026-06-10 design-owner wave.

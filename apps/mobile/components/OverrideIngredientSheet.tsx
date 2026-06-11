@@ -8,6 +8,7 @@
  * helper so the "what counts as an override" rule is defined in one place.
  */
 import { useEffect, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Keyboard,
   Modal,
@@ -34,6 +35,7 @@ type Theme = {
   cardBorder: string;
   background: string;
   border: string;
+  primaryForeground: string;
 };
 
 type Props = {
@@ -149,7 +151,7 @@ export default function OverrideIngredientSheet({
     btnPrimary: { backgroundColor: accent.primary },
     btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
     btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
-    btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    btnPrimaryText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
     btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
     btnDestructiveText: { color: Accent.destructive, fontWeight: "600", fontSize: 14 },
   });
@@ -161,8 +163,8 @@ export default function OverrideIngredientSheet({
           onPress={() => {}}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             padding: Spacing.lg,
             paddingBottom: Spacing.xl,
           }}

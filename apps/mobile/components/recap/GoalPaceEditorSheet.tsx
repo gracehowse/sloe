@@ -32,6 +32,7 @@
  */
 
 import { useCallback } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Modal,
@@ -106,8 +107,8 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
         <View
           style={{
             backgroundColor: colors.background,
-            borderTopLeftRadius: Radius.xl,
-            borderTopRightRadius: Radius.xl,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.lg,
             paddingHorizontal: Spacing.xl,
             paddingBottom: Spacing.xxxl,

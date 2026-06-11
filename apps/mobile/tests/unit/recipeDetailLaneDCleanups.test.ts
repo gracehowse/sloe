@@ -48,9 +48,14 @@ describe("LANE D gap 1 — cook-CTA dedup (one cook entry; Log is the top-row pr
       /testID="recipe-action-log"[\s\S]{0,400}flex:\s*1\.6/,
     );
     expect(ACTION_PILLS).toMatch(/borderColor:\s*outlineColor/);
-    // outlineColor is the scheme-resolved aubergine (primarySolid / dark variant).
-    expect(ACTION_PILLS).toMatch(/accent\.primarySolid/);
-    expect(ACTION_PILLS).toMatch(/accent\.primarySolidDark/);
+    // outlineColor is the scheme-resolved aubergine. ENG-1013 colour migration
+    // 2026-06-10: useAccent() already resolves primarySolid per scheme (light
+    // #3B2A4D / dark #C4ACD0), so the value-source is now a direct
+    // `accent.primarySolid` read — the old `colors.background === "#FFFFFF"
+    // ? primarySolid : primarySolidDark` probe was a scheme bug (broke once the
+    // light ground moved off pure white to cream). Still no raw hex.
+    expect(ACTION_PILLS).toMatch(/outlineColor\s*=\s*accent\.primarySolid/);
+    expect(ACTION_PILLS).not.toMatch(/colors\.background === "#FFFFFF"/);
   });
 
   it("the screen no longer passes onStartCooking to the action pills", () => {
@@ -115,8 +120,11 @@ describe("LANE D gap 5 — ingredient tap → branded IngredientInfoSheet (not A
     expect(INFO_SHEET).toMatch(/testID="ingredient-info-verify"/);
     expect(INFO_SHEET).toMatch(/borderColor:\s*outlineColor/);
     // outlineColor resolves from the accent (scheme-aware), never a hex.
-    expect(INFO_SHEET).toMatch(/accent\.primarySolid/);
-    expect(INFO_SHEET).toMatch(/accent\.primarySolidDark/);
+    // ENG-1013 colour migration 2026-06-10: useAccent() already scheme-resolves
+    // primarySolid, so the value-source is a direct `accent.primarySolid` read
+    // (the old `=== "#FFFFFF"` probe was a scheme bug — broke on cream ground).
+    expect(INFO_SHEET).toMatch(/outlineColor\s*=\s*accent\.primarySolid/);
+    expect(INFO_SHEET).not.toMatch(/colors\.background === "#FFFFFF"/);
   });
 });
 

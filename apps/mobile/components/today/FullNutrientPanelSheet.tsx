@@ -1,4 +1,5 @@
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Pressable,
@@ -10,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import {
   buildFullNutrientPanelRows,
   FULL_NUTRIENT_PANEL_ROW_COUNT,
@@ -197,14 +198,10 @@ function SectionBlock({
   return (
     <View testID={`full-panel-section-${section}`} style={{ marginBottom: Spacing.lg }}>
       <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          color: colors.textTertiary,
-          letterSpacing: 1.1,
-          textTransform: "uppercase",
-          marginBottom: Spacing.xs,
-        }}
+        // headers census 2026-06-10: in-sheet data-section eyebrow → Type.label
+        // (sans-eyebrow grammar is correct for dense data sheets — LogSheet
+        // precedent; only the ls 1.1 → 0.88 + plumbing converge).
+        style={{ ...Type.label, color: colors.textTertiary, marginBottom: Spacing.xs }}
       >
         {section}
       </Text>
@@ -280,8 +277,8 @@ export function FullNutrientPanelSheet({
           testID="full-nutrient-panel-sheet"
           style={{
             backgroundColor: colors.background,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.dense,
             paddingBottom: insets.bottom + 16,
             maxHeight: "88%",

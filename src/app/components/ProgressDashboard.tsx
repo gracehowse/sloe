@@ -28,21 +28,27 @@ import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { buildWeekStats, formatAvgCaloriesLabel, type WeekActivityAdjustment } from "../../lib/nutrition/progressWeekReport.ts";
 import {
-  buildCaloriesRangeStats,
-  buildMacroAdherenceRangeStats,
-  buildWeightRangeStats,
-  type RangeKey,
+  buildCaloriesRangeStatsForWindow,
+  buildMacroAdherenceRangeStatsForWindow,
+  buildWeightRangeStatsForWindow,
 } from "../../lib/nutrition/progressRangeStats.ts";
+import {
+  DEFAULT_PERIOD,
+  PERIOD_TYPES,
+  periodChartAnchorISO,
+  periodLabel,
+  periodWindow,
+  progressPeriodToWeightRange,
+  type ProgressPeriod,
+} from "../../lib/nutrition/progressPeriod.ts";
+import { ProgressPeriodControl } from "./suppr/progress-period-control.tsx";
 import { computeWeightTrendCopy } from "../../lib/nutrition/weightTrendTile.ts";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
   type WeightRange,
 } from "../../lib/progress/weightTrend.ts";
-import {
-  progressRangeKeyToWeightRange,
-  weightDeltaTone,
-} from "../../lib/progress/progressRangeChart.ts";
+import { weightDeltaTone } from "../../lib/progress/progressRangeChart.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
   availableFreezes,
@@ -230,14 +236,13 @@ function ProgressDashboardContent() {
   // `redesign_winmoment`; flag-off keeps the silent save.
   const [weightWinActive, setWeightWinActive] = useState(false);
   const [weightPulse, setWeightPulse] = useState(false);
-  // 2026-04-20 Claude Design prototype port — range picker pills.
-  // Prior shape was `1W / 1M / 3M / 6M / All`, default `3M`, with no
-  // UI to switch. Mirrors the mobile ProgressScreen prototype
-  // (`[7d, 30d, 90d, All]` chips) so the two surfaces speak the same
-  // ranges. Default `30d` matches mobile. Downstream `rangeDays`
-  // arithmetic is preserved (still drives the weight + steps chart
-  // windows); All remains ~infinite (26+ years).
-  const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  // ENG-1030 — Apple Health range grammar. Replaces the `7d/30d/90d/All`
+  // relative-window picker with the calendar-anchored period model
+  // (D/W/M/6M/Y + horizontal paging). Default = current week, matching
+  // Apple Health's default and the mobile Progress tab. "All" is removed —
+  // Y + paging covers history (Apple has no All either). Shared period helper
+  // (`progressPeriod.ts`) feeds both platforms identical windows + labels.
+  const [period, setPeriod] = useState<ProgressPeriod>(DEFAULT_PERIOD);
   // Sloe Figma 492:2 — weight card Trend/Scale segmented toggle. "trend"
   // renders the smoothed moving-average line (calm Withings-style trend);
   // "scale" renders the raw weigh-ins. Mirrors mobile.
@@ -481,26 +486,40 @@ function ProgressDashboardContent() {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }, [goalTimeline]);
 
-  const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
+  // ENG-1030 — the selected period resolves to an inclusive local window.
+  // `weekStartDay` honours the user's DayStrip setting. Memoised on the period
+  // + weekStart so a re-render with the same selection is stable.
+  const periodWin = useMemo(
+    () => periodWindow(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
+  const periodWindowLabel = useMemo(
+    () => periodLabel(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
 
   // 2026-05-06 audit (D2): web parity for the mobile weight chart
   // rewrite (PRs #106 + #107). Use the shared `computeWeightTrend`
   // so web gets the same MFP-style bucket aggregation, calendar-day
   // moving-average, same-day dedup, smart bucket fallback, and
   // iterative min/max as mobile.
-  // 2026-06-10 (premium-audit P0-1): the range→WeightRange mapping was
-  // duplicated inline here and on mobile; routed both through the shared
-  // `progressRangeKeyToWeightRange` so the picker keys the chart range
-  // identically on both platforms.
-  const weightTrendRange: WeightRange = progressRangeKeyToWeightRange(range);
+  // ENG-1030: the chart range now derives from the period type, and its
+  // trailing window is anchored to the period's end day so paging actually
+  // moves the chart window (not always "today").
+  const weightTrendRange: WeightRange = progressPeriodToWeightRange(period.type);
+  const weightChartAnchorISO = useMemo(
+    () => periodChartAnchorISO(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
   const weightTrend = useMemo(
     () =>
       computeWeightTrend(
         weightKgByDayToPoints(weightKgByDay),
         weightTrendRange,
         goalWeightKg ?? null,
+        weightChartAnchorISO,
       ),
-    [weightKgByDay, weightTrendRange, goalWeightKg],
+    [weightKgByDay, weightTrendRange, goalWeightKg, weightChartAnchorISO],
   );
 
   const weightChartData = useMemo(() => {
@@ -542,14 +561,13 @@ function ProgressDashboardContent() {
   const showRawDots = weightTrend.bucket === "daily";
 
   const stepsChartData = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - rangeDays);
-    const cutStr = cutoff.toISOString().slice(0, 10);
+    // ENG-1030 — steps follow the same calendar period window as everything
+    // else on the page (was a `now − rangeDays` cutoff).
     return Object.entries(stepsByDay)
-      .filter(([k]) => k >= cutStr)
+      .filter(([k]) => k >= periodWin.startKey && k <= periodWin.endKey)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => ({ date: k.slice(5), value: v }));
-  }, [stepsByDay, rangeDays]);
+  }, [stepsByDay, periodWin.startKey, periodWin.endKey]);
 
   const persistProfilePatch = useCallback(
     async (patch: Record<string, unknown>) => {
@@ -634,29 +652,29 @@ function ProgressDashboardContent() {
   const targets = normalizeMacroTargets(nutritionTargets);
 
   // 2026-04-20 Phase 2 prototype — WEIGHT + Calories range cards read
-  // from these shared helpers so mobile + web can't drift. Range feed
-  // comes from the `range` state set by the range-picker pills.
+  // from these shared helpers so mobile + web can't drift.
+  // ENG-1030: scoped to the selected period's inclusive window (was the
+  // relative `rangeKey`). Empty periods return honest nulls / [] — no faked 0%.
   const weightRange = useMemo(
-    () => buildWeightRangeStats(weightKgByDay, range as RangeKey, new Date()),
-    [weightKgByDay, range],
+    () => buildWeightRangeStatsForWindow(weightKgByDay, periodWin),
+    [weightKgByDay, periodWin],
   );
   const caloriesRange = useMemo(
-    () => buildCaloriesRangeStats(nutritionByDay, nutritionTargets.calories, range as RangeKey, new Date()),
-    [nutritionByDay, nutritionTargets.calories, range],
+    () => buildCaloriesRangeStatsForWindow(nutritionByDay, nutritionTargets.calories, periodWin),
+    [nutritionByDay, nutritionTargets.calories, periodWin],
   );
   // Sloe Figma 492:2 — range-scoped macro adherence so the AVERAGE
   // ADHERENCE card's four bars describe the SAME window as the headline
-  // calorie adherence (responds to the time-range toggle), not just the
+  // calorie adherence (responds to the period control), not just the
   // current week. Shared helper → web + mobile read identical figures.
   const macroRange = useMemo(
     () =>
-      buildMacroAdherenceRangeStats(
+      buildMacroAdherenceRangeStatsForWindow(
         nutritionByDay,
         normalizeMacroTargets(nutritionTargets),
-        range as RangeKey,
-        new Date(),
+        periodWin,
       ),
-    [nutritionByDay, nutritionTargets, range],
+    [nutritionByDay, nutritionTargets, periodWin],
   );
 
   // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
@@ -1077,20 +1095,29 @@ function ProgressDashboardContent() {
         data-testid="progress-loading-skeleton"
       >
         {progressDesktopHeader}
-        <div className="flex gap-1.5 mb-5 opacity-60">
-          {(["7d", "30d", "90d", "all"] as const).map((k) => (
-            <span
-              key={k}
-              className={[
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium text-center border",
-                k === range
-                  ? "bg-primary/10 border-primary-solid text-primary-solid"
-                  : "bg-card border-border text-muted-foreground",
-              ].join(" ")}
-            >
-              {k === "all" ? "All" : k}
-            </span>
-          ))}
+        {/* Skeleton mirrors the live period control exactly (ENG-1030 segments
+            + a label-row placeholder), so `loading` → loaded has no jump. */}
+        <div className="opacity-60 mb-5">
+          <div className="flex gap-1.5">
+            {PERIOD_TYPES.map((seg) => (
+              <span
+                key={seg}
+                className={[
+                  "flex-1 rounded-full py-1.5 text-[13px] text-center",
+                  seg === period.type
+                    ? "bg-primary-soft text-primary-solid font-semibold"
+                    : "bg-card text-muted-foreground font-medium",
+                ].join(" ")}
+              >
+                {seg}
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-4">
+            <span className="h-5 w-5 rounded-full bg-border" aria-hidden />
+            <span className="h-4 w-28 rounded bg-border" aria-hidden />
+            <span className="h-5 w-5 rounded-full bg-border" aria-hidden />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-6">
           {[0, 1, 2, 3].map((i) => (
@@ -1140,43 +1167,16 @@ function ProgressDashboardContent() {
           the frame's above-fold story. No migration flags, no duplicate
           components, no alternate versions. */}
 
-      {/* 1. TIME-RANGE TOGGLE — [7d, 30d, 90d, All]. Active range is a
-          solid plum (`bg-foreground-brand`) fill with white text; the
-          rest are bordered cream pills (Figma header rhythm). Drives the
-          range stats below + the weight/steps chart windows. */}
-      <div
-        role="tablist"
-        aria-label="Progress time range"
-        data-testid="progress-range-picker"
-        className="flex gap-1.5 mb-4"
-      >
-        {(["7d", "30d", "90d", "all"] as const).map((k) => {
-          const active = range === k;
-          const label = k === "all" ? "All" : k;
-          return (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={`Range ${label}`}
-              data-testid={`progress-range-pill-${k}`}
-              onClick={() => setRange(k)}
-              className={[
-                // Sloe treatment system (2026-06-08, §7): selected range pill =
-                // aubergine soft-tint fill + primarySolid border/label (was a
-                // solid plum fill + white text). Mirrors mobile + rations the
-                // accent — the fill is reserved for the FAB + conversion CTAs.
-                "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-colors border",
-                active
-                  ? "bg-primary/10 border-primary-solid text-primary-solid"
-                  : "bg-card border-border text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              {label}
-            </button>
-          );
-        })}
+      {/* 1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
+          6M / Y segments + ‹ label › paging. Default = current week. Drives
+          the range stats below + the weight/steps chart windows. Mirror of
+          the mobile `ProgressPeriodControl`; shared period model. */}
+      <div className="mb-4">
+        <ProgressPeriodControl
+          period={period}
+          weekStart={weekStartDay}
+          onChange={setPeriod}
+        />
       </div>
 
       {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
@@ -1217,10 +1217,6 @@ function ProgressDashboardContent() {
                       ? adaptiveConfidence
                       : "low",
                   loggingDays: Object.keys(nutritionByDay ?? {}).length,
-                  weighInCount: Object.keys(weightKgByDay ?? {}).length,
-                  avgDailyIntake: 0,
-                  smoothedWeightChangeKgPerDay: 0,
-                  windowDays: 28,
                 }
               : null,
           loggingDays: daysLogged,
@@ -1245,7 +1241,7 @@ function ProgressDashboardContent() {
         <div className="mb-4">
           <WeightTrendOnlyCardWeb
             weekDeltaKg={weightRange.weekDeltaKg}
-            rangeKey={range as RangeKey}
+            windowLabel={periodWindowLabel}
           />
         </div>
       )}
@@ -1361,9 +1357,10 @@ function ProgressDashboardContent() {
                     data-testid={`progress-weight-view-${v}`}
                     onClick={() => setWeightView(v)}
                     className={[
-                      // Sloe treatment §8: active segment = white lift +
-                      // primarySolid label (was warm-ink text).
-                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors",
+                      // Segmented grammar (treatment §8): active thumb = white
+                      // `bg-card` lift + `primary-solid` label + `shadow-sm`.
+                      // focus-visible added (web parity 2026-06-10, ENG-1022).
+                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                       active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
                     ].join(" ")}
                   >
@@ -2444,10 +2441,11 @@ function ProgressDashboardContent() {
  */
 function WeightTrendOnlyCardWeb({
   weekDeltaKg,
-  rangeKey,
+  windowLabel,
 }: {
   weekDeltaKg: number | null;
-  rangeKey: RangeKey;
+  /** Period label for the window descriptor (ENG-1030), e.g. "15–21 Jun". */
+  windowLabel: string;
 }) {
   const direction =
     weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
@@ -2467,14 +2465,6 @@ function WeightTrendOnlyCardWeb({
         : direction === "stable"
           ? "Stable this week"
           : "Log a weight to see your trend";
-  const windowLabel =
-    rangeKey === "7d"
-      ? "last 7 days"
-      : rangeKey === "30d"
-        ? "last 30 days"
-        : rangeKey === "90d"
-          ? "last 90 days"
-          : "all time";
   return (
     <SupprCard
       data-testid="progress-weight-trend-only-card"
@@ -2504,9 +2494,9 @@ function WeightTrendOnlyCardWeb({
  * 2026-04-20 prototype port — Suspense fallback mirrors the header
  * chrome used in the inner `loading` branch so React's lazy-load
  * boundary doesn't flash a text-only "Loading…" line before the
- * client-side supabase fetch-driven skeleton mounts. Overline is
- * the default range (`LAST 30 DAYS`), matching the initial `range`
- * state inside `ProgressDashboardContent`.
+ * client-side supabase fetch-driven skeleton mounts. The fallback shows
+ * header chrome only; the period control (ENG-1030) appears in the inner
+ * `loading` skeleton once `ProgressDashboardContent` mounts.
  */
 function ProgressSuspenseFallback() {
   const calendarPlaceholder = (

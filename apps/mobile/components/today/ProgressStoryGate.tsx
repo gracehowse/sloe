@@ -51,7 +51,8 @@ export function ProgressStoryGate({
 }: ProgressStoryGateProps) {
   const accent = useAccent();
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  // Mirrors ProgressHeadline (geometry-twin contract) — soft page-ground lift.
+  const cardElevation = useCardElevation({ variant: "soft" });
   const placeholder = buildProgressStoryPlaceholder(daysLogged, { hasHistory });
 
   // Day-count indicator — STORY_DATA_FLOOR_DAYS discrete ring segments
@@ -91,7 +92,8 @@ export function ProgressStoryGate({
         style={[
           Type.label,
           {
-            color: accent.primary,
+            // headers census 2026-06-10: eyebrow → AA-safe accent.primarySolid.
+            color: accent.primarySolid,
             marginBottom: Spacing.sm,
           },
         ]}

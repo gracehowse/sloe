@@ -493,14 +493,11 @@ export default function BarcodeScreen() {
           gap: Spacing.sm,
           ...Elevation.sheet,
         },
-        // Gap #1 (2026-06-09): serif for editorial titles (Newsreader
-        // via FontFamily.serifSemibold). 18px/600 matches §2.2
-        // display-section role.
+        // headers census 2026-06-10: hand-tuned 18/600 serif title → Type.navTitle
+        // (the canonical compact serif title voice; was Type.headline + overrides).
         overlayTitle: {
+          ...Type.navTitle,
           color: "#fff",
-          ...Type.headline,
-          fontSize: 18,
-          fontFamily: FontFamily.serifSemibold,
         },
         hint: { color: Colors.dark.textSecondary, fontSize: 13 },
         dim: { color: Colors.dark.textTertiary },
@@ -516,12 +513,10 @@ export default function BarcodeScreen() {
           borderRadius: Radius.xl,
         },
         permBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-        // Gap #1: product name → serif (Newsreader display-section, 17/600).
+        // headers census 2026-06-10: hand-tuned 17/600 serif → Type.navTitle.
         productName: {
+          ...Type.navTitle,
           color: "#fff",
-          ...Type.headline,
-          fontSize: 17,
-          fontFamily: FontFamily.serifSemibold,
           textAlign: "center",
         },
         macroRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.lg },
@@ -597,7 +592,7 @@ export default function BarcodeScreen() {
           color: Colors.dark.textSecondary,
           fontFamily: FontFamily.sansSemibold,
         },
-        slotPillTextActive: { color: "#fff" },
+        slotPillTextActive: { color: colors.primaryForeground },
         btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xs },
         logBtn: {
           flex: 2,
@@ -611,7 +606,7 @@ export default function BarcodeScreen() {
           // Gap #4: paddingVertical → Spacing.md (≥48px height).
           paddingVertical: Spacing.md,
         },
-        logBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+        logBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
         secondaryBtn: {
           flex: 1,
           alignItems: "center",
@@ -625,7 +620,7 @@ export default function BarcodeScreen() {
           paddingVertical: Spacing.md,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        secondaryBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+        secondaryBtnText: { color: colors.primaryForeground, fontWeight: "600", fontSize: 14 },
         errorIcon: { marginBottom: Spacing.xs },
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
@@ -663,12 +658,10 @@ export default function BarcodeScreen() {
           paddingTop: insets.top + Spacing.xl,
           gap: Spacing.md,
         },
-        // Gap #1: sheet titles → serif (Newsreader, 18px/600).
+        // headers census 2026-06-10: sheet title → Type.navTitle.
         manualTitle: {
+          ...Type.navTitle,
           color: "#fff",
-          ...Type.headline,
-          fontSize: 18,
-          fontFamily: FontFamily.serifSemibold,
         },
         // Gap #4: replace marginTop:-4 negative hack with gap token on
         // the parent container (gap: Spacing.md already set on manualOverlay).
@@ -696,12 +689,10 @@ export default function BarcodeScreen() {
           paddingTop: insets.top + Spacing.xl,
           gap: Spacing.md,
         },
-        // Gap #1: correction sheet title → serif.
+        // headers census 2026-06-10: correction sheet title → Type.navTitle.
         corrTitle: {
+          ...Type.navTitle,
           color: "#fff",
-          ...Type.headline,
-          fontSize: 18,
-          fontFamily: FontFamily.serifSemibold,
         },
         // Gap #4: replace marginTop:-4 negative hack.
         corrSub: { color: Colors.dark.textSecondary, fontSize: 13 },
@@ -931,9 +922,9 @@ export default function BarcodeScreen() {
                 accessibilityLabel={`Log ${product.name} to ${mealSlot}`}
               >
                 {logging ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
-                  <PlusCircle size={20} color="#fff" />
+                  <PlusCircle size={20} color={colors.primaryForeground} />
                 )}
                 <Text style={styles.logBtnText} numberOfLines={1}>
                   {logging ? "Logging…" : `Log to ${mealSlot}`}
@@ -1061,9 +1052,9 @@ export default function BarcodeScreen() {
               disabled={!manualName.trim() || !(Number(manualCalories) > 0) || logging}
             >
               {logging ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <PlusCircle size={20} color="#fff" />
+                <PlusCircle size={20} color={colors.primaryForeground} />
               )}
               <Text style={styles.logBtnText}>{logging ? "Logging…" : `Log to ${mealSlot}`}</Text>
             </Pressable>

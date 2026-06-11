@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Image,
   KeyboardAvoidingView,
@@ -207,6 +208,21 @@ export interface LogSheetProps {
     /** Inline mode — Supabase client + userId for custom foods. */
     supabase?: InlineSupabaseLike;
     userId?: string | null;
+    /** Inline mode — the user's logging history, newest-first (from
+     *  `computeRecentMeals`). Powers BOTH the empty-query "Recent" strip and
+     *  the typed-query history-first "Past logged" group (ENG-1033). When
+     *  omitted, neither history surface renders. */
+    recentFoods?: Array<{
+      recipeTitle: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      source?: string;
+      count?: number;
+      imageUrl?: string | null;
+    }>;
     /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -457,7 +473,8 @@ export function LogSheet({
                           // primary text on the tint is only ~3.34:1 and
                           // would fail WCAG AA 4.5:1 for this 12px label,
                           // whereas foreground clears it comfortably.
-                          borderColor: active ? accent.primary : colors.border,
+                          // §7 (2026-06-10): tint IS the signal — no ring.
+                          borderColor: active ? accent.primarySoft : colors.border,
                           backgroundColor: active
                             ? accent.primarySoft
                             : "transparent",
@@ -757,6 +774,7 @@ function DefaultComposition({
             macroConsumed={search?.macroConsumed}
             supabase={search?.supabase}
             userId={search?.userId}
+            recentFoods={search?.recentFoods}
             onSelect={(result) => {
               search?.onSelect?.(result);
               // After a successful pick the user has logged something —
@@ -1063,7 +1081,7 @@ function RightEdgeIcons({
             <Icon size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
             {locked ? (
               <View style={styles.lockBadge}>
-                <Lock size={8} color="#fff" strokeWidth={2.5} />
+                <Lock size={8} color={colors.primaryForeground} strokeWidth={2.5} />
               </View>
             ) : null}
           </Pressable>
@@ -1411,7 +1429,7 @@ function BarcodeManualEntry({
       <View
         style={{
           padding: Spacing.md,
-          borderRadius: Radius.md,
+          borderRadius: Radius.xl,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.border,
@@ -1550,8 +1568,8 @@ const styles = StyleSheet.create({
     height: "92%",
     // Sloe DS — 24px sheet corner (matches web `rounded-t-[24px]` /
     // `--radius-card-lg`), warm sheet shadow.
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.18,
@@ -1592,8 +1610,10 @@ const styles = StyleSheet.create({
   slotPill: {
     flex: 1,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+    // Chips census (2026-06-10): option chips join the §7 family —
+    // fully round, soft tint carries selection (no accent ring).
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1687,7 +1707,7 @@ const styles = StyleSheet.create({
   emptyBlock: {
     borderWidth: 1,
     borderStyle: "dashed",
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
     paddingVertical: 32,
     paddingHorizontal: Spacing.lg,
     alignItems: "center",

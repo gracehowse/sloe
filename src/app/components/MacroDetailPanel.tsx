@@ -236,9 +236,15 @@ export function MacroDetailPanel({
                       aria-selected={isActive}
                       aria-label={m === "meal" ? "By meal" : "By ingredient"}
                       onClick={() => setMode(m)}
-                      className={`flex-1 rounded-full py-1.5 text-[13px] transition-colors ${
+                      // Segmented grammar (web parity 2026-06-10, ENG-1022):
+                      // active thumb = white `bg-card` lift + `primary-solid`
+                      // label + `font-semibold` + `shadow-sm` (matches the
+                      // Progress Trend/Scale toggle, treatment §8). Was a
+                      // `font-bold text-foreground` thumb — converged so both
+                      // segmented controls read identically.
+                      className={`flex-1 rounded-full py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                         isActive
-                          ? "bg-card font-bold text-foreground shadow-sm"
+                          ? "bg-card font-semibold text-primary-solid shadow-sm"
                           : "font-medium text-muted-foreground"
                       }`}
                     >

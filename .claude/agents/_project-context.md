@@ -216,6 +216,7 @@ Rules of engagement:
 - **Stripe (web) vs IAP (mobile)** billing rails — entitlements reconcile in `profiles.user_tier`.
 - **Apple Health / Apple Sign-In** — mobile-first/native; web has manual equivalents.
 - **Today dark surface tone** — mobile `#0a0a0f` vs web `#101014` (platform-native depth).
+- **"Sign in with Apple" button colours** — the black (`#000`) fill + white (`#fff`) logo/text on `apps/mobile/components/onboarding/steps/signup.tsx` and `apps/mobile/app/login.tsx` are **Apple HIG brand-mandated**, not theme tokens. These literal hexes are a deliberate carve-out — do NOT migrate them onto `Accent`/`Colors` tokens or re-file them in colour censuses (ENG-1013, 2026-06-10).
 
 **RETIRED 2026-05-25 (now converging to parity — no longer carve-outs):** pricing default → unify monthly (ENG-698); move-meal → web `/planner` (ENG-699); Recipe Go Public → mobile (ENG-700); onboarding Welcome copy → fresh pass (ENG-697); Discover IA → converge to web layout (ENG-695). See `docs/decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`.
 

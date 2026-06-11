@@ -153,6 +153,7 @@ import {
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
+import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -1437,16 +1438,20 @@ export default function PlannerScreen() {
         // on the cream with breathing room above the action row.
         summaryCard: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl,
-          borderWidth: 1,
+          // Card-shell unification (2026-06-10 census): page-ground cards share
+          // CARD_RADIUS 24 — this sat at Radius.xl(12), a visibly tighter corner
+          // than every sibling tab's cards. Border matches SupprCard (hairline).
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.lg,
           marginBottom: Spacing.xs,
         },
         summaryOverline: {
+          // headers census 2026-06-10: drop the ls 1.2 override — Type.label's
+          // 0.88 is the only legal eyebrow tracking.
           ...Type.label,
           color: colors.textTertiary,
-          letterSpacing: 1.2,
           marginBottom: Spacing.xs,
         },
         summaryTitle: {
@@ -1510,8 +1515,10 @@ export default function PlannerScreen() {
           gap: Spacing.xs,
           paddingHorizontal: Spacing.dense,
           paddingVertical: 8,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          // Chips census (2026-06-10): Radius.full — every other filter chip
+          // in the app is fully round; Plan's square-8 family was the drift.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
@@ -1585,8 +1592,8 @@ export default function PlannerScreen() {
         // the "Plan your week" form reads as a calm card, not a dense panel.
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
@@ -1617,8 +1624,9 @@ export default function PlannerScreen() {
         dayBtn: {
           flex: 1,
           paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          borderWidth: 1,
+          // Chips census (2026-06-10): option pills join the §7 family.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           alignItems: "center",
         },
@@ -1643,7 +1651,8 @@ export default function PlannerScreen() {
         // a 10% tint fill measures 2.89:1, below WCAG AA — matches the
         // canonical LogSheet slot pill (`text-foreground` on `bg-primary/10`).
         dayBtnActivePrimary: {
-          borderColor: colors.tint,
+          // §7 (2026-06-10): tint IS the signal — no accent ring.
+          borderColor: colors.tint + "1A",
           backgroundColor: colors.tint + "1A",
         },
         // Sloe treatment system (2026-06-08, §7): selected config pill label in
@@ -1667,26 +1676,20 @@ export default function PlannerScreen() {
         // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
         // week scans as a calm editorial list of days, not a stack of bold
         // sans labels. Matches the "Meal plan" serif tab header.
-        dayTitle: { ...Type.headline, fontSize: 18, color: colors.text },
+        // headers census 2026-06-10: day-card title → Type.navTitle (serif 18/22);
+        // was Type.headline stretched to fontSize 18.
+        dayTitle: { ...Type.navTitle, color: colors.text },
         // Prototype port (2026-04-20) — small uppercase "TODAY" pill
         // next to the weekday label. Primary-color text, no pill
         // background — matches prototype `screens-mobile.jsx:482`.
-        dayTodayPill: {
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textSecondary,
-          letterSpacing: 1.4,
-        },
+        // headers census 2026-06-10: pill eyebrow → Type.label.
+        dayTodayPill: { ...Type.label, color: colors.textSecondary },
         // 2026-05-14 (premium-bar audit Plan Card 2 #5) — companion
         // to `dayTodayPill`, signals the day-card is part of a shared
         // household plan. Subdued grey so it reads as scope context,
         // not as a CTA.
-        daySharedPill: {
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textTertiary,
-          letterSpacing: 1.4,
-        },
+        // headers census 2026-06-10: pill eyebrow → Type.label.
+        daySharedPill: { ...Type.label, color: colors.textTertiary },
         dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
         // 2026-05-22 evening (Grace): tightened vertical padding 10→8
@@ -1732,8 +1735,9 @@ export default function PlannerScreen() {
           gap: Spacing.xs,
           paddingVertical: 8,
           paddingHorizontal: 4,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          // Chips census (2026-06-10): Radius.full — chip family is round.
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
@@ -1752,7 +1756,8 @@ export default function PlannerScreen() {
           alignItems: "center",
           justifyContent: "center",
         },
-        mealSlot: { ...Type.label, letterSpacing: 0.8 },
+        // headers census 2026-06-10: drop the ls 0.8 override — Type.label only.
+        mealSlot: { ...Type.label },
         mealTitle: {
           ...Type.body,
           fontSize: 14,
@@ -3894,8 +3899,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               paddingHorizontal: Spacing.xl,
@@ -4009,8 +4014,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               paddingHorizontal: Spacing.xl,
@@ -4257,8 +4262,8 @@ export default function PlannerScreen() {
                 onPress={(e) => e.stopPropagation?.()}
                 style={{
                   backgroundColor: colors.card,
-                  borderTopLeftRadius: Radius.lg,
-                  borderTopRightRadius: Radius.lg,
+                  borderTopLeftRadius: SHEET_RADIUS,
+                  borderTopRightRadius: SHEET_RADIUS,
                   paddingTop: Spacing.md,
                   paddingBottom: insets.bottom + Spacing.sm,
                 }}
@@ -4319,8 +4324,8 @@ export default function PlannerScreen() {
             onPress={(e) => e.stopPropagation?.()}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.md,
               paddingBottom: insets.bottom + Spacing.lg,
               maxHeight: "70%",

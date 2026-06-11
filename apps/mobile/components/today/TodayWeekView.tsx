@@ -7,7 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Colors, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -366,7 +366,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
             <ScrubTooltip
               day={days[scrubIndex]!}
               dayGoal={dayGoals[scrubIndex] ?? calorieTarget}
-              cardColor={styles.card?.backgroundColor ?? "#fff"}
+              cardColor={styles.card?.backgroundColor ?? Colors.light.card}
               borderColor={borderColor}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}

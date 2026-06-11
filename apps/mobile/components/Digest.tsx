@@ -12,21 +12,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  Share,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
@@ -145,7 +139,8 @@ function DigestLegacy(props: DigestProps) {
   // Secondary accent (Frost flag → damson, else clay) for the digest CTA tint +
   // fill. Positive/win beats keep `Accent.success`.
   const accent = useAccent();
-  const cardElevation = useCardElevation();
+  // Card-shell unification (2026-06-10): page-ground card → soft lift.
+  const cardElevation = useCardElevation({ variant: "soft" });
 
   // `weekly_digest_shown` — fire once per visible weekKey. Legacy name
   // `weekly_recap_shown` carries over (§ open-question #11).
@@ -299,8 +294,8 @@ function DigestLegacy(props: DigestProps) {
       testID="digest"
       style={{
         backgroundColor: cardElevation.liftBg ?? colors.card,
-        borderRadius: Radius.lg,
-        borderWidth: cardElevation.useBorder ? 1 : 0,
+        borderRadius: CARD_RADIUS,
+        borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         borderColor: colors.cardBorder,
         padding: Spacing.lg,
         marginBottom: 14,
@@ -320,7 +315,8 @@ function DigestLegacy(props: DigestProps) {
 
       {/* Eyebrow */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1 }}>
+        {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label. */}
+        <Text style={{ ...Type.label, color: colors.textSecondary }}>
           WEEK DIGEST
         </Text>
         <Text style={{ fontSize: 10, color: colors.textSecondary, opacity: 0.7 }}>· {weekLabel}</Text>
@@ -577,13 +573,10 @@ function Stat({
       }}
     >
       <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textSecondary,
-          letterSpacing: 1,
-          marginBottom: 2,
-        }}
+        // headers census 2026-06-10: hand-rolled eyebrow → Type.label (token
+        // already uppercases; the .toUpperCase() below is now redundant but
+        // harmless).
+        style={{ ...Type.label, color: colors.textSecondary, marginBottom: 2 }}
       >
         {label.toUpperCase()}
       </Text>

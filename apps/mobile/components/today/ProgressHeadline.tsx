@@ -1,9 +1,10 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Sparkles } from "lucide-react-native";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
 import {
@@ -45,7 +46,7 @@ export function ProgressHeadline({
   testID,
 }: ProgressHeadlineProps) {
   const colors = useThemeColors();
-  const cardElevation = useCardElevation();
+  const cardElevation = useCardElevation({ variant: "soft" });
   const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
@@ -68,18 +69,10 @@ export function ProgressHeadline({
       ]}
     >
       <View style={styles.eyebrowRow}>
-        {/* Clay sparkle by the THIS WEEK eyebrow (frame). Mirrors web. */}
-        <Sparkles size={14} color={accent.primary} strokeWidth={1.75} />
-        <Text
-          style={[
-            Type.label,
-            {
-              color: accent.primary,
-            },
-          ]}
-        >
-          THIS WEEK
-        </Text>
+        {/* headers census 2026-06-10: sparkle-eyebrow row → IconSize.xs + the
+            AA-safe accent.primarySolid (was size 14 + accent.primary). */}
+        <Sparkles size={IconSize.xs} color={accent.primarySolid} strokeWidth={1.75} />
+        <Text style={[Type.label, { color: accent.primarySolid }]}>THIS WEEK</Text>
       </View>
 
       <Text
@@ -132,14 +125,15 @@ export function ProgressHeadline({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.lg,
+    borderRadius: CARD_RADIUS,
     paddingHorizontal: Spacing.xl,
-    paddingVertical: 16,
+    paddingVertical: Spacing.md,
   },
   eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm,
+    // headers census 2026-06-10: sparkle-eyebrow gap → Spacing.xs (4).
+    gap: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   body: {

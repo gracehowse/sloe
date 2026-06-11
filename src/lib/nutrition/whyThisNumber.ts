@@ -65,6 +65,15 @@ export interface WhyThisNumberInput {
    */
   mealLogDays?: number | null;
   weightLogCount?: number | null;
+  /**
+   * Whether the user has a connected wearable (Apple Health) feeding
+   * activity + resting-burn data. Controls the "Your Watch" story beat:
+   * we only tell the watch story to people who actually have one,
+   * otherwise it reads as a feature they don't have. Defaults to
+   * `false` (no watch beat) when omitted, so web — which has no native
+   * Health integration — never shows it unless a caller opts in.
+   */
+  hasWearable?: boolean;
 }
 
 export interface WhyThisNumberLine {
@@ -76,11 +85,44 @@ export interface WhyThisNumberLine {
   value: string;
 }
 
+/**
+ * One plain-English "how this works" beat for the explainer's
+ * "How we work this out" section. These tell the user the *story* of
+ * the maintenance architecture (the four layers in the 2026-06-10 TDEE
+ * decision) in warm, jargon-free language — distinct from the numeric
+ * 3-row breakdown above, which shows the *math*.
+ *
+ * The set of beats adapts to state: a still-calibrating user sees the
+ * "we start from your stats" beat framed as what's happening now; a user
+ * with an adaptive number sees the "we've learned from your N
+ * fully-logged days" beat instead. The "partial days don't count" and
+ * "your Watch" beats are always present — they answer the two questions
+ * users actually ask ("why didn't a forgotten dinner drag my number
+ * down?" and "why isn't my workout in my baseline?").
+ *
+ * Voice: warm-coaching, second person, no jargon, no medical claims,
+ * no shaming. Sources are cited in the repo doc, never in-app.
+ */
+export interface WhyThisNumberStoryBeat {
+  /** Stable id for keyed rendering + test targeting. */
+  key: "seed" | "learn" | "gate" | "watch" | "range";
+  /** The plain-English sentence shown to the user. */
+  text: string;
+}
+
 export interface WhyThisNumberResult {
   /** Headline copy: "Today's target: 1,800 kcal". */
   targetHeadline: string;
   /** Three short rows that explain the math. Render in order. */
   lines: WhyThisNumberLine[];
+  /**
+   * Plain-English "How we work this out" beats — the story of the
+   * maintenance architecture in warm, non-jargon language. Render in
+   * order under a "How we work this out" heading, below the numeric
+   * breakdown. Always at least three beats; the exact set adapts to
+   * state (see `WhyThisNumberStoryBeat`).
+   */
+  storyBeats: WhyThisNumberStoryBeat[];
   /**
    * Plain-English summary sentence — used by mobile bottom sheet
    * subhead and screen-reader announcements. Always present.
@@ -103,11 +145,17 @@ export interface WhyThisNumberResult {
 const KCAL_PER_KG_FAT = 7700;
 const KCAL_PER_DAY_PER_WEEKLY_KG = KCAL_PER_KG_FAT / 7;
 
-/** Mirrors `MIN_LOGGING_DAYS` and `MIN_WEIGH_INS` in
- *  `src/lib/nutrition/adaptiveTdee.ts`. Duplicated here (rather than
- *  imported) so the helper stays React-Native-safe and dependency-free.
- *  When those constants move, update here in lockstep — the test
- *  `whyThisNumber.test.ts` pins the gate values. */
+/** Mirrors `MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE` and
+ *  `MIN_WEIGH_INS_FOR_ADAPTIVE_TDEE` in
+ *  `src/lib/nutrition/progressDataContract.ts` (re-exported from
+ *  `adaptiveTdee.ts` as `MIN_LOGGING_DAYS` / `MIN_WEIGH_INS`).
+ *  Duplicated here (rather than imported) so the helper stays
+ *  React-Native-safe and dependency-free. When those constants move,
+ *  update here in lockstep — the test `whyThisNumber.test.ts` pins the
+ *  gate values. NB: these count *fully-logged* days only — partial days
+ *  are excluded by the completeness gate (R1) and never enter the
+ *  estimate, which is the whole point of the "forgotten dinner can't
+ *  drag your number down" story beat. */
 const MIN_MEAL_LOG_DAYS_FOR_TDEE = 7;
 const MIN_WEIGHT_LOGS_FOR_TDEE = 3;
 
@@ -209,6 +257,88 @@ function buildCalibratingAsk(
 }
 
 /**
+ * Build the plain-English "How we work this out" story beats — the
+ * four-layer maintenance architecture told in warm, jargon-free
+ * language. The 2026-06-10 TDEE decision
+ * (`docs/decisions/2026-06-10-adaptive-tdee-gating.md`) is the source;
+ * the user-facing summary is `docs/user/how-your-calorie-target-works.md`.
+ *
+ * Beats, in order:
+ *   1. seed  — "We start from your height, weight, age and sex."
+ *   2. learn — "Then we learn from what you actually log and how your
+ *               weight responds." (present-tense ask when calibrating;
+ *               past-tense "we've learned from N days" once we have it)
+ *   3. gate  — "Days that look only partly logged don't count toward
+ *               learning — so a forgotten dinner can't drag your number
+ *               down." (THE 'why' — always present)
+ *   4. watch — Apple Watch role: bonus on the day, resting-burn floor,
+ *               but NOT averaged into the baseline. (only when
+ *               `hasWearable`)
+ *   5. range — "Your number updates gradually, and never moves outside
+ *               a sensible range of your starting estimate." (always)
+ *
+ * Pure. No medical claims, no "guaranteed", body-neutral.
+ */
+export function buildStoryBeats(input: {
+  maintenanceTdee: number | null;
+  loggingDays: number | null;
+  hasWearable: boolean;
+}): WhyThisNumberStoryBeat[] {
+  const hasEstimate =
+    input.maintenanceTdee != null && input.maintenanceTdee > 0;
+  const beats: WhyThisNumberStoryBeat[] = [];
+
+  // 1. Seed — the formula start point. Always present.
+  beats.push({
+    key: "seed",
+    text: "We start from your height, weight, age and sex to estimate the calories you'd burn on a quiet day.",
+  });
+
+  // 2. Learn — the adaptive layer. Phrasing flips on whether we have a
+  //    number yet. Naming the day count (when known) shows WHY learning
+  //    can be slower for someone who logs in bursts.
+  if (hasEstimate && input.loggingDays != null && input.loggingDays > 0) {
+    beats.push({
+      key: "learn",
+      text: `Then we learn from what you actually log and how your weight responds over time — that's the most reliable signal there is, and it's what serious coaching apps use. So far we've learned from your ${input.loggingDays} fully-logged days.`,
+    });
+  } else if (hasEstimate) {
+    beats.push({
+      key: "learn",
+      text: "Then we learn from what you actually log and how your weight responds over time — that's the most reliable signal there is, and it's what serious coaching apps use.",
+    });
+  } else {
+    beats.push({
+      key: "learn",
+      text: "As you log meals and weigh in, we learn from what you actually eat and how your weight responds — the most reliable signal there is. Until then, your target is based on your stated goal.",
+    });
+  }
+
+  // 3. Gate — THE 'why' Grace wants users to understand. Always present.
+  beats.push({
+    key: "gate",
+    text: "Days that look only partly logged don't count toward this learning — so a forgotten dinner can't drag your number down.",
+  });
+
+  // 4. Watch — only for wearable owners. Three precise jobs: bonus on
+  //    the day, resting-burn sanity floor, NOT averaged into baseline.
+  if (input.hasWearable) {
+    beats.push({
+      key: "watch",
+      text: "Your Watch adds workouts and activity to today's budget the day you earn them, and we use its resting-burn reading as a sanity check. We don't fold workout calories into your baseline, because a wrist estimate of exercise burn is the least reliable number it produces.",
+    });
+  }
+
+  // 5. Range — the plausibility bound. Always present, reassuring.
+  beats.push({
+    key: "range",
+    text: "Your number updates gradually as we learn, and it never moves outside a sensible range of your starting estimate.",
+  });
+
+  return beats;
+}
+
+/**
  * Build the breakdown rows + summary sentence. Pure.
  */
 export function buildWhyThisNumber(
@@ -218,19 +348,30 @@ export function buildWhyThisNumber(
   const loggingDays = input.loggingDays ?? null;
   const mealLogDays = input.mealLogDays ?? null;
   const weightLogCount = input.weightLogCount ?? null;
+  const hasWearable = input.hasWearable ?? false;
 
   const isEarlyEstimate =
     maintenanceTdee != null &&
     (confidence === "low" || (loggingDays != null && loggingDays < 14));
 
   // -- Row 1: TDEE / maintenance estimate --------------------------
+  // The qualifier reflects the gated architecture (2026-06-10 decision):
+  // we learn from *fully-logged* days, not "the last 7 calendar days".
+  // When the caller supplies the count of complete days behind the
+  // estimate (`loggingDays`), we name it — "learned from your N
+  // fully-logged days" — so the user sees WHY learning may be slower
+  // when some days are partial. Without a count we fall back to a clean
+  // "learned from your logging" phrasing rather than asserting a window
+  // we can't substantiate.
   const tdeeLabel = "Maintenance (TDEE)";
   let tdeeValue: string;
   if (maintenanceTdee != null && maintenanceTdee > 0) {
     if (isEarlyEstimate) {
       tdeeValue = `~${fmtKcal(maintenanceTdee)} (early estimate)`;
+    } else if (loggingDays != null && loggingDays > 0) {
+      tdeeValue = `${fmtKcal(maintenanceTdee)} (learned from your ${loggingDays} fully-logged days)`;
     } else {
-      tdeeValue = `${fmtKcal(maintenanceTdee)} (adaptive, last 7 days)`;
+      tdeeValue = `${fmtKcal(maintenanceTdee)} (learned from your logging)`;
     }
   } else {
     tdeeValue = "calibrating — keep logging";
@@ -303,9 +444,16 @@ export function buildWhyThisNumber(
       "We're still calibrating your maintenance — your target is based on your stated goal and weekly pace.";
   }
 
+  const storyBeats = buildStoryBeats({
+    maintenanceTdee,
+    loggingDays,
+    hasWearable,
+  });
+
   return {
     targetHeadline: `Today's target: ${fmtKcal(targetCalories)}`,
     lines,
+    storyBeats,
     summary,
     isEarlyEstimate: Boolean(isEarlyEstimate),
     calibratingAsk,

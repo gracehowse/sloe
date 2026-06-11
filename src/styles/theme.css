@@ -68,7 +68,9 @@
    *  are pure white. Mirrors mobile `Colors.light` in
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
-  --background: #FFFFFF;
+  /* Material inversion (2026-06-10 fresh-eyes §1+§2, mirror of mobile
+     theme.ts): cream brand ground + white cards. */
+  --background: #FBF8F3;
   --background-secondary: #F6F5F2;
   --foreground: #221B26;
   --foreground-secondary: #6A6072;
@@ -81,8 +83,8 @@
    *  card titles were the ONLY surface still using clay `text-primary`
    *  (3.06:1 — AA FAIL); this is the parity + contrast fix. */
   --foreground-brand: #3B2A4D;
-  --card: #F6F5F2;
-  --card-elevated: #F6F5F2;
+  --card: #FFFFFF;
+  --card-elevated: #FFFFFF;
   --card-foreground: #221B26;
   --popover: #FFFFFF;
   --popover-foreground: #221B26;
@@ -321,8 +323,10 @@
   /** Ring empty track — Sloe frost-mist (readable on white hero; parity
    *  mobile `ringTrack`). */
   --ring-bg: #EDEAF1;
-  /** Alias of `--ring-bg`; progress arc uses `--macro-calories` (plum) /
-   *  `--destructive` (over). */
+  /** Alias of `--ring-bg`. The progress arc is `--macro-calories` (plum) in
+   *  EVERY state — under AND over budget (web ring parity 2026-06-10; the old
+   *  `--destructive` over-recolour is retired, the over verdict lives in the
+   *  centre + status chip). */
   --ring-track: #EDEAF1;
 
   /** Font weights */
@@ -601,6 +605,13 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-solid: var(--primary-solid);
+  /* Aubergine soft-tint wash — the canonical selected-chip / segmented fill
+     (web parity 2026-06-10, ENG-1022). The `--primary-soft` CSS var existed
+     but was never mapped into the `@theme` block, so `bg-primary-soft`
+     generated NO utility and rendered transparent (latent bug — DayStrip
+     already used the class). Mapping it here makes `bg-primary-soft` /
+     `text-primary-soft` real Tailwind utilities, matching `--color-primary-solid`. */
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

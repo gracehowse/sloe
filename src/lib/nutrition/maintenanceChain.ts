@@ -41,7 +41,10 @@ import {
   type PlanPace,
   type Sex,
 } from "./tdee";
-import type { ResolvedMaintenance } from "./resolveMaintenance";
+import {
+  MAINTENANCE_SEED_ACTIVITY,
+  type ResolvedMaintenance,
+} from "./resolveMaintenance";
 
 /** 7700 kcal ≈ 1 kg of body fat — the standard conversion used across the app. */
 export const KCAL_PER_KG_FAT = 7700;
@@ -99,6 +102,12 @@ export interface MaintenanceChainProfile {
   weight_kg?: number | null;
   height_cm?: number | null;
   age?: number | null;
+  /**
+   * Retained for call-site compatibility. The explainer's BMR × activity row
+   * is rendered at the sedentary seed (`MAINTENANCE_SEED_ACTIVITY`) so it
+   * reconciles to `= Maintenance`; the user's profile activity level is not
+   * read here. See the formula-row comment in `buildMaintenanceChain`.
+   */
   activity_level?: ActivityLevel | null;
 }
 
@@ -130,7 +139,13 @@ export function buildMaintenanceChain(
     return null;
   }
 
-  const activity: ActivityLevel = profile.activity_level ?? "sedentary";
+  // The explainer's BMR × activity row must reconcile to `= Maintenance`
+  // (`resolved.kcal`). Since the maintenance seed is pinned to SEDENTARY for
+  // the add-back / activity-bonus architecture (see `resolveMaintenance`
+  // `MAINTENANCE_SEED_ACTIVITY` + survey §4), the formula row shows the same
+  // sedentary multiplier — otherwise the chain would display a Light/Moderate
+  // multiplier whose product disagrees with the maintenance total below it.
+  const activity = MAINTENANCE_SEED_ACTIVITY;
   const multiplier = ACTIVITY_MULTIPLIERS[activity];
   const activityLabel = ACTIVITY_SHORT_LABELS[activity];
 

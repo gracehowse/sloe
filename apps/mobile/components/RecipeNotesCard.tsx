@@ -21,8 +21,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import {
   getUserRecipeNotes,
@@ -41,6 +42,10 @@ type ThemeColors = {
   text: string;
   textSecondary: string;
   textTertiary: string;
+  // headers census 2026-06-10: card title now uses navPrimary (serif headline
+  // card-header treatment); the full useThemeColors() result the caller passes
+  // already carries it — this just widens the local narrowing.
+  navPrimary: string;
   card: string;
   border: string;
   background: string;
@@ -201,8 +206,8 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
       StyleSheet.create({
         card: {
           backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           padding: Spacing.xl,
           gap: Spacing.md,
@@ -212,7 +217,9 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
           alignItems: "center",
           justifyContent: "space-between",
         },
-        title: { fontSize: 15, fontWeight: "700", color: colors.text },
+        // headers census 2026-06-10: card title → serif Type.headline + navPrimary
+        // (was a 15/700 sans intruder; matches the canonical card-header treatment).
+        title: { ...Type.headline, color: colors.navPrimary },
         savingLabel: { fontSize: 11, color: colors.textTertiary },
         savedLabel: { fontSize: 11, color: Accent.success, fontWeight: "600" },
         errorLabel: { fontSize: 11, color: Accent.destructive, fontWeight: "600" },

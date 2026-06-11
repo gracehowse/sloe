@@ -12,6 +12,7 @@
  * callback; portion-refit + over-target confirm stay in the planner.
  */
 import { useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Image,
   Modal,
@@ -179,7 +180,7 @@ export function SwapMealSheet({
                             backgroundColor: accent.primarySoft,
                             borderRadius: Radius.full,
                             paddingHorizontal: Spacing.sm,
-                            paddingVertical: 1,
+                            paddingVertical: 2, // tag canon pV (census 2026-06-10)
                           }}
                         >
                           <Star size={9} color={accent.primarySolid} strokeWidth={2.5} />
@@ -230,8 +231,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xl,

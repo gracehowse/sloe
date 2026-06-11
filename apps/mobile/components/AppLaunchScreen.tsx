@@ -2,7 +2,7 @@ import React from "react";
 import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 
 import { SloeLaunchWordmark } from "@/components/SloeLaunchWordmark";
-import { Colors, Spacing } from "@/constants/theme";
+import { Accent, Colors, Spacing } from "@/constants/theme";
 
 type ThemeColors = typeof Colors.light;
 export type LaunchScheme = "light" | "dark";
@@ -15,9 +15,14 @@ export type LaunchScheme = "light" | "dark";
  * native-splash → JS-boot handoff seamless, so the cream/plum field holds
  * steady until the real app content is ready.
  */
-const SPLASH_BG = { light: "#FBF8F3", dark: "#3B2A4D" } as const;
+// ENG-1013 (2026-06-10): three of these six splash hexes equal theme tokens, so
+// they reference them statically (#3B2A4D = Accent.primary, #F5F3F4 =
+// Colors.dark.text, #6A6072 = Colors.light.textSecondary). The two that match no
+// token (#FBF8F3 cream, #D9D5DC) stay literal with the app.json cross-ref above,
+// since they MUST mirror the native splash colorset, not the product palette.
+const SPLASH_BG = { light: "#FBF8F3", dark: Accent.primary } as const;
 /** Spinner colour that contrasts with each splash field (plum on cream, cream on plum). */
-const SPLASH_SPINNER = { light: "#3B2A4D", dark: "#F5F3F4" } as const;
+const SPLASH_SPINNER = { light: Accent.primary, dark: Colors.dark.text } as const;
 
 export type AppLaunchScreenProps = {
   /** Short status line under the spinner — keep calm, not technical. */
@@ -51,7 +56,7 @@ export function AppLaunchScreen({
   const isDark = colors.background === Colors.dark.background;
   const splashBackground = isDark ? SPLASH_BG.dark : SPLASH_BG.light;
   const spinnerColor = isDark ? SPLASH_SPINNER.dark : SPLASH_SPINNER.light;
-  const messageColor = isDark ? "#D9D5DC" : "#6A6072";
+  const messageColor = isDark ? "#D9D5DC" : Colors.light.textSecondary;
 
   return (
     <View

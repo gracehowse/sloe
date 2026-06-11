@@ -132,20 +132,17 @@ describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
     expect(fills.some(isOverRed)).toBe(false);
   });
 
-  it("over budget: the overage LAP renders in the lifted-plum family", () => {
+  it("over budget: NO overage lap and NO glow — the ring caps at full (2026-06-10 category survey)", () => {
+    // Lifesum/MFP/Cal AI cap the ring; the centre verdict carries the
+    // overage. The second-lap wrap was an activity-ring idiom (wrong
+    // comparable) — retired after 7 rounds of trying to make it read.
     const { UNSAFE_root } = render(
       <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
-    expect(strokes.some(isOverageLap)).toBe(true);
-  });
-
-  it("over budget: a leading-cap GLOW element is present", () => {
-    const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
-    );
+    expect(strokes.some(isOverageLap)).toBe(false);
     const fills = collectFills(UNSAFE_root).map((s) => s.toUpperCase());
-    expect(fills.some(isGlow)).toBe(true);
+    expect(fills.some(isGlow)).toBe(false);
   });
 
   it("never references the retired `overHash` diagonal pattern", () => {

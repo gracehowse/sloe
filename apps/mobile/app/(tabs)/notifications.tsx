@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -90,7 +91,9 @@ export default function NotificationsScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: Spacing.xl, gap: Spacing.md },
         header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense },
-        title: { ...Type.title, color: colors.text },
+        // headers census 2026-06-10 — tab-level title ink → navPrimary (was
+        // the lone tab title in `colors.text`).
+        title: { ...Type.title, color: colors.navPrimary },
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
         err: { color: "#f87171", textAlign: "center", fontSize: 15 },
@@ -115,8 +118,8 @@ export default function NotificationsScreen() {
         btnText: { color: colors.text, fontSize: 13, fontWeight: "600" },
         empty: {
           padding: Spacing.xl,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
           gap: 8,
@@ -125,8 +128,8 @@ export default function NotificationsScreen() {
         emptyTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
         card: {
           padding: Spacing.lg,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderRadius: CARD_RADIUS,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           backgroundColor: colors.card,
           marginTop: Spacing.sm,

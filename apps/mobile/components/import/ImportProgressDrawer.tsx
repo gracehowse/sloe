@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Check, CheckCheck, RefreshCw, X } from "lucide-react-native";
 
@@ -56,8 +57,8 @@ export function ImportProgressDrawer({ queue, onOpenRecipe }: Props) {
         borderTopWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.card,
-        borderTopLeftRadius: Radius.lg,
-        borderTopRightRadius: Radius.lg,
+        borderTopLeftRadius: SHEET_RADIUS,
+        borderTopRightRadius: SHEET_RADIUS,
         paddingTop: Spacing.md,
         paddingBottom: Spacing.sm,
       }}
@@ -200,7 +201,7 @@ function ImportJobRow({
                 justifyContent: "center",
               }}
             >
-              <Check size={13} color="#fff" strokeWidth={3} />
+              <Check size={13} color={colors.primaryForeground} strokeWidth={3} />
             </View>
           ) : null}
           {job.canRetry ? (

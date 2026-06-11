@@ -10,8 +10,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
 import { ProgressHeadline } from "../../components/today/ProgressHeadline";
-import { generateProgressCommentary } from "@/lib/progressCommentary";
-import type { AdaptiveTdeeResult } from "@suppr/shared/nutrition/adaptiveTdee";
+import {
+  generateProgressCommentary,
+  type ProgressCommentaryTdee,
+} from "@/lib/progressCommentary";
 
 // Render unit tests must neutralise analytics: ProgressHeadline's flag-aware
 // subtree otherwise calls the real `isFeatureEnabled`, which fires a floating
@@ -41,15 +43,13 @@ vi.mock("@/hooks/use-theme-colors", () => ({
   }),
 }));
 
-function tdee(overrides: Partial<AdaptiveTdeeResult> = {}): AdaptiveTdeeResult {
+function tdee(
+  overrides: Partial<ProgressCommentaryTdee> = {},
+): ProgressCommentaryTdee {
   return {
     tdee: 2100,
     confidence: "medium",
     loggingDays: 21,
-    weighInCount: 6,
-    avgDailyIntake: 1900,
-    smoothedWeightChangeKgPerDay: -0.025,
-    windowDays: 28,
     ...overrides,
   };
 }

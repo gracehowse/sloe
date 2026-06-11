@@ -38,7 +38,9 @@ export function ConfidenceChip({ level, label, style, testID }: ConfidenceChipPr
       accessibilityLabel={displayLabel}
       style={[
         styles.chip,
-        { backgroundColor: "rgba(148, 163, 184, 0.12)" },
+        // Chips census (2026-06-10): warm neutral wash — the slate literal
+        // was a cool-grey outlier on a warm-aubergine app.
+        { backgroundColor: colors.confidenceNeutral + "1F" },
         style,
       ]}
     >

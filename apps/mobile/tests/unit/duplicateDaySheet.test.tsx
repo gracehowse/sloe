@@ -33,6 +33,7 @@ const COLORS = {
   card: "#16161e",
   cardBorder: "#2a2a3a",
   background: "#0a0a0f",
+  primaryForeground: "#ffffff",
 };
 
 describe("DuplicateDaySheet (mobile) — F2 parity", () => {

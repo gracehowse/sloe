@@ -107,7 +107,7 @@ export function ImportLoadingSkeleton({
                     backgroundColor: isDone ? Accent.success : colors.border,
                   }}
                 >
-                  {isDone ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+                  {isDone ? <Ionicons name="checkmark" size={14} color={colors.primaryForeground} /> : null}
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>
                   {stepLabels[step]}

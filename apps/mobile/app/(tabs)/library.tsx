@@ -34,6 +34,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -64,7 +65,7 @@ type SortKey = "recent" | "calories" | "protein";
  * Web parity: `radius="lg"` (24px) on the `SupprCard` in `Library.tsx` /
  * `DiscoverFeed.tsx`.
  */
-const RECIPE_CARD_RADIUS = 24;
+const RECIPE_CARD_RADIUS = CARD_RADIUS;
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
@@ -327,9 +328,13 @@ export default function LibraryScreen() {
   // Aubergine-on-surface tokens (Sloe treatment system) — light uses the deep
   // `primarySolid` for outline borders / labels + the `primarySoft` tint for
   // selected pills; dark lifts both so the accent clears AA on the dark card.
-  const isLight = colors.background === "#FFFFFF";
-  const accentInk = isLight ? accent.primarySolid : accent.primarySolidDark;
-  const accentSoft = isLight ? accent.primarySoft : accent.primarySoftDark;
+  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves these (light
+  // primarySolid #3B2A4D / primarySoft tint → dark lifted aubergine), so read
+  // them directly. The old `colors.background === "#FFFFFF"` probe silently
+  // broke when the light ground moved off pure white to cream #FBF8F3 — it
+  // returned the dark values in LIGHT mode. Dropping the probe fixes it.
+  const accentInk = accent.primarySolid;
+  const accentSoft = accent.primarySoft;
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -390,20 +395,19 @@ export default function LibraryScreen() {
       // round pill shape (matches Discover, search bar, and the DS §4 pill rule).
       // Previously 13 and 20 — both were off the canonical Spacing/Radius
       // ladders; snapped to on-scale values (2026-06-09 library spacing audit).
-      paddingHorizontal: Spacing.sm + Spacing.xs, // 12
+      // Chips census (2026-06-10): chips are NOT cards — the card-lift
+      // shadow/liftBg spread is gone (a drop-shadowed filter pill read as
+      // a floating button). §7 grammar: quiet off-white slab, hairline in
+      // dark only, soft-tint when selected.
+      paddingHorizontal: Spacing.dense,
       paddingVertical: Spacing.sm,
       minHeight: 36,
       borderRadius: Radius.full,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.border,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
+      backgroundColor: colors.card,
       justifyContent: "center",
       alignItems: "center",
-      ...(cardElevation.shadowStyle ?? {}),
-    },
-    filterPillActive: {
-      backgroundColor: colors.backgroundSecondary,
-      borderColor: colors.text,
     },
     // Category pill SELECTED — Sloe treatment §7: aubergine SOFT-TINT fill +
     // aubergine `primarySolid` label (not a solid accent slab). The selected
@@ -423,11 +427,7 @@ export default function LibraryScreen() {
       fontSize: 12,
       lineHeight: 18,
       fontWeight: "600",
-      color: colors.text,
-    },
-    filterPillTextActive: {
-      color: colors.text,
-      fontWeight: "700",
+      color: colors.textSecondary,
     },
     // ENG-921 polish (2026-06-07) / Figma `527:2` — the entry-kind buckets
     // (All / Saved / Imported) no longer occupy a second filter row. They
@@ -497,18 +497,21 @@ export default function LibraryScreen() {
       paddingBottom: Spacing.sm,
     },
     planImportPill: {
-      paddingHorizontal: Spacing.sm + Spacing.xs,  // 12 — was 11 (off-scale); snapped to sm+xs
-      paddingVertical: Spacing.xs,                 // 4  — was 6 (off-scale); snapped to xs
-      borderRadius: Radius.full,                   // was 20 (off-scale); canonical full pill
-      borderWidth: 1,
+      // Chips census (2026-06-10): the sub-filter row joins the §7 chip
+      // grammar — quiet card fill at rest, soft tint + solid label when
+      // selected (was transparent + a text-colour ring).
+      paddingHorizontal: Spacing.dense,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      backgroundColor: "transparent",
+      backgroundColor: colors.card,
       justifyContent: "center",
       alignItems: "center",
     },
     planImportPillActive: {
-      borderColor: colors.text,
-      backgroundColor: colors.backgroundSecondary,
+      borderColor: accentSoft,
+      backgroundColor: accentSoft,
     },
     planImportPillText: {
       fontSize: 12,
@@ -517,7 +520,7 @@ export default function LibraryScreen() {
       color: colors.textSecondary,
     },
     planImportPillTextActive: {
-      color: colors.text,
+      color: accentInk,
       fontWeight: "700",
     },
     // 2026-05-06 (Grace) — search-input wrapper that holds the
@@ -562,7 +565,7 @@ export default function LibraryScreen() {
     card: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: RECIPE_CARD_RADIUS,
-      borderWidth: cardElevation.useBorder ? 1 : 0,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.border,
       overflow: "hidden",
     },
@@ -679,9 +682,9 @@ export default function LibraryScreen() {
       position: "absolute",
       top: Spacing.sm,
       left: Spacing.sm,
-      paddingHorizontal: 8,
+      paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.xs,
-      borderRadius: Radius.sm,
+      borderRadius: Radius.full, // tags census 2026-06-10 — tag family is round
       backgroundColor: colors.text + "CC",
     },
     draftBadgeText: {

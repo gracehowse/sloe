@@ -619,13 +619,17 @@ export default function TrackerScreen() {
   // the hero, not an opt-in reveal). The long-press still toggles it
   // (coupled with the display-mode flip) for users who want the calmer
   // calories-only view.
+  // 2026-06-10 (Grace, round 2): the multi-ring WEIGHTS were right — the
+  // single-ring collapse is reverted. The thing that read cheap was the
+  // overage segment's colour discontinuity, fixed in the Skia layer's
+  // continuous sweep gradient. Collapsed mode (via "Hide macro rings")
+  // keeps the bold single-ring stroke.
   const [ringExpanded, setRingExpanded] = useState(true);
   // SLOE redesign (2026-06-04, Grace "ring sub-label → budget left"): the
   // ring opens in *remaining* mode so the centre reads the budget left
   // ("1,633 / of 2,040 kcal", REMAINING) like the Figma 01 frame, not the
   // backward-looking "379 LOGGED". The Remaining/Consumed toggle still lets
   // the user flip to consumed.
-  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
   // removed in this phase — TodayHero is now a thin wrapper around
@@ -3650,7 +3654,10 @@ export default function TrackerScreen() {
           gap: Spacing.md,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        cardTitle: { color: colors.text, ...Type.headline },
+        // headers census 2026-06-10: card-header ink colors.text → navPrimary
+        // (matches the canonical TodayActivityCard treatment). Currently unused
+        // in this legacy file but converged so a revival inherits the grammar.
+        cardTitle: { ...Type.headline, color: colors.navPrimary },
 
         macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
         macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
@@ -4729,8 +4736,8 @@ export default function TrackerScreen() {
               fontSize={13}
               gradientIdSuffix="today-wordmark-header"
               // Figma `654:6` — damson fill + white initial (not the grey ink default).
-              fill="#6a4b7a"
-              textColor="#ffffff"
+              fill={Accent.purple}
+              textColor={colors.primaryForeground}
             />
           </Pressable>
         </View>
@@ -4751,23 +4758,24 @@ export default function TrackerScreen() {
               }
             : todayPastDayGreetingLines(selectedDate);
           return (
-          <View style={{ alignItems: "center", marginTop: Spacing.xs, marginBottom: Spacing.lg }}>
-            <Text
-              testID="today-hero-greeting"
-              style={{ ...Type.title, fontWeight: "500", color: colors.navPrimary, textAlign: "center" }}
-              numberOfLines={2}
-            >
-              {headline}
-            </Text>
-            {subline ? (
-              <Text
-                testID="today-hero-greeting-subline"
-                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.textSecondary, marginTop: 4, textAlign: "center" }}
-                numberOfLines={1}
-              >
-                {subline}
+          // Fresh-eyes §4 (2026-06-10): the centered two-line serif greeting
+          // block spent ~25% of the viewport on header moments. Compacted to
+          // ONE left-aligned sans context line (greeting · date) — the hero
+          // number is the page's display moment now, not the greeting.
+          <View style={{ marginTop: Spacing.xs, marginBottom: Spacing.sm }}>
+            <Text testID="today-hero-greeting" numberOfLines={1}>
+              <Text style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "600", color: colors.text }}>
+                {headline}
               </Text>
-            ) : null}
+              {subline ? (
+                <Text
+                  testID="today-hero-greeting-subline"
+                  style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "400", color: colors.textSecondary }}
+                >
+                  {"  ·  " + subline}
+                </Text>
+              ) : null}
+            </Text>
           </View>
           );
         })() : null}
@@ -4978,11 +4986,6 @@ export default function TrackerScreen() {
                 fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
                 expanded={ringExpanded}
                 onToggleExpanded={() => setRingExpanded((e) => !e)}
-                displayMode={calorieDisplayMode}
-                onToggleDisplayMode={() => {
-                  setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
-                  setRingExpanded((e) => !e);
-                }}
                 isOnTrack={
                   totals.calories > 100 &&
                   effectiveCalorieGoal > 0 &&
@@ -5660,6 +5663,24 @@ export default function TrackerScreen() {
           },
           supabase: supabase as unknown as { from: (table: string) => unknown },
           userId: userId ?? null,
+          // History-first search (ENG-1033, MFP grammar): the user's logging
+          // history, newest-first, threaded into the inline panel. Powers the
+          // empty-query "Recent" strip AND the typed-query "Past logged"
+          // group that ranks matching past logs above database results. A
+          // 50-row window gives the matcher enough history to match a typed
+          // query against while staying cheap to compute.
+          recentFoods: computeRecentMeals(byDay, 50)
+            .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+            .map((item) => ({
+              recipeTitle: item.recipeTitle,
+              calories: item.calories,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              fiber: item.fiber,
+              source: item.source,
+              count: item.count,
+            })),
         }}
         barcode={{
           // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
@@ -6010,19 +6031,26 @@ export default function TrackerScreen() {
           fiber: totals.fiber,
         }}
         // 2026-05-12 round 5 (premium-bar audit #12 MFP borrow):
-        // recents on mount. Compute the user's last 5 meals from byDay
-        // (the same source the QuickAddPanel reads) and pass through
-        // so the search modal's empty-query state shows tap-to-log
-        // recents — the pattern MFP / Lose It / Cronometer all ship.
-        recentFoods={computeRecentMeals(byDay, 5).map((item) => ({
-          recipeTitle: item.recipeTitle,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          fiber: item.fiber,
-          source: item.source,
-        }))}
+        // recents on mount. Compute the user's meals from byDay (the same
+        // source the QuickAddPanel reads) and pass through so the search
+        // modal's empty-query state shows tap-to-log recents — the pattern
+        // MFP / Lose It / Cronometer all ship.
+        // ENG-1033: widened from 5 → 50 + carry `count` so the typed-query
+        // history-first "Past logged" group has enough history to match
+        // against and rank by recency-weighted frequency. The empty-query
+        // strip still shows only the first 5 (panel-side slice).
+        recentFoods={computeRecentMeals(byDay, 50)
+          .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+          .map((item) => ({
+            recipeTitle: item.recipeTitle,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            source: item.source,
+            count: item.count,
+          }))}
         // Shared commit path — same logic the inline `<FoodSearchPanel>`
         // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
         // F-79 + L6 G1 all live in the shared callback.
@@ -6214,6 +6242,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6261,6 +6290,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6293,6 +6323,7 @@ export default function TrackerScreen() {
               card: colors.card,
               cardBorder: colors.cardBorder,
               background: colors.background,
+              primaryForeground: colors.primaryForeground,
             }}
           />
         );
@@ -6323,6 +6354,7 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -6445,6 +6477,7 @@ export default function TrackerScreen() {
           card: colors.card,
           border: colors.border,
           background: colors.background,
+          primaryForeground: colors.primaryForeground,
         }}
       />
     </View>

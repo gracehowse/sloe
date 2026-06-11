@@ -60,7 +60,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
-import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -502,7 +502,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const accent = useAccent();
   // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
   // tiles (Recipes / Streak), matching the SettingsCard sections around them.
-  const statTileElevation = useCardElevation({ variant: "soft" });
+  // Tile-class rule (2026-06-10): stat tiles are flat-tonal, not lifted.
+  const statTileElevation = useCardElevation();
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1552,7 +1553,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fontFamily: FontFamily.serifSemibold,
               fontSize: 22,
               fontWeight: "600",
-              color: "#fff",
+              color: colors.primaryForeground,
             }}
           >
             {avatarInitial}
@@ -1676,8 +1677,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 {
                   flex: 1,
                   alignItems: "center",
-                  paddingVertical: 12,
-                  borderRadius: 16,
+                  paddingVertical: Spacing.dense,
+                  borderRadius: TILE_RADIUS,
                   backgroundColor: statTileElevation.liftBg ?? colors.card,
                   borderWidth: statTileElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
@@ -2635,8 +2636,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -2973,7 +2974,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 opacity: eraseConfirmInput !== "RESET" || resetting ? 0.35 : 1,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: colors.destructiveForeground, fontWeight: "700", fontSize: 15 }}>
                 {resetting ? "Working..." : "Erase everything"}
               </Text>
             </Pressable>
@@ -3022,8 +3023,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3176,8 +3177,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3304,8 +3305,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3423,8 +3424,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3587,8 +3588,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
@@ -3703,8 +3704,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               paddingTop: Spacing.lg,
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,

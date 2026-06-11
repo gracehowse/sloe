@@ -98,11 +98,11 @@ const styles = StyleSheet.create({
     gap: 4,
     height: 20,
     paddingHorizontal: 8,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.full, // tags census 2026-06-10 — tag family is round
   },
   label: {
-    fontSize: 10.5,
-    fontWeight: "800",
+    fontSize: 11,
+    fontWeight: "700",
     letterSpacing: 0.2,
     lineHeight: 14,
   },

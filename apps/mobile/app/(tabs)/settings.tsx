@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
 import { Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
@@ -88,12 +89,11 @@ export default function SettingsScreen() {
           paddingBottom: 120,
           gap: Spacing.md,
         },
-        // Sloe DS (Figma 09 Settings `335:2`): the screen title reads in
-        // Newsreader serif (`Type.title`) + plum (`navPrimary`),
-        // centered in the top bar. Was `text` ink, left-aligned in the
-        // scroll body with a cold subtitle — part of the Settings IA +
-        // palette drift the reskin closes.
-        title: { ...Type.title, color: colors.navPrimary, textAlign: "center" },
+        // Headers census 2026-06-10 (owner call): left-aligned like every
+        // other stack header — the Figma 335:2 dead-centre layout was the
+        // app's only centred title and read as drift once the system
+        // unified on left serif. Serif + navPrimary stay.
+        title: { ...Type.title, color: colors.navPrimary, marginLeft: Spacing.xs },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
       }),
     [colors],
@@ -141,8 +141,6 @@ export default function SettingsScreen() {
         <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
           Settings
         </Text>
-        {/* Spacer matching the back-chevron hit area so the title centres. */}
-        <View style={{ width: 30 }} />
       </View>
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -229,8 +227,8 @@ export default function SettingsScreen() {
                 marginTop: Spacing.xl,
                 // Sloe warm-slab corner (was 14) — matches the section
                 // cards so the lone Sign Out row reads as one of them.
-                borderRadius: 24,
-                borderWidth: 1,
+                borderRadius: CARD_RADIUS,
+                borderWidth: StyleSheet.hairlineWidth,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
               }}

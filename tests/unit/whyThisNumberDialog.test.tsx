@@ -41,8 +41,9 @@ describe("WhyThisNumberDialog (web)", () => {
 
   it("renders the canonical row content", () => {
     render(<WhyThisNumberDialog {...BASE_PROPS} />);
+    // BASE_PROPS supplies loggingDays: 21 → the qualifier names the count.
     expect(screen.getByTestId("why-this-number-line-tdee").textContent).toContain(
-      "2,150 kcal (adaptive, last 7 days)",
+      "2,150 kcal (learned from your 21 fully-logged days)",
     );
     expect(screen.getByTestId("why-this-number-line-goal").textContent).toContain(
       "Lose 0.5 kg/wk",
@@ -50,6 +51,26 @@ describe("WhyThisNumberDialog (web)", () => {
     expect(screen.getByTestId("why-this-number-line-result").textContent).toContain(
       "−350 kcal/day deficit",
     );
+  });
+
+  it("renders the 'How we work this out' story section with the gate beat", () => {
+    render(<WhyThisNumberDialog {...BASE_PROPS} />);
+    expect(screen.getByTestId("why-this-number-story")).toBeTruthy();
+    expect(screen.getByTestId("why-this-number-beat-seed")).toBeTruthy();
+    expect(screen.getByTestId("why-this-number-beat-learn")).toBeTruthy();
+    // The gate beat is the load-bearing 'why' — forgotten dinner protection.
+    expect(
+      screen.getByTestId("why-this-number-beat-gate").textContent,
+    ).toContain("forgotten dinner");
+    expect(screen.getByTestId("why-this-number-beat-range")).toBeTruthy();
+  });
+
+  it("omits the watch beat on web (no native wearable feed — parity carve-out)", () => {
+    // Web has no Apple Health integration; the dialog defaults hasWearable
+    // to false, so the watch story beat must not appear. This is the
+    // documented intentional platform divergence.
+    render(<WhyThisNumberDialog {...BASE_PROPS} />);
+    expect(screen.queryByTestId("why-this-number-beat-watch")).toBeNull();
   });
 
   it("renders 'Adjust target' CTA when onAdjustTarget is provided", () => {

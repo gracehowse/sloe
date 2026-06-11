@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -10,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -147,8 +148,8 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
         <View
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingTop: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,
@@ -188,7 +189,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
                 gap: Spacing.dense,
                 paddingHorizontal: Spacing.md,
                 paddingVertical: Spacing.dense,
-                borderRadius: 16,
+                borderRadius: Radius.xl,
                 backgroundColor: `${accent.primary}14`,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: `${accent.primary}40`,

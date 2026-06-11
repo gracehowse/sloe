@@ -326,7 +326,7 @@ export function HouseholdCard() {
         {mode === "idle" ? (
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable onPress={() => setMode("create")} style={{ flex: 1, backgroundColor: t.accent, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Create</Text>
+              <Text style={{ color: colors.primaryForeground, fontSize: 13, fontWeight: "600" }}>Create</Text>
             </Pressable>
             <Pressable onPress={() => setMode("join")} style={{ flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
               <Text style={{ color: t.text, fontSize: 13, fontWeight: "600" }}>Join</Text>
@@ -354,7 +354,7 @@ export function HouseholdCard() {
             )}
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Pressable onPress={() => void (mode === "create" ? createHousehold() : joinHousehold())} style={{ flex: 1, backgroundColor: t.accent, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{mode === "create" ? "Create" : "Join"}</Text>
+                <Text style={{ color: colors.primaryForeground, fontSize: 13, fontWeight: "600" }}>{mode === "create" ? "Create" : "Join"}</Text>
               </Pressable>
               <Pressable onPress={() => { setMode("idle"); setInputValue(""); }} style={{ flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
                 <Text style={{ color: t.text, fontSize: 13, fontWeight: "600" }}>Cancel</Text>
@@ -488,7 +488,7 @@ export function HouseholdCard() {
               }}
               accessibilityLabel={`${m.displayName} avatar`}
             >
-              <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>{initials}</Text>
+              <Text style={{ color: colors.primaryForeground, fontSize: 9, fontWeight: "700" }}>{initials}</Text>
             </View>
             <Text
               style={{ fontSize: 12, fontWeight: "500", color: t.text, width: 88, marginTop: 8 }}

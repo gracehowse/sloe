@@ -35,16 +35,20 @@ const COLORS: DayStripIndicatorColors = {
   clay: Accent.primary,
   sage: Accent.success,
   text: "#1A1A1A",
+  soft: Accent.primarySoft,
 };
 
 describe("dayStripIndicator — pure state→treatment decision", () => {
-  it("selected day: clay number (bold) + clay dot, no pill", () => {
+  it("selected day: accent number + SOFT pill, no dot (§7 2026-06-10)", () => {
     const out = dayStripIndicator(
       { isSelected: true, isToday: false, hasLogs: false },
       COLORS,
     );
-    expect(out.dotKind).toBe("clay");
-    expect(out.dotColor).toBe(Accent.primary);
+    // §7: the soft pill carries selection; the clay dot is retired for
+    // selected days (dot-only was a glance + colour-blind fail).
+    expect(out.dotKind).toBe("none");
+    expect(out.showsPill).toBe(true);
+    expect(out.pillColor).toBe(Accent.primarySoft);
     expect(out.numberColor).toBe(Accent.primary);
     expect(out.isActive).toBe(true);
   });
@@ -83,23 +87,24 @@ describe("dayStripIndicator — pure state→treatment decision", () => {
     expect(out.isActive).toBe(false);
   });
 
-  it("both selected AND logged: clay precedence — ONE clay dot, never sage", () => {
+  it("both selected AND logged: pill precedence — no dot at all (§7)", () => {
     const out = dayStripIndicator(
       { isSelected: true, isToday: false, hasLogs: true },
       COLORS,
     );
-    expect(out.dotKind).toBe("clay");
-    expect(out.dotColor).toBe(Accent.primary);
+    expect(out.dotKind).toBe("none");
+    expect(out.showsPill).toBe(true);
     // the sage "logged" dot must NOT win when the day is also selected
     expect(out.dotColor).not.toBe(Accent.success);
   });
 
-  it("selected + today + logged: still clay, still one dot", () => {
+  it("selected + today + logged: pill + accent number, no dot (§7)", () => {
     const out = dayStripIndicator(
       { isSelected: true, isToday: true, hasLogs: true },
       COLORS,
     );
-    expect(out.dotKind).toBe("clay");
+    expect(out.dotKind).toBe("none");
+    expect(out.showsPill).toBe(true);
     expect(out.numberColor).toBe(Accent.primary);
   });
 });
@@ -181,11 +186,12 @@ describe("DayStrip render — no filled pill, minimal dots present", () => {
     }
   });
 
-  it("today's tile renders a clay dot when today is the selected date", () => {
+  it("today's (selected) tile renders no status dot — the soft pill carries selection (§7)", () => {
     const utils = renderStrip(new Set<string>());
-    // selectedDate is today, so at least one clay dot must render.
     const clayDots = utils.queryAllByTestId("daystrip-dot-minimal-clay");
-    expect(clayDots.length).toBeGreaterThanOrEqual(1);
+    expect(clayDots.length).toBe(0);
+    const noneDots = utils.queryAllByTestId("daystrip-dot-minimal-none");
+    expect(noneDots.length).toBeGreaterThanOrEqual(1);
   });
 
   it("a logged (non-selected) day renders a sage dot, not a clay one", () => {

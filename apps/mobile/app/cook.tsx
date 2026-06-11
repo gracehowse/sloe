@@ -842,7 +842,7 @@ export default function CookModeScreen() {
     emptyHeading: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
     emptySub: { color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
     backBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: accent.primary, marginTop: Spacing.lg },
-    backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    backBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
 
     header: {
       flexDirection: "row",
@@ -940,7 +940,7 @@ export default function CookModeScreen() {
       fontVariant: ["tabular-nums"],
     },
     scalePillTextActive: {
-      color: "#fff",
+      color: colors.primaryForeground,
       fontWeight: "700",
     },
     scaleCaption: {
@@ -1022,7 +1022,7 @@ export default function CookModeScreen() {
       backgroundColor: Accent.success,
     },
     saveBtnText: {
-      color: "#fff",
+      color: colors.primaryForeground,
       fontSize: 14,
       fontWeight: "700",
     },
@@ -1156,7 +1156,7 @@ export default function CookModeScreen() {
       backgroundColor: accent.primary,
       alignItems: "center",
     },
-    nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    nextBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
 
     doneBtn: {
       marginTop: Spacing.lg,
@@ -1165,7 +1165,7 @@ export default function CookModeScreen() {
       paddingVertical: 14,
       borderRadius: Radius.md,
     },
-    doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    doneBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
 
     // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
     // sits in the right slot of the header where the layout
@@ -1588,7 +1588,7 @@ export default function CookModeScreen() {
               ]}
             >
               {historySaved && (
-                <CheckCircle2 size={16} color="#fff" strokeWidth={2.25} />
+                <CheckCircle2 size={16} color={colors.primaryForeground} strokeWidth={2.25} />
               )}
               <Text style={styles.saveBtnText}>
                 {/* DC12 (2026-05-14, premium-bar audit) — specific

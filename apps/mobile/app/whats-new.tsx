@@ -37,12 +37,12 @@
  *     a deliberate divergence from §11 imagery rules (which target
  *     recipe/meal/marketing surfaces) — not an omission.
  */
-import { useLayoutEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "expo-router";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import {
   Radius,
   Spacing,
@@ -435,7 +435,6 @@ function buildStyles(
 
 export default function WhatsNewScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const goBack = useSafeBack("/(tabs)");
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else plum) for the "Done" CTA.
@@ -464,50 +463,36 @@ export default function WhatsNewScreen() {
     [colors, insets, accent, cardElevation],
   );
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: "What's new",
-      // §2.3: screen H1 in serif. Apply Newsreader (serifMedium) to the
-      // native nav bar title so the header reads "editorial cookbook".
-      // Georgia is the iOS system-serif fallback if Newsreader hasn't
-      // loaded yet (confirmed in sim capture — font load is async).
-      headerTitleStyle: {
-        ...Type.headline,
-        fontSize: 18,
-        color: colors.text,
-      },
-      // "Done" — compact aubergine OUTLINE pill (Sloe CTA weight map, Spec 2,
-      // 2026-06-09; lowest priority of the four). Was bold accent text; now an
-      // accent line so a dismissal-grade nav action still reads as the calm
-      // outline grammar, not a filled or bold-text primary. On-scale padding;
-      // full radius; 1.5px `accent.primarySolid` border + same-colour label.
-      headerRight: () => (
-        <Pressable
-          onPress={goBack}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Done"
-          testID="whats-new-done"
-          style={({ pressed }) => ({
-            marginRight: Spacing.sm,
-            paddingHorizontal: Spacing.dense,
-            paddingVertical: Spacing.xs,
-            borderRadius: Radius.full,
-            borderWidth: 1.5,
-            borderColor: accent.primarySolid,
-            backgroundColor: pressed ? accent.primarySoft : "transparent",
-          })}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>
-            Done
-          </Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, goBack, accent, colors]);
+  // headers census 2026-06-10: was the native stack header (centred
+  // system-font title + serif `headerTitleStyle` override — the "third
+  // stack-header system" the census flagged as DRIFT). Now the canonical
+  // PushScreenHeader (left chevron + `Type.navTitle`), same as every other
+  // push screen. The "Done" dismissal pill survives as the header's
+  // `rightSlot` so the dismissal affordance is unchanged. Screen is added to
+  // `STACK_HEADER_HIDDEN` in `_layout.tsx` so the native header is suppressed.
+  const donePill = (
+    <Pressable
+      onPress={goBack}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel="Done"
+      testID="whats-new-done"
+      style={({ pressed }) => ({
+        paddingHorizontal: Spacing.dense,
+        paddingVertical: Spacing.xs,
+        borderRadius: Radius.full,
+        borderWidth: 1.5,
+        borderColor: accent.primarySolid,
+        backgroundColor: pressed ? accent.primarySoft : "transparent",
+      })}
+    >
+      <Text style={{ ...Type.body, color: accent.primarySolid }}>Done</Text>
+    </Pressable>
+  );
 
   return (
     <View style={styles.screen}>
+      <PushScreenHeader title="What's new" onBack={goBack} rightSlot={donePill} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

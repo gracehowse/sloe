@@ -482,7 +482,7 @@ function PaceWarningBanner({
               }}
             >
               {acknowledged ? (
-                <Ionicons name="checkmark" size={12} color="#fff" />
+                <Ionicons name="checkmark" size={12} color={colors.primaryForeground} />
               ) : null}
             </View>
             <Text

@@ -160,13 +160,8 @@ export function TodayMealsFigmaLayout({
                     }}
                   >
                     <Text
-                      style={{
-                        fontSize: 10,
-                        fontWeight: "500",
-                        letterSpacing: 0.6,
-                        textTransform: "uppercase",
-                        color: colors.textSecondary,
-                      }}
+                      // headers census 2026-06-10: slot eyebrow → Type.label.
+                      style={{ ...Type.label, color: colors.textSecondary }}
                     >
                       {slot}
                     </Text>
@@ -222,7 +217,7 @@ export function TodayMealsFigmaLayout({
             }}
           >
             <SloePlusIcon size={20} color={accent.primary} />
-            <Text style={{ ...Type.body, fontWeight: "500", color: "#6a6072" }}>
+            <Text style={{ ...Type.body, fontWeight: "500", color: colors.textSecondary }}>
               Log {nextSlot}
             </Text>
           </Pressable>

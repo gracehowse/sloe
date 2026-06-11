@@ -50,7 +50,9 @@ function readMobileColor(mode: "light" | "dark", key: string): string {
   const marker = mode === "light" ? "light: {" : "dark: {";
   const start = MOBILE_THEME.indexOf(marker);
   expect(start).toBeGreaterThanOrEqual(0);
-  const slice = MOBILE_THEME.slice(start, start + 2500);
+  // 4000: the light block grew a §1 material-inversion provenance comment
+  // (2026-06-10); the old 2500 window cut tokens mid-block.
+  const slice = MOBILE_THEME.slice(start, start + 4000);
   const m = slice.match(new RegExp(`${key}:\\s*'([^']+)'`));
   expect(m, `${mode}.${key}`).not.toBeNull();
   return m![1].trim().toLowerCase();
@@ -137,14 +139,13 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     });
   });
 
-  it("Today calorie rings draw the lifted-plum overage LAP when over budget (Sloe D-1, 2026-06-04 redesign)", () => {
-    // Sloe D-1 (redesigned 2026-06-04, Grace): under-budget is the plum
-    // calorie-macro arc; the OVER state no longer paints a red arc. Both
-    // platforms now wrap an Apple-Watch-style "overage lap" in the plum family
-    // past 100% — the red arc "read as odd" (per CalorieRing.tsx), superseding
-    // `overArcColor`/`overBudgetFg`. The over-budget RED rule still holds for
-    // NET/text (D-2, next test). Web ↔ mobile parity: BOTH use the overage lap.
-    // (Same component pins as calorieRingSolidGreenAtTarget.test.ts.)
+  it("Today calorie rings cap at FULL when over budget — plum-always, no overage lap (web ring parity 2026-06-10)", () => {
+    // web ring parity 2026-06-10 (mobile ring wave): the OVER state caps the
+    // ring at one full plum lap — NO second overage lap, NO red recolour of the
+    // arc. The 2026-06-04 Apple-wrap lap was retired on BOTH platforms in this
+    // wave; the over verdict lives in the centre + status chip. The over-budget
+    // RED rule still holds for NET/text stat tones (D-2). (Same component pins
+    // as calorieRingSolidGreenAtTarget.test.ts.)
     const mobileRing = readFileSync(
       resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"),
       "utf8",
@@ -153,25 +154,28 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"),
       "utf8",
     );
-    // Mobile: lifted-plum overage lap, NOT the old red arc.
-    expect(mobileRing).toMatch(/stroke=\{overageLapColor\}/);
+    // Mobile: plum-always ring, no overage-lap colour, no red over-arc.
+    expect(mobileRing).toMatch(/const ringStateColor = calorieRingColor/);
+    expect(mobileRing).not.toMatch(/stroke=\{overageLapColor\}/);
     expect(mobileRing).not.toMatch(/overArcColor = palette\.overBudgetFg/);
-    // Web: the `--ring-overage-lap` token carries the wrap, NOT `--destructive`.
-    expect(webRing).toMatch(/var\(--ring-overage-lap\)/);
+    // Web: the plum `--macro-calories` arc carries every state; no overage-lap
+    // token, no destructive over-recolour.
+    expect(webRing).toMatch(/var\(--macro-calories\)/);
+    expect(webRing).not.toMatch(/var\(--ring-overage-lap\)/);
   });
 
-  it("TodayHeroStats NET over-target uses the over-budget token (red in Sloe, D-2)", () => {
-    // Sloe D-2: fat now owns amber, so the over-budget signal is RED. The
-    // token NAME (`--over-budget-fg`) is unchanged — its value moved from amber
-    // to brick and was AA-darkened to `#B04434` (2026-06-09). The structural
-    // wiring (NET-over → `over-budget-fg`) is what we pin; the value is verified
-    // in the light/dark sections above.
+  it("StatCell over-budget red tone is retired — the right stat is always Bonus (web ring parity 2026-06-10)", () => {
+    // web ring parity 2026-06-10: the Goal/Eaten/Bonus row no longer flips its
+    // third cell to a red "Over" tone — the over amount reads in the ring
+    // centre + status chip. The `--over-budget-fg` token still exists and is
+    // used by other Today over-signals (right-rail, week sidebar); it's just no
+    // longer wired into the hero stat cells.
     const hero = readFileSync(
       resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
       "utf8",
     );
-    expect(hero).toContain('valueTone === "over"');
-    expect(hero).toMatch(/valueTone === "over"[\s\S]{0,120}over-budget-fg/);
+    expect(hero).not.toContain('valueTone === "over"');
+    expect(hero).not.toContain('valueTone="over"');
   });
 
   it("over-budget token resolves to the Sloe destructive red (D-2), not amber", () => {

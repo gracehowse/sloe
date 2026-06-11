@@ -6,19 +6,22 @@
  *  No platform deps (no React, no theme imports, no `@/` aliases) so it stays
  *  mobile-importable via the `@suppr/shared` alias and web-importable directly.
  *
- *  Minimal current-day treatment (2026-06-03, Grace's feedback — the prior
- *  filled clay PILL / circle read as clunky). Julienne month-calendar
- *  language: the active day is a clay semibold NUMBER with a small clay DOT
- *  beneath, with NO filled background.
+ *  Selected-day treatment history:
+ *    - 2026-06-03 (Grace): the SOLID filled clay pill read as clunky →
+ *      minimal clay number + clay dot.
+ *    - 2026-06-10 (fresh-eyes §7, full-res judge on the inverted material):
+ *      the dot-only signal was a glance fail — plum reads as ink at numeral
+ *      size and a 4px dot colour-swap is invisible (and a colour-blind
+ *      fail). Amended to a SOFT-TINT pill (accent primarySoft wash) behind
+ *      the selected number — the app's standard segment-selected grammar,
+ *      materially different from the rejected SOLID pill.
  *
  *  Rules:
- *    - `selected`              → active number + clay dot
- *    - `today` (not selected)  → active number, NO dot — stays findable by
- *      colour without a second clay dot competing with the selected day
+ *    - `selected`              → soft pill + accent number, NO dot (the pill
+ *      carries selection; a dot under it double-signals)
+ *    - `today` (not selected)  → accent number, no pill, no dot
  *    - `logged` (not selected) → normal number + sage dot
  *    - plain day               → normal number + no dot
- *    - both selected + logged  → clay precedence: ONE clay dot, never a clay +
- *      sage pair (the `selected` branch wins)
  */
 export type DayStripDotKind = "clay" | "sage" | "none";
 
@@ -38,19 +41,22 @@ export type DayStripIndicator = {
   dotKind: DayStripDotKind;
   /** Whether the number is the active (clay) treatment vs a neutral day. */
   isActive: boolean;
+  /** Selected day renders a soft-tint pill behind the number (§7 2026-06-10). */
+  showsPill: boolean;
 };
 
-/** Resolve the indicator treatment for one day tile. Selected always wins over
- *  today and over logged (clay precedence); a day is never a filled pill — the
- *  caller must not apply a background based on selection. */
+/** Resolve the indicator treatment for one day tile. Selected always wins
+ *  over today and over logged. The selected pill is the SOFT tint only —
+ *  callers must never apply a solid accent fill (the 2026-06-03 rejection
+ *  stands for solid pills). */
 export function dayStripIndicator(state: DayStripDayState): DayStripIndicator {
   const isActive = state.isSelected || state.isToday;
   const dotKind: DayStripDotKind = state.isSelected
-    ? "clay"
+    ? "none"
     : state.hasLogs
       ? "sage"
       : "none";
-  return { dotKind, isActive };
+  return { dotKind, isActive, showsPill: state.isSelected };
 }
 
 /**
@@ -65,6 +71,8 @@ export type DayStripIndicatorColors = {
   sage: string;
   /** Neutral day-number colour (theme text colour) for inactive days. */
   text: string;
+  /** Soft accent tint for the selected-day pill (accent primarySoft). */
+  soft: string;
 };
 
 export type DayStripIndicatorStyle = DayStripIndicator & {
@@ -72,6 +80,8 @@ export type DayStripIndicatorStyle = DayStripIndicator & {
   dotColor: string;
   /** Day-number colour — clay when active, theme text otherwise. */
   numberColor: string;
+  /** Pill background — soft tint when selected, "transparent" otherwise. */
+  pillColor: string;
 };
 
 /** Resolve the full styled indicator (dot colour + number colour) for callers
@@ -91,5 +101,6 @@ export function dayStripIndicatorStyle(
     ...base,
     dotColor,
     numberColor: base.isActive ? colors.clay : colors.text,
+    pillColor: base.showsPill ? colors.soft : "transparent",
   };
 }

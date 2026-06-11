@@ -31,12 +31,12 @@ export type ResolvedTheme = "light" | "dark";
  *  scheme-switch those via their `*Light` variants where needed. */
 const DARK_ACCENT: typeof Accent = {
   ...Accent,
-  primary: "#7E5C92",
-  primaryLight: "#9A7BAA",
+  primary: Accent.primaryDark, // #7E5C92 (ENG-1013: named in constants/theme.ts)
+  primaryLight: Accent.purpleLight, // #9A7BAA
   primarySolid: Accent.primarySolidDark, // #C4ACD0
   primarySoft: Accent.primarySoftDark, // rgba(154,123,170,0.18)
-  brandBlue: "#7E5C92",
-  brandBlueLight: "#9A7BAA",
+  brandBlue: Accent.primaryDark, // #7E5C92
+  brandBlueLight: Accent.purpleLight, // #9A7BAA
 };
 
 type ThemeContextValue = {

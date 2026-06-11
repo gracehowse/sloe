@@ -141,12 +141,14 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Type.ringValueLg.lineHeight).toBe(56);
     });
 
-    it("Type.coach is the 17px plum editorial coach line (2026-06-04 spec)", () => {
-      // Bumped 14→17 to match the Stitch `today.html` coach line
-      // (`text-[17px] text-plum/90` italic). lineHeight ~23. Sole consumer:
-      // TodayDeficitInsight (which sets the plum colour).
-      expect(Type.coach.fontSize).toBe(17);
-      expect(Type.coach.lineHeight).toBe(23);
+    it("Type.coach is the calm sans coaching line (fresh-eyes §6, 2026-06-10)", () => {
+      // De-italicised 2026-06-10: the serif-italic nudge read as quaint at
+      // small sizes (cream+serif-italic = the documented AI-default tell).
+      // Copy stays warm; dressing is calm sans 14/20. Supersedes the
+      // 2026-06-04 17px italic spec.
+      expect(Type.coach.fontSize).toBe(14);
+      expect(Type.coach.lineHeight).toBe(20);
+      expect(Type.coach.fontFamily).toBe("Inter_400Regular");
     });
 
     it("Type.label is uppercase + 0.08em letterSpacing (= 0.88)", () => {

@@ -15,9 +15,9 @@
  *    celebration gradient (`--accent-win-gradient`, ported to the inline
  *    `#winSpectrum` SVG `<linearGradient>`) + a brand-purple glow
  *    (`--accent-win`) + the extra stroke width — the web colour/motion analog
- *    of mobile's success haptic. The steady three-state ring (idle gradient /
- *    under green / over red) is unchanged: the spectrum only paints while
- *    `celebrating`.
+ *    of mobile's success haptic. The steady ring (idle grey track / plum-always
+ *    arc, capped at full when over — web ring parity 2026-06-10) is unchanged:
+ *    the spectrum only paints while `celebrating`.
  *
  * Source-text assertions — the established convention for this heavily
  * context-dependent component (mirrors `mealPlannerElevationAndWinPulse.test.ts`
@@ -94,15 +94,16 @@ describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", (
     expect(SRC).toContain('"drop-shadow(0 0 8px var(--accent-win))"');
   });
 
-  it("leaves the steady ring (idle gradient / under-plum / over = damson lap) intact below the celebration", () => {
-    // Sloe D-1 (redesigned 2026-06-04): under-budget steady stroke is
-    // --macro-calories (plum); over-budget is the Apple-Watch overage LAP
-    // (--ring-overage-lap), no longer a red recolour of the arc (the red arc
-    // "read as odd" — superseded). ENG-826: the empty ring paints the calm idle
-    // grey track (mobile parity). The celebration is additive (a Sloe-gradient OVERRIDE while
-    // pulsing), not a swap of the resting hue.
+  it("leaves the steady ring (idle grey / plum-always, capped at full when over) intact below the celebration", () => {
+    // web ring parity 2026-06-10 (mobile ring wave): the steady stroke is
+    // --macro-calories (plum) in EVERY state — under AND over budget — capped
+    // at a full lap when over (the 2026-06-04 --ring-overage-lap second lap was
+    // RETIRED in this wave; the over verdict lives in the centre + chip). The
+    // empty ring paints the calm idle grey track (--ring-bg). The celebration
+    // is additive (a Sloe-gradient OVERRIDE while pulsing), not a swap of the
+    // resting hue.
     expect(SRC).toContain('"var(--macro-calories)"');
-    expect(SRC).toContain('"var(--ring-overage-lap)"');
+    expect(SRC).not.toContain('"var(--ring-overage-lap)"');
     expect(SRC).toContain('"var(--ring-bg)"');
   });
 });

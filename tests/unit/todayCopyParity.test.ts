@@ -107,8 +107,11 @@ function listSourceFiles(dir: string): string[] {
 
 describe("canonical Today copy module", () => {
   it("exposes non-empty ring labels", () => {
+    // web ring parity 2026-06-10 (mobile ring wave): the centre overline reads
+    // "LEFT" ("REMAINING" arced too long under the number); LOGGED is the
+    // goal<=0 fallback only (the Remaining/Consumed toggle is retired).
     expect(RING_LABELS.logged).toBe("LOGGED");
-    expect(RING_LABELS.remaining).toBe("REMAINING");
+    expect(RING_LABELS.remaining).toBe("LEFT");
     expect(RING_LABELS.over).toBe("OVER");
     expect(TODAY_RING_OVERLINE).toBe(RING_LABELS.remaining);
   });

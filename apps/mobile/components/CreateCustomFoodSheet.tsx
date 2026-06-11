@@ -26,6 +26,7 @@
  *  - Barcode, if provided, validates to 8 / 12 / 13 / 14 digits.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
   Pressable,
@@ -555,8 +556,8 @@ export default function CreateCustomFoodSheet({
             onPress={() => {}}
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
               maxHeight: "90%",

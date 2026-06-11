@@ -73,8 +73,6 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     fatPct,
     expanded,
     onToggleExpanded,
-    displayMode,
-    onToggleDisplayMode,
     onPressWhy,
     pulse,
   } = props;
@@ -87,8 +85,6 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     fatPct,
     expanded,
     onToggleExpanded,
-    displayMode,
-    onToggleDisplayMode,
     onPressWhy,
     pulse,
   };
@@ -106,15 +102,17 @@ function DesktopHeroStats({
   fatPct,
   expanded,
   onToggleExpanded,
-  displayMode,
-  onToggleDisplayMode,
   isOnTrack,
   // `tdeeLearnDays` is retained on the props interface for call-site stability
   // but no longer rendered on Today — the Adaptive-TDEE line was removed to
   // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
+  // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
   pulse,
 }: TodayHeroStatsProps) {
-  const showStatRow = consumed > 0 && target > 0;
+  // Stat row now renders on EMPTY days too (web ring parity 2026-06-10) — the
+  // empty page mirrors a populated day with honest zeros. Gated on a real
+  // target (`target > 0`), mirroring mobile `TodayHeroRing`.
+  const showStatRow = target > 0;
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
   const bonusKcal =
@@ -139,33 +137,11 @@ function DesktopHeroStats({
       data-testid="today-hero-desktop"
     >
       <div className="flex flex-col items-center gap-3">
+        {/* Header row: status chip only. The Remaining/Consumed segmented
+            toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave):
+            it duplicated the Eaten stat below the ring. */}
         <div className="flex w-full items-center justify-between gap-2">
           <HeroStatusChip state={chipState} />
-          {showStatRow ? (
-            <button
-              type="button"
-              onClick={onToggleDisplayMode}
-              className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
-              aria-label={`Showing ${displayMode} calories. Tap to switch.`}
-              data-testid="today-ring-display-toggle"
-            >
-              {(["remaining", "consumed"] as const).map((mode) => (
-                <span
-                  key={mode}
-                  aria-hidden
-                  className={`rounded-full px-3 py-1 capitalize transition-colors ${
-                    displayMode === mode
-                      ? "bg-card text-foreground-brand shadow-sm"
-                      : "text-foreground-secondary"
-                  }`}
-                >
-                  {mode}
-                </span>
-              ))}
-            </button>
-          ) : (
-            <span className="w-px shrink-0" aria-hidden />
-          )}
         </div>
 
         <DailyRing
@@ -181,8 +157,6 @@ function DesktopHeroStats({
           fatPct={fatPct}
           expanded={expanded}
           onToggle={onToggleExpanded}
-          displayMode={displayMode}
-          onLongPressToggleDisplayMode={onToggleDisplayMode}
           pulse={pulse}
         />
 
@@ -199,19 +173,15 @@ function DesktopHeroStats({
               label={TODAY_HERO_STAT_LABELS.eaten}
               value={loggedKcal.toLocaleString()}
             />
-            {isOver ? (
-              <StatCell
-                label={TODAY_HERO_STAT_LABELS.over}
-                value={`−${Math.round(consumed - target).toLocaleString()}`}
-                valueTone="over"
-              />
-            ) : (
-              <StatCell
-                label={TODAY_HERO_STAT_LABELS.bonus}
-                value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
-                valueTone={bonusKcal > 0 ? "positive" : "neutral"}
-              />
-            )}
+            {/* The right stat is ALWAYS Bonus (web ring parity 2026-06-10):
+                the over amount reads in the ring centre + the status chip, and
+                the old slot-switch hid the earned-burn number exactly when an
+                over-budget user most wants to see it. 0 when no bonus. */}
+            <StatCell
+              label={TODAY_HERO_STAT_LABELS.bonus}
+              value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+              valueTone={bonusKcal > 0 ? "positive" : "neutral"}
+            />
           </div>
         ) : null}
 
@@ -226,7 +196,11 @@ function DesktopHeroStats({
             it on Today added clutter. The underlying adaptive-TDEE logic is
             unchanged — only this presentational line is gone. The
             `tdeeLearnDays` prop is retained for call-site stability. */}
-        {isFeatureEnabled("today-status-pills") && showStatRow && isOnTrack ? (
+        {/* Status pills gate on a real "has logged" signal (`consumed > 0`),
+            NOT `showStatRow` — the stat row now also renders on EMPTY days
+            (web ring parity 2026-06-10), so it no longer means "has eaten".
+            The On-track pill stays a logged-day-only signal. */}
+        {isFeatureEnabled("today-status-pills") && consumed > 0 && isOnTrack ? (
           <div className="flex gap-2" data-testid="today-status-pills">
             <span
               data-testid="today-pill-on-track"
@@ -269,14 +243,13 @@ function StatCell({
 }: {
   label: string;
   value: string;
-  valueTone?: "neutral" | "positive" | "over";
+  // The "over" tone is retired (web ring parity 2026-06-10): the right stat is
+  // always Bonus, so no stat cell ever paints the over-budget red. Tones are
+  // now just neutral (default) and positive (earned Bonus headroom = sage).
+  valueTone?: "neutral" | "positive";
 }) {
   const valueColor =
-    valueTone === "positive"
-      ? "text-success"
-      : valueTone === "over"
-        ? "text-[var(--over-budget-fg)]"
-        : "text-foreground";
+    valueTone === "positive" ? "text-success" : "text-foreground";
   return (
     <div className="min-w-0 text-center px-1">
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground truncate">

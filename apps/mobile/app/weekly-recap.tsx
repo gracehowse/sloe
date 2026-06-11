@@ -61,6 +61,7 @@ import {
   View,
 } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
 import { CalendarDays } from "lucide-react-native";
@@ -607,39 +608,40 @@ export default function WeeklyRecapScreen() {
 
   if (state === "loading") {
     return (
-      <View
-        testID="weekly-recap-loading"
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingTop: insets.top,
-        }}
-      >
-        <ActivityIndicator color={colors.textSecondary} />
+      // headers census 2026-06-10: nav row present in every state so the back
+      // affordance survives loading/error (native header is now suppressed).
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <PushScreenHeader title="Weekly recap" onBack={() => router.back()} />
+        <View
+          testID="weekly-recap-loading"
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator color={colors.textSecondary} />
+        </View>
       </View>
     );
   }
 
   if (state === "error") {
     return (
-      <View
-        testID="weekly-recap-error"
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: Spacing.xl,
-        }}
-      >
-        <Text style={{ color: colors.text, fontSize: 15, textAlign: "center", marginBottom: Spacing.sm }}>
-          Couldn&rsquo;t load your week.
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: "center" }}>
-          Pull down or tap back to try again.
-        </Text>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <PushScreenHeader title="Weekly recap" onBack={() => router.back()} />
+        <View
+          testID="weekly-recap-error"
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: Spacing.xl,
+          }}
+        >
+          <Text style={{ color: colors.text, fontSize: 15, textAlign: "center", marginBottom: Spacing.sm }}>
+            Couldn&rsquo;t load your week.
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: "center" }}>
+            Pull down or tap back to try again.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -716,7 +718,12 @@ export default function WeeklyRecapScreen() {
   );
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    {/* headers census 2026-06-10: canonical compact nav row (left chevron +
+        Type.navTitle) replacing the native centred system-font stack header.
+        The in-scroll "This week / <week>" block below stays as the editorial
+        page hero — same shape as burn-detail (nav row + in-scroll hero). */}
+    <PushScreenHeader title="Weekly recap" onBack={() => router.back()} />
     <ScrollView
       testID="weekly-recap-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -1235,6 +1242,6 @@ export default function WeeklyRecapScreen() {
         }}
       />
     ) : null}
-    </>
+    </View>
   );
 }

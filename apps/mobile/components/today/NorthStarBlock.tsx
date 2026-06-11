@@ -27,7 +27,7 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Colors, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -333,9 +333,9 @@ function NorthStarFigmaHero({
         >
           <Defs>
             <LinearGradient id="north-star-scrim" x1="0" y1="1" x2="0" y2="0">
-              <Stop offset="0" stopColor="#221B26" stopOpacity={0.9} />
-              <Stop offset="0.5" stopColor="#221B26" stopOpacity={0.2} />
-              <Stop offset="1" stopColor="#221B26" stopOpacity={0} />
+              <Stop offset="0" stopColor={Colors.light.text} stopOpacity={0.9} />
+              <Stop offset="0.5" stopColor={Colors.light.text} stopOpacity={0.2} />
+              <Stop offset="1" stopColor={Colors.light.text} stopOpacity={0} />
             </LinearGradient>
           </Defs>
           <Rect width="100%" height="100%" fill="url(#north-star-scrim)" />
@@ -512,14 +512,10 @@ function NorthStarDefault({
         </View>
 
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Sparkles size={IconSize.xs} color={accent.primary} />
-            <Text
-              style={{
-                ...Type.label,
-                color: accent.primary,
-              }}
-            >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+            {/* headers census 2026-06-10: sparkle-eyebrow → AA-safe primarySolid. */}
+            <Sparkles size={IconSize.xs} color={accent.primarySolid} />
+            <Text style={{ ...Type.label, color: accent.primarySolid }}>
               What to eat next
             </Text>
           </View>
@@ -751,12 +747,16 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   figmaSlotEyebrow: {
-    fontSize: 10,
-    fontWeight: "500",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    // headers census 2026-06-10: eyebrow metrics → Type.label (kills the
+    // off-ramp 10/500/ls1). Colour stays a light lilac-white because this
+    // eyebrow sits on the DARK photo scrim, where the light-surface role
+    // tokens (primarySolid / textTertiary) would be invisible — its
+    // white-literal siblings (figmaHeroTitle / figmaKcalText) share that
+    // on-image context. Tokenising on-image text colours is a separate
+    // scoped task (the census roles assume a light surface).
+    ...Type.label,
     color: "rgba(201,194,214,0.9)",
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   figmaMetaDot: {
     width: 4,

@@ -252,9 +252,15 @@ export function FastingTimer() {
 
   return (
     <div className="space-y-7" data-testid="fasting-timer">
-      {/* Preset pills — frost-mist track, plum-filled selected. Disabled
-          while a fast is active (changing the window mid-fast would
-          silently rebase the goal). All five windows incl. OMAD. */}
+      {/* Preset option chips. Disabled while a fast is active (changing the
+          window mid-fast would silently rebase the goal). All five windows
+          incl. OMAD.
+
+          Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+          `bg-primary-soft` fill + `primary-solid` label + `font-semibold`, NO
+          ring/border; unselected = quiet `bg-card` + muted label, NO border.
+          Was `bg-primary/10` + `border-primary-solid` selected /
+          `border-border` unselected. */}
       <div className="flex justify-center gap-2 flex-wrap" data-testid="fasting-window-picker">
         {FASTING_WINDOW_PRESETS.map((w) => {
           const selected = fastingWindow === w;
@@ -266,10 +272,10 @@ export function FastingTimer() {
               disabled={isFasting}
               aria-pressed={selected}
               aria-label={`Set fasting window to ${fastingWindowLabel(w)}`}
-              className={`font-[family-name:var(--font-label)] text-[13px] font-semibold px-4 py-2 rounded-full border transition-colors tabular-nums ${
+              className={`font-[family-name:var(--font-label)] text-[13px] px-4 py-2 rounded-full transition-colors tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 selected
-                  ? "bg-primary/10 border-primary-solid text-primary-solid"
-                  : "bg-card border-border text-muted-foreground hover:bg-muted/40"
+                  ? "bg-primary-soft text-primary-solid font-semibold"
+                  : "bg-card text-muted-foreground font-medium hover:bg-muted/40"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {fastingWindowLabel(w)}

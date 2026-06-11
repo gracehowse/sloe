@@ -713,7 +713,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       paddingHorizontal: Spacing.xxl,
       paddingVertical: 14,
     },
-    permBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    permBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
     cameraWrap: { flex: 1, position: "relative" },
     camera: { flex: 1 },
     scanFrame: {
@@ -843,7 +843,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       borderRadius: Radius.md,
       height: 44,
     },
-    useBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: -0.1 },
+    useBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14, letterSpacing: -0.1 },
     // 2026-05-13 portion-picker rebuild — "Scan again" is now an icon-
     // only 44x44 square so it shares height with the primary CTA and
     // doesn't wrap on narrow product names. See mockup.
@@ -897,7 +897,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       paddingVertical: 14,
       alignItems: "center",
     },
-    manualSubmitText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    manualSubmitText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
     manualEntryBtn: {
       borderWidth: 1,
       borderColor: accent.primary + "55",
@@ -920,7 +920,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
     },
-    photoFallbackBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    photoFallbackBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
     // F-20 basis toggle — segmented-style chip row for Per 100 g / Per serving.
     basisRow: { flexDirection: "row", gap: Spacing.sm },
     basisChip: {
@@ -992,7 +992,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       alignSelf: "stretch",
       alignItems: "center",
     },
-    correctionSuccessDoneText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    correctionSuccessDoneText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
     // 2026-05-08 build-47 follow-up — secondary "Just done" button on
     // the correction-saved success state, paired with the new primary
     // "Log this now" CTA. Subdued visual weight so the auto-log path
@@ -1200,9 +1200,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       style={styles.photoFallbackBtn}
                     >
                       {useLucideIcons ? (
-                        <CirclePlus size={18} color="#fff" />
+                        <CirclePlus size={18} color={colors.primaryForeground} />
                       ) : (
-                        <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                        <Ionicons name="add-circle-outline" size={18} color={colors.primaryForeground} />
                       )}
                       <Text style={styles.photoFallbackBtnText}>Add this product</Text>
                     </Pressable>
@@ -1417,9 +1417,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     <View style={[styles.btnRow, { marginTop: Spacing.md }]}>
                       <Pressable style={styles.useBtn} onPress={onConfirm} accessibilityRole="button" accessibilityLabel="Log this portion">
                         {useLucideIcons ? (
-                          <Check size={16} color="#fff" />
+                          <Check size={16} color={colors.primaryForeground} />
                         ) : (
-                          <Ionicons name="checkmark" size={16} color="#fff" />
+                          <Ionicons name="checkmark" size={16} color={colors.primaryForeground} />
                         )}
                         <Text style={styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
                           Log · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}

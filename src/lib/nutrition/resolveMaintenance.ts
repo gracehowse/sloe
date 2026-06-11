@@ -64,6 +64,12 @@ export interface MaintenanceProfile {
   weight_kg?: number | null;
   height_cm?: number | null;
   age?: number | null;
+  /**
+   * Retained for call-site compatibility, but intentionally NOT consulted by
+   * the formula seed — the bonus-coexisting maintenance number is pinned to
+   * sedentary (`MAINTENANCE_SEED_ACTIVITY`) so it stays the lazy-day/NEAT
+   * burn and the per-day activity bonus isn't double-counted (survey §4).
+   */
   activity_level?: ActivityLevel | null;
 }
 
@@ -93,6 +99,27 @@ function normaliseConfidence(raw: unknown): MaintenanceConfidence {
   return null;
 }
 
+/**
+ * The activity level the formula seed is computed at. This is the maintenance
+ * number that COEXISTS WITH THE PER-DAY ACTIVITY BONUS: Today derives
+ * `maintenanceKcal` from this resolver and then `computeActivityBonusKcal`
+ * adds workout burn on top via the projected-EOD model. In Suppr's add-back
+ * architecture (NEAT base + per-day exercise bonus), maintenance must be the
+ * **lazy-day / NEAT** burn — i.e. the *sedentary* (1.2) formula — or the
+ * activity the user's profile multiplier already bakes in gets counted twice
+ * (once in the seed, once in the bonus). See the TDEE methodology survey §4
+ * "is maintenance the lazy-day burn or the average burn?" and its boxed
+ * latent-bug flag (`docs/ux/research/2026-06-10-tdee-methodology-survey.md`)
+ * and the decision `docs/decisions/2026-06-10-adaptive-tdee-gating.md`.
+ *
+ * Note: `profile.activity_level` is intentionally NOT consulted here. Other
+ * consumers of the profile activity level (onboarding seed, the static
+ * `calculateTDEE` budget path, the Progress "how this works" explainer) keep
+ * using the user's chosen multiplier — only the bonus-coexisting maintenance
+ * seed is pinned to sedentary.
+ */
+export const MAINTENANCE_SEED_ACTIVITY: ActivityLevel = "sedentary";
+
 function computeFormulaKcal(profile: MaintenanceProfile): number | null {
   if (
     !profile.sex ||
@@ -102,11 +129,14 @@ function computeFormulaKcal(profile: MaintenanceProfile): number | null {
   ) {
     return null;
   }
-  // Default to sedentary when activity is missing — matches the flip in
-  // `getEffectiveTDEE` (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
-  const act: ActivityLevel = profile.activity_level ?? "sedentary";
   return Math.round(
-    calculateTDEE(profile.sex, profile.weight_kg, profile.height_cm, profile.age, act),
+    calculateTDEE(
+      profile.sex,
+      profile.weight_kg,
+      profile.height_cm,
+      profile.age,
+      MAINTENANCE_SEED_ACTIVITY,
+    ),
   );
 }
 

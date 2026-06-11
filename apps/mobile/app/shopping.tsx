@@ -477,9 +477,10 @@ export default function ShoppingListScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
+    // headers census 2026-06-10: drop the fontSize 22 override — 22 isn't a ramp
+    // size; Type.title is 24.
     headerTitle: {
       ...Type.title,
-      fontSize: 22,
       color: colors.text,
     },
 
@@ -558,7 +559,7 @@ export default function ShoppingListScreen() {
       paddingHorizontal: Spacing.xxxl,
       marginTop: Spacing.sm,
     },
-    ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    ctaBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
 
     // Honeydew parity (2026-04-30) — household sync banner.
     syncBanner: {
@@ -601,7 +602,7 @@ export default function ShoppingListScreen() {
     attributionText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#fff",
+      color: colors.primaryForeground,
     },
     attributionLabel: {
       fontSize: 10,
@@ -910,8 +911,8 @@ export default function ShoppingListScreen() {
                               accessibilityLabel={`Remove ${rowLabel} from shopping list`}
                               testID={`shopping-swipe-delete-${group.key}`}
                             >
-                              <Trash2 size={22} color="#fff" />
-                              <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", marginTop: 4 }}>
+                              <Trash2 size={22} color={colors.destructiveForeground} />
+                              <Text style={{ color: colors.destructiveForeground, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
                                 Delete
                               </Text>
                             </Pressable>
@@ -954,7 +955,7 @@ export default function ShoppingListScreen() {
                             allChecked && styles.checkboxChecked,
                           ]}
                         >
-                          {allChecked && <Check size={14} color="#fff" strokeWidth={3} />}
+                          {allChecked && <Check size={14} color={colors.primaryForeground} strokeWidth={3} />}
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text

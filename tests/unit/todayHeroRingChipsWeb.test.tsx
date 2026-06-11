@@ -1,20 +1,15 @@
 /**
- * TodayHeroRing (web) — Sloe chip + display toggle (2026-06-04).
+ * TodayHeroRing (web) — status chip present, display toggle RETIRED.
  *
- * The Sloe Figma (`01 · Today` / `today-web`) RESTORES the calorie-ring
- * header controls the 2026-05-02 audit had removed:
- *   - a status chip (Under budget / Over / empty), and
- *   - a Remaining/Consumed segmented display toggle (`role="group"`,
- *     aria-label "Calorie ring display").
- * Per "match Figma" (Grace 2026-06-05) these are intended again — this test
- * pins their PRESENCE (renamed from the old `…NoChipsWeb` no-chips pin, which
- * enforced the now-superseded 2026-05-02 removal).
+ * web ring parity 2026-06-10 (mobile ring wave): the Remaining/Consumed
+ * segmented display toggle is RETIRED (it duplicated the Eaten stat below the
+ * ring); only the status chip remains in the header row. Mirrors mobile
+ * `TodayHeroRing`. This supersedes the 2026-06-04 "Figma-restored toggle" pin.
  *
- * The "Why this number?" pill stays dropped (2026-05-12 round 4) — the
- * explainer lives on /home?view=targets.
+ * The "Why this number?" pill stays dropped (2026-05-12 round 4).
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, within } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { TodayHeroRing } from "../../src/app/components/suppr/today-hero-ring";
 
@@ -25,22 +20,21 @@ const baseProps = {
   carbsPct: 0.5,
   fatPct: 0.5,
   expanded: true,
-  displayMode: "remaining" as const,
 };
 
-describe("TodayHeroRing (web) — Sloe chip + display toggle (2026-06-04)", () => {
-  it("renders the Remaining/Consumed segmented display toggle (Figma-restored)", () => {
+describe("TodayHeroRing (web) — chip present, display toggle retired (2026-06-10)", () => {
+  it("renders the status chip", () => {
     const { getByTestId } = render(
-      <TodayHeroRing
-        {...baseProps}
-        onToggleExpanded={() => {}}
-        onToggleDisplayMode={() => {}}
-      />,
+      <TodayHeroRing {...baseProps} onToggleExpanded={() => {}} />,
     );
-    const toggle = getByTestId("today-ring-display-toggle");
-    expect(toggle.tagName).toBe("BUTTON");
-    expect(toggle.textContent).toMatch(/remaining/i);
-    expect(toggle.textContent).toMatch(/consumed/i);
+    expect(getByTestId("today-ring-status-chip")).toBeTruthy();
+  });
+
+  it("does NOT render the Remaining/Consumed segmented display toggle", () => {
+    const { queryByTestId } = render(
+      <TodayHeroRing {...baseProps} onToggleExpanded={() => {}} />,
+    );
+    expect(queryByTestId("today-ring-display-toggle")).toBeNull();
   });
 
   it("does NOT render the 'Why this number?' pill even when onPressWhy is provided (2026-05-12 round 4)", () => {
@@ -49,7 +43,6 @@ describe("TodayHeroRing (web) — Sloe chip + display toggle (2026-06-04)", () =
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
-        onToggleDisplayMode={() => {}}
         onPressWhy={onPressWhy}
       />,
     );

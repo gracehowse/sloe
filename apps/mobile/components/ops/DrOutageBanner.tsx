@@ -22,7 +22,7 @@ import { AppState, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { isFeatureEnabled, getFeatureFlagPayload } from "@/lib/analytics";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, Colors, Spacing } from "@/constants/theme";
 
 const FLAG = "dr-full-outage-banner";
 const DEFAULT_BODY =
@@ -73,7 +73,7 @@ export function DrOutageBanner() {
       }}
     >
       <Text
-        style={{ color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "center" }}
+        style={{ color: Colors.light.destructiveForeground, fontSize: 13, fontWeight: "600", textAlign: "center" }}
       >
         {title ? `${title} ` : ""}
         {body || DEFAULT_BODY}

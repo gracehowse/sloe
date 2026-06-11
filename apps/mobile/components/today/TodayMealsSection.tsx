@@ -38,7 +38,7 @@ import * as Haptics from "expo-haptics";
 import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { SupprCard } from "@/components/ui/SupprCard";
+import { SHEET_RADIUS, SupprCard } from "@/components/ui/SupprCard";
 import { SupprMark } from "@/components/SupprMark";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
@@ -466,8 +466,8 @@ const mas = StyleSheet.create({
   backdrop: { backgroundColor: "rgba(20,18,24,0.4)" },
   sheet: {
     // Prototype sheet corner (24px) — above the tightened Radius.xl (12).
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.xl,
   },
@@ -601,6 +601,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // "Add food" CTA below. The macro/slot tints + plum chrome are NOT
   // secondary-accent and keep their own `MacroColors`/`SlotColors` imports.
   const accent = useAccent();
+  const colors = useThemeColors();
 
   // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
   // `Log usual: <name>` chip moves out of the section-header trailing
@@ -1178,8 +1179,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           accessibilityRole="button"
                           accessibilityLabel="Remove meal"
                         >
-                          <Trash2 size={22} color="#fff" />
-                          <Text style={{ ...Type.caption, color: "#fff", marginTop: 4 }}>Remove</Text>
+                          <Trash2 size={22} color={colors.destructiveForeground} />
+                          <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>Remove</Text>
                         </Pressable>
                       </View>
                     )}
@@ -1351,8 +1352,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: col,
                       }}
                     >
-                      <Bookmark size={12} color="#fff" />
-                      <Text style={{ ...Type.caption, color: "#fff" }}>
+                      <Bookmark size={12} color={colors.primaryForeground} />
+                      <Text style={{ ...Type.caption, color: colors.primaryForeground }}>
                         Save as usual
                       </Text>
                     </Pressable>
@@ -1494,8 +1495,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             onPress={() => {}}
             style={{
               backgroundColor: cardColor,
-              borderTopLeftRadius: Radius.lg,
-              borderTopRightRadius: Radius.lg,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
               maxHeight: "80%",

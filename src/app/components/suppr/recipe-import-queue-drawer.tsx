@@ -164,7 +164,9 @@ function ImportJobRow({
           <p
             className={cn(
               "mt-0.5 truncate text-[11px]",
-              isFailed ? "text-destructive" : isDone ? "text-[var(--success)]" : "text-muted-foreground",
+              // Base sage fails AA as text (theme.css:136) — caught by the storybook
+              // axe gate after the §1 inversion put this on white cards.
+              isFailed ? "text-destructive" : isDone ? "text-[var(--accent-success-solid)]" : "text-muted-foreground",
             )}
             data-testid="import-queue-row-status"
           >

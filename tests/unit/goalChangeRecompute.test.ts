@@ -112,31 +112,26 @@ describe("goal-change recompute — pure compute", () => {
     // Regression guard — if `tdee.ts` constants drift, this fails and
     // the editor's displayed numbers (and the safety-floor warning
     // threshold) move with it. Values are the output of the REAL helper,
-    // not assumptions: female 60kg/165cm/30y, moderate, balanced, steady.
+    // not assumptions: female 60kg/165cm/30y, balanced, steady.
     const lose = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
     const maintain = recomputeTargetsFromProfile({ ...FIXTURE, goal: "maintain" })!;
     const gain = recomputeTargetsFromProfile({ ...FIXTURE, goal: "bulk" })!;
 
-    // Maintenance = static Mifflin × moderate (no adaptive fields passed →
-    // resolveMaintenance falls back to the formula). 1320.25 BMR × 1.55
-    // → 2046.
-    expect(maintain.maintenanceTdee).toBe(2046);
-    // steady = 0.5 kg/week. Continuous pace (target-recompute unification,
-    // 2026-05-26): deficit = round(0.5 × 7700 / 7) = 550.
-    //   lose:     2046 - 550 = 1496  (UNCHANGED — for a deficit, the
-    //             continuous model and the old PACE_DAILY_DEFICIT.steady
-    //             bucket both equal 550).
-    //   maintain: 2046          (UNCHANGED).
-    //   gain:     2046 + 550 = 2596  (CHANGED, was 2321). The OLD editor
-    //             path applied a HALF-magnitude surplus (+275 = the steady
-    //             bucket × 0.5) via calculateBudget — a bug: onboarding's
-    //             continuous-pace gain surplus was always the full 550, so
-    //             the editor under-fed gainers. The editor now matches
-    //             onboarding + the weekly check-in. 2596 is the correct,
-    //             unified number.
-    expect(lose.target_calories).toBe(1496);
-    expect(maintain.target_calories).toBe(2046);
-    expect(gain.target_calories).toBe(2596);
+    // TDEE gating 2026-06-10 — the formula seed is now SEDENTARY (1.2), not
+    // the fixture's `moderate` (1.55), because this recompute path's
+    // target_calories coexists with the per-day activity bonus (bonus adds
+    // activity once; the seed must not bake it in again). 1320.25 BMR × 1.2
+    // → 1,584 (was 2,046 at moderate). Survey §4 + decision
+    // `docs/decisions/2026-06-10-adaptive-tdee-gating.md`.
+    expect(maintain.maintenanceTdee).toBe(1584);
+    // steady = 0.5 kg/week. Continuous pace: deficit = round(0.5×7700/7) = 550.
+    //   lose:     1584 - 550 = 1034.
+    //   maintain: 1584.
+    //   gain:     1584 + 550 = 2134 (full-magnitude surplus, unified with
+    //             onboarding + the weekly check-in).
+    expect(lose.target_calories).toBe(1034);
+    expect(maintain.target_calories).toBe(1584);
+    expect(gain.target_calories).toBe(2134);
   });
 
   it("recomputes ALL FOUR macros (not calories alone) on a goal change", () => {
@@ -421,8 +416,8 @@ describe("goal-change recompute — persistence contract", () => {
   it("computes the preview off ADAPTIVE maintenance when confident + fresh", async () => {
     // Stage 2 (target-recompute unification, 2026-05-26): the editor now
     // passes the adaptive columns. With a LOWER adaptive maintenance than
-    // the static Mifflin (2046 for this fixture), the cut target must drop
-    // — the core fix (editor used to show targets off static TDEE).
+    // the sedentary-seeded formula (1,584 for this fixture, TDEE gating
+    // 2026-06-10), the cut target must drop — the core fix.
     const now = new Date("2026-05-26T09:00:00.000Z");
     const fresh = "2026-05-20T09:00:00.000Z"; // 6 days old → fresh (<14d)
 
@@ -430,7 +425,7 @@ describe("goal-change recompute — persistence contract", () => {
     const adaptiveCut = recomputeTargetsFromProfile({
       ...FIXTURE,
       goal: "cut",
-      adaptiveTdee: 1700, // lower than static 2046
+      adaptiveTdee: 1400, // lower than the sedentary seed (1,584)
       adaptiveTdeeConfidence: "high",
       adaptiveTdeeUpdatedAt: fresh,
       now,
@@ -438,42 +433,42 @@ describe("goal-change recompute — persistence contract", () => {
 
     // Adaptive maintenance is the deficit baseline → lower target + lower
     // reported maintenance.
-    expect(adaptiveCut.maintenanceTdee).toBe(1700);
-    expect(staticCut.maintenanceTdee).toBe(2046);
+    expect(adaptiveCut.maintenanceTdee).toBe(1400);
+    expect(staticCut.maintenanceTdee).toBe(1584); // sedentary seed
     expect(adaptiveCut.target_calories).toBeLessThan(staticCut.target_calories);
-    // steady = 0.5 kg/week → -550 deficit. 1700 - 550 = 1150, below the
+    // steady = 0.5 kg/week → -550 deficit. 1400 - 550 = 850, far below the
     // female safety floor (1200) — so the floor flag fires more often off
     // the adaptive number. That's correct, per the spec.
-    expect(adaptiveCut.target_calories).toBe(1150);
+    expect(adaptiveCut.target_calories).toBe(850);
   });
 
-  it("falls back to STATIC maintenance when the adaptive value is stale", () => {
+  it("falls back to the SEDENTARY-seeded formula maintenance when the adaptive value is stale", () => {
     const now = new Date("2026-05-26T09:00:00.000Z");
     const stale = "2026-05-01T09:00:00.000Z"; // 25 days old → stale (>14d)
     const result = recomputeTargetsFromProfile({
       ...FIXTURE,
       goal: "cut",
-      adaptiveTdee: 1700,
+      adaptiveTdee: 1400,
       adaptiveTdeeConfidence: "high",
       adaptiveTdeeUpdatedAt: stale,
       now,
     })!;
-    // Stale adaptive is rejected → static Mifflin 2046 baseline.
-    expect(result.maintenanceTdee).toBe(2046);
-    expect(result.target_calories).toBe(1496);
+    // Stale adaptive is rejected → sedentary-seeded formula 1,584 baseline.
+    expect(result.maintenanceTdee).toBe(1584);
+    expect(result.target_calories).toBe(1034); // 1,584 − 550
   });
 
-  it("falls back to STATIC maintenance when adaptive confidence is low", () => {
+  it("falls back to the SEDENTARY-seeded formula maintenance when adaptive confidence is low", () => {
     const now = new Date("2026-05-26T09:00:00.000Z");
     const result = recomputeTargetsFromProfile({
       ...FIXTURE,
       goal: "cut",
-      adaptiveTdee: 1700,
+      adaptiveTdee: 1400,
       adaptiveTdeeConfidence: "low",
       adaptiveTdeeUpdatedAt: "2026-05-25T09:00:00.000Z",
       now,
     })!;
-    expect(result.maintenanceTdee).toBe(2046);
+    expect(result.maintenanceTdee).toBe(1584);
   });
 
   it("records a goal_history row on a recompute (today-and-forward seal)", async () => {

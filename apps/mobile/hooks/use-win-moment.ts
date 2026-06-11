@@ -123,8 +123,13 @@ export function useWinMoment({
     void AsyncStorage.setItem(LAST_FIRED_KEY, dayKey);
 
     setActiveCelebration(result.celebration);
-    // Loud success haptic on the same beat as the Lottie.
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // SPEC 1 (2026-06-09) sequenced win beat: Medium impact, then the
+    // Success notification 80ms later — a tap-then-bloom that reads as a
+    // deliberate celebration instead of a single buzz.
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setTimeout(() => {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }, 80);
 
     try {
       track(AnalyticsEvents.day_target_hit_win_moment_shown, {

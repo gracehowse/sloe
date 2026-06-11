@@ -487,7 +487,7 @@ function buildStyles(
       backgroundColor: accent.primary,
     },
     avatarFallbackText: {
-      color: "#fff",
+      color: colors.primaryForeground,
       fontSize: 36,
       fontWeight: "700",
     },
@@ -552,7 +552,7 @@ function buildStyles(
       fontWeight: "600",
     },
     followTextFollow: {
-      color: "#fff",
+      color: colors.primaryForeground,
     },
     followTextFollowing: {
       color: colors.text,

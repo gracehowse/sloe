@@ -953,7 +953,7 @@ export default function PaywallScreen() {
       alignItems: "center",
     },
     promoApplyBtnDisabled: { opacity: 0.4 },
-    promoApplyBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    promoApplyBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
 
     secondaryRail: {
       flexDirection: "row",

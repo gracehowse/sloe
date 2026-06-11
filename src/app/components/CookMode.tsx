@@ -811,7 +811,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 <div
                   role="radiogroup"
                   aria-label="Recipe scale"
-                  className="inline-flex p-1 rounded-full bg-card border border-border gap-1"
+                  // Segmented grammar (web parity 2026-06-10, ENG-1022): one
+                  // track treatment — `bg-muted` rounded-full `p-0.5`, no
+                  // border. Active thumb = white `bg-card` lift +
+                  // `primary-solid` label + `shadow-sm` (matches the Progress
+                  // + macro-detail segmented controls, treatment §8). Was a
+                  // bordered `bg-card` track with a solid `bg-primary` thumb.
+                  className="inline-flex p-0.5 rounded-full bg-muted gap-0.5"
                 >
                   {COOK_SCALE_PRESETS.map((preset) => {
                     const active = Math.abs(scale - preset) < 1e-6;
@@ -823,9 +829,9 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                         aria-checked={active}
                         aria-label={`Scale ${formatCookScaleLabel(preset)}`}
                         onClick={() => handleScaleChange(preset)}
-                        className={`min-w-[44px] px-3.5 py-1.5 rounded-full text-sm font-semibold tabular-nums transition-colors ${
+                        className={`min-w-[44px] px-3.5 py-1.5 rounded-full text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                           active
-                            ? "bg-primary text-primary-foreground shadow"
+                            ? "bg-card text-primary-solid shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >

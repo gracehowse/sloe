@@ -1,5 +1,11 @@
 /**
- * DailyRing — Apple-Watch overage wrap (web parity with mobile CalorieRing).
+ * DailyRing — over-budget ring caps at FULL (web ring parity 2026-06-10).
+ *
+ * The 2026-06-04 Apple-Watch overage lap is RETIRED (mobile ring wave): when
+ * over budget the ring is ONE complete plum lap — no second overage lap, no red
+ * recolour of the arc. The over verdict lives in the centre ("{n} OVER") + the
+ * hero status chip. Mirrors mobile `CalorieRing.tsx` (plum `navPrimary` at all
+ * times; lap removed). This supersedes the prior overage-lap pin.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
@@ -16,36 +22,35 @@ afterEach(() => {
   delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
 });
 
-describe("DailyRing — overage lap (Sloe 2026-06-04)", () => {
-  it("keeps the base progress arc plum when over budget (not destructive)", () => {
-    const { container } = render(
-      <DailyRing consumed={2000} target={1500} displayMode="remaining" />,
-    );
+describe("DailyRing — over budget caps at full (web ring parity 2026-06-10)", () => {
+  it("keeps the progress arc plum when over budget (never destructive red)", () => {
+    const { container } = render(<DailyRing consumed={2000} target={1500} />);
     const progress = container.querySelector('[data-testid="daily-ring-progress"]');
     expect(progress?.getAttribute("stroke")).toBe("var(--macro-calories)");
   });
 
-  it("renders the lifted-plum overage lap when over budget", () => {
-    const { getByTestId } = render(
-      <DailyRing consumed={2000} target={1500} displayMode="remaining" />,
-    );
-    const lap = getByTestId("daily-ring-overage-lap");
-    const strokeCircle = lap.querySelector("circle[stroke]");
-    expect(strokeCircle?.getAttribute("stroke")).toBe("var(--ring-overage-lap)");
+  it("fills the plum arc to a full circle when over budget (offset 0)", () => {
+    const { container } = render(<DailyRing consumed={2000} target={1500} />);
+    const progress = container.querySelector('[data-testid="daily-ring-progress"]');
+    // pct is clamped to 1 when over → strokeDashoffset is 0 (a complete lap).
+    expect(progress?.getAttribute("stroke-dashoffset")).toBe("0");
   });
 
-  it("does not use the retired diagonal hash pattern", () => {
-    const { container } = render(
-      <DailyRing consumed={2000} target={1500} displayMode="remaining" />,
-    );
+  it("renders NO second overage lap when over budget", () => {
+    const { queryByTestId } = render(<DailyRing consumed={2000} target={1500} />);
+    expect(queryByTestId("daily-ring-overage-lap")).toBeNull();
+  });
+
+  it("does not use the retired diagonal hash pattern or the overage-lap token", () => {
+    const { container } = render(<DailyRing consumed={2000} target={1500} />);
     expect(container.innerHTML).not.toContain("overHash");
     expect(container.innerHTML).not.toContain("url(#overHash)");
+    expect(container.innerHTML).not.toContain("ring-overage-lap");
   });
 
-  it("omits the overage lap when under budget", () => {
-    const { queryByTestId } = render(
-      <DailyRing consumed={500} target={1500} displayMode="remaining" />,
-    );
-    expect(queryByTestId("daily-ring-overage-lap")).toBeNull();
+  it("uses the same plum arc under budget (single treatment both sides)", () => {
+    const { container } = render(<DailyRing consumed={500} target={1500} />);
+    const progress = container.querySelector('[data-testid="daily-ring-progress"]');
+    expect(progress?.getAttribute("stroke")).toBe("var(--macro-calories)");
   });
 });

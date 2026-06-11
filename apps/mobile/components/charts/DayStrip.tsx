@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import { Calendar, Snowflake } from "lucide-react-native";
 
-import { Accent, IconSize, Spacing, Type } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   addDaysLocal,
@@ -143,9 +143,9 @@ export default function DayStrip({
           // logged days, NO filled background, clay precedence on the both-
           // case) lives in the pure `dayStripIndicator` helper so the
           // component and its unit test share one source of truth.
-          const { dotKind, dotColor, numberColor, isActive } = dayStripIndicatorStyle(
+          const { dotKind, dotColor, numberColor, isActive, pillColor, showsPill } = dayStripIndicatorStyle(
             { isSelected, isToday, hasLogs },
-            { clay: accent.primary, sage: Accent.success, text: textColor },
+            { clay: accent.primary, sage: Accent.success, text: textColor, soft: accent.primarySoft },
           );
           return (
             <Pressable
@@ -162,17 +162,25 @@ export default function DayStrip({
               }}
             >
               <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: "600",
-                  textTransform: "uppercase",
-                  color: secondaryColor,
-                  letterSpacing: 0.4,
-                }}
+                // headers census 2026-06-10: day-axis label → Type.label (11px;
+                // census kept the canonical step over a private 10px density size).
+                style={{ ...Type.label, color: secondaryColor }}
               >
                 {label}
               </Text>
-              <View style={{ position: "relative" }}>
+              <View
+                style={{
+                  position: "relative",
+                  // §7 (2026-06-10): soft-tint pill carries selection — see
+                  // dayStripIndicator.ts for the treatment history.
+                  backgroundColor: showsPill ? pillColor : "transparent",
+                  borderRadius: Radius.full,
+                  minWidth: 28,
+                  height: 28,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Text
                   style={{
                     ...Type.headline,

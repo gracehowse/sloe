@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  buildStoryBeats,
   buildWhyThisNumber,
   paceKgPerWeekFromPreset,
 } from "../../src/lib/nutrition/whyThisNumber";
@@ -51,10 +52,11 @@ describe("buildWhyThisNumber", () => {
     });
     expect(r.targetHeadline).toBe("Today's target: 1,800 kcal");
     expect(r.lines).toHaveLength(3);
+    // loggingDays: 21 is supplied → the qualifier names the gated count.
     expect(r.lines[0]).toEqual({
       key: "tdee",
       label: "Maintenance (TDEE)",
-      value: "2,150 kcal (adaptive, last 7 days)",
+      value: "2,150 kcal (learned from your 21 fully-logged days)",
     });
     expect(r.lines[1]).toEqual({
       key: "goal",
@@ -68,6 +70,21 @@ describe("buildWhyThisNumber", () => {
     });
     expect(r.isEarlyEstimate).toBe(false);
     expect(r.calibratingAsk).toBeNull();
+  });
+
+  it("uses count-free TDEE copy when loggingDays is unknown but an estimate exists", () => {
+    // No loggingDays supplied (null) + high confidence → not early, but we
+    // can't name a gated day count, so the qualifier stays count-free.
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2150,
+      confidence: "high",
+      loggingDays: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+    });
+    expect(r.lines[0].value).toBe("2,150 kcal (learned from your logging)");
+    expect(r.isEarlyEstimate).toBe(false);
   });
 
   it("flags early estimate when loggingDays < 14", () => {
@@ -393,8 +410,130 @@ describe("buildWhyThisNumber", () => {
       mealLogDays: 14,
       weightLogCount: 3,
     });
-    // No longer calibrating — actual computed value renders.
-    expect(r.lines[0].value).toBe("2,150 kcal (adaptive, last 7 days)");
+    // No longer calibrating — actual computed value renders. loggingDays
+    // (14) is the gated complete-day count, so the qualifier names it.
+    expect(r.lines[0].value).toBe(
+      "2,150 kcal (learned from your 14 fully-logged days)",
+    );
     expect(r.calibratingAsk).toBeNull();
+  });
+
+  // ---- Story beats — the "how we work this out" architecture ---------
+  // The four-layer maintenance story (2026-06-10 adaptive-TDEE decision)
+  // must be present on the result so the sheet/dialog can render it.
+  it("attaches the architecture story beats to every result", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2150,
+      confidence: "high",
+      loggingDays: 21,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+    });
+    const keys = r.storyBeats.map((b) => b.key);
+    // No wearable supplied → seed, learn, gate, range (no watch beat).
+    expect(keys).toEqual(["seed", "learn", "gate", "range"]);
+  });
+
+  it("includes the watch beat only when hasWearable is true", () => {
+    const withWatch = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2150,
+      confidence: "high",
+      loggingDays: 21,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      hasWearable: true,
+    });
+    expect(withWatch.storyBeats.map((b) => b.key)).toEqual([
+      "seed",
+      "learn",
+      "gate",
+      "watch",
+      "range",
+    ]);
+    const watch = withWatch.storyBeats.find((b) => b.key === "watch")!;
+    // The watch beat must name all three of its roles and the caveat.
+    expect(watch.text).toContain("today's budget");
+    expect(watch.text).toContain("sanity check");
+    expect(watch.text).toContain("baseline");
+    expect(watch.text).toContain("least reliable");
+  });
+});
+
+describe("buildStoryBeats", () => {
+  it("frames the learn beat as present-tense + goal-based when no estimate yet", () => {
+    const beats = buildStoryBeats({
+      maintenanceTdee: null,
+      loggingDays: null,
+      hasWearable: false,
+    });
+    const learn = beats.find((b) => b.key === "learn")!;
+    expect(learn.text).toContain("As you log meals and weigh in");
+    expect(learn.text).toContain("based on your stated goal");
+  });
+
+  it("names the gated complete-day count in the learn beat once we have an estimate", () => {
+    const beats = buildStoryBeats({
+      maintenanceTdee: 2150,
+      loggingDays: 9,
+      hasWearable: false,
+    });
+    const learn = beats.find((b) => b.key === "learn")!;
+    expect(learn.text).toContain("learned from your 9 fully-logged days");
+  });
+
+  it("falls back to count-free learn copy when loggingDays is unknown", () => {
+    const beats = buildStoryBeats({
+      maintenanceTdee: 2150,
+      loggingDays: null,
+      hasWearable: false,
+    });
+    const learn = beats.find((b) => b.key === "learn")!;
+    expect(learn.text).toContain("Then we learn from what you actually log");
+    expect(learn.text).not.toContain("fully-logged days");
+  });
+
+  it("the gate beat always states the forgotten-dinner protection (the 'why')", () => {
+    const beats = buildStoryBeats({
+      maintenanceTdee: null,
+      loggingDays: null,
+      hasWearable: false,
+    });
+    const gate = beats.find((b) => b.key === "gate")!;
+    expect(gate.text).toContain("partly logged");
+    expect(gate.text).toContain("forgotten dinner");
+    expect(gate.text).toContain("drag your number down");
+  });
+
+  it("the range beat reassures the number stays within a sensible range", () => {
+    const beats = buildStoryBeats({
+      maintenanceTdee: 2150,
+      loggingDays: 21,
+      hasWearable: false,
+    });
+    const range = beats.find((b) => b.key === "range")!;
+    expect(range.text).toContain("updates gradually");
+    expect(range.text).toContain("sensible range");
+  });
+
+  it("contains no medical claims, guarantees, or shaming language", () => {
+    const allText = [
+      ...buildStoryBeats({ maintenanceTdee: 2150, loggingDays: 21, hasWearable: true }),
+      ...buildStoryBeats({ maintenanceTdee: null, loggingDays: null, hasWearable: false }),
+    ]
+      .map((b) => b.text)
+      .join(" ")
+      .toLowerCase();
+    for (const banned of [
+      "guarantee",
+      "guaranteed",
+      "cure",
+      "diagnos",
+      "you should eat",
+      "lose weight fast",
+    ]) {
+      expect(allText).not.toContain(banned);
+    }
   });
 });

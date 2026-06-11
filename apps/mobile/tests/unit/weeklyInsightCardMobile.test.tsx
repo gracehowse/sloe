@@ -189,7 +189,9 @@ describe("WeeklyInsightCard (mobile) — Figma 654:2 narrative card (default)", 
       />,
     );
     expect(getByTestId("today-weekly-insight-mobile")).toBeTruthy();
-    expect(getByText("Weekly Insight")).toBeTruthy();
+    // §3 de-carding (2026-06-10): the card title became the WEEKLY INSIGHT
+    // eyebrow on a typographic callout.
+    expect(getByText("WEEKLY INSIGHT")).toBeTruthy();
     // 3 of 4 logged days on target → the coach line is the prose body.
     expect(getByText("3 of 4 days landed on target — nice.")).toBeTruthy();
     // The narrative card drops the stat grid — no "4 / 7" tile.

@@ -46,7 +46,7 @@ vi.mock("@/context/theme", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { SupprCard, CARD_RADIUS, TILE_RADIUS } from "../../components/ui/SupprCard";
+import { CARD_RADIUS, INSET_RADIUS, SupprCard, TILE_RADIUS } from "../../components/ui/SupprCard";
 
 /** Flatten an RN style prop (array | object) into one object. */
 function flatten(style: unknown): Record<string, unknown> {
@@ -129,7 +129,7 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(TILE_RADIUS).toBe(24);
   });
 
-  it("size='inset' rounds to 24, draws a hairline, and carries NO drop shadow", () => {
+  it("size='inset' rounds to 12 (concentric inner corner, 2026-06-10 decision), draws a hairline, and carries NO drop shadow", () => {
     themeState.resolved = "light";
     const { getByTestId } = render(
       <SupprCard testID="inset" size="inset">
@@ -138,7 +138,8 @@ describe("<SupprCard> — the consolidated card shell", () => {
     );
     const outer = getByTestId("inset");
     const outerStyle = flatten(outer.props.style);
-    expect(outerStyle.borderRadius).toBe(TILE_RADIUS);
+    expect(outerStyle.borderRadius).toBe(INSET_RADIUS);
+    expect(INSET_RADIUS).toBe(12);
     // No drop shadow on a card-on-card.
     expect(outerStyle.shadowOpacity).toBeUndefined();
     // The inset's hairline is its separation (it sits ON a card with no lift).

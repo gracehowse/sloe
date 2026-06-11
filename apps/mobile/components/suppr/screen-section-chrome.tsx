@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { Layout } from "@/constants/layout";
-import { Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export interface ScreenSectionChromeProps {
@@ -18,7 +18,9 @@ export interface ScreenSectionChromeProps {
   showBrand?: boolean;
   /** Trailing control aligned with the title row (e.g. calendar). */
   trailing?: ReactNode;
-  /** Tighter title block for Plan / data-heavy tabs. */
+  /** @deprecated No-op since the headers census (2026-06-10) — the compact-22
+   *  title fork was off the type ramp; all tab titles render `Type.title` (24).
+   *  Kept only so existing Plan/Progress call sites keep compiling. */
   compact?: boolean;
   children?: ReactNode;
   testID?: string;
@@ -36,7 +38,9 @@ export function ScreenSectionChrome({
   subtitle,
   showBrand = false,
   trailing,
-  compact = false,
+  // compact is deprecated (headers census 2026-06-10) — destructured so call
+  // sites still compile, intentionally unused now the 22px fork is gone.
+  compact: _compact = false,
   children,
   testID,
   overlineTestID,
@@ -65,29 +69,16 @@ export function ScreenSectionChrome({
           gap: Spacing.md,
         },
         titleCol: { flex: 1, gap: Layout.chromeTitleGap },
-        overline: {
-          fontSize: Layout.overlineSize,
-          fontWeight: "700",
-          color: colors.textTertiary,
-          letterSpacing: Layout.overlineTracking,
-          textTransform: "uppercase",
-        },
-        title: {
-          fontFamily: "Newsreader_400Regular",
-          fontSize: compact ? 22 : Layout.titleSize,
-          fontWeight: "500",
-          color: colors.navPrimary,
-          letterSpacing: compact ? -0.3 : -0.3,
-        },
-        subtitle: {
-          fontSize: Layout.subtitleSize,
-          fontWeight: "600",
-          color: colors.textSecondary,
-          letterSpacing: 0.2,
-          marginTop: 2,
-        },
+        // headers census 2026-06-10 — eyebrow plumbing → Type.label
+        // (11/700/0.88/uppercase). Was 11/700/ls1.2 hand-rolled.
+        overline: { ...Type.label, color: colors.textTertiary },
+        // headers census 2026-06-10 — one tab-title size (Type.title, 24);
+        // the compact-22 fork left the type ramp and split sibling tabs.
+        title: { ...Type.title, color: colors.navPrimary },
+        // headers census 2026-06-10 — tokenised 13/600 chrome subtitle.
+        subtitle: { ...Type.captionStrong, color: colors.textSecondary, marginTop: 2 },
       }),
-    [colors, subtitle, compact],
+    [colors, subtitle],
   );
 
   return (

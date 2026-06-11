@@ -101,10 +101,15 @@ export function DietStep() {
               type="button"
               onClick={() => toggleAllergy(a)}
               aria-pressed={on}
-              className={`px-3.5 py-2 rounded-full border text-[13px] font-semibold transition-pm cursor-pointer ${
+              // Chip grammar (web parity 2026-06-10, ENG-1022): selected =
+              // `bg-primary-soft` + `primary-solid` label + `font-semibold`,
+              // NO border; unselected = quiet `bg-card` + muted label, NO
+              // border. Was `bg-primary/15`+`border-primary` selected /
+              // `border-border` unselected.
+              className={`px-3.5 py-2 rounded-full text-[13px] transition-pm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 on
-                  ? "bg-primary/15 text-primary border-primary"
-                  : "bg-card text-foreground border-border hover:border-primary/40"
+                  ? "bg-primary-soft text-primary-solid font-semibold"
+                  : "bg-card text-muted-foreground font-medium hover:bg-muted/60"
               }`}
             >
               {a}

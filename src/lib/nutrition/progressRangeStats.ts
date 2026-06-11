@@ -79,6 +79,97 @@ function filterByRange<T>(
   return entries.filter(([k]) => k >= cutoff);
 }
 
+/* ------------------------------------------------------------------ *
+ * ENG-1030 — Apple Health range grammar (D/W/M/6M/Y) + period paging *
+ *                                                                    *
+ * The Progress tab moved off the relative `rangeKey` model onto a    *
+ * calendar-anchored period model (see `progressPeriod.ts`). The      *
+ * period resolves to an inclusive `[startKey, endKey]` window, which *
+ * these `*ForWindow` variants consume directly. The legacy `rangeKey`*
+ * builders above are kept so their pinned tests stay green, but the  *
+ * Progress consumers now call the window variants.                   *
+ * ------------------------------------------------------------------ */
+
+/** Inclusive local-calendar window: keys are zero-padded ISO "YYYY-MM-DD". */
+export interface DateWindow {
+  startKey: string;
+  endKey: string;
+}
+
+/** Filter a `YYYY-MM-DD`-keyed map to an inclusive `[startKey, endKey]` window. */
+function filterByWindow<T>(map: Record<string, T>, window: DateWindow): [string, T][] {
+  const { startKey, endKey } = window;
+  return Object.entries(map).filter(([k]) => k >= startKey && k <= endKey);
+}
+
+export function buildWeightRangeStatsForWindow(
+  weightKgByDay: Record<string, number>,
+  window: DateWindow,
+): WeightRangeStats {
+  const series = filterByWindow(weightKgByDay, window)
+    .filter(([, v]) => Number.isFinite(v))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dateKey, kg]) => ({ dateKey, kg: Math.round(kg * 10) / 10 }));
+
+  if (series.length === 0) {
+    return { series, latestKg: null, deltaKg: null, weekDeltaKg: null };
+  }
+  const latestKg = series[series.length - 1].kg;
+  const deltaKg =
+    series.length >= 2
+      ? Math.round((series[series.length - 1].kg - series[0].kg) * 10) / 10
+      : null;
+
+  // Within-window "trend" delta: earliest → latest across the whole window.
+  // (The old `weekDeltaKg` was a fixed trailing-7-day slice that only made
+  // sense for the open-ended relative ranges; with a bounded calendar window
+  // the window-wide delta is the honest signal. Kept under the same field
+  // name so the `WeightRangeStats` shape — and its consumers — are unchanged.)
+  const weekDeltaKg = deltaKg;
+
+  return { series, latestKg, deltaKg, weekDeltaKg };
+}
+
+export function buildCaloriesRangeStatsForWindow(
+  byDay: ByDayForRangeStats,
+  targetCalories: number | null,
+  window: DateWindow,
+): CaloriesRangeStats {
+  const entries = filterByWindow(byDay, window);
+  const daySums: { dateKey: string; calories: number }[] = [];
+  for (const [dateKey, meals] of entries) {
+    const arr = Array.isArray(meals) ? meals : [];
+    if (arr.length === 0) continue;
+    const kcal = arr.reduce(
+      (s, m) => s + Math.max(0, Number.isFinite(m.calories) ? m.calories : 0),
+      0,
+    );
+    if (kcal > 0) daySums.push({ dateKey, calories: Math.round(kcal) });
+  }
+  daySums.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+  const daysLogged = daySums.length;
+  const avgCaloriesPerDay =
+    daysLogged > 0
+      ? Math.round(daySums.reduce((s, p) => s + p.calories, 0) / daysLogged)
+      : null;
+
+  let deltaVsTargetKcal: number | null = null;
+  let adherencePct: number | null = null;
+  if (avgCaloriesPerDay != null && targetCalories != null && targetCalories > 0) {
+    deltaVsTargetKcal = avgCaloriesPerDay - targetCalories;
+    adherencePct = Math.round((avgCaloriesPerDay / targetCalories) * 100);
+  }
+
+  return {
+    series: daySums,
+    avgCaloriesPerDay,
+    daysLogged,
+    deltaVsTargetKcal,
+    adherencePct,
+  };
+}
+
 export function buildWeightRangeStats(
   weightKgByDay: Record<string, number>,
   rangeKey: RangeKey,
@@ -243,4 +334,53 @@ export function rangeLabel(rangeKey: RangeKey): string {
       : rangeKey === "90d"
         ? "LAST 90 DAYS"
         : "ALL TIME";
+}
+
+/**
+ * ENG-1030 — window variant of {@link buildMacroAdherenceRangeStats}. Scopes
+ * the four macro bars to the selected period's `[startKey, endKey]` window so
+ * the AVERAGE ADHERENCE card describes the SAME span as the headline calorie
+ * adherence.
+ */
+export function buildMacroAdherenceRangeStatsForWindow(
+  byDay: Record<string, RangeMacroMeal[]>,
+  targets: { protein: number; carbs: number; fat: number; fiber?: number },
+  window: DateWindow,
+): MacroAdherenceRangeStats {
+  const entries = filterByWindow(byDay, window);
+  let pSum = 0;
+  let cSum = 0;
+  let fSum = 0;
+  let fibSum = 0;
+  let daysLogged = 0;
+  for (const [, meals] of entries) {
+    const arr = Array.isArray(meals) ? meals : [];
+    if (arr.length === 0) continue;
+    let p = 0;
+    let c = 0;
+    let f = 0;
+    let fib = 0;
+    for (const m of arr) {
+      p += Math.max(0, Number.isFinite(m.protein) ? m.protein : 0);
+      c += Math.max(0, Number.isFinite(m.carbs) ? m.carbs : 0);
+      f += Math.max(0, Number.isFinite(m.fat) ? m.fat : 0);
+      fib += Math.max(0, typeof m.fiberG === "number" && Number.isFinite(m.fiberG) ? m.fiberG : 0);
+    }
+    pSum += p;
+    cSum += c;
+    fSum += f;
+    fibSum += fib;
+    daysLogged += 1;
+  }
+  const pct = (sum: number, target: number | undefined) =>
+    target != null && target > 0 && daysLogged > 0
+      ? Math.round((sum / daysLogged / target) * 100)
+      : 0;
+  return {
+    proteinPct: pct(pSum, targets.protein),
+    carbsPct: pct(cSum, targets.carbs),
+    fatPct: pct(fSum, targets.fat),
+    fiberPct: pct(fibSum, targets.fiber),
+    daysLogged,
+  };
 }

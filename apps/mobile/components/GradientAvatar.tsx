@@ -93,7 +93,7 @@ export function GradientAvatar({
         </Defs>
         <Rect width={size} height={size} fill={`url(#${gradientId})`} />
       </Svg>
-      <Text style={{ fontSize, fontWeight: "700", color: "#fff" }}>
+      <Text style={{ fontSize, fontWeight: "700", color: colors.primaryForeground }}>
         {initial}
       </Text>
     </View>

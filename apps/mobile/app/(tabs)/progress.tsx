@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -57,11 +57,20 @@ import {
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
 import {
-  buildCaloriesRangeStats,
-  buildMacroAdherenceRangeStats,
-  buildWeightRangeStats,
-  type RangeKey,
+  buildCaloriesRangeStatsForWindow,
+  buildMacroAdherenceRangeStatsForWindow,
+  buildWeightRangeStatsForWindow,
 } from "@suppr/shared/nutrition/progressRangeStats";
+import {
+  DEFAULT_PERIOD,
+  PERIOD_TYPES,
+  periodChartAnchorISO,
+  periodLabel,
+  periodWindow,
+  progressPeriodToWeightRange,
+  type ProgressPeriod,
+} from "@suppr/shared/nutrition/progressPeriod";
+import { ProgressPeriodControl } from "@/components/progress/ProgressPeriodControl";
 import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
 import {
   readFreezeLedger,
@@ -110,10 +119,7 @@ import {
   weightKgByDayToPoints,
   type WeightRange,
 } from "@/lib/progress/weightTrend";
-import {
-  progressRangeKeyToWeightRange,
-  weightDeltaTone,
-} from "@/lib/progress/progressRangeChart";
+import { weightDeltaTone } from "@/lib/progress/progressRangeChart";
 import { WeightChart } from "@/components/progress/WeightChart";
 
 /* ── Helpers ── */
@@ -173,6 +179,8 @@ export default function ProgressScreen() {
   // inside another card, so there's no double-shadow risk. Mirrors web giving
   // the same cards `elevation="card"`.
   const cardElevation = useCardElevation({ variant: "soft" });
+  // Tile-class rule (2026-06-10): skeleton stat tiles mirror the flat triad.
+  const tileElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -308,15 +316,15 @@ export default function ProgressScreen() {
   const [stepsSyncStatus, setStepsSyncStatus] = useState<"pending" | "success" | "failed">("pending");
   const [stepsSyncRetrying, setStepsSyncRetrying] = useState(false);
 
-  // 2026-04-20 Claude Design prototype port — range picker pills.
-  // Mirrors the `[7d, 30d, 90d, All]` chips in the prototype's
-  // `ProgressScreen`. Default `30d` matches the prototype's most
-  // common anchor state for a user who's been logging for a few weeks;
-  // sparse-logger users still see something useful (single-day bars are
-  // still plotted). Selected range drives the range-scoped stats + the
-  // weight/calorie windows. Sloe Figma 492:2 retired the `LAST N DAYS`
-  // overline — the calm header subtitle + the pills carry the context.
-  const [rangeKey, setRangeKey] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  // ENG-1030 — Apple Health range grammar. Replaces the `7d/30d/90d/All`
+  // relative-window pills with the calendar-anchored period model
+  // (D/W/M/6M/Y + horizontal paging). Default = current week, matching
+  // Apple Health's default and the web Progress dashboard. "All" is removed —
+  // Y + paging covers history (Apple has no All either). The shared period
+  // helper (`progressPeriod.ts`) feeds both platforms identical windows +
+  // labels. Selected period drives every range-scoped stat + the
+  // weight/calorie chart windows below.
+  const [period, setPeriod] = useState<ProgressPeriod>(DEFAULT_PERIOD);
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
@@ -917,44 +925,67 @@ export default function ProgressScreen() {
   // week-boundary off-by-one bug; removing the schedule also removed the
   // bug. Server-side emit remains the canonical signal.
 
-  // Weight chart range follows the page's top range picker (premium-audit
-  // P0-1, 2026-06-10): 7d→1w / 30d→1m / 90d→3m / All→all. Previously fixed
-  // at "1m" while the picker drove every other stat — a broken affordance.
-  // Mapping lives in the shared `progressRangeChart` helper (web + mobile
-  // read the same tested function).
-  const weightChartRange: WeightRange = progressRangeKeyToWeightRange(rangeKey);
+  // ENG-1030 — the selected period resolves to an inclusive local window
+  // ([startKey, endKey]) + a human label ("15–21 Jun" / "June 2026" / "2026").
+  // `weekStartDay` honours the user's day-strip setting so the window starts on
+  // the user's midnight (DST-safe — see `progressPeriod.ts`). Memoised on the
+  // period + weekStart so a re-render with the same selection is stable.
+  const periodWin = useMemo(
+    () => periodWindow(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
+  const periodWindowLabel = useMemo(
+    () => periodLabel(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
+
+  // Weight chart range derives from the period type (D/W→1w, M→1m, 6M→3m,
+  // Y→1y), and its trailing window is anchored to the period's end day so
+  // paging back actually moves the chart window (not always "today"). Shared
+  // helper → web + mobile read the same tested mapping.
+  const weightChartRange: WeightRange = progressPeriodToWeightRange(period.type);
+  const weightChartAnchorISO = useMemo(
+    () => periodChartAnchorISO(period, weekStartDay, new Date()),
+    [period, weekStartDay],
+  );
 
   // Weight chart trend — drives the canonical WeightChart (Trend = smoothed
   // moving-average, Scale = raw weigh-ins) + START/CURRENT/GOAL/RATE.
   const weightChartTrend = useMemo(
-    () => computeWeightTrend(weightKgByDayToPoints(weightKgByDay), weightChartRange, goalWeightKg),
-    [weightKgByDay, weightChartRange, goalWeightKg],
+    () =>
+      computeWeightTrend(
+        weightKgByDayToPoints(weightKgByDay),
+        weightChartRange,
+        goalWeightKg,
+        weightChartAnchorISO,
+      ),
+    [weightKgByDay, weightChartRange, goalWeightKg, weightChartAnchorISO],
   );
 
-  // 2026-04-20 prototype Phase 2 — WEIGHT + Calories cards read from
-  // these shared helpers so web + mobile can't drift. Range window is
-  // driven by the `rangeKey` state set by the range picker above.
+  // WEIGHT + Calories cards read from the shared `*ForWindow` helpers so web +
+  // mobile can't drift. Scoped to the selected period's inclusive window
+  // (ENG-1030, was the relative `rangeKey`). Empty periods return honest
+  // nulls / [] — no faked 0%.
   const weightRange = useMemo(
-    () => buildWeightRangeStats(weightKgByDay, rangeKey as RangeKey, new Date()),
-    [weightKgByDay, rangeKey],
+    () => buildWeightRangeStatsForWindow(weightKgByDay, periodWin),
+    [weightKgByDay, periodWin],
   );
   const caloriesRange = useMemo(
-    () => buildCaloriesRangeStats(byDay as any, targets.calories, rangeKey as RangeKey, new Date()),
-    [byDay, targets.calories, rangeKey],
+    () => buildCaloriesRangeStatsForWindow(byDay as any, targets.calories, periodWin),
+    [byDay, targets.calories, periodWin],
   );
   // Sloe Figma 492:2 — range-scoped macro adherence so the AVERAGE
   // ADHERENCE card's four bars describe the SAME window as the headline
-  // calorie adherence (responds to the time-range toggle). Shared helper →
+  // calorie adherence (responds to the period control). Shared helper →
   // web + mobile read identical figures.
   const macroRange = useMemo(
     () =>
-      buildMacroAdherenceRangeStats(
+      buildMacroAdherenceRangeStatsForWindow(
         byDay as any,
         { protein: targets.protein, carbs: targets.carbs, fat: targets.fat, fiber: targets.fiber },
-        rangeKey as RangeKey,
-        new Date(),
+        periodWin,
       ),
-    [byDay, targets.protein, targets.carbs, targets.fat, targets.fiber, rangeKey],
+    [byDay, targets.protein, targets.carbs, targets.fat, targets.fiber, periodWin],
   );
 
   const t = {
@@ -964,6 +995,7 @@ export default function ProgressScreen() {
     bg: colors.background,
     elevated: colors.card,
     border: colors.cardBorder,
+    inputBg: colors.inputBg, // §8 segmented-track rail (chips census 2026-06-10)
     accent: accent.primary,
     // Sloe treatment system (2026-06-08): the selected range pill + segmented
     // active label now read in the deep aubergine `primarySolid` on a
@@ -1033,40 +1065,73 @@ export default function ProgressScreen() {
         contentContainerStyle={progressScrollStyle}
         testID="progress-skeleton"
       >
-        {/* Range-picker pills — disabled-look during load so the
-            skeleton doesn't look interactive. */}
+        {/* Period control skeleton — disabled-look during load so the
+            skeleton doesn't look interactive. Mirrors the live
+            `ProgressPeriodControl` exactly (ENG-1030): the §8 segmented rail
+            (D/W/M/6M/Y) + a ‹ label › paging-row placeholder, so `loading` →
+            loaded has no jump. */}
+        {/* No marginBottom — the scroll container owns the 20pt rhythm via
+            its gap: Spacing.lg. A marginBottom here double-stacked to 36pt
+            (gap 20 + margin 16) and broke the load-state rhythm vs the live
+            layout (rhythm sweep 2026-06-10). */}
         <View
           testID="progress-range-picker-skeleton"
-          style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md }}
+          style={{ gap: Spacing.dense, opacity: 0.6 }}
         >
-          {(["7d", "30d", "90d", "all"] as const).map((k) => {
-            const active = k === rangeKey;
-            return (
-              <View
-                key={k}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  // Skeleton mirrors the live range pill's soft-tint treatment
-                  // (Sloe §7) so the load state doesn't flash a different shape.
-                  borderColor: active ? t.accentSolid : t.border,
-                  backgroundColor: active ? t.accentSoft : t.elevated,
-                  opacity: 0.6,
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{k === "all" ? "All" : k}</Text>
-              </View>
-            );
-          })}
+          <View
+            style={{
+              flexDirection: "row",
+              borderRadius: Radius.full,
+              padding: 2,
+              backgroundColor: t.inputBg,
+            }}
+          >
+            {PERIOD_TYPES.map((seg) => {
+              const active = seg === period.type;
+              return (
+                <View
+                  key={seg}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    paddingVertical: Spacing.xs,
+                    borderRadius: Radius.full,
+                    backgroundColor: active ? t.elevated : "transparent",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: active ? "600" : "500",
+                      color: active ? t.accentSolid : t.sub,
+                    }}
+                  >
+                    {seg}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          {/* ‹ label › placeholder row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: Spacing.md,
+            }}
+          >
+            <View style={{ width: 20, height: 20, borderRadius: Radius.full, backgroundColor: t.border }} />
+            <View style={{ width: 112, height: 16, borderRadius: Radius.sm, backgroundColor: t.border }} />
+            <View style={{ width: 20, height: 20, borderRadius: Radius.full, backgroundColor: t.border }} />
+          </View>
         </View>
 
         {/* 2x2 tile skeletons — match real tile footprint (47% width,
             padding 14, radius). No numbers are shown; placeholders are
-            a neutral block so we never invent data. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md }}>
+            a neutral block so we never invent data. No marginBottom — the
+            container gap: Spacing.lg owns the rhythm (rhythm sweep 2026-06-10). */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
@@ -1074,12 +1139,12 @@ export default function ProgressScreen() {
               style={[{
                 width: "47%",
                 padding: Spacing.md,
-                borderRadius: Radius.lg,
-                backgroundColor: cardElevation.liftBg ?? t.elevated,
-                borderWidth: cardElevation.useBorder ? 1 : 0,
+                borderRadius: CARD_RADIUS,
+                backgroundColor: tileElevation.liftBg ?? t.elevated,
+                borderWidth: tileElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                 borderColor: t.border,
                 minHeight: 86,
-              }, cardElevation.shadowStyle]}
+              }, tileElevation.shadowStyle]}
             >
               <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
               <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
@@ -1121,52 +1186,22 @@ export default function ProgressScreen() {
           above-fold story. No feature flags, no duplicate components, no
           alternate versions — this is THE layout. */}
 
-      {/* 1. TIME-RANGE TOGGLE — [7d, 30d, 90d, All]. Active = solid plum
-          fill (`t.plum`) + white text; the rest bordered cream pills.
-          Mirrors web `bg-foreground-brand`. Drives every range stat below
-          + the weight/calorie windows. */}
-      <ReAnimated.View style={heroEntrance.style}>
-      <View
-        testID="progress-range-picker"
-        accessibilityRole="tablist"
-        style={{ flexDirection: "row", gap: Spacing.sm }}
-      >
-        {(["7d", "30d", "90d", "all"] as const).map((k) => {
-          const active = rangeKey === k;
-          const label = k === "all" ? "All" : k;
-          return (
-            <Pressable
-              key={k}
-              testID={`progress-range-pill-${k}`}
-              accessibilityRole="tab"
-              accessibilityLabel={`Range ${label}`}
-              accessibilityState={{ selected: active }}
-              onPress={() => {
-                if (!active) haptics.select();
-                setRangeKey(k);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
-              style={({ pressed }) => [{
-                flex: 1,
-                paddingVertical: 8,
-                paddingHorizontal: 4,
-                alignItems: "center",
-                borderRadius: Radius.full,
-                // Sloe treatment system (2026-06-08, §7): selected range pill =
-                // aubergine soft-tint fill + primarySolid border/label (was a
-                // solid plum fill). The accent stays rationed — the fill is
-                // reserved for the FAB + conversion CTAs.
-                backgroundColor: active ? t.accentSoft : t.elevated,
-                borderWidth: active ? 1 : 1,
-                borderColor: active ? t.accentSolid : t.border,
-                opacity: pressed ? 0.85 : 1,
-              }]}
-            >
-              <Text style={{ fontSize: 13, fontWeight: "500", color: active ? t.accentSolid : t.sub }}>{label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* 1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
+          6M / Y segments + ‹ label › paging. Default = current week. Drives
+          every range stat below + the weight/calorie chart windows. Mirror of
+          the web `ProgressPeriodControl`; shared period model so the two
+          surfaces compute identical windows + labels. */}
+      {/* gap: Spacing.lg (20) keeps the picker→THIS WEEK seam on the SAME
+          page rhythm as every other inter-card gap (the scroll container and
+          the charts/details wrappers all use Spacing.lg). Without it the
+          picker abutted the card at ~5pt while the body breathed at 20pt —
+          the cramped top Grace flagged (rhythm sweep 2026-06-10). */}
+      <ReAnimated.View style={[heroEntrance.style, { gap: Spacing.lg }]}>
+      <ProgressPeriodControl
+        period={period}
+        weekStart={weekStartDay}
+        onChange={setPeriod}
+      />
 
       {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
           commentary; the StoryGate placeholder shares the same lilac wash
@@ -1174,7 +1209,7 @@ export default function ProgressScreen() {
           the slot doesn't jump). On `trends_only` the direction tile still
           renders above so opt-out users keep a weight signal. */}
       {weightSurfaceMode === "trends_only" && (
-        <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} rangeKey={rangeKey} theme={t} />
+        <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} windowLabel={periodWindowLabel} theme={t} />
       )}
       {hasEnoughDataForStory(weekStats.daysWithFood) ? (
         <ProgressHeadline
@@ -1190,10 +1225,6 @@ export default function ProgressScreen() {
                         ? adaptiveConfidence
                         : "low",
                     loggingDays: Object.keys(byDay ?? {}).length,
-                    weighInCount: Object.keys(weightKgByDay ?? {}).length,
-                    avgDailyIntake: 0,
-                    smoothedWeightChangeKgPerDay: 0,
-                    windowDays: 28,
                   }
                 : null,
             loggingDays: weekStats.daysWithFood,
@@ -1295,7 +1326,8 @@ export default function ProgressScreen() {
             {/* Section eyebrow — matches the "Daily Calories" / "Average Adherence"
                 cards (Sentence-Case source, rendered uppercase via style) so the
                 weight card is no longer the one card on Progress without a header. */}
-            <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88, marginBottom: 8 }}>Weight</Text>
+            {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+            <Text style={{ ...Type.label, color: accent.primarySolid, marginBottom: Spacing.sm }}>Weight</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
@@ -1318,7 +1350,9 @@ export default function ProgressScreen() {
               <View
                 testID="progress-weight-view-toggle"
                 accessibilityRole="tablist"
-                style={{ flexDirection: "row", backgroundColor: t.border, borderRadius: 999, padding: 2 }}
+                // Segments census (2026-06-10, §8): inputBg rail (border-grey
+                // was one of five competing tracks), Radius.full token.
+                style={{ flexDirection: "row", backgroundColor: t.inputBg, borderRadius: Radius.full, padding: 2 }}
               >
                 {(["trend", "scale"] as const).map((v) => {
                   const active = weightView === v;
@@ -1359,13 +1393,13 @@ export default function ProgressScreen() {
                 line, range-aware X ticks, scrub-to-read pill, "you are
                 here" marker. Replaces the toy Sparkline; same component the
                 weight-tracker route already mounts (Withings parity). Keyed
-                on rangeKey so a range change remounts with a fresh layout.
-                The Trend/Scale toggle is label-only — the chart always draws
-                the points line + smoothed MA envelope. */}
+                on the period (type + offset) so a period change remounts with
+                a fresh layout. The Trend/Scale toggle is label-only — the
+                chart always draws the points line + smoothed MA envelope. */}
             {weightChartTrend.points.length >= 2 ? (
               <View style={{ marginTop: Spacing.dense }}>
                 <WeightChart
-                  key={rangeKey}
+                  key={`${period.type}:${period.offset}`}
                   trend={weightChartTrend}
                   goalKg={goalWeightKg ?? null}
                   isImperial={measurementSystem === "imperial"}
@@ -1384,7 +1418,8 @@ export default function ProgressScreen() {
                   : "—"],
               ] as const).map(([label, val]) => (
                 <View key={label} style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</Text>
+                  {/* headers census 2026-06-10: stat eyebrow → Type.label token. */}
+                  <Text style={{ ...Type.label, color: t.dim }}>{label}</Text>
                   <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>{val}</Text>
                 </View>
               ))}
@@ -1486,7 +1521,8 @@ export default function ProgressScreen() {
         <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]} testID="progress-daily-calories-card">
           <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
             <View>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>Daily Calories</Text>
+              {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+              <Text style={{ ...Type.label, color: accent.primarySolid }}>Daily Calories</Text>
               <Text style={{ ...Type.display, fontSize: 24, lineHeight: 28, color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.avgCalories.toLocaleString()}<Text style={{ fontSize: 14, color: t.sub }}> avg</Text>
               </Text>
@@ -1595,7 +1631,8 @@ export default function ProgressScreen() {
                   accessibilityLabel="Maintenance source: adaptive"
                   style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                  {/* headers census 2026-06-10: pill eyebrow → Type.label, pill hue kept. */}
+                  <Text style={{ ...Type.label, color: t.green }}>Adaptive</Text>
                 </View>
               ) : (
                 <View
@@ -1603,7 +1640,8 @@ export default function ProgressScreen() {
                   accessibilityLabel="Maintenance source: formula estimate"
                   style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
+                  {/* headers census 2026-06-10: pill eyebrow → Type.label. */}
+                  <Text style={{ ...Type.label, color: t.dim }}>Formula estimate</Text>
                 </View>
               )}
             </View>
@@ -2096,11 +2134,12 @@ type CardTheme = {
  */
 function WeightTrendOnlyCard({
   weekDeltaKg,
-  rangeKey,
+  windowLabel,
   theme,
 }: {
   weekDeltaKg: number | null;
-  rangeKey: "7d" | "30d" | "90d" | "all";
+  /** Period label for the window descriptor (ENG-1030), e.g. "15–21 Jun". */
+  windowLabel: string;
   theme: CardTheme;
 }) {
   const cardElev = useCardElevation();
@@ -2121,27 +2160,22 @@ function WeightTrendOnlyCard({
         : direction === "stable"
           ? "Stable this week"
           : "Log a weight to see your trend";
-  const windowLabel =
-    rangeKey === "7d"
-      ? "last 7 days"
-      : rangeKey === "30d"
-        ? "last 30 days"
-        : rangeKey === "90d"
-          ? "last 90 days"
-          : "all time";
   return (
     <View
       testID="progress-weight-trend-only-card"
       style={[{
         backgroundColor: cardElev.liftBg ?? theme.elevated,
-        borderRadius: Radius.lg,
-        borderWidth: cardElev.useBorder ? 1 : 0,
+        borderRadius: CARD_RADIUS,
+        borderWidth: cardElev.useBorder ? StyleSheet.hairlineWidth : 0,
         borderColor: theme.border,
         padding: 16,
-        marginBottom: Spacing.md,
+        // No marginBottom — this card sits inside the heroEntrance wrapper,
+        // whose gap: Spacing.lg owns the seam to the next card. A self-margin
+        // here double-stacked to 36pt (rhythm sweep 2026-06-10).
       }, cardElev.shadowStyle]}
     >
-      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
+      {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+      <Text style={{ ...Type.label, color: theme.dim }}>
         Weight trend
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>

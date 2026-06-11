@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RefreshCw, X } from "lucide-react-native";
@@ -79,6 +80,7 @@ export function WhereThisComesFromSheet({
   primaryCta,
   backgroundColor,
   cardColor,
+  cardBorderColor,
   textColor,
   textSecondaryColor,
 }: WhereThisComesFromSheetProps) {
@@ -98,13 +100,13 @@ export function WhereThisComesFromSheet({
           testID="where-this-comes-from-sheet"
           style={{
             backgroundColor,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingBottom: insets.bottom + Spacing.lg,
           }}
         >
           <View style={{ alignItems: "center", paddingTop: Spacing.dense, paddingBottom: 4 }}>
-            <View style={{ width: 40, height: 6, borderRadius: 3, backgroundColor: "#E8E2EC" }} />
+            <View style={{ width: 40, height: 6, borderRadius: 3, backgroundColor: cardBorderColor }} />
           </View>
 
           <View
@@ -160,11 +162,11 @@ export function WhereThisComesFromSheet({
                 overflow: "hidden",
               }}
             >
-              <ProvenanceRow label="Source" value={source} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder={range != null} />
+              <ProvenanceRow label="Source" value={source} borderColor={cardBorderColor} labelColor={textSecondaryColor} valueColor={textColor} showBorder={range != null} />
               {range != null ? (
-                <ProvenanceRow label="Range" value={range} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder />
+                <ProvenanceRow label="Range" value={range} borderColor={cardBorderColor} labelColor={textSecondaryColor} valueColor={textColor} showBorder />
               ) : null}
-              <ProvenanceRow label="Last synced" value={lastSynced} borderColor="#E8E2EC" labelColor={textSecondaryColor} valueColor={textColor} showBorder={false} />
+              <ProvenanceRow label="Last synced" value={lastSynced} borderColor={cardBorderColor} labelColor={textSecondaryColor} valueColor={textColor} showBorder={false} />
             </View>
           </View>
 

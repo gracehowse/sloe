@@ -229,7 +229,7 @@ export function TodayDateHeader({
               initial={avatarLetter}
               fontSize={13}
               gradientIdSuffix="today-header"
-              fill="#6a4b7a"
+              fill={Accent.purple}
               textColor={primaryForegroundColor}
             />
           </Pressable>
@@ -363,7 +363,7 @@ export function TodayDateHeader({
               initial={avatarLetter}
               fontSize={13}
               gradientIdSuffix="today-header"
-              fill="#6a4b7a"
+              fill={Accent.purple}
               textColor={primaryForegroundColor}
             />
           </Pressable>

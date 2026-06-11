@@ -21,9 +21,12 @@ export interface TodayHeroRingProps {
   fatPct: number;
   expanded: boolean;
   onToggleExpanded: () => void;
-  displayMode: CalorieRingDisplayMode;
-  /** Mobile parity: flips remaining/consumed AND macro-ring visibility. */
-  onToggleDisplayMode: () => void;
+  /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — the
+   *  Remaining/Consumed toggle is retired; ignored. Kept for call-site
+   *  stability. */
+  displayMode?: CalorieRingDisplayMode;
+  /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — ignored. */
+  onToggleDisplayMode?: () => void;
   onPressWhy?: () => void;
   pulse?: boolean;
 }
@@ -58,38 +61,6 @@ function HeroStatusChip({ state }: { state: ChipState }) {
       <Icon size={13} strokeWidth={2} aria-hidden />
       {label}
     </span>
-  );
-}
-
-function DisplayModeToggle({
-  displayMode,
-  onToggleDisplayMode,
-}: {
-  displayMode: CalorieRingDisplayMode;
-  onToggleDisplayMode: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggleDisplayMode}
-      className="inline-flex rounded-full bg-[#EFEFEF] p-0.5 text-[10px] font-medium"
-      aria-label={`Showing ${displayMode} calories. Tap to switch.`}
-      data-testid="today-ring-display-toggle"
-    >
-      {(["remaining", "consumed"] as const).map((mode) => (
-        <span
-          key={mode}
-          aria-hidden
-          className={`rounded-full px-3 py-1 capitalize transition-colors ${
-            displayMode === mode
-              ? "bg-card text-foreground-brand shadow-sm"
-              : "text-foreground-secondary"
-          }`}
-        >
-          {mode}
-        </span>
-      ))}
-    </button>
   );
 }
 
@@ -133,8 +104,8 @@ export function TodayHeroRing({
   fatPct,
   expanded,
   onToggleExpanded,
-  displayMode,
-  onToggleDisplayMode,
+  // displayMode / onToggleDisplayMode retired (web ring parity 2026-06-10) —
+  // accepted on the prop API for call-site stability, ignored here.
   onPressWhy: _onPressWhy,
   pulse = false,
 }: TodayHeroRingProps) {
@@ -158,12 +129,11 @@ export function TodayHeroRing({
       padding="none"
       className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
     >
+      {/* Header row: the status chip only. The Remaining/Consumed segmented
+          toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave): it
+          duplicated the Eaten stat below the ring. */}
       <div className="flex w-full items-center justify-between gap-2">
         <HeroStatusChip state={chipState} />
-        <DisplayModeToggle
-          displayMode={displayMode}
-          onToggleDisplayMode={onToggleDisplayMode}
-        />
       </div>
       <DailyRing
         consumed={consumed}
@@ -178,11 +148,13 @@ export function TodayHeroRing({
         fatPct={fatPct}
         expanded={expanded}
         onToggle={onToggleExpanded}
-        displayMode={displayMode}
-        onLongPressToggleDisplayMode={onToggleDisplayMode}
         pulse={pulse}
       />
-      {consumed > 0 && target > 0 ? (
+      {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
+          parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0
+          and Bonus +0 are honest numbers, not noise. Gated on `target > 0`
+          (no profile target yet → no row), mirroring mobile `TodayHeroRing`. */}
+      {target > 0 ? (
         <div
           className="grid w-full grid-cols-3 border-t border-border pt-3 mt-1"
           data-testid="today-ring-stats-row"
@@ -196,22 +168,17 @@ export function TodayHeroRing({
             value={Math.round(consumed).toLocaleString()}
             divider
           />
-          {isOver ? (
-            <RingStatCell
-              label="Over"
-              value={`−${Math.round(consumed - target).toLocaleString()}`}
-              valueClassName="text-[var(--over-budget-fg)]"
-              divider
-            />
-          ) : (
-            <RingStatCell
-              label="Bonus"
-              value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
-              labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
-              valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
-              divider
-            />
-          )}
+          {/* The right stat is ALWAYS Bonus (web ring parity 2026-06-10): the
+              over amount reads in the ring centre + the status chip, and the
+              old slot-switch hid the earned-burn number exactly when an
+              over-budget user most wants to see it. 0 when no bonus. */}
+          <RingStatCell
+            label="Bonus"
+            value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+            labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
+            valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
+            divider
+          />
         </div>
       ) : null}
       <button

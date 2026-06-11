@@ -719,7 +719,7 @@ export default function FastingScreen() {
           style={[styles.endBtn, { backgroundColor: Accent.success }]}
           onPress={endFast}
         >
-          <Text style={[styles.endBtnText, { color: "#FFFFFF" }]}>Complete fast</Text>
+          <Text style={[styles.endBtnText, { color: colors.primaryForeground }]}>Complete fast</Text>
         </Pressable>
       ) : null}
 

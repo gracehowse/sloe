@@ -370,18 +370,22 @@ describe("mobile detail — full Figma 332:2 visual language (not just bounded d
 });
 
 describe("mobile detail — Figma radii (delta 6)", () => {
-  it("detail cards round to 16 (not the tight Radius.lg=8 ladder)", () => {
-    // Both the resting `card` and the `sourceCard` carry borderRadius: 16.
+  it("detail cards round to CARD_RADIUS (canonical shell, 2026-06-10 — supersedes the Figma 16)", () => {
+    // The 2026-06-10 card-shell convergence moved recipe detail onto the
+    // system shell: CARD_RADIUS (24) + colors.card fill + gated hairline.
+    // The literal-16 era (Figma delta-6 reskin) is over; the tight
+    // Radius.lg=8 ladder must still never return.
     const cardBlock = MOBILE_SRC.slice(
       MOBILE_SRC.indexOf("card: {\n      backgroundColor: cardElevation"),
       MOBILE_SRC.indexOf("cardTitle:"),
     );
-    expect(cardBlock).toContain("borderRadius: 16");
+    expect(cardBlock).toContain("borderRadius: CARD_RADIUS");
+    expect(cardBlock).not.toContain("borderRadius: Radius.lg");
     const sourceCardBlock = MOBILE_SRC.slice(
       MOBILE_SRC.indexOf("sourceCard: {"),
-      MOBILE_SRC.indexOf("sourceLabel:"),
+      MOBILE_SRC.indexOf("sourceCard: {") + 400,
     );
-    expect(sourceCardBlock).toContain("borderRadius: 16");
+    expect(sourceCardBlock).toContain("borderRadius: CARD_RADIUS");
   });
 
   it("macro tiles round to 16", () => {

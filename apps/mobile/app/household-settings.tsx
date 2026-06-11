@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   View,
   Text,
@@ -97,7 +98,7 @@ const SAGE_SECONDARY = "#7C8466";
  *  sheets. theme.ts Radius.xl=12 (card radius), so the sheet value is kept
  *  explicit here until a Radius.sheet(20) token is added (deferred: see
  *  ENG-998 to reconcile the sheet-radius token). */
-const SHEET_RADIUS = 20;
+
 
 const DAY_LABELS: Record<HouseholdDayId, string> = {
   mon: "Mon",
@@ -680,7 +681,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>{initials}</Text>
+                        <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 12 }}>{initials}</Text>
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, flexWrap: "wrap" }}>
@@ -1022,7 +1023,7 @@ export default function HouseholdSettingsScreen() {
                         justifyContent: "center",
                       }}
                     >
-                      <Text style={{ fontSize: 9, fontWeight: "700", color: "#fff" }}>
+                      <Text style={{ fontSize: 9, fontWeight: "700", color: colors.primaryForeground }}>
                         {householdMemberInitials(m.displayName)}
                       </Text>
                     </View>
@@ -1153,7 +1154,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 11 }}>
+                        <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 11 }}>
                           {householdMemberInitials(m.displayName)}
                         </Text>
                       </View>
@@ -1177,7 +1178,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        {on ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
+                        {on ? <Check size={12} color={colors.primaryForeground} strokeWidth={3} /> : null}
                       </View>
                     </Pressable>
                   );

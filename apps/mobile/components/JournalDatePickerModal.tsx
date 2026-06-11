@@ -14,6 +14,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 type Props = {
@@ -128,7 +129,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
                       style={{
                         fontSize: 15,
                         fontWeight: isSel ? "800" : "600",
-                        color: isSel ? "#fff" : colors.text,
+                        color: isSel ? colors.primaryForeground : colors.text,
                         fontVariant: ["tabular-nums"],
                       }}
                     >

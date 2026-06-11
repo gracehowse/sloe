@@ -721,7 +721,7 @@ export default function VerifyScreen() {
       gap: Spacing.sm, backgroundColor: accent.primary,
       borderRadius: Radius.md, paddingVertical: 16,
     },
-    confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    confirmBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
   }), [colors, accent]);
 
   if (loading) {
@@ -1150,10 +1150,10 @@ export default function VerifyScreen() {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
               <Text style={styles.confirmBtnText}>
                 {hasDirty ? "Save Changes" : "Confirm All"}
               </Text>
@@ -1259,6 +1259,7 @@ export default function VerifyScreen() {
           cardBorder: colors.border,
           background: colors.background,
           border: colors.border,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -1282,6 +1283,7 @@ export default function VerifyScreen() {
             cardBorder: colors.border,
             background: colors.background,
             border: colors.border,
+            primaryForeground: colors.primaryForeground,
           }}
         />
       ) : null}

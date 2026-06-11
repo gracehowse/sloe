@@ -136,8 +136,8 @@ export function NutritionDetailEmptyState({
             backgroundColor: ctaColor,
           }}
         >
-          {CtaIcon ? <CtaIcon size={16} color="#fff" strokeWidth={2.25} /> : null}
-          <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+          {CtaIcon ? <CtaIcon size={16} color={colors.primaryForeground} strokeWidth={2.25} /> : null}
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
             {ctaLabel}
           </Text>
         </PressableScale>

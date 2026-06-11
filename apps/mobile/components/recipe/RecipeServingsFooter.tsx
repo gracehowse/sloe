@@ -16,7 +16,7 @@
 import { Text, View } from "react-native";
 import { Minus, Plus, UtensilsCrossed } from "lucide-react-native";
 
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -78,14 +78,9 @@ export function RecipeServingsFooter({
       {/* Left — yield + servings stepper. */}
       <View style={{ gap: 4 }}>
         <Text
-          style={{
-            fontFamily: FontFamily.sansSemibold,
-            fontSize: 10,
-            fontWeight: "600",
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: colors.textSecondary,
-          }}
+          // headers census 2026-06-10: density eyebrow → Type.label (11px; the
+          // 1px delta from 10 is invisible, the variance was the bug).
+          style={{ ...Type.label, color: colors.textSecondary }}
         >
           Yield
         </Text>

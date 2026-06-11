@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Alert,
@@ -200,8 +201,12 @@ export default function CreateRecipeScreen() {
   // Aubergine-on-surface ink (Sloe treatment system) — create-recipe primary
   // CTAs are not conversion-critical, so they render as aubergine OUTLINES
   // (treatment §1). Light/dark aware so the outline + label clear AA.
-  const accentInk =
-    colors.background === "#FFFFFF" ? accent.primarySolid : accent.primarySolidDark;
+  // ENG-1013 (2026-06-10): `accent` is already scheme-resolved via useAccent()
+  // (light primarySolid = #3B2A4D / dark = #C4ACD0), so read it directly. The
+  // old `colors.background === "#FFFFFF"` probe silently broke when the light
+  // ground moved off pure white to cream #FBF8F3 — it returned the dark lifted
+  // aubergine in LIGHT mode. Dropping the ternary fixes that scheme bug.
+  const accentInk = accent.primarySolid;
   // Net-new structural blocks from the recipes redesign (§3.5 / recipes.md):
   // the warm cover-hero placeholder, filled primary submit, serif per-serving
   // totals, the boxed servings stepper, and the lifted photo quick-action all
@@ -945,8 +950,8 @@ export default function CreateRecipeScreen() {
     modalBackdrop: { flex: 1, backgroundColor: "#0007", justifyContent: "flex-end" },
     modalCard: {
       backgroundColor: colors.background,
-      borderTopLeftRadius: Radius.lg,
-      borderTopRightRadius: Radius.lg,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       paddingHorizontal: Spacing.xl,
       paddingTop: Spacing.lg,
       paddingBottom: Spacing.xl,

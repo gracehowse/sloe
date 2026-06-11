@@ -32,6 +32,11 @@ const SUCCESS_SOFT = "rgba(86, 167, 117, 0.12)";
  * brings the two surfaces back into shape parity.
  */
 export interface TodayHeroProps {
+  /** @deprecated 2026-06-10 — Remaining/Consumed toggle retired; ignored. */
+  displayMode?: "remaining" | "consumed";
+  /** @deprecated 2026-06-10 — ignored. */
+  onToggleDisplayMode?: () => void;
+
   consumed: number;
   goal: number;
   baseGoal?: number;
@@ -46,8 +51,6 @@ export interface TodayHeroProps {
   onToggleExpanded: () => void;
 
   // Remaining/consumed toggle (host-owned)
-  displayMode: "remaining" | "consumed";
-  onToggleDisplayMode: () => void;
 
   // Theme colours (from host's theme hook)
   textColor: string;

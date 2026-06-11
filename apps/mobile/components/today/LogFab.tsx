@@ -3,7 +3,7 @@ import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Elevation } from "@/constants/theme";
+import { Accent, Colors, Elevation } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 
 /**
@@ -91,7 +91,7 @@ export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: Lo
           Elevation.floatPrimary,
         ]}
       >
-        <Plus size={28} color="#fff" strokeWidth={2.25} />
+        <Plus size={28} color={Colors.light.primaryForeground} strokeWidth={2.25} />
       </Pressable>
     </View>
   );

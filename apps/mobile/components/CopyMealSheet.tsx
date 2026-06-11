@@ -7,6 +7,7 @@
  * cannot drift on target-list dedup or date arithmetic.
  */
 import { useEffect, useMemo, useState } from "react";
+import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -26,6 +27,7 @@ type Theme = {
   card: string;
   cardBorder: string;
   background: string;
+  primaryForeground: string;
 };
 
 type QuickRange = "none" | "+2" | "+3" | "+7";
@@ -133,8 +135,8 @@ export default function CopyMealSheet({
           onPress={() => {}}
           style={{
             backgroundColor: colors.card,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             padding: Spacing.lg,
             paddingBottom: Spacing.xl,
           }}
@@ -219,7 +221,7 @@ export default function CopyMealSheet({
                         style={{
                           fontSize: 14,
                           fontWeight: isSel ? "800" : "600",
-                          color: isSel ? "#fff" : colors.text,
+                          color: isSel ? colors.primaryForeground : colors.text,
                           fontVariant: ["tabular-nums"],
                         }}
                       >
@@ -260,7 +262,7 @@ export default function CopyMealSheet({
                     style={{
                       fontSize: 12,
                       fontWeight: "600",
-                      color: isActive ? "#fff" : colors.text,
+                      color: isActive ? colors.primaryForeground : colors.text,
                     }}
                   >
                     {label}
@@ -320,7 +322,7 @@ export default function CopyMealSheet({
               accessibilityLabel="Copy"
               accessibilityState={{ disabled: !canConfirm }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Copy</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Copy</Text>
             </Pressable>
           </View>
         </Pressable>

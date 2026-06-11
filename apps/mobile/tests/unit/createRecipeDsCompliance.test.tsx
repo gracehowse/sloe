@@ -86,8 +86,9 @@ describe("create-recipe — gap 4: input/card radius bumped to Radius.xl (12pt)"
     expect(src).toMatch(/publishRow:\s*\{[\s\S]*?borderRadius:\s*Radius\.xl/);
   });
 
-  it("MealTypePicker chips use Radius.xl", () => {
-    expect(picker()).toMatch(/borderRadius:\s*Radius\.xl/);
+  it("MealTypePicker chips use Radius.full (chips census 2026-06-10 — supersedes the Radius.xl gap-4 bump)", () => {
+    expect(picker()).toMatch(/borderRadius:\s*Radius\.full/);
+    expect(picker()).not.toMatch(/borderRadius:\s*Radius\.xl/);
   });
 });
 
