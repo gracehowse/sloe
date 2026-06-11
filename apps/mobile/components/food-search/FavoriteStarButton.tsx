@@ -37,7 +37,7 @@ export function FavoriteStarButton({
   return (
     <Pressable
       onPress={(e) => {
-        e.stopPropagation?.();
+        e?.stopPropagation?.();
         if (pending) return;
         onToggle();
       }}

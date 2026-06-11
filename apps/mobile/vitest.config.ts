@@ -193,6 +193,9 @@ export default defineConfig({
       // `vi.doMock("expo-document-picker", ...)` to override the
       // default "user cancelled" result the shim returns.
       { find: /^expo-document-picker$/, replacement: path.resolve(__dirname, "./tests/shims/expo-document-picker.ts") },
+      // CreateCustomFoodSheet scan-label (2026-06-11) — `expo-image-picker` loads
+      // `expo-modules-core` at import time; shim so FoodSearchPanel render tests collect.
+      { find: /^expo-image-picker$/, replacement: path.resolve(__dirname, "./tests/shims/expo-image-picker.ts") },
       // Stub the mobile analytics wrapper (which transitively imports
       // `posthog-react-native` and `react-native-svg`) so tests never
       // touch the PostHog client or load SVG's native Touchable mixin.
