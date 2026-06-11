@@ -100,4 +100,22 @@ describe("<ProgressHeadline /> (mobile) — Surface E hero", () => {
     expect(getByText("Maintenance held steady this week")).toBeTruthy();
     expect(getByText("High confidence")).toBeTruthy();
   });
+
+  it("ENG-1034 — stored medium confidence renders a Medium chip even when the range day count is low", () => {
+    // Reproduces Grace's account: profiles.adaptive_tdee_confidence = "medium"
+    // (1,699) but the weekly Progress view passes a range-scoped day count (≤7).
+    // The card must show the medium-confidence variant — NOT "still calibrating"
+    // + a Low chip (the THIS-WEEK ↔ Maintenance-card contradiction, ENG-1034).
+    const commentary = generateProgressCommentary({
+      current: tdee({ tdee: 1699, confidence: "medium", loggingDays: 5 }),
+      loggingDays: 5,
+    });
+    const { getByText, queryByText } = render(
+      <ProgressHeadline commentary={commentary} />,
+    );
+    expect(getByText("Medium confidence")).toBeTruthy();
+    expect(queryByText("Low confidence")).toBeNull();
+    expect(queryByText("We're still calibrating your maintenance")).toBeNull();
+    expect(getByText("Maintenance held steady this week")).toBeTruthy();
+  });
 });

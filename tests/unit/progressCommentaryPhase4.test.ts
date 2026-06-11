@@ -77,11 +77,22 @@ describe("generateProgressCommentary — three regimes", () => {
     expect(result.hasMaintenanceEstimate).toBe(false);
   });
 
-  it("regime=calibrating when loggingDays<14 even at medium confidence (engine ramp)", () => {
+  it("ENG-1034: medium confidence with a range-scoped low day count is NOT downgraded to calibrating", () => {
+    // The engine only assigns "medium" once it has ≥14 cumulative logging
+    // days (adaptiveTdee.ts ladder), so a stored "medium" already means the
+    // warm-up is past. Callers pass a RANGE-scoped day count (this week's
+    // ≤7) — re-gating on it forced "still calibrating" + a Low chip while the
+    // Maintenance card said "medium". The engine's confidence is the gate.
     const result = generateProgressCommentary({
-      current: tdee({ tdee: 2200, confidence: "medium", loggingDays: 12 }),
+      current: tdee({ tdee: 1699, confidence: "medium", loggingDays: 5 }),
+      loggingDays: 5,
     });
-    expect(result.regime).toBe("calibrating");
+    expect(result.regime).toBe("steady");
+    expect(result.confidence).toBe("medium");
+    expect(result.headline).not.toMatch(/calibrating/i);
+    expect(result.body).toContain("1,699 kcal");
+    expect(result.body).toContain("medium confidence");
+    expect(result.hasMaintenanceEstimate).toBe(true);
   });
 
   it("regime=steady when delta ≤ 30 kcal AND confidence ≥ medium", () => {
@@ -102,6 +113,60 @@ describe("generateProgressCommentary — three regimes", () => {
     });
     expect(result.regime).toBe("steady");
     expect(result.confidence).toBe("high");
+  });
+});
+
+describe("ENG-1034 — confidence chip + copy variant follows the STORED engine confidence", () => {
+  // The THIS WEEK card renders `commentary.confidence` straight into the
+  // ConfidenceChip and quotes `confidence` inside the body. This pins the
+  // chip level + copy variant the card shows for each stored confidence so
+  // the chip can never drift back to "Low" while the engine says medium/high
+  // (the F-3/F-124/ENG-1034 contradiction). Range-scoped day counts must not
+  // change the chip for a non-low engine confidence.
+
+  it("low → calibrating regime, Low chip, 'still calibrating' copy", () => {
+    const result = generateProgressCommentary({
+      current: tdee({ tdee: 1699, confidence: "low", loggingDays: 5 }),
+      loggingDays: 5,
+    });
+    expect(result.confidence).toBe("low");
+    expect(result.regime).toBe("calibrating");
+    expect(result.headline).toMatch(/calibrating/i);
+  });
+
+  it("medium → steady regime, Medium chip, 'medium confidence' copy with the estimate quoted", () => {
+    const result = generateProgressCommentary({
+      current: tdee({ tdee: 1699, confidence: "medium", loggingDays: 5 }),
+      loggingDays: 5,
+    });
+    expect(result.confidence).toBe("medium");
+    expect(result.regime).toBe("steady");
+    expect(result.headline).not.toMatch(/calibrating/i);
+    expect(result.body).toContain("1,699 kcal");
+    expect(result.body).toContain("medium confidence");
+    expect(result.numerals).toContain("1,699 kcal");
+  });
+
+  it("high → steady regime, High chip, 'high confidence' copy", () => {
+    const result = generateProgressCommentary({
+      current: tdee({ tdee: 2100, confidence: "high", loggingDays: 6 }),
+      loggingDays: 6,
+    });
+    expect(result.confidence).toBe("high");
+    expect(result.regime).toBe("steady");
+    expect(result.headline).not.toMatch(/calibrating/i);
+    expect(result.body).toContain("high confidence");
+  });
+
+  it("the stored confidence flows into adjustment-regime copy too (delta > 30)", () => {
+    const result = generateProgressCommentary({
+      current: tdee({ tdee: 1699, confidence: "medium", loggingDays: 5 }),
+      prevWeekTdee: 1600,
+      loggingDays: 5,
+    });
+    expect(result.regime).toBe("adjustment");
+    expect(result.confidence).toBe("medium");
+    expect(result.body).toContain("medium confidence");
   });
 });
 
