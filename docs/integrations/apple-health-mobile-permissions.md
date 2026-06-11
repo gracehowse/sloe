@@ -24,9 +24,45 @@
 - **`Chromium`** is omitted from all permission lists (unsupported in `react-native-health` 1.19).
 - **Writes**: `HEALTH_KIT_NUTRITION_WRITE` on both init calls.
 
-### Serial lock
+### Global HealthKit call mutex — `enqueueHk` (ENG-1019, 2026-06-10)
 
-- All `initHealthKit` / `probeHealthAccess` calls run through `runWithHealthKitLock` so focus probes cannot overlap Connect.
+**Every** native `react-native-health` invocation in the app flows through a
+single promise-chain queue (`enqueueHk` in `healthSync.ts`), so **only one
+HealthKit bridge call is ever in flight at a time, app-wide.** This replaced the
+older `runWithHealthKitLock`, which only wrapped the `initHealthKit` /
+`probeHealthAccess` *orchestrators* — fire-and-forget call sites (Today
+steps/active-energy reads, per-meal `saveFood` exports, the focus nutrition
+import in `useHealthSyncOnFocus`) could still overlap each other and the
+Connect/Sync flow. On iOS 26+ two overlapping bridge calls have crashed the app.
+
+- **Where it lives:** at the **leaf** — the boundary between our JS wrappers and
+  the native callback. The enqueue happens inside `withHealthCallbackTimeout`
+  (the universal wrapper for every `getX` / `saveFood` / `getFoodCorrelation`
+  read), `isAvailableDetailed`, and `initHealthKitPromiseWithTimeout`. Because
+  every native call routes through one of those three, every call is serialized
+  regardless of which screen fired it.
+- **Hang-proof:** each leaf wraps its native call in a timeout race
+  (15s sample reads, 20s `isAvailable`, 180s `initHealthKit`). When the native
+  callback never fires (the live 2026-06-10 device symptom), the timeout settles
+  the leaf, the chain advances, and the **next** queued call runs. A hung call
+  delays by at most its own timeout — it never deadlocks the queue.
+- **Poison-resistant:** the chain advances on *settle* (resolve OR reject OR
+  timeout), so a rejected/timed-out call never blocks the next caller; the
+  rejection still surfaces to its own awaiter.
+- **Re-entrancy rule (load-bearing):** the only functions that call `enqueueHk`
+  are the three leaves, and each does exactly one native call. Orchestrators
+  (`syncHealthData`, `syncNutritionFromHealthImpl`, `requestHealthPermissions`,
+  `requestDietaryHealthPermissions`, `probeHealthAccess`, `probeNutritionImport`)
+  compose those leaves at the call site and **must NOT** wrap themselves in
+  `enqueueHk` — that would await the chain held by their own enqueued leaf and
+  deadlock. (`Promise.all` of several leaf reads — e.g. in
+  `syncNutritionFromHealthImpl` — is fine: the queue serialises them; they just
+  run one after another instead of concurrently.)
+- **Diagnosability:** every enqueued call logs `[hk.queue] <label> start (depth N)`
+  and a settle/`TIMEOUT` line, so the next device hang is readable from
+  Metro/console alone without a debugger.
+- **Tests:** `apps/mobile/tests/unit/healthSyncQueue.test.ts` pins serialization,
+  hang-release, and poison-resistance against the real `enqueueHk`.
 
 ---
 
@@ -36,12 +72,12 @@
 |-----------|--------|-----|
 | **`isAvailable` timeout** (~20s) | `healthSync.ts` — `HEALTH_IS_AVAILABLE_TIMEOUT_MS`, `isAvailableDetailed` | If the native bridge never calls back, JS would hang forever on the first `await` → Connect spinner never clears. |
 | **`initHealthKit` timeout** (3 min per stage) | `HEALTH_PERMISSION_INIT_TIMEOUT_MS` (180_000), `initHealthKitPromiseWithTimeout` | Permission UI can stay open while the user reads; iOS only completes the callback after **Allow / Don’t Allow**. Too short a timeout looked like a random failure; too long still beats an infinite hang. |
-| **No global dedupe mutex** on `requestHealthPermissions` | `export async function requestHealthPermissions` → `runRequestHealthPermissions` | A previous design returned a **single shared Promise** for all taps. If that promise never settled, **every later Connect** awaited the same hung promise forever. UI already disables the button via **`connecting`** on the screen. |
+| **Global call mutex** `enqueueHk` (one HK call in flight app-wide) | `healthSync.ts` — `enqueueHk`, applied at `withHealthCallbackTimeout` / `isAvailableDetailed` / `initHealthKitPromiseWithTimeout` | Two overlapping native bridge calls crash the app on iOS 26+. The queue serialises **every** call (not just `initHealthKit`), so fire-and-forget reads from Today/meal-export/import can't overlap Connect/Sync. It is **not** a shared-Promise dedupe: each tap gets its own queued promise, and a hung call releases the chain on its timeout, so a stuck call never makes later calls await the same hung promise forever. UI still disables the button via **`connecting`**. (ENG-1019) |
 | **`connecting` + spinner** | `health-sync.tsx` — `handleConnect` | User-visible progress; avoids “tap does nothing” when the sheet does not appear. |
 | **`try/catch` in `handleConnect`** | `health-sync.tsx` | Surfaces unexpected JS errors instead of a silent no-op. |
 | **`useFocusEffect` cleanup** | `health-sync.tsx` | `setConnecting(false)` on blur so leaving Health Sync does not leave a permanent spinner if native is slow. |
 | **Persist “connected” for UI** | AsyncStorage key **`health_sync_apple_connected`** | `connected` is React state only; without persistence, leaving the screen showed **Connect** again even when Health was already authorized (confusing; looked like a broken second tap). Cleared with other Health prefs when **More → Reset plan** wipes app data (`more.tsx` `multiRemove`). |
-| **Timeout-specific user copy** | `runRequestHealthPermissions` catch blocks | Distinguishes “waited too long / stay on this screen” from generic permission errors. |
+| **Timeout-specific user copy** | `requestHealthPermissions` catch blocks | Distinguishes “waited too long / stay on this screen” from generic permission errors. |
 
 ---
 

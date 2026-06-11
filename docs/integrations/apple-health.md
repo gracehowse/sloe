@@ -24,6 +24,6 @@ Google **Health Connect** is the analogue; same idea: native module, not web.
 
 ### If Health Connect breaks again
 
-Use the canonical runbook (timeouts, staged init, AsyncStorage key, why the global mutex was removed):
+Use the canonical runbook (timeouts, staged init, AsyncStorage key, the global `enqueueHk` call mutex — one HealthKit call in flight app-wide, ENG-1019):
 
 **[`apple-health-mobile-permissions.md`](./apple-health-mobile-permissions.md)**
