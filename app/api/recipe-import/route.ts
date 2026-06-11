@@ -515,6 +515,11 @@ export async function POST(req: Request) {
               })),
           primarySource: nutrition?.primarySource ?? "Unverified",
           captionNutrition: extractCaptionNutrition(captionText),
+          // Recipe-vision contract (2026-06-11) — per-ingredient parse-
+          // confidence flags from the structured extractor. The review UI
+          // surfaces these for explicit confirmation; empty when every line
+          // parsed cleanly.
+          flaggedIngredients: recipe.flaggedIngredients,
         },
       });
     }

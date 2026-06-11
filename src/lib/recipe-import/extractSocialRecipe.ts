@@ -14,6 +14,12 @@
 import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
 import { callAiText, callAiVision, type AiCallResult } from "../server/aiProvider";
+import {
+  buildStructuredRecipePrompt,
+  parseStructuredRecipe,
+  toIngredientLines,
+  type StructuredIngredient,
+} from "./structuredRecipeSchema";
 
 export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
 
@@ -590,6 +596,14 @@ export class CaptionExtractionError extends Error {
   }
 }
 
+/** A caption ingredient the model was unsure it parsed correctly. Surfaced
+ *  in the import review/verify UI for explicit user confirmation. */
+export type FlaggedIngredient = {
+  name: string;
+  raw: string;
+  confidence: number;
+};
+
 export async function extractRecipeFromCaption(
   caption: string,
   imageUrl?: string | null,
@@ -603,6 +617,13 @@ export async function extractRecipeFromCaption(
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   /**
+   * Ingredients the model flagged as low-confidence at parse time (distinct
+   * from the downstream nutrition-match confidence). Empty when every line
+   * parsed cleanly. The caller surfaces these in the review UI so uncertain
+   * lines are confirmed, never silently trusted.
+   */
+  flaggedIngredients: FlaggedIngredient[];
+  /**
    * `false` when an `imageUrl` was provided but OpenAI rejected it
    * and the function fell back to a text-only prompt. `true` when
    * the image was actually used. `undefined` when no image was
@@ -613,33 +634,16 @@ export async function extractRecipeFromCaption(
    */
   imageUsed?: boolean;
 }> {
-  const prompt = `You are extracting a recipe from a social media post caption.
+  // Recipe-vision contract (2026-06-11) — the caption extractor now uses the
+  // shared strict structured schema so parse confidence is captured per
+  // ingredient. The caption text is appended to the shared system prompt so
+  // the model has both the schema rules and the content in one place.
+  const prompt = `${buildStructuredRecipePrompt("caption")}
 
 The caption text is:
 """
 ${caption.slice(0, 4000)}
-"""
-
-Return a single JSON object (no markdown fences):
-{
-  "title": string or null,
-  "ingredients": string[],
-  "steps": string[],
-  "notes": string or null,
-  "servings": number or null,
-  "prepTimeMin": number or null,
-  "cookTimeMin": number or null
-}
-
-Rules:
-- ingredients: one string per ingredient line with amounts (e.g. "200g chicken breast")
-- **Do NOT include section headings** like "For the salad:", "For the sauce:", "For the dressing:", or any "For [X]:" prefix in ingredient strings. Treat the whole list as flat — the heading itself is not an ingredient, and repeating it in every line under it creates noisy duplicates (TestFlight ANmFiVpOfYEN, 2026-04-21).
-- steps: ordered cooking instructions; extract from the caption
-- If the caption doesn't contain a recipe, return empty arrays and null title
-- If ingredients or steps are implied but not explicit, use best effort
-- Ignore hashtags, mentions, and promotional text
-- servings: extract if mentioned, otherwise null
-- prepTimeMin / cookTimeMin: total minutes if the caption states prep time or cook time (e.g. "prep 15 min", "20 min cook"); otherwise null`;
+"""`;
 
   // 2026-05-08: migrated from direct OpenAI fetch to the shared
   // `callAiText` / `callAiVision` helpers (vendor-neutral). Default
@@ -739,55 +743,48 @@ Rules:
     });
   }
 
-  const raw = aiResult.text;
-  try {
-    const parsed = JSON.parse(raw) as {
-      title?: string | null;
-      ingredients?: string[];
-      steps?: string[];
-      notes?: string | null;
-      servings?: number | null;
-      prepTimeMin?: number | null;
-      cookTimeMin?: number | null;
-    };
-    const heur = parsePrepCookMinutesFromCaption(caption);
-    const asPosMin = (v: unknown): number | null => {
-      if (v == null) return null;
-      const n = typeof v === "string" ? Number.parseFloat(v.replace(/,/g, "")) : typeof v === "number" ? v : NaN;
-      if (!Number.isFinite(n) || n <= 0) return null;
-      return Math.min(Math.round(n), 24 * 60);
-    };
-    const prepFromModel = asPosMin(parsed.prepTimeMin);
-    const cookFromModel = asPosMin(parsed.cookTimeMin);
-    return {
-      title: sanitiseImportedTitle(parsed.title),
-      ingredients: Array.isArray(parsed.ingredients)
-        ? parsed.ingredients.map((s) => stripSectionPrefix(String(s).trim())).filter(Boolean)
-        : [],
-      steps: Array.isArray(parsed.steps)
-        ? parsed.steps.map((s) => String(s).trim()).filter(Boolean)
-        : [],
-      notes: parsed.notes ?? null,
-      servings: typeof parsed.servings === "number" ? parsed.servings : null,
-      prepTimeMin: prepFromModel ?? heur.prepTimeMin,
-      cookTimeMin: cookFromModel ?? heur.cookTimeMin,
-      imageUsed,
-    };
-  } catch {
-    const heur = parsePrepCookMinutesFromCaption(caption);
+  const heur = parsePrepCookMinutesFromCaption(caption);
+  const result = parseStructuredRecipe(aiResult.text);
+  if (!result.ok) {
+    // Don't echo raw model output — past sanity check failures have
+    // included vendor identifiers / prompt fragments (audit I01,
+    // 2026-05-05). The notes panel was the surface where this leaked
+    // into recipe drafts.
     return {
       title: null,
       ingredients: [],
       steps: [],
-      // Don't echo raw model output — past sanity check failures
-      // have included vendor identifiers / prompt fragments
-      // (audit I01, 2026-05-05). The notes panel was the surface
-      // where this leaked into recipe drafts.
       notes: null,
       servings: null,
       prepTimeMin: heur.prepTimeMin,
       cookTimeMin: heur.cookTimeMin,
+      flaggedIngredients: [],
       imageUsed,
     };
   }
+  const recipe = result.recipe;
+  // `stripSectionPrefix` is still applied to each flattened line for the
+  // belt-and-braces "For the salad:" guard (TestFlight ANmFiVpOfYEN) on top
+  // of the schema's instruction to omit headings.
+  const ingredients = toIngredientLines(recipe)
+    .map((s) => stripSectionPrefix(s.trim()))
+    .filter(Boolean);
+  const flaggedIngredients: FlaggedIngredient[] = recipe.ingredients
+    .filter((ing: StructuredIngredient) => ing.flagged)
+    .map((ing: StructuredIngredient) => ({
+      name: ing.name,
+      raw: ing.raw,
+      confidence: ing.confidence,
+    }));
+  return {
+    title: sanitiseImportedTitle(recipe.title),
+    ingredients,
+    steps: recipe.steps,
+    notes: recipe.notes,
+    servings: recipe.servings,
+    prepTimeMin: recipe.prepTimeMin ?? heur.prepTimeMin,
+    cookTimeMin: recipe.cookTimeMin ?? heur.cookTimeMin,
+    flaggedIngredients,
+    imageUsed,
+  };
 }
