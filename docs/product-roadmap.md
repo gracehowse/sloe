@@ -42,7 +42,7 @@ Authority: `docs/decisions/2026-06-03-image-generation-strategy.md` · `docs/res
 
 | Workstream | Status | Notes |
 |---|---|---|
-| Import — stop verbatim creator prose (web/blog) + disclaimer | **Open — P0 LIVE** | ENG-857 launch-blocker; shipping in prod now |
+| Import — stop verbatim creator prose (web/blog) + disclaimer | **Open — P0 NOT shipped** | ENG-857 launch-blocker. CORRECTED 2026-06-11 (audit P0-2): the "LIVE / shipping in prod now" status was FALSE — verbatim `description` is still persisted + rendered on the web/blog import path (route.ts:614-744; saveImportedRecipe.ts:163; RecipeDetail.tsx:680). Disclaimer (ENG-858/ENG-1042) does not exist. Must close before any launch. |
 | Import — surface link-back + creator credit | **Open** | ENG-858 launch-blocker; data exists, render change |
 | DMCA designated-agent registration | **Open** | ENG-859 launch-blocker; depends on incorporation; Grace owns |
 | Import — user-as-actor / private-by-default framing (keep honest UA) | **Open** | ENG-860 |
