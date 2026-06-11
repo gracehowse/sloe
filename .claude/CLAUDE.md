@@ -228,11 +228,17 @@ Body shape — group project work under `## <Project name>` subheaders so reader
 
 Set `health` deliberately — it's what the planning level looks at first. Initial-health updates (first time setting health on an initiative that had `null`) are OK even without state movement; the health field itself is the change.
 
-Current initiative inventory (as of 2026-05-16):
+Current initiative inventory (as of 2026-06-11, post-restructure — 7 active; see `docs/planning/2026-06-11-linear-restructure.md`):
 
-- **`Launch 2026-07-01`** — time-bound viral push (target 2026-07-01). Projects: Phase 0 — Viral push prep, Pre-launch monetisation + billing, Pre-launch incorporation + legal, MFP-refugee capture, Premium bar audit (2026-05-12), **Today tab** (dual), **Recipes tab** (dual).
-- **`Surface polish`** — non-time-bound per-tab UX polish. Projects: Today tab (dual), Progress tab, Recipes tab (dual), Plan tab, Onboarding + Auth, Landing + Marketing site.
-- **`Platform foundations`** — non-time-bound technical infra. Projects: Schema refactor, Operations, Design system cleanup, Post-iOS platform.
+- **`Launch 2026-07-01`** — time-bound viral push (target 2026-07-01). Projects: **Gate 0 — launch hardening** (the 2026-06-11 audit's net-new P0/P1 security/data/parity cluster), AI features (dual), Pre-launch monetisation + billing, Pre-launch incorporation + legal, MFP-refugee capture, Premium bar audit (2026-05-12, mostly Duplicate-state — effectively closed), **Today tab** (dual), **Recipes tab** (dual).
+- **`Surface polish`** — non-time-bound per-tab UX polish. Projects: Today tab (dual), Progress tab, Recipes tab (dual), Plan tab, Onboarding + Auth, Landing + Marketing site, **Category-leading growth backlog** (the ENG-927→979 growth features — beta-window, NOT launch-blockers).
+- **`Platform foundations`** — non-time-bound technical infra. Projects: Schema refactor, Operations, Design system cleanup, Post-iOS platform, **AI features** (dual), **Synthetic persona testing**, Architecture enablers (ex-Premium-P5).
+- **`Redesign — Design Direction 2026`** — the Sloe redesign. Projects: Figma conformance migration (the 6 open DECISION issues ENG-919–925 live under Redesign P0 — Foundations, awaiting Grace's ratification), Redesign P0–P5.
+- **`Recipe import, AI imagery & creators`** — the import wedge + creator plane. Projects: Creator platform, AI image generation, Import posture & legal (ENG-857/858/859 the legal launch bundle).
+- **`Full-product audit sweep — 2026-05-25`** — Project: Audit sweep remediation.
+- **`Plan Import`** — Projects: Sprint 1 (paste + auto-rebalance), Sprint 2 (PDF + image).
+
+Archived 2026-06-11: **`Premium experience — launch bar`** (superseded — its premium-bar program folded into Redesign + Gate 0 + the launch-readiness audit; its architecture-enabler issues live on under Platform foundations).
 
 **Dual-initiative pattern:** Today tab and Recipes tab roll up to BOTH Surface polish (ongoing polish home) and Launch 2026-07-01 (launch-blocking work home). These are the two surfaces genuinely on the launch critical path — Today = retention; Recipes = viral hook landing. Their health flows to both initiatives' rollups. Other surfaces stay single-initiative under Surface polish.
 
