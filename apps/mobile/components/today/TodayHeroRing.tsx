@@ -112,13 +112,9 @@ function Stat({
       }}
     >
       <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "600",
-          color: labelColor ?? textSecondaryColor,
-          textTransform: "uppercase",
-          letterSpacing: 0.6,
-        }}
+        // headers census 2026-06-10: hero-ring metric label → Type.label (11px;
+        // census kept the canonical step over a private 10px density size).
+        style={{ ...Type.label, color: labelColor ?? textSecondaryColor }}
       >
         {label}
       </Text>

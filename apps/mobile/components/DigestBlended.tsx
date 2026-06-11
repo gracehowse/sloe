@@ -31,7 +31,7 @@ import { Share2, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -218,7 +218,8 @@ export function DigestBlended(props: DigestProps) {
     >
       {/* Eyebrow + dismiss */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1 }}>
+        {/* headers census 2026-06-10: eyebrow → Type.label (kills the 10.5px half-pixel). */}
+        <Text style={{ ...Type.label, color: colors.textSecondary }}>
           WEEK DIGEST · {weekLabel.toUpperCase()}
         </Text>
         <Pressable
@@ -245,7 +246,8 @@ export function DigestBlended(props: DigestProps) {
       >
         {isEmpty ? (
           <>
-            <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1, marginBottom: 3 }}>
+            {/* headers census 2026-06-10: eyebrow → Type.label. */}
+            <Text style={{ ...Type.label, color: colors.textSecondary, marginBottom: 3 }}>
               THIS WEEK
             </Text>
             <Text testID="digest-hero-empty" style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>
@@ -257,13 +259,16 @@ export function DigestBlended(props: DigestProps) {
           </>
         ) : closest ? (
           <>
-            <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1, marginBottom: 3 }}>
+            {/* headers census 2026-06-10: eyebrow → Type.label. */}
+            <Text style={{ ...Type.label, color: colors.textSecondary, marginBottom: 3 }}>
               CLOSEST TO TARGET
             </Text>
+            {/* headers census 2026-06-10: digest hero day-title → serif Type.title
+                (was a 24/800 sans-bold pre-Sloe header). */}
             <Text
               testID="digest-hero-day"
               accessibilityRole="header"
-              style={{ fontSize: 24, fontWeight: "800", color: colors.text, letterSpacing: -0.4, marginBottom: 14 }}
+              style={{ ...Type.title, color: colors.text, marginBottom: 14 }}
             >
               {closest.label}
             </Text>
@@ -317,10 +322,13 @@ export function DigestBlended(props: DigestProps) {
           </>
         ) : (
           <>
-            <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1, marginBottom: 3 }}>
+            {/* headers census 2026-06-10: eyebrow → Type.label. */}
+            <Text style={{ ...Type.label, color: colors.textSecondary, marginBottom: 3 }}>
               THIS WEEK
             </Text>
-            <Text testID="digest-hero-day" accessibilityRole="header" style={{ fontSize: 20, fontWeight: "800", color: colors.text, letterSpacing: -0.4 }}>
+            {/* headers census 2026-06-10: parallel digest hero title (empty/closest
+                paths share one role) → serif Type.title, was 20/800 sans-bold. */}
+            <Text testID="digest-hero-day" accessibilityRole="header" style={{ ...Type.title, color: colors.text }}>
               {headline}
             </Text>
           </>
@@ -377,7 +385,8 @@ export function DigestBlended(props: DigestProps) {
         <>
           {hairline}
           <View testID="digest-pattern" style={{ paddingVertical: 16 }}>
-            <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1, marginBottom: 6 }}>
+            {/* headers census 2026-06-10: eyebrow → Type.label. */}
+            <Text style={{ ...Type.label, color: colors.textSecondary, marginBottom: 6 }}>
               PATTERN
             </Text>
             <Text testID="digest-pattern-summary" style={{ fontSize: 13.5, fontWeight: "600", color: colors.text, marginBottom: 10 }}>
@@ -480,7 +489,10 @@ function Metric({
         {value}
         {unit ? <Text style={{ fontSize: 11, fontWeight: "500", color: colors.textSecondary }}> {unit}</Text> : null}
       </Text>
-      <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.6, marginTop: 4 }}>
+      {/* headers census 2026-06-10: stat label eyebrow → Type.label. The stat
+          VALUE above (17/800 sans numeral) stays sans — numerals don't go serif
+          (Type.heroValue/macroValue convention); the map mis-read it as a header. */}
+      <Text style={{ ...Type.label, color: colors.textSecondary, marginTop: 4 }}>
         {label.toUpperCase()}
       </Text>
       {sub ? (

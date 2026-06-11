@@ -1302,7 +1302,8 @@ export default function ProgressScreen() {
             {/* Section eyebrow — matches the "Daily Calories" / "Average Adherence"
                 cards (Sentence-Case source, rendered uppercase via style) so the
                 weight card is no longer the one card on Progress without a header. */}
-            <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88, marginBottom: 8 }}>Weight</Text>
+            {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+            <Text style={{ ...Type.label, color: accent.primarySolid, marginBottom: Spacing.sm }}>Weight</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
@@ -1393,7 +1394,8 @@ export default function ProgressScreen() {
                   : "—"],
               ] as const).map(([label, val]) => (
                 <View key={label} style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</Text>
+                  {/* headers census 2026-06-10: stat eyebrow → Type.label token. */}
+                  <Text style={{ ...Type.label, color: t.dim }}>{label}</Text>
                   <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>{val}</Text>
                 </View>
               ))}
@@ -1495,7 +1497,8 @@ export default function ProgressScreen() {
         <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]} testID="progress-daily-calories-card">
           <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
             <View>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>Daily Calories</Text>
+              {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+              <Text style={{ ...Type.label, color: accent.primarySolid }}>Daily Calories</Text>
               <Text style={{ ...Type.display, fontSize: 24, lineHeight: 28, color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.avgCalories.toLocaleString()}<Text style={{ fontSize: 14, color: t.sub }}> avg</Text>
               </Text>
@@ -1604,7 +1607,8 @@ export default function ProgressScreen() {
                   accessibilityLabel="Maintenance source: adaptive"
                   style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                  {/* headers census 2026-06-10: pill eyebrow → Type.label, pill hue kept. */}
+                  <Text style={{ ...Type.label, color: t.green }}>Adaptive</Text>
                 </View>
               ) : (
                 <View
@@ -1612,7 +1616,8 @@ export default function ProgressScreen() {
                   accessibilityLabel="Maintenance source: formula estimate"
                   style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: 10 }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
+                  {/* headers census 2026-06-10: pill eyebrow → Type.label. */}
+                  <Text style={{ ...Type.label, color: t.dim }}>Formula estimate</Text>
                 </View>
               )}
             </View>
@@ -2150,7 +2155,8 @@ function WeightTrendOnlyCard({
         marginBottom: Spacing.md,
       }, cardElev.shadowStyle]}
     >
-      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
+      {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+      <Text style={{ ...Type.label, color: theme.dim }}>
         Weight trend
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>

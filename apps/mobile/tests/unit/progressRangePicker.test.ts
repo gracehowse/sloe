@@ -48,11 +48,14 @@ describe("Progress prototype port — header + range picker", () => {
     // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
     expect(mobileChromeSrc).toContain("overline={null}");
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
-    // Progress chrome uses compact title sizing (22pt) + the Sloe Newsreader
-    // serif with tuned -0.3 tracking, via ScreenSectionChrome.
-    expect(mobileSectionSrc).toMatch(/fontFamily:\s*"Newsreader_400Regular"/);
-    expect(mobileSectionSrc).toMatch(/fontSize:\s*compact\s*\?\s*22\s*:\s*Layout\.titleSize/);
-    expect(mobileSectionSrc).toMatch(/letterSpacing:\s*compact\s*\?\s*-0\.3\s*:\s*-0\.3/);
+    // Re-pinned: headers census 2026-06-10. The chrome title converged onto the
+    // canonical Type.title token (Newsreader serif 24/28) + navPrimary, and the
+    // compact-22 size fork was deleted — Plan/Progress now render the same 24px
+    // tab title as every sibling (22 was off the type ramp). The raw
+    // "Newsreader_400Regular" string + the `compact ? 22 : …` fork are gone.
+    expect(mobileSectionSrc).toMatch(/title:\s*\{\s*\.\.\.Type\.title,\s*color:\s*colors\.navPrimary\s*\}/);
+    expect(mobileSectionSrc).not.toMatch(/compact\s*\?\s*22/);
+    expect(mobileSectionSrc).not.toContain('"Newsreader_400Regular"');
   });
 
   it("mobile header carries a trailing log-weight control", () => {
@@ -175,13 +178,15 @@ describe("Progress prototype port — header + range picker", () => {
   });
 
   it("web range picker uses aubergine soft-tint active pills (mobile parity)", () => {
-    // 2026-06-08 Sloe treatment system §7: the web picker matches mobile —
-    // active range = aubergine soft-tint (`bg-primary/10`) + primarySolid
-    // border/label, inactive = bordered cream pill. The solid-plum
-    // `bg-foreground-brand` active fill is gone (web↔mobile parity preserved).
+    // Re-pinned to the shipped chip grammar (web parity 2026-06-10, ENG-1022):
+    // active range = `bg-primary-soft` fill + `primary-solid` label +
+    // `font-semibold`, NO ring/border; inactive = quiet `bg-card` + muted label,
+    // NO border. This supersedes the older `bg-primary/10 border-primary-solid`
+    // pin, which drifted in commit 504c00db without updating this assertion —
+    // a pre-existing web-only stale pin, unrelated to the mobile headers census.
     expect(webSrc).toMatch(/data-testid="progress-range-picker"/);
-    expect(webSrc).toContain("bg-primary/10 border-primary-solid text-primary-solid");
-    expect(webSrc).toMatch(/bg-card border-border text-muted-foreground/);
+    expect(webSrc).toContain("bg-primary-soft text-primary-solid font-semibold");
+    expect(webSrc).toMatch(/bg-card text-muted-foreground font-medium/);
     // Neither the old plum fill nor the old primary-fill chip styling.
     expect(webSrc).not.toContain("bg-foreground-brand text-white");
     expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);

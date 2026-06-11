@@ -92,7 +92,8 @@ export function ProgressStoryGate({
         style={[
           Type.label,
           {
-            color: accent.primary,
+            // headers census 2026-06-10: eyebrow → AA-safe accent.primarySolid.
+            color: accent.primarySolid,
             marginBottom: Spacing.sm,
           },
         ]}

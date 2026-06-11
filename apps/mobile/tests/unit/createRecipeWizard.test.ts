@@ -600,12 +600,13 @@ describe("createRecipeWizard — premium parity pins (ENG-1011)", () => {
     );
   });
 
-  it("step H1 sectionTitle uses FontFamily.serifSemibold (Newsreader display)", () => {
-    // Gap 1: editorial serif for every step question.
-    expect(COMPONENT_SRC).toMatch(/FontFamily\.serifSemibold/);
-    // The serifSemibold token must appear specifically inside the sectionTitle block,
-    // not just anywhere in the file.
-    expect(COMPONENT_SRC).toMatch(/sectionTitle[\s\S]*?serifSemibold/);
+  it("step H1 sectionTitle uses Type.screenTitle (canonical serif H1)", () => {
+    // Re-pinned: headers census 2026-06-10. The step H1 was a hand-rebuild from
+    // Type.display (serifSemibold 28, lineHeight 32 — wrong, screenTitle is 34).
+    // It now spreads the canonical Type.screenTitle token (serifSemibold 28/34/600)
+    // — the single large in-body screen-title role. The bespoke serifSemibold +
+    // display-override pins are superseded.
+    expect(COMPONENT_SRC).toMatch(/sectionTitle:\s*\{\s*[\s\S]*?\.\.\.Type\.screenTitle/);
   });
 
   it("photo fallback renders RecipeHeroFallback (warm sage→cream tile, not cold dashed box)", () => {

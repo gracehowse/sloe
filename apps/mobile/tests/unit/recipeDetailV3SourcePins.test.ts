@@ -92,12 +92,16 @@ describe("mobile recipe-detail — kcal lives in the macro strip CAL column (ENG
     expect(SRC).toMatch(/return <RecipeMacroStrip cells=\{macroCells\} \/>;/);
   });
 
-  it("the macro-strip label tokens are the Figma small-caps caption (not the v4 sans-bold tile)", () => {
-    // The strip label is the uppercase small-caps caption — semibold sans,
-    // letter-spaced, textSecondary token. No hardcoded label colour.
-    expect(MACRO_STRIP).toMatch(/fontFamily:\s*FontFamily\.sansSemibold/);
-    expect(MACRO_STRIP).toMatch(/textTransform:\s*"uppercase"/);
+  it("the macro-strip label uses the canonical Type.label eyebrow token", () => {
+    // Re-pinned: headers census 2026-06-10. The hand-rolled small-caps caption
+    // (sansSemibold 10/600/ls1/uppercase) converged onto the Type.label token —
+    // the single eyebrow voice (sansBold 11/700/0.88/uppercase). The token now
+    // carries the family + tracking + uppercase; the call site sets the
+    // textSecondary colour. The old per-property pins are superseded.
+    expect(MACRO_STRIP).toMatch(/\.\.\.Type\.label/);
     expect(MACRO_STRIP).toMatch(/color:\s*colors\.textSecondary/);
+    // The off-ramp 10px private size is gone.
+    expect(MACRO_STRIP).not.toMatch(/fontSize:\s*10\b/);
   });
 });
 

@@ -34,7 +34,7 @@ import {
 } from "react-native";
 import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
-import { Elevation, Radius, Spacing } from "@/constants/theme";
+import { Elevation, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useTheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
@@ -572,15 +572,12 @@ const makeStyles = (
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
-    headerTitle: { fontSize: 18, fontWeight: "800", color: colors.text },
+    // headers census 2026-06-10: sheet title → serif Type.navTitle (was an
+    // 18/800 sans intruder, w800 off the ramp entirely).
+    headerTitle: { ...Type.navTitle, color: colors.text },
     scroll: { padding: Spacing.lg, gap: Spacing.lg },
-    label: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: colors.textTertiary,
-      letterSpacing: 1,
-      textTransform: "uppercase",
-    },
+    // headers census 2026-06-10: field eyebrow → Type.label token.
+    label: { ...Type.label, color: colors.textTertiary },
     input: {
       borderWidth: 1,
       borderColor: colors.border,

@@ -91,7 +91,9 @@ export default function NotificationsScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: Spacing.xl, gap: Spacing.md },
         header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense },
-        title: { ...Type.title, color: colors.text },
+        // headers census 2026-06-10 — tab-level title ink → navPrimary (was
+        // the lone tab title in `colors.text`).
+        title: { ...Type.title, color: colors.navPrimary },
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
         err: { color: "#f87171", textAlign: "center", fontSize: 15 },

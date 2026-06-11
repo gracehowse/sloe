@@ -883,11 +883,13 @@ export default function DiscoverScreen() {
           <View style={{ paddingTop: Spacing.md }}>
             {/* Gap-2 fix (2026-06-09): "Recipe ideas" loading-state header
                 Type.headline → Type.title (24pt Newsreader serif) for
-                section-divider weight per recipes.md §0 / design-system §2.2. */}
+                section-divider weight per recipes.md §0 / design-system §2.2.
+                headers census 2026-06-10: ink colors.text → navPrimary (in-scroll
+                section headers match Today's navPrimary, not text). */}
             <Text
               style={{
                 ...Type.title,
-                color: colors.text,
+                color: colors.navPrimary,
                 marginBottom: Spacing.sm,
               }}
             >
@@ -952,11 +954,12 @@ export default function DiscoverScreen() {
                 consistent grammar across the whole Discover stream;
                 no special-case treatment for the first card. */}
             {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
-                (24pt Newsreader serif) for editorial section-divider weight. */}
+                (24pt Newsreader serif) for editorial section-divider weight.
+                headers census 2026-06-10: ink colors.text → navPrimary. */}
             <Text
               style={{
                 ...Type.title,
-                color: colors.text,
+                color: colors.navPrimary,
                 marginBottom: Spacing.sm,
               }}
             >
@@ -969,11 +972,12 @@ export default function DiscoverScreen() {
 
             {filtered.length > 3 ? (
               <>
-                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title. */}
+                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title.
+                    headers census 2026-06-10: ink colors.text → navPrimary. */}
                 <Text
                   style={{
                     ...Type.title,
-                    color: colors.text,
+                    color: colors.navPrimary,
                     marginTop: Spacing.xl,
                     marginBottom: Spacing.sm,
                   }}
@@ -1008,8 +1012,9 @@ export default function DiscoverScreen() {
             sections (2026-05-12 audit). Always renders so users can
             navigate to their saved recipes from the discovery feed
             even when the feed is empty. */}
-        {/* Gap-2 fix (2026-06-09): "My Library" header Type.headline → Type.title. */}
-        <Text style={{ ...Type.title, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
+        {/* Gap-2 fix (2026-06-09): "My Library" header Type.headline → Type.title.
+            headers census 2026-06-10: ink colors.text → navPrimary. */}
+        <Text style={{ ...Type.title, color: colors.navPrimary, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
           My Library
         </Text>
 

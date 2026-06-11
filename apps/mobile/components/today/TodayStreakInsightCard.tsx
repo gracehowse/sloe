@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Flame, Snowflake } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import Badge from "@/components/Badge";
 
 /**
@@ -104,13 +104,8 @@ export function TodayStreakInsightCard({
               style={{ paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm }}
             >
               <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: "700",
-                  color: Accent.cyan,
-                  letterSpacing: 0.6,
-                  textTransform: "uppercase",
-                }}
+                // headers census 2026-06-10: pressable eyebrow-grammar label → Type.label.
+                style={{ ...Type.label, color: Accent.cyan }}
               >
                 Got it
               </Text>

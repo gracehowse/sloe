@@ -477,9 +477,10 @@ export default function ShoppingListScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
+    // headers census 2026-06-10: drop the fontSize 22 override — 22 isn't a ramp
+    // size; Type.title is 24.
     headerTitle: {
       ...Type.title,
-      fontSize: 22,
       color: colors.text,
     },
 

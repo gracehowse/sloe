@@ -1448,9 +1448,10 @@ export default function PlannerScreen() {
           marginBottom: Spacing.xs,
         },
         summaryOverline: {
+          // headers census 2026-06-10: drop the ls 1.2 override — Type.label's
+          // 0.88 is the only legal eyebrow tracking.
           ...Type.label,
           color: colors.textTertiary,
-          letterSpacing: 1.2,
           marginBottom: Spacing.xs,
         },
         summaryTitle: {
@@ -1675,26 +1676,20 @@ export default function PlannerScreen() {
         // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
         // week scans as a calm editorial list of days, not a stack of bold
         // sans labels. Matches the "Meal plan" serif tab header.
-        dayTitle: { ...Type.headline, fontSize: 18, color: colors.text },
+        // headers census 2026-06-10: day-card title → Type.navTitle (serif 18/22);
+        // was Type.headline stretched to fontSize 18.
+        dayTitle: { ...Type.navTitle, color: colors.text },
         // Prototype port (2026-04-20) — small uppercase "TODAY" pill
         // next to the weekday label. Primary-color text, no pill
         // background — matches prototype `screens-mobile.jsx:482`.
-        dayTodayPill: {
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textSecondary,
-          letterSpacing: 1.4,
-        },
+        // headers census 2026-06-10: pill eyebrow → Type.label.
+        dayTodayPill: { ...Type.label, color: colors.textSecondary },
         // 2026-05-14 (premium-bar audit Plan Card 2 #5) — companion
         // to `dayTodayPill`, signals the day-card is part of a shared
         // household plan. Subdued grey so it reads as scope context,
         // not as a CTA.
-        daySharedPill: {
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textTertiary,
-          letterSpacing: 1.4,
-        },
+        // headers census 2026-06-10: pill eyebrow → Type.label.
+        daySharedPill: { ...Type.label, color: colors.textTertiary },
         dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
         // 2026-05-22 evening (Grace): tightened vertical padding 10→8
@@ -1761,7 +1756,8 @@ export default function PlannerScreen() {
           alignItems: "center",
           justifyContent: "center",
         },
-        mealSlot: { ...Type.label, letterSpacing: 0.8 },
+        // headers census 2026-06-10: drop the ls 0.8 override — Type.label only.
+        mealSlot: { ...Type.label },
         mealTitle: {
           ...Type.body,
           fontSize: 14,

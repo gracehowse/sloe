@@ -88,7 +88,8 @@ export function ProgressAverageAdherence({
       ]}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid, textTransform: "uppercase", letterSpacing: 0.88 }}>
+        {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+        <Text style={{ ...Type.label, color: accent.primarySolid }}>
           Average Adherence
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>

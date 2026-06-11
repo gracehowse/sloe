@@ -16,7 +16,7 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, Spacing } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export function RecipeMethodSteps({ steps }: { steps: string[] }) {
@@ -25,13 +25,9 @@ export function RecipeMethodSteps({ steps }: { steps: string[] }) {
   return (
     <View style={{ gap: 24 }} testID="recipe-method-section">
       <Text
-        style={{
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 24,
-          lineHeight: 28,
-          fontWeight: "400",
-          color: colors.navPrimary,
-        }}
+        // headers census 2026-06-10: section header → Type.title token (same
+        // plumbing swap as RecipeIngredientGrid).
+        style={{ ...Type.title, color: colors.navPrimary }}
       >
         Method
       </Text>

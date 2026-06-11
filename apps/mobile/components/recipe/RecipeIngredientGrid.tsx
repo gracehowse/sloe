@@ -21,7 +21,7 @@
  */
 import { Image, Pressable, Text, View } from "react-native";
 
-import { FontFamily, Spacing } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
@@ -86,13 +86,9 @@ export function RecipeIngredientGrid({
     <View style={{ gap: 16 }} testID="recipe-ingredients-section">
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
         <Text
-          style={{
-            fontFamily: FontFamily.serifRegular,
-            fontSize: 24,
-            lineHeight: 28,
-            fontWeight: "400",
-            color: colors.navPrimary,
-          }}
+          // headers census 2026-06-10: section header → Type.title token (was a
+          // hand-rolled serifRegular 24/28/400 — metrics == Type.title).
+          style={{ ...Type.title, color: colors.navPrimary }}
         >
           Ingredients
         </Text>

@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "expo-router";
 
 import { SubTabPill } from "@/components/ui/SubTabPill";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 
 /**
  * YouSubTabHeader — segmented sub-tab pill bar shown at the top of
@@ -53,11 +53,9 @@ export function YouSubTabHeader() {
   return (
     <View>
       <Text
+        // headers census 2026-06-10: hand-rolled eyebrow → Type.label token.
         style={{
-          fontSize: 11,
-          fontWeight: "600",
-          letterSpacing: 1,
-          textTransform: "uppercase",
+          ...Type.label,
           color: colors.textTertiary,
           paddingHorizontal: Spacing.lg,
           paddingTop: Spacing.sm,

@@ -83,12 +83,14 @@ describe("barcode.tsx — gap #5: meal slot correctness", () => {
 });
 
 describe("barcode.tsx — gap #1: typography tokens", () => {
-  it("uses FontFamily.serifSemibold for overlayTitle", () => {
-    expect(BARCODE_SRC).toContain("FontFamily.serifSemibold");
-  });
-
-  it("uses Type.headline for serif heading styles", () => {
-    expect(BARCODE_SRC).toContain("Type.headline");
+  // Re-pinned: headers census 2026-06-10. The hand-tuned 18/600 + 17/600
+  // serifSemibold sheet titles (overlayTitle / productName / manualTitle /
+  // corrTitle) converged onto the canonical compact-title token Type.navTitle
+  // (serifMedium 18/22). The old serifSemibold + Type.headline pins are
+  // superseded — the census collapses the hybrid into one nav-title voice.
+  it("uses Type.navTitle for the four scanner/sheet serif titles", () => {
+    const navTitleUses = BARCODE_SRC.match(/\.\.\.Type\.navTitle/g) ?? [];
+    expect(navTitleUses.length).toBeGreaterThanOrEqual(4);
   });
 
   it("uses Type.heroValue for macro numerals", () => {

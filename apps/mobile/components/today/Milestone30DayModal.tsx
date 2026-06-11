@@ -3,7 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
-import { Accent, Radius, Spacing, FontFamily } from "@/constants/theme";
+import { Accent, Radius, Spacing, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
@@ -217,14 +217,8 @@ export function Milestone30DayModal({
                 >
                   <Utensils size={16} color={accent.primary} strokeWidth={2.25} />
                   <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "700",
-                      color: textSecondaryColor,
-                      marginLeft: Spacing.sm,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
+                    // headers census 2026-06-10: hand-rolled eyebrow → Type.label.
+                    style={{ ...Type.label, color: textSecondaryColor, marginLeft: Spacing.sm }}
                   >
                     Most-logged foods
                   </Text>
@@ -367,14 +361,8 @@ function StatTile({
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
         {icon}
         <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "700",
-            color: textSecondaryColor,
-            marginLeft: Spacing.sm,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
+          // headers census 2026-06-10: hand-rolled eyebrow → Type.label.
+          style={{ ...Type.label, color: textSecondaryColor, marginLeft: Spacing.sm }}
           numberOfLines={1}
         >
           {label}

@@ -510,6 +510,12 @@ export const Type = {
     textTransform: 'uppercase' as const,
   },
   caption: { fontFamily: FontFamily.sansMedium, fontSize: 11, lineHeight: 14, fontWeight: '500' as const, letterSpacing: 0 },
+  /** Tab-chrome subtitle — the descriptive line under a primary-tab serif
+   *  title (Plan week-range, Progress "Your weight, weekly recap…"). 13/600,
+   *  one step above `caption` so it reads as a peer descriptor not a footnote.
+   *  Sole token home for the previously hand-rolled chrome subtitle literal
+   *  (headers census 2026-06-10). Set colour at the call site. */
+  captionStrong: { fontFamily: FontFamily.sansSemibold, fontSize: 13, lineHeight: 18, fontWeight: '600' as const, letterSpacing: 0.2 },
   /** Quiet editorial coach line — Newsreader italic, muted, centred. The
    *  calm forward-looking nudge under the ring (de-carded deficit insight,
    *  2026-06-03). Matches the Stitch `today.html` coach line

@@ -1,7 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Accent, FontFamily, Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -36,28 +36,12 @@ export default function NotFound() {
           both off the Sloe language. The screen carries its own recovery
           CTA, so no header chrome is needed. */}
       <Stack.Screen options={{ headerShown: false }} />
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          letterSpacing: 1,
-          color: colors.textTertiary,
-          textTransform: "uppercase",
-        }}
-      >
-        404
-      </Text>
-      <Text
-        style={{
-          // Sloe screen-title voice — Newsreader serif like every other
-          // screen headline (e2e walk 2026-06-10; was stock sans).
-          fontFamily: FontFamily.serifSemibold,
-          fontSize: 24,
-          fontWeight: "600",
-          color: colors.text,
-          textAlign: "center",
-        }}
-      >
+      {/* headers census 2026-06-10: stale stack-header residue was already
+          gone (this is now a centred 404 error state with its own CTA, not a
+          push screen — PushScreenHeader's back-chevron would be wrong UX).
+          Only the two hand-rolled literals converge to tokens. */}
+      <Text style={{ ...Type.label, color: colors.textTertiary }}>404</Text>
+      <Text style={{ ...Type.screenTitle, color: colors.text, textAlign: "center" }}>
         We couldn&apos;t find that
       </Text>
       <Text

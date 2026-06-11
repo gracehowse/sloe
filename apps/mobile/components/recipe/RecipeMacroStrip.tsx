@@ -15,7 +15,7 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, MacroColors, Spacing } from "@/constants/theme";
+import { FontFamily, MacroColors, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type RecipeMacroCell = {
@@ -91,15 +91,9 @@ export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
             ) : null}
           </Text>
           <Text
-            style={{
-              marginTop: 4,
-              fontSize: 10,
-              fontFamily: FontFamily.sansSemibold,
-              fontWeight: "600",
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: colors.textSecondary,
-            }}
+            // headers census 2026-06-10: macro-strip label → Type.label (11px;
+            // census picked straight Type.label over a private 10px density step).
+            style={{ ...Type.label, marginTop: 4, color: colors.textSecondary }}
           >
             {cell.label}
           </Text>

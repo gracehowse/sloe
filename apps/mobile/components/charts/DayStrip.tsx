@@ -162,13 +162,9 @@ export default function DayStrip({
               }}
             >
               <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: "600",
-                  textTransform: "uppercase",
-                  color: secondaryColor,
-                  letterSpacing: 0.4,
-                }}
+                // headers census 2026-06-10: day-axis label → Type.label (11px;
+                // census kept the canonical step over a private 10px density size).
+                style={{ ...Type.label, color: secondaryColor }}
               >
                 {label}
               </Text>

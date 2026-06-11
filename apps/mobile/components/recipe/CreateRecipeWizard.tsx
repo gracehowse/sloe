@@ -693,8 +693,9 @@ export default function CreateRecipeWizard() {
         topMeta: { flex: 1, alignItems: "center" },
         topTitle: {
           // Gap 10: use Type.label tracking (0.88, ≈ 0.08em) instead of 2 (≈ 0.18em).
+          // headers census 2026-06-10: eyebrow ink → AA-safe accent.primarySolid.
           ...Type.label,
-          color: accent.primary,
+          color: accent.primarySolid,
         },
         // Gap 2: use Type.caption token (replaces raw 12/600).
         topStep: {
@@ -729,14 +730,11 @@ export default function CreateRecipeWizard() {
           ...Type.label,
           color: colors.textTertiary,
         },
-        // Gap 1+2: serif display for step H1 — the editorial moment of each step.
-        // Type.display is Newsreader 400 32pt; we override to serifSemibold 600 for
-        // the weight the recipes spec calls for at 28–32pt display role.
+        // headers census 2026-06-10: step H1 → Type.screenTitle (the canonical
+        // large in-body screen title — serifSemibold 28/34/600). Was a hand-
+        // rebuild from Type.display with the wrong lineHeight (32 vs 34).
         sectionTitle: {
-          ...Type.display,
-          fontFamily: FontFamily.serifSemibold,
-          fontSize: 28,
-          lineHeight: 32,
+          ...Type.screenTitle,
           color: colors.text,
         },
         // Gap 2: use Type.bodyMuted (replaces bespoke 14/400/20 inline).

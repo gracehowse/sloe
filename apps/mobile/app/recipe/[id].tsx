@@ -39,7 +39,7 @@ import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
 import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Colors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Colors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1365,7 +1365,9 @@ export default function RecipeDetailScreen() {
       gap: Spacing.sm,
       ...(cardElevation.shadowStyle ?? {}),
     },
-    sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
+    // headers census 2026-06-10: eyebrow → Type.label (was the app's heaviest +
+    // widest hand-rolled eyebrow at 11/800/ls2).
+    sourceLabel: { ...Type.label, color: colors.textTertiary },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
     sourceNameLink: { color: accent.primary, textDecorationLine: "underline" },
     sourceLinkBtn: {

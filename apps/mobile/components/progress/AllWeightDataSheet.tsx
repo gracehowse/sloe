@@ -378,7 +378,9 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     justifyContent: "space-between",
   },
-  sectionTitle: { ...Type.title, fontSize: 22 },
+  // headers census 2026-06-10: drop the fontSize 22 override — 22 isn't a ramp
+  // size; Type.title is 24.
+  sectionTitle: { ...Type.title },
   sectionCount: { ...Type.caption },
   row: {
     flexDirection: "row",

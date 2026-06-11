@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   type PlanSourceMode,
@@ -105,11 +105,9 @@ export function PlanSourceSelector({
 }
 
 const styles = StyleSheet.create({
+  // headers census 2026-06-10: section eyebrow → Type.label (kills 10.5px half-pixel).
   sectionLabel: {
-    fontSize: 10.5,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    fontWeight: "700",
+    ...Type.label,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
   },

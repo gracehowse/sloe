@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -315,7 +315,8 @@ function DigestLegacy(props: DigestProps) {
 
       {/* Eyebrow */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary, letterSpacing: 1 }}>
+        {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label. */}
+        <Text style={{ ...Type.label, color: colors.textSecondary }}>
           WEEK DIGEST
         </Text>
         <Text style={{ fontSize: 10, color: colors.textSecondary, opacity: 0.7 }}>· {weekLabel}</Text>
@@ -572,13 +573,10 @@ function Stat({
       }}
     >
       <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "700",
-          color: colors.textSecondary,
-          letterSpacing: 1,
-          marginBottom: 2,
-        }}
+        // headers census 2026-06-10: hand-rolled eyebrow → Type.label (token
+        // already uppercases; the .toUpperCase() below is now redundant but
+        // harmless).
+        style={{ ...Type.label, color: colors.textSecondary, marginBottom: 2 }}
       >
         {label.toUpperCase()}
       </Text>

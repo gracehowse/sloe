@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
-import { Accent, FontWeight, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -214,7 +214,8 @@ export function WeeklyInsightCard({
       {/* Accent sparkle overline (frame: `text-clay` sparkle + uppercase;
           flag-aware → damson under Frost). */}
       <View style={styles.headerRow}>
-        <Sparkles size={15} color={accent.primarySolid} strokeWidth={1.75} />
+        {/* headers census 2026-06-10: sparkle-eyebrow row → IconSize.xs (was 15). */}
+        <Sparkles size={IconSize.xs} color={accent.primarySolid} strokeWidth={1.75} />
         <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
           WEEKLY INSIGHT
         </Text>
@@ -318,7 +319,8 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.xs + 2,
+    // headers census 2026-06-10: sparkle-eyebrow gap → Spacing.xs (was xs+2=6).
+    gap: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   headerLabel: {
@@ -346,11 +348,9 @@ const styles = StyleSheet.create({
     ...Type.headline,
     fontVariant: ["tabular-nums"],
   },
+  // headers census 2026-06-10: stat label → Type.label (kills the sub-ramp 9px).
   statLabel: {
-    fontSize: 9,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+    ...Type.label,
   },
   weekBar: {
     flexDirection: "row",

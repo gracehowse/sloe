@@ -3655,7 +3655,10 @@ export default function TrackerScreen() {
           gap: Spacing.md,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        cardTitle: { color: colors.text, ...Type.headline },
+        // headers census 2026-06-10: card-header ink colors.text → navPrimary
+        // (matches the canonical TodayActivityCard treatment). Currently unused
+        // in this legacy file but converged so a revival inherits the grammar.
+        cardTitle: { ...Type.headline, color: colors.navPrimary },
 
         macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
         macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
