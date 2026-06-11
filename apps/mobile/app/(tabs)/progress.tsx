@@ -1656,7 +1656,7 @@ export default function ProgressScreen() {
 
             {resolved.adaptiveRejectedBelowFormula && resolved.rejectedAdaptiveKcal != null && (
               <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
-                Adaptive estimate was {resolved.rejectedAdaptiveKcal.toLocaleString()} kcal — below your formula floor, so we're showing the formula estimate until logging catches up.
+                Adaptive estimate was {resolved.rejectedAdaptiveKcal.toLocaleString()} kcal — below your formula floor, so we{"'"}re showing the formula estimate until logging catches up.
               </Text>
             )}
 

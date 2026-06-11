@@ -8,7 +8,6 @@ import type { UserTier } from "../../../types/recipe";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 import {
   NAV_TAB_ORDER_FLAG,
-  NAV_TAB_ORDER_FLAG,
   canonicalNavOrderEnabled,
 } from "../../../lib/navigation/primaryNav";
 

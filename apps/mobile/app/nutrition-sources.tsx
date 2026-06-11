@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Beaker, BookOpen, ChevronLeft, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
+import { Beaker, BookOpen, ChevronLeft, Database, ExternalLink, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -194,7 +194,7 @@ export default function NutritionSourcesScreen() {
                 <Pressable onPress={() => Linking.openURL(detail.url)}>
                   <Text style={styles.sourceLink}>
                     {detail.url.replace("https://", "")}{" "}
-                    <Ionicons name="open-outline" size={12} color={accent.primarySolid} />
+                    <ExternalLink size={12} color={accent.primarySolid} strokeWidth={1.75} />
                   </Text>
                 </Pressable>
               </View>
