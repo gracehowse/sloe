@@ -287,7 +287,7 @@ export function GoalPaceEditorDialog({
                 data-testid="goal-pace-editor-safety-warn"
                 className="rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-3 space-y-2"
               >
-                <p className="text-[12px] font-bold text-foreground leading-snug">
+                <p className="text-[11px] font-bold text-foreground leading-snug">
                   {SAFETY_ACK_TITLE}
                 </p>
                 <p className="text-[11px] text-foreground leading-snug">
@@ -301,7 +301,7 @@ export function GoalPaceEditorDialog({
                     data-testid="goal-pace-editor-safety-ack"
                     className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-[var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/50"
                   />
-                  <span className="text-[12px] font-semibold text-foreground leading-snug">
+                  <span className="text-[11px] font-semibold text-foreground leading-snug">
                     {SAFETY_ACK_CONFIRM_LABEL}
                   </span>
                 </label>
