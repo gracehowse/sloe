@@ -395,8 +395,13 @@ export default function CalorieRing({
 
   // Brightening-plum overflow stops + win glow tone (2026-06-09 decision —
   // amber rejected; scheme-resolved).
+  // 2026-06-10 round 3 (Grace: "still isn't updated"): the lap ramped to
+  // light lilac so fast over a short overage arc that it still READ as a
+  // two-tone ring. Comps (Apple/Klima/Zero) keep the wrap within a whisper
+  // of the base tone — the CAP GLOW carries the signal, not hue distance.
+  // Ramp tightened: the lap ends ~1.5 shades up, not 4.
   const overflowFrom = isDark ? "#815E91" : "#5B3B6E";
-  const overflowTo = isDark ? "#C4ACD0" : "#9A7BAA";
+  const overflowTo = isDark ? "#A589B5" : "#7A5890";
   const winGlowColor = isDark ? "#C4ACD0" : "#7E5C92";
   const mainCirc = CIRC(R);
 
