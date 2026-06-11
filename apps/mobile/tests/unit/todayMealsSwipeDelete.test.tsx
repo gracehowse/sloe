@@ -23,14 +23,13 @@ const NOOP = () => undefined;
 
 function journalMeal(over: Partial<JournalMeal> & { id: string }): JournalMeal {
   return {
-    id: over.id,
-    recipeTitle: over.recipeTitle ?? "Oats",
-    calories: over.calories ?? 200,
-    protein: over.protein ?? 8,
-    carbs: over.carbs ?? 30,
-    fat: over.fat ?? 4,
-    name: over.name ?? "Breakfast",
-    time: over.time ?? "08:00",
+    recipeTitle: "Oats",
+    calories: 200,
+    protein: 8,
+    carbs: 30,
+    fat: 4,
+    name: "Breakfast",
+    time: "08:00",
     ...over,
   } as JournalMeal;
 }
