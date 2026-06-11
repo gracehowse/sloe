@@ -14,7 +14,10 @@ import {
   fastingStageAtHours,
   fastingStageBarFraction,
 } from "../../lib/fasting/stages";
-import { fastingStageNarrative } from "../../lib/nutrition/fastingStageNarrative";
+import {
+  fastingStageDisclosure,
+  fastingStageNarrative,
+} from "../../lib/nutrition/fastingStageNarrative";
 
 type FastingSession = { start: string; end: string | null };
 
@@ -445,6 +448,17 @@ export function FastingTimer() {
               {fastingStageNarrative(elapsed)}
             </p>
           )}
+          {/* ENG-1028 — "how we know this" disclosure for the autophagy
+              stage, where human timing isn't established (mostly animal
+              evidence). Quiet tertiary line beneath the narrative. */}
+          {!isComplete && fastingStageDisclosure(elapsed) ? (
+            <p
+              className="text-xs text-muted-foreground text-center px-6 leading-snug -mt-1"
+              data-testid="fasting-stage-disclosure"
+            >
+              {fastingStageDisclosure(elapsed)}
+            </p>
+          ) : null}
         </>
       ) : (
         // Not-fasting landing — moon glyph + headline + quick-start chips.

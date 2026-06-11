@@ -20,7 +20,10 @@ import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { fastingStageNarrative } from "@suppr/shared/nutrition/fastingStageNarrative";
+import {
+  fastingStageDisclosure,
+  fastingStageNarrative,
+} from "@suppr/shared/nutrition/fastingStageNarrative";
 import {
   FASTING_WINDOW_PRESETS,
   fastingWindowLabel,
@@ -306,6 +309,19 @@ export default function FastingScreen() {
           marginHorizontal: Spacing.xl,
           marginBottom: Spacing.lg,
           lineHeight: 22,
+        },
+        // ENG-1028 — quiet "how we know this" disclosure beneath the
+        // narrative for the autophagy stage. Tertiary tone, smaller type.
+        // Pulled up under the narrative (negative top margin offsets the
+        // narrative's bottom gap) so the two read as one block.
+        stageDisclosure: {
+          fontSize: 12,
+          color: colors.textTertiary,
+          textAlign: "center",
+          marginHorizontal: Spacing.xl,
+          marginTop: -Spacing.sm,
+          marginBottom: Spacing.lg,
+          lineHeight: 17,
         },
         sectionLabel: {
           ...Type.label,
@@ -727,6 +743,11 @@ export default function FastingScreen() {
       {isFasting && !isComplete && (
         <Text style={styles.stageNarrative}>{fastingStageNarrative(elapsed)}</Text>
       )}
+      {/* ENG-1028 — "how we know this" disclosure for the autophagy stage,
+          where human timing isn't established (mostly animal evidence). */}
+      {isFasting && !isComplete && fastingStageDisclosure(elapsed) ? (
+        <Text style={styles.stageDisclosure}>{fastingStageDisclosure(elapsed)}</Text>
+      ) : null}
 
       {/* History */}
       {recentCompleted.length > 0 && (

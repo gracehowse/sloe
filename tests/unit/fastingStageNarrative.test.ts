@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { fastingStageNarrative } from "../../src/lib/nutrition/fastingStageNarrative";
+import {
+  fastingStageDisclosure,
+  fastingStageNarrative,
+} from "../../src/lib/nutrition/fastingStageNarrative";
 
 const h = (n: number): number => n * 3_600_000;
 
@@ -36,12 +39,46 @@ describe("fastingStageNarrative — stage buckets (ENG-52)", () => {
     expect(fastingStageNarrative(h(20))).toMatch(/ketones|growth hormone/i);
   });
 
-  it("24h → autophagy bucket", () => {
-    expect(fastingStageNarrative(h(24))).toMatch(/autophagy/i);
+  it("24h → autophagy bucket, framed as population evidence (ENG-1028)", () => {
+    const line = fastingStageNarrative(h(24));
+    expect(line).toMatch(/autophagy/i);
+    // ENG-1028 — population framing, not a personal claim. Names that the
+    // evidence is from studies (mostly animal) rather than asserting it's
+    // happening to this user.
+    expect(line).toMatch(/in studies/i);
+    expect(line).toMatch(/animal/i);
+    // No human-benefit claim — never says the user gains anything.
+    expect(line).not.toMatch(/cleans|repair|detox|renew|benefit/i);
   });
 
   it("48h → extended fast territory", () => {
     expect(fastingStageNarrative(h(48))).toMatch(/extended/i);
+  });
+});
+
+// ─── ENG-1028: "how we know this" disclosure ─────────────────────────────
+describe("fastingStageDisclosure (ENG-1028)", () => {
+  it("returns a disclosure line only for the autophagy stage (24–36h)", () => {
+    // Below 24h and at/above 36h: no disclosure (well-established stages).
+    expect(fastingStageDisclosure(h(23))).toBeNull();
+    expect(fastingStageDisclosure(h(16))).toBeNull();
+    expect(fastingStageDisclosure(h(0))).toBeNull();
+    expect(fastingStageDisclosure(h(36))).toBeNull();
+    expect(fastingStageDisclosure(h(48))).toBeNull();
+
+    // Inside the autophagy window: a disclosure naming the evidence gap.
+    const d = fastingStageDisclosure(h(24));
+    expect(d).not.toBeNull();
+    expect(d!).toMatch(/how we know this/i);
+    expect(d!).toMatch(/isn't established/i);
+    expect(d!).toMatch(/animal/i);
+    // No benefit / prescription / shaming language.
+    expect(d!).not.toMatch(/should|must|cleanse|detox|cure/i);
+  });
+
+  it("disclosure is present across the whole 24–36h band", () => {
+    expect(fastingStageDisclosure(h(30))).not.toBeNull();
+    expect(fastingStageDisclosure(h(35.9))).not.toBeNull();
   });
 });
 
