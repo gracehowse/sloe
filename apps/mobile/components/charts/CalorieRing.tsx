@@ -157,6 +157,7 @@ type Props = {
   /** Toggle expanded */
   onToggle?: () => void;
   /** Show remaining or consumed calories */
+  /** @deprecated 2026-06-10 — the Remaining/Consumed toggle is retired; ignored. */
   displayMode?: DisplayMode;
   /** Called when user long-presses to toggle display mode. Ignored
    *  when `onLongPressExplain` is also provided — the new explainer
@@ -324,14 +325,11 @@ export default function CalorieRing({
     ? Colors.dark.borderStrong
     : Colors.light.borderStrong;
   const outerTrackColor = isEmpty ? emptyTrackColor : trackColor;
-  const centerValue = displayMode === "consumed"
-    ? Math.round(consumed)
-    : Math.abs(diff);
-  const centerLabel = displayMode === "consumed"
-    ? RING_LABELS.logged
-    : isOver
-      ? RING_LABELS.over
-      : RING_LABELS.remaining;
+  // 2026-06-10 (Grace's ring-content spec): the Remaining/Consumed toggle
+  // is GONE — it duplicated the EATEN stat directly below the ring, and the
+  // collapsed ring ignored it anyway. One semantics: remaining (or over).
+  const centerValue = Math.abs(diff);
+  const centerLabel = isOver ? RING_LABELS.over : RING_LABELS.remaining;
   // Thousands separator to match the ring's centre number + the GOAL/FOOD/
   // BONUS stats ("1,563") — without it the subtitle read "of 1563 kcal"
   // (Grace visual walk, 2026-06-01).
@@ -444,7 +442,7 @@ export default function CalorieRing({
   // a slow countdown across two different metrics. Honours system
   // reduce-motion via `useReduceMotion()`.
   const animatedCenterValue = useAnimatedNumber(centerValue, {
-    snapOn: displayMode,
+    snapOn: "remaining",
     reduceMotion,
     duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 400,
     animateFromZeroOnMount: premiumMotion && !reduceMotion,
@@ -461,7 +459,8 @@ export default function CalorieRing({
       // The explainer now lives on a subtle inline affordance below
       // the ring (see TodayHeroRing). Long-press stays the power-user
       // shortcut for ring state.
-      onLongPress={onToggleDisplayMode}
+      // displayMode retired (2026-06-10) — long-press matches tap: macro toggle.
+      onLongPress={onToggle}
       style={{ alignItems: "center" }}
     >
       <View
@@ -776,20 +775,7 @@ export default function CalorieRing({
             no inner-arc clipping concern). CONSUMED keeps "LOGGED" + a
             collapsed "of {goal} kcal"; OVER keeps "OVER". Hidden in the
             empty state — the "Start your day" copy above already leads. */}
-        {!isEmpty && displayMode === "remaining" && !isOver && goal > 0 ? (
-          <PostHogMaskView>
-            <Text
-              style={{
-                ...Type.caption,
-                color: secondaryColor,
-                marginTop: 2,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              of {Math.round(goal).toLocaleString()} kcal
-            </Text>
-          </PostHogMaskView>
-        ) : !isEmpty ? (
+        {!isEmpty ? (
           <Text
             style={{
               ...Type.label,
@@ -800,9 +786,10 @@ export default function CalorieRing({
             {centerLabel}
           </Text>
         ) : null}
-        {/* Consumed-mode budget line — collapsed only. When the ring is
-            expanded the stats row below carries the explicit goal. */}
-        {goal > 0 && !expanded && !isEmpty && displayMode === "consumed" ? (
+        {/* Budget line — collapsed only (Grace 2026-06-10: macros hidden =
+            more room, show the goal context; expanded keeps just the label
+            and the stats row below carries the explicit goal). */}
+        {goal > 0 && !expanded && !isEmpty ? (
           <PostHogMaskView>
             <Text
               style={{

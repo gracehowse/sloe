@@ -191,7 +191,10 @@ export function SkiaRingArcs({
   const bonusStart = Math.max(0, Math.min(1, 1 - bonusFrac));
   // Hoisted (hooks must not live inside conditional JSX): the overflow
   // leading-cap glow trails the lap end by ~6% of the circle.
-  const capShadowStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.025));
+  // Round 6 (Grace: round 5 'too quiet'): the wrap reads physically —
+  // the lap is 6% wider than the base (visible stacking, like coiled
+  // rope) and the overlap shadow is deeper + longer.
+  const capShadowStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.05));
 
   return (
     <Canvas
@@ -269,19 +272,19 @@ export function SkiaRingArcs({
           <Path
             path={mainPath}
             style="stroke"
-            strokeWidth={STROKE * 1.05}
+            strokeWidth={STROKE * 1.1}
             strokeCap="round"
             color="#000000"
-            opacity={0.15}
+            opacity={0.3}
             start={capShadowStart}
             end={overEnd}
           >
-            <BlurMask blur={STROKE * 0.22} style="normal" />
+            <BlurMask blur={STROKE * 0.3} style="normal" />
           </Path>
           <Path
             path={mainPath}
             style="stroke"
-            strokeWidth={STROKE}
+            strokeWidth={STROKE * 1.06}
             strokeCap="round"
             color={ringColor}
             start={0}

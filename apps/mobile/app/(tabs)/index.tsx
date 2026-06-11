@@ -630,7 +630,6 @@ export default function TrackerScreen() {
   // ("1,633 / of 2,040 kcal", REMAINING) like the Figma 01 frame, not the
   // backward-looking "379 LOGGED". The Remaining/Consumed toggle still lets
   // the user flip to consumed.
-  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
   // removed in this phase — TodayHero is now a thin wrapper around
@@ -4987,11 +4986,6 @@ export default function TrackerScreen() {
                 fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
                 expanded={ringExpanded}
                 onToggleExpanded={() => setRingExpanded((e) => !e)}
-                displayMode={calorieDisplayMode}
-                onToggleDisplayMode={() => {
-                  setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
-                  setRingExpanded((e) => !e);
-                }}
                 isOnTrack={
                   totals.calories > 100 &&
                   effectiveCalorieGoal > 0 &&

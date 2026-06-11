@@ -39,6 +39,11 @@ import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
  *     affordance, unchanged.
  */
 export interface TodayHeroRingProps {
+  /** @deprecated 2026-06-10 — Remaining/Consumed toggle retired; ignored. */
+  displayMode?: "remaining" | "consumed";
+  /** @deprecated 2026-06-10 — ignored. */
+  onToggleDisplayMode?: () => void;
+
   consumed: number;
   goal: number;
   baseGoal: number | undefined;
@@ -58,8 +63,6 @@ export interface TodayHeroRingProps {
   // state in lock-step. The host owns the actual state transitions.
   expanded: boolean;
   onToggleExpanded: () => void;
-  displayMode: "remaining" | "consumed";
-  onToggleDisplayMode: () => void;
   textTertiaryColor: string;
 
   /** Audit gap #10 transparency moat (2026-05-01). When provided, a
@@ -183,73 +186,6 @@ function StatusChip({
   );
 }
 
-/**
- * DisplayModeToggle — Remaining/Consumed segmented pill (SLOE `01 · Today`
- * frame, chip-right). Visible counterpart to the ring long-press gesture;
- * both fire `onToggleDisplayMode`. The active segment is the CURRENT
- * `displayMode` so the pill always reflects the ring's centre value.
- */
-function DisplayModeToggle({
-  displayMode,
-  onToggleDisplayMode,
-  cardBackgroundColor,
-  borderColor,
-  textSecondaryColor,
-  isDark,
-}: {
-  displayMode: "remaining" | "consumed";
-  onToggleDisplayMode: () => void;
-  cardBackgroundColor: string;
-  borderColor: string;
-  textSecondaryColor: string;
-  isDark: boolean;
-}) {
-  const activeBg = isDark ? Colors.dark.cardElevated : Colors.light.card; // §8 thumb
-  const activeFg = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
-  const segment = (label: string, mode: "remaining" | "consumed") => {
-    const active = displayMode === mode;
-    return (
-      <View
-        style={{
-          paddingHorizontal: Spacing.dense,
-          paddingVertical: 4,
-          borderRadius: Radius.full,
-          backgroundColor: active ? activeBg : "transparent",
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: active ? "600" : "500",
-            color: active ? activeFg : textSecondaryColor,
-          }}
-        >
-          {label}
-        </Text>
-      </View>
-    );
-  };
-  // Segments census (2026-06-10, §8): track = the shared inputBg rail —
-  // the literal #EFEFEF was one of five competing track treatments.
-  const trackBg = useThemeColors().inputBg;
-  return (
-    <Pressable
-      onPress={onToggleDisplayMode}
-      accessibilityRole="button"
-      accessibilityLabel={`Showing ${displayMode} calories. Tap to switch.`}
-      testID="today-ring-display-toggle"
-      style={{
-        flexDirection: "row",
-        backgroundColor: trackBg,
-        borderRadius: Radius.full,
-        padding: 2,
-      }}
-    >
-      {segment("Remaining", "remaining")}
-      {segment("Consumed", "consumed")}
-    </Pressable>
-  );
-}
 
 export function TodayHeroRing({
   consumed,
@@ -268,8 +204,6 @@ export function TodayHeroRing({
   fatPct,
   expanded,
   onToggleExpanded,
-  displayMode,
-  onToggleDisplayMode,
   textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
@@ -312,14 +246,6 @@ export function TodayHeroRing({
         }}
       >
         <StatusChip state={chipState} overByKcal={overByKcal} isDark={isDark} />
-        <DisplayModeToggle
-          displayMode={displayMode}
-          onToggleDisplayMode={onToggleDisplayMode}
-          cardBackgroundColor={isDark ? Colors.dark.background : "#FFFFFF"}
-          borderColor={borderColor}
-          textSecondaryColor={secondaryColor}
-          isDark={isDark}
-        />
       </View>
       <CalorieRing
         consumed={consumed}
@@ -333,8 +259,6 @@ export function TodayHeroRing({
         fatPct={fatPct}
         expanded={expanded}
         onToggle={onToggleExpanded}
-        displayMode={displayMode}
-        onToggleDisplayMode={onToggleDisplayMode}
       />
       {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame:
           `grid grid-cols-3 divide-x divide-line`, Newsreader values,

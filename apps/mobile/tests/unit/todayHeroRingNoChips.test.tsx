@@ -49,29 +49,22 @@ const baseProps = {
 };
 
 describe("TodayHeroRing — SLOE redesign (2026-06-03)", () => {
-  it("renders the Sloe Remaining/Consumed toggle + status chip", () => {
-    const { queryByTestId } = render(
-      <TodayHeroRing
-        {...baseProps}
-        onToggleExpanded={() => {}}
-        onToggleDisplayMode={() => {}}
-      />,
+  it("renders the status chip with NO Remaining/Consumed toggle (retired 2026-06-10)", () => {
+    const { queryByTestId, queryByText } = render(
+      <TodayHeroRing {...baseProps} onToggleExpanded={() => {}} />,
     );
-    expect(queryByTestId("today-ring-display-toggle")).not.toBeNull();
-    expect(queryByTestId("today-ring-status-chip")).not.toBeNull();
+    expect(queryByTestId("today-ring-display-toggle")).toBeNull();
+    expect(queryByText("Remaining")).toBeNull();
+    expect(queryByText("Consumed")).toBeNull();
   });
 
-  it("fires onToggleDisplayMode when the toggle is pressed", () => {
-    const onToggleDisplayMode = vi.fn();
-    const { getByTestId } = render(
-      <TodayHeroRing
-        {...baseProps}
-        onToggleExpanded={() => {}}
-        onToggleDisplayMode={onToggleDisplayMode}
-      />,
+  it("ignores the deprecated onToggleDisplayMode prop (no toggle to press)", () => {
+    const fn = vi.fn();
+    const { queryByTestId } = render(
+      <TodayHeroRing {...baseProps} onToggleExpanded={() => {}} onToggleDisplayMode={fn} />,
     );
-    fireEvent.press(getByTestId("today-ring-display-toggle"));
-    expect(onToggleDisplayMode).toHaveBeenCalledTimes(1);
+    expect(queryByTestId("today-ring-display-toggle")).toBeNull();
+    expect(fn).not.toHaveBeenCalled();
   });
 
   it("does NOT render any 'Why?' affordance even when onPressWhy is provided (2026-05-12 round 3, kept)", () => {

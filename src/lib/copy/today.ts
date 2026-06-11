@@ -26,7 +26,10 @@ import { coachSlotAimKcal, unloggedMealSlotCount } from "../nutrition/mealBudget
  *  Rendered uppercase by the ring components on both platforms. */
 export const RING_LABELS = {
   logged: "LOGGED",
-  remaining: "REMAINING",
+  // 2026-06-10 (Grace's ring-content spec): the centre reads "LEFT" —
+  // "REMAINING" arced too long under the number. LOGGED retired with the
+  // Remaining/Consumed toggle (the EATEN stat below the ring carries it).
+  remaining: "LEFT",
   over: "OVER",
 } as const;
 

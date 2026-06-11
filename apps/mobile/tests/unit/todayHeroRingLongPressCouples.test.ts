@@ -32,17 +32,12 @@ const HOST_PATH = path.resolve(
 );
 
 describe("Today host — long-press couples display-mode + ring-expanded", () => {
-  it("onToggleDisplayMode handler calls both setCalorieDisplayMode AND setRingExpanded", () => {
+  it("the Remaining/Consumed toggle plumbing is fully retired (Grace 2026-06-10)", () => {
+    // The toggle duplicated the EATEN stat below the ring, and the
+    // collapsed ring ignored it. No displayMode state, no toggle handler.
     const SRC = readFileSync(HOST_PATH, "utf8");
-    // The handler block must contain both setters in the same body.
-    // Match a multiline arrow body: `onToggleDisplayMode={() => { ... }}`
-    const blockMatch = SRC.match(
-      /onToggleDisplayMode=\{\(\) => \{[\s\S]*?\n\s*\}\}/,
-    );
-    expect(blockMatch).not.toBeNull();
-    const body = blockMatch ? blockMatch[0] : "";
-    expect(body).toMatch(/setCalorieDisplayMode\(/);
-    expect(body).toMatch(/setRingExpanded\(/);
+    expect(SRC).not.toMatch(/setCalorieDisplayMode/);
+    expect(SRC).not.toMatch(/onToggleDisplayMode=\{/);
   });
 
   it("does NOT pass an onSetDisplayMode prop to TodayHero (chip wiring deleted)", () => {
