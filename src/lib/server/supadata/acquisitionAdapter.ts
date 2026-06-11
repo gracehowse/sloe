@@ -33,7 +33,7 @@
 
 import { detectSourcePlatform, type RecipeSourcePlatform } from "@/lib/recipes/resolveImportUrl";
 import { isIgTtImportEnabled } from "@/lib/featureFlags/igTtImport";
-import { isAllowedUrl } from "@/lib/recipe-import/ssrfGuard";
+import { isAllowedUrl } from "@/lib/recipe-import/ssrfAllowlist";
 import {
   scrapeUrl,
   fetchTranscript,
