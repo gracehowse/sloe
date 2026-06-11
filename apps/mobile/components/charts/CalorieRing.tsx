@@ -297,24 +297,6 @@ export default function CalorieRing({
    *  token row. */
   const calorieRingColor = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const ringStateColor = calorieRingColor;
-  /** Over-budget treatment — Apple-Watch wrap (2026-06-04, Grace decision +
-   *  Mobbin field scan: Lifesum / Any Distance / MacroFactor / Bevel all KEEP
-   *  the ring hue when over and show overage as a SECOND lap wrapping past
-   *  100%, never a red switch). Supersedes the 2026-06-03 separate red overage
-   *  ARC (`overArcColor`/`overBudgetFg`), which Grace read as odd ("one end of
-   *  the line curved in and one out"). The overage lap stays in the plum family
-   *  but is LIFTED one step lighter than the base ring so the two laps are
-   *  distinguishable despite sharing the hue — same direction (lighter) in both
-   *  modes:
-   *    - light: base #3B2A4D → overage lap #6A4B7A (damson, an existing token)
-   *    - dark:  base #815E91 → overage lap #9A7BAA (the dark `sourceAi` damson,
-   *      which is LIGHTER than the lifted-plum base — #6A4B7A would read darker
-   *      than the dark base and look like the base lap, so dark lifts up). */
-  const overageLapColor = isDark ? "#9A7BAA" : "#6A4B7A";
-  /** Leading-cap glow — the Apple "overflow" highlight at the wrap's end. A
-   *  soft, even-lighter semi-opaque dot sitting on the overage lap's leading
-   *  cap. */
-  const overageGlowColor = isDark ? "#C4ACD0" : "#9A7BAA";
   // Empty-state track contrast (audit gap 1, 2026-06-09). On a cold open the
   // ring is the largest object on the screen, but the default frost-mist track
   // (#EDEAF1 light) sits only ~10 luminance below the #F6F5F2 card — the ring's
@@ -602,72 +584,12 @@ export default function CalorieRing({
             rotation="-90"
             origin={`${CX},${CX}`}
           />
-          {/* Over-budget OVERAGE LAP — Apple-Watch wrap (2026-06-04). The
-              calorie ring itself stays plum (full, drawn above). The portion
-              past 100% is drawn as a SECOND lap wrapping clockwise from 12
-              o'clock for `overFrac = min(consumed/goal - 1, 1)` of the circle,
-              ON TOP of the full base ring — exactly the Apple Activity / Lifesum
-              / Any Distance overflow grammar. NO red. The lap is a lighter plum
-              (`overageLapColor`) so it reads against the base lap despite the
-              shared hue, with ROUNDED caps (both caps clean — the prior "one in,
-              one out" red-arc oddness is gone) and a soft glow on the LEADING
-              cap (the Apple overflow highlight). Capped at a single extra lap
-              (overFrac ≤ 1, i.e. up to 2× goal); the centre digit carries
-              magnitude beyond that.
-
-              Depth note: react-native-svg 15.x does NOT render RN `shadow*`
-              props on individual SVG primitives, so the lap relies on the
-              lighter hue + the leading-cap glow for separation rather than a
-              (non-rendering) drop-shadow — honest depth, no dead props. */}
-          {!isEmpty && isOver && goal > 0 ? (
-            (() => {
-              const overFrac = Math.min(consumed / goal - 1, 1);
-              const overLen = mainCirc * overFrac;
-              // Leading-cap centre point. Both arcs start at 12 o'clock and
-              // sweep clockwise (the `rotation="-90"` puts the dash origin at
-              // top). The leading cap therefore sits `overFrac` of a full turn
-              // clockwise from 12 o'clock. In SVG coords (0° = 3 o'clock, y
-              // grows downward) that angle is `-90° + overFrac·360°`.
-              const capAngle = (-90 + overFrac * 360) * (Math.PI / 180);
-              const capX = CX + R * Math.cos(capAngle);
-              const capY = CX + R * Math.sin(capAngle);
-              return (
-                <G>
-                  <Circle
-                    cx={CX}
-                    cy={CX}
-                    r={R}
-                    fill="none"
-                    stroke={overageLapColor}
-                    strokeWidth={STROKE}
-                    strokeDasharray={`${overLen} ${mainCirc}`}
-                    strokeDashoffset={0}
-                    strokeLinecap="round"
-                    rotation="-90"
-                    origin={`${CX},${CX}`}
-                  />
-                  {/* Apple overflow GLOW — a soft, even-lighter semi-opaque dot
-                      on the leading cap. Two stacked circles (a wide faint halo
-                      + a tighter brighter core) read as a glow without a
-                      blur filter, keeping the no-`<Defs>` Sloe ring rule. */}
-                  <Circle
-                    cx={capX}
-                    cy={capY}
-                    r={STROKE * 0.95}
-                    fill={overageGlowColor}
-                    opacity={0.28}
-                  />
-                  <Circle
-                    cx={capX}
-                    cy={capY}
-                    r={STROKE * 0.5}
-                    fill={overageGlowColor}
-                    opacity={0.65}
-                  />
-                </G>
-              );
-            })()
-          ) : null}
+          {/* Over-budget: NO overage lap (2026-06-10 category survey —
+              Lifesum/MFP/Cal AI cap the ring at full; the centre verdict
+              carries the overage. Supersedes the 2026-06-04 Apple-wrap
+              decision, which benchmarked ACTIVITY rings — the wrong
+              comparable for a food budget). The plum arc above renders
+              the full circle when over. */}
           {/* Inner macro arcs — Canonical 2026-05-22 v4 multi-ring revival.
               Restored after the brief C1 single-ring experiment. Each
               macro gets its own concentric arc inside the calorie ring,

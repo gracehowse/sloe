@@ -12,12 +12,8 @@
  * What Skia buys over the SVG layer:
  *   - Antialiased arcs with true round caps (the SVG ring shows faint
  *     stair-stepping on the plum arc at 3x).
- *   - The over-budget OVERFLOW lap as a brightening-plum SweepGradient
- *     (decided 2026-06-09, amber REJECTED — see
- *     docs/decisions/2026-06-09-ring-overflow-brightening-plum.md):
- *     light #5B3B6E → #9A7BAA, dark #815E91 → #C4ACD0, with a real
- *     BlurMask glow on the leading cap (the SVG layer fakes this with two
- *     stacked opacity dots — react-native-svg can't blur without <Defs>).
+ *   - Over-budget: the ring caps at FULL (no second lap — 2026-06-10
+ *     category survey; the centre verdict carries the overage).
  *   - A goal-hit glow arc (BlurMask STROKE×0.9) pulsing 0→0.6→0 over 600ms.
  *
  * IMPORTANT — native dependency: `@shopify/react-native-skia` is linked in
@@ -125,10 +121,6 @@ export function SkiaRingArcs({
   const reduceMotion = useReducedMotion();
 
   const mainPath = useMemo(() => circlePath(CX, R), [CX, R]);
-  // Round 7 (Grace: still too subtle): the overage lap rides at a slightly
-  // LARGER radius — the ring visibly spirals outward where it wraps, the
-  // most physical cue available without a hue change.
-  const lapPath = useMemo(() => circlePath(CX, R + STROKE * 0.18), [CX, R, STROKE]);
   const macroPaths = useMemo(
     () => MACRO_R.map((r) => circlePath(CX, r)),
     [CX, MACRO_R],
@@ -144,17 +136,6 @@ export function SkiaRingArcs({
     fill.value = withSpring(fillPct, Motion.springSoft);
   }, [fillPct, reduceMotion, fill]);
   const fillEnd = useDerivedValue(() => Math.min(fill.value, 0.999));
-
-  // ── Overflow lap sweep ──
-  const over = useSharedValue(reduceMotion ? overFrac : 0);
-  useEffect(() => {
-    if (reduceMotion) {
-      over.value = overFrac;
-      return;
-    }
-    over.value = withSpring(overFrac, Motion.springSoft);
-  }, [overFrac, reduceMotion, over]);
-  const overEnd = useDerivedValue(() => Math.min(over.value, 0.999));
 
   // ── Macro arcs (200ms timing — parity with the SVG MacroRing) ──
   const m0 = useSharedValue(0);
@@ -195,10 +176,6 @@ export function SkiaRingArcs({
   const bonusStart = Math.max(0, Math.min(1, 1 - bonusFrac));
   // Hoisted (hooks must not live inside conditional JSX): the overflow
   // leading-cap glow trails the lap end by ~6% of the circle.
-  // Round 6 (Grace: round 5 'too quiet'): the wrap reads physically —
-  // the lap is 6% wider than the base (visible stacking, like coiled
-  // rope) and the overlap shadow is deeper + longer.
-  const capShadowStart = useDerivedValue(() => Math.max(0, overEnd.value - 0.05));
 
   return (
     <Canvas
@@ -267,35 +244,12 @@ export function SkiaRingArcs({
           <BlurMask blur={STROKE * 0.9} style="normal" />
         </Path>
       ) : null}
-      {/* Over-budget second lap — round 5: pure Apple. Same colour, and
-          the ONLY signal is one tight soft shadow under the leading cap
-          (the round-4 wide shadow smudged across the macro rings on
-          device; the cap highlight read as a notch). */}
-      {!isEmpty && isOver && overFrac > 0 ? (
-        <Group>
-          <Path
-            path={lapPath}
-            style="stroke"
-            strokeWidth={STROKE * 1.18}
-            strokeCap="round"
-            color="#000000"
-            opacity={0.38}
-            start={capShadowStart}
-            end={overEnd}
-          >
-            <BlurMask blur={STROKE * 0.32} style="normal" />
-          </Path>
-          <Path
-            path={lapPath}
-            style="stroke"
-            strokeWidth={STROKE * 1.12}
-            strokeCap="round"
-            color={ringColor}
-            start={0}
-            end={overEnd}
-          />
-        </Group>
-      ) : null}
+      {/* Over-budget: NO second lap (2026-06-10 category survey —
+          Lifesum/MFP/Cal AI/Bevel all cap the ring at full and let the
+          CENTRE verdict carry the overage; the wrap-again grammar is an
+          ACTIVITY-ring idiom where more = achievement. The 2026-06-04
+          Apple-wrap decision benchmarked the wrong comparable.) The base
+          fill clamps at 1.0 → one complete ring. */}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
       {expanded
         ? MACRO_R.map((r, i) => (
