@@ -93,6 +93,21 @@ than letting an old number get stale.
 You can re-derive your numbers any time from **Daily targets → Recalculate**, and
 change your goal or pace from **Daily targets → Edit**.
 
+## If you're gaining weight
+
+When your goal is to gain, we deliberately set a **gentler surplus** than the
+matching loss pace would use — building lean mass is slower than losing fat, so a
+big surplus mostly adds fat. The pace you see in your plan reflects this gentler
+rate, so the "why this number" breakdown and your projected reach-date always
+agree with the calorie target you're actually on.
+
+## Going below the safety floor
+
+If a pace would put your daily target below the recommended minimum (about 1,500
+kcal for men, 1,200 for women), we'll show you exactly that and ask you to tick a
+box to confirm before saving. We don't stop you — but we make sure it's a
+deliberate choice, and we point you to the guidance behind those numbers.
+
 ## A note on accuracy
 
 Every number in Suppr is an estimate, including this one. We use the widely-used

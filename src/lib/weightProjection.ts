@@ -13,6 +13,47 @@ import { dateKeyFromDate } from "./nutrition/trackerStats";
 const KCAL_PER_KG = 7700; // ~3500 kcal/lb * 2.2 lb/kg
 
 /**
+ * ENG-1029 — hard horizon for the LINEAR 7700 kcal/kg projection.
+ *
+ * The flat `(intake − TDEE) / 7700` rule is the universal consumer
+ * convention and is correctly mitigated here (5-week cap, observed-trend
+ * override, water/glycogen caveat in the copy). But the linear rule
+ * over-estimates loss over long horizons — body weight does not fall in a
+ * straight line because energy expenditure adapts as you lose (Hall et
+ * al., Int J Obes 2013). So the linear path must NEVER feed a display
+ * longer than this. Longer horizons need the observed scale trend or a
+ * decaying model — not this function.
+ *
+ * Enforced by `assertLinearHorizon` below: in development a `weeksOut`
+ * past this cap on the FORMULA path throws (so a new caller that wires a
+ * longer horizon trips a test immediately); in production it is clamped
+ * defensively rather than rendering a misleading number. The observed-
+ * trend path is exempt — a measured rate over a longer window is a real
+ * signal, not the linear extrapolation this guards.
+ */
+export const MAX_LINEAR_PROJECTION_WEEKS = 5;
+
+/**
+ * ENG-1029 — dev-time guard. Throws in development when the linear
+ * formula path is asked to project past `MAX_LINEAR_PROJECTION_WEEKS`, so
+ * a future surface that stretches the horizon fails loudly in tests
+ * rather than silently shipping a biased long-range number. Pure (no I/O
+ * beyond the throw) and a no-op in production builds — the caller clamps
+ * the horizon there.
+ */
+export function assertLinearHorizon(weeksOut: number, usingObservedTrend: boolean): void {
+  if (usingObservedTrend) return; // observed rate is a measured signal, not the linear rule
+  if (weeksOut > MAX_LINEAR_PROJECTION_WEEKS && process.env.NODE_ENV !== "production") {
+    throw new Error(
+      `[weightProjection] linear 7700 kcal/kg projection requested for ${weeksOut} ` +
+        `weeks, past the ${MAX_LINEAR_PROJECTION_WEEKS}-week cap. The linear rule ` +
+        `over-estimates loss over long horizons (Hall 2013) — use the observed ` +
+        `scale trend or a decaying model for longer displays.`,
+    );
+  }
+}
+
+/**
  * Action 13 Item #8 (2026-04-19) — minimum number of recent food-logged
  * days required before the "On track for X kg in N weeks" projection is
  * shown to the user.
@@ -150,8 +191,19 @@ export function projectWeight(opts: {
     Math.sign(formulaWeeklyKg) === Math.sign(observed) ||
     observed === 0;
   const useObserved = observedReliable && directionMatches;
+
+  // ENG-1029 — never let the linear 7700 rule project past the 5-week cap.
+  // Dev: throw (a longer-horizon caller trips this in tests). Production:
+  // clamp the horizon defensively so we never render a biased long-range
+  // linear number. The observed-trend path is exempt — it's a measured
+  // rate, not the linear extrapolation this guards.
+  assertLinearHorizon(weeksOut, useObserved);
+  const effectiveWeeksOut = useObserved
+    ? weeksOut
+    : Math.min(weeksOut, MAX_LINEAR_PROJECTION_WEEKS);
+
   const weeklyKg = useObserved ? observed : formulaWeeklyKg;
-  const totalKgChange = weeklyKg * weeksOut;
+  const totalKgChange = weeklyKg * effectiveWeeksOut;
   const projectedWeightKg = Math.round((currentWeightKg + totalKgChange) * 10) / 10;
 
   const direction: DailyProjection["direction"] =
@@ -163,7 +215,10 @@ export function projectWeight(opts: {
 
   return {
     projectedWeightKg: Math.max(projectedWeightKg, 30), // floor at 30kg for sanity
-    projectionWeeks: weeksOut,
+    // ENG-1029 — report the horizon actually used (clamped on the linear
+    // path in production) so the display never claims a longer reach than
+    // the projection covers.
+    projectionWeeks: effectiveWeeksOut,
     dailySurplusDeficit: Math.round(dailySurplusDeficit),
     direction,
   };
