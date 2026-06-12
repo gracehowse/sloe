@@ -14,8 +14,10 @@
  *                  phosphorus, iodine, copper, selenium, manganese,
  *                  chromium, molybdenum.
  *
- * Sort rule: WITHIN each section, rows are sorted by %DV DESCENDING
- * so deficiencies bubble to the top of the user's attention. Rows
+ * Sort rule: WITHIN each section, target nutrients sort by %DV
+ * ASCENDING (deficiencies first). Limit nutrients (sodium, sat fat,
+ * cholesterol) sort by %DV DESCENDING (worst overshoot first). Target
+ * rows precede limit rows when both appear in the same section. Rows
  * with no DV (e.g. sugar) sort to the bottom of their section.
  */
 
@@ -211,17 +213,19 @@ export function buildFullNutrientPanelRows(
       });
     }
 
-    // Sort by %DV descending. Rows without a DV (null) drift to the
-    // bottom of the section — the user can't act on a missing-DV row,
-    // so it's not a deficiency.
+    // Target nutrients ascending (deficiencies first); limit nutrients
+    // descending (overshoot first). Null-%DV rows sink to the bottom.
     rows.sort((a, b) => {
       const aHas = a.percentDv !== null;
       const bHas = b.percentDv !== null;
       if (!aHas && !bHas) return a.label.localeCompare(b.label);
       if (!aHas) return 1;
       if (!bHas) return -1;
-      // Both non-null below this point.
-      return (b.percentDv as number) - (a.percentDv as number);
+      if (a.isLimit !== b.isLimit) return a.isLimit ? 1 : -1;
+      if (a.isLimit) {
+        return (b.percentDv as number) - (a.percentDv as number);
+      }
+      return (a.percentDv as number) - (b.percentDv as number);
     });
 
     out.push({ section, rows });
