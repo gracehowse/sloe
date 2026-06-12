@@ -430,6 +430,37 @@ export function ukRetailerGenericRowPenalty(input: {
 }
 
 /**
+ * When the query leads with a UK retailer, demote USDA rows that do not
+ * mention that retailer ("tesco chicken" → "Chicken skin" loses to Tesco FS).
+ */
+export function ukRetailerQueryUsdaPenalty(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+}): number {
+  const retailer = queryLeadingUkRetailer(input.query);
+  if (!retailer) return 0;
+  if (input.source !== "USDA") return 0;
+  if (foodNameIncludesUkRetailer(input.name, retailer)) return 0;
+  return -0.42;
+}
+
+/**
+ * Boost FatSecret/OFF rows that include the queried UK retailer token.
+ */
+export function ukRetailerBrandedBoost(input: {
+  query: string;
+  name: string;
+  source: FoodSearchTrustSource;
+}): number {
+  const retailer = queryLeadingUkRetailer(input.query);
+  if (!retailer) return 0;
+  if (input.source !== "FatSecret" && input.source !== "OFF") return 0;
+  if (!foodNameIncludesUkRetailer(input.name, retailer)) return 0;
+  return 0.38;
+}
+
+/**
  * When the user typed a multi-word query whose first token looks like a brand
  * ("starbucks latte"), demote verified USDA generics that don't mention that
  * brand ("Latte, coffee") so FatSecret/OFF branded rows can win honestly.
@@ -514,6 +545,16 @@ export function foodSearchRankScore(input: {
       verified: input.verified,
     }) +
     ukRetailerGenericRowPenalty({
+      query: input.query,
+      name: input.name,
+      source: input.source,
+    }) +
+    ukRetailerQueryUsdaPenalty({
+      query: input.query,
+      name: input.name,
+      source: input.source,
+    }) +
+    ukRetailerBrandedBoost({
       query: input.query,
       name: input.name,
       source: input.source,
