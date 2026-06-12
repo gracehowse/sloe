@@ -46,7 +46,7 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AHuEHuKyt8POeAEKzQ0gBUo` | F-170 | ⏳ | Very odd spacing |
 | `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** tab-blur + **PR #391** in-tab deep-link dismiss (launch queue #8); pending TF58+ |
 | `AJQL077DLT8fEgDX69f-_qQ` | F-172 | ⏳ | Review styling (unspecified surface) |
-| `APA3hfV90AqxrDdUEl5ILP0` | F-173 | ⏳ | Need ingredient switcher like before |
+| `APA3hfV90AqxrDdUEl5ILP0` | F-173 | 🔄 | Need ingredient switcher like before — **ENG-1066** visible Swap pill on verify rows (PR pending) |
 | `ALFGUcreM4vMYwtxCsQK1Sk` | F-174 | ⏳ | Card corner radii inconsistent |
 | `AHnw-5uxweSfR5sbJcuuR5s` | F-175 | ⏳ | Card corner radii inconsistent (recurrence) |
 | `AONgkKyACkIXK9NdoALp9yw` | F-176 | ⏳ | Random/inconsistent visual treatment |
