@@ -879,6 +879,21 @@ export default function TrackerScreen() {
     // _t is a cache-buster so re-navigating to the same date still fires
   }, [params.date, params._t]);
 
+  // Launch queue #8 — dismiss LogSheet when an in-tab deep link arrives
+  // while the sheet is open (date jump, edit-meal). Tab-blur dismiss when
+  // leaving Today is ENG-1061; this covers params that mutate without
+  // switching tabs.
+  useEffect(() => {
+    if (params.openLog === "1") return;
+    const hasDate =
+      params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date);
+    const hasEdit =
+      typeof params.editMealId === "string" && params.editMealId.length > 0;
+    if (hasDate || hasEdit) {
+      setFabSheetOpen(false);
+    }
+  }, [params.date, params._t, params.editMealId, params.openLog]);
+
   // 2026-04-30 — `?openLog=1` deep-link from the centered raised Log
   // button in `<SupprTabBar>` (and external entry: push / Siri / widget
   // URLs). ENG-1009 (2026-06-10): consumed via `useFocusEffect` keyed on

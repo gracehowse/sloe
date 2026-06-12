@@ -403,7 +403,8 @@ Lean narrative on **social-caption import + macro fit** — code now supports di
 ### Journey 2 — Food logging · prior pass PASS
 - **Screens:** Log sheet → search "chicken breast."
 - **Observations:** Verified/Estimated badges, per-serving macros + grams, past-logged section, barcode/voice/camera — best-in-class vs MFP.
-- **Bug:** Deep link while Log sheet open does not dismiss modal — **PARTIAL** (tab-blur dismiss **PASS** via [PR #389](https://github.com/gracehowse/Suppr/pull/389); deep-link-while-open still UNVERIFIED).
+- **Bug (F-161/F-162):** OFF/FatSecret micros missing in search preview — **PARTIAL** (merged [PR #390](https://github.com/gracehowse/Suppr/pull/390); TF58 device verify pending).
+- **Bug:** Deep link while Log sheet open does not dismiss modal — **PARTIAL** (tab-blur dismiss **PASS** via [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab `?date=` / `?editMealId=` dismiss **PASS** pending PR).
 - **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix, **UNVERIFIED** in UI.
 
 ### Journey 3 — Recipes (Library + Discover) · prior pass PASS
