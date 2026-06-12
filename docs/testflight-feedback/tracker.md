@@ -41,10 +41,10 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AFZj_4nb_ZkWsB6Vo8CtTIk` | F-165 | ⏳ | Today ring too fat (recurrence) |
 | `AKl9Qa-hirQvclFmiWfcZg4` | F-166 | ⏳ | Page looks dull (styling) |
 | `AL7_vBNNxcg1jrgB9o8fwms` | F-167 | ⏳ | Inconsistent button styles / not cohesive |
-| `AKtXKSnRdbli2_NJ7Hroov0` | F-168 | ⏳ | List slow to load |
+| `AKtXKSnRdbli2_NJ7Hroov0` | F-168 | 🔄 | List slow to load — **ENG-1063** stale-while-revalidate on Library tab-focus refresh (PR pending) |
 | `AIzVrhOEKFsC4ZoDnSePlRo` | F-169 | ⏳ | Odd spacing |
 | `AHuEHuKyt8POeAEKzQ0gBUo` | F-170 | ⏳ | Very odd spacing |
-| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** merged (LogSheet dismiss on tab blur); pending TF58+ |
+| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** tab-blur + **PR #391** in-tab deep-link dismiss (launch queue #8); pending TF58+ |
 | `AJQL077DLT8fEgDX69f-_qQ` | F-172 | ⏳ | Review styling (unspecified surface) |
 | `APA3hfV90AqxrDdUEl5ILP0` | F-173 | ⏳ | Need ingredient switcher like before |
 | `ALFGUcreM4vMYwtxCsQK1Sk` | F-174 | ⏳ | Card corner radii inconsistent |

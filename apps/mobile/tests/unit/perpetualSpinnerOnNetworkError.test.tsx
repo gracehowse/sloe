@@ -152,4 +152,39 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
     });
     expect(result.current.recipes).toEqual([]);
   });
+
+  it("uses background refreshing (not loading gate) when warm cache exists (ENG-1063)", async () => {
+    const cached = [{ id: "cached-1", title: "Cached Meal" }];
+    getCachedSavedRecipesMock.mockResolvedValue(cached);
+
+    const slowChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ data: [], error: null }), 200);
+          }),
+      ),
+      in: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    supabaseFromMock.mockReturnValue(slowChain);
+
+    const { useSavedLibraryRecipes } = await import("@/lib/recipes");
+    const { result } = renderHook(() =>
+      useSavedLibraryRecipes("returning-user-with-cache"),
+    );
+
+    await waitFor(() => expect(result.current.recipes).toEqual(cached), {
+      timeout: 500,
+    });
+
+    // Stale-while-revalidate: list stays visible; gate is `refreshing` not `loading`.
+    expect(result.current.loading).toBe(false);
+    expect(result.current.refreshing).toBe(true);
+
+    await waitFor(() => expect(result.current.refreshing).toBe(false), {
+      timeout: 2000,
+    });
+  });
 });
