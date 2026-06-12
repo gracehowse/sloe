@@ -1605,7 +1605,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             type="text"
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="e.g. SUPPR_PRO"
+            placeholder="e.g. SLOE_PRO"
             autoComplete="off"
             className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />

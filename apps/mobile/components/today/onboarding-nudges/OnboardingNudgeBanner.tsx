@@ -360,7 +360,11 @@ export function OnboardingNudgeBanner({
           style={({ pressed }) => ({
             paddingHorizontal: Spacing.lg,
             height: 36,
-            borderRadius: Radius.sm + 2,
+            // ENG-1064 (TF57 F-167): was `Radius.sm + 2` (6) — off-scale
+            // arithmetic. Snap to the canonical Today outline-CTA radius
+            // `Radius.sm` (4) so this matches the empty-state / eat-again
+            // outline buttons.
+            borderRadius: Radius.sm,
             backgroundColor: "transparent",
             borderWidth: 1.5,
             borderColor: accent.primarySolid,

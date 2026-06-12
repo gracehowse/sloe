@@ -163,8 +163,15 @@ export function TodayCompleteDayModal({
             onPress={onViewProgress}
             style={({ pressed }) => ({
               width: "100%",
-              paddingVertical: 16,
-              borderRadius: Radius.md,
+              // ENG-1064 (TF57 F-167): full-width prominent modal CTA is the
+              // "large" outline tier — Radius.xl, matching its web twin
+              // `today-complete-day-dialog`'s xl-radius TIER (web --radius-xl
+              // resolves 10px vs mobile 12px — a pre-existing token-scale
+              // divergence, same intent, not pixel-exact), not the small
+              // inline Radius.md it had drifted to. Spacing.md vertical
+              // padding (was a literal 16).
+              paddingVertical: Spacing.md,
+              borderRadius: Radius.xl,
               backgroundColor: "transparent",
               borderWidth: 1.5,
               borderColor: accent.primarySolid,
