@@ -112,10 +112,23 @@ function useAnimatedNumber(
 // ~46% of screen width to match the Figma 01 frame. The Sloe prototype draws
 // `multiRing` at size 220 in a 500px frame (44%); the old fixed 140 read ~36%
 // on an iPhone 17 — noticeably smaller than the Figma. Geometry uses the
-// prototype's exact ratios (calorie radius 0.44·S, calorie stroke 0.05·S,
-// macro arcs 0.028·S at radii 0.368/0.314/0.259·S) so the arcs keep the
-// prototype's weight at the larger size. Capped so it can't get silly on a
-// large device.
+// prototype's exact ratios (calorie radius 0.44·S, macro arcs 0.028·S) so the
+// arcs keep the prototype's weight at the larger size. Capped so it can't get
+// silly on a large device.
+//
+// ENG-1064 (TF57 F-164/165, Grace TWICE: "Today ring too fat — match macro
+// ring stroke width"): in the MULTI-RING (expanded) state the hero calorie
+// stroke now equals the macro stroke (0.028·S) instead of the old fatter
+// 0.05·S, so the concentric rings read as one even family rather than a fat
+// outer band around thin inner arcs. The collapsed SINGLE-ring mode keeps its
+// confident 0.085·S Apple-class stroke — no macro rings render there, so there
+// is nothing to mismatch. With the hero stroke thinned, the macro radii ratios
+// were re-derived (0.3855 / 0.3310 / 0.2765) so every adjacent gap stays even
+// (~6.5px at S=230, scaling proportionally) instead of leaving an awkward wide
+// calorie→protein gap. R (0.44·S) is unchanged, so the ring diameters and the
+// centre number layout do not shift; the innermost arc moves slightly OUTWARD,
+// giving the centre numeral marginally more room (never less). Web parity:
+// `src/lib/nutrition/calorieRingGeometry.ts`.
 const SCREEN_W = Dimensions.get("window").width;
 const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
 // Fresh-eyes §5 (2026-06-10): the EMPTY-state hero shrinks to ~72% — a
@@ -124,16 +137,19 @@ const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
 // prototype's arc ratios hold at either size.
 export function ringGeometry(compact: boolean, bold = false) {
   const SIZE = compact ? Math.round(BASE_SIZE * 0.72) : BASE_SIZE;
+  const MACRO_STROKE = Math.max(4, Math.round(SIZE * 0.028));
   return {
     SIZE,
     // Collapsed single-ring mode wears a confident Apple-class stroke
-    // (0.085·S); the multi-ring keeps the thinner 0.05·S so five arcs
-    // don't collide (2026-06-10, Grace composition feedback).
-    STROKE: Math.round(SIZE * (bold ? 0.085 : 0.05)),
-    MACRO_STROKE: Math.max(4, Math.round(SIZE * 0.028)),
+    // (0.085·S); the multi-ring hero stroke MATCHES the macro stroke exactly
+    // (ENG-1064 / TF57 F-164/165) so concentric arcs read as one even family.
+    STROKE: bold ? Math.round(SIZE * 0.085) : MACRO_STROKE,
+    MACRO_STROKE,
     CX: SIZE / 2,
     R: Math.round(SIZE * 0.44),
-    MACRO_R: [SIZE * 0.368, SIZE * 0.314, SIZE * 0.259],
+    // Even-gap ratios (ENG-1064): re-derived from R=0.44·S, stroke=0.028·S and a
+    // constant 0.0265·S gap so calorie→protein and the inter-macro gaps match.
+    MACRO_R: [SIZE * 0.3855, SIZE * 0.331, SIZE * 0.2765],
   };
 }
 const CIRC = (r: number) => 2 * Math.PI * r;

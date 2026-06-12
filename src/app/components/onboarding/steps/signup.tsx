@@ -208,7 +208,7 @@ export function SignupStep() {
           aria-label="Agree to Terms of Service and Privacy Policy"
         />
         <span>
-          I agree to Suppr&apos;s{" "}
+          I agree to Sloe&apos;s{" "}
           <a
             href="/terms"
             target="_blank"

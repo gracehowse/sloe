@@ -63,7 +63,7 @@ export function TodayEatAgainBanner({
       <button
         type="button"
         onClick={onLog}
-        className="px-3 py-1.5 rounded-lg text-[11px] font-bold border-[1.5px] border-primary-solid bg-background text-primary-solid hover:bg-primary/5"
+        className="px-3 py-1.5 rounded-md text-[11px] font-bold border-[1.5px] border-primary-solid bg-background text-primary-solid hover:bg-primary/5"
         aria-label={`Log ${suggestion.recipeTitle} to ${slot}`}
       >
         Log it

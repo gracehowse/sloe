@@ -243,10 +243,13 @@ function DailyRing({
   // comfortably. Audit flagged the macro arcs as "too thin to read at
   // a glance" — fattening reads them as macros, not hairlines.
   const macroStroke = macroStrokeProp ?? Math.max(4, Math.round(size * 0.028));
+  // Fallback kept in lockstep with calorieRingGeometry.ts (F-164/165 stroke
+  // parity, 2026-06-12) so a prop-less consumer can never silently
+  // re-introduce the old fat-ring geometry.
   const macroRadii: [number, number, number] = macroRadiiProp ?? [
-    Math.round(size * 0.368),
-    Math.round(size * 0.314),
-    Math.round(size * 0.259),
+    Math.round(size * 0.3855),
+    Math.round(size * 0.331),
+    Math.round(size * 0.2765),
   ];
 
   const macroRings = [

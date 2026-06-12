@@ -201,7 +201,7 @@ export function NotificationProvider({
             .insert({
               user_id: authedUserId,
               kind: "welcome",
-              title: "Welcome to Suppr",
+              title: "Welcome to Sloe",
               body: "You'll see updates here when your plan is ready and when creators you follow publish new recipes.",
               recipe_id: null,
             })

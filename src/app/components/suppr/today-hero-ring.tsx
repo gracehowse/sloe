@@ -44,7 +44,7 @@ function HeroStatusChip({ state }: { state: ChipState }) {
       : state === "empty"
         ? {
             label: todayStatusChip("empty"),
-            className: "bg-[#EDEAF1] text-foreground-brand",
+            className: "bg-ring-bg text-foreground-brand",
             Icon: Sparkles,
           }
         : {
@@ -139,7 +139,12 @@ export function TodayHeroRing({
         consumed={consumed}
         target={target}
         size={ringGeometry.size}
-        strokeWidth={ringGeometry.strokeWidth}
+        // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+        // the macro stroke; the collapsed lone ring keeps the confident bold
+        // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+        strokeWidth={
+          expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
+        }
         ringRadius={ringGeometry.radius}
         macroRadii={ringGeometry.macroRadii}
         macroStroke={ringGeometry.macroStroke}

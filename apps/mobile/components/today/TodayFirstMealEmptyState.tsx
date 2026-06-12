@@ -68,7 +68,7 @@ export function TodayFirstMealEmptyState({
           ...Type.caption,
           color: textSecondaryColor,
           textAlign: "center",
-          paddingHorizontal: 8,
+          paddingHorizontal: Spacing.sm,
         }}
       >
         Search a food, scan a barcode, or paste a recipe — your day starts here.
@@ -85,7 +85,7 @@ export function TodayFirstMealEmptyState({
           ...Type.caption,
           color: textSecondaryColor,
           textAlign: "center",
-          paddingHorizontal: 8,
+          paddingHorizontal: Spacing.sm,
         }}
       >
         No pressure — log when you&apos;re ready.
@@ -102,13 +102,17 @@ export function TodayFirstMealEmptyState({
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
-          paddingHorizontal: 16,
+          // ENG-1064 (TF57 F-167): snap to the canonical Today outline-CTA
+          // grammar — Spacing.md padding, Radius.sm corner (= web Button
+          // primitive `rounded-md` 4px), so this button matches the eat-again /
+          // weekly-checkin outline buttons instead of being a notch rounder.
+          paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.dense,
-          borderRadius: Radius.md,
+          borderRadius: Radius.sm,
           backgroundColor: "transparent",
           borderWidth: 1.5,
           borderColor: accent.primarySolid,
-          marginTop: 4,
+          marginTop: Spacing.xs,
           opacity: pressed ? 0.6 : 1,
         })}
       >
@@ -124,7 +128,7 @@ export function TodayFirstMealEmptyState({
             alignItems: "center",
             gap: Spacing.sm,
             marginTop: Spacing.sm,
-            paddingHorizontal: 4,
+            paddingHorizontal: Spacing.xs,
           }}
         >
           <Sparkles size={11} color={textSecondaryColor} />
@@ -143,7 +147,7 @@ export function TodayFirstMealEmptyState({
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Dismiss tip"
-            style={{ paddingHorizontal: 4 }}
+            style={{ paddingHorizontal: Spacing.xs }}
           >
             <Text style={{ ...Type.body, color: textSecondaryColor }}>×</Text>
           </Pressable>

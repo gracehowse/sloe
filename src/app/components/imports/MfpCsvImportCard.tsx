@@ -174,8 +174,8 @@ export function MfpCsvImportCard({
     ? `Bring your ${highlightApp} history`
     : "Import from another app";
   const body = highlighted
-    ? `Upload your ${highlightApp} CSV export and we'll bring your meal history into Suppr — your numbers stay exactly as you logged them.`
-    : "MyFitnessPal, Lose It, or Cronometer — upload the CSV export and we'll bring your meal history into Suppr without changing the macros you already logged.";
+    ? `Upload your ${highlightApp} CSV export and we'll bring your meal history into Sloe — your numbers stay exactly as you logged them.`
+    : "MyFitnessPal, Lose It, or Cronometer — upload the CSV export and we'll bring your meal history into Sloe without changing the macros you already logged.";
 
   return (
     <SupprCard

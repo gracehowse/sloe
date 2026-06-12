@@ -112,7 +112,7 @@ export const HOW_IT_WORKS: HowItWorksStep[] = [
     n: 1,
     title: "Paste a link — we handle the rest",
     body:
-      "Drop a URL from Instagram, TikTok, YouTube, or any recipe blog with structured data. Suppr imports ingredients, steps, and photos in seconds.",
+      "Drop a URL from Instagram, TikTok, YouTube, or any recipe blog with structured data. Sloe imports ingredients, steps, and photos in seconds.",
   },
   {
     n: 2,
@@ -123,7 +123,7 @@ export const HOW_IT_WORKS: HowItWorksStep[] = [
     n: 3,
     title: "Plan weeks that hit your targets",
     body:
-      "Build plans from your saved recipes and Suppr picks combinations that land on your macro targets. Generate a shopping list, then cook.",
+      "Build plans from your saved recipes and Sloe picks combinations that land on your macro targets. Generate a shopping list, then cook.",
   },
   {
     n: 4,
@@ -230,7 +230,7 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
   },
   {
     q: "Is this a diet app?",
-    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming, and our targets are based on Mifflin-St Jeor so you can override them. We do have streaks — but they're protective: miss a day and a freeze keeps the streak alive. No pressure, no punishing copy.",
+    a: "No. Sloe is a personal tracking tool, not a medical device. We don't do leaderboards or shaming, and our targets are based on Mifflin-St Jeor so you can override them. We do have streaks — but they're protective: miss a day and a freeze keeps the streak alive. No pressure, no punishing copy.",
   },
   // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
   // (monetisation-architect round-2): parking a placeholder with no

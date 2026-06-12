@@ -148,7 +148,14 @@ function DesktopHeroStats({
           consumed={consumed}
           target={target}
           size={DESKTOP_RING_GEOMETRY.size}
-          strokeWidth={DESKTOP_RING_GEOMETRY.strokeWidth}
+          // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+          // the macro stroke; the collapsed lone ring keeps the confident bold
+          // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+          strokeWidth={
+            expanded
+              ? DESKTOP_RING_GEOMETRY.strokeWidth
+              : DESKTOP_RING_GEOMETRY.strokeWidthBold
+          }
           ringRadius={DESKTOP_RING_GEOMETRY.radius}
           macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
           macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
@@ -275,7 +282,7 @@ function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
       : state === "empty"
         ? {
             label: todayStatusChip("empty"),
-            className: "bg-[#EDEAF1] text-primary",
+            className: "bg-ring-bg text-foreground-brand",
             Icon: Sparkles,
           }
         : {

@@ -22,7 +22,7 @@ import { isFeatureEnabled, getFeatureFlagPayload } from "../../../lib/analytics/
 
 const FLAG = "dr-full-outage-banner";
 const DEFAULT_BODY =
-  "Suppr is temporarily having issues. We're on it — updates at status.suppr.club.";
+  "Sloe is temporarily having issues. We're on it — updates at status.suppr.club.";
 
 type OutagePayload = { title?: string; body?: string };
 
