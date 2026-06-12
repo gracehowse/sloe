@@ -670,6 +670,16 @@ export default function VerifyScreen() {
     ingDetail: { fontSize: 13, color: colors.textSecondary },
     ingOriginal: { fontSize: 11, color: colors.textTertiary, fontStyle: "italic", marginTop: 2 },
     ingCals: { fontSize: 15, fontWeight: "700", color: colors.text, marginRight: Spacing.sm, fontVariant: ["tabular-nums"] },
+    swapPill: {
+      paddingHorizontal: Spacing.dense,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: accent.primary + "50",
+      backgroundColor: accent.primary + "12",
+      marginRight: Spacing.sm,
+    },
+    swapPillText: { color: accent.primary, fontSize: 12, fontWeight: "700" },
     chevron: { marginLeft: Spacing.xs },
 
     // Expanded section
@@ -928,6 +938,18 @@ export default function VerifyScreen() {
                   ) : null}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
+                <Pressable
+                  style={styles.swapPill}
+                  onPress={() => {
+                    setSearchIndex(i);
+                    setExpandedIndex(null);
+                    void Haptics.selectionAsync();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Swap match for ${displayName}`}
+                >
+                  <Text style={styles.swapPillText}>Swap</Text>
+                </Pressable>
                 <Ionicons
                   name={expanded ? "chevron-down" : "chevron-forward"}
                   size={18}

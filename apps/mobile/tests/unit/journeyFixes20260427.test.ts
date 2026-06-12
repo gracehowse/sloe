@@ -125,6 +125,20 @@ describe("Fix 3 — Recipe verify routes to detail after successful save", () =>
   });
 });
 
+// ── ENG-1066 — Visible Swap on verify rows (F-173) ───────────────────
+
+describe("ENG-1066 — Recipe verify exposes visible Swap affordance", () => {
+  it("collapsed ingredient rows render a Swap pill that opens food search", () => {
+    expect(SRC.verify).toMatch(/<Text style=\{styles\.swapPillText\}>Swap<\/Text>/);
+    expect(SRC.verify).toMatch(
+      /accessibilityLabel=\{`Swap match for \$\{displayName\}`\}/,
+    );
+    expect(SRC.verify).toMatch(
+      /setSearchIndex\(i\);[\s\S]{0,80}setExpandedIndex\(null\)/,
+    );
+  });
+});
+
 // ── Fix 4 — Profile target editor parity ─────────────────────────────
 
 describe("Fix 4 — Profile target editor matches web parity", () => {
