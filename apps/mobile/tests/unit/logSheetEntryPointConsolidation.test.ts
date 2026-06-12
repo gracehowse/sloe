@@ -26,6 +26,17 @@ import * as path from "node:path";
 
 const indexPath = path.resolve(__dirname, "../../app/(tabs)/index.tsx");
 const indexSrc = fs.readFileSync(indexPath, "utf8");
+// 2026-06-12 (audit P2 #5): the openLog open/clear + the two dismissal
+// effects moved out of index.tsx into `hooks/useLogSheetDeepLinks.ts` so
+// they can be exercised with `renderHook` (see useLogSheetDeepLinks.test.ts)
+// rather than only source-grepped. The dismissal pins below now pin the
+// hook wiring + the hook's behaviours; the behavioural guard is the mounted
+// renderHook test.
+const deepLinkHookPath = path.resolve(
+  __dirname,
+  "../../hooks/useLogSheetDeepLinks.ts",
+);
+const deepLinkHookSrc = fs.readFileSync(deepLinkHookPath, "utf8");
 
 describe("LogSheet entry-point consolidation (mobile)", () => {
   it("Today composition root no longer imports the legacy <TodayFabSheet>", () => {
@@ -41,28 +52,47 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
     expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
 
-  it("centered raised Log button opens the canonical sheet via `?openLog=1` (replaces the side <LogFab>, 2026-04-30)", () => {
-    // The side `<LogFab>` was retired 2026-04-30 (customer-lens
-    // audit). The new entry point is the centered raised button in
-    // `<SupprTabBar>`, which routes Today with `?openLog=1`. Pin the
-    // consumer effect here so a regression that drops the deep-link
-    // wiring (and therefore breaks the tab bar Log button) fails CI.
+  it("wires the extracted useLogSheetDeepLinks hook (open/clear + dismissal)", () => {
+    // 2026-06-12 (audit P2 #5): all three LogSheet deep-link behaviours
+    // moved into `useLogSheetDeepLinks`. Pin that index.tsx imports and
+    // invokes it, threading the live params + the fab setters + the
+    // param-clear callback. A regression that drops the wiring (and
+    // therefore breaks the tab bar Log button + the dismissals) fails CI
+    // here; the behaviour itself is proven in useLogSheetDeepLinks.test.ts.
+    expect(indexSrc).toContain(
+      'import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks"',
+    );
     expect(indexSrc).toMatch(
+      /useLogSheetDeepLinks\(\{[\s\S]{0,400}?params,[\s\S]{0,400}?setFabSheetOpen,/,
+    );
+    expect(indexSrc).toMatch(/clearOpenLogParams:/);
+    // The param-clear still routes through router.setParams clearing both
+    // openLog + the _t cache-buster, so back-nav doesn't re-open the sheet.
+    expect(indexSrc).toMatch(
+      /router\.setParams\(\{ openLog: undefined, _t: undefined \}/,
+    );
+  });
+
+  it("the hook opens the canonical sheet via `?openLog=1` (replaces the side <LogFab>, 2026-04-30)", () => {
+    // The side `<LogFab>` was retired 2026-04-30 (customer-lens audit).
+    // The entry point is the centered raised button in `<SupprTabBar>`,
+    // which routes Today with `?openLog=1`; the hook consumes it.
+    expect(deepLinkHookSrc).toMatch(
       /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
     );
   });
 
-  it("dismisses LogSheet when Today loses focus (ENG-1061 / launch queue #8)", () => {
-    expect(indexSrc).toMatch(
+  it("the hook dismisses LogSheet when Today loses focus (ENG-1061 / launch queue #8)", () => {
+    expect(deepLinkHookSrc).toMatch(
       /ENG-1061[\s\S]+?useFocusEffect[\s\S]+?return \(\) => \{[\s\S]+?setFabSheetOpen\(false\)/,
     );
   });
 
-  it("dismisses LogSheet on in-tab deep links (date, editMealId) — launch queue #8", () => {
-    expect(indexSrc).toMatch(
-      /Launch queue #8[\s\S]+?params\.openLog === "1"[\s\S]+?return;[\s\S]+?setFabSheetOpen\(false\)/,
+  it("the hook dismisses LogSheet on in-tab deep links (date, editMealId) — launch queue #8 / PR #391", () => {
+    expect(deepLinkHookSrc).toMatch(
+      /params\.openLog === "1"[\s\S]+?return;[\s\S]+?setFabSheetOpen\(false\)/,
     );
-    expect(indexSrc).toMatch(/params\.editMealId/);
+    expect(deepLinkHookSrc).toMatch(/params\.editMealId/);
   });
 });
 

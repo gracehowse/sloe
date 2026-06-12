@@ -72,7 +72,7 @@ import Svg, {
   Rect,
   Stop,
 } from "react-native-svg";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, FontWeight, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -1938,7 +1938,12 @@ export default function FoodSearchPanel({
           ) : null}
           {previewEatenAtEnabled ? (
             <>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.xs }}>
+              {/* Token retrofit (audit 2026-06-12 P2): the `fontSize:11 /
+                  fontWeight:"700"` uppercase label was the value-identical
+                  `Type.label` ramp step (11/700, uppercase). Swapped — colour +
+                  marginTop stay call-site overrides. letterSpacing snaps 1 →
+                  0.88 (the token's 0.08em, sub-perceptible at 11px). */}
+              <Text style={{ ...Type.label, color: colors.textTertiary, marginTop: Spacing.xs }}>
                 TIME EATEN
               </Text>
               <TextInput
@@ -1956,8 +1961,12 @@ export default function FoodSearchPanel({
                   paddingHorizontal: Spacing.md,
                   paddingVertical: Spacing.sm,
                   color: colors.text,
+                  // `fontWeight` snapped to the `FontWeight.semibold` token.
+                  // `fontSize: 16` kept deliberately — it's the iOS no-zoom
+                  // input size (≥16 prevents focus zoom), and there is no
+                  // value-identical Type token at 16 (ramp is 14/17/20).
                   fontSize: 16,
-                  fontWeight: "600",
+                  fontWeight: FontWeight.semibold,
                 }}
               />
             </>

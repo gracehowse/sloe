@@ -23,6 +23,7 @@ import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
+import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import {
   dateKeyFromDate,
   newMealId,
@@ -31,6 +32,10 @@ import {
   type ByDay,
   type JournalMeal,
 } from "@/lib/nutritionJournal";
+import {
+  buildNutritionEntryRow,
+  buildNutritionEntryUpdatePayload,
+} from "@/lib/nutritionEntryRow";
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
@@ -71,7 +76,6 @@ import {
 } from "@suppr/shared/nutrition/activityBonus";
 import { countWeighInDaysInWindow } from "@suppr/shared/nutrition/weighInDays";
 import { scaleMacroTargetsForCalorieBudget } from "@suppr/shared/nutrition/scaleMacroTargetsForCalorieBudget";
-import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
 import {
   resolvePlannedMealLogTitles,
 } from "@suppr/shared/nutrition/resolveRecipeLogTitles";
@@ -111,6 +115,7 @@ import {
   localTimeInputValueFromIso,
   nutritionEntryDateKeyAndEatenAt,
   parseLocalTimeInput,
+  reanchorMealEatenAt,
 } from "@suppr/shared/nutrition/mealEatenAt";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
@@ -388,12 +393,6 @@ function formatMealTimeDisplay(
   return formatMealTimeFromChronology({ eatenAt, createdAt });
 }
 
-// 2026-05-08 data-loss hotfix — was a per-render `const` inside the
-// component (line ~3620). Lifted to module-level so the persistence
-// helpers below can reference it from earlier in the component body
-// without TDZ ordering errors.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast" in
 // the afternoon was logging picks as Snacks. Two reasons: (1) the
 // pick-handlers used `currentSlotFromTime` instead of `activeMealSlot`,
@@ -505,30 +504,10 @@ export default function TrackerScreen() {
         );
         return true;
       }
-      const dbRows = meals.map((m) => {
-        const id = UUID_RE.test(m.id) ? m.id : newMealId();
-        const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(m, targetDayKey);
-        return {
-          id,
-          user_id: userId,
-          date_key: dateKey,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          time_label: m.time,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          fiber_g: m.fiberG ?? null,
-          water_ml: m.waterMl ?? null,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          nutrition_micros:
-            m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-          source: canonicalNutritionEntrySource(m.source),
-          recipe_id: m.recipeId ?? null,
-          eaten_at: eatenAt,
-        };
-      });
+      // ENG (launch-audit P1-2) — single shared row-builder so this
+      // immediate path and the 600ms backstop (`useNutritionEntriesSync`)
+      // can never diverge on the `eaten_at` / `date_key` column set.
+      const dbRows = meals.map((m) => buildNutritionEntryRow(m, targetDayKey, userId));
       // Upsert (not insert) so a race with the 600ms debounced journal sync
       // never throws duplicate-key and rolls back an optimistic log.
       const { error } = await supabase
@@ -573,31 +552,13 @@ export default function TrackerScreen() {
   const persistMealUpdateImmediate = useCallback(
     async (mealId: string, updated: JournalMeal, dateKey: string): Promise<boolean> => {
       if (!userId) return true;
-      const { dateKey: resolvedDateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
-        updated,
-        dateKey,
-      );
+      // ENG (launch-audit P1-1) — shared builder mirrors persistMealsImmediate's
+      // column set + `eaten_at` / `date_key` derivation. `updated.eatenAt` already
+      // carries any time-edit the user made (saveEditMeal clamps it to the anchor
+      // day via the same helper), so no `localTime` override is passed here.
       const { error } = await supabase
         .from("nutrition_entries")
-        .update({
-          name: updated.name,
-          recipe_title: updated.recipeTitle,
-          time_label: updated.time,
-          calories: updated.calories,
-          protein: updated.protein,
-          carbs: updated.carbs,
-          fat: updated.fat,
-          fiber_g: updated.fiberG ?? null,
-          water_ml: updated.waterMl ?? null,
-          portion_multiplier: updated.portionMultiplier ?? 1,
-          nutrition_micros:
-            updated.micros && Object.keys(updated.micros).length > 0
-              ? updated.micros
-              : {},
-          source: canonicalNutritionEntrySource(updated.source),
-          date_key: resolvedDateKey,
-          eaten_at: eatenAt,
-        })
+        .update(buildNutritionEntryUpdatePayload(updated, dateKey))
         .eq("id", mealId)
         .eq("user_id", userId);
       if (error) {
@@ -879,55 +840,25 @@ export default function TrackerScreen() {
     // _t is a cache-buster so re-navigating to the same date still fires
   }, [params.date, params._t]);
 
-  // Launch queue #8 — dismiss LogSheet when an in-tab deep link arrives
-  // while the sheet is open (date jump, edit-meal). Tab-blur dismiss when
-  // leaving Today is ENG-1061; this covers params that mutate without
-  // switching tabs.
-  useEffect(() => {
-    if (params.openLog === "1") return;
-    const hasDate =
-      params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date);
-    const hasEdit =
-      typeof params.editMealId === "string" && params.editMealId.length > 0;
-    if (hasDate || hasEdit) {
-      setFabSheetOpen(false);
-    }
-  }, [params.date, params._t, params.editMealId, params.openLog]);
-
-  // 2026-04-30 — `?openLog=1` deep-link from the centered raised Log
-  // button in `<SupprTabBar>` (and external entry: push / Siri / widget
-  // URLs). ENG-1009 (2026-06-10): consumed via `useFocusEffect` keyed on
-  // the `_t` cache-buster — the same contract as the `date` param above —
-  // so re-navigating with openLog from any tab re-fires on focus even
-  // when the param value is unchanged. The previous plain `useEffect`
-  // without `_t` silently dropped repeat/warm deliveries. Params are
-  // cleared after the open state commits so a back-nav doesn't re-open
-  // the sheet.
-  useFocusEffect(
-    useCallback(() => {
-      if (params.openLog === "1") {
-        // 2026-05-08 build-47 follow-up — global tab-bar `+` is generic
-        // (not slot-specific). Reset activeMealSlot to time-of-day so the
-        // LogSheet header + the pick-handlers default to the right slot.
-        // The slot-specific `+ Breakfast` path overrides this immediately
-        // via its own setActiveMealSlot in onOpenFabForSlot.
-        setActiveMealSlot(slotForHour(new Date().getHours()));
-        setFabSheetOpen(true);
-        router.setParams({ openLog: undefined, _t: undefined } as Record<string, undefined>);
-      }
-    }, [params.openLog, params._t, router]),
-  );
-
-  // Launch queue #8 / F-171 (ENG-1061) — LogSheet is a Modal on Today.
-  // If `fabSheetOpen` stays true after switching tabs, the scrim blocks
-  // the tab bar and other screens (Recipes "not clickable").
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        setFabSheetOpen(false);
-      };
-    }, []),
-  );
+  // Launch queue #8 / ENG-1061 / PR #391 — all three LogSheet deep-link /
+  // dismissal behaviours (open on `?openLog=1` + clear, dismiss on in-tab
+  // date/editMealId without openLog, dismiss on tab blur) live in the
+  // extracted, unit-tested hook. The `?openLog=1` consumer resets
+  // activeMealSlot to time-of-day (build-47) and clears the consumed
+  // params after open so back-nav doesn't re-open the sheet.
+  useLogSheetDeepLinks({
+    params,
+    setFabSheetOpen,
+    setActiveMealSlot,
+    clearOpenLogParams: useCallback(
+      () =>
+        router.setParams({ openLog: undefined, _t: undefined } as Record<
+          string,
+          undefined
+        >),
+      [router],
+    ),
+  });
 
   // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
   // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
@@ -2257,10 +2188,17 @@ export default function TrackerScreen() {
     if (yesterdayMeals.length === 0) return;
     const newMeals: JournalMeal[] = await Promise.all(
       yesterdayMeals.map(async (m) => {
-        const meal: JournalMeal = {
-          ...cloneMealWithoutId(m),
-          id: newMealId(),
-        };
+        // Re-anchor `eatenAt` onto today — the clone keeps yesterday's
+        // instant, and the write path derives `date_key` from `eaten_at`,
+        // so an un-re-anchored clone would persist back onto YESTERDAY
+        // (launch-audit 2026-06-12 copy-path fix).
+        const meal: JournalMeal = reanchorMealEatenAt(
+          {
+            ...cloneMealWithoutId(m),
+            id: newMealId(),
+          } as JournalMeal,
+          dayKey,
+        );
         if (meal.recipeId) {
           const fresh = await fetchMobileCanonicalRecipeTitle(meal.recipeId);
           if (fresh) meal.recipeTitle = fresh;
@@ -4378,7 +4316,14 @@ export default function TrackerScreen() {
   const insertClonedRowsIntoDay = useCallback(
     async (targetDayKey: string, clones: Omit<JournalMeal, "id">[]): Promise<number> => {
       if (clones.length === 0) return 0;
-      const withIds: JournalMeal[] = clones.map((c) => ({ ...c, id: newMealId() } as JournalMeal));
+      // Re-anchor each clone's `eatenAt` onto the TARGET day (preserving
+      // wall-clock time) before it ever reaches memory or the DB — clones
+      // keep the source-day instant, and `buildNutritionEntryRow` derives
+      // `date_key` from `eaten_at`, so skipping this would bucket the copy
+      // back onto the source day (launch-audit 2026-06-12 copy-path fix).
+      const withIds: JournalMeal[] = clones.map((c) =>
+        reanchorMealEatenAt({ ...c, id: newMealId() } as JournalMeal, targetDayKey),
+      );
       setByDay((prev) => ({
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
@@ -4388,27 +4333,11 @@ export default function TrackerScreen() {
       // to the user, so both fire the same body-feedback tap.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (!userId) return withIds.length;
-      const dbRows = withIds.map((m) => ({
-        id: m.id,
-        user_id: userId,
-        date_key: targetDayKey,
-        name: m.name,
-        recipe_title: m.recipeTitle,
-        time_label: m.time,
-        calories: m.calories,
-        protein: m.protein,
-        carbs: m.carbs,
-        fat: m.fat,
-        fiber_g: m.fiberG ?? null,
-        water_ml: m.waterMl ?? null,
-        portion_multiplier: m.portionMultiplier ?? 1,
-        nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-        source: canonicalNutritionEntrySource(m.source),
-        // Schema refactor Phase 2 (2026-05-11) — propagate the recipe
-        // id through copy / duplicate so the cloned journal row keeps
-        // the typed FK link to recipes.id.
-        recipe_id: m.recipeId ?? null,
-      }));
+      // Single shared row shape (launch-audit P1-2 consolidation) — the
+      // builder guarantees `eaten_at` + the eaten-derived `date_key` are
+      // present (re-anchored above, so date_key === targetDayKey) and keeps
+      // the recipe_id FK propagation from Schema refactor Phase 2.
+      const dbRows = withIds.map((m) => buildNutritionEntryRow(m, targetDayKey, userId));
       const { error } = await supabase.from("nutrition_entries").insert(dbRows);
       if (error) {
         console.error("[tracker] copy/duplicate insert failed:", error.message);
@@ -4728,27 +4657,14 @@ export default function TrackerScreen() {
         [dk]: [...(prev[dk] ?? []), optimisticMeal],
       }));
 
-      const { error } = await supabase.from("nutrition_entries").insert({
-        id: entryId,
-        user_id: userId,
-        date_key: dk,
-        name: logSlotName,
-        recipe_title: logRecipeTitle,
-        time_label: optimisticMeal.time,
-        calories: optimisticMeal.calories,
-        protein: optimisticMeal.protein,
-        carbs: optimisticMeal.carbs,
-        fat: optimisticMeal.fat,
-        fiber_g: microsRes.fiberG,
-        water_ml: null,
-        nutrition_micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : {},
-        portion_multiplier: mult,
-        source: "Recipe",
-        // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
-        // Planner-log path has the recipe id in scope on `pm`. Auto-
-        // NULLed by Phase 1's FK if the recipe is later deleted.
-        recipe_id: pm.recipe_id ?? null,
-      });
+      // Single shared row shape (launch-audit P1-2 consolidation). Fresh
+      // planner log → no `eatenAt` on the optimistic meal → `eaten_at: null`
+      // with `date_key: dk`, byte-identical to the previous inline literal
+      // ("Recipe" is already canonical, recipe_id FK propagates via the
+      // builder — Schema refactor Phase 2 semantics preserved).
+      const { error } = await supabase
+        .from("nutrition_entries")
+        .insert(buildNutritionEntryRow(optimisticMeal, dk, userId));
       if (error) {
         // Roll back the optimistic add and tell the user.
         setByDay((prev) => ({

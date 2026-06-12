@@ -139,9 +139,14 @@ describe("ENG-1066 — Recipe verify exposes visible Swap affordance", () => {
     expect(SRC.verify).toMatch(/testID=\{`verify-ingredient-swap-\$\{i\}`\}/);
   });
 
-  it("supports agent fixture deeplink without Supabase (fixture=1)", () => {
+  it("supports agent fixture deeplink without Supabase (fixture=1), gated on __DEV__", () => {
     expect(SRC.verify).toMatch(/VERIFY_FIXTURE_INGREDIENTS/);
-    expect(SRC.verify).toMatch(/fixture === "1"/);
+    // Audit 2026-06-12 P2 #3: the param-presence check moved into the pure,
+    // unit-tested `fixtureModeRequested` helper (which owns the `fixture === "1"`
+    // literal) and the screen now ANDs it with `__DEV__` so fixture rows can't
+    // inject in a release build.
+    expect(SRC.verify).toMatch(/fixtureModeRequested\(\{\s*id,\s*fixture\s*\}\)/);
+    expect(SRC.verify).toMatch(/__DEV__/);
     expect(SRC.verify).toMatch(/testID="screen-recipe-verify-fixture"/);
   });
 });

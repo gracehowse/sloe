@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 
 import { supabase } from "@/lib/supabase";
-import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, type JournalMeal } from "@/lib/nutritionJournal";
+import {
+  buildNutritionEntryRow,
+  NUTRITION_ENTRY_UUID_RE as UUID_RE,
+} from "@/lib/nutritionEntryRow";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
-import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * 2026-05-16 — Today extract #3.
@@ -66,24 +67,15 @@ export function useNutritionEntriesSync(args: {
         healthKitWrittenIdsRef.current = { dayKey: dk, ids: new Set() };
       }
       if (todayMeals.length > 0) {
-        const rows = todayMeals.map((m) => ({
-          id: UUID_RE.test(m.id) ? m.id : newMealId(),
-          user_id: userId,
-          date_key: dk,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          time_label: m.time,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          fiber_g: m.fiberG ?? null,
-          water_ml: m.waterMl ?? null,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-          source: canonicalNutritionEntrySource(m.source),
-          recipe_id: m.recipeId ?? null,
-        }));
+        // ENG (launch-audit P1-2) — route the backstop through the SAME
+        // row-builder the immediate-persist paths use. Pre-fix this inline
+        // map omitted `eaten_at` and hard-coded `date_key` to the selected
+        // day, so a heterogeneous batch (or any future cross-day edit) could
+        // NULL a real consumption time or reset day-attribution. The builder
+        // derives `eaten_at` (preserved verbatim, or null) + an eaten-derived
+        // `date_key` (falling back to the selected day `dk` when null) and
+        // guarantees a uniform column set across every meal in the batch.
+        const rows = todayMeals.map((m) => buildNutritionEntryRow(m, dk, userId));
         void supabase
           .from("nutrition_entries")
           .upsert(rows, { onConflict: "id" })

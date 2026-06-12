@@ -5,12 +5,13 @@
  * Audit gap #1 (Cronometer parity, 2026-05-01): the 4-tile widget
  * answers the headline question; this sheet answers the breadth
  * question with all 35 curated nutrients across Macros / Vitamins /
- * Minerals %DV-sorted descending so deficiencies surface first.
+ * Minerals, %DV-sorted with target nutrients ascending (deficiencies
+ * first) and limit nutrients descending (overshoot first) — PR #397.
  *
  * Coverage:
  *   1. All three section headers render (Macros / Vitamins / Minerals).
- *   2. Within each section, rows are sorted by %DV descending — top
- *      row's %DV >= subsequent rows.
+ *   2. Within each section, target rows sort %DV ascending (deficiencies
+ *      first) and limit rows %DV descending (overshoot first).
  *   3. Source attribution footer renders the FDA citation.
  *   4. Limit-nutrient ramp: 100%+ sodium goes destructive, not green.
  *   5. visible=false renders nothing.
@@ -45,7 +46,8 @@ const COLORS = {
 /**
  * Fixture: at least 10 nutrients across all three sections, including
  * limit and target nutrients. The %DV % values are deliberately
- * heterogeneous so the descending-sort assertion has bite.
+ * heterogeneous so the target-ascending / limit-descending sort
+ * assertion has bite.
  */
 const MICRO_FIXTURE: Record<string, number> = {
   // Macros (mostly via macro overrides below — sodium / sat fat are

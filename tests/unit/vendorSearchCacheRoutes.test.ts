@@ -13,7 +13,8 @@
  *      CACHE the successful response (never an error/degraded — pinned by the
  *      "do not cache an upstream failure" case on Edamam/FatSecret).
  *   4. UPSTREAM FAILURE is NOT cached (Edamam/FatSecret swallow to ok+empty;
- *      `setCachedSearch` must NOT be called on that path).
+ *      OFF degrades honestly to a 200 `degraded` envelope — audit P2 #6;
+ *      `setCachedSearch` must NOT be called on any failure path).
  *
  * The cache module is mocked so each route's branch logic is asserted in
  * isolation, with no Redis and no live vendor calls.
@@ -290,11 +291,36 @@ describe("/api/off/search — cache + quota wiring (ENG-1059)", () => {
     );
   });
 
-  it("does NOT cache an OFF hard failure (502 path)", async () => {
+  it("HARD FAILURE — degrades honestly (200 + degraded envelope), does NOT cache", async () => {
+    // A hard OFF failure no longer 502s silently — it returns the same
+    // degraded envelope shape as quota exhaustion so both clients' degraded
+    // notice fires. The failure must still NOT be cached (only successes are).
     searchOffProductsMock.mockRejectedValueOnce(new Error("OFF 502"));
     const GET = await loadOff();
     const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
-    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({
+      ok: true,
+      hits: [],
+      degraded: true,
+      degradedReason: "off_unavailable",
+    });
+    // Static error message only — no raw upstream message in the envelope.
+    expect(json.message).toBeUndefined();
     expect(setCachedSearchMock).not.toHaveBeenCalled();
+  });
+
+  it("HARD FAILURE — consumes only the one attempt's quota, never spends extra on the degrade", async () => {
+    // The degraded-on-failure path must not double-spend quota: exactly one
+    // consumeQuota("off") for the single upstream attempt, and nothing more
+    // once it throws.
+    searchOffProductsMock.mockRejectedValueOnce(new Error("OFF unreachable"));
+    const GET = await loadOff();
+    const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, degraded: true, degradedReason: "off_unavailable" });
+    expect(consumeQuotaMock).toHaveBeenCalledTimes(1);
+    expect(consumeQuotaMock).toHaveBeenCalledWith("off");
   });
 });

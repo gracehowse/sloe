@@ -1749,9 +1749,14 @@ export async function lookupBarcode(
 
   // 2. Fall back to Open Food Facts API
   try {
+    // ENG (audit P3) — bound the direct OFF barcode lookup so a slow/hung OFF
+    // can't block the scan screen indefinitely. On timeout the fetch aborts and
+    // throws; the outer catch returns `null` (the same not-found/error contract
+    // every other failure here uses). Direct call is intentional for this pass —
+    // rerouting barcode through the proxy is tracked separately.
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${trimmed}.json`,
-      { headers: { Accept: "application/json" } },
+      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) },
     );
     // F-78 (2026-04-25) — guard res.ok before .json(). Without this, OFF
     // 429/5xx/HTML error pages throw `JSON Parse error` and surface as a

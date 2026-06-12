@@ -1,5 +1,36 @@
 import type { VerifiableIngredient } from "@/lib/verifyRecipe";
 
+/**
+ * Pure predicate: did the verify-screen route params REQUEST fixture mode?
+ *
+ * Param-presence only — does NOT consult `__DEV__`. The caller composes this
+ * with `&& __DEV__` so fixture mode is reachable ONLY in dev builds (audit
+ * 2026-06-12 P2 #3 — the fixture rows + the no-write Save guard were shippable
+ * in the release binary because the gate keyed on URL params alone). In a
+ * release build a stale/forged `?fixture=1` then falls through to the normal
+ * missing/stale-id path (the existing not-found behaviour).
+ *
+ * Kept separate from the `__DEV__` read so it's unit-testable without the RN
+ * global (the composition `fixtureModeRequested(params) && __DEV__` is pinned
+ * in `verifyRecipeFixture.test.ts`).
+ *
+ * Recognised shapes (unchanged from the original inline gate so the Maestro
+ * deeplink `suppr:///recipe/verify?fixture=1` and any `?id=fixture` variant
+ * keep working in dev):
+ *   - `fixture=1` / `fixture=true`
+ *   - `id=fixture`
+ */
+export function fixtureModeRequested(params: {
+  id?: string;
+  fixture?: string;
+}): boolean {
+  return (
+    params.fixture === "1" ||
+    params.fixture === "true" ||
+    (typeof params.id === "string" && params.id === "fixture")
+  );
+}
+
 /** Dev / Maestro fixture — matched ingredient rows for recipe verify (ENG-1066 / F-173). */
 export const VERIFY_FIXTURE_RECIPE = {
   title: "Agent fixture — Greek salad",

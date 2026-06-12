@@ -22,7 +22,9 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const REPO = resolve(__dirname, "../..");
-const INSERT_RE = /from\(\s*["']nutrition_entries["']\s*\)\.insert/;
+// `.insert` may sit on the next line after the launch-audit P1-2 builder
+// consolidation (`.from("nutrition_entries")\n  .insert(buildNutritionEntryRow(...))`).
+const INSERT_RE = /from\(\s*["']nutrition_entries["']\s*\)\s*\.insert/;
 const GUARD_RE = /macrosAreCoerced|wouldCoerceMacros|fetchPlannedMealMicros/;
 
 type Site = {

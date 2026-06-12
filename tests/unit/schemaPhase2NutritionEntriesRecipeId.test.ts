@@ -70,21 +70,30 @@ describe("Phase 2 — web journal builder threads recipe_id into the insert row"
 });
 
 describe("Phase 2 — mobile insert sites populate recipe_id", () => {
-  it("recipe detail log includes recipe_id: recipe.id", () => {
+  it("recipe detail log includes recipe_id: recipe.id (via buildNutritionEntryRow)", () => {
+    // Launch-audit P1-2 (2026-06-12): the insert now routes through the
+    // shared row-builder, which maps `recipeId` → `recipe_id`. Pin the
+    // JournalMeal carries `recipeId: recipe.id` AND the insert uses the
+    // builder (which the builder unit tests prove emits `recipe_id`).
     expect(MOBILE_RECIPE_DETAIL).toMatch(
-      /from\("nutrition_entries"\)\.insert\(\{[\s\S]*?recipe_id:\s*recipe\.id/,
+      /recipeId:\s*recipe\.id[\s\S]{0,400}?\.insert\(buildNutritionEntryRow\(/,
     );
   });
 
-  it("planner log (logPlannedMealWithPortion) includes recipe_id from pm", () => {
+  it("planner log (logPlannedMealWithPortion) includes recipe_id from pm (via buildNutritionEntryRow)", () => {
+    // The optimistic JournalMeal spreads `recipeId: pm.recipe_id` and the
+    // insert routes through the shared builder (recipeId → recipe_id).
     expect(MOBILE_TODAY).toMatch(
-      /from\("nutrition_entries"\)\.insert\(\{[\s\S]*?recipe_id:\s*pm\.recipe_id\s*\?\?\s*null/,
+      /pm\.recipe_id\s*\?\s*\{\s*recipeId:\s*pm\.recipe_id\s*\}[\s\S]{0,2400}?\.insert\(buildNutritionEntryRow\(optimisticMeal/,
     );
   });
 
-  it("copy/duplicate path propagates recipe_id from JournalMeal.recipeId", () => {
+  it("copy/duplicate path propagates recipe_id from JournalMeal.recipeId (via buildNutritionEntryRow)", () => {
+    // `insertClonedRowsIntoDay` builds every cloned row via the shared
+    // builder; the clone keeps `recipeId`, the builder maps it to
+    // `recipe_id` (pinned behaviourally in nutritionEntryRowPersistence).
     expect(MOBILE_TODAY).toMatch(
-      /recipe_id:\s*m\.recipeId\s*\?\?\s*null/,
+      /withIds\.map\(\(m\) => buildNutritionEntryRow\(m, targetDayKey, userId\)\)/,
     );
   });
 

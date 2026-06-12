@@ -33,8 +33,21 @@ type Site = {
   usesCanonicalHelper?: boolean;
   /** Pin the DB payload `source` field shape near the write site. */
   payloadPin: RegExp;
+  /**
+   * The shared row-builder module stamps `source` for every consumer but
+   * holds no `.from("nutrition_entries")` call itself — skip the
+   * write-site sanity check for it.
+   */
+  isRowBuilder?: boolean;
 };
 
+// Launch-audit P1-2 (2026-06-12): every mobile journal write now routes
+// through `buildNutritionEntryRow` / `buildNutritionEntryUpdatePayload`
+// (`apps/mobile/lib/nutritionEntryRow.ts`), which stamps
+// `canonicalNutritionEntrySource(meal.source)` centrally — so the mobile
+// site pins assert the BUILDER wiring, and the canonical-helper call is
+// pinned once on the builder module itself. healthSync stays a sanctioned
+// builder bypass (allow-listed in nutritionEntryRowPersistence.test.ts).
 const INVENTORY: Site[] = [
   {
     file: "src/context/appData/useNutritionJournalState.ts",
@@ -42,24 +55,33 @@ const INVENTORY: Site[] = [
     payloadPin: /source:\s*canonicalNutritionEntrySource\(meal\.source\)/,
   },
   {
-    file: "apps/mobile/hooks/useNutritionEntriesSync.ts",
+    file: "apps/mobile/lib/nutritionEntryRow.ts",
     usesCanonicalHelper: true,
-    payloadPin: /source:\s*canonicalNutritionEntrySource\(m\.source\)/,
+    isRowBuilder: true,
+    payloadPin: /source:\s*canonicalNutritionEntrySource\(meal\.source\)/,
+  },
+  {
+    file: "apps/mobile/hooks/useNutritionEntriesSync.ts",
+    payloadPin: /\.upsert\(rows|buildNutritionEntryRow\(/,
   },
   {
     file: "apps/mobile/app/(tabs)/index.tsx",
-    usesCanonicalHelper: true,
-    payloadPin:
-      /source:\s*canonicalNutritionEntrySource\(m\.source\)|source:\s*["']Recipe["']/,
+    payloadPin: /buildNutritionEntryRow\(/,
   },
   {
     file: "apps/mobile/app/recipe/[id].tsx",
-    payloadPin: /from\(["']nutrition_entries["']\)\.insert\([\s\S]{0,600}source:\s*["']Recipe["']/,
+    payloadPin:
+      /source:\s*["']Recipe["'][\s\S]{0,600}?\.insert\(buildNutritionEntryRow\(/,
   },
   {
     file: "apps/mobile/app/(tabs)/barcode.tsx",
     payloadPin:
-      /from\(["']nutrition_entries["']\)\.insert\([\s\S]{0,600}source:\s*["']barcode["']/,
+      /source:\s*["']barcode["'][\s\S]{0,600}?\.insert\(buildNutritionEntryRow\(/,
+  },
+  {
+    file: "apps/mobile/app/(tabs)/planner.tsx",
+    payloadPin:
+      /source:\s*["']Recipe["'][\s\S]{0,800}?\.insert\(buildNutritionEntryRow\(/,
   },
   {
     file: "apps/mobile/lib/healthSync.ts",
@@ -88,7 +110,9 @@ describe("nutrition_entries.source write parity (ENG-674 / ENG-689)", () => {
   for (const site of INVENTORY) {
     it(`${site.file} — stamps canonical source on write`, () => {
       const text = readFileSync(resolve(REPO, site.file), "utf8");
-      expect(text).toMatch(NUTRITION_ENTRIES_WRITE_RE);
+      if (!site.isRowBuilder) {
+        expect(text).toMatch(NUTRITION_ENTRIES_WRITE_RE);
+      }
       expect(text).toMatch(site.payloadPin);
       if (site.usesCanonicalHelper) {
         expect(text).toMatch(/canonicalNutritionEntrySource\s*\(/);

@@ -134,8 +134,12 @@ function EditEatenAtTimeField(props: {
             borderRadius: Radius.md,
             paddingHorizontal: Spacing.md,
             paddingVertical: Spacing.md,
-            fontSize: 14,
-            fontWeight: "500",
+            // Token retrofit (audit 2026-06-12 P2): the `fontSize:14 /
+            // fontWeight:"500"` literals were the value-identical `Type.body`
+            // ramp step — swapped so write-time discipline holds. `Type.body`
+            // adds the Inter family + lineHeight 20 (a no-op on a single-line
+            // input); size/weight pixels are unchanged.
+            ...Type.body,
           },
         ]}
         placeholder="HH:mm (24h)"
