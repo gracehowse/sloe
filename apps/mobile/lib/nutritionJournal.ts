@@ -19,6 +19,8 @@ export type JournalMeal = {
   source?: string | null;
   /** ISO from `nutrition_entries.created_at` when loaded (optional timestamps in UI). */
   createdAt?: string | null;
+  /** ENG-772 — consumption instant (`nutrition_entries.eaten_at`). */
+  eatenAt?: string | null;
   /**
    * Schema refactor Phase 2 (2026-05-11) — typed FK to `recipes.id`.
    * Mirrors web's `LoggedMeal.recipeId`. Populated for recipe-detail

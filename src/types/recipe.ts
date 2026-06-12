@@ -188,6 +188,8 @@ export interface LoggedMeal {
   imageUrl?: string | null;
   /** ISO timestamp when the entry was logged (journal sort / recency). */
   createdAt?: string;
+  /** ENG-772 — when the user ate this entry (`nutrition_entries.eaten_at`). */
+  eatenAt?: string | null;
 }
 
 export interface DayPlanMeal {

@@ -104,6 +104,14 @@ import {
   shouldShowMissedYesterday,
 } from "@suppr/shared/nutrition/missedYesterday";
 import { track, isFeatureEnabled } from "@/lib/analytics";
+import {
+  compareMealsByChronology,
+  defaultEatenAtForNewLog,
+  formatMealTimeFromChronology,
+  localTimeInputValueFromIso,
+  nutritionEntryDateKeyAndEatenAt,
+  parseLocalTimeInput,
+} from "@suppr/shared/nutrition/mealEatenAt";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
@@ -372,15 +380,12 @@ function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
   return pruned;
 }
 
-function formatMealTimeDisplay(time: string | undefined, createdAt?: string | null): string {
-  const t = time?.trim();
-  if (t) return t;
-  if (!createdAt) return "";
-  try {
-    return new Date(createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  } catch {
-    return "";
-  }
+function formatMealTimeDisplay(
+  _time: string | undefined,
+  createdAt?: string | null,
+  eatenAt?: string | null,
+): string {
+  return formatMealTimeFromChronology({ eatenAt, createdAt });
 }
 
 // 2026-05-08 data-loss hotfix — was a per-render `const` inside the
@@ -500,25 +505,30 @@ export default function TrackerScreen() {
         );
         return true;
       }
-      const dbRows = meals.map((m) => ({
-        id: UUID_RE.test(m.id) ? m.id : newMealId(),
-        user_id: userId,
-        date_key: targetDayKey,
-        name: m.name,
-        recipe_title: m.recipeTitle,
-        time_label: m.time,
-        calories: m.calories,
-        protein: m.protein,
-        carbs: m.carbs,
-        fat: m.fat,
-        fiber_g: m.fiberG ?? null,
-        water_ml: m.waterMl ?? null,
-        portion_multiplier: m.portionMultiplier ?? 1,
-        nutrition_micros:
-          m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-        source: canonicalNutritionEntrySource(m.source),
-        recipe_id: m.recipeId ?? null,
-      }));
+      const dbRows = meals.map((m) => {
+        const id = UUID_RE.test(m.id) ? m.id : newMealId();
+        const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(m, targetDayKey);
+        return {
+          id,
+          user_id: userId,
+          date_key: dateKey,
+          name: m.name,
+          recipe_title: m.recipeTitle,
+          time_label: m.time,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          fiber_g: m.fiberG ?? null,
+          water_ml: m.waterMl ?? null,
+          portion_multiplier: m.portionMultiplier ?? 1,
+          nutrition_micros:
+            m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
+          source: canonicalNutritionEntrySource(m.source),
+          recipe_id: m.recipeId ?? null,
+          eaten_at: eatenAt,
+        };
+      });
       // Upsert (not insert) so a race with the 600ms debounced journal sync
       // never throws duplicate-key and rolls back an optimistic log.
       const { error } = await supabase
@@ -561,8 +571,12 @@ export default function TrackerScreen() {
    * row, scoped to (id, user_id) to satisfy RLS.
    */
   const persistMealUpdateImmediate = useCallback(
-    async (mealId: string, updated: JournalMeal): Promise<boolean> => {
+    async (mealId: string, updated: JournalMeal, dateKey: string): Promise<boolean> => {
       if (!userId) return true;
+      const { dateKey: resolvedDateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
+        updated,
+        dateKey,
+      );
       const { error } = await supabase
         .from("nutrition_entries")
         .update({
@@ -581,6 +595,8 @@ export default function TrackerScreen() {
               ? updated.micros
               : {},
           source: canonicalNutritionEntrySource(updated.source),
+          date_key: resolvedDateKey,
+          eaten_at: eatenAt,
         })
         .eq("id", mealId)
         .eq("user_id", userId);
@@ -748,6 +764,7 @@ export default function TrackerScreen() {
   const [editSlot, setEditSlot] = useState("Snacks");
   /** Portion multiplier (×); macros = canonical × portion. Synced from fields before changing portion via chips. */
   const [editPortion, setEditPortion] = useState("1");
+  const [editEatenAtTime, setEditEatenAtTime] = useState("12:00");
   // ENG-783 — saved-meal portion-confirm sheet (opened from QuickAdd ⋮
   // "Log with portion…"). Null meal = closed.
   const [portionMeal, setPortionMeal] = useState<SavedMeal | null>(null);
@@ -2083,6 +2100,9 @@ export default function TrackerScreen() {
         ...(item.fiber != null ? { fiberG: item.fiber } : {}),
         ...(item.source ? { source: item.source } : {}),
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        ...(isFeatureEnabled("editable_eaten_at")
+          ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+          : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
       // 2026-05-08 data-loss hotfix — immediate Supabase persist.
@@ -2153,6 +2173,13 @@ export default function TrackerScreen() {
           : result.source === "FatSecret"
           ? "FatSecret"
           : "USDA FoodData Central";
+      const eatenAt =
+        result.eatenAt ??
+        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey) : undefined);
+      const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt(
+        { eatenAt },
+        dayKey,
+      );
       const meal: JournalMeal = {
         id: newMealId(),
         name: activeMealSlot,
@@ -2168,6 +2195,7 @@ export default function TrackerScreen() {
         ...(result.imageUrl
           ? { recipeImageUrl: String(result.imageUrl).trim() }
           : {}),
+        ...(eatenAt ? { eatenAt } : {}),
       };
       // Non-urgent journal update — keep the LogSheet responsive while Today
       // recomputes totals behind a transition (avoids multi-second JS stalls
@@ -2175,7 +2203,7 @@ export default function TrackerScreen() {
       startTransition(() => {
         setByDay((prev) => ({
           ...prev,
-          [dayKey]: [...(prev[dayKey] ?? []), meal],
+          [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), meal],
         }));
       });
       // 2026-05-08 data-loss hotfix — immediate Supabase persist.
@@ -3419,6 +3447,9 @@ export default function TrackerScreen() {
           fat: Math.round(item.fat),
           source: aiLoggingSourceLabel(item.source),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
+          ...(isFeatureEnabled("editable_eaten_at")
+            ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+            : {}),
         };
         return meal;
       });
@@ -3978,7 +4009,7 @@ export default function TrackerScreen() {
         // the loaded JournalMeal can carry the typed FK link. The
         // copy/duplicate path uses it to clone; future surfaces (e.g.
         // "open the recipe behind this log") rely on it being present.
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros, recipe_id")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, eaten_at, nutrition_micros, recipe_id")
         .eq("user_id", userId)
         .gte("date_key", windowStartKey)
         .order("date_key", { ascending: true })
@@ -4061,6 +4092,7 @@ export default function TrackerScreen() {
           micros: parseNutritionMicrosJson((r as { nutrition_micros?: unknown }).nutrition_micros),
           source: (r.source as string) ?? undefined,
           createdAt: (r as { created_at?: string }).created_at ?? undefined,
+          eatenAt: (r as { eaten_at?: string | null }).eaten_at ?? undefined,
           // Schema refactor Phase 2 (2026-05-11) — carry the typed FK
           // through into the in-memory JournalMeal so the copy /
           // duplicate path can clone with recipe_id intact.
@@ -4244,6 +4276,9 @@ export default function TrackerScreen() {
       carbs: Math.round(cb),
       fat: Math.round(f),
       source: "manual",
+      ...(isFeatureEnabled("editable_eaten_at")
+        ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+        : {}),
     };
     setByDay((prev) => ({
       ...prev,
@@ -4533,7 +4568,10 @@ export default function TrackerScreen() {
     setEditCarbs(String(Math.round(meal.carbs * 10) / 10));
     setEditFat(String(Math.round(meal.fat * 10) / 10));
     setEditSlot(normalizeJournalSlotName(meal.name) || "Snacks");
-  }, []);
+    const chronIso =
+      meal.eatenAt ?? meal.createdAt ?? defaultEatenAtForNewLog(dateKeyFromDate(selectedDate));
+    setEditEatenAtTime(localTimeInputValueFromIso(chronIso));
+  }, [selectedDate]);
 
   /** Open edit modal when returning from meal nutrition screen with `editMealId`. */
   useEffect(() => {
@@ -4560,6 +4598,14 @@ export default function TrackerScreen() {
     // they rode through the `...editingMeal` spread unchanged, so a 0.5× portion
     // edit halved the four macros but left fibre/sugar/sodium at the old amount.
     const p0 = editingMeal.portionMultiplier && editingMeal.portionMultiplier > 0 ? editingMeal.portionMultiplier : 1;
+    const localTime = isFeatureEnabled("editable_eaten_at")
+      ? parseLocalTimeInput(editEatenAtTime)
+      : null;
+    const { dateKey: resolvedDateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
+      editingMeal,
+      dayKey,
+      localTime,
+    );
     const updated: JournalMeal = {
       ...editingMeal,
       recipeTitle: editTitle.trim() || editingMeal.recipeTitle,
@@ -4569,20 +4615,28 @@ export default function TrackerScreen() {
       carbs: Math.round((Number(editCarbs) || 0) * 10) / 10,
       fat: Math.round((Number(editFat) || 0) * 10) / 10,
       portionMultiplier: portionMul,
+      ...(eatenAt ? { eatenAt } : {}),
       ...scaleLoggedMealFiberAndMicros({
         fiberG: editingMeal.fiberG,
         micros: editingMeal.micros,
         ratio: portionMul / p0,
       }),
     };
-    setByDay((prev) => ({
-      ...prev,
-      [dayKey]: (prev[dayKey] ?? []).map((m) => (m.id === editingMeal.id ? updated : m)),
-    }));
+    setByDay((prev) => {
+      const without = (prev[dayKey] ?? []).filter((m) => m.id !== editingMeal.id);
+      if (resolvedDateKey === dayKey) {
+        return { ...prev, [dayKey]: [...without, updated] };
+      }
+      return {
+        ...prev,
+        [dayKey]: without,
+        [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), updated],
+      };
+    });
     // 2026-05-08 data-loss hotfix — immediate Supabase update.
-    void persistMealUpdateImmediate(updated.id, updated);
+    void persistMealUpdateImmediate(updated.id, updated, dayKey);
     setEditingMeal(null);
-  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, dayKey, persistMealUpdateImmediate]);
+  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, editEatenAtTime, dayKey, persistMealUpdateImmediate]);
 
   const logPlannedMealWithPortion = useCallback(
     async (
@@ -4714,6 +4768,9 @@ export default function TrackerScreen() {
       const slot = m.name || "Other";
       if (!groups[slot]) groups[slot] = [];
       groups[slot].push(m);
+    }
+    for (const slot of Object.keys(groups)) {
+      groups[slot].sort(compareMealsByChronology);
     }
     return groups;
   }, [mealsToday]);
@@ -5816,6 +5873,7 @@ export default function TrackerScreen() {
           },
           supabase: supabase as unknown as { from: (table: string) => unknown },
           userId: userId ?? null,
+          logDateKey: dayKey,
           // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel. Powers the
           // empty-query "Recent" strip AND the typed-query "Past logged"
@@ -6106,6 +6164,9 @@ export default function TrackerScreen() {
       {/* Edit meal modal */}
       <TodayEditMealModal
         enabled={isFeatureEnabled("today-edit-entry-v2")}
+        editEatenAtEnabled={isFeatureEnabled("editable_eaten_at")}
+        editEatenAtTime={editEatenAtTime}
+        onEditEatenAtTimeChange={setEditEatenAtTime}
         editingMeal={editingMeal}
         slots={MEAL_SLOTS}
         editSlot={editSlot}
@@ -6188,6 +6249,7 @@ export default function TrackerScreen() {
         // F-38 (2026-04-21): keep modal open so the user can add
         // multiple items to the same meal without tapping back through
         // the FAB. The X button still dismisses.
+        logDateKey={dayKey}
         onSelect={handleFoodSearchSelect}
         onClose={() => setSearchOpen(false)}
       />

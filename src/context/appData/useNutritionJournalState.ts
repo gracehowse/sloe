@@ -11,6 +11,7 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
+import { nutritionEntryDateKeyAndEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -30,6 +31,8 @@ type NutritionEntryRow = {
   // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
   // Auto-NULLed by Phase 1's FK if the recipe is later deleted.
   recipe_id: string | null;
+  eaten_at?: string | null;
+  created_at?: string | null;
 };
 
 function parseRowMicros(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
@@ -63,6 +66,8 @@ function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
     // through to the in-memory LoggedMeal so downstream surfaces can
     // navigate to the source recipe.
     ...(row.recipe_id ? { recipeId: row.recipe_id } : {}),
+    ...(row.eaten_at ? { eatenAt: row.eaten_at } : {}),
+    ...(row.created_at ? { createdAt: row.created_at } : {}),
   };
 }
 
@@ -105,7 +110,7 @@ export function useNutritionJournalState(opts: {
         // Schema refactor Phase 2 (2026-05-11) — select recipe_id so
         // the loaded LoggedMeal carries the typed FK link, mirrors
         // the mobile read path.
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, recipe_id")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, recipe_id, eaten_at, created_at")
         .eq("user_id", authedUserId)
         .order("created_at", { ascending: true });
 
@@ -142,30 +147,34 @@ export function useNutritionJournalState(opts: {
    * `addLoggedMealsForDate` so the row shape cannot drift between paths.
    */
   const buildNutritionEntryRow = useCallback(
-    (dayKey: string, meal: LoggedMeal, userId: string) => ({
-      id: meal.id,
-      user_id: userId,
-      date_key: dayKey,
-      name: meal.name,
-      recipe_title: meal.recipeTitle,
-      time_label: meal.time,
-      calories: meal.calories,
-      protein: meal.protein,
-      carbs: meal.carbs,
-      fat: meal.fat,
-      fiber_g: meal.fiberG ?? null,
-      water_ml: meal.waterMl ?? null,
-      portion_multiplier: meal.portionMultiplier ?? 1,
-      nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
-      source: canonicalNutritionEntrySource(meal.source),
-      // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
-      // When the caller knows the recipe id (recipe-detail log,
-      // planner log, etc.) we persist it so the journal row can be
-      // reverse-linked to the recipe and auto-NULLed if the recipe
-      // is later deleted (Phase 1 FK ON DELETE SET NULL). Manual /
-      // barcode-only / Health-import logs leave it null.
-      recipe_id: meal.recipeId ?? null,
-    }),
+    (dayKey: string, meal: LoggedMeal, userId: string) => {
+      const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, dayKey);
+      return {
+        id: meal.id,
+        user_id: userId,
+        date_key: dateKey,
+        name: meal.name,
+        recipe_title: meal.recipeTitle,
+        time_label: meal.time,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        fiber_g: meal.fiberG ?? null,
+        water_ml: meal.waterMl ?? null,
+        portion_multiplier: meal.portionMultiplier ?? 1,
+        nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
+        source: canonicalNutritionEntrySource(meal.source),
+        // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
+        // When the caller knows the recipe id (recipe-detail log,
+        // planner log, etc.) we persist it so the journal row can be
+        // reverse-linked to the recipe and auto-NULLed if the recipe
+        // is later deleted (Phase 1 FK ON DELETE SET NULL). Manual /
+        // barcode-only / Health-import logs leave it null.
+        recipe_id: meal.recipeId ?? null,
+        eaten_at: eatenAt,
+      };
+    },
     [],
   );
 
@@ -183,16 +192,18 @@ export function useNutritionJournalState(opts: {
   ) => {
     const id = newId("meal");
     const newMeal = { ...meal, id };
+    const row = buildNutritionEntryRow(dayKey, newMeal, authedUserId ?? "");
+    const resolvedDateKey = row.date_key;
     setNutritionByDay((prev) => {
-      const day = prev[dayKey] ?? [];
-      return { ...prev, [dayKey]: [...day, newMeal] };
+      const day = prev[resolvedDateKey] ?? [];
+      return { ...prev, [resolvedDateKey]: [...day, newMeal] };
     });
 
     // Persist to relational table
     if (authedUserId && dbNutritionEnabled) {
       supabase
         .from("nutrition_entries")
-        .insert(buildNutritionEntryRow(dayKey, newMeal, authedUserId))
+        .insert(row)
         .then(({ error }) => {
           if (error) {
             const msg = error.message ?? "";
@@ -203,7 +214,7 @@ export function useNutritionJournalState(opts: {
             // ENG-1048 — roll back the optimistic add on persist failure.
             setNutritionByDay((prev) => ({
               ...prev,
-              [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== id),
+              [resolvedDateKey]: (prev[resolvedDateKey] ?? []).filter((m) => m.id !== id),
             }));
             toast.error(syncFailedRetryMessage("nutrition log", msg));
             return;

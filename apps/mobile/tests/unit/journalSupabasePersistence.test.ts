@@ -54,7 +54,8 @@ describe("Today journal — every meal-add path persists to Supabase immediately
   it("saveEditMeal calls persistMealUpdateImmediate", () => {
     const idx = SRC.indexOf("const saveEditMeal = useCallback");
     expect(idx).toBeGreaterThan(-1);
-    const slice = SRC.slice(idx, idx + 2000);
+    // ENG-772 eaten_at resolution pushed the callback past 2k chars.
+    const slice = SRC.slice(idx, idx + 4000);
     expect(slice).toMatch(/persistMealUpdateImmediate\(/);
   });
 

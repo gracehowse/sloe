@@ -75,6 +75,11 @@ import Svg, {
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
+import {
+  defaultEatenAtForNewLog,
+  eatenAtFromLogDateAndTime,
+  localTimeInputValueFromIso,
+} from "@suppr/shared/nutrition/mealEatenAt";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import {
@@ -188,6 +193,8 @@ export type SelectedFood = {
   fatSecretFoodId?: string;
   servingLabel?: string;
   imageUrl?: string | null;
+  /** ENG-772 — consumption instant from preview time picker. */
+  eatenAt?: string;
 };
 
 export type SupabaseLike = { from: (table: string) => unknown };
@@ -226,6 +233,8 @@ export type FoodSearchPanelProps = {
   userId?: string | null;
   /** Fired when the user confirms a portion / quantity. */
   onSelect: (result: SelectedFood) => void;
+  /** ENG-772 — journal day (`YYYY-MM-DD`) for preview time when `editable_eaten_at` is on. */
+  logDateKey?: string;
   /**
    * `"full"` matches the legacy FoodSearchModal density (separator
    * lines, generous paddings).
@@ -342,6 +351,7 @@ export default function FoodSearchPanel({
   supabase,
   userId,
   onSelect,
+  logDateKey,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -447,6 +457,18 @@ export default function FoodSearchPanel({
     fatSecretFoodId?: string;
     imageUrl?: string | null;
   } | null>(null);
+  const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
+  const previewEatenAtEnabled =
+    Boolean(logDateKey) && isFeatureEnabled("editable_eaten_at");
+  const previewSessionKey = preview
+    ? `${preview.name}|${preview.source}|${preview.chosenPortion.label}`
+    : null;
+  useEffect(() => {
+    if (!previewSessionKey || !logDateKey || !previewEatenAtEnabled) return;
+    setPreviewEatenAtTime(
+      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
+    );
+  }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
   // No-result loop (audit move-blocker #2, 2026-05-02 — replaces
@@ -1036,8 +1058,11 @@ export default function FoodSearchPanel({
       ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
       ...(servingLabel ? { servingLabel } : {}),
       ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+      ...(previewEatenAtEnabled && logDateKey
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        : {}),
     };
-  }, [preview]);
+  }, [preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
 
   const onConfirmPreview = useCallback(() => {
     const selection = buildSelectionFromPreview();
@@ -1893,6 +1918,32 @@ export default function FoodSearchPanel({
                 ))}
               </View>
             </View>
+          ) : null}
+          {previewEatenAtEnabled ? (
+            <>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.xs }}>
+                TIME EATEN
+              </Text>
+              <TextInput
+                value={previewEatenAtTime}
+                onChangeText={setPreviewEatenAtTime}
+                placeholder="HH:mm (24h)"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numbers-and-punctuation"
+                accessibilityLabel="Time eaten"
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: Radius.sm,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: Spacing.sm,
+                  color: colors.text,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              />
+            </>
           ) : null}
         </View>
       </ScrollView>

@@ -1919,6 +1919,9 @@ async function syncNutritionFromHealthImpl(
 
   // Pre-fetch existing apple_health entries for this user in the lookback window
   // so we can de-dup without N+1 queries.
+  // ENG-772 / data-integrity (2026-05-30): dedup MUST stay on `created_at`
+  // (consumption instant for Health imports), NOT `eaten_at`. Switching to
+  // eaten_at reopens the re-import duplicate bug after user deletes a row.
   const windowStart = dateKey(daysAgo(lookbackDays));
   const { data: existingRows } = await supabase
     .from("nutrition_entries")

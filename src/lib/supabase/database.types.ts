@@ -944,6 +944,7 @@ export type Database = {
           carbs: number
           created_at: string
           date_key: string
+          eaten_at: string | null
           fat: number
           fiber_g: number | null
           health_sample_id: string | null
@@ -965,6 +966,7 @@ export type Database = {
           carbs?: number
           created_at?: string
           date_key: string
+          eaten_at?: string | null
           fat?: number
           fiber_g?: number | null
           health_sample_id?: string | null
@@ -986,6 +988,7 @@ export type Database = {
           carbs?: number
           created_at?: string
           date_key?: string
+          eaten_at?: string | null
           fat?: number
           fiber_g?: number | null
           health_sample_id?: string | null
