@@ -218,7 +218,7 @@ Mobile spine end-to-end; shopping generator unified (ENG-1040). No pantry, weak 
 - **Web single-meal optimistic insert/delete no rollback** on persist failure.
 - **CI `VERIFY_STRICT=0`** — production env misconfig can slip through.
 - **246 hex literals** off token system (ENG-1014 baseline drift).
-- **Deep link does not dismiss open Log sheet** (walkthrough bug).
+- **Deep link does not dismiss open Log sheet** — **PARTIAL** (tab navigation dismiss **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab deep link UNVERIFIED).
 
 ---
 
@@ -403,7 +403,7 @@ Lean narrative on **social-caption import + macro fit** — code now supports di
 ### Journey 2 — Food logging · prior pass PASS
 - **Screens:** Log sheet → search "chicken breast."
 - **Observations:** Verified/Estimated badges, per-serving macros + grams, past-logged section, barcode/voice/camera — best-in-class vs MFP.
-- **Bug:** Deep link while Log sheet open does not dismiss modal (still open P2).
+- **Bug:** Deep link while Log sheet open does not dismiss modal — **PARTIAL** (tab-blur dismiss **PASS** via [PR #389](https://github.com/gracehowse/Suppr/pull/389); deep-link-while-open still UNVERIFIED).
 - **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix, **UNVERIFIED** in UI.
 
 ### Journey 3 — Recipes (Library + Discover) · prior pass PASS
