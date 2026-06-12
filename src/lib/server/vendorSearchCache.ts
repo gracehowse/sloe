@@ -53,7 +53,7 @@
 
 import { Redis } from "@upstash/redis";
 
-export type VendorId = "usda" | "edamam" | "fatsecret";
+export type VendorId = "usda" | "edamam" | "fatsecret" | "off";
 
 /** Locale tag bucketed to a region for cache-key stability. Vendor results
  *  are region-sensitive for FatSecret (US-only dataset) and slightly so for
@@ -82,6 +82,9 @@ export const VENDOR_QUOTAS: Record<
   usda: { cap: 1000, windowSec: 60 * 60, label: "USDA FDC (~1,000/hr)" },
   // 10,000/day Premier Free.
   fatsecret: { cap: 10000, windowSec: 24 * 60 * 60, label: "FatSecret (10,000/day)" },
+  // ENG-1059 — OFF has no keyed account cap, but our proxy must not hammer the
+  // public API at viral scale. 50k/day is a conservative abuse guard on our side.
+  off: { cap: 50000, windowSec: 24 * 60 * 60, label: "OFF proxy (50,000/day)" },
 };
 
 /**

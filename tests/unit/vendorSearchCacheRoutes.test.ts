@@ -54,6 +54,11 @@ vi.mock("@/lib/fatsecret/client", () => ({
   fatSecretFoodSearch: (...a: unknown[]) => fatSecretFoodSearchMock(...a),
 }));
 
+const searchOffProductsMock = vi.fn();
+vi.mock("@/lib/openFoodFacts/searchProducts", () => ({
+  searchOffProducts: (...a: unknown[]) => searchOffProductsMock(...a),
+}));
+
 // ── Shared route plumbing mocks ───────────────────────────────────────────
 vi.mock("@/lib/server/rateLimit", () => ({ rateLimit: vi.fn(async () => ({ ok: true })) }));
 
@@ -90,6 +95,9 @@ beforeEach(() => {
   fatSecretFoodSearchMock.mockReset().mockResolvedValue([
     { food_id: "f1", food_name: "Salmon", brand_name: "", food_description: "Per 100g - Calories: 208kcal | Fat: 13.40g | Carbs: 0.00g | Protein: 20.00g" },
   ]);
+  searchOffProductsMock.mockReset().mockResolvedValue([
+    { code: "123", name: "Yogurt", brand: "Brand", calories: 60, protein: 3, carbs: 8, fat: 2, fiberG: 0, sugarG: 6, sodiumMg: 40 },
+  ]);
 });
 
 afterEach(() => {
@@ -106,6 +114,9 @@ async function loadEdamam() {
 }
 async function loadFatSecret() {
   return (await import("../../app/api/fatsecret/search/route")).GET;
+}
+async function loadOff() {
+  return (await import("../../app/api/off/search/route")).GET;
 }
 
 describe("/api/usda/search — cache + quota wiring", () => {
@@ -240,6 +251,50 @@ describe("/api/fatsecret/search — cache + quota wiring", () => {
     const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=salmon"));
     const json = await res.json();
     expect(json).toMatchObject({ ok: true, hits: [] });
+    expect(setCachedSearchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("/api/off/search — cache + quota wiring (ENG-1059)", () => {
+  it("CACHE HIT — returns cached hits, never calls OFF", async () => {
+    getCachedSearchMock.mockResolvedValueOnce([{ code: "cached", name: "Cached" }]);
+    const GET = await loadOff();
+    const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, cached: true });
+    expect(searchOffProductsMock).not.toHaveBeenCalled();
+    expect(consumeQuotaMock).not.toHaveBeenCalled();
+  });
+
+  it("QUOTA EXHAUSTED — skips OFF, returns degraded envelope", async () => {
+    checkQuotaMock.mockResolvedValueOnce({ allowed: false, used: 50000, cap: 50000, reason: "quota_exhausted" });
+    const GET = await loadOff();
+    const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, hits: [], degraded: true, degradedReason: "quota_exhausted" });
+    expect(searchOffProductsMock).not.toHaveBeenCalled();
+  });
+
+  it("MISS + QUOTA OK — calls OFF, consumes quota, caches the success", async () => {
+    const GET = await loadOff();
+    const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.hits.length).toBe(1);
+    expect(consumeQuotaMock).toHaveBeenCalledWith("off");
+    expect(setCachedSearchMock).toHaveBeenCalledWith(
+      "off",
+      "yogurt",
+      expect.any(Array),
+      expect.objectContaining({ page: 1 }),
+    );
+  });
+
+  it("does NOT cache an OFF hard failure (502 path)", async () => {
+    searchOffProductsMock.mockRejectedValueOnce(new Error("OFF 502"));
+    const GET = await loadOff();
+    const res = await GET(makeReq("http://localhost/api/off/search?q=yogurt"));
+    expect(res.status).toBe(502);
     expect(setCachedSearchMock).not.toHaveBeenCalled();
   });
 });

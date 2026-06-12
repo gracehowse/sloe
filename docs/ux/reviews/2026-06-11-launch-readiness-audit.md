@@ -1,387 +1,436 @@
 # Independent Product, Engineering & Launch-Readiness Audit — Suppr / Sloe
 
-**Date:** 2026-06-11
-**Reviewer:** External due-diligence audit (autonomous, scheduled)
-**Branch reviewed:** `claude/skia-ring-2026-06-10` (HEAD `a39e0d88`)
-**Method:** Ground-truth codebase reconstruction + 10 parallel specialist code reviews, each finding cited to `file:line`, followed by an adversarial skeptic pass on every P0/P1 finding; plus a live iOS-simulator visual walkthrough of the core journeys. Web visual coverage was limited (no dev server running; `tests/e2e/.auth/user.json` expired) — authed web surfaces are assessed from component/code render and the design/parity specialist; the live marketing site (`getsloe.com`) returns 200.
+**Date:** 2026-06-11 (revision pass, same day)  
+**Reviewer:** External due-diligence audit (autonomous)  
+**Branch reviewed:** `main` (HEAD `e3ac41c7` — `fix(mobile): stop dev-client crashes and harden meal logging on Today`)  
+**Prior pass:** same file, branch `claude/skia-ring-2026-06-10` at `a39e0d88`  
+**Method:** Ground-truth codebase reconstruction + parallel specialist reviews (architecture/security, nutrition/vendors, recipe/planning, Linear backlog), adversarial re-verification of P0/P1 claims against current files, nutrition-audit cross-check (`docs/ux/research/2026-06-10-nutrition-calculations-audit.md`), live Gate0 partial DB verify (`scripts/verify-gate0-db.mts`), iOS simulator visual attempt (screenshots in `apps/mobile/screenshots/agent/audit-2026-06-11-*.png`). Web authed surfaces not exercised (`tests/e2e/.auth/user.json` expired; no local Next dev server).
 
-> **Evidence discipline.** Every finding below cites the exact files read. P0/P1 findings were independently re-verified by a second agent that opened the cited files and defaulted to refuting; the verdict is recorded. Four P1 findings were *downgraded to P2* by that pass and are filed accordingly. Two P0 findings survived verification with full exploit chains intact.
+> **Evidence discipline.** Every finding cites files read or runtime checks run. Items fixed in code since the morning pass are marked **SHIPPED (repo)** vs **LIVE (prod verified)**. Where production state is unknown, mark **UNVERIFIED**.
+
+---
+
+## Revision summary (e3ac41c7 vs morning audit)
+
+Between the first audit pass (`a39e0d88`) and this revision (`e3ac41c7`), a **Gate-0 security + parity batch** landed on `main`:
+
+| Audit ID | Issue | Status in repo @ e3ac41c7 |
+|---|---|---|
+| P0-1 | Tier escalation DELETE+INSERT | **SHIPPED** — `20260611120000_profiles_insert_lockdown_eng1035.sql`, `tests/unit/profilesInsertLockdown.test.ts` |
+| P0-2 / P1-7 | Verbatim import description + disclaimer | **SHIPPED** — `description: null` in `app/api/recipe-import/route.ts`; `importSourceDisclaimer` on web + mobile recipe detail |
+| P1-1 | SECURITY DEFINER recipe view | **SHIPPED** — `20260611120100_recipes_implausible_macros_rls_lockdown_eng1036.sql`; live anon probe **PASS** (401) |
+| P1-2 | Recipe-import SSRF | **SHIPPED** — caption fallback uses `followWithSsrfGuard` at `route.ts:274-279` |
+| P1-3 | Vendor search cache | **SHIPPED** — `src/lib/server/vendorSearchCache.ts` wired in USDA/Edamam/FatSecret search routes |
+| P1-4 | `calcGoalTimeline` raw two-point delta | **SHIPPED** — smoothed rate via `weightTrendSmoothing.ts`; `tests/unit/calcGoalTimelineSmoothing.test.ts` |
+| P1-5 | Mobile shopping portion multiplier | **SHIPPED** — ENG-1040 shared generator in `planner.tsx:1893+` |
+| P1-6 | Mobile `fiber_g` NULL / CSV | **SHIPPED** — `foodSelectionToMealMacros` + `fiberG` on mobile Today |
+| P1-8 | Promo vs lockdown trigger | **SHIPPED** — ENG-1043 GUC bypass in `20260611120200_redeem_promo_lifetime_pro_eng1043.sql` |
+| P1-9 | Tab order / glyph collision | **SHIPPED** — `src/lib/navigation/primaryNav.ts` + `tests/unit/primaryNavParity.test.ts` |
+| P2 dead SoT | `foodSelectionToMeal.ts` unused | **SHIPPED** — wired in `NutritionTracker.tsx` + `apps/mobile/app/(tabs)/index.tsx:2122` |
+| Plan 7/7 over-budget headline | Trust contradiction | **SHIPPED (logic)** — ENG-1049 `planWeekSummary.ts`; **UNVERIFIED** on rendered UI after data refresh |
+
+**Still open at P0:** ENG-859 (DMCA designated agent — legal/ops, not code). **Re-verify before cohort:** Gate0 exploit tests (ENG-1035 INSERT, ENG-1043 promo) — doc claims 5/5 pass; this revision got **1/3** without `GATE0_VERIFY_PASSWORD`.
+
+**New since morning (mobile stability @ e3ac41c7):** Dev-client tunnel/Metro reload crashes (SIGSEGV in Expo DevLauncher — **not production**); meal-logging hardening (`foodSelectionToMealMacros`, `upsert` on `nutrition_entries`, debounced adaptive TDEE, HealthKit write dedupe). **TestFlight build 57** (1.0.7) submitted — production binary avoids DevLauncher path.
 
 ---
 
 ## 1. Executive Summary
 
-Suppr is a genuinely ambitious multi-pillar product — nutrition tracker, food logger, recipe manager, recipe importer, recipe discovery, meal planner, grocery planner, and health-insights surface — and the build quality is materially higher than a solo pre-launch product usually is. The nutrition engine is the standout: the mission-critical math (Mifflin-St Jeor, Atwater, FDA daily values, count-to-weight, adaptive-TDEE least-squares slope) is correct, parity-wired across web and mobile, and pinned by ~214 nutrition tests. The server-side architecture (signature-verified idempotent webhooks, fail-closed rate limiting, a two-layer AI cost circuit-breaker, comprehensive self-only RLS) is the product of real prior hardening, not box-ticking. The micronutrient panel is Cronometer-tier (~37 fields). The recipe-import-from-Reel wedge — the entire basis of the 2026-07-01 viral push — is real and architecturally sound.
+Suppr remains a genuinely ambitious multi-pillar product — nutrition tracker, food logger, recipe manager/importer, discovery, meal planner, grocery planner, and emerging health-insights surface — with **server-side engineering materially ahead of most solo pre-launch builds** (signature-verified webhooks, fail-closed rate limits, AI cost circuit-breaker, comprehensive RLS, vendor correctness guards). The **nutrition engine is the standout**: Mifflin–St Jeor, Atwater, FDA DVs, adaptive TDEE architecture, and ~214+ nutrition unit tests are industry-standard; the June 10 nutrition audit's P0 and P1 math/display fixes **landed with regression tests**.
 
-**But the product is not safe to onboard real users today.** Two confirmed P0s block launch:
+**Launch posture shifted today:** the morning audit's two code P0s (DB tier escalation; verbatim recipe prose on import) and most of the P1 security/parity cluster are **fixed in `main`**. `docs/decisions/2026-06-11-gate0-db-security.md` records production apply + 5/5 Gate0 verify on 2026-06-11. This revision partially re-confirmed ENG-1036 live (anon 401 on the view).
 
-1. **Entitlement-escalation via the database.** The tier-lockdown trigger that protects `user_tier`/`stripe_customer_id` is `BEFORE UPDATE` only; the INSERT RLS policy has no column guard and users can delete their own profile row. Any authenticated user can `DELETE` then `INSERT` a fresh profile with `user_tier='pro'` straight from the client anon key — granting themselves Pro for free and defeating the entire paywall the lockdown exists to enforce.
+**Remaining launch blockers are operational and scale-shaped, not "the core math is wrong":**
 
-2. **A live copyright-reproduction exposure on the recipe-import path.** The decision doc and roadmap both treat "stop persisting the creator's verbatim headnote prose on the web/blog import path" (ENG-857) as a P0 that is **"LIVE / shipping in prod now."** It is not implemented. The verbatim creator `description` is still persisted and rendered on both platforms, the legally-required source-card disclaimer (ENG-858) does not exist anywhere in the codebase, and the DMCA designated agent (ENG-859) is unregistered — so there is no §512(c) safe harbour. This sits on the exact surface the viral launch is built to drive traffic to.
+1. **ENG-859** — DMCA designated agent not registered (§512(c) safe harbour incomplete for the recipe-import wedge).
+2. **Gate0 re-proof** — run `node --import tsx scripts/verify-gate0-db.mts` with `GATE0_VERIFY_PASSWORD` → **5/5** before any paid or viral cohort.
+3. **Monetization chain blocked** — Stripe Tax (ENG-33), RevenueCat IAP (ENG-101 Blocked), offerings (ENG-198 Todo) — incompatible with a Pro launch on 2026-07-01 without Grace-owned ops work.
+4. **Vendor economics** — USDA/Edamam/FatSecret now cached server-side; **Open Food Facts text search is still client-direct** with no shared cache — first viral spike can still degrade search.
+5. **Client monoliths** — Today tab **6,618 lines** (`apps/mobile/app/(tabs)/index.tsx`) — regression risk on every logging change.
 
-Beneath the P0s sit 14 P1s (downgraded count: 10 after verification) that are real beta-window risks: a SECURITY DEFINER view that bypasses recipe RLS and is readable by the public anon key; a recipe-import SSRF hole (`redirect: "follow"` on an attacker-controllable URL, reintroducing the exact ENG-682 metadata-SSRF bug); no cross-request vendor cache (Edamam's 1,000/day *account-wide* free tier and USDA's ~1,000/hr key both exhaust within minutes of any viral spike, silently degrading search for everyone); a goal-date/projection input (`calcGoalTimeline`) still on a raw two-point weigh-in delta — the same noise bug ENG-1026 just fixed elsewhere — driving wrong goal dates on both platforms; and a cluster of web↔mobile parity breaks (shopping-list quantities, grocery aisles, fibre export, tab order) that violate the project's own non-negotiable "web and mobile must stay in sync."
-
-The most strategically important finding: **the product's headline differentiator (recipe-import-from-Reel) and its single biggest launch risk (the copyright-replay P0) are the same surface.** Lean the launch on the social/caption import path (already compliant, documented as stronger than ReciMe), close ENG-857/858/859, and the wedge is defensible.
-
-**Bottom line:** ~3–4 focused engineering days clears the two P0s and the highest-value P1s. Do not onboard users before the two P0s close. The foundation is strong enough that this is a finishing problem, not a rebuild.
-
----
-
-## 2. Overall Product Score — **6.5 / 10**
-
-Strong, differentiated product vision executed to a higher bar than most pre-launch solo builds, undercut by (a) two launch-blocking defects, (b) a large slate of "category-leading" features specced-but-unbuilt (ENG-927→979, the whole launch-blocker tranche), and (c) parity drift that breaks the "one product" promise on grocery and navigation. The core loops work and feel premium; the product is closer to "finish and harden" than "still figuring out what it is."
-
-## 3. Overall Engineering Score — **6.5 / 10**
-
-Server-side: 7.5 (mature, hardened, well-tested). Client-side: 5 (a 2,195-line web "god context" with ~254 fields, a 6,624-line mobile Today screen with 261 hooks, ~101 files over the 400-line non-negotiable, and a freshly-extracted shared helper that no host actually imports). Test breadth is genuinely good (935 test files, zero `@ts-ignore`). The gap between server discipline and client monoliths is the defining engineering risk — it directly obstructs adding the planned AI-coaching and health-integration surfaces cleanly.
-
-## 4. Overall UX Score — **6.5 / 10**
-
-The rendered product is visibly premium — warm Sloe palette, calm copy, confident typography, real confidence-tiered food search, a polished paywall. The token *system* is excellent. The drag is enforcement and consistency: a 2-way tab-order swap with a glyph collision (BookOpen = "Plan" on native, "Recipes" on web), 246 raw hex literals (14 genuinely off-palette), empty grey recipe thumbnails, and two surfaced data-trust contradictions (Plan says "hits targets 7/7" on a day that's over budget; Progress shows "111% adherence · over"). Best-in-class look, beta-grade consistency.
-
-## 5. Overall Security Score — **6.5 / 10**
-
-Auth, RLS scoping, secrets handling, webhook verification, and rate-limiting are mature (7.5 on their own). The score is pulled down by the P0 entitlement-escalation path (which is a *security* failure as much as a data one), the public-readable SECURITY DEFINER recipe view, and the reintroduced SSRF hole. None are exploited at N=1, but two of three are live in the production schema/route surface and must close before any real cohort.
-
-## 6. Overall Nutrition Accuracy Score — **8 / 10**
-
-The strongest pillar. The 2026-06-10 audit's P0 and all five P1 fixes genuinely landed in code with regression tests; core math is correct and parity-wired. One consequential miss — `calcGoalTimeline` still uses a raw two-point weigh-in delta to drive goal dates and to *override* the projection on both platforms — keeps this from a 9. Trustworthy engine; one input bug escaped the fix batch.
-
-## 7. Overall Recipe Platform Score — **5 / 10**
-
-Recipe *nutrition* can largely be trusted (curated staple table, confidence accept-floor, count-to-weight, density refusal). The score is dragged down hard by the legal P0 (verbatim prose persisted + no disclaimer + no DMCA agent) and real correctness gaps (cook-mode scaler silently desyncs step text from nutrition for countable items outside a hardcoded noun list; idempotent re-import returns stale nutrition). The import infrastructure is good; the *posture* around it is unfinished.
-
-## 8. Overall Meal Planning Score — **6 / 10**
-
-The planning spine works end-to-end (smart plan, joint-fit scaler, leftovers, templates, copy-meal, household shopping). But the shopping-list generator is implemented *twice* and the two disagree on portion scaling, non-numeric amounts, and aisle categorisation — same plan, different quantities and aisles on web vs mobile. No pantry/staples model, weak keyword categorisation (large "Other" bucket), no store integration. Adoptable as "a list from my plan," not yet as a primary grocery planner that would win a Plan To Eat / AnyList user.
+**Bottom line:** **Conditional-go for a small, closed iOS beta on the production TestFlight binary** after Gate0 5/5 + ENG-859 path documented. **Not ready** for the planned 2026-07-01 free viral push at scale until monetization, vendor OFF proxy, device-proven health sync (ENG-874), and offline durability are addressed.
 
 ---
 
-## 9. Launch-Readiness Assessment
+## 2. Overall Product Score — **7 / 10** (was 6.5)
 
-**Verdict: NOT READY to onboard real users. Conditional-go after the two P0s close + a focused P1 pass.**
+Differentiated wedge (import + macro fit) is real and tested; Gate-0 fixes removed the worst trust/monetisation holes. Score held back by blocked billing, thin recipe organisation (no collections), web plan parity, pantry gap, and adherence copy that still reads backwards when over target.
 
-- **What blocks launch (P0):** (1) DB entitlement-escalation; (2) recipe-import verbatim-prose copyright exposure (+ ENG-858 disclaimer, + ENG-859 DMCA agent as a paired legal dependency).
-- **What will break first under real use:** vendor search (Edamam/USDA quota exhaustion the first time a TikTok lands traffic) → "search is broken" with no error shown. This is the most likely day-one support fire.
-- **What will generate support tickets:** wrong shopping-list quantities on iOS (portion multiplier ignored); blank fibre in CSV export for mobile-logged foods; promo-code redemption possibly failing with 42501 for existing users (incl. Grace's own test-premium path).
-- **What reduces trust:** Plan claiming "hits your targets 7/7" on a day that's over budget; "111% adherence · over"; goal dates that jump from a single water-weight weigh-in.
-- **What a TDD/investor review flags:** the two P0s, the god-context/monolith client architecture, the unbuilt launch-blocker backlog, and the roadmap marking an unimplemented P0 as "LIVE."
+## 3. Overall Engineering Score — **7 / 10** (was 6.5)
 
-**Recommended gate:** close the two P0s + the SSRF + the RLS view + add a vendor search cache, re-verify on-device, then onboard a small beta. The remaining P1/P2 work can run during beta.
+Server: **7.5** (mature). Client: **5.5** (monoliths, ~191 files >400 lines). Today's commit improves mobile logging/sync without fixing architecture debt.
+
+## 4. Overall UX Score — **6.5 / 10** (unchanged)
+
+Premium Sloe palette and calm copy when the app renders. Token enforcement still weak (246 hex literals cited in prior pass). Simulator re-validation **blocked by Metro tunnel redbox** this evening — prior same-day walkthrough still the primary pixel evidence for happy path.
+
+## 5. Overall Security Score — **7.5 / 10** (was 6.5)
+
+Gate-0 migrations + SSRF + view lockdown materially improve posture. Residual: `getUserTier()` fails open to `free` if service role missing (`serverAnonClient.ts:85-91`); middleware auth round-trip on public pages; HIBP password protection off (advisor WARN).
+
+## 6. Overall Nutrition Accuracy Score — **8 / 10** (unchanged)
+
+June 10 audit P0/P1 fixes verified in code. Residual P2: nutrient panel sort direction, dual meal-slot tables, UK/EU DVs, adaptive slope cap understating fast loss (0.35 kg/wk cap), activity-bonus protein dilution on scaled targets.
+
+## 7. Overall Recipe Platform Score — **6.5 / 10** (was 5)
+
+Legal **code** posture improved (null description + disclaimer). ENG-859 still open. Import infrastructure strong; organisation (collections/folders) and generic "Imported recipe" titles weak for power users.
+
+## 8. Overall Meal Planning Score — **6.5 / 10** (was 6)
+
+Mobile spine end-to-end; shopping generator unified (ENG-1040). No pantry, weak aisles, web plan feature-thin vs mobile, no store integration.
+
+---
+
+## 9. Launch Readiness Assessment
+
+**Verdict: CONDITIONAL-GO for small closed iOS beta on production binary. NOT READY for broad free viral launch.**
+
+| Gate | Requirement | Status |
+|---|---|---|
+| Gate 0 code | ENG-1035/1036/1043, ENG-857/858, SSRF, vendor cache | **SHIPPED** in `main` |
+| Gate 0 prod | `verify-gate0-db.mts` 5/5 | **UNVERIFIED** (1/3 this pass; needs password) |
+| Legal P0 | ENG-859 DMCA agent | **OPEN** (ops) |
+| Monetization | Stripe Tax + RC IAP + offerings | **BLOCKED / TODO** |
+| Device proof | ENG-874 health sync matrix | **IN PROGRESS** |
+| Scale | OFF client search + quotas | **PARTIAL** |
+
+- **What breaks first at viral scale:** vendor search degradation (OFF unbounded + shared Edamam 1k/day ceiling) → silent empty results.
+- **Support tickets:** dev-client tunnel users (not TestFlight); wrong goal dates if old weigh-in data; generic import titles; empty recipe thumbnails (ENG-1015).
+- **Trust risks:** "111% adherence · over" headline (`progressRangeStats.ts:161`); paywall "AI coach" vs shipped `mealCoach.ts` scope.
+- **Investor/TDD flags:** client monoliths; 309 open Linear issues / 129 Urgent+High; category-leading tranche mostly unbuilt.
+
+**Recommended gate:** Gate0 5/5 → TestFlight 57 smoke (log food, import Reel, plan → shop) → 20–50 founding cohort with `lifetime_pro` comp path → parallel Gate 1 (OFF proxy, adherence copy, ENG-874).
 
 ---
 
 ## 10. P0 Findings (must fix before onboarding any user)
 
-### P0-1 — Tier escalation via profile DELETE+INSERT (lockdown trigger is UPDATE-only) · `dataintegrity` · CONFIRMED (conf 8)
-- **Category:** Security / entitlement integrity.
-- **Description:** `profiles_tier_column_lockdown` is attached `BEFORE UPDATE ON public.profiles` only. `profiles_insert_own` checks identity with **no column restriction** (`WITH CHECK auth.uid()=id`), and `profiles_delete_own` lets a user delete their own row. So an authenticated user can `DELETE` their profile then `INSERT` a new one with `user_tier='pro'` (or an arbitrary `stripe_customer_id`) directly via `/rest/v1` using the client anon key — fully bypassing the lockdown.
-- **Evidence:** `supabase/migrations/20260503100000_profiles_tier_column_lockdown.sql:87-90` (`before update` only); `20260516150000_perf_rls_initplan_wrap_auth_calls.sql:221-222` (insert policy, no column guard); `20260419100001_profiles_delete_own.sql:2-4`; `docs/decisions/2026-05-25-onboarding-tier-lockdown-write-failure.md:58` ("the BEFORE-UPDATE trigger does not fire on INSERT"). Verifier confirmed the only trigger on `profiles` is the UPDATE one.
-- **Impact:** Any user grants themselves Pro for free, defeating monetisation; also re-opens the `stripe_customer_id` association / Customer-Portal-hijack vector the trigger comment was written to close.
-- **Recommendation:** Add a `BEFORE INSERT` branch (or separate trigger) that rejects any non-`service_role` INSERT where `new.user_tier` is distinct from `'free'` or `new.stripe_customer_id` is non-null. Run the forward-compat jsonb loop on INSERT too. Live-verify the delete+insert exploit is refused before launch.
-- **Suggested issue:** *P0: profiles tier-lockdown bypass — `user_tier='pro'` via DELETE-then-INSERT (no BEFORE INSERT guard)*
-- **AC:** A non-service-role INSERT setting `user_tier != 'free'` or non-null `stripe_customer_id` is rejected with `42501`; brand-new signups (defaults) still succeed; promo/webhook service-role writers unaffected.
-- **Tests:** RLS integration test performing the delete+insert escalation and asserting rejection; pgTAP assertion that a `BEFORE INSERT` trigger exists on `public.profiles`.
+### P0-1 — DMCA designated agent not registered (ENG-859) · `legal` · OPEN · ops
+- **Category:** Legal / compliance.
+- **Description:** In-app DMCA form and API route exist, but §512(c) safe harbour requires Copyright Office designated agent registration. Recipe-import wedge increases exposure as volume grows.
+- **Evidence:** `docs/product-roadmap.md` ENG-859 Urgent; `app/dmca/page.tsx`, `app/api/dmca-takedown/route.ts`.
+- **Impact:** Import-driven growth without safe harbour = takedown/replay risk beyond code fixes already shipped.
+- **Recommendation:** Complete registration; publish agent in Terms/footer; link from import disclaimer surfaces.
+- **Suggested issue:** *ENG-859: Register DMCA designated agent and wire public listing*
+- **AC:** Agent listed on Copyright Office site; app legal pages reference it.
+- **Tests:** Manual legal checklist; no automated test.
 
-### P0-2 — ENG-857 not shipped: verbatim creator prose still persisted + rendered (roadmap claims LIVE) · `recipe` · CONFIRMED (conf 9)
-- **Category:** Legal / compliance (copyright).
-- **Description:** `docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md` makes "set `recipes.description` null on import (keep parsing only for the macro-sanity check)" a P0 launch-blocker, naming the exact chain. The roadmap (`docs/product-roadmap.md:45`) marks it **"Open — P0 LIVE / shipping in prod now."** The code does **not** null the description: the web-scrape import branch returns the raw JSON-LD `description` verbatim, the persist layer inserts it unchanged, and both platforms render it. The only transform (`sanitizeRecipeDescription`) merely strips a legacy `[TEMP SEED]` admin prefix — no paraphrase.
-- **Evidence:** `app/api/recipe-import/route.ts:614-744` (web-scrape branch returns `...parsed` with only `title` overridden; description not nulled); `parseRecipeFromHtml.ts:451-453` (decodes verbatim headnote); `apps/mobile/lib/saveImportedRecipe.ts:163` (`description: recipe.description ?? null`); `src/app/components/RecipeDetail.tsx:680,1748-1750` (renders it); `apps/mobile/app/recipe/[id].tsx:1598`; `src/lib/recipes/sanitizeRecipeDescription.ts:13-24` (only strips `[TEMP SEED]`). Verifier confirmed the full chain in current code.
-- **Impact:** Copyright reproduction of creative headnote prose (Publications Int'l v. Meredith, 7th Cir. 1996; UK CDPA) on the live server-fetching web path, with DMCA safe harbour not yet effective (ENG-859 open). The false "LIVE" roadmap status means this could be ticked off the launch gate without anyone implementing it.
-- **Recommendation:** At the import-route boundary set web/blog `description: null` (keep `parsed.description` only as input to `extractCaptionNutrition` for the macro sanity check — that call already exists at `route.ts:739`). Mirror on the social website-fallback branch (`route.ts:326`). Confirm both persist layers cannot receive prose. Correct the roadmap row to "Open." Pair with P1-RECIPE-2 (disclaimer) and ENG-859 (DMCA agent).
-- **Suggested issue:** *ENG-857 regression: web/blog import still persists + renders verbatim creator description (P0 launch-blocker not actually shipped)*
-- **Tests:** Integration test asserting a web URL with a JSON-LD `description` returns `recipe.description === null`; persist-path unit test; render test asserting no headnote for imported (non-first-party) recipes.
+### P0-2 — Gate0 entitlement exploit must be live-verified, not assumed · `security` · UNVERIFIED
+- **Category:** Security / entitlement integrity.
+- **Description:** Morning audit P0-1 (DELETE+INSERT tier escalation) is **fixed in repo** (`20260611120000_profiles_insert_lockdown_eng1035.sql`). Production exploit closure requires applied migration + live test.
+- **Evidence:** Migration + `tests/unit/profilesInsertLockdown.test.ts`; `docs/decisions/2026-06-11-gate0-db-security.md` claims applied 5/5; this revision: ENG-1036 live **PASS**, ENG-1035/1043 **skipped** (no `GATE0_VERIFY_PASSWORD`).
+- **Impact:** If migration not on prod, free-Pro escalation remains possible.
+- **Recommendation:** Set `GATE0_VERIFY_PASSWORD` for throwaway account; run `node --import tsx scripts/verify-gate0-db.mts` → 5/5 before any cohort.
+- **Suggested issue:** *Gate0 live verification gate — automate in CI against staging*
+- **AC:** Delete+insert escalation returns 42501; promo redemption succeeds for existing profile.
+- **Tests:** `scripts/verify-gate0-db.mts`; RLS integration suite in §27.
+
+> **Resolved P0s (do not re-file):** verbatim import description (ENG-857 **SHIPPED**); tier INSERT bypass (**SHIPPED** ENG-1035 pending live verify).
 
 ---
 
 ## 11. P1 Findings (fix before broader beta)
 
-> Verification adjusted four originally-P1 items to P2 (see §12): middleware auth round-trip, dead-code `foodSelectionToMeal.ts`, grocery-category divergence, off-palette hex literals. The eight that held at P1:
+### P1-1 — Expo dev client crashes on tunnel/Metro reload (physical + sim) · `mobile` · CONFIRMED · dev-only
+- **Category:** Stability (development).
+- **Description:** Device crash logs (`Suppr-2026-06-11-183604.ips`) show SIGSEGV in `DevLauncherAppController.fetchUpdate` / `RemoteAppLoader` during remote bundle fetch — not meal-logging JS. Simulator evening pass: redbox "Could not connect to development server" on tunnel URL `hpdpjmm-gracehowse-8081.exp.direct` (screenshot: `apps/mobile/screenshots/agent/audit-2026-06-11-today.png`).
+- **Evidence:** `docs/debug/Suppr-2026-06-11-183604-device.ips`; `e3ac41c7` mitigations: Sentry off in `__DEV__`, `EXPO_NO_FAST_REFRESH=1`, meal-log hardening.
+- **Impact:** Blocks founder/device QA on dev client; **TestFlight production binary does not use DevLauncher**.
+- **Recommendation:** QA launch readiness on **build 57**; keep tunnel script mitigations; document dev-client as non-ship surface.
+- **Suggested issue:** *Document dev-client vs TestFlight QA matrix; Maestro on release binary*
+- **AC:** TestFlight log-food path passes without native crash.
 
-### P1-1 — SECURITY DEFINER view `recipes_implausible_macros` bypasses RLS, readable by anon+authenticated · `security` · CONFIRMED (conf 9)
-- The live DB has `public.recipes_implausible_macros` defined `SECURITY DEFINER` (Supabase advisor lint 0010 = **ERROR**), selecting `id, title, author_id, macros …` from `recipes` with **no** `published=true`/`author_id=auth.uid()` filter. `relrowsecurity=false`; `information_schema` grants show `SELECT` for both `anon` and `authenticated`; PostgREST exposes it at `/rest/v1/recipes_implausible_macros`. Any signed-in user — or anyone with the bundled anon key — can read every user's matching recipes including private unpublished drafts. **0 rows today**, but a single import-parsed draft with implausible macros (routine) makes that draft world-readable.
-- **Evidence:** Live security advisor (project `fnfgxsignmuepshbebrl`), `pg_get_viewdef`, `information_schema.role_table_grants`, `pg_class.relrowsecurity=false`; intended boundary `20260516150000_perf_rls_initplan_wrap_auth_calls.sql:286-287`.
-- **Fix:** Drop the view (if maintenance-only — no app path SELECTs it) or recreate `WITH (security_invoker = true)` AND `REVOKE SELECT FROM anon, authenticated`. Re-run advisor to clear the 0010 ERROR. Stage SQL; Grace runs `supabase db push --linked`.
+### P1-2 — Monetization chain blocked — cannot sell Pro at launch · `monetisation` · CONFIRMED
+- **Category:** Monetisation / launch.
+- **Description:** Stripe Tax (ENG-33 Blocked), RevenueCat IAP (ENG-101 Blocked), offerings (ENG-198 Todo), VAT inclusive pricing (ENG-667 Urgent). Paywall UI is strong but payment path is not live.
+- **Evidence:** Linear live query 2026-06-11: 309 open ENG issues; monetization items in Blocked/Todo; `TODO.md` ship gate unchecked.
+- **Impact:** 2026-07-01 launch plan assumes Free+Pro; cannot collect or enforce Pro without this chain.
+- **Recommendation:** Treat as founder critical path parallel to Gate0; do not onboard paid users until live checkout smoke passes.
+- **Suggested issue:** *Launch monetization unblock — Tax → checkout → RC offerings → IAP*
+- **AC:** UK checkout shows inclusive VAT; RC entitlement syncs to `profiles.user_tier`.
 
-### P1-2 — Recipe-import caption fallback uses `fetch(redirect:"follow")` — reintroduces ENG-682 metadata-SSRF · `security` · CONFIRMED (conf 8)
-- The route has a hardened SSRF helper (`followWithSsrfGuard`, per-hop DNS re-validation) but two sites bypass it. Worst: the Tier-4 caption-link fallback at `app/api/recipe-import/route.ts:271-279` does `fetch(linkUrl, { redirect: "follow" })` after only an *initial* `isAllowedUrl(linkUrl)` string check. `linkUrl` comes from the caption of a user-pasted social post, so an attacker page can 302-redirect to `http://169.254.169.254/latest/meta-data/` (IMDS) or an internal host, and the body is fetched + parsed with no per-hop recheck. Separately the main hop loop at `:590-606` re-checks `isAllowedUrl` but never calls `resolveDnsAndValidate`, leaving DNS-rebinding (ENG-730 TOCTOU) unmitigated.
-- **Fix:** Replace the `:272` fetch with `followWithSsrfGuard`; never use `redirect:"follow"` on user-supplied URLs; add `resolveDnsAndValidate` to the `:591` loop. Add a CI grep guard failing on `redirect: "follow"` in that route.
+### P1-3 — OFF text search bypasses server cache and rate limits · `vendor` · CONFIRMED
+- **Category:** Vendor / scale.
+- **Description:** USDA/Edamam/FatSecret searches use `vendorSearchCache.ts` (ENG-1038). OFF text search still goes **client-direct** to `world.openfoodfacts.org` — no cross-request cache, no account quota guard.
+- **Evidence:** `FoodSearchPanel.tsx` OFF fetch path; nutrition specialist review; four parallel vendor calls per debounced keystroke still include OFF from client.
+- **Impact:** Viral traffic burns OFF client bandwidth and leaves 3-server-vendor merge fragile.
+- **Recommendation:** Proxy OFF text search through API route with same cache/TTL pattern as other vendors.
+- **Suggested issue:** *Proxy OFF search through vendor cache layer (parity with ENG-1038)*
+- **AC:** Repeated query hits cache; rate limit per user; degraded envelope when OFF down.
 
-### P1-3 — No cross-request vendor cache: Edamam (1,000/day account-wide) + USDA (~1,000/hr) exhaust in minutes at viral scale · `vendor` · CONFIRMED (conf 8)
-- Every debounced food-search keystroke fans out **four** live vendor calls per user with no server-side cross-request cache (`apps/mobile/lib/verifyRecipe.ts:964-967`; grep for `unstable_cache|revalidate|lru|redis` across all four vendor dirs/routes returns nothing). Route limits are **per-user only**. Edamam free tier is 1,000 req/day *account-wide* (`src/lib/edamam/client.ts:6`); USDA standard key ~1,000/hr. A few hundred concurrent searchers burn the shared quota in minutes, after which Edamam/USDA silently return `[]` and search degrades for everyone, invisibly.
-- **Fix:** Short-TTL server-side cache (24h, per-vendor, normalised query) in front of all four search routes — food queries are highly repetitive (high hit rate). Add an account-level circuit-breaker/daily budget that degrades gracefully and emits one ops alert. Confirm USDA prod key tier; budget Edamam Pro spend explicitly (uncapped 4-calls-per-keystroke = unbounded cost line).
+### P1-4 — No persistent offline journal queue · `reliability` · CONFIRMED (known deferral)
+- **Category:** Data integrity.
+- **Description:** Offline banner implies sync; writes are optimistic in-memory. Force-quit mid-offline loses logs. Explicitly deferred to v1.1.
+- **Evidence:** `docs/decisions/2026-04-25-offline-queue-deferred.md`.
+- **Impact:** Real users on flaky mobile networks lose food logs — high churn for MFP refugees.
+- **Recommendation:** Ship minimal durable queue before broad beta, or gate offline UX to "read-only until connected."
+- **Suggested issue:** *P1: Persistent offline nutrition_entries queue*
+- **AC:** Log survives force-quit + reconnect; idempotent upsert.
 
-### P1-4 — `calcGoalTimeline` weekly rate is a raw two-point delta — drives goal DATES and OVERRIDES projection, both platforms · `nutrition` · CONFIRMED (conf 8)
-- `calcGoalTimeline` computes `weeklyRateKg` from raw first-vs-last weigh-in in a 28-day window (no smoothing), then (a) sets the days-to-goal date and (b) feeds `projectWeight()`'s `observedKgPerWeek`, which **overrides** the formula projection when `|rate| >= 0.05`. Raw scale weight swings 1–2 kg/day; one noisy endpoint distorts the goal date and trajectory. This is the identical class ENG-1026 just smoothed for the on-track tile — and the ENG-1026 doc *incorrectly* claims mobile has "no parallel bug." `daySpan` floored at 1 means two weigh-ins a day apart with a 0.8 kg swing yield a 5.6 kg/week rate.
-- **Evidence:** `src/lib/weightProjection.ts:557-574` (raw two-point), `:568` (daySpan floor), `:278-283`/`:368-376`/`:184-205` (override path); callers on web ProgressDashboard/Targets/trajectory-card + mobile progress/TrajectoryCard; contrast the fixed `weightTrendTile.ts:115-159` EMA. ENG-1026 doc claim at `docs/decisions/2026-06-11-nutrition-audit-p1-fixes.md:54-58`.
-- **Fix:** Reuse the ENG-1026 interpolate-to-daily + EMA (or least-squares like `adaptiveTdee.ts`); require ≥3 weigh-ins and a ≥7-day span before trusting the rate; correct the ENG-1026 doc.
+### P1-5 — Apple Health sync not device-proven (ENG-874) · `health` · IN PROGRESS
+- **Category:** Product / parity.
+- **Description:** Health sync code paths exist; Linear ENG-874 In Progress for HS-01–HS-09 device matrix. Audits mark "pass in code, blocked on device."
+- **Evidence:** `apps/mobile/hooks/useHealthSyncOnFocus.ts`; `e3ac41c7` limits dietary import on Today focus, extends workout lookback.
+- **Impact:** Launch claims health-adjacent positioning without proven sync on physical iPhone.
+- **Recommendation:** Complete ENG-874 on iPhone 17 Pro before marketing health features.
+- **Suggested issue:** *ENG-874: Close HS device matrix on physical iPhone*
+- **AC:** Maestro/device checklist green for import + Today bonus card.
 
-### P1-5 — Mobile shopping list ignores portion multiplier; web scales by it · `mealplan` · CONFIRMED (conf 9)
-- Shopping generation is implemented twice. Web multiplies ingredient amounts by `effectivePortionMultiplier(m.portionMultiplier)`; mobile counts plain recipe occurrences only and never reads `portionMultiplier`. A planned meal at 2× buys 2× on web, 1× on mobile — under-buying on the primary (iOS) surface.
-- **Evidence:** `apps/mobile/app/(tabs)/planner.tsx:1939-1978` (recipe counts only); `src/context/AppDataContext.tsx:1241-1244` + `src/lib/planning/generateShoppingList.ts:20-28` (portion-scaled).
-- **Fix:** Delete the inline mobile generator; route mobile through the shared `generateShoppingListFromRecipeEntries`/`mergeRows` (already async-capable). Parity by construction.
+### P1-6 — `getUserTier()` fails open to `free` when service role missing · `security` · CONFIRMED
+- **Evidence:** `src/lib/supabase/serverAnonClient.ts:85-91`.
+- **Impact:** Misconfigured preview env silently strips Pro from AI/import routes.
+- **Fix:** Fail closed in production (500 + alert) if service role unset.
 
-### P1-6 — Mobile food-search logs persist `fiber_g = NULL` → blank fibre in CSV export (web differs) · `foodlogging` · CONFIRMED (conf 9)
-- Web sets top-level `mealFiberG` and persists `fiber_g`; mobile never sets a top-level `fiberG` (fibre lives only in the micros map) so `persistMealsImmediate` writes `fiber_g: null`. Daily totals stay correct via `mealContributedFiberG`'s micros fallback, **but the web CSV export reads `fiber_g` directly** (`Settings.tsx:658`) with no fallback — so the same food exports real fibre when logged on web and blank fibre when logged on mobile. MFP-refugees (the launch cohort) value data portability; iOS is the primary surface.
-- **Evidence:** `apps/mobile/app/(tabs)/index.tsx:2172,2183,517`; `src/app/components/NutritionTracker.tsx:1672,1699`; `src/context/appData/useNutritionJournalState.ts:155`; `src/app/components/Settings.tsx:658`; fallback only at `src/lib/nutrition/microNutrientDisplay.ts:15-19`.
-- **Fix:** Mobile sets top-level `fiberG` on food-search meals (mirror web); standardise in the shared helper; make CSV export use `mealContributedFiberG` defensively so historical rows backfill.
+### P1-7 — Web plan feature-thin vs mobile · `parity` · CONFIRMED
+- **Evidence:** `MealPlanner.tsx` cut list (no move/templates/leftovers); mobile `planner.tsx` ~4.3k lines full feature set.
+- **Impact:** Web users get second-class planning; docs/journeys overstate web drag-drop.
 
-### P1-7 — Required import source-card disclaimer (ENG-858) does not exist anywhere · `recipe` · CONFIRMED (conf 8)
-- ENG-858 (launch-blocker) requires a verbatim disclaimer on every imported recipe with a `source_url` ("Recipe imported for your personal cookbook. Ingredients and nutrition are estimated by Suppr and may differ from the original. Not affiliated with or endorsed by {source_name}."). A full-codebase search for any fragment returns **zero** matches. Compounds P0-2: the recipe shows creator prose AND a Suppr-calculated nutrition panel with no estimate/non-endorsement notice.
-- **Fix:** Add the exact decision-doc string to the SOURCE card on both `RecipeDetail` surfaces, gated on `source_url`, as a shared constant. Render test for presence/absence.
+### P1-8 — Adherence headline semantics when over target · `nutrition` · CONFIRMED
+- **Evidence:** `progressRangeStats.ts:161` — `(avg/target)*100` uncapped → "111% adherence · over".
+- **Impact:** Overeating reads as *higher* adherence; trust erosion on Progress.
+- **Fix:** Cap display, rename metric ("intake vs target"), or invert over-band copy.
 
-### P1-8 — `redeem_promo_code` ON CONFLICT DO UPDATE of `user_tier` likely rejected by the lockdown trigger for existing users · `dataintegrity` · CONFIRMED (conf 5)
-- `redeem_promo_code` (SECURITY DEFINER) does `INSERT … ON CONFLICT (id) DO UPDATE SET user_tier`. For any user who already has a profile (everyone, post-signup), the ON CONFLICT path runs an UPDATE that fires the `BEFORE UPDATE` lockdown trigger. The lockdown header *claims* SECURITY DEFINER makes `auth.role()` return `service_role`, but `auth.role()` is JWT-derived (proven by the 2026-05-25 doc), and the function never does `set local role`. If correct, **every promo redemption against an existing profile fails with 42501** — including Grace's `SUPPR_TEST_PREMIUM` path and any launch promo.
-- **Evidence:** `20260407220000_redeem_promo_idempotent.sql:37-45`; `20260503100000_profiles_tier_column_lockdown.sql:25-27` vs `60-69`; `docs/decisions/2026-05-25-…:27-30`; `apps/mobile/hooks/usePromoCode.ts:116-121`. (conf 5 — needs a live-DB redemption test to confirm.)
-- **Fix:** Make `redeem_promo_code` bypass the trigger explicitly (service-role-scoped write, or a GUC the trigger detects). Live-verify redemption against an existing profile. Reconcile the lockdown header comment with real `auth.role()` behaviour.
+### P1-9 — Paywall advertises "AI coach" — confirm shipped scope · `product` · UNVERIFIED
+- **Evidence:** Paywall walkthrough; `mealCoach.ts` ("what to eat next") exists; full coaching loop unclear.
+- **Impact:** App Store / billing scrutiny if Pro feature is aspirational.
 
-### P1-9 — Primary tab order diverges 2 ways + a glyph collision across native vs web · `designux` · CONFIRMED (conf 9)
-- Native iOS = Today·**Plan·Recipes**·Progress; both web surfaces = Today·**Recipes·Plan**·Progress. Plus an icon mismatch: native Calendar/BookOpen/Utensils vs mobile-web Sun/CalendarDays/BookOpen — so **BookOpen means "Plan" on native but "Recipes" on web.** Violates "web and mobile must stay in sync." Native's own comment defends Plan-first, so this is a stale unreconciled decision never propagated to web.
-- **Evidence:** `apps/mobile/app/(tabs)/_layout.tsx:148-202`; `src/app/components/suppr/desktop-sidebar.tsx:112-133`; `src/app/App.tsx:676-679`; flagged in `docs/ux/reviews/2026-06-10-fresh-eyes/design-director-review.md:102,113`.
-- **Fix:** Pick one canonical order (adopt native Plan-first — it has a documented test rationale) + one glyph set; apply to both web surfaces in one flag-gated change; parity test on the three nav definitions.
-
-### P1-10 — COMPETITIVE: the recipe-import-from-Reel wedge is real but its web path carries the live legal P0 · `designux` · CONFIRMED (conf 8)
-- Suppr's defensible position vs both nutrition apps (no recipe layer) and recipe apps (no goals/health layer) is "import the Reel recipe AND fit it to your macros." The infrastructure is genuinely built and the **social** path is documented as compliant and stronger than ReciMe. The **web/blog** path is the P0-2 exposure. Launching the viral push while the web path replays verbatim prose with no DMCA safe harbour is the single biggest non-engineering launch risk.
-- **Fix:** Lean the launch on the social import path; close ENG-857/858/859 before turning on growth. Legal-lane dependency that gates the headline feature.
+> **Resolved P1s (shipped @ e3ac41c7):** SECURITY DEFINER view (ENG-1036); SSRF caption fallback (P1-2); vendor cache trio (P1-3 partial); calcGoalTimeline smoothing (P1-4); shopping portion parity (P1-5); mobile fiber_g (P1-6); import disclaimer (P1-7); promo GUC (P1-8); tab order (P1-9 / ENG-1044); foodSelectionToMeal wiring (P2→done).
 
 ---
 
 ## 12. P2 Findings (important improvements)
 
-**Downgraded from P1 by verification:**
-- **Middleware runs `supabase.auth.getUser()` (network round-trip) on every request before the `isPublic` short-circuit** (`middleware.ts:101-111`), including all `/api/*` and public marketing pages — couples all traffic (incl. cold TikTok landing) to Supabase Auth latency/availability. Move the call after `isPublic`; drop `/api/*` from the matcher (routes self-authenticate).
-- **`foodSelectionToMeal.ts` is dead code** — the new "single source of truth" helper is imported by zero hosts; both mobile and web still run inline copies that have already drifted (per-serving `fiberG` differs). Wire both hosts to it or don't commit it.
-- **Grocery categories diverge web vs mobile** — `guessGroceryCategory` {Protein,Dairy,Grains,…} vs mobile inline {Meat & Fish, Dairy & Eggs,…}; same egg → different aisle; households see two structures. Route mobile through the shared categoriser.
-- **14 off-palette hex literals (Tailwind slate/red/amber) in live render paths** incl. the AI-log confidence chip (core logging flow), `NutritionSourceBadge`, `RootErrorBoundary` — won't shift if Sloe hues re-tune; won't dark-mode correctly. Add semantic tokens + a no-raw-hex lint.
-
-**Native P2s:**
-- **Web AppDataContext god context** — 2,195 lines, ~254 fields in one memoized value consumed by 20 components; every field change re-renders all. Split into domain contexts or a selector store.
-- **Mobile Today = 6,624-line component, 261 hooks** — worse than the ENG-703 baseline; effectively untestable. Continue the `useTrackerScreen()` extraction.
-- **fal.ai image-gen sits outside the AI cost circuit-breaker** — no global spend cap (`src/lib/server/falImageGenerator.ts`). Route through the reserve/commit budget or add a fal daily £ counter.
-- **FatSecret %DV→absolute micros has no runtime plausibility guard** — a v1→v2 API format change would silently inflate ~13×; vitamin-A unit basis (mcg RAE) is not guaranteed per food. Add a per-micro plausibility ceiling; prefer USDA/OFF micros.
-- **FatSecret per-100g reconstruction defaults to 100 g serving mass when grams unknown** (`verifyIngredients.ts:876`) — mislabels per-serving as per-100g. Skip the candidate or carry as per-serving instead.
-- **OFF text-search fetch has no timeout** (`searchProducts.ts:65-73`) — an OFF outage stalls the whole 4-vendor merge. Add `AbortSignal.timeout(5000)`.
-- **Conflicting vendor macros are never reconciled** — both panels shown side by side with no agreement check. Keep per-source rows but warn when same-named rows disagree beyond tolerance.
-- **Web single-meal log & delete don't roll back the optimistic UI on persist failure** (`useNutritionJournalState.ts:196-205`) — phantom row / overstated totals; the bulk path and mobile both roll back. Mirror the rollback.
-- **Multi-add basket (ENG-1042) wired into FoodSearchPanel but no host commits it** — feature has no working path. Don't enable `onAddToBasket` until the batch-commit exists.
-- **Cook-mode scaler desyncs step text from scaled nutrition** for countable items outside a hardcoded noun list (`recipeScale.ts:254-274` omits shallot, mushroom, courgette, prawn, leek…). Drive count-noun recognition from the estimator's vocabulary.
-- **`split_recipe_total` offline fallback fabricates a fixed 15/55/30 macro split with no `isCoerced` guard** (`allocateIngredientMacrosFromLines.ts:78-91`) — could be journaled as real. Add a `fabricated` flag and audit consumers.
-- **Weak keyword-only grocery categorisation** dumps most ingredients into "Other" (`category.ts` ~30 keywords). Expand the lexicon; measure "Other" rate.
-- **No pantry/staples model** — planner re-buys salt/oil/spices weekly. Add a per-user/household pantry the generator subtracts.
-- **Mobile fabricates quantity "1" for non-numeric amounts; web preserves the raw token** — resolved by routing mobile through the shared generator.
-- **Move-meal is mobile-only** (ENG-699) — web Plan has only same-slot Swap; `moveMealInPlan` is already shared/tested. Wire it into web.
-- **No visible unique constraint on `saves(user_id, recipe_id)`** — duplicate-row + free-tier-count risk; inserts use plain `.insert` with no `onConflict`. Confirm live schema; add `unique index concurrently` if absent.
-- **Dark-mode parity gaps** on Weekly Recap / Log-a-meal CTA + Shopping badge — fixed accent instead of dark token. Audit `useAccent()`/`useThemeColors()` call sites.
+- **Client monoliths:** `index.tsx` 6618 lines; `AppDataContext.tsx` ~2200; `NutritionTracker.tsx` ~3674; `planner.tsx` ~4272; ~191 files >400 lines.
+- **Web coverage ~57% lines** with large UI untested (`docs/testing/overview.md`); mobile coverage **not gated** in CI.
+- **Middleware `getUser()` before `isPublic`** — latency on marketing pages (`middleware.ts`).
+- **Generic "Imported recipe" titles** — library clutter (`saveImportedRecipe.ts`).
+- **Cook-mode step/nutrition desync** for count nouns outside hardcoded list (`recipeScale.ts`).
+- **No pantry/staples model** — replans salt/oil weekly.
+- **Weak grocery categorisation** — large "Other" bucket (`category.ts`).
+- **fal.ai outside AI cost circuit-breaker** (`falImageGenerator.ts`).
+- **FatSecret v1/v2 micro guard missing** (nutrition audit #27).
+- **Nutrient panel sorts %DV descending** while comment says deficiencies first (`fullNutrientPanel.ts:217-224`).
+- **Dual meal-slot share tables** (`mealBudget.ts` vs `northStarSuggestion.ts`).
+- **US FDA DVs only** — UK/EU market (`dailyValues.ts`).
+- **OFF fetch no timeout** on client path.
+- **Web single-meal optimistic insert/delete no rollback** on persist failure.
+- **CI `VERIFY_STRICT=0`** — production env misconfig can slip through.
+- **246 hex literals** off token system (ENG-1014 baseline drift).
+- **Deep link does not dismiss open Log sheet** (walkthrough bug).
 
 ---
 
 ## 13. P3 Findings (future / polish)
 
-- Weekly-recap cron caps at 5,000 **unordered** rows with no pagination (`weekly-recap/route.ts:99`) — silently drops users past the cap; add `.order("id")` + cursor pagination.
-- 40 API routes share auth/rate-limit/budget by copy-paste with no `withRoute` wrapper — inconsistency risk as routes grow.
-- `save_verified_ingredients` exists live with mutable `search_path` (contradicts the ENG-557 migration that declared it non-existent) and filters by `id` only (no `author_id` predicate) — set `search_path` + add an author check.
-- Supabase Auth **leaked-password protection (HIBP) is disabled** (advisor WARN) — one dashboard toggle (founder action).
-- `getUserIdFromRequest` does a network JWT verify on every call — fine now; add a short-TTL token→userId cache at scale.
-- Nutrient panel sorts %DV **descending** while its comment claims deficiencies bubble to the top (`fullNutrientPanel.ts:17-19` vs `:214-224`) — code/comment contradiction.
-- Stale `measureToGrams` docstring contradicts the shipped ENG-701 reorder.
-- Activity-bonus macro scaling inflates **protein** along with carbs/fat, diluting the body-weight protein anchor (`scaleMacroTargetsForCalorieBudget.ts:21-26`).
-- FatSecret macro-cache scrub is hardcoded ON regardless of `FATSECRET_TIER=premier` — zeroes cacheable Premier data, forcing redundant re-fetches.
-- Imported-recipe idempotency keyed on `source_url` returns a stale prior import with possibly worse nutrition — distinguish "already imported" from "newly saved."
-- Same ingredient in different units never consolidates in persisted rows (display-only grouping exists).
-- ~101 files exceed the 400-line non-negotiable; `planner.tsx` 4,455 / `SettingsBundleContent.tsx` 3,828 / `NutritionTracker.tsx` 2,671. Add a pre-commit warn on net-new lines to >400 files.
-- Token hex-literal debt is **246** in mobile vs ENG-1014's cited 188 — re-baseline + lint.
-- `weekly_recap_push_delivered` analytics event defined but never emitted, with a dangling "see TODO" (violates the no-silent-deferrals rule).
-- `AppDataContext` (2,195 lines, core shared state) has **no direct test**; 11 `as any` casts.
-- `nutrition_entries.source` CHECK is `NOT VALID` — historical rows unverified; validate after an audit query.
-- `nutrition_entries.calories` / `meal_plan_meals.calories` are **smallint** — overflow risk on malformed/high-portion imports; widen to integer.
-- Wholesale DELETE of curated recipes (`20260514100000`) destroys user saves/cook-history/plan links with no remap — document an update-in-place rule before real users.
-- Redundant duplicate user-leading indexes on `nutrition_entries`.
-- Stranded duplicate `EmptyState` migration — two diverging primitives in parallel use.
+- Weekly-recap cron 5000-row cap unordered; widen `calories` smallint; validate `nutrition_entries.source` CHECK; HIBP password protection; `save_verified_ingredients` search_path; discover collections carousel unwired (ENG-907); empty recipe thumbnails (ENG-1015); store integration; collaborative collections; visual-regression golden set (ENG-827).
 
 ---
 
-## 14. Architecture Findings (score 6/10)
+## 14. Architecture Findings (score 7/10)
 
-Server-side is mature: signature-verified idempotent webhooks; constant-time cron-secret auth; a per-user+IP rate limiter that **fails closed in prod**; a two-layer AI cost circuit-breaker (reserve/commit/release with a documented fail-open→fail-closed window); server-side PostHog kill-switches with a fail-safe; Sentry wired via `src/instrumentation.ts` `onRequestError`. The weak axis is the **client/state layer**: a 2,195-line web god context (no mobile equivalent — the two state architectures have structurally diverged), a 6,624-line mobile Today screen, ~101 files over the 400-line rule. Cross-cutting scaling assumptions to fix: the middleware auth round-trip (§12), the 5,000-row unordered cron cap (§13), and fal image-gen outside the budget guard (§12). None block N=1, but the god-context + monoliths directly obstruct adding AI coaching / Apple Health / Oura cleanly. **Future-capability readiness:** the data model and server boundaries support subscription tiers, barcode, image recognition, and health integrations; the client architecture is what will make each addition expensive.
-
-## 15. Code-Quality Findings (score 6/10)
-
-Strong test breadth (935 test files; all critical nutrition libs have named tests) and type discipline (zero `@ts-ignore`/`@ts-expect-error`). Maintainability is the weak axis: the 400-line non-negotiable is violated ~101 times; the worst offender (`(tabs)/index.tsx`, 6,624 lines, one 6,217-line function, 261 hooks) is effectively untestable. The most telling smell: a freshly-extracted, fully-tested shared helper (`foodSelectionToMeal.ts`) that **no host imports** — both platforms still run inline copies, so the "single source of truth" is dead code and the real source of truth is two drift-prone duplicates. Token-hex debt (246) is worse than the cited 188. One analytics event is defined-but-never-emitted with a stale TODO cross-ref. **Recommendation:** wire-or-delete the helper this week; add a pre-commit line-budget warn; land a no-raw-hex lint so the count can only fall.
-
-## 16. Security Findings (score 6.5/10)
-
-See §10 (P0-1), §11 (P1-1, P1-2, P1-8), §13. **Strengths:** consistent `getUserIdFromRequest` (bearer/cookie), `assertOrigin` CSRF on state-changers, service-role always scoped to a verified `userId`, comprehensive self-only RLS, household reads correctly mediated through service-role + a `share_targets` consent gate, both webhooks verifying signatures + replay/dedup. **Gaps:** the entitlement-escalation P0, the public SECURITY DEFINER recipe view, the reintroduced SSRF, plus WARN-level advisor items (leaked-password protection off, mutable `search_path` on 2 functions, `save_verified_ingredients` author-check drift). The hardening trail is real; the open items are latent-but-live and must close before a real cohort.
-
-## 17. Food-Logging Findings (score 6/10)
-
-Core logging math is solid and well-guarded (shared per-serving/per-100g predicate; centralised caffeine/alcohol/micros scaling; portion-edit rescaling of fibre/micros consistent with the four macros). The walkthrough confirmed a genuinely premium search experience (Verified/Estimated confidence tiers, per-serving macros with grams, Past-logged section, copy-yesterday, barcode/voice/camera affordances). Issues: the dead-code SoT helper (§12), the mobile `fiber_g=NULL` export divergence (P1-6), the no-rollback web single-insert/delete (§12), and the wired-but-uncommittable multi-add basket (§12). No P0 — none corrupt stored math — but the fibre-export divergence and dead SoT should clear before beta. **Edit/delete flows** (eaten_at editing ENG-772, portion-edit micros ENG-784) are tracked but partially open.
-
-## 18. Nutrition-Engine Findings (score 8/10) — mission-critical
-
-The 2026-06-10 audit and 2026-06-11 P1-fixes doc are accurate and their fixes **landed**: the P0 adaptive-TDEE slope bias is gone (least-squares slope + ±0.35 kg/wk cap + completeness gate + plausibility clamp, 23 tests incl. the "0.5 kg/wk recovers ~550 not ~130" regression); all five P1s (ENG-1025→1029) are present, parity-wired, and tested. Core math (Mifflin-St Jeor, Atwater 4/4/9, FDA DVs, largest-remainder macro %, count-to-weight, net carbs, the 7700 kcal/kg projection horizon guard) is correct. **The one consequential new finding** is P1-4 (`calcGoalTimeline` raw two-point delta driving dates + overriding projection). Remaining items are the P3 panel-sort contradiction, FatSecret %DV guard (§12), activity-bonus protein dilution (§13), and a stale docstring. **Recommended new tests:** the §11 P1-4 water-spike fixtures; a property test that daily/meal/recipe totals equal the sum of parts under arbitrary portion multipliers; a cross-surface test that web and mobile produce byte-identical macros+micros for the same `SelectedFood`.
-
-## 19. Vendor-Integration Findings (score 7/10)
-
-Unusually well-engineered for correctness: per-100g basis reconciliation for OFF serving-basis rows; post-scale Atwater + plausibility guards on every commit; zero-macro FatSecret stub rejection; an honest confidence/accept-floor model that excludes sub-threshold rows from totals. Source precedence is trust-weighted (verified USDA > branded/commercial) and deliberately de-dupes per-source so the user can pick between conflicting panels — sound UX, but it means conflicting macros are never *reconciled*, just shown (§12). The launch-relevant gaps are **economic, not arithmetic**: no cross-request cache (P1-3) and no OFF timeout (§12). **Trust verdict:** the resulting nutrition data is trustworthy; the integration's weak points are outage resilience and cost/quota scalability at the explicitly-targeted viral scale.
-
-## 20. Recipe-Platform Findings (score 5/10) — core pillar
-
-Recipe *nutrition* can largely be trusted (curated staple table, confidence accept-floor, count-to-weight, raw/cooked + unparseable flags, density-refusal returning 0 g rather than guessing ml→g). Scaling is bounded and clamps pathological input. Import is robust to malformed input (typed errors, SSRF guard, title-caption-leak sanitiser, JSON-LD defensiveness). The pillar is dragged to 5 by the **legal P0** (P0-2 + P1-7 disclaimer + ENG-859 DMCA), the cook-mode scaler step/nutrition desync (§12), the fabricated-split journaling risk (§12), and the stale-nutrition idempotent re-import (§13). The walkthrough also surfaced the **generic "Imported recipe" fallback title** (`saveImportedRecipe.ts:107`, `create-recipe.tsx:458`, `import-shared.tsx:411`) — power users importing many recipes get collisions/clutter — and empty grey thumbnails on library rows (ENG-1015). **Power-user scalability:** organisation is thin (8-recipe library tested; no collections/folders surfaced in the walkthrough beyond category chips).
-
-## 21. Meal-Planning Findings (score 6/10)
-
-The spine works end-to-end and the walkthrough confirmed a polished Plan surface ("Hits your targets 7 of 7 days," per-day macro chips, Generate/Adjust constraints, 7-day strip). Core problems: the **double-implemented shopping generator** (P1-5 portion multiplier + §12 categories + §12 non-numeric amounts), no pantry model, weak categorisation, move-meal web gap, no cross-unit consolidation, no store integration. **A serious meal planner (Plan To Eat / AnyList) would not yet switch** — they'd hit the pantry gap and the aisle inconsistency immediately. **Walkthrough trust flag:** the Plan headline "Hits your targets 7 of 7 days / All 7 days land on target" rendered above a Thursday at **1,301 / 1,231 kcal (over by 70)** with all macros "On track" — a visible self-contradiction (tolerance bands exist but the headline overstates).
-
-## 22. Design-System & UX Findings (score 7/10)
-
-The Sloe token system is genuinely well-architected: a 6-hue semantic palette with documented per-hue AA contrast math, a 4px scale (+12px dense step), a tight radius ladder, a typed Type ramp, and disciplined mobile↔web token mirroring. **The problem is enforcement, not design** — the team's own 2026-06-10 census found 875 off-scale spacing literals, 246 hex literals, 30+ radius violations, all breaching "Tokens only." Plus the tab-order/glyph divergence (P1-9), the stranded duplicate `EmptyState` (§13), and dark-mode CTA parity gaps (§12). **Surfaced data-trust UX issues from the walkthrough:** "111% adherence · over" (uncapped `(avg/target)*100` at `progressRangeStats.ts:161` — overconsumption produces a *bigger* "adherence" number, semantically backwards as a headline); the Plan 7/7 contradiction; deep links don't dismiss an open Log-sheet modal (navigation happens underneath). **Where Suppr is genuinely ahead:** the ~37-field micronutrient panel (Cronometer-tier), the adaptive-TDEE + meal-coach insights layer, and the recipe-import wedge.
+Two-app npm monorepo: Next.js 15 on Vercel + Expo iOS on EAS; shared logic via `@suppr/shared` → `src/lib/`. **40** API routes under `app/api/` with per-route JWT auth (middleware excludes `/api/*`). Clients write `nutrition_entries` directly via Supabase RLS. Upstash Redis for rate limits + vendor cache. Crons: weekly push, Supabase advisor check (`vercel.json`). **Strengths:** webhook idempotency, AI budget reserve/commit, vendor normalization pipeline. **Weaknesses:** client state monoliths, no Turborepo, duplicated `database.types.ts`, informal monorepo tooling. **Future capabilities:** data model supports tiers, barcode, image import, household; **client architecture** will make AI coach / wearables expensive until decomposition (ENG-703).
 
 ---
 
-## 23. Competitive-Analysis Findings
+## 15. Code Quality Findings (score 6.5/10)
 
-**Nutrition (MFP, Cronometer, MacroFactor, Lose It, Lifesum, Yazio, MyNetDiary, Foodvisor, Zoe):**
-- *Ahead/at-par:* micronutrient depth (~37 fields, Cronometer-tier); confidence-tiered honest search (most apps hide uncertainty); adaptive-TDEE (MacroFactor's signature feature — Suppr has a credible version). **Free barcode + free custom macros** are MFP-switch wins (GROW-19) MFP recently paywalled.
-- *Behind:* food DB breadth at scale is quota-bound (P1-3); no image-recognition logging (Foodvisor/Cal AI) yet; restaurant logging thin.
-- *Highest-leverage:* ship the vendor cache + merchandise "barcode free forever" (ENG-973) — directly converts MFP refugees.
+**935+** test files; strong `src/lib/**` coverage; zero `@ts-ignore` cited in prior pass. **Today tab 6,618 lines / 261 hooks** — violates 400-line cap by ~16×. **foodSelectionToMeal** now wired (morning dead-code smell resolved). Duplication: `FoodSearchPanel` web ~2749 + mobile ~2625 lines. Recommendation: resume `useTrackerScreen()` extraction; pre-commit warn on >400-line files; gate mobile coverage.
 
-**Recipes (Paprika, Crouton, ReciMe, Pestle, Mela, NYT Cooking, SideChef):**
-- *Ahead:* recipes carry **macro fit to your day** — Paprika/Crouton/ReciMe have no goals layer. Social-caption import is documented as legally stronger than ReciMe.
-- *Behind:* organisation (collections/folders/tags), cooking-mode polish, and the legal posture (P0-2). Generic "Imported recipe" titles read worse than Paprika's parsing.
-- *Highest-leverage:* close the legal P0 and lean on social import; add collections for power users.
+---
 
-**Meal Planning (Plan To Eat, AnyList, Mealime, Samsung Food, Cooklist, Tandoor):**
-- *Ahead:* macro-fit auto-planning + leftovers distribution is more goal-aware than AnyList/Plan To Eat.
-- *Behind:* pantry/staples, aisle customisation, cross-unit consolidation, store integration, web move-meal — table stakes for this category.
-- *Highest-leverage:* pantry model + the shared-generator unification (P1-5).
+## 16. Security Findings (score 7.5/10)
 
-**Health & Insights (Oura, Whoop, Levels, Zoe, Lifesum):**
-- *Ahead for a nutrition app:* the "what to eat next" meal-coach + maintenance/adaptive-TDEE narrative is a real insights layer recipe apps lack.
-- *Behind:* no wearable integration yet (Apple Health partial; Oura/Garmin/Fitbit aspirational).
-- *Highest-leverage:* Apple Health energy reconciliation (already partially built; ENG-793 flags the check-in burn ignoring measured energy).
+**Fixed today:** tier INSERT lockdown, recipe view lockdown, promo GUC, SSRF guard on import, import legal nulling. **Strengths:** RLS on personal tables, household consent gate, Stripe/RC webhook verification, CSRF on state-changers. **Gaps:** Gate0 live re-verify; ENG-859; tier fails-open on missing service role; leaked-password protection off; mutable `search_path` on legacy functions (advisor WARN). Run Supabase security advisor → target zero ERROR post-Gate0.
 
-**The uncopyable wedge:** import the Reel recipe AND fit it to your goals — Cal AI can't (no recipe layer), MacroFactor won't (no import), Paprika/ReciMe have no goals layer. This is the moat; it is gated by the legal P0.
+---
+
+## 17. Food Logging Findings (score 7/10)
+
+**e3ac41c7 improvements:** `foodSelectionToMealMacros` on mobile commit path; try/catch on food search select; `upsert` on `nutrition_entries`; memoized recent lists for VirtualizedList perf. Search UX **best-in-class** when Metro connected (confidence tiers, per-serving grams, past-logged). **Gaps:** offline queue; deep-link vs modal; web rollback; OFF client path; multi-add basket partially wired. Edit `eaten_at` (ENG-772) still open.
+
+---
+
+## 18. Nutrition Engine Findings (score 8/10) — mission-critical
+
+June 10 audit: **P0 adaptive slope bias FIXED** (`adaptiveTdee.ts` + `dailyInterpolatedWeightEntries`). **P1 gain 2× mismatch FIXED** (`GAIN_SURPLUS_PACE_FACTOR`, `whyThisNumber.ts`). **On-track tile FIXED** (ENG-1026). **Safety floor ack FIXED** (ENG-1027). **Goal timeline smoothing FIXED** (ENG-1039). Core math STANDARD per audit §1 table (~75 formulas). **Residual:** slope cap 0.35 kg/wk may under-credit fast losers (P2); activity-bonus scales protein down (P2); panel sort bug (P2); UK/EU DVs (P2). **Recommended tests:** keep `adaptiveTdee.test.ts`, `foodSelectionToMeal.test.ts`, `calcGoalTimelineSmoothing.test.ts`; add property test sum(meals)=day total.
+
+---
+
+## 19. Vendor Integration Findings (score 7/10)
+
+**Correctness:** per-100g reconciliation, Atwater guards, FatSecret stub rejection, confidence accept-floor — strong. **ENG-1038:** 24h cross-request cache + 90% quota circuit breaker on USDA/Edamam/FatSecret. **Gap:** OFF text search client-direct (P1-3). FatSecret Basic-tier cache scrub correct per ToS. **Economics:** Edamam 1000/day account-wide still caps viral scale; cache helps repeats not cold queries. **Trust:** committed nutrition trustworthy; outage resilience improved but not complete.
+
+---
+
+## 20. Recipe Platform Findings (score 6.5/10)
+
+**Import:** URL, social (Supadata), image (Pro), share sheet — tested (`recipeImportPipeline.test.ts`, Maestro 25). **Legal code:** `description: null` + `importSourceDisclaimer` on web/mobile recipe detail. **Nutrition on recipes:** verify pipeline, count-to-weight, coercion flags. **Gaps:** ENG-859; generic titles; empty thumbnails; cook-mode scaler desync; idempotent re-import stale nutrition; no collections/folders; barcode is ingredient not recipe import. **Power users:** Paprika-level organisation not yet.
+
+---
+
+## 21. Meal Planning Findings (score 6.5/10)
+
+Mobile: smart plan, joint-fit scaler, leftovers, templates, move-meal, ENG-1040 shopping parity, household shopping scope. **ENG-1049:** over-budget days excluded from "hits targets" count in `planWeekSummary.ts` — re-verify UI with fresh plan data. Web: thin `MealPlanner.tsx`. No pantry; keyword aisles; no store APIs. Serious meal planners (Plan To Eat) would miss pantry + aisle polish.
+
+---
+
+## 22. Design System & UX Findings (score 6.5/10)
+
+Sloe token system well-documented; enforcement weak (hex/spacing census). **ENG-1044** canonical Plan-first nav + glyph map in `primaryNav.ts`. **When app renders:** premium feel (prior walkthrough). **Trust UX:** 111% adherence; paywall price not on hero; empty thumbnails. **Accessibility:** deep-link/modal bug; dark-mode gaps on some CTAs (prior pass). **Simulator 2026-06-11 evening:** Metro tunnel redbox — dev ergonomics issue, not production UI verdict.
+
+---
+
+## 23. Competitive Analysis Findings
+
+**Nutrition:** Ahead on micros + honest search + adaptive TDEE; behind on DB breadth at scale and image logging; **MFP refugee wedge:** free barcode (GROW-19) — ship with vendor cache + OFF proxy.
+
+**Recipes:** Ahead on macro-fit + social import; behind Paprika on organisation; legal posture improved in code pending ENG-859.
+
+**Meal planning:** Ahead on macro-aware auto-plan; behind on pantry, stores, web parity.
+
+**Health:** Partial Apple Health; ENG-874 device proof pending; no Oura/Garmin.
+
+**Moat:** import Reel + fit macros — still defensible when legal + scale gates close.
 
 ---
 
 ## 24. Linear Backlog Assessment
 
-250 open issues. The backlog is well-structured (initiatives, `launch-blocker` label, parity labels) but has three problems this audit surfaces:
+**Live GraphQL 2026-06-11:** **309 open** ENG issues (240 Backlog, 24 Todo, 9 Triage, 4 In Progress, 4 In Review, 4 Blocked, 24 Duplicate). **129 Urgent+High open.** **649 completed in 30 days** — high velocity.
 
-1. **Priority inversion on the legal P0.** ENG-857 is filed as **P1** and the roadmap marks it **"LIVE."** It is an unimplemented **P0**. ENG-858 (disclaimer) and ENG-859 (DMCA agent) are paired launch dependencies. → Re-prioritise ENG-857 to P0; correct the roadmap row to "Open."
-2. **No issue for the entitlement-escalation P0** (P0-1) — it is net-new and the single highest-severity finding. → File immediately.
-3. **The "category-leading" tranche (ENG-927→979) is large, launch-blocker-labelled, and mostly Backlog/unbuilt** — multi-add, NL text logging, paywall comparison matrix, "what to eat next" Today block, per-meal lock, forecast line, trend-weight hero, attributed-creator credit, shareable import card. These are growth-quality features, not launch blockers. → Re-classify: launch-blockers = the two P0s + ENG-859 + the SSRF/RLS/cache items; everything else is beta-window.
+**Problems:**
+1. **Launch-shaped vs backlog-shaped** — most Urgent/High still in Backlog, not Todo.
+2. **Monetization blocked chain** — ENG-33, 101, 198, 667 — blocks paid launch.
+3. **24 Duplicate** audit captures — hygiene debt.
+4. **Category-leading tranche (ENG-927+)** — growth features mis-tagged as launch-blockers.
 
-**Obsolete/duplicate signals:** ENG-814/815 are near-identical (food-search redesign duplicated); ENG-883 flags stale tests from an old over-budget-ring rule. **Correctly tracked and real:** ENG-703 (Today decomposition), ENG-699 (web move-meal), ENG-771/772/784 (logging-loop parity), ENG-828/1013/1014 (token debt) — all corroborated by this audit.
+**Correctly tracked:** ENG-703, 699, 771, 772, 784, 874, 1035–1043 closed recently. **Update backlog:** close/mark shipped ENG-857, 858, 1035, 1036, 1038, 1039, 1040, 1041, 1044; re-prioritise ENG-859 + monetization chain + ENG-874 + OFF proxy.
+
+---
 
 ## 25. Recommended New Issues
 
-1. **P0:** profiles tier-lockdown bypass — `BEFORE INSERT` guard + column check (P0-1).
-2. **P0:** ENG-857 regression — null persisted web/blog `description`; correct roadmap (P0-2). *(re-prioritise existing)*
-3. **P1:** Drop/`security_invoker` `recipes_implausible_macros` + revoke anon/auth SELECT (P1-1).
-4. **P1:** Route all recipe-import fetches through `followWithSsrfGuard`; ban `redirect:"follow"` (P1-2).
-5. **P1:** Cross-request vendor search cache + account-level quota guards (P1-3).
-6. **P1:** `calcGoalTimeline` — smooth the weekly rate; gate on ≥3 weigh-ins; fix the ENG-1026 doc (P1-4).
-7. **P1:** Route mobile shopping list through the shared generator (portion multiplier + categories + amounts) (P1-5).
-8. **P1:** Mobile food-search logs persist `fiber_g`; CSV export uses micros fallback (P1-6).
-9. **P1:** Add the ENG-858 import source-card disclaimer, both platforms (P1-7).
-10. **P1:** Fix `redeem_promo_code` vs lockdown trigger; live-verify redemption (P1-8).
-11. **P1:** Lock tab order + glyphs across all three nav surfaces (P1-9 / ENG-1017).
-12. **P2:** Move middleware `getUser()` after `isPublic`; drop `/api/*` from matcher.
-13. **P2:** Wire `foodSelectionToMeal.ts` into both hosts or delete it.
-14. **P2:** Generic "Imported recipe" title — derive a better fallback from source domain/first ingredient.
-15. **P2:** Web single-insert/delete optimistic rollback on persist failure.
-16. **P2:** "Average adherence" / "hits targets 7/7" headline grammar — don't read >100% / over-budget as success.
-17. **P2:** fal image-gen under the AI cost budget guard.
-18. **P2:** Pantry/staples model for the planner.
-19. **P3:** Widen `calories` smallint → integer; validate `nutrition_entries.source` CHECK; `save_verified_ingredients` search_path + author check; enable HIBP password protection.
+1. **P0:** ENG-859 — DMCA agent registration (ops).
+2. **P0:** Gate0 CI job — `verify-gate0-db.mts` 5/5 on staging with throwaway creds.
+3. **P1:** Proxy OFF text search through vendor cache (extend ENG-1038).
+4. **P1:** Offline persistent journal queue (re-scope from v1.1 deferral).
+5. **P1:** Adherence headline grammar / cap when over target.
+6. **P1:** `getUserTier` fail-closed in production without service role.
+7. **P1:** Web `MealPlanner` parity bundle (move, templates, leftovers) or correct journey docs.
+8. **P2:** Pantry/staples model for shopping generator.
+9. **P2:** Dev-client QA matrix doc + Maestro on release binary.
+10. **P2:** Nutrient panel sort fix + UK/EU DV picker.
+
+---
 
 ## 26. Recommended Implementation Order
 
-**Gate 0 — launch blockers (do not onboard until done, ~2–3 days):**
-P0-1 (tier lockdown) → P0-2 + P1-7 + ENG-859 (recipe legal bundle) → P1-1 (RLS view) → P1-2 (SSRF). All are small, bounded DB/route changes. Re-verify on-device + re-run the Supabase security advisor (target: zero ERROR lints).
+**Gate 0 (before any cohort):** ENG-859 path documented → `verify-gate0-db.mts` 5/5 → Supabase advisor zero ERROR → TestFlight 57 smoke.
 
-**Gate 1 — before broader beta (~3–4 days):**
-P1-3 (vendor cache) → P1-5 + P1-6 (parity: shopping + fibre) → P1-4 (goal-timeline smoothing) → P1-8 (promo verify) → P1-9 (tab order). Then the §12 P2 cluster that touches trust (rollback, adherence grammar, Plan 7/7 copy).
+**Gate 1 (before broader beta):** Monetization unblock → ENG-874 device matrix → OFF proxy → offline queue or honest offline UX → adherence copy → web plan parity or doc correction.
 
-**Gate 2 — during beta (ongoing):**
-Client-architecture paydown (god context, Today monolith), token-drift lint, pantry model, move-meal web parity, the category-leading growth tranche selectively.
+**Gate 2 (during beta):** Today decomposition, token lint, pantry, category-leading selective, visual regression ENG-827.
+
+---
 
 ## 27. Recommended Test Strategy
 
-- **Entitlement RLS suite (new, highest priority):** the delete+insert escalation must be refused; promo redemption against an existing profile must succeed; pgTAP assertion that `BEFORE INSERT` + `BEFORE UPDATE` triggers both exist on `profiles`.
-- **Recipe-import legal suite:** web/blog import persists `description=null`; social import unchanged; disclaimer renders iff `source_url`; no headnote rendered for imported recipes.
-- **SSRF suite:** a caption-link 302 → `169.254.169.254` is refused (no body fetched); DNS-rebinding second-hop private IP rejected; CI grep guard on `redirect:"follow"`.
-- **Cross-platform parity suite (the recurring failure class):** byte-identical macros+micros for the same `SelectedFood` (web vs mobile vs the shared helper); identical shopping rows (name/amount/unit/category) for the same plan incl. portion-scaled meals; identical `fiber_g` and CSV fibre column; identical tab `[id,label,icon]` tuples across the three nav definitions.
-- **Nutrition projection suite:** P1-4 water-spike fixtures (clean 0.5 kg/wk loss + a last-day +1.5 kg spike must keep `trendDirection='losing'` and `daysToGoal` within ~10%); two weigh-ins one day apart with a 0.8 kg swing must not yield `|weeklyRateKg| > ~1.5`.
-- **Vendor resilience suite:** cache returns repeats without a second fetch; Edamam 429 still returns merged USDA/OFF/FatSecret; warm cache stays under account daily quota under simulated concurrency.
-- **Golden visual-regression (ENG-827):** lock Today/Recipes/Plan/Progress on web + mobile, light + dark, before the launch ramp.
+- **Gate0 suite:** `scripts/verify-gate0-db.mts` (5 checks); `profilesInsertLockdown.test.ts`.
+- **Import legal:** `recipeImportDescriptionNull.test.ts`, `importSourceDisclaimer.test.ts`.
+- **SSRF:** integration tests on `followWithSsrfGuard`; CI grep ban `redirect: "follow"` in import route.
+- **Parity:** `primaryNavParity.test.ts`, `shoppingListPortionParity.test.ts`, `foodSelectionToMealWiring.test.ts`, `offMicrosPullThroughParity.test.ts`.
+- **Nutrition:** `adaptiveTdee.test.ts`, `calcGoalTimelineSmoothing.test.ts`, `planWeekSummary.test.ts` (ENG-1049).
+- **Vendor:** `vendorSearchCacheRoutes.test.ts`; load test cache hit rate; **add OFF proxy tests**.
+- **Mobile stability:** `foodSelectionToMeal.test.ts`, `useNutritionEntriesSync.test.ts`, `useHealthSyncOnFocus.test.ts`; TestFlight manual log-food on build 57.
+- **E2E:** Maestro Today, import-shared, meal-plan, shopping, cook-mode; Playwright cook-mode (web).
+
+---
 
 ## 28. Biggest Long-Term Risks
 
-1. **Client architecture debt (god context + 6,624-line Today).** Every planned surface (AI coach, Apple Health, Oura, family accounts) lands on top of an untestable monolith. This compounds; pay it down before the feature surface doubles.
-2. **Vendor economics at viral scale.** 4 uncached calls per keystroke per user against free/shared quotas is both a reliability and an unbounded-cost risk. The growth plan and the integration are in direct tension until the cache + budget guards exist.
-3. **Recipe-import legal posture.** The wedge and the liability are the same surface. As import volume grows, takedown/right-of-publicity exposure grows with it unless the social-path-first + disclaimer + DMCA posture is enforced in code, not docs.
-4. **Parity drift as a recurring class.** Shopping, fibre, tab order, food-logging math all drifted because the same logic is implemented twice. Without shared-source enforcement (and parity tests), this regenerates every sprint.
-5. **Roadmap/code truth drift.** A P0 marked "LIVE" that isn't implemented is a process failure that a launch gate should have caught. Tie roadmap status to a passing test, not a manual flag.
+1. **Client monoliths** obstruct AI coach, wearables, family accounts.
+2. **Vendor economics** — shared free-tier ceilings vs viral plan; OFF still unbounded.
+3. **Legal surface grows with import volume** — ENG-859 + ongoing takedown process.
+4. **Parity drift class** — mitigated by shared modules (foodSelectionToMeal, primaryNav, shopping generator) but FoodSearchPanel still duplicated.
+5. **Monetization / ops dependency on solo founder** — Tax, DMCA, incorporation blockers.
+6. **Roadmap truth** — tie "Shipped" to passing tests + Gate0 verify, not manual flags.
+
+---
 
 ## 29. Open Questions
 
-- **P1-8 (conf 5):** does `redeem_promo_code` actually fail with 42501 for existing profiles on the live DB? Needs a live redemption test before it can be confirmed or closed.
-- **`saves(user_id,recipe_id)` uniqueness:** the constraint may exist in pre-migrations dashboard DDL not visible in-repo — confirm via `list_tables`.
-- **`handle_new_user` / profiles defaults / saves table** originate in dashboard DDL; several data-integrity items are marked lower confidence pending a live-schema read.
-- **AI coach on the paywall:** advertised as a Pro feature ("personalised, guilt-free nudges"). `mealCoach.ts` exists ("what to eat next") — confirm the paywalled "AI coach" maps to a shipped capability, not an aspiration, before charging for it.
-- **Web visual coverage:** authed web was not exercised (expired auth, no dev server). A full authed-web pass is needed to confirm the parity findings render as predicted.
+- Gate0 5/5 on production with password — **UNVERIFIED** this pass.
+- ENG-1049 plan headline on Grace's live plan data after fix — **UNVERIFIED** (logic tested; UI not re-captured).
+- `redeem_promo_code` on live DB for existing users — doc says fixed via ENG-1043; needs live redemption.
+- `saves(user_id, recipe_id)` unique constraint — confirm live schema.
+- AI coach paywall vs `mealCoach.ts` product scope.
+- Authed web visual parity — expired E2E auth; component-level tests only.
+- TestFlight build 57 processing time / availability.
+
+---
 
 ## 30. Final Recommendation
 
-**Do not onboard real users yet. Conditional-go after Gate 0.** This is a strong, differentiated product with a correct nutrition core, a real moat, and a premium feel — closer to "finish and harden" than "rebuild." But two confirmed P0s (free-Pro via the database; live copyright replay on the import path) and a reintroduced SSRF are launch-stoppers, and the false "LIVE" roadmap status on the legal P0 means the gate cannot be trusted without this verification. Clear Gate 0 (~2–3 focused days), re-run the Supabase security advisor to zero ERRORs, land the entitlement + import-legal + parity tests, then onboard a small beta and work Gate 1 in parallel. Lean the launch narrative on the social-caption import path and "fit any recipe into your macros" — that is the defensible wedge, and it is the one thing none of the named competitors can copy.
+**Conditional-go for a small closed iOS beta on the production TestFlight binary (build 57, 1.0.7)** after **Gate0 5/5** and **ENG-859** path is in motion. The morning "do not onboard" verdict was correct for **unpatched** `main`; **today's Gate-0 batch materially changes the security and parity picture**. Do **not** execute the 2026-07-01 viral free launch until **monetization is unblocked**, **ENG-874** device-proves health sync, **OFF search is proxied**, and **offline logging** is honest or durable.
 
-**Confidence in this assessment: 8/10.** Code-grounded and adversarially verified; the two P0 exploit chains were independently re-confirmed. The −2 is the un-exercised authed-web surface and the handful of live-DB items (promo, saves uniqueness, dashboard-origin DDL) that need a confirmation query Grace can run.
+Lean narrative on **social-caption import + macro fit** — code now supports disclaimer + null description on web/blog paths. QA on **release binary**, not tunnel dev client.
+
+**Confidence: 7.5/10.** Strong code-grounding for shipped fixes; −2.5 for incomplete live Gate0 verify, blocked sim redbox this evening, unauthenticated web pass, and open monetization/legal ops.
 
 ---
 
 ## Real User Walkthrough Findings
 
-Live iOS simulator (iPhone 17 Pro, iOS 26.5, dev client `com.supprclub.supprapp`, Metro 8082), real renders captured and read. Web authed surfaces not exercised (expired auth, no dev server) — documented as a coverage gap, not a pass.
+### Coverage note
 
-### Journey 1 — Today (cold open)
-- **Screens:** Today hero (calorie ring + macro tiles + week strip).
-- **Observations:** Renders cleanly and premium. "Sloe" wordmark, "Morning, Grace · Thursday 11 June," week strip, calorie ring "1,231 LEFT," GOAL/EATEN/BONUS row, "Plan your day — about 1,231 kcal left. No rush." Protein 0/99g, Carbs 0/117g. Tab bar Today·Plan·(+)·Recipes·Progress.
-- **Trust:** High. The calm, non-shaming copy matches the positioning. Ring + tiles are legible.
-- **Concern:** none material at cold open.
+| Surface | Status | Evidence |
+|---|---|---|
+| iOS sim (prior pass, Metro 8082) | **PASS** — Today, log search, Library, Plan, Progress, Paywall | Narrative below (morning session) |
+| iOS sim (revision pass, Metro 8081 tunnel) | **BLOCKED** — redbox | `apps/mobile/screenshots/agent/audit-2026-06-11-today.png` |
+| iOS sim (revision pass, localhost URL) | **BLOCKED** — still tunnel URL in error | `audit-2026-06-11-today-localhost.png` |
+| Physical iPhone dev client | **CRASH** on tunnel reload | `docs/debug/Suppr-2026-06-11-183604-device.ips` |
+| TestFlight build 57 | **UNVERIFIED** — submitted e3ac41c7 | EAS auto-submit in flight |
+| Web authed | **NOT RUN** | expired `tests/e2e/.auth/user.json` |
 
-### Journey 2 — Food logging (the core loop)
-- **Screens:** Log sheet → live search "chicken breast" → results.
-- **Observations:** Log sheet is excellent — Breakfast/Lunch/Dinner/Snacks, search with barcode/voice/camera, "Copy yesterday's meals · 6 meals," Recent/Library/Saved tabs, empty-recent state, "Or add manually." Search returned real results with **Verified/Estimated** confidence badges, per-serving macros + grams ("1 fillet (174g) · 120 kcal/100g"), and a Past-logged section. This is genuinely best-in-class search UX and more honest than MFP.
-- **Bug:** Deep links (`suppr:///profile` etc.) **do not dismiss an open Log-sheet modal** — navigation happens underneath; the sheet stays on top. A user who deep-links (Siri/widget/notification) while the sheet is open lands on the wrong-looking screen.
-- **Visual:** clean; confidence tiers are a standout.
+### Journey 1 — Today (cold open) · prior pass PASS
+- **Screens:** Today hero, week strip, macro tiles.
+- **Observations:** Premium — Sloe wordmark, calm copy, ring "1,231 LEFT," Plan-first tab bar.
+- **Trust:** High at cold open.
+- **Revision:** `e3ac41c7` perf memoization + sync hardening not visually re-tested (Metro down).
 
-### Journey 3 — Recipes (Library + Discover)
-- **Screens:** Library (8 recipes, category chips), Discover (import CTA + recipe ideas).
-- **Observations:** Both polished. Discover leads with "Import from TikTok, Instagram & YouTube" — the wedge front and centre — and recipe cards carry macro chips + "Sloe Kitchen" attribution.
-- **Trust/visual concerns:** (1) A library card titled literally **"Imported recipe"** (generic fallback, confirmed in code) — power users get collisions. (2) **Empty grey thumbnails** on several rows (Homemade Cream Cheese/Labneh, Shrimp Rice Paper Rolls) — the painterly-imagery gap (ENG-1015) reads as unfinished. (3) "Shrimp Rice Paper Rolls 892 kcal" looks high — worth a plausibility spot-check.
+### Journey 2 — Food logging · prior pass PASS
+- **Screens:** Log sheet → search "chicken breast."
+- **Observations:** Verified/Estimated badges, per-serving macros + grams, past-logged section, barcode/voice/camera — best-in-class vs MFP.
+- **Bug:** Deep link while Log sheet open does not dismiss modal (still open P2).
+- **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix, **UNVERIFIED** in UI.
 
-### Journey 4 — Meal Plan
-- **Screens:** Plan ("This week" + Shopping list tabs).
-- **Observations:** Strong — "Hits your targets 7 of 7 days," per-day macro chips with "On track," Generate/Adjust-constraints CTAs, 7-day strip.
-- **Trust concern (visible contradiction):** The headline "Hits your targets 7 of 7 days / All 7 days land on target" rendered above a Thursday at **1,301 / 1,231 kcal (over by 70)** with every macro "On track." Tolerance bands explain it internally, but the headline overstates and a user *will* notice the arithmetic.
+### Journey 3 — Recipes (Library + Discover) · prior pass PASS
+- **Observations:** Import CTA prominent; macro chips on cards.
+- **Concerns:** Generic "Imported recipe" title; empty grey thumbnails (ENG-1015); high kcal on some cards — plausibility spot-check.
 
-### Journey 5 — Progress
-- **Screens:** Progress (W range, This-week card, adherence, weight).
-- **Observations:** Premium — "Maintenance held steady this week · 1,699 kcal · medium confidence," weight 55 kg with Trend/Scale toggle.
-- **Trust concern:** **"AVERAGE ADHERENCE 111% · over"** with Carbs 133%, Fat 106%. The metric is uncapped `(avg/target)*100` (`progressRangeStats.ts:161`), so overconsumption produces a *bigger* "adherence" number — semantically backwards for a headline. The "· over" qualifier mitigates but doesn't fix the grammar.
+### Journey 4 — Meal Plan · prior pass PASS with trust flag
+- **Observations:** Strong plan UI; Generate/Adjust, macro chips.
+- **Trust (morning):** "7/7 hits" above over-budget Thursday — **ENG-1049 shipped in code**; re-verify on device when Metro works.
 
-### Journey 6 — Paywall
-- **Screens:** Paywall ("Try Pro free for 7 days").
-- **Observations:** Genuinely strong — appetising hero, "Full Pro for a week. Cancel anytime in iOS Settings," four feature cards (Unlimited imports, Macro fitting, AI coach, Cloud sync), a Free-vs-Pro matrix, Restore purchases.
-- **Concerns:** (1) No price shown on this screen — region-aware pricing is a known intent gap; confirm the price/period surface. (2) "AI coach" is advertised — confirm it maps to a shipped capability (`mealCoach.ts` exists) before charging (open question §29). (3) Entitlement is undermined by **P0-1** — a user can grant themselves Pro via the DB and bypass this entirely.
+### Journey 5 — Progress · prior pass PASS with trust flag
+- **Observations:** Maintenance narrative, weight trend toggle.
+- **Trust:** "111% adherence · over" — still open P1-8.
+
+### Journey 6 — Paywall · prior pass PASS
+- **Observations:** Strong hero, feature matrix, restore purchases.
+- **Concerns:** No price on screen; AI coach scope; morning P0-1 — **fixed in code**, re-verify live.
+
+### Journey 7 — Dev client stability · revision pass FAIL
+- **Observations:** Metro tunnel redbox; native crash on device during remote load.
+- **Recommendation:** All launch QA on TestFlight 57; treat dev client as non-ship.
 
 ### Cross-journey notes
-- Navigation, transitions, and copy are consistently premium across every captured surface — the product *feels* finished.
-- The recurring "unfinished" tells are: empty thumbnails, generic import titles, and two data-trust contradictions (Plan 7/7, Progress 111%).
-- No crashes encountered. Deep-link-vs-modal is the one interaction bug observed live.
+- Product **feels** finished when it renders; dev tooling currently **unreliable** for session QA.
+- Production path (no DevLauncher) is the correct launch-readiness surface.
+- Prior unfinished tells: thumbnails, import titles, adherence copy — still apply on release binary until verified fixed.
 
 ---
 
-*End of audit. Report is intentionally left untracked for Grace's review. No code, schema, flags, or external state were modified during this audit.*
+*End of audit (revision pass). Report intentionally left untracked for Grace's review. No code, schema, flags, or external state were modified during this audit pass.*

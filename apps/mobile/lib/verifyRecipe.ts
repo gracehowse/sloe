@@ -92,7 +92,7 @@ function localeQueryParam(): string {
  * ceiling to guard. Kept as a local type so this RN module never imports the
  * server-only `vendorSearchCache.ts` (which pulls in `@upstash/redis`).
  */
-export type VendorId = "usda" | "edamam" | "fatsecret";
+export type VendorId = "usda" | "edamam" | "fatsecret" | "off";
 
 /**
  * ENG-1038 — a route returns `degraded: true` when a vendor's account-wide
@@ -598,108 +598,65 @@ export type OffSearchResult = {
   servingSize: string | null;
 };
 
-/** Search Open Food Facts by text (real products with barcodes).
- *  `page` is 1-indexed; OFF supports it natively. TestFlight F-10
- *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
-export async function searchOpenFoodFacts(query: string, opts?: { page?: number }): Promise<OffSearchResult[]> {
+/** Search Open Food Facts via the proxied `/api/off/search` route (ENG-1059).
+ *  `page` is 1-indexed. TestFlight F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+export async function searchOpenFoodFacts(
+  query: string,
+  opts?: { page?: number; onDegraded?: () => void },
+): Promise<OffSearchResult[]> {
+  const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
-  if (!q.trim()) return [];
+  if (!base || !q.trim()) return [];
   const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
+
   try {
     const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 12000);
-    const res = await fetch(
-      // P0 (2026-05-26) — request nutrition_data_per + serving_quantity for
-      // the per-100g basis reconcile (parity with web searchProducts.ts).
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,image_small_url,serving_size,nutrition_data_per,serving_quantity`,
-      {
-        signal: ac.signal,
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "SupprApp/1.0",
-        },
-      },
+    const t = setTimeout(() => ac.abort(), 15000);
+    const res = await authedFetch(
+      `${base}/api/off/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`,
+      { signal: ac.signal },
     );
     clearTimeout(t);
-    if (!res.ok) {
-      // 2026-05-06 (Grace) — surface OFF upstream errors so debug
-      // shows whether OFF is timing out, rate-limited, or 5xx-ing.
-      console.warn(`[searchOFF] empty result — upstream status=${res.status}`);
+    const json = await res.json();
+    if (responseIsDegraded(json)) opts?.onDegraded?.();
+    if (!json.ok || !Array.isArray(json.hits)) {
+      const errCode = typeof json?.error === "string" ? json.error : "unknown";
+      console.warn(`[searchOFF] empty result — status=${res.status} error=${errCode}`);
       return [];
     }
-    const text = await res.text();
-    let data: { products?: unknown[] };
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.warn("[searchOFF] non-JSON response:", text.slice(0, 200));
-      return [];
-    }
-    if (!Array.isArray(data.products)) {
-      console.warn("[searchOFF] empty result — no products array in response");
-      return [];
-    }
-    return data.products
-      .filter((p: any) => p.product_name && p.nutriments)
-      .map((p: any) => {
-        const n = p.nutriments ?? {};
-        // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis.
-        // `nutrition_data_per:"serving"` rows store per-serving values in
-        // `*_100g`; reconcileOffPer100g rebuilds them from `*_serving` /
-        // `serving_quantity`. Web parity: src/lib/openFoodFacts/searchProducts.ts.
-        const recon = reconcileOffPer100g(n, p);
-        // ENG-738 (2026-05-26) — micros + fiber/sugar/sodium + caffeine/alcohol
-        // are read straight off the raw `*_100g` fields, which on a
-        // `nutrition_data_per:"serving"` row secretly hold per-serving values.
-        // Rescale them onto the same true-per-100g basis the macros use via
-        // recon.per100gFactor (=1 for genuine per-100g rows, a no-op).
-        // Web parity: src/lib/openFoodFacts/searchProducts.ts.
-        const f = recon.per100gFactor;
-        // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
-        // caffeine in g (convert to mg) and alcohol in g already.
-        const caffRaw = n.caffeine_100g ?? n.caffeine;
-        const caffeineMgPer100g =
-          typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
-            ? Math.round(caffRaw * f * 1000 * 10) / 10
-            : null;
-        const alcRaw = n.alcohol_100g ?? n.alcohol;
-        const alcoholGPer100g =
-          typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
-            ? Math.round(alcRaw * f * 100) / 100
-            : null;
-        return {
-          code: p.code ?? "",
-          name: p.product_name ?? "Unknown",
-          brand: (p.brands ?? "").split(",")[0]?.trim() ?? "",
-          calories: Math.round(recon.calories),
-          protein: Math.round(recon.protein * 10) / 10,
-          carbs: Math.round(recon.carbs * 10) / 10,
-          fat: Math.round(recon.fat * 10) / 10,
-          fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
-          sugarG: Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10,
-          sodiumMg: Math.round((n.sodium_100g ?? 0) * f * 1000),
-          caffeineMgPer100g,
-          alcoholGPer100g,
-          // F-79 (2026-04-25) — extract every micro OFF exposes.
-          // ENG-738 — scaled by the per-100g factor to match the macro basis.
-          microsPer100g: parseOffMicrosPer100g(n, f),
-          imageUrl: p.image_small_url ?? null,
-          servingSize: typeof p.serving_size === "string" && p.serving_size.trim()
-            ? p.serving_size.trim()
-            : null,
-        };
-      })
-      // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility
-      // check. Closes the "Eggs · 210 kcal · 3 g protein" failure mode where
-      // a poisoned user-uploaded row outranked verified USDA generics.
-      .filter((h) =>
-        isPlausibleMacrosPer100g({
-          calories: h.calories,
-          protein: h.protein,
-          carbs: h.carbs,
-          fat: h.fat,
-        }),
-      );
+    return json.hits.map((h: {
+      code: string;
+      name: string;
+      brand?: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiberG: number;
+      sugarG: number;
+      sodiumMg: number;
+      caffeineMgPer100g?: number | null;
+      alcoholGPer100g?: number | null;
+      microsPer100g?: Record<string, number>;
+      imageUrl?: string | null;
+      servingSize?: string | null;
+    }) => ({
+      code: h.code ?? "",
+      name: h.name ?? "Unknown",
+      brand: h.brand ?? "",
+      calories: h.calories,
+      protein: h.protein,
+      carbs: h.carbs,
+      fat: h.fat,
+      fiberG: h.fiberG,
+      sugarG: h.sugarG,
+      sodiumMg: h.sodiumMg,
+      caffeineMgPer100g: h.caffeineMgPer100g ?? null,
+      alcoholGPer100g: h.alcoholGPer100g ?? null,
+      microsPer100g: h.microsPer100g,
+      imageUrl: h.imageUrl ?? null,
+      servingSize: h.servingSize ?? null,
+    }));
   } catch (e) {
     if (isBenignAbort(e)) return [];
     console.error("[searchOFF] failed:", e instanceof Error ? e.message : e);
@@ -985,8 +942,8 @@ export async function searchFoods(
      * ENG-1038 — called once when ≥1 keyed vendor (USDA / Edamam /
      * FatSecret) was skipped because its account-wide quota was exhausted.
      * The UI uses this to show an honest "showing saved results" notice
-     * rather than a silent blank. OFF (free, direct) is not gated, so when
-     * it has hits the search is still useful — the notice is advisory, not
+     * rather than a silent blank. OFF is proxied with cache/quota (ENG-1059);
+     * when it has hits the search is still useful — the notice is advisory, not
      * an error.
      */
     onDegraded?: (info: { sources: VendorId[] }) => void;
@@ -1020,7 +977,7 @@ export async function searchFoods(
   const genericFood = genericBeverage ? null : matchGenericFood(t);
 
   const usdaP = searchUsda(t, { page, onDegraded: noteDegraded("usda") });
-  const offP = searchOpenFoodFacts(t, { page });
+  const offP = searchOpenFoodFacts(t, { page, onDegraded: noteDegraded("off") });
   const edamamP = searchEdamam(t, { page, onDegraded: noteDegraded("edamam") });
   const fatsecretP = searchFatSecret(t, { page, onDegraded: noteDegraded("fatsecret") });
 

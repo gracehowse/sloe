@@ -77,11 +77,11 @@ describe("F-10 food search pagination — shared helper", () => {
     expect(VERIFY_SRC).toMatch(/\/api\/usda\/search\?q=\$\{[^}]+\}&page=\$\{page\}/);
   });
 
-  it("searchOpenFoodFacts forwards `page` to OFF's native `page` param", () => {
+  it("searchOpenFoodFacts forwards `page` to proxied OFF search route (ENG-1059)", () => {
     expect(VERIFY_SRC).toMatch(
-      /searchOpenFoodFacts\([^)]*opts\?:\s*\{\s*page\?:\s*number\s*\}\)/,
+      /searchOpenFoodFacts\([^)]*opts\?:\s*\{\s*page\?:\s*number\s*;/,
     );
-    expect(VERIFY_SRC).toMatch(/page_size=10&page=\$\{page\}/);
+    expect(VERIFY_SRC).toMatch(/\/api\/off\/search\?q=\$\{[^}]+\}&page=\$\{page\}/);
   });
 
   it("searchEdamam forwards `page` even though the endpoint doesn't paginate natively", () => {
@@ -182,7 +182,7 @@ describe("F-10 food search pagination — web/mobile parity", () => {
     // `page` params remain (the pagination contract) without anchoring the
     // exact one-line shape, which is no longer valid.
     expect(WEB_SRC).toMatch(/searchUsda\(\s*query: string,\s*page: number = 1/);
-    expect(WEB_SRC).toMatch(/searchOff\(query: string, page: number = 1\)/);
+    expect(WEB_SRC).toMatch(/searchOff\(\s*query: string,\s*page: number = 1/);
     expect(WEB_SRC).toMatch(/searchEdamam\(\s*query: string,\s*page: number = 1/);
   });
 
