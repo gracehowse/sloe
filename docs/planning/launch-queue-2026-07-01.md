@@ -72,16 +72,18 @@ Founding cohort comp: `lifetime_pro` via `redeem_promo_code` (ENG-1043) — **no
 
 Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 
-**2026-06-12:** Grace submitted TestFlight feedback on build 57. Triage pending: review screenshot threads in App Store Connect and/or refresh `docs/testflight-feedback/data/` via `npm run testflight:feedback`, then record pass/fail below and in ENG-874.
+**2026-06-12 ASC pull (`npm run testflight:feedback`):** success — `feedback-2026-06-12.json`. Build **57** is `VALID` in ASC; **22** screenshot threads on 2026-06-12 (F-158..F-179 in `tracker.md`). ASC API omits per-thread `buildVersion`; session timing + Grace's TF submit ⇒ build **57** smoke. **0** new crash threads. Signed screenshot URLs expire ~2026-06-18 — re-fetch if needed.
 
-- [ ] Cold open Today — no crash
-- [ ] Log food via search (chicken breast) — ring updates
-- [ ] Import shared Reel URL → library save
-- [ ] Plan → generate shopping list (portion-scaled qty spot-check)
-- [ ] Redeem test promo / founding code → Pro gates unlock
-- [ ] Optional: Apple Health sync (ENG-874 matrix)
+- [ ] Cold open Today — no crash *(no crash report in ASC; not device-proven)*
+- [x] Log food via search — **partial PASS** *(search used; F-161 OFF / F-162 FatSecret micros gaps)*
+- [ ] Import shared Reel URL → library save *(not evidenced in TF comments)*
+- [ ] Plan → generate shopping list *(plan surfaces exercised; shopping list not mentioned)*
+- [ ] Redeem test promo / founding code → Pro gates unlock *(not evidenced)*
+- [ ] Optional: Apple Health sync (ENG-874 matrix) *(not evidenced)*
 
-Record pass/fail in ENG-874 or a TestFlight comment.
+**FAIL / follow-up from screenshots:** Library tab/recipes (F-171); plan redesign cohesion (F-158–F-160, F-177–F-179); design-system drift (rings, buttons, spacing).
+
+Record remaining pass/fail in ENG-874.
 
 ## Engineering priority read (2026-06-12)
 

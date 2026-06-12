@@ -391,7 +391,7 @@ Lean narrative on **social-caption import + macro fit** — code now supports di
 | iOS sim (revision pass, Metro 8081 tunnel) | **BLOCKED** — redbox | `apps/mobile/screenshots/agent/audit-2026-06-11-today.png` |
 | iOS sim (revision pass, localhost URL) | **BLOCKED** — still tunnel URL in error | `audit-2026-06-11-today-localhost.png` |
 | Physical iPhone dev client | **CRASH** on tunnel reload | `docs/debug/Suppr-2026-06-11-183604-device.ips` |
-| TestFlight build 57 | **UNVERIFIED** — submitted e3ac41c7 | EAS auto-submit in flight |
+| TestFlight build 57 | **PARTIAL** — ASC pull 2026-06-12: 22 screenshot threads (F-158..F-179); 0 crashes; functional smoke checklist incomplete | `docs/testflight-feedback/tracker.md` + `feedback-2026-06-12.json` (gitignored) |
 | Web authed | **NOT RUN** | expired `tests/e2e/.auth/user.json` |
 
 ### Journey 1 — Today (cold open) · prior pass PASS

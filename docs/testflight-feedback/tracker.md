@@ -23,6 +23,39 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 
 Full audit run on 2026-05-11 — every item below classified as one of: shipped (✅), shipped-pending-re-verify (🟡), explicitly-deferred-with-decision (⏳ + linked doc), or unverifiable (🔍). Zero items in fuzzy state. See [`docs/decisions/2026-05-11-tf-feedback-reconciliation.md`](../decisions/2026-05-11-tf-feedback-reconciliation.md) for the disposition of every still-open item and the three items shipping in this wave (F-149 schema, F-156 PR-3, F-157 copy reframe). Tracker status markers patched for F-142/143/144/145/146/147/149 (work shipped, marker was stale).
 
+## Snapshot (2026-06-12, build 57 / 1.0.7 live; ASC pull `feedback-2026-06-12.json`)
+
+`npm run testflight:feedback` succeeded against App Store Connect. Pool totals: **213** screenshot + **6** crash threads (all builds). Build **57** (`9714b69b-0191-4403-90b7-b062205cc48f`, uploaded 2026-06-11, `VALID`) has **no `buildVersion` field** on screenshot rows — ASC API no longer returns `relationships.build` on `betaFeedbackScreenshotSubmissions`, so build attribution is by session timing.
+
+**Build 57 smoke session (inferred):** **22** new screenshot threads on **2026-06-12** (Grace, iPhone18_1, iOS 26.6) — styling/plan/library/search QA from TestFlight **1.0.7 (57)**. **0** crash submissions tied to that window. All **⏳** until triaged.
+
+| ASC ID | F# | Status | Theme / comment |
+|--------|-----|--------|-----------------|
+| `AKpBIfglKQR_yiFcUb6haes` | F-158 | ⏳ | Complete day button stylistically out of place |
+| `ABeqoFrE-wMoI6YRP7mTuSY` | F-159 | ⏳ | Spacing between cards inconsistent / too much |
+| `AI93BuUvoyNqg2vyOOUR2cc` | F-160 | ⏳ | Plan section ugly — revert pre-redesign layout with updated colours/fonts |
+| `ACjwFFSb3LJ_SGzMTOKBWDg` | F-161 | ⏳ | OFF search missing expected nutrition info |
+| `AKgFThMoNK7ES0VXvt64-hs` | F-162 | ⏳ | FatSecret may have more nutrition info not shown |
+| `APHOn0YlQEV12igrAB9CHBU` | F-163 | ⏳ | Positive: aspire to this level of meal feedback detail |
+| `AEu8j9bcGAjj4M9kFCZHGc4` | F-164 | ⏳ | Today ring too fat — match macro ring stroke width |
+| `AFZj_4nb_ZkWsB6Vo8CtTIk` | F-165 | ⏳ | Today ring too fat (recurrence) |
+| `AKl9Qa-hirQvclFmiWfcZg4` | F-166 | ⏳ | Page looks dull (styling) |
+| `AL7_vBNNxcg1jrgB9o8fwms` | F-167 | ⏳ | Inconsistent button styles / not cohesive |
+| `AKtXKSnRdbli2_NJ7Hroov0` | F-168 | ⏳ | List slow to load |
+| `AIzVrhOEKFsC4ZoDnSePlRo` | F-169 | ⏳ | Odd spacing |
+| `AHuEHuKyt8POeAEKzQ0gBUo` | F-170 | ⏳ | Very odd spacing |
+| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | ⏳ | Library recipes missing or tab not clickable |
+| `AJQL077DLT8fEgDX69f-_qQ` | F-172 | ⏳ | Review styling (unspecified surface) |
+| `APA3hfV90AqxrDdUEl5ILP0` | F-173 | ⏳ | Need ingredient switcher like before |
+| `ALFGUcreM4vMYwtxCsQK1Sk` | F-174 | ⏳ | Card corner radii inconsistent |
+| `AHnw-5uxweSfR5sbJcuuR5s` | F-175 | ⏳ | Card corner radii inconsistent (recurrence) |
+| `AONgkKyACkIXK9NdoALp9yw` | F-176 | ⏳ | Random/inconsistent visual treatment |
+| `AKCWGU2POx1oGDWymmWAy9Y` | F-177 | ⏳ | Different styles on same flow |
+| `AEXu3kzt4taOAFEkhuydu3s` | F-178 | ⏳ | Empty plan day styling should match populated days |
+| `ALde5h_GXyUZBAouRUZppYI` | F-179 | ⏳ | Review styling of planned section |
+
+**Themes:** Plan redesign cohesion + empty-day parity (F-158–F-160, F-177–F-179); design-system drift (rings, buttons, corners, spacing — F-164–F-170, F-174–F-177); Library regression (F-171); search vendor micros display (F-161–F-162); perf (F-168); ingredient switcher regression (F-173); positive benchmark (F-163).
+
 ## Snapshot (2026-05-07, build 43 + 44 in-flight; 10 PRs since 2026-05-06 evening)
 
 10 PRs landed between 2026-05-06 evening and 2026-05-07 evening (#114 → #123). Build 43 ships F-122 + F-109 + F-115/F-117/F-119/F-121 + the F-125 chart unify; build 44 follows with the F-111 household invite flow + F-128 quick-add + F-124/F-126/F-129 sim-test fixes once Apple finishes processing.
@@ -773,6 +806,7 @@ Quick reverse-lookup: which IDs were closed by which shipped build.
 - **build-11** (`ef2a9f4`): 17 F-tracks. Includes F-1 (JS-only HealthKit guard), F-5 (recipe `normaliseSource` SSOT — closes `AI-CNKcmy`, `ACEH_Ilshz`, `AMAxKVVxP`), F-17..F-20 (Today/barcode polish — closes `AIjmgrBMm`, `ABs9n0AyF`, `ADACe4M`, `AIOek8w6`), plus household `.maybeSingle()` + unique-member migration (closes `AB75VswCe`).
 - **landing fix** (`9a9a2fd`): honest-claims SSOT — closes `AC2JP5CG8x`.
 - **build-12** (`515124d`): G-tracks. G-1 (ObjC `@try/@catch` for HealthKit crashes — closes all four crash IDs), G-2 (shopping stale-items + dedupe — closes `ALU8hrB1I`), G-3 (weight chart y-axis + range — closes `AGJmliHT`, `ACoMvhUoe`), G-4 (maintenance chain explainer — closes `ALcwMFPjf`), G-5 (household per-member number labels — closes `AJKHqJeCi`), G-6 (CSV export — closes `AC4oDEnQ0`).
+- **build-57** (1.0.7, `9714b69b`): 22 screenshot threads F-158..F-179 (2026-06-12 ASC pull; build link inferred — API omits build relationship).
 - **build-12 H-tracks** (in flight): H-2 per-serving headline number, H-3 Today Maintenance column parity, H-4 Progress perf, H-5 Plan day delta. Will close `AKvgjnb`, `APGJJlg`, `AEb7NcjnvK`, `AH8csBqt`, and the still-latent half of `AAtW7dYcCBP`.
 
 ## Related files
