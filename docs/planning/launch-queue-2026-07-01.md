@@ -75,7 +75,7 @@ Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 **2026-06-12 ASC pull (`npm run testflight:feedback`):** success — `feedback-2026-06-12.json`. Build **57** is `VALID` in ASC; **22** screenshot threads on 2026-06-12 (F-158..F-179 in `tracker.md`). ASC API omits per-thread `buildVersion`; session timing + Grace's TF submit ⇒ build **57** smoke. **0** new crash threads. Signed screenshot URLs expire ~2026-06-18 — re-fetch if needed.
 
 - [ ] Cold open Today — no crash *(no crash report in ASC; not device-proven)*
-- [x] Log food via search — **partial PASS** *(search used; F-161 OFF / F-162 FatSecret micros gaps)*
+- [x] Log food via search — **partial PASS → ENG-1062** *(F-161/F-162: preview now surfaces scaled OFF/FatSecret micros beyond fibre/sugar/sodium; TF58 verify)*
 - [ ] Import shared Reel URL → library save *(not evidenced in TF comments)*
 - [ ] Plan → generate shopping list *(plan surfaces exercised; shopping list not mentioned)*
 - [ ] Redeem test promo / founding code → Pro gates unlock *(not evidenced)*
