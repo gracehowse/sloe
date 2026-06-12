@@ -68,8 +68,6 @@ import {
   isLowRelevanceNonVerifiedRow,
   isLowConfidenceDemotedRow,
 } from "@/lib/nutrition/searchRowTrust";
-import { parseOffMicrosPer100g } from "@/lib/openFoodFacts/parseOffMicros";
-import { reconcileOffPer100g } from "@/lib/openFoodFacts/reconcilePer100g";
 import {
   projectRemaining,
   type MacroConsumed,
@@ -416,59 +414,71 @@ async function searchUsda(
   } catch { return []; }
 }
 
-async function searchOff(query: string, page: number = 1): Promise<SearchResult[]> {
+async function searchOff(
+  query: string,
+  page: number = 1,
+  onDegraded?: () => void,
+): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
     const res = await fetch(
-      // ENG-738 (2026-05-26) — request `nutrition_data_per` + `serving_quantity`
-      // so reconcileOffPer100g can detect rows whose `*_100g` fields actually
-      // hold per-serving values and rebuild a genuine per-100g basis. Web
-      // parity with src/lib/openFoodFacts/searchProducts.ts.
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,serving_size,nutrition_data_per,serving_quantity`,
+      `/api/off/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`,
     );
-    const data = await res.json();
-    if (!Array.isArray(data.products)) return [];
-    return data.products
-      .filter((p: any) => p.product_name && p.nutriments)
-      .map((p: any) => {
-        const n = p.nutriments ?? {};
-        const brand = titleCase((p.brands ?? "").split(",")[0]?.trim() ?? "");
-        const name = titleCase(p.product_name ?? "Unknown");
+    const json = await res.json();
+    if (responseIsDegraded(json)) onDegraded?.();
+    if (!json.ok || !Array.isArray(json.hits)) return [];
+    return json.hits
+      .map((h: {
+        code: string;
+        name: string;
+        brand?: string;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiberG: number;
+        sugarG: number;
+        sodiumMg: number;
+        microsPer100g?: Record<string, number>;
+        servingSize?: string | null;
+      }) => {
+        const brand = titleCase(h.brand ?? "");
+        const name = titleCase(h.name ?? "Unknown");
         const displayName = [brand, name].filter(Boolean).join(" · ");
-        // ENG-738 (2026-05-26) — reconcile macros to a genuine per-100g basis
-        // (was reading raw `*_100g`, which is per-serving on serving-basis
-        // rows). recon.per100gFactor rescales the micros + fiber/sugar/sodium
-        // onto the same basis (=1 for genuine per-100g rows, a no-op).
-        const recon = reconcileOffPer100g(n, p);
-        const f = recon.per100gFactor;
-        const cals = Math.round(recon.calories);
-        const macros = cals > 0
-          ? {
-              calories: cals,
-              protein: Math.round(recon.protein * 10) / 10,
-              carbs: Math.round(recon.carbs * 10) / 10,
-              fat: Math.round(recon.fat * 10) / 10,
-              fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
-              sugarG: Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10,
-              sodiumMg: Math.round((n.sodium_100g ?? 0) * f * 1000),
-            }
-          : undefined;
+        const cals = h.calories;
+        const macros =
+          cals > 0
+            ? {
+                calories: cals,
+                protein: h.protein,
+                carbs: h.carbs,
+                fat: h.fat,
+                fiberG: h.fiberG,
+                sugarG: h.sugarG,
+                sodiumMg: h.sodiumMg,
+              }
+            : undefined;
         const primaryServing = macros
           ? parseOffPrimaryServing(
-              { calories: macros.calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat },
-              typeof p.serving_size === "string" ? p.serving_size : null,
+              {
+                calories: macros.calories,
+                protein: macros.protein,
+                carbs: macros.carbs,
+                fat: macros.fat,
+              },
+              h.servingSize ?? null,
             )
           : null;
         return {
-          key: `off-${p.code}`,
+          key: `off-${h.code}`,
           name: displayName,
           calsPer100g: cals,
           macrosPer100g: macros,
-          microsPer100g: parseOffMicrosPer100g(n, f),
+          microsPer100g: h.microsPer100g,
           primaryServing,
           _source: "OFF" as const,
-          _offCode: p.code,
+          _offCode: h.code,
         };
       })
       .filter((r: SearchResult) => {
@@ -481,7 +491,9 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
           fat: r.macrosPer100g.fat,
         });
       });
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 async function searchEdamam(
@@ -1232,7 +1244,7 @@ export function FoodSearchPanel({
 
       // Label each external source so Promise.race can identify the winner.
       const usdaL = searchUsda(q, 1, onVendorDegraded).catch(() => [] as typeof partialUsda).then(r => { partialUsda = r; return "usda" as const; });
-      const offL = searchOff(q, 1).catch(() => [] as typeof partialOff).then(r => { partialOff = r; return "off" as const; });
+      const offL = searchOff(q, 1, onVendorDegraded).catch(() => [] as typeof partialOff).then(r => { partialOff = r; return "off" as const; });
       const edamamL = searchEdamam(q, 1, onVendorDegraded).catch(() => [] as typeof partialEdamam).then(r => { partialEdamam = r; return "edamam" as const; });
       const fatsecretL = searchFatSecret(q, 1, onVendorDegraded).catch(() => [] as typeof partialFatSecret).then(r => { partialFatSecret = r; return "fatsecret" as const; });
       const sourceMap = { usda: usdaL, off: offL, edamam: edamamL, fatsecret: fatsecretL } as const;
