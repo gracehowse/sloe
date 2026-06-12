@@ -46,13 +46,13 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 5 | **ENG-670** Reel parse-rate gate | G |
 | 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
 | 7 | ~~**ENG-772** Editable `eaten_at`~~ — **SHIPPED** (flag `editable_eaten_at`) | E |
-| 8 | Deep-link dismisses Log sheet (file if no ENG) | E |
+| 8 | Deep-link dismisses Log sheet (file if no ENG) | E — **PARTIAL** tab-blur via ENG-1061 / [PR #389](https://github.com/gracehowse/Suppr/pull/389) merged |
 
 ## Gate A — In Progress (keep)
 
 - **ENG-874** — Health sync device proof
 - **ENG-877** — Search golden battery
-- **ENG-840** — Flag-force in bundled apps
+- ~~**ENG-840**~~ — Flag-force in bundled apps — **SHIPPED** (runtime `?__force_flags` web + DevFlagOverrides mobile)
 
 ## Gate B — `paid-ga-blocker` (parallel track)
 
@@ -75,7 +75,7 @@ Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 **2026-06-12 ASC pull (`npm run testflight:feedback`):** success — `feedback-2026-06-12.json`. Build **57** is `VALID` in ASC; **22** screenshot threads on 2026-06-12 (F-158..F-179 in `tracker.md`). ASC API omits per-thread `buildVersion`; session timing + Grace's TF submit ⇒ build **57** smoke. **0** new crash threads. Signed screenshot URLs expire ~2026-06-18 — re-fetch if needed.
 
 - [ ] Cold open Today — no crash *(no crash report in ASC; not device-proven)*
-- [x] Log food via search — **partial PASS → ENG-1062** *(F-161/F-162: preview now surfaces scaled OFF/FatSecret micros beyond fibre/sugar/sodium; TF58 verify)*
+- [x] Log food via search — **partial PASS → ENG-1062** *(F-161/F-162: merged [PR #390](https://github.com/gracehowse/Suppr/pull/390); preview surfaces scaled OFF/FatSecret micros beyond fibre/sugar/sodium; TF58 verify)*
 - [ ] Import shared Reel URL → library save *(not evidenced in TF comments)*
 - [ ] Plan → generate shopping list *(plan surfaces exercised; shopping list not mentioned)*
 - [ ] Redeem test promo / founding code → Pro gates unlock *(not evidenced)*
