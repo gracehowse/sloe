@@ -41,6 +41,7 @@ const KNOWN_FLAGS: readonly string[] = [
   "supadata-acquisition",
   "today-status-pills",
   "today-edit-entry-v2",
+  "editable_eaten_at",
   "today-weekly-insight-mobile",
   "today_log_again",
   "today_log_usual_row_v2",
