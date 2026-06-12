@@ -218,6 +218,7 @@ Mobile spine end-to-end; shopping generator unified (ENG-1040). No pantry, weak 
 - **Web single-meal optimistic insert/delete no rollback** on persist failure.
 - **CI `VERIFY_STRICT=0`** — production env misconfig can slip through.
 - **246 hex literals** off token system (ENG-1014 baseline drift).
+- **Functional emoji in planner leftover badge** — **SHIPPED** (PR #398 — Lucide `Package`; ENG-808 Done).
 - **Deep link does not dismiss open Log sheet** — **PARTIAL** (tab navigation dismiss **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab deep link UNVERIFIED).
 
 ---

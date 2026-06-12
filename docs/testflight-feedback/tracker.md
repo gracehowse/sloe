@@ -54,7 +54,7 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AEXu3kzt4taOAFEkhuydu3s` | F-178 | ⏳ | Empty plan day styling should match populated days |
 | `ALde5h_GXyUZBAouRUZppYI` | F-179 | ⏳ | Review styling of planned section |
 
-**Themes:** Plan redesign cohesion + empty-day parity (F-158–F-160, F-177–F-179); design-system drift (rings, buttons, corners, spacing — F-164–F-170, F-174–F-177); Library regression (F-171); search vendor micros display (F-161–F-162); perf (F-168); ingredient switcher regression (F-173); positive benchmark (F-163).
+**Themes:** Plan redesign cohesion + empty-day parity (F-158–F-160, F-177–F-179) — **ENG-1065 triaged**, redesign deferred; design-system drift (rings, buttons, corners, spacing — F-164–F-170, F-174–F-177) — **ENG-1064 triaged**, ring stroke needs design call; Library regression (F-171); search vendor micros display (F-161–F-162); perf (F-168); ingredient switcher regression (F-173); positive benchmark (F-163).
 
 ## Snapshot (2026-05-07, build 43 + 44 in-flight; 10 PRs since 2026-05-06 evening)
 
