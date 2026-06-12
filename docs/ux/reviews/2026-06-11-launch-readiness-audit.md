@@ -219,7 +219,7 @@ Mobile spine end-to-end; shopping generator unified (ENG-1040). No pantry, weak 
 - **CI `VERIFY_STRICT=0`** — production env misconfig can slip through.
 - **246 hex literals** off token system (ENG-1014 baseline drift).
 - **Functional emoji in planner leftover badge** — **SHIPPED** (PR #398 — Lucide `Package`; ENG-808 Done).
-- **Deep link does not dismiss open Log sheet** — **PARTIAL** (tab navigation dismiss **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab deep link UNVERIFIED).
+- **Deep link does not dismiss open Log sheet** — **PASS** (tab-blur dismiss [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab `?date=` / `?editMealId=` dismiss [PR #391](https://github.com/gracehowse/Suppr/pull/391); launch queue #8).
 
 ---
 
@@ -405,7 +405,7 @@ Lean narrative on **social-caption import + macro fit** — code now supports di
 - **Screens:** Log sheet → search "chicken breast."
 - **Observations:** Verified/Estimated badges, per-serving macros + grams, past-logged section, barcode/voice/camera — best-in-class vs MFP.
 - **Bug (F-161/F-162):** OFF/FatSecret micros missing in search preview — **PARTIAL** (merged [PR #390](https://github.com/gracehowse/Suppr/pull/390); TF58 device verify pending).
-- **Bug:** Deep link while Log sheet open does not dismiss modal — **PARTIAL** (tab-blur dismiss **PASS** via [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab `?date=` / `?editMealId=` dismiss **PASS** pending PR).
+- **Bug:** Deep link while Log sheet open does not dismiss modal — **PASS** (tab-blur [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab params [PR #391](https://github.com/gracehowse/Suppr/pull/391); launch queue #8).
 - **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix; UI path **PARTIAL** (logic tested; live select not re-captured on TF57).
 - **ENG-1066 / F-173:** Swap pill on verify rows — **PARTIAL** (merged PR #394; iOS sim **PASS** via PR #396 fixture `suppr:///recipe/verify?fixture=1`; TF58+ physical confirm pending).
 - **ENG-772:** Editable `eaten_at` — **PASS** (shipped behind flag; iOS sim **PASS** via PR #396 `suppr:///dev/edit-meal-states`; web food-search preview **PASS** 2026-06-12 at desktop + mobile-web with `?__force_flags=editable_eaten_at`; web edit-meal modal **N/A**; live TestFlight flag path still ENG-840).
