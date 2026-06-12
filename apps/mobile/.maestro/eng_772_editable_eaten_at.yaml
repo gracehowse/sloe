@@ -1,0 +1,87 @@
+# ENG-772 — editable eaten_at: Time eaten on edit-meal modal (fixture + live path)
+appId: com.supprclub.supprapp
+name: "ENG-772 — Time eaten on edit meal"
+---
+- runFlow: shared/login.yaml
+
+# Fixture path — no flag ramp or logged meal required.
+- openLink: suppr:///dev/edit-meal-states
+- extendedWaitUntil:
+    visible:
+      id: "screen-edit-meal-fixture"
+    timeout: 15000
+
+- assertVisible: ".*Time eaten.*"
+- assertVisible:
+    id: "edit-meal-time-eaten"
+
+- takeScreenshot: screenshots/latest/eng-772-edit-meal-time-eaten-fixture
+
+# Live path — force flag via Settings dev panel, then long-press a logged meal.
+- openLink: suppr:///settings
+- extendedWaitUntil:
+    visible: ".*Settings.*"
+    timeout: 15000
+
+- scrollUntilVisible:
+    element: ".*DEV · Flag overrides.*"
+    direction: DOWN
+    timeout: 20000
+
+- scrollUntilVisible:
+    element: ".*editable_eaten_at.*"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    text: "editable_eaten_at on"
+    optional: true
+
+- runFlow:
+    when:
+      notVisible: "editable_eaten_at on"
+    commands:
+      - tapOn:
+          accessibilityLabel: "editable_eaten_at on"
+
+- tapOn:
+    accessibilityLabel: "Reload app to apply forced flags"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "tab-today"
+    timeout: 30000
+
+- scrollUntilVisible:
+    element:
+      text: ".*(?:Protein|Carbs|Fat|Meals|Logged).*"
+    direction: DOWN
+    timeout: 15000
+    optional: true
+
+- runFlow:
+    when:
+      visible:
+        id: "today-meals-figma-meal-row-breakfast"
+    commands:
+      - longPressOn:
+          id: "today-meals-figma-meal-row-breakfast"
+      - extendedWaitUntil:
+          visible:
+            id: "meal-action-edit"
+          timeout: 8000
+      - tapOn:
+          id: "meal-action-edit"
+      - extendedWaitUntil:
+          visible: ".*Time eaten.*"
+          timeout: 8000
+      - assertVisible:
+          id: "edit-meal-time-eaten"
+      - takeScreenshot: screenshots/latest/eng-772-edit-meal-time-eaten-live
+      - back
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
