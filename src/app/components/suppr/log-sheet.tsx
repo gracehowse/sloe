@@ -193,6 +193,8 @@ export interface LogSheetProps {
     /** Inline mode — Supabase client + userId for custom foods. */
     supabase?: InlineSupabaseLike;
     userId?: string | null;
+    /** ENG-772 — journal day for food-search preview time picker. */
+    logDateKey?: string;
     /** Inline mode — the user's logging history, newest-first (from
      *  `computeRecentMeals`). Powers the history-first "Past logged" group
      *  that ranks matching past logs above database results (ENG-1033).
@@ -776,6 +778,7 @@ function DefaultComposition({
             macroConsumed={search?.macroConsumed}
             supabase={search?.supabase}
             userId={search?.userId}
+            logDateKey={search?.logDateKey}
             recentFoods={search?.recentFoods}
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}

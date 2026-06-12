@@ -60,6 +60,10 @@ import { PortionStepper, clampPortion, formatMultiplier } from "./PortionStepper
 export interface TodayEditMealModalProps {
   /** ENG-783 — when true, render the LogSheet-grammar `EditEntryV2`. */
   enabled?: boolean;
+  /** ENG-772 — when true, show editable consumption time (`editable_eaten_at`). */
+  editEatenAtEnabled?: boolean;
+  editEatenAtTime: string;
+  onEditEatenAtTimeChange: (v: string) => void;
   editingMeal: JournalMeal | null;
   slots: readonly string[];
   editSlot: string;
@@ -101,6 +105,49 @@ function parsePortion(raw: string): number {
   return clampPortion(parseFloat(String(raw).replace(",", ".")) || 1);
 }
 
+function EditEatenAtTimeField(props: {
+  enabled?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  labelColor: string;
+  inputBg: string;
+  borderColor: string;
+  textColor: string;
+  placeholderColor: string;
+  inputStyle?: object;
+}) {
+  if (!props.enabled) return null;
+  return (
+    <>
+      <Text style={[Type.label, { color: props.labelColor, marginTop: Spacing.lg, marginBottom: Spacing.xs }]}>
+        Time eaten
+      </Text>
+      <TextInput
+        style={[
+          props.inputStyle,
+          {
+            backgroundColor: props.inputBg,
+            color: props.textColor,
+            borderColor: props.borderColor,
+            borderWidth: 1,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.md,
+            fontSize: 14,
+            fontWeight: "500",
+          },
+        ]}
+        placeholder="HH:mm (24h)"
+        placeholderTextColor={props.placeholderColor}
+        value={props.value}
+        onChangeText={props.onChange}
+        keyboardType="numbers-and-punctuation"
+        accessibilityLabel="Time eaten"
+      />
+    </>
+  );
+}
+
 /**
  * EditEntryV2 — the redesigned sheet. Renders on `colors.background`
  * (the LogSheet surface, NOT `cardColor`) so it reads as the same sheet
@@ -132,6 +179,9 @@ function EditEntryV2(props: TodayEditMealModalProps) {
     onSave,
     onDelete,
     onClose,
+    editEatenAtEnabled,
+    editEatenAtTime,
+    onEditEatenAtTimeChange,
   } = props;
 
   // ENG-813 (Redesign — Design Direction 2026): element→sheet morph on open
@@ -279,6 +329,17 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                   );
                 })}
               </View>
+
+              <EditEatenAtTimeField
+                enabled={editEatenAtEnabled}
+                value={editEatenAtTime}
+                onChange={onEditEatenAtTimeChange}
+                labelColor={colors.textTertiary}
+                inputBg={card.liftBg ?? colors.inputBg}
+                borderColor={colors.border}
+                textColor={colors.text}
+                placeholderColor={colors.textTertiary}
+              />
 
               {/* PORTION — live N× read-out + stepper + quick chips. */}
               <View style={[v2.sectionRow, v2.sectionSpaced]}>
@@ -471,6 +532,9 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
     textColor,
     textSecondaryColor,
     textTertiaryColor,
+    editEatenAtEnabled,
+    editEatenAtTime,
+    onEditEatenAtTimeChange,
   } = props;
 
   return (
@@ -549,6 +613,17 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
               </Pressable>
             ))}
           </View>
+
+          <EditEatenAtTimeField
+            enabled={editEatenAtEnabled}
+            value={editEatenAtTime}
+            onChange={onEditEatenAtTimeChange}
+            labelColor={textSecondaryColor}
+            inputBg={inputBgColor}
+            borderColor={borderColor}
+            textColor={textColor}
+            placeholderColor={textTertiaryColor}
+          />
 
           <Text style={{ fontSize: 12, fontWeight: "700", color: textSecondaryColor, marginBottom: Spacing.xs }}>
             Portion (×)

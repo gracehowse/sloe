@@ -104,6 +104,11 @@ import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
+import {
+  defaultEatenAtForNewLog,
+  eatenAtFromLogDateAndTime,
+  localTimeInputValueFromIso,
+} from "@/lib/nutrition/mealEatenAt";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
 import {
   foodSearchTrustWeight,
@@ -214,6 +219,8 @@ export type FoodSearchSelection = {
   customFoodId?: string;
   servingLabel?: string;
   imageUrl?: string | null;
+  /** ENG-772 — consumption instant from preview time picker. */
+  eatenAt?: string;
 };
 
 /**
@@ -245,6 +252,8 @@ export type FoodSearchPanelProps = {
    *  closing any wrapping host (dialog / sheet) if that's the desired
    *  UX. */
   onSelect: (selection: FoodSearchSelection) => void;
+  /** ENG-772 — journal day (`YYYY-MM-DD`) for preview time when `editable_eaten_at` is on. */
+  logDateKey?: string;
   /**
    * `"full"`     — current FoodSearch dialog density.
    * `"compact"`  — tighter rows for LogSheet's smaller vertical budget.
@@ -879,6 +888,7 @@ export function FoodSearchPanel({
   supabase,
   userId,
   onSelect,
+  logDateKey,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -970,6 +980,19 @@ export function FoodSearchPanel({
     customFoodId?: string;
     imageUrl?: string | null;
   } | null>(null);
+  const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
+  const previewEatenAtEnabled =
+    Boolean(logDateKey) && isFeatureEnabled("editable_eaten_at");
+  const previewSessionKey = preview
+    ? `${preview.name}|${preview.source}|${preview.chosenPortion.label}`
+    : null;
+  useEffect(() => {
+    if (!previewSessionKey || !logDateKey || !previewEatenAtEnabled) return;
+    setPreviewEatenAtTime(
+      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
+    );
+  }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
   // No-result loop (audit move-blocker #2, 2026-05-02 — replaces
@@ -1594,6 +1617,9 @@ export function FoodSearchPanel({
       chosenPortion: preview.chosenPortion,
       quantity: preview.quantity,
       ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+      ...(previewEatenAtEnabled && logDateKey
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        : {}),
     };
     if (preview.source === "CUSTOM") {
       selection.customFoodId = preview.customFoodId;
@@ -1611,7 +1637,7 @@ export function FoodSearchPanel({
     }
     onSelect(selection);
     setPreview(null);
-  }, [preview, onSelect]);
+  }, [preview, onSelect, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
 
   const scaled = useMemo(() => {
     if (!preview) return null;
@@ -2105,6 +2131,20 @@ export function FoodSearchPanel({
             <p className="text-xs text-destructive" role="alert">
               {previewPlausibilityWarning}
             </p>
+          ) : null}
+
+          {previewEatenAtEnabled ? (
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Time eaten
+              </span>
+              <input
+                type="time"
+                value={previewEatenAtTime}
+                onChange={(e) => setPreviewEatenAtTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
+              />
+            </label>
           ) : null}
 
           {fitHint && (

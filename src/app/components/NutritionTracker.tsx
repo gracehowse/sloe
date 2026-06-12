@@ -24,7 +24,7 @@ import {
   type WeeklyCheckinContent,
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
-import type { RecipeCard, UserTier } from "../../types/recipe.ts";
+import type { LoggedMeal, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import {
@@ -36,6 +36,13 @@ import {
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import {
+  compareMealsByChronology,
+  defaultEatenAtForNewLog,
+  eatenAtIsoFromLocalParts,
+  localTimeInputValueFromIso,
+  parseLocalTimeInput,
+} from "../../lib/nutrition/mealEatenAt.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import {
@@ -567,6 +574,21 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [mealSlot, setMealSlot] = useState("Breakfast");
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
+
+  useEffect(() => {
+    if (!isFeatureEnabled("editable_eaten_at")) return;
+    setTimeLabel(localTimeInputValueFromIso(defaultEatenAtForNewLog(selectedDateKey)));
+  }, [selectedDateKey]);
+
+  const eatenAtForCurrentLog = useCallback((): Pick<LoggedMeal, "eatenAt"> => {
+    if (!isFeatureEnabled("editable_eaten_at")) return {};
+    const localTime = parseLocalTimeInput(timeLabel);
+    const eatenAt = localTime
+      ? eatenAtIsoFromLocalParts(selectedDateKey, localTime.hours, localTime.minutes)
+      : defaultEatenAtForNewLog(selectedDateKey);
+    return { eatenAt };
+  }, [selectedDateKey, timeLabel]);
+
   const [addMode, setAddMode] = useState<"recipe" | "manual">("recipe");
   const [manualName, setManualName] = useState("");
   const [manualCalories, setManualCalories] = useState(0);
@@ -1657,6 +1679,9 @@ export const NutritionTracker = memo(function NutritionTracker({
           ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
           ...mealImageFields(selection.imageUrl),
+          ...(selection.eatenAt
+            ? { eatenAt: selection.eatenAt }
+            : eatenAtForCurrentLog()),
         },
         // Mirror mobile's `food_logged.source` mapping: custom food
         // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
@@ -1664,7 +1689,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         foodSelectionAnalyticsSource(selection.source),
       );
     },
-    [addLoggedMeal, mealSlot, timeLabel],
+    [addLoggedMeal, mealSlot, timeLabel, eatenAtForCurrentLog],
   );
 
   const recipeOptions = useMemo((): RecipeCard[] => {
@@ -1769,7 +1794,10 @@ export const NutritionTracker = memo(function NutritionTracker({
       if (ib === -1) return -1;
       return ia - ib;
     });
-    return keys.map((name) => ({ name, meals: map.get(name)! }));
+    return keys.map((name) => ({
+      name,
+      meals: [...map.get(name)!].sort(compareMealsByChronology),
+    }));
   }, [mealsForSelectedDate]);
 
   // ENG-786 — "Log this/these again". Re-inserts the viewed day's
@@ -2217,6 +2245,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           source: "Manual",
           ...(manualFiber > 0 ? { fiberG: Math.max(0, Math.round(manualFiber)) } : {}),
           ...(manualWater > 0 ? { waterMl: Math.max(0, Math.round(manualWater)) } : {}),
+          ...eatenAtForCurrentLog(),
         },
         "manual",
       );
@@ -2252,6 +2281,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         source: "Recipe",
         ...(fiberFromRecipe != null && fiberFromRecipe > 0 ? { fiberG: fiberFromRecipe } : {}),
         ...(p !== 1 ? { portionMultiplier: p } : {}),
+        ...eatenAtForCurrentLog(),
       },
       "recipe",
     );
@@ -3005,6 +3035,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         onClose={() => setFoodSearchOpen(false)}
         supabase={supabase}
         userId={authedUserId ?? null}
+        logDateKey={selectedDateKey}
         macroTargets={{
           calories: effectiveCalorieTarget,
           protein: effectiveMacroTargets.protein,
@@ -3424,6 +3455,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           },
           supabase,
           userId: authedUserId ?? null,
+          logDateKey: selectedDateKey,
           // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel so the
           // typed-query "Past logged" group ranks matching past logs above

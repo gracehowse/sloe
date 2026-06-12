@@ -71,6 +71,8 @@ type Props = {
   supabase?: SupabaseLike;
   userId?: string | null;
   onSelect: (result: SelectedFood) => void;
+  /** ENG-772 — journal day for food-search preview time picker. */
+  logDateKey?: string;
   onClose: () => void;
   /**
    * F-128 (Grace, 2026-05-07): "we need to be able to add ingredients
@@ -121,6 +123,7 @@ export default function FoodSearchModal({
   supabase,
   userId,
   onSelect,
+  logDateKey,
   onClose,
   onScanBarcode,
   onVoiceLog,
@@ -306,6 +309,7 @@ export default function FoodSearchModal({
           macroConsumed={macroConsumed}
           supabase={supabase}
           userId={userId}
+          logDateKey={logDateKey}
           onSelect={onSelect}
           mode="full"
           recentFoods={recentFoods}

@@ -77,3 +77,58 @@ export function localHoursMinutesFromIso(iso: string): { hours: number; minutes:
   const d = new Date(iso);
   return { hours: d.getHours(), minutes: d.getMinutes() };
 }
+
+/** `HH:mm` (24h) for `<input type="time">` and mobile time fields. */
+export function localTimeInputValueFromIso(iso: string): string {
+  const { hours, minutes } = localHoursMinutesFromIso(iso);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+/** Parse `HH:mm` or `H:mm` (24h). Returns null when invalid. */
+export function parseLocalTimeInput(raw: string): { hours: number; minutes: number } | null {
+  const m = raw.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return { hours, minutes };
+}
+
+/** Default consumption instant when logging on `dateKey` (today → now). */
+export function defaultEatenAtForNewLog(dateKey: string): string {
+  const now = new Date();
+  const todayKey = dateKeyFromInstant(now.toISOString());
+  if (dateKey === todayKey) return now.toISOString();
+  const { hours, minutes } = localHoursMinutesFromIso(now.toISOString());
+  return eatenAtIsoFromLocalParts(dateKey, hours, minutes);
+}
+
+/**
+ * Resolve `date_key` + `eaten_at` for a write. When `localTime` is set
+ * (user edited time), both fields are derived from local tz — cross-day gate.
+ */
+export function nutritionEntryDateKeyAndEatenAt(
+  meal: MealChronologyFields,
+  anchorDateKey: string,
+  localTime?: { hours: number; minutes: number } | null,
+): { dateKey: string; eatenAt: string | null } {
+  if (localTime) {
+    const eatenAt = eatenAtIsoFromLocalParts(anchorDateKey, localTime.hours, localTime.minutes);
+    return { dateKey: dateKeyFromInstant(eatenAt), eatenAt };
+  }
+  const eaten = meal.eatenAt?.trim();
+  if (eaten) {
+    return { dateKey: dateKeyFromInstant(eaten), eatenAt: eaten };
+  }
+  return { dateKey: anchorDateKey, eatenAt: null };
+}
+
+/** Build `eaten_at` from journal `date_key` + `HH:mm` preview input. */
+export function eatenAtFromLogDateAndTime(logDateKey: string, timeInput: string): string {
+  const localTime = parseLocalTimeInput(timeInput);
+  if (localTime) {
+    return eatenAtIsoFromLocalParts(logDateKey, localTime.hours, localTime.minutes);
+  }
+  return defaultEatenAtForNewLog(logDateKey);
+}

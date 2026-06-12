@@ -60,6 +60,8 @@ type Props = {
    *  hidden and the search behaves exactly as before. */
   supabase?: PanelSupabaseLike;
   userId?: string | null;
+  /** ENG-772 — journal day for food-search preview time picker. */
+  logDateKey?: string;
   /** History-first search (ENG-1031) — the user's logging history, newest-
    *  first. Threaded to the panel so the typed-query "Past logged" group
    *  ranks matching past logs above database results. */
@@ -88,6 +90,7 @@ export function FoodSearch({
   macroConsumed,
   supabase,
   userId,
+  logDateKey,
   recentFoods,
 }: Props) {
   // Caller owns the query; the panel reacts to it. We sync the input
@@ -133,6 +136,7 @@ export function FoodSearch({
             macroConsumed={macroConsumed}
             supabase={supabase}
             userId={userId}
+            logDateKey={logDateKey}
             recentFoods={recentFoods}
             mode="full"
             onSelect={(selection) => {

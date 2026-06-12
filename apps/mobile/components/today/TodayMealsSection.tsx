@@ -88,7 +88,11 @@ export interface TodayMealsSectionProps {
   onDeleteMeal: (mealId: string) => void;
   showMealTimestamps: boolean;
   formatMealMacroDetail: (m: JournalMeal) => string;
-  formatMealTimeDisplay: (time: string | undefined, createdAt?: string | null) => string;
+  formatMealTimeDisplay: (
+    time: string | undefined,
+    createdAt?: string | null,
+    eatenAt?: string | null,
+  ) => string;
   formatMealSourceLabelForRow: (source: string | null | undefined) => string | null;
   textColor: string;
   textSecondaryColor: string;
@@ -1271,7 +1275,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         </View>
                         {showMealTimestamps
                           ? (() => {
-                              const ts = formatMealTimeDisplay(m.time, m.createdAt);
+                              const ts = formatMealTimeDisplay(m.time, m.createdAt, m.eatenAt);
                               return ts ? (
                                 <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: Spacing.dense }}>{ts}</Text>
                               ) : null;

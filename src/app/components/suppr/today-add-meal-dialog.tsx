@@ -320,13 +320,22 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
           )}
           <label className="grid gap-1">
             <span className="text-sm font-medium text-foreground">Time</span>
-            <input
-              type="text"
-              value={timeLabel}
-              onChange={(e) => onTimeLabelChange(e.target.value)}
-              placeholder="e.g. 12:30 PM"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-            />
+            {isFeatureEnabled("editable_eaten_at") ? (
+              <input
+                type="time"
+                value={timeLabel}
+                onChange={(e) => onTimeLabelChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
+              />
+            ) : (
+              <input
+                type="text"
+                value={timeLabel}
+                onChange={(e) => onTimeLabelChange(e.target.value)}
+                placeholder="e.g. 12:30 PM"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
+              />
+            )}
           </label>
         </div>
         <DialogFooter className="border-t border-border bg-card px-6 py-4 shrink-0">
