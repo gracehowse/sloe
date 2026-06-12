@@ -123,6 +123,7 @@ function EditEatenAtTimeField(props: {
         Time eaten
       </Text>
       <TextInput
+        testID="edit-meal-time-eaten"
         style={[
           props.inputStyle,
           {

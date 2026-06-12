@@ -78,6 +78,7 @@ under `apps/mobile/app/`.
 |--------|------|--------------------------|----------------|
 | Recipe detail | `recipe/[id].tsx` | `suppr:///recipe/<id>` | `id`, `portion`, `autoLog` |
 | Recipe verify | `recipe/verify.tsx` | `suppr:///recipe/verify?id=<id>` | `id`; nutrition-verification loading screen |
+| Recipe verify (fixture) | `recipe/verify.tsx` | `suppr:///recipe/verify?fixture=1` | **Dev/agent only** — three matched ingredient rows with Swap pills (ENG-1066 / F-173); no DB |
 | New recipe (wizard) | `recipe/create.tsx` | `suppr:///recipe/create` (linked from Recipes/Library tab) | Guided step-by-step "create from scratch" |
 | New recipe (form) | `create-recipe.tsx` | `suppr:///create-recipe` (Settings row + share handoff) | `autoPhoto`; long single-screen form/edit |
 | Creator profile | `creator/[id].tsx` | `suppr:///creator/<id>` | `id` |
@@ -129,6 +130,8 @@ nav, but not shown in the tab bar.
 |--------|------|-----------|
 | Calorie-ring states | `dev/calorie-ring-states.tsx` | `suppr:///dev/calorie-ring-states` |
 | Health-import labels | `dev/health-import-labels.tsx` | `suppr:///dev/health-import-labels` |
+| Edit meal + Time eaten | `dev/edit-meal-states.tsx` | `suppr:///dev/edit-meal-states` | ENG-772 fixture — edit modal with `Time eaten` forced on |
+| Import queue states | `dev/import-queue-states.tsx` | `suppr:///dev/import-queue-states` |
 
 ---
 

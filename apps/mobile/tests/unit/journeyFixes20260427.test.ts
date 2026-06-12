@@ -136,6 +136,13 @@ describe("ENG-1066 — Recipe verify exposes visible Swap affordance", () => {
     expect(SRC.verify).toMatch(
       /setSearchIndex\(i\);[\s\S]{0,80}setExpandedIndex\(null\)/,
     );
+    expect(SRC.verify).toMatch(/testID=\{`verify-ingredient-swap-\$\{i\}`\}/);
+  });
+
+  it("supports agent fixture deeplink without Supabase (fixture=1)", () => {
+    expect(SRC.verify).toMatch(/VERIFY_FIXTURE_INGREDIENTS/);
+    expect(SRC.verify).toMatch(/fixture === "1"/);
+    expect(SRC.verify).toMatch(/testID="screen-recipe-verify-fixture"/);
   });
 });
 

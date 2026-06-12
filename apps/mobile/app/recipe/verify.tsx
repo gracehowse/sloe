@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -58,6 +58,10 @@ import {
   nutritionDelta,
   type CaptionNutritionClaim,
 } from "@suppr/shared/recipe-import/extractCaptionNutrition";
+import {
+  VERIFY_FIXTURE_INGREDIENTS,
+  VERIFY_FIXTURE_RECIPE,
+} from "@/lib/verifyRecipeFixture";
 
 /** Standard units always available for editing */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -70,10 +74,14 @@ const STANDARD_UNITS: FoodPortion[] = [
 ];
 
 export default function VerifyScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fixture } = useLocalSearchParams<{ id?: string; fixture?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const isFixture =
+    fixture === "1" ||
+    fixture === "true" ||
+    (typeof id === "string" && id === "fixture");
   // Secondary accent (Frost flag → damson, else clay) for the verify header
   // title, action-button borders/labels, add-ingredient affordance, search/
   // barcode glyphs, and the matching spinner. Threaded into the memoised
@@ -123,6 +131,17 @@ export default function VerifyScreen() {
   }, []);
 
   useEffect(() => {
+    if (isFixture) {
+      setRecipe({
+        title: VERIFY_FIXTURE_RECIPE.title,
+        servings: VERIFY_FIXTURE_RECIPE.servings,
+      });
+      setCaptionClaim(null);
+      setIngredients(VERIFY_FIXTURE_INGREDIENTS);
+      setLoadError(null);
+      setLoading(false);
+      return;
+    }
     if (!recipeId) return;
     let cancelled = false;
     (async () => {
@@ -162,7 +181,7 @@ export default function VerifyScreen() {
       }
     })();
     return () => { cancelled = true; };
-  }, [recipeId]);
+  }, [isFixture, recipeId]);
 
   // Live totals — macros respect per-row overrides via the shared
   // `recomputeRecipeTotals` helper (Batch 2.7). Sugar / sodium don't have
@@ -595,6 +614,10 @@ export default function VerifyScreen() {
 
   // Save
   const onConfirm = useCallback(async () => {
+    if (isFixture) {
+      Alert.alert("Fixture mode", "Save is disabled on the verify fixture screen.");
+      return;
+    }
     if (!recipeId || !recipe) return;
     setSaving(true);
     const result = await saveVerifiedIngredients(recipeId, ingredients, recipe.servings);
@@ -605,7 +628,7 @@ export default function VerifyScreen() {
     }
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace(`/recipe/${recipeId}`);
-  }, [recipeId, recipe, ingredients, router]);
+  }, [isFixture, recipeId, recipe, ingredients, router]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -774,6 +797,21 @@ export default function VerifyScreen() {
         <Text style={styles.topTitle}>VERIFY</Text>
         <View style={{ width: 50 }} />
       </View>
+
+      {isFixture ? (
+        <View
+          testID="screen-recipe-verify-fixture"
+          style={{
+            backgroundColor: Accent.warning + "22",
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: Spacing.xs,
+          }}
+        >
+          <Text style={{ ...Type.caption, color: Accent.warningSolid, fontWeight: "700" }}>
+            DEV FIXTURE — matched ingredient rows for agent / Maestro (ENG-1066)
+          </Text>
+        </View>
+      ) : null}
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -947,6 +985,7 @@ export default function VerifyScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={`Swap match for ${displayName}`}
+                  testID={`verify-ingredient-swap-${i}`}
                 >
                   <Text style={styles.swapPillText}>Swap</Text>
                 </Pressable>

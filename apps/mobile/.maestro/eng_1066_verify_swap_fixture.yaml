@@ -1,0 +1,30 @@
+# ENG-1066 / F-173 — Recipe verify Swap pill on matched ingredient rows (fixture)
+appId: com.supprclub.supprapp
+name: "ENG-1066 — verify Swap pill (fixture rows)"
+---
+- runFlow: shared/login.yaml
+
+- openLink: suppr:///recipe/verify?fixture=1
+- extendedWaitUntil:
+    visible:
+      id: "screen-recipe-verify-fixture"
+    timeout: 15000
+
+- assertVisible: ".*VERIFY.*"
+- assertVisible: ".*Agent fixture.*"
+
+# Three fixture rows — each exposes a Swap pill (ENG-1066).
+- assertVisible:
+    id: "verify-ingredient-swap-0"
+- assertVisible:
+    id: "verify-ingredient-swap-1"
+- assertVisible:
+    id: "verify-ingredient-swap-2"
+
+- assertVisible: ".*Swap.*"
+
+- takeScreenshot: screenshots/latest/eng-1066-verify-swap-fixture
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd

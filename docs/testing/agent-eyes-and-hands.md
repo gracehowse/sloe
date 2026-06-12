@@ -180,6 +180,19 @@ Restart Metro after changing. ENG-877 native search golden pass should record wh
 
 **Auth:** Apple Sign In on device/sim — no email/password test form. Use silent Maestro env (`E2E_*`) or an already-signed-in sim for authed flows.
 
+### Dev fixtures (no DB / no logged meals)
+
+Use these deep links in `__DEV__` builds when a surface needs seeded UI for MCP or Maestro:
+
+| Surface | Deep link | Maestro |
+|---------|-----------|---------|
+| Recipe verify + Swap pills (ENG-1066 / F-173) | `suppr:///recipe/verify?fixture=1` | `eng_1066_verify_swap_fixture.yaml` |
+| Edit meal + Time eaten (ENG-772) | `suppr:///dev/edit-meal-states` | `eng_772_editable_eaten_at.yaml` |
+| Import queue states | `suppr:///dev/import-queue-states` | — |
+| Calorie ring states | `suppr:///dev/calorie-ring-states` | `00g_bundle_1a_validation.yaml` |
+
+Live Today edit path (flag + long-press): Settings → **DEV · Flag overrides** → `editable_eaten_at` **On** → **Reload app** → long-press a logged meal → **Edit** → assert `edit-meal-time-eaten`. Or deep-link `suppr:///?editMealId=<mealId>` when a meal id is known.
+
 **Cold relaunch:** After font/ring/layout constants change, MCP `launch_app` with `terminate_running: true` — Fast Refresh does not refresh `Dimensions`-derived layout.
 
 ## 5. Claude Code (optional)
