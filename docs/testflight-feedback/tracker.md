@@ -34,8 +34,8 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AKpBIfglKQR_yiFcUb6haes` | F-158 | ⏳ | Complete day button stylistically out of place |
 | `ABeqoFrE-wMoI6YRP7mTuSY` | F-159 | ⏳ | Spacing between cards inconsistent / too much |
 | `AI93BuUvoyNqg2vyOOUR2cc` | F-160 | ⏳ | Plan section ugly — revert pre-redesign layout with updated colours/fonts |
-| `ACjwFFSb3LJ_SGzMTOKBWDg` | F-161 | ⏳ | OFF search missing expected nutrition info |
-| `AKgFThMoNK7ES0VXvt64-hs` | F-162 | ⏳ | FatSecret may have more nutrition info not shown |
+| `ACjwFFSb3LJ_SGzMTOKBWDg` | F-161 | 🟡 | OFF search missing expected nutrition info — **ENG-1062** preview shows scaled vendor micros (sat fat, potassium, vitamins…); pending TF58+ |
+| `AKgFThMoNK7ES0VXvt64-hs` | F-162 | 🟡 | FatSecret may have more nutrition info not shown — **ENG-1062** preview surfaces `microsPerServing` beyond fibre/sugar/sodium; pending TF58+ |
 | `APHOn0YlQEV12igrAB9CHBU` | F-163 | ⏳ | Positive: aspire to this level of meal feedback detail |
 | `AEu8j9bcGAjj4M9kFCZHGc4` | F-164 | ⏳ | Today ring too fat — match macro ring stroke width |
 | `AFZj_4nb_ZkWsB6Vo8CtTIk` | F-165 | ⏳ | Today ring too fat (recurrence) |
@@ -44,7 +44,7 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AKtXKSnRdbli2_NJ7Hroov0` | F-168 | ⏳ | List slow to load |
 | `AIzVrhOEKFsC4ZoDnSePlRo` | F-169 | ⏳ | Odd spacing |
 | `AHuEHuKyt8POeAEKzQ0gBUo` | F-170 | ⏳ | Very odd spacing |
-| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | ⏳ | Library recipes missing or tab not clickable |
+| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** merged (LogSheet dismiss on tab blur); pending TF58+ |
 | `AJQL077DLT8fEgDX69f-_qQ` | F-172 | ⏳ | Review styling (unspecified surface) |
 | `APA3hfV90AqxrDdUEl5ILP0` | F-173 | ⏳ | Need ingredient switcher like before |
 | `ALFGUcreM4vMYwtxCsQK1Sk` | F-174 | ⏳ | Card corner radii inconsistent |
