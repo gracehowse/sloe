@@ -129,7 +129,7 @@ export default function LibraryScreen() {
   // stranding them.
   const goBack = useSafeBack("/(tabs)");
 
-  const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
+  const { recipes: savedRecipes, loading, refreshing, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
 
   /** Reload rows after yield/macros edits on recipe detail (list state is otherwise stale). */
@@ -957,7 +957,7 @@ export default function LibraryScreen() {
           columnWrapperStyle={styles.columnWrap}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={accent.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accent.primary} />
           }
           ListHeaderComponent={
             <>

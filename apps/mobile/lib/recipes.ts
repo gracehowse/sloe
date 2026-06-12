@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { formatRecipeMinutes } from "./formatRecipeMinutes";
 import { supabase } from "./supabase";
@@ -391,14 +391,17 @@ export function useSavedRecipes(userId: string | null) {
 export function useSavedLibraryRecipes(userId: string | null) {
   const [recipes, setRecipes] = useState<RecipeCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const recipesRef = useRef(recipes);
+  recipesRef.current = recipes;
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setRecipes([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
-    setLoading(true);
 
     // Warm-start from the per-user cache BEFORE the network call so a slow
     // or hanging saves+recipes fetch never shows a BARE full-screen spinner
@@ -411,6 +414,18 @@ export function useSavedLibraryRecipes(userId: string | null) {
       | null;
     if (warmCache && warmCache.length > 0) {
       setRecipes(warmCache);
+    }
+
+    // ENG-1063 / F-168 — stale-while-revalidate: tab-focus refresh must not
+    // block the list behind a pull-to-refresh gate when rows are already
+    // on screen (warm cache or in-memory state from a prior fetch).
+    const isBackgroundRefresh =
+      recipesRef.current.length > 0 || Boolean(warmCache?.length);
+    if (isBackgroundRefresh) {
+      setLoading(false);
+      setRefreshing(true);
+    } else {
+      setLoading(true);
     }
 
     // Wrap the whole fetch+hydrate path in try/finally so `loading`
@@ -607,6 +622,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
 
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [userId]);
 
@@ -614,7 +630,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
     void refresh();
   }, [refresh]);
 
-  return { recipes, loading, refresh };
+  return { recipes, loading, refreshing, refresh };
 }
 
 /** Fetch a single recipe with ingredients. */

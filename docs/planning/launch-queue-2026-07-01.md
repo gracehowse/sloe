@@ -46,12 +46,12 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 5 | **ENG-670** Reel parse-rate gate | G |
 | 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
 | 7 | ~~**ENG-772** Editable `eaten_at`~~ — **SHIPPED** (flag `editable_eaten_at`) | E |
-| 8 | Deep-link dismisses Log sheet | E — tab-blur **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab params **PR pending** |
+| 8 | Deep-link dismisses Log sheet | E — **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389) tab-blur + [PR #391](https://github.com/gracehowse/Suppr/pull/391) in-tab params |
 
 ## Gate A — In Progress (keep)
 
 - **ENG-874** — Health sync device proof
-- **ENG-877** — Search golden battery
+- ~~**ENG-877**~~ — Search golden battery — **SHIPPED** [PR #392](https://github.com/gracehowse/Suppr/pull/392); UK retailer provider-recall gaps tracked in issue comment
 - ~~**ENG-840**~~ — Flag-force in bundled apps — **SHIPPED** (runtime `?__force_flags` web + DevFlagOverrides mobile)
 
 ## Gate B — `paid-ga-blocker` (parallel track)
@@ -91,8 +91,8 @@ Grace-only Gate A items (Gate0 5/5, ENG-859, ENG-670, TF screenshot triage) stay
 
 | Rank | Item | Rationale |
 |------|------|-----------|
-| 1 | **ENG-877** Search golden battery | Food search is the primary log path; regressions block comped-user onboarding. |
-| 2 | **#8** Deep-link dismisses Log sheet | Launch-queue UX bug — sheet can stay open across tab/deep-link nav. |
+| 1 | ~~**ENG-877** Search golden battery~~ | **SHIPPED** PR #392; provider-recall gaps (Tesco/Sainsbury) in issue comment. |
+| 2 | ~~**#8** Deep-link dismisses Log sheet~~ | **SHIPPED** PR #389 + #391. |
 | 3 | **ENG-840** Flag-force in bundled apps | TestFlight cannot QA flag-gated surfaces (`editable_eaten_at`, etc.) without bundle-safe overrides. |
 | 4 | **ENG-874** Health sync (engineering tail) | Device matrix needs Grace; code/docs fixes for sync failures can proceed in parallel. |
 | 5 | **ENG-772** visual parity sign-off | Shipped on `main`; confirm edit-meal / food-search time UI on web + iOS with flag on. |
