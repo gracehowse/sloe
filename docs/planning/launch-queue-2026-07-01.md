@@ -81,6 +81,8 @@ Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 - [ ] Redeem test promo / founding code → Pro gates unlock *(not evidenced)*
 - [ ] Optional: Apple Health sync (ENG-874 matrix) *(not evidenced)*
 
+**2026-06-12 evening:** [#397](https://github.com/gracehowse/Suppr/pull/397) merged — full nutrient panel sort (deficiencies first); audit P2 #9 closed.
+
 **FAIL / follow-up from screenshots:** Library tab/recipes (F-171); plan redesign cohesion (F-158–F-160, F-177–F-179); design-system drift (rings, buttons, spacing).
 
 Record remaining pass/fail in ENG-874.
@@ -93,7 +95,7 @@ Grace-only Gate A items (Gate0 5/5, ENG-859, ENG-670, TF screenshot triage) stay
 |------|------|-----------|
 | 1 | ~~**ENG-877** Search golden battery~~ | **SHIPPED** PR #392; provider-recall gaps (Tesco/Sainsbury) in issue comment. |
 | 2 | ~~**#8** Deep-link dismisses Log sheet~~ | **SHIPPED** PR #389 + #391. |
-| 3 | **ENG-840** Flag-force in bundled apps | TestFlight cannot QA flag-gated surfaces (`editable_eaten_at`, etc.) without bundle-safe overrides. |
+| 3 | ~~**ENG-840** Flag-force in bundled apps~~ | **SHIPPED** — runtime `?__force_flags` web + DevFlagOverrides mobile. |
 | 4 | **ENG-874** Health sync (engineering tail) | Device matrix needs Grace; code/docs fixes for sync failures can proceed in parallel. |
 | 5 | ~~**ENG-772** visual parity sign-off~~ | **DONE** — iOS sim **PASS** 2026-06-12 (PR #396 `suppr:///dev/edit-meal-states` + Maestro `eng_772_editable_eaten_at.yaml`); web **PASS** 2026-06-12 (`/today?__force_flags=editable_eaten_at&openLog=1` → food-search preview `Time eaten` + `input[type=time]` at desktop 1440px + mobile-web 390px); web edit-meal modal **N/A** (mobile-only); live TestFlight flag path still ENG-840 |
 
