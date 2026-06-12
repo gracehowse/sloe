@@ -39,14 +39,15 @@ const WEB_OFF_SEARCH_SRC = readFileSync(WEB_OFF_SEARCH, "utf8");
 const WEB_OFF_BARCODE_SRC = readFileSync(WEB_OFF_BARCODE, "utf8");
 
 describe("F-77 OFF Atwater plausibility gate — every ingest point", () => {
-  it("mobile searchOpenFoodFacts filters with isPlausibleMacrosPer100g", () => {
-    expect(VERIFY_SRC).toMatch(/import\s*\{\s*isPlausibleMacrosPer100g\s*\}/);
-    expect(VERIFY_SRC).toMatch(/isPlausibleMacrosPer100g\(\{\s*calories:\s*h\.calories/);
+  it("mobile searchOpenFoodFacts proxies OFF; plausibility runs server-side (ENG-1059)", () => {
+    expect(VERIFY_SRC).toMatch(/\/api\/off\/search/);
+    expect(WEB_OFF_SEARCH_SRC).toMatch(/isPlausibleMacrosPer100g\(\{\s*calories:\s*h\.calories/);
   });
 
-  it("web FoodSearch.tsx searchOff filters with isPlausibleMacrosPer100g", () => {
+  it("web FoodSearchPanel searchOff filters client rows with isPlausibleMacrosPer100g", () => {
     expect(WEB_SEARCH_SRC).toMatch(/import\s*\{\s*isPlausibleMacrosPer100g\s*\}/);
     expect(WEB_SEARCH_SRC).toMatch(/isPlausibleMacrosPer100g\(\{[^}]*calories:\s*r\.macrosPer100g\.calories/s);
+    expect(WEB_SEARCH_SRC).toMatch(/\/api\/off\/search/);
   });
 
   it("web searchOffProducts filters with isPlausibleMacrosPer100g", () => {
@@ -142,10 +143,13 @@ describe("P0 OFF per-100g basis reconcile — every OFF ingest point", () => {
     expect(WEB_OFF_BARCODE_SRC).not.toMatch(/n\.proteins_100g\s*\?\?\s*n\.proteins\b/);
   });
 
-  it("mobile searchOpenFoodFacts + lookupBarcode both reconcile", () => {
+  it("mobile lookupBarcode reconciles; searchOpenFoodFacts proxies OFF via API (ENG-1059)", () => {
     expect(VERIFY_SRC).toMatch(/import\s*\{\s*reconcileOffPer100g\s*\}/);
-    const occurrences = VERIFY_SRC.match(/reconcileOffPer100g\(n,\s*p\)/g) ?? [];
-    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    expect(VERIFY_SRC).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+    expect(VERIFY_SRC).toMatch(/\/api\/off\/search/);
+    expect(VERIFY_SRC).not.toMatch(
+      /world\.openfoodfacts\.org\/cgi\/search\.pl/,
+    );
   });
 });
 

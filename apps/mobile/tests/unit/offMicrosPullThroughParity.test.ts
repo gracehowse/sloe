@@ -118,10 +118,9 @@ describe("F-79 — ingest layer pulls full micro set", () => {
     expect(SRC.webOffSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
   });
 
-  it("web FoodSearch.tsx (Today search) attaches microsPer100g on OFF hits", () => {
-    expect(SRC.webSearch).toMatch(/import\s*\{\s*parseOffMicrosPer100g\s*\}/);
-    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
-    expect(SRC.webSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
+  it("web FoodSearchPanel passes through microsPer100g from proxied OFF hits (ENG-1059)", () => {
+    expect(SRC.webSearch).toMatch(/\/api\/off\/search/);
+    expect(SRC.webSearch).toMatch(/microsPer100g:\s*h\.microsPer100g/);
   });
 });
 
@@ -231,23 +230,17 @@ describe("ENG-738 — every OFF call site applies the per-100g factor to micros/
     expect(SRC.webOffBarcode).toMatch(/n\.sodium_100g\s*\?\?\s*0\)\s*\*\s*f/);
   });
 
-  it("web FoodSearchPanel now reconciles OFF macros + scales micros by f", () => {
-    // Was reading raw `*_100g` with no reconcile — the most divergent site.
-    expect(SRC.webSearch).toMatch(
-      /import\s*\{\s*reconcileOffPer100g\s*\}\s*from\s*"@\/lib\/openFoodFacts\/reconcilePer100g"/,
-    );
-    expect(SRC.webSearch).toMatch(/const\s+recon\s*=\s*reconcileOffPer100g\(n,\s*p\)/);
-    expect(SRC.webSearch).toMatch(/const\s+f\s*=\s*recon\.per100gFactor/);
-    // And its OFF search fetch must request the fields reconcile needs.
-    expect(SRC.webSearch).toMatch(/nutrition_data_per,serving_quantity/);
+  it("web FoodSearchPanel proxies OFF search via API (reconcile server-side, ENG-1059)", () => {
+    expect(SRC.webSearch).toMatch(/\/api\/off\/search/);
+    expect(SRC.webSearch).not.toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+    expect(SRC.webOffSearch).toMatch(/nutrition_data_per,serving_quantity/);
   });
 
-  it("mobile verifyRecipe scales fiber/sugar/sodium by f at BOTH OFF mappings", () => {
-    const occurrences = SRC.verify.match(/const\s+f\s*=\s*recon\.per100gFactor/g) ?? [];
-    expect(occurrences.length).toBeGreaterThanOrEqual(2); // searchOFF + lookupBarcode
+  it("mobile lookupBarcode reconciles + scales micros; search proxies OFF (ENG-1059)", () => {
+    expect(SRC.verify).toMatch(/\/api\/off\/search/);
+    expect(SRC.verify).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+    expect(SRC.verify).toMatch(/parseOffMicrosPer100g\(n,\s*f\)/);
     expect(SRC.verify).toMatch(/n\.fiber_100g\s*\?\?\s*0\)\s*\*\s*f/);
-    expect(SRC.verify).toMatch(/n\["sugars_100g"\]\s*\?\?\s*0\)\s*\*\s*f/);
-    expect(SRC.verify).toMatch(/n\.sodium_100g\s*\?\?\s*0\)\s*\*\s*f/);
   });
 });
 
