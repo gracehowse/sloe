@@ -248,7 +248,7 @@ Two-app npm monorepo: Next.js 15 on Vercel + Expo iOS on EAS; shared logic via `
 
 ## 17. Food Logging Findings (score 7/10)
 
-**e3ac41c7 improvements:** `foodSelectionToMealMacros` on mobile commit path; try/catch on food search select; `upsert` on `nutrition_entries`; memoized recent lists for VirtualizedList perf. Search UX **best-in-class** when Metro connected (confidence tiers, per-serving grams, past-logged). **Gaps:** offline queue; deep-link vs modal; web rollback; OFF client path; multi-add basket partially wired. Edit `eaten_at` (ENG-772) still open.
+**e3ac41c7 improvements:** `foodSelectionToMealMacros` on mobile commit path; try/catch on food search select; `upsert` on `nutrition_entries`; memoized recent lists for VirtualizedList perf. Search UX **best-in-class** when Metro connected (confidence tiers, per-serving grams, past-logged). **Gaps:** offline queue; deep-link vs modal; web rollback; OFF client path; multi-add basket partially wired. Edit `eaten_at` (ENG-772) — **SHIPPED**; iOS sim **PASS** via PR #396 fixture; web food-search preview **PASS** 2026-06-12 (`?__force_flags=editable_eaten_at`); web per-meal edit modal **N/A** (mobile-only).
 
 ---
 
@@ -405,7 +405,9 @@ Lean narrative on **social-caption import + macro fit** — code now supports di
 - **Observations:** Verified/Estimated badges, per-serving macros + grams, past-logged section, barcode/voice/camera — best-in-class vs MFP.
 - **Bug (F-161/F-162):** OFF/FatSecret micros missing in search preview — **PARTIAL** (merged [PR #390](https://github.com/gracehowse/Suppr/pull/390); TF58 device verify pending).
 - **Bug:** Deep link while Log sheet open does not dismiss modal — **PARTIAL** (tab-blur dismiss **PASS** via [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab `?date=` / `?editMealId=` dismiss **PASS** pending PR).
-- **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix, **UNVERIFIED** in UI.
+- **Revision:** `foodSelectionToMealMacros` + try/catch on select — code fix; UI path **PARTIAL** (logic tested; live select not re-captured on TF57).
+- **ENG-1066 / F-173:** Swap pill on verify rows — **PARTIAL** (merged PR #394; iOS sim **PASS** via PR #396 fixture `suppr:///recipe/verify?fixture=1`; TF58+ physical confirm pending).
+- **ENG-772:** Editable `eaten_at` — **PASS** (shipped behind flag; iOS sim **PASS** via PR #396 `suppr:///dev/edit-meal-states`; web food-search preview **PASS** 2026-06-12 at desktop + mobile-web with `?__force_flags=editable_eaten_at`; web edit-meal modal **N/A**; live TestFlight flag path still ENG-840).
 
 ### Journey 3 — Recipes (Library + Discover) · prior pass PASS
 - **Observations:** Import CTA prominent; macro chips on cards.
