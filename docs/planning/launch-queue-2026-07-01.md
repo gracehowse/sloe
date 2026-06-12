@@ -41,7 +41,7 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 |---|----------------|-------|
 | 1 | Gate0 live **5/5** | G + E |
 | 2 | **ENG-859** DMCA designated agent | G |
-| 3 | TestFlight **1.0.7 (57)** smoke — see checklist below | G |
+| 3 | TestFlight **1.0.7 (57)** smoke — feedback **submitted**; Grace reviews screenshots in ASC / `npm run testflight:feedback` | G |
 | 4 | **ENG-874** Apple Health device matrix (In Progress) | G + E |
 | 5 | **ENG-670** Reel parse-rate gate | G |
 | 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
@@ -72,6 +72,8 @@ Founding cohort comp: `lifetime_pro` via `redeem_promo_code` (ENG-1043) — **no
 
 Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 
+**2026-06-12:** Grace submitted TestFlight feedback on build 57. Triage pending: review screenshot threads in App Store Connect and/or refresh `docs/testflight-feedback/data/` via `npm run testflight:feedback`, then record pass/fail below and in ENG-874.
+
 - [ ] Cold open Today — no crash
 - [ ] Log food via search (chicken breast) — ring updates
 - [ ] Import shared Reel URL → library save
@@ -80,6 +82,18 @@ Use **TestFlight build 57** (1.0.7), not Expo dev client / tunnel.
 - [ ] Optional: Apple Health sync (ENG-874 matrix)
 
 Record pass/fail in ENG-874 or a TestFlight comment.
+
+## Engineering priority read (2026-06-12)
+
+Grace-only Gate A items (Gate0 5/5, ENG-859, ENG-670, TF screenshot triage) stay above engineering — not reordered here.
+
+| Rank | Item | Rationale |
+|------|------|-----------|
+| 1 | **ENG-877** Search golden battery | Food search is the primary log path; regressions block comped-user onboarding. |
+| 2 | **#8** Deep-link dismisses Log sheet | Launch-queue UX bug — sheet can stay open across tab/deep-link nav. |
+| 3 | **ENG-840** Flag-force in bundled apps | TestFlight cannot QA flag-gated surfaces (`editable_eaten_at`, etc.) without bundle-safe overrides. |
+| 4 | **ENG-874** Health sync (engineering tail) | Device matrix needs Grace; code/docs fixes for sync failures can proceed in parallel. |
+| 5 | **ENG-772** visual parity sign-off | Shipped on `main`; confirm edit-meal / food-search time UI on web + iOS with flag on. |
 
 ## Before adding Urgent to Todo
 
