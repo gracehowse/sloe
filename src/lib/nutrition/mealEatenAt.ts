@@ -124,6 +124,40 @@ export function nutritionEntryDateKeyAndEatenAt(
   return { dateKey: anchorDateKey, eatenAt: null };
 }
 
+/**
+ * Re-anchor an `eaten_at` instant onto a different calendar day, preserving
+ * the local wall-clock time ("I usually eat this at 8am" survives the copy).
+ *
+ * Copy/duplicate flows MUST run clones through this before persisting to
+ * another day: `cloneMealWithoutId` spreads `...rest`, so a clone keeps its
+ * SOURCE-day `eatenAt`, and every write path derives `date_key` from
+ * `eaten_at` when set (`nutritionEntryDateKeyAndEatenAt`) — an un-re-anchored
+ * clone would silently bucket back to the source day, corrupting daily totals
+ * (launch-audit 2026-06-12, follow-up to P1-2).
+ *
+ * Same-day re-anchor is the identity; null/undefined passes through as null.
+ */
+export function reanchorEatenAtToDay(
+  eatenAt: string | null | undefined,
+  targetDateKey: string,
+): string | null {
+  const iso = eatenAt?.trim();
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  if (dateKeyFromInstant(iso) === targetDateKey) return iso;
+  const { hours, minutes } = localHoursMinutesFromIso(iso);
+  return eatenAtIsoFromLocalParts(targetDateKey, hours, minutes);
+}
+
+/** Meal-level convenience for clone/copy flows (see `reanchorEatenAtToDay`). */
+export function reanchorMealEatenAt<M extends MealChronologyFields>(
+  meal: M,
+  targetDateKey: string,
+): M {
+  return { ...meal, eatenAt: reanchorEatenAtToDay(meal.eatenAt, targetDateKey) };
+}
+
 /** Build `eaten_at` from journal `date_key` + `HH:mm` preview input. */
 export function eatenAtFromLogDateAndTime(logDateKey: string, timeInput: string): string {
   const localTime = parseLocalTimeInput(timeInput);

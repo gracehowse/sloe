@@ -20,19 +20,40 @@ const SRC = readFileSync(
   resolve(REPO, "apps/mobile/app/(tabs)/index.tsx"),
   "utf8",
 );
+// ENG (2026-06-12, launch-audit P1-1/P1-2) — the per-column row shape
+// (`canonicalNutritionEntrySource`, `recipe_id`, `eaten_at`, `date_key`) moved
+// out of the inline literal in `persistMealsImmediate` into the single shared
+// row-builder so the immediate path and the 600ms backstop cannot diverge on
+// the upsert column set. Pin the builder file too, not just the call site.
+const ROW_BUILDER_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/lib/nutritionEntryRow.ts"),
+  "utf8",
+);
 
 describe("Today journal — every meal-add path persists to Supabase immediately", () => {
-  it("declares persistMealsImmediate helper that inserts into nutrition_entries", () => {
+  it("declares persistMealsImmediate helper that upserts nutrition_entries via the shared row-builder", () => {
     expect(SRC).toMatch(/const\s+persistMealsImmediate\s*=\s*useCallback/);
-    // Helper body must hit `nutrition_entries` insert.
+    // Helper body must hit the `nutrition_entries` upsert.
     const idx = SRC.indexOf("const persistMealsImmediate");
     const slice = SRC.slice(idx, idx + 4000);
     expect(slice).toMatch(/from\(["']nutrition_entries["']\)\s*\.upsert/);
-    expect(slice).toMatch(/canonicalNutritionEntrySource/);
-    expect(slice).toMatch(/recipe_id:\s*m\.recipeId/);
+    // Rows come from the single shared builder (no inline column literal that
+    // could drift from the backstop).
+    expect(slice).toMatch(/meals\.map\(\(m\)\s*=>\s*buildNutritionEntryRow\(m,\s*targetDayKey,\s*userId\)\)/);
     // Must roll back optimistic UI on error.
     expect(slice).toMatch(/setByDay/);
     expect(slice).toMatch(/Couldn't save/);
+  });
+
+  it("the shared row-builder is the source of the canonical source, recipe_id and eaten_at columns", () => {
+    // These columns moved out of the inline literal into the builder — pin
+    // them where they now live so dropping `eaten_at`/`recipe_id`/the
+    // canonical source from a write still fails a test.
+    expect(ROW_BUILDER_SRC).toMatch(/canonicalNutritionEntrySource/);
+    expect(ROW_BUILDER_SRC).toMatch(/recipe_id:\s*meal\.recipeId/);
+    expect(ROW_BUILDER_SRC).toMatch(/eaten_at:\s*eatenAt/);
+    // date_key is the eaten-derived attribution, not a hard-coded anchor.
+    expect(ROW_BUILDER_SRC).toMatch(/nutritionEntryDateKeyAndEatenAt/);
   });
 
   it("declares persistMealUpdateImmediate helper for edit-meal", () => {
@@ -97,18 +118,13 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     expect(slice).toMatch(/persistMealsImmediate\(dayKey,\s*\[meal\]\)/);
   });
 
-  it("UUID_RE is module-level (above the component) so persistMealsImmediate can use it", () => {
-    // Pre-fix UUID_RE was a per-render `const` inside the component
-    // (line ~3620). To let the persist helpers reference it from line
-    // ~350, it had to move to module scope. Pin that.
-    const componentStart = SRC.indexOf("export default function TrackerScreen");
-    const uuidReDecl = SRC.match(/const\s+UUID_RE\s*=/);
-    expect(uuidReDecl).not.toBeNull();
-    if (uuidReDecl?.index != null) {
-      expect(uuidReDecl.index).toBeLessThan(componentStart);
-    }
-    // And there's only ONE declaration (no leftover per-render dupe).
-    const all = SRC.match(/const\s+UUID_RE\s*=/g);
-    expect(all?.length ?? 0).toBe(1);
+  it("id-format gating lives in the shared builder, not a screen-local regex", () => {
+    // The 2026-05-08 data-loss hotfix lifted a per-render UUID_RE to module
+    // scope; the launch-audit P1-2 consolidation then moved id re-minting
+    // into `buildNutritionEntryRow` (NUTRITION_ENTRY_UUID_RE). Pin that the
+    // screen no longer carries its own copy — a reintroduced local regex
+    // would mean a second, divergeable id-gating path.
+    expect(SRC).not.toMatch(/const\s+UUID_RE\s*=/);
+    expect(SRC).toMatch(/buildNutritionEntryRow\(/);
   });
 });

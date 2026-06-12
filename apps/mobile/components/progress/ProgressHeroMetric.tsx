@@ -2,6 +2,8 @@ import { Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Spacing } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
 
 /**
  * ProgressHeroMetric — Oura-style "one big thing" for the Progress tab.
@@ -84,6 +86,16 @@ export function ProgressHeroMetric({
   const fillPct = Math.min(clamped / 100, 1);
   const offset = CIRCUMFERENCE * (1 - fillPct);
   const tone = adherenceTone(adherencePct);
+  // `adherence_over_display` (audit P1-3): above the 110% band the ring
+  // centre-number flips to an overshoot reading ("11% over", amber) so a
+  // >100% figure can't read as a *better* score. The flag gates ONLY the
+  // over branch; ring fill geometry + the supporting "Over target" label
+  // are unchanged, and the ≤110% path is untouched. Else = today's raw red
+  // `{pct}%` centre. Mirror: web.
+  const overDisplay =
+    isFeatureEnabled("adherence_over_display") && adherencePct > 110
+      ? formatAdherenceHeadline(adherencePct)
+      : null;
 
   const statLine: string[] = [];
   if (avgCaloriesPerDay != null) {
@@ -142,10 +154,12 @@ export function ProgressHeroMetric({
             fontSize: 14,
             fontWeight: "700",
             fontVariant: ["tabular-nums"],
-            color: tone.color,
+            // Over target + flag on: amber overshoot ("11% over") instead of
+            // the raw red "111%". Else = today's tone (red over / sage on/under).
+            color: overDisplay ? Accent.warning : tone.color,
           }}
         >
-          {adherencePct}%
+          {overDisplay ? `${overDisplay.value}${overDisplay.suffix}` : `${adherencePct}%`}
         </Text>
       </View>
 

@@ -25,7 +25,8 @@ import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import RecipeEditSheet, { type RecipeEditSavePayload } from "@/components/recipe/RecipeEditSheet";
 import { canEditRecipe } from "@suppr/shared/recipes/recipeEdit";
 import { supabase } from "@/lib/supabase";
-import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
+import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import {
@@ -1177,27 +1178,29 @@ export default function RecipeDetailScreen() {
       // wine / coffee logged via "Add to today" leaves the chip
       // totals unchanged — known gap, scoped to a follow-up.
       const newId = newMealId();
-      const { error } = await supabase.from("nutrition_entries").insert({
+      // Single shared row shape (launch-audit P1-2 consolidation). Fresh
+      // "Add to today" log → no `eatenAt` → `eaten_at: null` with
+      // `date_key: dk`, byte-identical to the previous inline literal
+      // ("Recipe" is already canonical; recipe_id keeps the Schema
+      // refactor Phase 2 typed FK — auto-NULLed if the recipe is deleted).
+      const journalMeal: JournalMeal = {
         id: newId,
-        user_id: userId,
-        date_key: dk,
         name: slot,
-        recipe_title: normalizeRecipeTitle(recipe.title),
-        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        recipeTitle: normalizeRecipeTitle(recipe.title),
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
         calories: scaledForLog.calories,
         protein: scaledForLog.protein,
         carbs: scaledForLog.carbs,
         fat: scaledForLog.fat,
-        fiber_g: scaledForLog.fiber_g,
-        nutrition_micros: Object.keys(micros).length > 0 ? micros : {},
-        portion_multiplier: mult,
+        fiberG: scaledForLog.fiber_g ?? undefined,
+        micros: Object.keys(micros).length > 0 ? micros : undefined,
+        portionMultiplier: mult,
         source: "Recipe",
-        // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
-        // Recipe-detail log is the canonical case where the recipe id
-        // is in scope. Auto-NULLed by Phase 1's FK if the recipe is
-        // later deleted.
-        recipe_id: recipe.id,
-      });
+        recipeId: recipe.id,
+      } as JournalMeal;
+      const { error } = await supabase
+        .from("nutrition_entries")
+        .insert(buildNutritionEntryRow(journalMeal, dk, userId));
       if (error) {
         Alert.alert("Could not log", error.message);
       } else {

@@ -33,7 +33,8 @@ import { Accent, Elevation, FontFamily, Radius, Spacing, Type, Colors } from "@/
 import { useAccent } from "@/context/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
-import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
+import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
@@ -199,22 +200,27 @@ export default function BarcodeScreen() {
       grams,
       explicit,
     );
-    const { error: dbErr } = await supabase.from("nutrition_entries").insert({
+    // Single shared row shape (launch-audit P1-2 consolidation). Fresh
+    // barcode log → no `eatenAt` → `eaten_at: null` with today's
+    // `date_key` — byte-identical semantics to the previous inline
+    // literal ("Open Food Facts" is already canonical).
+    const barcodeMeal: JournalMeal = {
       id: mealId,
-      user_id: userId,
-      date_key: dateKey,
       name: mealSlot,
-      recipe_title: `${product.name} (${portionSummary})`,
-      time_label: timeLabel,
+      recipeTitle: `${product.name} (${portionSummary})`,
+      time: timeLabel,
       calories: Math.min(32767, Math.round(scaled.calories)),
       protein: scaled.protein,
       carbs: scaled.carbs,
       fat: scaled.fat,
-      fiber_g: scaled.fiberG ?? null,
-      portion_multiplier: 1,
+      fiberG: scaled.fiberG ?? undefined,
+      micros: Object.keys(nutritionMicros).length > 0 ? nutritionMicros : undefined,
+      portionMultiplier: 1,
       source: "Open Food Facts",
-      ...(Object.keys(nutritionMicros).length > 0 ? { nutrition_micros: nutritionMicros } : {}),
-    });
+    } as JournalMeal;
+    const { error: dbErr } = await supabase
+      .from("nutrition_entries")
+      .insert(buildNutritionEntryRow(barcodeMeal, dateKey, userId));
     setLogging(false);
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);
@@ -318,20 +324,24 @@ export default function BarcodeScreen() {
     const dateKey = dateKeyFromDate(new Date());
     const mealId = newMealId();
     const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    const { error: dbErr } = await supabase.from("nutrition_entries").insert({
+    // Single shared row shape (launch-audit P1-2 consolidation). Manual
+    // barcode-fallback log → no `eatenAt` → `eaten_at: null` with today's
+    // `date_key` ("barcode" is already canonical).
+    const manualMeal: JournalMeal = {
       id: mealId,
-      user_id: userId,
-      date_key: dateKey,
       name: mealSlot,
-      recipe_title: manualName.trim(),
-      time_label: timeLabel,
+      recipeTitle: manualName.trim(),
+      time: timeLabel,
       calories: Math.min(32767, Math.round(cal)),
       protein: Math.round((Number(manualProtein) || 0) * 10) / 10,
       carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
       fat: Math.round((Number(manualFat) || 0) * 10) / 10,
-      portion_multiplier: 1,
+      portionMultiplier: 1,
       source: "barcode",
-    });
+    } as JournalMeal;
+    const { error: dbErr } = await supabase
+      .from("nutrition_entries")
+      .insert(buildNutritionEntryRow(manualMeal, dateKey, userId));
     setLogging(false);
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);

@@ -28,6 +28,8 @@
 
 import { SupprCard } from "../ui/suppr-card";
 import { formatMacroAdherenceBar } from "../../../lib/nutrition/progressWeekReport";
+import { formatAdherenceHeadline } from "../../../lib/nutrition/adherenceDisplay";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 export interface AdherenceMacroRow {
   name: "Protein" | "Carbs" | "Fat" | "Fibre";
@@ -89,6 +91,16 @@ export function ProgressAverageAdherence({
   className,
 }: ProgressAverageAdherenceProps) {
   if (adherencePct == null) return null;
+  // `adherence_over_display` (audit P1-3): above the 110% band the headline
+  // flips to an overshoot reading ("11% over") so a >100% number can never
+  // read as a *better* score. The flag gates ONLY the over branch; the
+  // ≤110% (on/under) path is identical to today's raw `{pct}%`, so a flag
+  // flicker can't change a healthy user's number. Mirror: mobile.
+  const overDisplay =
+    isFeatureEnabled("adherence_over_display") &&
+    adherencePct > 110
+      ? formatAdherenceHeadline(adherencePct)
+      : null;
   return (
     <SupprCard
       data-testid="progress-average-adherence-card"
@@ -126,18 +138,32 @@ export function ProgressAverageAdherence({
           off-token gaps; now 8 under the overline, 20 hero-break before
           the bars, 16 between rows, 8 label→bar. Mirror: mobile
           `ProgressAverageAdherence.tsx`. */}
-      <p
-        data-testid="progress-adherence-pct"
-        className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-foreground tabular-nums"
-      >
-        {adherencePct}
-        <span className="text-[22px] text-muted-foreground">%</span>
-        {/* >100% means "over budget on average" — same "· over" qualifier
-            as the macro rows (mirror of mobile; fresh-eyes P0-2). */}
-        {adherencePct > 100 ? (
-          <span className="text-[15px] font-normal text-muted-foreground"> · over</span>
-        ) : null}
-      </p>
+      {overDisplay ? (
+        // adherence_over_display ON + over target: band-inverted overshoot
+        // headline ("11% over"), amber not the triumphant raw "111%". The
+        // amber tone matches the macro-bar over treatment (warning token),
+        // NOT the destructive-red ring carve-out. Mirror: mobile.
+        <p
+          data-testid="progress-adherence-pct"
+          className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-warning tabular-nums"
+        >
+          {overDisplay.value}
+          <span className="text-[22px] text-warning/70">{overDisplay.suffix}</span>
+        </p>
+      ) : (
+        <p
+          data-testid="progress-adherence-pct"
+          className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-foreground tabular-nums"
+        >
+          {adherencePct}
+          <span className="text-[22px] text-muted-foreground">%</span>
+          {/* >100% means "over budget on average" — same "· over" qualifier
+              as the macro rows (mirror of mobile; fresh-eyes P0-2). */}
+          {adherencePct > 100 ? (
+            <span className="text-[15px] font-normal text-muted-foreground"> · over</span>
+          ) : null}
+        </p>
+      )}
 
       <div className="mt-5 space-y-4">
         {macros.map(({ name, pct, color }) => {

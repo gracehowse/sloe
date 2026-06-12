@@ -62,6 +62,8 @@ function adherenceTone(pct: number): {
 }
 
 import { SupprCard } from "../ui/suppr-card";
+import { formatAdherenceHeadline } from "../../../lib/nutrition/adherenceDisplay";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * Sloe Figma 492:2 — 7-dot on-target ribbon. Filled sage dot = a logged
@@ -128,6 +130,16 @@ export function ProgressHeroMetric({
   const fillPct = Math.min(clamped / 100, 1);
   const offset = CIRCUMFERENCE * (1 - fillPct);
   const tone = adherenceTone(adherencePct);
+  // `adherence_over_display` (audit P1-3): above the 110% band the ring
+  // centre-number flips to an overshoot reading ("11% over", amber) so a
+  // >100% figure can't read as a *better* score. The flag gates ONLY the
+  // over branch; ring fill geometry + the supporting "Over target" label
+  // are unchanged, and the ≤110% path is untouched. Else = today's raw
+  // red `{pct}%` centre. Mirror: mobile.
+  const overDisplay =
+    isFeatureEnabled("adherence_over_display") && adherencePct > 110
+      ? formatAdherenceHeadline(adherencePct)
+      : null;
 
   return (
     <SupprCard
@@ -180,12 +192,24 @@ export function ProgressHeroMetric({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span
-            data-testid="progress-hero-pct"
-            className={`text-[28px] font-extrabold tabular-nums leading-none ${tone.text}`}
-          >
-            {adherencePct}%
-          </span>
+          {overDisplay ? (
+            // Over target + flag on: overshoot magnitude with a smaller
+            // "over" tag, amber (warning) not the raw "111%" red number.
+            <span
+              data-testid="progress-hero-pct"
+              className="flex items-baseline tabular-nums leading-none text-warning"
+            >
+              <span className="text-[28px] font-extrabold">{overDisplay.value}%</span>
+              <span className="ml-0.5 text-[11px] font-semibold">{overDisplay.qualifier}</span>
+            </span>
+          ) : (
+            <span
+              data-testid="progress-hero-pct"
+              className={`text-[28px] font-extrabold tabular-nums leading-none ${tone.text}`}
+            >
+              {adherencePct}%
+            </span>
+          )}
         </div>
       </div>
 

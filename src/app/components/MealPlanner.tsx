@@ -4,6 +4,7 @@ import {
   Coffee,
   Cookie,
   Lock,
+  Package,
   Plus,
   RefreshCw,
   ShoppingCart,
@@ -1377,9 +1378,18 @@ export const MealPlanner = memo(function MealPlanner({
                           Recipe removed
                         </span>
                       )}
+                      {/* ENG-808 web parity (2026-06-12): match the
+                          mobile planner leftover badge — Lucide Package
+                          glyph in the warning/amber accent, not the old
+                          text-only success green (wrong semantics: a
+                          leftover is a "caution, this is a repeat" note,
+                          not a "good" state). Mobile renders
+                          `<Package size={10} color={Accent.warning} />`
+                          at apps/mobile/app/(tabs)/planner.tsx. */}
                       {isLeftover ? (
                         <span
-                          className="inline-flex items-center rounded-full bg-success/15 text-success"
+                          data-testid="meal-planner-leftover-badge"
+                          className="inline-flex items-center gap-1 rounded-full bg-warning/15 text-warning"
                           style={{
                             fontSize: 9,
                             fontWeight: 700,
@@ -1388,8 +1398,9 @@ export const MealPlanner = memo(function MealPlanner({
                             textTransform: "uppercase",
                             marginBottom: 4,
                           }}
-                          aria-label="Leftover portion"
+                          aria-label={`Leftover of ${meal.recipeTitle || "meal"}`}
                         >
+                          <Package className="h-2.5 w-2.5" aria-hidden="true" />
                           Leftover
                         </span>
                       ) : null}

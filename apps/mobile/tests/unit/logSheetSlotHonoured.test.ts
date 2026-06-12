@@ -82,14 +82,24 @@ describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-da
   });
 
   it("deep-link FAB (params.openLog === '1') resets activeMealSlot before opening", () => {
-    // ENG-1009: openLog consumer is `useFocusEffect` (not `useEffect`).
-    // ENG-1061 added an earlier dismiss `useEffect` that also checks
-    // openLog — pin the second (opener) branch, not the dismiss return.
-    const dismissIdx = SRC.indexOf('params.openLog === "1"');
+    // 2026-06-12 (audit P2 #5): the openLog open/clear + dismiss effects
+    // moved out of index.tsx into the unit-tested `useLogSheetDeepLinks`
+    // hook. The slot-reset-before-open ordering now lives there — pin it
+    // in the hook source. The behavioural proof (open opens + clears, and
+    // the slot is reset) is in `useLogSheetDeepLinks.test.ts`; this static
+    // pin guards the build-47 ordering specifically.
+    const hookSrc = readFileSync(
+      resolve(REPO, "apps/mobile/hooks/useLogSheetDeepLinks.ts"),
+      "utf8",
+    );
+    // The hook checks `params.openLog === "1"` twice: first as the
+    // early-return guard in the dismissal effect, then as the opener
+    // condition. Pin the SECOND (opener) branch, where the slot reset sits.
+    const dismissIdx = hookSrc.indexOf('params.openLog === "1"');
     expect(dismissIdx).toBeGreaterThan(-1);
-    const openerIdx = SRC.indexOf('params.openLog === "1"', dismissIdx + 1);
+    const openerIdx = hookSrc.indexOf('params.openLog === "1"', dismissIdx + 1);
     expect(openerIdx).toBeGreaterThan(-1);
-    const slice = SRC.slice(openerIdx, openerIdx + 600);
+    const slice = hookSrc.slice(openerIdx, openerIdx + 600);
     const setActiveIdx = slice.indexOf("setActiveMealSlot(slotForHour");
     const setOpenIdx = slice.indexOf("setFabSheetOpen(true)");
     expect(setActiveIdx).toBeGreaterThan(-1);

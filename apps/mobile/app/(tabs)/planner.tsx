@@ -37,7 +37,8 @@ import {
   shoppingScopeClearFilters,
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
-import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
+import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { fetchPlannedMealMicros } from "@suppr/shared/planning/plannedMealMicros";
 import {
@@ -3923,6 +3924,12 @@ export default function PlannerScreen() {
 
             const doLogAsPlanned = async () => {
               setRowMenu(null);
+              if (!userId) {
+                // Pre-consolidation this inserted with a null user_id and
+                // failed at RLS; surface the real requirement instead.
+                Alert.alert("Sign in", "Sign in to log food to your tracker.");
+                return;
+              }
               const dk = dateKeyFromDate(new Date());
               const entryId = newMealId();
               const microsResOv = meal.recipeId
@@ -3932,25 +3939,32 @@ export default function PlannerScreen() {
                     1,
                   )
                 : { fiberG: null, micros: {}, macrosAreCoerced: false };
+              // Single shared row shape (launch-audit P1-2 consolidation).
+              // Fresh "log as planned" → no `eatenAt` → `eaten_at: null`
+              // with today's `date_key`. The builder also aligns this path
+              // with the canonical planned-log in index.tsx: it now writes
+              // `source: "Recipe"` and propagates the `recipe_id` FK
+              // (Schema refactor Phase 2) — both were dropped by the old
+              // inline literal on this one planner path.
+              const plannedLogMeal: JournalMeal = {
+                id: entryId,
+                name: meal.name,
+                recipeTitle: meal.recipeTitle,
+                time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                calories: meal.calories,
+                protein: meal.protein,
+                carbs: meal.carbs,
+                fat: meal.fat,
+                fiberG: microsResOv.fiberG ?? undefined,
+                micros:
+                  Object.keys(microsResOv.micros).length > 0 ? microsResOv.micros : undefined,
+                portionMultiplier: 1,
+                source: "Recipe",
+                recipeId: meal.recipeId ?? undefined,
+              } as JournalMeal;
               const { error } = await supabase
                 .from("nutrition_entries")
-                .insert({
-                  id: entryId,
-                  user_id: userId,
-                  date_key: dk,
-                  name: meal.name,
-                  recipe_title: meal.recipeTitle,
-                  time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                  calories: meal.calories,
-                  protein: meal.protein,
-                  carbs: meal.carbs,
-                  fat: meal.fat,
-                  fiber_g: microsResOv.fiberG,
-                  ...(Object.keys(microsResOv.micros).length > 0
-                    ? { nutrition_micros: microsResOv.micros }
-                    : {}),
-                  portion_multiplier: 1,
-                });
+                .insert(buildNutritionEntryRow(plannedLogMeal, dk, userId));
               if (error) {
                 Alert.alert("Log failed", "Could not save to tracker. " + error.message);
               } else {

@@ -54,10 +54,22 @@ export async function GET(req: Request) {
     await setCachedSearch("off", q, hits, { locale, page: pageNumber });
     return NextResponse.json({ ok: true, hits, page: pageNumber });
   } catch (e) {
+    // Full detail goes to Sentry only; the client envelope stays static so no
+    // upstream error message (or PII) leaks. A hard OFF failure degrades
+    // HONESTLY — same envelope shape as quota exhaustion (HTTP 200, ok:true,
+    // hits:[], degraded:true) so both clients' `responseIsDegraded` notice
+    // fires (web FoodSearchPanel `responseIsDegraded`; mobile verifyRecipe
+    // `responseIsDegraded`) instead of silently showing fewer results.
+    // The failure is NOT cached — a successful response only writes the cache
+    // (the `setCachedSearch` call lives in the try block above), so a later
+    // retry can still hit a recovered upstream.
     captureRouteError(e, "/api/off/search");
-    return NextResponse.json(
-      { ok: false, error: "off_failed", message: e instanceof Error ? e.message : "OFF request failed" },
-      { status: 502 },
-    );
+    return NextResponse.json({
+      ok: true,
+      hits: [],
+      page: pageNumber,
+      degraded: true,
+      degradedReason: "off_unavailable",
+    });
   }
 }

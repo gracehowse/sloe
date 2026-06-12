@@ -192,13 +192,20 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
   });
 
   it("opens the canonical LogSheet via the `?openLog=1` deep-link from <SupprTabBar> (replaces the side <LogFab> render, 2026-04-30)", () => {
-    // The Today screen consumes `params.openLog === "1"` and opens
-    // the LogSheet via setFabSheetOpen(true). Pin the consumer here
-    // so a future contributor who removes the deep-link wiring fails
-    // CI before the centered raised Log button stops working.
-    expect(indexSrc).toMatch(
-      /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
+    // The `params.openLog === "1"` consumer moved into the extracted
+    // `useLogSheetDeepLinks` hook (launch-audit 2026-06-12, P2 #5 —
+    // behavioural coverage lives in useLogSheetDeepLinks.test.ts). Pin
+    // BOTH halves of the wiring: index.tsx mounts the hook with
+    // `setFabSheetOpen`, and the hook itself still consumes the param —
+    // so removing either side fails CI before the centered raised Log
+    // button stops working.
+    expect(indexSrc).toMatch(/useLogSheetDeepLinks\(\{[\s\S]+?setFabSheetOpen/);
+    const hookSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../hooks/useLogSheetDeepLinks.ts"),
+      "utf8",
     );
+    expect(hookSrc).toMatch(/openLog\s*===\s*"1"/);
+    expect(hookSrc).toMatch(/setFabSheetOpen\(true\)/);
     // Side FAB JSX render is gone (the comment-block reference to
     // `<LogFab>` in backticks must not match this — we only want to
     // catch a real JSX open tag, identified by the JSX-attribute

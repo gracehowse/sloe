@@ -177,8 +177,9 @@ function resolveAmount(
 /**
  * Build the canonical, sorted list of section + row tuples for the
  * full-nutrient sheet. Sections are returned in the canonical order
- * (Macros → Vitamins → Minerals); rows within each section are sorted
- * by %DV descending (null %DV last so deficiencies surface).
+ * (Macros → Vitamins → Minerals); rows within each section are sorted by
+ * %DV with target nutrients ascending (deficiencies first) and limit
+ * nutrients descending (overshoot first), null %DV last (PR #397).
  */
 export function buildFullNutrientPanelRows(
   input: FullNutrientPanelInput,

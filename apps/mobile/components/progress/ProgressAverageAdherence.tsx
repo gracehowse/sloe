@@ -6,6 +6,8 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { formatMacroAdherenceBar } from "@suppr/shared/nutrition/progressWeekReport";
+import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * ProgressAverageAdherence — Sloe Figma `492:2` "AVERAGE ADHERENCE" card.
@@ -73,6 +75,15 @@ export function ProgressAverageAdherence({
   if (adherencePct == null) return null;
   const sub = colors.textSecondary;
   const text = colors.text;
+  // `adherence_over_display` (audit P1-3): above the 110% band the headline
+  // flips to an overshoot reading ("11% over", amber) so a >100% number can
+  // never read as a *better* score. The flag gates ONLY the over branch; the
+  // ≤110% (on/under) path is identical to today's raw `{pct}%`, so a flag
+  // flicker can't change a healthy user's number. Mirror: web.
+  const overDisplay =
+    isFeatureEnabled("adherence_over_display") && adherencePct > 110
+      ? formatAdherenceHeadline(adherencePct)
+      : null;
   return (
     <View
       testID="progress-average-adherence-card"
@@ -135,19 +146,33 @@ export function ProgressAverageAdherence({
           cascade of off-token gaps; now sm(8) under the overline, lg(20)
           hero-break before the bars, md(16) between rows, sm(8) label→bar.
           Mirror: web `progress-average-adherence.tsx`. */}
-      <Text
-        testID="progress-adherence-pct"
-        style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: text, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
-      >
-        {adherencePct}
-        <Text style={{ fontSize: 22, color: sub }}>%</Text>
-        {/* >100% means "ate over budget on average" — carry the same
-            "· over" qualifier the macro rows use, so 110% can't read as
-            a triumph stat (fresh-eyes 2026-06-10 P0-2, hero-tone half). */}
-        {adherencePct > 100 ? (
-          <Text style={{ fontSize: 15, fontWeight: "400", color: sub }}> · over</Text>
-        ) : null}
-      </Text>
+      {overDisplay ? (
+        // adherence_over_display ON + over target: band-inverted overshoot
+        // headline ("11% over"), amber (Accent.warning) not the triumphant
+        // raw "111%". The amber matches the macro-bar over treatment, NOT
+        // the destructive-red ring carve-out. Mirror: web.
+        <Text
+          testID="progress-adherence-pct"
+          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: Accent.warning, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
+        >
+          {overDisplay.value}
+          <Text style={{ fontSize: 22, color: Accent.warning }}>{overDisplay.suffix}</Text>
+        </Text>
+      ) : (
+        <Text
+          testID="progress-adherence-pct"
+          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: text, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
+        >
+          {adherencePct}
+          <Text style={{ fontSize: 22, color: sub }}>%</Text>
+          {/* >100% means "ate over budget on average" — carry the same
+              "· over" qualifier the macro rows use, so 110% can't read as
+              a triumph stat (fresh-eyes 2026-06-10 P0-2, hero-tone half). */}
+          {adherencePct > 100 ? (
+            <Text style={{ fontSize: 15, fontWeight: "400", color: sub }}> · over</Text>
+          ) : null}
+        </Text>
+      )}
 
       <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
         {macros.map(({ name, pct, color }) => {

@@ -2041,6 +2041,17 @@ async function syncNutritionFromHealthImpl(
 
     // `name` = meal slot; `recipe_title` = food line; `created_at` = when logged in Health
     // so the journal orders chronologically like manual entries.
+    //
+    // Intentionally eaten_at-less — NOT a gap (launch-audit 2026-06-12,
+    // P1-2 consolidation review): Health imports dedupe on `created_at` +
+    // `health_sample_id` (see the dedupe block above), `created_at` already
+    // carries the consumption instant Health reported, and chronology
+    // coalesces eaten_at → created_at. Writing `eaten_at` here would add a
+    // second copy of the same instant and reopen the re-import dedupe bug.
+    // This is the one sanctioned `nutrition_entries` write that does not go
+    // through `buildNutritionEntryRow` (it needs `created_at` +
+    // `health_sample_id`, which the journal row shape deliberately omits) —
+    // allow-listed in `nutritionEntryRowPersistence.test.ts`.
     const entry = {
       user_id: userId,
       date_key: dk,

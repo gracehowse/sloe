@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontWeight, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -61,6 +61,7 @@ import {
 import {
   VERIFY_FIXTURE_INGREDIENTS,
   VERIFY_FIXTURE_RECIPE,
+  fixtureModeRequested,
 } from "@/lib/verifyRecipeFixture";
 
 /** Standard units always available for editing */
@@ -78,10 +79,18 @@ export default function VerifyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  // Fixture mode is gated on BOTH the URL param AND `__DEV__` (audit
+  // 2026-06-12 P2 #3): in a release build a stale/forged `?fixture=1` must NOT
+  // inject the QA fixture rows — it falls through to the normal missing/stale
+  // recipe-id path (`recipeId` is empty for the fixture deeplink, so the load
+  // effect no-ops and the not-found / load-error UI shows). The param-presence
+  // check is the pure, unit-tested `fixtureModeRequested`; `__DEV__` is the RN
+  // global (`typeof` guards the jsdom/vitest render where it's undefined). The
+  // Maestro flows (`?fixture=1`) run in dev builds, so they're unaffected.
   const isFixture =
-    fixture === "1" ||
-    fixture === "true" ||
-    (typeof id === "string" && id === "fixture");
+    fixtureModeRequested({ id, fixture }) &&
+    typeof __DEV__ !== "undefined" &&
+    __DEV__;
   // Secondary accent (Frost flag → damson, else clay) for the verify header
   // title, action-button borders/labels, add-ingredient affordance, search/
   // barcode glyphs, and the matching spinner. Threaded into the memoised
@@ -695,14 +704,23 @@ export default function VerifyScreen() {
     ingCals: { fontSize: 15, fontWeight: "700", color: colors.text, marginRight: Spacing.sm, fontVariant: ["tabular-nums"] },
     swapPill: {
       paddingHorizontal: Spacing.dense,
-      paddingVertical: 6,
+      // Token retrofit (audit 2026-06-12 P2): `paddingVertical: 6` was off the
+      // 4/8/12 scale. Snapped to `Spacing.xs` (4) — matches this file's nearest
+      // sibling, the portion-chip pill (`paddingHorizontal: Spacing.dense,
+      // paddingVertical: Spacing.xs`). 2px tighter top/bottom; same shape.
+      paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: accent.primary + "50",
       backgroundColor: accent.primary + "12",
       marginRight: Spacing.sm,
     },
-    swapPillText: { color: accent.primary, fontSize: 12, fontWeight: "700" },
+    // `fontWeight` snapped to the `FontWeight.bold` token. `fontSize: 12` has no
+    // value-identical Type ramp token (the ramp is 11/13/14/…), and the only
+    // 700-weight token at a near size — `Type.label` (11/700) — forces uppercase,
+    // which would change the mixed-case "Swap" copy. Left as 12 deliberately; a
+    // 12px text token is tracked separately (do not silently snap to 11/13).
+    swapPillText: { color: accent.primary, fontSize: 12, fontWeight: FontWeight.bold },
     chevron: { marginLeft: Spacing.xs },
 
     // Expanded section

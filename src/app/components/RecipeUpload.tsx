@@ -1693,7 +1693,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         {matchPickerIdx != null ? (
           <div className="mb-6 rounded-2xl border border-border bg-card/60 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Change match</h4>
+              <h4 className="text-sm font-semibold text-foreground">Swap</h4>
               <button
                 type="button"
                 onClick={() => {
@@ -1965,9 +1965,15 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     const r = resolveStructuredIngredient(ingredient);
                     openMatchPicker(idx, r.name || ingredient.name);
                   }}
+                  // Parity with mobile verify Swap pill
+                  // (apps/mobile/app/recipe/verify.tsx
+                  // accessibilityLabel `Swap match for ${displayName}`).
+                  aria-label={`Swap match for ${
+                    resolveStructuredIngredient(ingredient).name || ingredient.name
+                  }`}
                   className="px-3 py-2 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-muted/60"
                 >
-                  Change match
+                  Swap
                 </button>
                 <button
                   type="button"

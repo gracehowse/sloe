@@ -386,7 +386,12 @@ async function searchUsda(
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
+    // 13s client timeout > the server's 12s vendor AbortSignal, so the server
+    // resolves (with its own degraded/empty envelope) before we abort. On the
+    // rare client-side abort the catch below returns the same empty result.
+    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`, {
+      signal: AbortSignal.timeout(13_000),
+    });
     const json = await res.json();
     if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];
@@ -432,8 +437,10 @@ async function searchOff(
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
+    // 13s client timeout > the server's 12s vendor AbortSignal (see searchUsda).
     const res = await fetch(
       `/api/off/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`,
+      { signal: AbortSignal.timeout(13_000) },
     );
     const json = await res.json();
     if (responseIsDegraded(json)) onDegraded?.();
@@ -514,7 +521,10 @@ async function searchEdamam(
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
+    // 13s client timeout > the server's 12s vendor AbortSignal (see searchUsda).
+    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`, {
+      signal: AbortSignal.timeout(13_000),
+    });
     const json = await res.json();
     if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];
@@ -590,7 +600,10 @@ async function searchFatSecret(
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`);
+    // 13s client timeout > the server's 12s vendor AbortSignal (see searchUsda).
+    const res = await fetch(`/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}${localeQueryParam()}`, {
+      signal: AbortSignal.timeout(13_000),
+    });
     const json = await res.json();
     if (responseIsDegraded(json)) onDegraded?.();
     if (!json.ok || !Array.isArray(json.hits)) return [];

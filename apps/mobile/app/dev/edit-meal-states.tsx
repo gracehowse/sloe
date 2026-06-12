@@ -9,7 +9,7 @@
  */
 import * as React from "react";
 import { View, Text } from "react-native";
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -40,6 +40,16 @@ export default function EditMealStatesScreen() {
   const [editCarbs, setEditCarbs] = React.useState(String(MOCK_MEAL.carbs));
   const [editFat, setEditFat] = React.useState(String(MOCK_MEAL.fat));
   const [editEatenAtTime, setEditEatenAtTime] = React.useState("12:30");
+
+  // Defence-in-depth (audit 2026-06-12 P2 #3): the `dev/_layout.tsx` guard is
+  // the primary gate, but mirror the canonical Hermes-DCE-friendly check
+  // (DevFlagOverrides.tsx:90) here so a future refactor of the layout can't
+  // re-expose this fixture in a release build. Placed AFTER all hooks so the
+  // hook order is identical every render (rules-of-hooks). `typeof` guards the
+  // jsdom/vitest render where `__DEV__` is undefined.
+  if (typeof __DEV__ === "undefined" || !__DEV__) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <>
