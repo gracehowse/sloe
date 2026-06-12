@@ -82,11 +82,14 @@ describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-da
   });
 
   it("deep-link FAB (params.openLog === '1') resets activeMealSlot before opening", () => {
-    // Find the openLog deep-link useEffect; expect setActiveMealSlot
-    // BEFORE setFabSheetOpen(true) inside the same branch.
-    const idx = SRC.indexOf('params.openLog === "1"');
-    expect(idx).toBeGreaterThan(-1);
-    const slice = SRC.slice(idx, idx + 600);
+    // ENG-1009: openLog consumer is `useFocusEffect` (not `useEffect`).
+    // ENG-1061 added an earlier dismiss `useEffect` that also checks
+    // openLog — pin the second (opener) branch, not the dismiss return.
+    const dismissIdx = SRC.indexOf('params.openLog === "1"');
+    expect(dismissIdx).toBeGreaterThan(-1);
+    const openerIdx = SRC.indexOf('params.openLog === "1"', dismissIdx + 1);
+    expect(openerIdx).toBeGreaterThan(-1);
+    const slice = SRC.slice(openerIdx, openerIdx + 600);
     const setActiveIdx = slice.indexOf("setActiveMealSlot(slotForHour");
     const setOpenIdx = slice.indexOf("setFabSheetOpen(true)");
     expect(setActiveIdx).toBeGreaterThan(-1);

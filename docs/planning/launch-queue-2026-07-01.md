@@ -46,7 +46,7 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 5 | **ENG-670** Reel parse-rate gate | G |
 | 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
 | 7 | ~~**ENG-772** Editable `eaten_at`~~ — **SHIPPED** (flag `editable_eaten_at`) | E |
-| 8 | Deep-link dismisses Log sheet (file if no ENG) | E — **PARTIAL** tab-blur via ENG-1061 / [PR #389](https://github.com/gracehowse/Suppr/pull/389) merged |
+| 8 | Deep-link dismisses Log sheet | E — tab-blur **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389); in-tab params **PR pending** |
 
 ## Gate A — In Progress (keep)
 

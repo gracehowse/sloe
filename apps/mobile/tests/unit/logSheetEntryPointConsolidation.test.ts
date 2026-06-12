@@ -57,6 +57,13 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
       /ENG-1061[\s\S]+?useFocusEffect[\s\S]+?return \(\) => \{[\s\S]+?setFabSheetOpen\(false\)/,
     );
   });
+
+  it("dismisses LogSheet on in-tab deep links (date, editMealId) — launch queue #8", () => {
+    expect(indexSrc).toMatch(
+      /Launch queue #8[\s\S]+?params\.openLog === "1"[\s\S]+?return;[\s\S]+?setFabSheetOpen\(false\)/,
+    );
+    expect(indexSrc).toMatch(/params\.editMealId/);
+  });
 });
 
 describe("Today composition root — tracking-extras prefs (P0-3, 2026-04-28)", () => {
