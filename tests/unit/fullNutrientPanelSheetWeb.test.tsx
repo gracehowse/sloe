@@ -9,7 +9,7 @@
  *   1. All three section headers render when open.
  *   2. Source attribution footer renders the FDA citation.
  *   3. open=false renders nothing (Radix unmounts portal content).
- *   4. Sort-by-%DV-desc is enforced via the shared row-builder.
+ *   4. Sort: target nutrients ascending, limit nutrients descending (shared row-builder).
  *   5. Limit-nutrient ramp: sodium row carries `isLimit=true`.
  */
 import * as React from "react";
@@ -104,7 +104,7 @@ describe("FullNutrientPanelSheet (web)", () => {
     expect(screen.queryByTestId("full-panel-section-Macros")).toBeNull();
   });
 
-  it("sorts rows within each section by %DV descending (shared builder)", () => {
+  it("sorts target rows ascending and limit rows descending within each section", () => {
     const sections = buildFullNutrientPanelRows({
       microSum: MICRO_FIXTURE,
       fiberG: 20,
@@ -122,11 +122,13 @@ describe("FullNutrientPanelSheet (web)", () => {
     expect(sections.map((s) => s.section)).toEqual(expectedSections);
 
     for (const { rows } of sections) {
-      const pcts = rows.map((r: FullNutrientPanelRow) =>
-        r.percentDv === null ? -Infinity : r.percentDv,
-      );
-      for (let i = 1; i < pcts.length; i++) {
-        expect(pcts[i - 1]).toBeGreaterThanOrEqual(pcts[i]);
+      const targets = rows.filter((r) => !r.isLimit && r.percentDv !== null);
+      const limits = rows.filter((r) => r.isLimit && r.percentDv !== null);
+      for (let i = 1; i < targets.length; i++) {
+        expect(targets[i - 1].percentDv!).toBeLessThanOrEqual(targets[i].percentDv!);
+      }
+      for (let i = 1; i < limits.length; i++) {
+        expect(limits[i - 1].percentDv!).toBeGreaterThanOrEqual(limits[i].percentDv!);
       }
     }
   });

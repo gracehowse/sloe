@@ -211,7 +211,7 @@ Mobile spine end-to-end; shopping generator unified (ENG-1040). No pantry, weak 
 - **Weak grocery categorisation** — large "Other" bucket (`category.ts`).
 - **fal.ai outside AI cost circuit-breaker** (`falImageGenerator.ts`).
 - **FatSecret v1/v2 micro guard missing** (nutrition audit #27).
-- **Nutrient panel sorts %DV descending** while comment says deficiencies first (`fullNutrientPanel.ts:217-224`).
+- **Nutrient panel sorts %DV descending** while comment says deficiencies first — **SHIPPED** (target ascending / limit descending in `fullNutrientPanel.ts`; launch audit P2 #9).
 - **Dual meal-slot share tables** (`mealBudget.ts` vs `northStarSuggestion.ts`).
 - **US FDA DVs only** — UK/EU market (`dailyValues.ts`).
 - **OFF fetch no timeout** on client path.
@@ -254,7 +254,7 @@ Two-app npm monorepo: Next.js 15 on Vercel + Expo iOS on EAS; shared logic via `
 
 ## 18. Nutrition Engine Findings (score 8/10) — mission-critical
 
-June 10 audit: **P0 adaptive slope bias FIXED** (`adaptiveTdee.ts` + `dailyInterpolatedWeightEntries`). **P1 gain 2× mismatch FIXED** (`GAIN_SURPLUS_PACE_FACTOR`, `whyThisNumber.ts`). **On-track tile FIXED** (ENG-1026). **Safety floor ack FIXED** (ENG-1027). **Goal timeline smoothing FIXED** (ENG-1039). Core math STANDARD per audit §1 table (~75 formulas). **Residual:** slope cap 0.35 kg/wk may under-credit fast losers (P2); activity-bonus scales protein down (P2); panel sort bug (P2); UK/EU DVs (P2). **Recommended tests:** keep `adaptiveTdee.test.ts`, `foodSelectionToMeal.test.ts`, `calcGoalTimelineSmoothing.test.ts`; add property test sum(meals)=day total.
+June 10 audit: **P0 adaptive slope bias FIXED** (`adaptiveTdee.ts` + `dailyInterpolatedWeightEntries`). **P1 gain 2× mismatch FIXED** (`GAIN_SURPLUS_PACE_FACTOR`, `whyThisNumber.ts`). **On-track tile FIXED** (ENG-1026). **Safety floor ack FIXED** (ENG-1027). **Goal timeline smoothing FIXED** (ENG-1039). **Nutrient panel sort FIXED** (PR #397 — target ascending / limit descending). Core math STANDARD per audit §1 table (~75 formulas). **Residual:** slope cap 0.35 kg/wk may under-credit fast losers (P2); activity-bonus scales protein down (P2); UK/EU DVs (P2). **Recommended tests:** keep `adaptiveTdee.test.ts`, `foodSelectionToMeal.test.ts`, `calcGoalTimelineSmoothing.test.ts`; add property test sum(meals)=day total.
 
 ---
 
@@ -321,7 +321,7 @@ Sloe token system well-documented; enforcement weak (hex/spacing census). **ENG-
 7. **P1:** Web `MealPlanner` parity bundle (move, templates, leftovers) or correct journey docs.
 8. **P2:** Pantry/staples model for shopping generator.
 9. **P2:** Dev-client QA matrix doc + Maestro on release binary.
-10. **P2:** Nutrient panel sort fix + UK/EU DV picker.
+10. **P2:** UK/EU DV picker.
 
 ---
 

@@ -129,7 +129,7 @@ describe("FullNutrientPanelSheet (mobile)", () => {
     expect(getByTestId("full-panel-row-fiberG")).toBeTruthy();
   });
 
-  it("sorts rows within each section by %DV descending", () => {
+  it("sorts target rows ascending and limit rows descending within each section", () => {
     // Use buildFullNutrientPanelRows directly to assert the sort
     // contract — the DOM-level test would require traversing the
     // RN shim's tree, and the sort logic is the same code path the
@@ -151,13 +151,13 @@ describe("FullNutrientPanelSheet (mobile)", () => {
     expect(sections.map((s) => s.section)).toEqual(expectedSections);
 
     for (const { rows } of sections) {
-      // Within each section, %DVs (treating null as -Infinity) must be
-      // non-increasing.
-      const pcts = rows.map((r: FullNutrientPanelRow) =>
-        r.percentDv === null ? -Infinity : r.percentDv,
-      );
-      for (let i = 1; i < pcts.length; i++) {
-        expect(pcts[i - 1]).toBeGreaterThanOrEqual(pcts[i]);
+      const targets = rows.filter((r) => !r.isLimit && r.percentDv !== null);
+      const limits = rows.filter((r) => r.isLimit && r.percentDv !== null);
+      for (let i = 1; i < targets.length; i++) {
+        expect(targets[i - 1].percentDv!).toBeLessThanOrEqual(targets[i].percentDv!);
+      }
+      for (let i = 1; i < limits.length; i++) {
+        expect(limits[i - 1].percentDv!).toBeGreaterThanOrEqual(limits[i].percentDv!);
       }
     }
   });
