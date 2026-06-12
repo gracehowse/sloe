@@ -200,7 +200,7 @@ export function ProgressHeroMetric({
               className="flex items-baseline tabular-nums leading-none text-warning"
             >
               <span className="text-[28px] font-extrabold">{overDisplay.value}%</span>
-              <span className="ml-0.5 text-[12px] font-semibold">{overDisplay.qualifier}</span>
+              <span className="ml-0.5 text-[11px] font-semibold">{overDisplay.qualifier}</span>
             </span>
           ) : (
             <span
