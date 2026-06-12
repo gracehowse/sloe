@@ -284,7 +284,7 @@ function enqueueHk<T>(label: string, fn: () => Promise<T>): Promise<T> {
       } else {
         console.log(
           `[hk.queue] ${label} settled error (${elapsed}ms, depth ${hkQueueDepth}): ${
-            err instanceof Error ? err.message : String(err)
+            err instanceof Error ? err.message : stringifyBridgeUnknown(err)
           }`,
         );
       }
@@ -522,7 +522,7 @@ function getWorkoutSamplesPromise(
   return withHealthCallbackTimeout("getSamples (Workout)", (resolve, reject) => {
     if (!hk.getSamples) { resolve([]); return; }
     hk.getSamples({ ...options, type: "Workout" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
+      if (err) reject(new Error(stringifyBridgeUnknown(err)));
       else resolve((results ?? []) as WorkoutSample[]);
     });
   });
@@ -714,7 +714,7 @@ async function getDietaryQuantitySamplesForPermissionPromise(
         hk.getDietaryQuantitySamplesForPermission!(
           { ...options, permissionKey, unit },
           (err, results) => {
-            if (err) reject(new Error(String(err)));
+            if (err) reject(new Error(stringifyBridgeUnknown(err)));
             else resolve((results ?? []) as DietarySample[]);
           },
         );
@@ -1374,7 +1374,10 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
   }
 }
 
-export async function syncHealthData(userId: string): Promise<{
+export async function syncHealthData(
+  userId: string,
+  opts?: { lookbackDays?: number },
+): Promise<{
   stepsUpdated: boolean;
   weightUpdated: boolean;
   bodyFatUpdated: boolean;
@@ -1394,7 +1397,10 @@ export async function syncHealthData(userId: string): Promise<{
     };
 
   /** How far back to read HealthKit (user preference; default ~12 months). "All" uses 4000d (~11y) cap. */
-  const lookbackDays = await getHealthBodyLookbackDays();
+  const lookbackDays =
+    opts?.lookbackDays != null && Number.isFinite(opts.lookbackDays)
+      ? opts.lookbackDays
+      : await getHealthBodyLookbackDays();
   const startDate = daysAgo(lookbackDays);
   const endDate = new Date();
   let stepsUpdated = false;
@@ -1670,7 +1676,10 @@ export async function syncHealthData(userId: string): Promise<{
 }
 
 const HEALTH_BODY_SYNC_MIN_MS = 4 * 60 * 1000;
+/** Tab-focus sync only needs recent days; full lookback stays on manual / pull-to-refresh. */
+export const HEALTH_FOCUS_SYNC_LOOKBACK_DAYS = 21;
 let lastThrottledHealthBodySyncAt = 0;
+let healthBodySyncInFlight: Promise<void> | null = null;
 
 /**
  * Steps, weight, body fat, and active energy: read HealthKit and upsert `profiles` (throttled app-wide).
@@ -1678,22 +1687,38 @@ let lastThrottledHealthBodySyncAt = 0;
  */
 export async function syncHealthDataThrottled(
   userId: string,
-  opts?: { bypassThrottle?: boolean },
+  opts?: { bypassThrottle?: boolean; lookbackDays?: number },
 ): Promise<void> {
   if (!userId || !isHealthSyncAvailable()) return;
+  if (healthBodySyncInFlight) {
+    await healthBodySyncInFlight.catch(() => {});
+    return;
+  }
   const now = Date.now();
   if (!opts?.bypassThrottle && now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS) return;
-  await syncHealthData(userId);
-  lastThrottledHealthBodySyncAt = Date.now();
-  // Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): stamp the AsyncStorage
-  // "last synced" timestamp so the WhereThisComesFromSheet can render
-  // "Synced X min ago" on Today + Burn detail. Fire-and-forget; the
-  // sheet falls back to "Synced recently" when missing.
+  // Tab-focus + pull-to-refresh stay on a short window. Full-year reads
+  // (user preference, up to 366d) are reserved for Health Sync → Sync Now
+  // (`syncHealthData` direct), which was wedging the dev client on device.
+  const lookbackDays = opts?.lookbackDays ?? HEALTH_FOCUS_SYNC_LOOKBACK_DAYS;
+
+  healthBodySyncInFlight = (async () => {
+    await syncHealthData(
+      userId,
+      lookbackDays != null ? { lookbackDays } : undefined,
+    );
+    lastThrottledHealthBodySyncAt = Date.now();
+    try {
+      const { recordHealthSyncedAt } = await import("./healthSyncMeta");
+      void recordHealthSyncedAt(Date.now());
+    } catch {
+      /* noop — non-fatal */
+    }
+  })();
+
   try {
-    const { recordHealthSyncedAt } = await import("./healthSyncMeta");
-    void recordHealthSyncedAt(Date.now());
-  } catch {
-    /* noop — non-fatal */
+    await healthBodySyncInFlight;
+  } finally {
+    healthBodySyncInFlight = null;
   }
 }
 

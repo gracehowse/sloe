@@ -581,7 +581,7 @@ function RootLayoutInner() {
   );
 }
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
   return (
     <RootErrorBoundary>
       <AuthProvider>
@@ -595,4 +595,9 @@ export default Sentry.wrap(function RootLayout() {
       </AuthProvider>
     </RootErrorBoundary>
   );
-});
+}
+
+// Sentry.wrap loads native frame-tracking hooks that SIGSEGV in dev when the
+// JS thread stalls (see DiagnosticReports/Suppr-2026-06-11-*.ips). Production
+// keeps the wrap; dev runs without it — initErrorTracking already gates capture.
+export default __DEV__ ? RootLayout : Sentry.wrap(RootLayout);

@@ -106,6 +106,26 @@ describe("foodSelectionToMealMacros — per-serving path (FatSecret no-metric)",
   });
 });
 
+describe("foodSelectionToMealMacros — incomplete vendor payloads", () => {
+  it("returns zeros instead of throwing when per-100g macros are missing", () => {
+    const out = foodSelectionToMealMacros({
+      name: "Broken OFF row",
+      source: "OFF",
+      macrosPer100g: null,
+      chosenPortion: { label: "g", gramWeight: 1 },
+      quantity: 100,
+    });
+    expect(out).toEqual({
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiberG: 0,
+      micros: {},
+    });
+  });
+});
+
 describe("ENG-1041 — fibre is exposed top-level for the fiber_g column (web ↔ mobile)", () => {
   // The mobile + web food-search log paths both compute a top-level fibre
   // value from this same math and persist it to the `fiber_g` column. This

@@ -418,48 +418,63 @@ export default function BurnDetailScreen() {
                       </Text>
                     </View>
                   ) : null}
+                  {totals.bonus > 0 ? (
+                    <View
+                      testID="burn-detail-activity-budget-toggle"
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: Spacing.dense,
+                        marginTop: Spacing.md,
+                        paddingTop: Spacing.md,
+                        borderTopWidth: StyleSheet.hairlineWidth,
+                        borderTopColor: colors.border,
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+                          Add bonus to today&apos;s budget
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {isToday
+                            ? "When on, the bonus above adds to your Today calorie target."
+                            : "When on, activity bonus adds to your Today calorie target."}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={preferActivityAdjustedCalories}
+                        disabled={savingPreference || !userId}
+                        testID="burn-detail-activity-budget-toggle-switch"
+                        onValueChange={async (next) => {
+                          setPreferActivityAdjustedCalories(next);
+                          if (!userId) return;
+                          setSavingPreference(true);
+                          try {
+                            const { error } = await supabase
+                              .from("profiles")
+                              .update({ prefer_activity_adjusted_calories: next })
+                              .eq("id", userId);
+                            if (error) setPreferActivityAdjustedCalories(!next);
+                          } finally {
+                            setSavingPreference(false);
+                          }
+                        }}
+                        trackColor={{ true: accent.primary, false: colors.border }}
+                      />
+                    </View>
+                  ) : null}
                 </SupprCard>
                 <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: Spacing.dense, lineHeight: 18, paddingHorizontal: 4 }}>
                   Burn above your maintenance estimate adds to your daily food budget.
                 </Text>
               </View>
-            ) : null}
-
-            {totals && totals.bonus > 0 && isToday ? (
-              <SupprCard
-                // Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-                lift="soft"
-                padding="md"
-                innerStyle={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                    Add bonus to today&apos;s budget
-                  </Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
-                    When on, the bonus above adds to your Today calorie target.
-                  </Text>
-                </View>
-                <Switch
-                  value={preferActivityAdjustedCalories}
-                  disabled={savingPreference || !userId}
-                  onValueChange={async (next) => {
-                    setPreferActivityAdjustedCalories(next);
-                    if (!userId) return;
-                    setSavingPreference(true);
-                    try {
-                      const { error } = await supabase
-                        .from("profiles")
-                        .update({ prefer_activity_adjusted_calories: next })
-                        .eq("id", userId);
-                      if (error) setPreferActivityAdjustedCalories(!next);
-                    } finally {
-                      setSavingPreference(false);
-                    }
-                  }}
-                  trackColor={{ true: accent.primary, false: colors.border }}
-                />
-              </SupprCard>
             ) : null}
           </>
         )}

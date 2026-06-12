@@ -93,8 +93,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (cancelled) return;
+
+      // Stale SecureStore/AsyncStorage sessions (e.g. after a profile wipe or
+      // switching test personas) can leave a refresh token Supabase no longer
+      // recognises — that wedges the app in a crash/reload loop on launch.
+      if (
+        error &&
+        (error.message.includes("Refresh Token") ||
+          error.message.includes("refresh_token"))
+      ) {
+        await supabase.auth.signOut().catch(() => {});
+        if (!cancelled) {
+          clearBootTimeout();
+          setSession(null);
+          setLoading(false);
+          syncObservabilityUser(null);
+        }
+        return;
+      }
 
       // E2E test seam: when running under Maestro/Detox, skip the login UI by
       // signing in with env credentials. Requires explicit opt-in via

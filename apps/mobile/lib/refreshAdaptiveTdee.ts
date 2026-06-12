@@ -1,1 +1,4 @@
-export { refreshAdaptiveTdeeForUser } from "@suppr/shared/nutrition/refreshAdaptiveTdee";
+export {
+  refreshAdaptiveTdeeForUser,
+  scheduleAdaptiveTdeeRefresh,
+} from "@suppr/shared/nutrition/refreshAdaptiveTdee";

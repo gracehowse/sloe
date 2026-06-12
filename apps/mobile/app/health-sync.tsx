@@ -36,6 +36,7 @@ import {
   syncHealthData,
   syncNutritionFromHealth,
 } from "@/lib/healthSync";
+import { invalidateHealthExportEnabledCache } from "@/lib/healthKitMealWriter";
 import { supabase } from "@/lib/supabase";
 
 /** Remember that the user completed Health connect so this screen shows Sync Now after navigation. */
@@ -272,6 +273,7 @@ export default function HealthSyncScreen() {
     try {
       const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
       await AsyncStorage.setItem("health_export_nutrition", val ? "true" : "false");
+      invalidateHealthExportEnabledCache();
     } catch {}
   }, []);
 

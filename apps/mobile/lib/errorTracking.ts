@@ -10,7 +10,10 @@ const DSN =
 let initialized = false;
 
 export function initErrorTracking(): void {
-  if (initialized || !DSN) return;
+  // Dev client: skip native SDK init entirely — Sentry.wrap is also disabled in
+  // _layout.tsx. Together they avoid FramesTracker / ANR native SIGSEGVs while
+  // Metro debugging (Suppr-2026-06-11-*.ips).
+  if (__DEV__ || initialized || !DSN) return;
   Sentry.init({
     dsn: DSN,
     tracesSampleRate: 0.2,

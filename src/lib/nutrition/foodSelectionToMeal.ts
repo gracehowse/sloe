@@ -115,7 +115,10 @@ export function foodSelectionToMealMacros(selection: FoodSelectionLike): LoggedM
   });
 
   if (perServing) {
-    const ps = selection.macrosPerServing!;
+    const ps = selection.macrosPerServing;
+    if (!ps) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, micros: {} };
+    }
     const fraction = selection.chosenPortion.servingFraction ?? 1;
     const q = selection.quantity * fraction;
     const micros = scaleMicrosPerServing(selection.microsPerServing, q);
@@ -130,7 +133,13 @@ export function foodSelectionToMealMacros(selection: FoodSelectionLike): LoggedM
     };
   }
 
-  const m = selection.macrosPer100g!;
+  const m = selection.macrosPer100g;
+  if (!m) {
+    // Incomplete vendor payload (e.g. OFF 503 / missing nutrition panel) —
+    // return zeros instead of throwing so the log path surfaces an Alert
+    // rather than reloading the dev client.
+    return { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, micros: {} };
+  }
   const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
     grams,
     caffeineMgPer100g: m.caffeineMgPer100g ?? null,

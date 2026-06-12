@@ -65,7 +65,10 @@ import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
-import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import {
+  computeActivityBonusKcal,
+  computeProjectedActivityBonusKcal,
+} from "@suppr/shared/nutrition/activityBonus";
 import { countWeighInDaysInWindow } from "@suppr/shared/nutrition/weighInDays";
 import { scaleMacroTargetsForCalorieBudget } from "@suppr/shared/nutrition/scaleMacroTargetsForCalorieBudget";
 import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
@@ -105,7 +108,10 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import { fetchPlannedMealMicros, type SupabaseLike } from "@suppr/shared/planning/plannedMealMicros";
-import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
+import {
+  refreshAdaptiveTdeeForUser,
+  scheduleAdaptiveTdeeRefresh,
+} from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
@@ -114,7 +120,6 @@ import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } fr
 import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
 import {
   syncHealthDataThrottled,
-  syncNutritionFromHealthThrottled,
   exportDayToHealth,
   isHealthSyncAvailable,
 } from "@/lib/healthSync";
@@ -514,9 +519,11 @@ export default function TrackerScreen() {
         source: canonicalNutritionEntrySource(m.source),
         recipe_id: m.recipeId ?? null,
       }));
+      // Upsert (not insert) so a race with the 600ms debounced journal sync
+      // never throws duplicate-key and rolls back an optimistic log.
       const { error } = await supabase
         .from("nutrition_entries")
-        .insert(dbRows);
+        .upsert(dbRows, { onConflict: "id" });
       if (error) {
         console.error("[tracker] persistMealsImmediate failed:", error.message);
         // Roll back the optimistic add(s) so the user sees the failure
@@ -539,6 +546,9 @@ export default function TrackerScreen() {
       // SUCCESS notification stays reserved for the win-moment landmark, which
       // `useWinMoment` fires on its own beat when the calorie/macro goal is hit.
       confirmLogHapticRef.current();
+      // Defer the heavy all-entries TDEE read so it cannot race food-search
+      // network streams on the same commit beat (native dev-client crash).
+      scheduleAdaptiveTdeeRefresh(supabase, userId);
       return true;
     },
     [userId],
@@ -2107,6 +2117,32 @@ export default function TrackerScreen() {
    */
   const handleFoodSearchSelect = useCallback(
     (result: FoodSearchSelectedFood) => {
+      let scaled;
+      try {
+        scaled = foodSelectionToMealMacros(result);
+      } catch (err) {
+        console.error("[tracker] handleFoodSearchSelect failed:", err);
+        Alert.alert(
+          "Couldn't log this food",
+          "Something went wrong saving this item. Try again or log it manually.",
+        );
+        return;
+      }
+      const {
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        fiberG: mealFiberG,
+        micros,
+      } = scaled;
+      if (!Number.isFinite(mealCalories) || mealCalories <= 0) {
+        Alert.alert(
+          "Couldn't log this food",
+          "Nutrition data for this item is missing or incomplete. Try another result or enter it manually.",
+        );
+        return;
+      }
       const source =
         result.source === "CUSTOM"
           ? "custom_food"
@@ -2117,15 +2153,6 @@ export default function TrackerScreen() {
           : result.source === "FatSecret"
           ? "FatSecret"
           : "USDA FoodData Central";
-      // ENG-1046 — shared scaling core (instant-log + basket-add, web parity).
-      const {
-        calories: mealCalories,
-        protein: mealProtein,
-        carbs: mealCarbs,
-        fat: mealFat,
-        fiberG: mealFiberG,
-        micros,
-      } = foodSelectionToMealMacros(result);
       const meal: JournalMeal = {
         id: newMealId(),
         name: activeMealSlot,
@@ -2142,15 +2169,21 @@ export default function TrackerScreen() {
           ? { recipeImageUrl: String(result.imageUrl).trim() }
           : {}),
       };
-      setByDay((prev) => ({
-        ...prev,
-        [dayKey]: [...(prev[dayKey] ?? []), meal],
-      }));
+      // Non-urgent journal update — keep the LogSheet responsive while Today
+      // recomputes totals behind a transition (avoids multi-second JS stalls
+      // that read as a crash on device).
+      startTransition(() => {
+        setByDay((prev) => ({
+          ...prev,
+          [dayKey]: [...(prev[dayKey] ?? []), meal],
+        }));
+      });
       // 2026-05-08 data-loss hotfix — immediate Supabase persist.
       void persistMealsImmediate(dayKey, [meal]);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` above —
       // per-meal micros is the canonical SoT for food-derived
       // stimulants. No `bumpStimulantsForLoggedMeal` here.
+      setFabSheetOpen(false);
       try {
         track(AnalyticsEvents.food_logged, {
           source: result.source === "CUSTOM" ? "custom_food" : "manual",
@@ -2159,7 +2192,7 @@ export default function TrackerScreen() {
         });
       } catch { /* noop */ }
     },
-    [activeMealSlot, dayKey, userId, supabase, persistMealsImmediate],
+    [activeMealSlot, dayKey, persistMealsImmediate],
   );
 
   /** ENG-709 — Copy yesterday's meals to today. Called after the user
@@ -2211,6 +2244,44 @@ export default function TrackerScreen() {
     [weekSummaryMode, selectedDate, weekStartDay],
   );
   const mealsToday = byDay[dayKey] ?? [];
+
+  const recentFoodsForSearch = useMemo(
+    () =>
+      computeRecentMeals(byDay, 50)
+        .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
+        .map((item) => ({
+          recipeTitle: item.recipeTitle,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiber: item.fiber,
+          source: item.source,
+          count: item.count,
+        })),
+    [byDay],
+  );
+
+  const recentMealsForPick = useMemo(
+    () =>
+      computeRecentMeals(byDay, 12).filter(
+        (item) => !isHealthImportFallbackTitle(item.recipeTitle),
+      ),
+    [byDay],
+  );
+
+  const recentLogSheetEntries = useMemo(() => {
+    const todayKey = dateKeyFromDate(new Date());
+    return recentMealsForPick.map((item) => ({
+      id: foodHistoryKey(item.recipeTitle, item.calories),
+      title: item.recipeTitle,
+      kcal: Math.round(item.calories),
+      source: mapMealSourceToDot(item.source),
+      bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+        ? ("today" as const)
+        : ("week" as const),
+    }));
+  }, [recentMealsForPick]);
 
   /**
    * Phase 5 (2026-04-30) — id of the first AI-sourced meal row to
@@ -2370,6 +2441,7 @@ export default function TrackerScreen() {
             basalBurnByDay,
             maintenanceKcal,
             dayKey,
+            workoutsByDay,
           ),
       ),
     [
@@ -2380,6 +2452,7 @@ export default function TrackerScreen() {
       basalBurnByDay,
       maintenanceKcal,
       dayKey,
+      workoutsByDay,
     ],
   );
 
@@ -2419,6 +2492,7 @@ export default function TrackerScreen() {
         basalBurnByDay,
         maintenanceKcal,
         dayKey,
+        workoutsByDay,
       ),
     [
       preferActivityAdjustedCalories,
@@ -2427,8 +2501,22 @@ export default function TrackerScreen() {
       basalBurnByDay,
       maintenanceKcal,
       dayKey,
+      workoutsByDay,
     ],
   );
+
+  /** Earned bonus (burn-detail parity) — drives Today toggle + "+bonus" copy. */
+  const potentialActivityBudgetAddon = useMemo(() => {
+    const workouts = workoutsByDay[dayKey] ?? [];
+    return computeProjectedActivityBonusKcal({
+      dateKey: dayKey,
+      todayDateKey: dateKeyFromDate(new Date()),
+      restingKcal: basalBurnByDay[dayKey] ?? 0,
+      activeKcal: activityBurnByDay[dayKey] ?? 0,
+      maintenanceKcal,
+      workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+    });
+  }, [activityBurnByDay, basalBurnByDay, maintenanceKcal, dayKey, workoutsByDay]);
 
   const navigateDay = useCallback((offset: number) => {
     startTransition(() => {
@@ -2523,6 +2611,7 @@ export default function TrackerScreen() {
           basalBurnByDay,
           maintenanceKcal,
           d.key,
+          workoutsByDay,
         ),
       0,
     );
@@ -2532,6 +2621,7 @@ export default function TrackerScreen() {
     weekData.days,
     targets.calories,
     activityBurnByDay,
+    workoutsByDay,
     basalBurnByDay,
     maintenanceKcal,
   ]);
@@ -4129,7 +4219,7 @@ export default function TrackerScreen() {
   // then refresh targets + journal. 2026-05-16: extracted to
   // `hooks/useHealthSyncOnFocus` — first sliver of the Today
   // God-component split. Behaviour unchanged.
-  useHealthSyncOnFocus(userId, loadProfileTargets, loadJournal);
+  useHealthSyncOnFocus(userId, loadProfileTargets);
 
   // Sync journal to relational nutrition_entries table.
   // 2026-05-16 — extracted to `hooks/useNutritionEntriesSync` (Today
@@ -4997,6 +5087,7 @@ export default function TrackerScreen() {
                 basalBurnByDay,
                 maintenanceKcal,
                 day.key,
+                workoutsByDay,
               ),
             )}
             onSelectDay={(d) => { setSelectedDate(d); setViewMode("day"); }}
@@ -5459,6 +5550,7 @@ export default function TrackerScreen() {
             basalBurnKcal={basalBurnKcal}
             activityBurnKcal={activityBurnKcal}
             todayActivityBudgetAddon={todayActivityBudgetAddon}
+            potentialActivityBudgetAddon={potentialActivityBudgetAddon}
             dayWorkouts={dayWorkouts}
             trackerWeekSummaryKeys={trackerWeekSummaryKeys}
             activityBurnByDay={activityBurnByDay}
@@ -5730,18 +5822,7 @@ export default function TrackerScreen() {
           // group that ranks matching past logs above database results. A
           // 50-row window gives the matcher enough history to match a typed
           // query against while staying cheap to compute.
-          recentFoods: computeRecentMeals(byDay, 50)
-            .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
-            .map((item) => ({
-              recipeTitle: item.recipeTitle,
-              calories: item.calories,
-              protein: item.protein,
-              carbs: item.carbs,
-              fat: item.fat,
-              fiber: item.fiber,
-              source: item.source,
-              count: item.count,
-            })),
+          recentFoods: recentFoodsForSearch,
           // Favourites-in-search (teardown #1, ENG-1041) — the user's starred
           // foods + the optimistic toggle, threaded into the inline panel.
           favoriteFoods: hostFavorites.map((f) => ({
@@ -5786,24 +5867,10 @@ export default function TrackerScreen() {
           // the legacy "Food log (NNN kcal)" form and the new
           // "<Source> entry · NNN kcal" form, so existing TestFlight
           // user data + new builds both stay filtered.
-          entries: (() => {
-            const todayKey = dateKeyFromDate(new Date());
-            return computeRecentMeals(byDay, 12)
-              .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
-              .map((item) => ({
-                id: foodHistoryKey(item.recipeTitle, item.calories),
-                title: item.recipeTitle,
-                kcal: Math.round(item.calories),
-                source: mapMealSourceToDot(item.source),
-                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                  ? ("today" as const)
-                  : ("week" as const),
-              }));
-          })(),
+          entries: recentLogSheetEntries,
           onPick: (picked) => {
             setFabSheetOpen(false);
-            const recent = computeRecentMeals(byDay, 12);
-            const found = recent.find(
+            const found = recentMealsForPick.find(
               (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
             );
             if (!found) return;
@@ -6114,18 +6181,7 @@ export default function TrackerScreen() {
         // history-first "Past logged" group has enough history to match
         // against and rank by recency-weighted frequency. The empty-query
         // strip still shows only the first 5 (panel-side slice).
-        recentFoods={computeRecentMeals(byDay, 50)
-          .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
-          .map((item) => ({
-            recipeTitle: item.recipeTitle,
-            calories: item.calories,
-            protein: item.protein,
-            carbs: item.carbs,
-            fat: item.fat,
-            fiber: item.fiber,
-            source: item.source,
-            count: item.count,
-          }))}
+        recentFoods={recentFoodsForSearch}
         // Shared commit path — same logic the inline `<FoodSearchPanel>`
         // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
         // F-79 + L6 G1 all live in the shared callback.

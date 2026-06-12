@@ -32,6 +32,8 @@
 import { writeNutritionToHealth } from "./healthSync";
 
 const FLAG_KEY = "health_export_nutrition";
+/** Cached export toggle — avoids per-meal AsyncStorage reads + console spam when off. */
+let exportEnabledCache: boolean | null = null;
 /**
  * 2026-05-05 (audit Y02) — userId-scoped key. Was a global
  * `health_export_written_ids` until today; that meant when User A signed
@@ -98,14 +100,23 @@ async function persistWrittenIds(userId: string): Promise<void> {
 export function resetHealthKitMealWriterCache(): void {
   writtenIdsMemory.clear();
   writtenIdsHydratedFor = null;
+  exportEnabledCache = null;
+}
+
+/** Call after toggling Settings → Share meals to Health so the next write re-reads AsyncStorage. */
+export function invalidateHealthExportEnabledCache(): void {
+  exportEnabledCache = null;
 }
 
 async function isExportEnabled(): Promise<boolean> {
+  if (exportEnabledCache != null) return exportEnabledCache;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
     const v = await AsyncStorage.getItem(FLAG_KEY);
-    return v === "true";
+    exportEnabledCache = v === "true";
+    return exportEnabledCache;
   } catch {
+    exportEnabledCache = false;
     return false;
   }
 }
@@ -186,7 +197,6 @@ export async function writeMealToHealthKitIfEnabled(
 
   const enabled = await isExportEnabled();
   if (!enabled) {
-    console.warn("[hk.writeMeal] skipped — `health_export_nutrition` flag is off", { mealId: input.mealId });
     return { ok: true, written: false, reason: "disabled" };
   }
 
@@ -268,6 +278,7 @@ export async function primeWrittenMealIds(userId: string | null | undefined, ids
 export async function _resetHealthKitMealWriterForTests(userId?: string): Promise<void> {
   writtenIdsMemory.clear();
   writtenIdsHydratedFor = null;
+  exportEnabledCache = null;
   if (!userId) return;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;

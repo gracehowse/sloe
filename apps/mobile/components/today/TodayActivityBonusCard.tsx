@@ -47,8 +47,9 @@ import type { JournalMeal } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 /**
- * TodayActivityBonusCard — summary row, burn breakdown, workouts list,
- * and the weekly deficit rollup.
+ * TodayActivityBonusCard — net energy summary, burn breakdown card,
+ * and the weekly deficit rollup. Workouts + bonus toggle live on
+ * Activity Summary (`/burn-detail`) only.
  *
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
  * 2026-04-18). All data is host-owned; component only renders and
@@ -62,7 +63,13 @@ export interface TodayActivityBonusCardProps {
   effectiveCalorieGoal: number;
   basalBurnKcal: number;
   activityBurnKcal: number | null;
+  /** Bonus applied to the calorie ring (0 when `preferActivityAdjustedCalories` is off). */
   todayActivityBudgetAddon: number;
+  /**
+   * Earned bonus regardless of the prefer toggle — drives the discover
+   * banner, "+bonus earned" copy, and the allowance switch visibility.
+   */
+  potentialActivityBudgetAddon?: number;
   dayWorkouts: { type: string; minutes: number; calories: number; source: string }[];
   trackerWeekSummaryKeys: string[];
   activityBurnByDay: Record<string, number>;
@@ -133,6 +140,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     basalBurnKcal,
     activityBurnKcal,
     todayActivityBudgetAddon,
+    potentialActivityBudgetAddon,
     dayWorkouts,
     trackerWeekSummaryKeys,
     activityBurnByDay,
@@ -172,12 +180,13 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   // amber status hues, and the energy-balance track stay on their own tokens.
   const accent = useAccent();
   const [infoOpen, setInfoOpen] = React.useState(false);
+  const earnedActivityBudgetAddon =
+    potentialActivityBudgetAddon ?? todayActivityBudgetAddon;
   const showDiscover =
     showActivityBudgetDiscoverBanner &&
     !preferActivityAdjustedCalories &&
-    todayActivityBudgetAddon > 0 &&
+    earnedActivityBudgetAddon > 0 &&
     isToday;
-
   // 4th "Maintenance" tile + info popover — render only when we know
   // maintenance TDEE. Zero/null = omit (no misleading "0 kcal" cell).
   // Mirrors web `today-activity-bonus-card.tsx` (TestFlight
@@ -268,7 +277,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const weeklyLbsRate = weeklyKgRate / 0.4536;
   const isWeekDeficit = weekDeficit >= 0;
 
-  const showBurnBreakdown = (activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0;
+  const showBurnBreakdown =
+    (activityBurnKcal ?? 0) > 0 || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
   return (
     <>
@@ -529,27 +539,6 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         </Text>
       )}
 
-      {dayWorkouts.length > 0 && (
-        <View style={{ gap: Spacing.sm }}>
-          {/* marginBottom dropped (was 2) — the parent's gap: Spacing.sm
-              owns the rhythm here (ENG-1012 migration). */}
-          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor }}>Workouts</Text>
-          {dayWorkouts.map((w, i) => (
-            <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
-              {/* Workout-row glyph stays warm (activity context, not a CTA) —
-                  intentionally NOT migrated to the Frost accent. */}
-              <Ionicons name="barbell-outline" size={16} color={accent.primary} />
-              <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{w.type}</Text>
-              <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
-                {w.minutes > 0 ? `${w.minutes} min` : ""}
-              </Text>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: activitySolid, fontVariant: ["tabular-nums"] }}>
-                {w.calories > 0 ? `${w.calories} kcal` : ""}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
     </SupprCard>
 
       {showBurnBreakdown ? (
@@ -611,7 +600,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                     Resting {basalBurnKcal.toLocaleString()}
                   </Text>
                 )}
-                {todayActivityBudgetAddon > 0 && (
+                {earnedActivityBudgetAddon > 0 && (
                   <Text
                     style={{
                       ...Type.caption,
@@ -620,7 +609,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                       color: activitySolid,
                     }}
                   >
-                    +{todayActivityBudgetAddon.toLocaleString()} bonus earned
+                    +{earnedActivityBudgetAddon.toLocaleString()} bonus earned
                   </Text>
                 )}
               </View>

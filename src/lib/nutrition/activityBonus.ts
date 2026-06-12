@@ -38,6 +38,43 @@ export interface ActivityBonusInput {
   now?: Date;
 }
 
+/**
+ * Earned activity budget bonus — same projected-EOD math as `/burn-detail`,
+ * without the `prefer` gate. Use for Today copy, discover banner, and toggle
+ * visibility so UI matches what users see after tapping into activity detail.
+ */
+export function computeProjectedActivityBonusKcal(
+  input: Omit<ActivityBonusInput, "prefer">,
+): number {
+  const {
+    dateKey,
+    todayDateKey,
+    restingKcal,
+    activeKcal,
+    maintenanceKcal,
+    workoutKcal = 0,
+    now = new Date(),
+  } = input;
+  const resting = Math.round(restingKcal);
+  const active = Math.round(activeKcal);
+  const actualBurn = resting + active;
+
+  if (maintenanceKcal <= 0) {
+    return Math.max(0, Math.round(workoutKcal));
+  }
+
+  if (dateKey !== todayDateKey) {
+    return Math.max(0, actualBurn - maintenanceKcal);
+  }
+
+  const hoursElapsed = now.getHours() + now.getMinutes() / 60;
+  const hourlyResting =
+    hoursElapsed > 0 && resting > 0 ? resting / hoursElapsed : 0;
+  const futureBurn = Math.round(hourlyResting * Math.max(0, 24 - hoursElapsed));
+  const projected = actualBurn + futureBurn;
+  return Math.max(0, projected - maintenanceKcal);
+}
+
 export function computeActivityBonusKcal(input: ActivityBonusInput): number {
   const {
     prefer,

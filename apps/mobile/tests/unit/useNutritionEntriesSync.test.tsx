@@ -112,10 +112,10 @@ describe("useNutritionEntriesSync (Today split #3)", () => {
     expect(upsertMock).toHaveBeenCalledTimes(1);
   });
 
-  it("fires the adaptive-TDEE + target-snapshot + HealthKit chain on success", () => {
+  it("fires target-snapshot + HealthKit on success (adaptive TDEE is deferred from persistMealsImmediate)", () => {
     render(<Harness userId="u1" hydrated byDay={{ "2026-05-16": [makeMeal()] }} selectedDate={FIXED_DATE} />);
     vi.advanceTimersByTime(700);
-    expect(refreshAdaptiveTdeeForUserMock).toHaveBeenCalledTimes(1);
+    expect(refreshAdaptiveTdeeForUserMock).not.toHaveBeenCalled();
     expect(snapshotDailyTargetIfMissingMock).toHaveBeenCalledTimes(1);
     expect(writeMealToHealthKitIfEnabledMock).toHaveBeenCalledTimes(1);
   });

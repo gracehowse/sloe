@@ -151,3 +151,24 @@ export async function refreshAdaptiveTdeeForUser(
     console.warn("[refreshAdaptiveTdeeForUser] update failed:", updateError.message);
   }
 }
+
+let scheduledRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Defer adaptive-TDEE refresh so it does not race the food-search / LogSheet
+ * network stack on the commit beat (dev-client CDP interceptors have crashed
+ * on concurrent stream teardown — see Suppr-2026-06-11-170715.ips).
+ */
+export function scheduleAdaptiveTdeeRefresh(
+  supabase: SupabaseClient,
+  userId: string,
+  delayMs = 5000,
+): void {
+  if (scheduledRefreshTimer) {
+    clearTimeout(scheduledRefreshTimer);
+  }
+  scheduledRefreshTimer = setTimeout(() => {
+    scheduledRefreshTimer = null;
+    void refreshAdaptiveTdeeForUser(supabase, userId);
+  }, delayMs);
+}

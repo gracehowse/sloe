@@ -3,11 +3,13 @@
  * Run: node --import tsx scripts/verify-gate0-db.mts
  *
  * Uses .env.local (+ optional .env.persona for a throwaway test user).
- * Never mutates Grace's primary profile — uses gracehowse+gate0verify@outlook.com
- * or E2E_EMAIL when set.
+ * NEVER uses E2E_EMAIL — that is Grace's real hotmail daily-driver.
+ * Set GATE0_VERIFY_EMAIL / GATE0_VERIFY_PASSWORD, or defaults to
+ * gracehowse+gate0verify@outlook.com.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { PERSONA_FORBIDDEN_EMAILS } from "./_lib/personaSeed.ts";
 
 function loadEnvFile(path: string) {
   if (!existsSync(path)) return;
@@ -36,13 +38,28 @@ const anonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 const email =
-  process.env.GATE0_VERIFY_EMAIL?.trim() ??
-  process.env.E2E_EMAIL?.trim() ??
-  "gracehowse+gate0verify@outlook.com";
-const password =
-  process.env.GATE0_VERIFY_PASSWORD?.trim() ??
-  process.env.E2E_PASSWORD?.trim() ??
-  process.env.EXPO_PUBLIC_E2E_PASSWORD?.trim();
+  process.env.GATE0_VERIFY_EMAIL?.trim() ?? "gracehowse+gate0verify@outlook.com";
+const password = process.env.GATE0_VERIFY_PASSWORD?.trim();
+
+function assertGate0VerifyAccountSafe(targetEmail: string) {
+  const lower = targetEmail.toLowerCase();
+  if (PERSONA_FORBIDDEN_EMAILS.some((forbidden) => forbidden.toLowerCase() === lower)) {
+    throw new Error(
+      `Refusing Gate-0 live verify against real account ${targetEmail}. ` +
+        "Set GATE0_VERIFY_EMAIL to a plus-address throwaway (e.g. gracehowse+gate0verify@outlook.com).",
+    );
+  }
+  if (
+    process.env.E2E_EMAIL?.trim() &&
+    process.env.E2E_EMAIL.trim().toLowerCase() === lower
+  ) {
+    throw new Error(
+      `Refusing Gate-0 live verify: GATE0_VERIFY_EMAIL must not equal E2E_EMAIL (${targetEmail}).`,
+    );
+  }
+}
+
+assertGate0VerifyAccountSafe(email);
 
 type Check = { name: string; pass: boolean; detail: string };
 
@@ -86,7 +103,7 @@ async function verifyTierEscalationBlocked() {
     record(
       "ENG-1035 tier INSERT guard",
       false,
-      "no test password (set GATE0_VERIFY_PASSWORD or E2E_PASSWORD in .env.local)",
+      "no test password (set GATE0_VERIFY_PASSWORD in .env.local for the throwaway account)",
     );
     return;
   }

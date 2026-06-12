@@ -100,7 +100,9 @@ fi
 
 if ! curl -sf "http://127.0.0.1:8081/status" >/dev/null 2>&1; then
   log "Starting Metro with tunnel (logs: /tmp/suppr-expo-tunnel.log)…"
-  nohup npx expo start --tunnel >/tmp/suppr-expo-tunnel.log 2>&1 &
+  # EXPO_NO_FAST_REFRESH avoids DevLauncher RemoteAppLoader SIGSEGV when the
+  # tunnel drops mid-fetch (physical device crash Suppr-2026-06-11-183604.ips).
+  nohup env EXPO_NO_FAST_REFRESH=1 npx expo start --tunnel >/tmp/suppr-expo-tunnel.log 2>&1 &
   METRO_PID=$!
   log "Metro PID: $METRO_PID"
   ok=0

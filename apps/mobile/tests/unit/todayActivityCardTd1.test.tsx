@@ -303,6 +303,35 @@ describe("TodayActivityBonusCard — TD1 burn-breakdown card (Sloe re-skin)", ()
     // The explain-in-place Info icon (testID) must survive the redesign.
     expect(getByTestId("today-burn-provenance-info")).toBeTruthy();
   });
+
+  it("shows earned bonus from potentialActivityBudgetAddon when prefer is off", () => {
+    const { getByText } = render(
+      <TodayActivityBonusCard
+        {...burnCardProps({
+          todayActivityBudgetAddon: 0,
+          potentialActivityBudgetAddon: 318,
+          preferActivityAdjustedCalories: false,
+        })}
+      />,
+    );
+    expect(getByText("+318 bonus earned")).toBeTruthy();
+  });
+
+  it("keeps workouts and the allowance toggle off Today — those live on Activity Summary", () => {
+    const { queryByText, queryByTestId } = render(
+      <TodayActivityBonusCard
+        {...burnCardProps({
+          dayWorkouts: [{ type: "Speediance", minutes: 5, calories: 16, source: "apple_health" }],
+          potentialActivityBudgetAddon: 120,
+          preferActivityAdjustedCalories: false,
+        })}
+      />,
+    );
+    expect(queryByText("Workouts")).toBeNull();
+    expect(queryByText("Speediance")).toBeNull();
+    expect(queryByTestId("today-activity-budget-toggle")).toBeNull();
+    expect(queryByText("Add bonus to today's budget")).toBeNull();
+  });
 });
 
 describe("TodayActivityBonusCard — TD1 7-day rolling", () => {

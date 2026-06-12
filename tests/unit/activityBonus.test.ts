@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { computeActivityBonusKcal } from "../../src/lib/nutrition/activityBonus";
+import {
+  computeActivityBonusKcal,
+  computeProjectedActivityBonusKcal,
+} from "../../src/lib/nutrition/activityBonus";
 
 /**
  * Pins the projected-EOD bonus formula adopted on 2026-05-13. Inputs
@@ -8,6 +11,37 @@ import { computeActivityBonusKcal } from "../../src/lib/nutrition/activityBonus"
  * regression that resurrects the "bonus so far" path will trip this
  * test instead of shipping silently.
  */
+describe("computeProjectedActivityBonusKcal — burn-detail parity", () => {
+  it("matches applied bonus when prefer is on (Grace 19:49 case)", () => {
+    const input = {
+      dateKey: "2026-05-13",
+      todayDateKey: "2026-05-13",
+      restingKcal: 1131,
+      activeKcal: 495,
+      maintenanceKcal: 1653,
+      now: new Date("2026-05-13T19:49:00"),
+    };
+    const projected = computeProjectedActivityBonusKcal(input);
+    const applied = computeActivityBonusKcal({ ...input, prefer: true });
+    expect(projected).toBe(applied);
+    expect(projected).toBeGreaterThanOrEqual(211);
+    expect(projected).toBeLessThanOrEqual(214);
+  });
+
+  it("is non-zero even when prefer would gate the applied bonus off", () => {
+    const input = {
+      dateKey: "2026-05-13",
+      todayDateKey: "2026-05-13",
+      restingKcal: 1131,
+      activeKcal: 495,
+      maintenanceKcal: 1653,
+      now: new Date("2026-05-13T19:49:00"),
+    };
+    expect(computeProjectedActivityBonusKcal(input)).toBeGreaterThan(0);
+    expect(computeActivityBonusKcal({ ...input, prefer: false })).toBe(0);
+  });
+});
+
 describe("computeActivityBonusKcal — Lose It! projected-EOD model", () => {
   it("Grace's 19:49 case: 1131 resting + 495 active vs 1653 maintenance → +213", () => {
     const result = computeActivityBonusKcal({
