@@ -44,7 +44,7 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 3 | TestFlight **1.0.7 (57)** smoke — see checklist below | G |
 | 4 | **ENG-874** Apple Health device matrix (In Progress) | G + E |
 | 5 | **ENG-670** Reel parse-rate gate | G |
-| 6 | **ENG-1059** OFF search proxy + cache — **implemented locally** (`/api/off/search`, web + mobile clients); needs commit + deploy | E |
+| 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
 | 7 | **ENG-772** Editable `eaten_at` | E |
 | 8 | Deep-link dismisses Log sheet (file if no ENG) | E |
 
