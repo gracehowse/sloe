@@ -7,6 +7,8 @@ import {
   foodSearchTrustWeight,
   genericBrandQueryPenalty,
   ukRetailerGenericRowPenalty,
+  ukRetailerBrandedBoost,
+  ukRetailerQueryUsdaPenalty,
   usdaBrandedMenuPenalty,
   searchRelevance,
   searchMatchScore,
@@ -372,5 +374,49 @@ describe("branded chain ranking (2026-06-04 audit)", () => {
       source: "FatSecret",
     });
     expect(branded).toBeGreaterThan(generic);
+  });
+
+  it("demotes USDA homonyms when query leads with a UK retailer (ENG-877)", () => {
+    expect(
+      ukRetailerQueryUsdaPenalty({
+        query: "tesco chicken",
+        name: "Chicken skin",
+        source: "USDA",
+      }),
+    ).toBeLessThan(0);
+    expect(
+      ukRetailerBrandedBoost({
+        query: "tesco chicken",
+        name: "Tesco · British Chicken Breast Fillets",
+        source: "FatSecret",
+      }),
+    ).toBeGreaterThan(0);
+    const tesco = foodSearchRankScore({
+      query: "tesco chicken",
+      name: "Tesco · British Chicken Breast Fillets",
+      source: "FatSecret",
+    });
+    const usdaSkin = foodSearchRankScore({
+      query: "tesco chicken",
+      name: "Chicken skin",
+      source: "USDA",
+      verified: true,
+    });
+    expect(tesco).toBeGreaterThan(usdaSkin);
+  });
+
+  it("ranks Sainsbury houmous above generic USDA for sainsbury's hummus", () => {
+    const sainsbury = foodSearchRankScore({
+      query: "sainsbury's hummus",
+      name: "Sainsbury's · Houmous",
+      source: "FatSecret",
+    });
+    const generic = foodSearchRankScore({
+      query: "sainsbury's hummus",
+      name: "Hummus, commercial",
+      source: "USDA",
+      verified: true,
+    });
+    expect(sainsbury).toBeGreaterThan(generic);
   });
 });

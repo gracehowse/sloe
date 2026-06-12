@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05T18:21:59.338Z",
+  "generatedAt": "2026-06-12T04:29:27.942Z",
   "env": {
     "fatsecret_configured": true,
     "FATSECRET_CONSUMER_KEY": true,
@@ -18,24 +18,24 @@
         "edamam": 10
       },
       "providerErrors": [],
-      "elapsedMs": 3056,
+      "elapsedMs": 3029,
       "top5": [
+        {
+          "name": "McDonald's · Big Mac",
+          "source": "FatSecret",
+          "kcal": "—",
+          "portion": "Per 1 serving - Calories: 580kcal | Fat: 34.00g | Carbs: 45.",
+          "score": 1.19,
+          "tier": "estimated"
+        },
         {
           "name": "Big Mac (McDonalds)",
           "source": "USDA",
           "verified": true,
           "kcal": "261/100g",
           "portion": "—",
-          "score": 1.0706666666666667,
+          "score": 0.7906666666666666,
           "tier": "verified"
-        },
-        {
-          "name": "McDonald's · Big Mac",
-          "source": "FatSecret",
-          "kcal": "—",
-          "portion": "Per 1 serving - Calories: 580kcal | Fat: 34.00g | Carbs: 45.",
-          "score": 0.95,
-          "tier": "estimated"
         },
         {
           "name": "McDONALD'S, BIG MAC",
@@ -73,7 +73,7 @@
         "edamam": 10
       },
       "providerErrors": [],
-      "elapsedMs": 1066,
+      "elapsedMs": 1616,
       "top5": [
         {
           "name": "Starbucks · Starbucks Blonde Vanilla Latte (Grande)",
@@ -125,7 +125,7 @@
         "edamam": 10
       },
       "providerErrors": [],
-      "elapsedMs": 814,
+      "elapsedMs": 1543,
       "top5": [
         {
           "name": "FlexPro · Chipotle Bowl",
@@ -177,7 +177,7 @@
         "edamam": 10
       },
       "providerErrors": [],
-      "elapsedMs": 696,
+      "elapsedMs": 1340,
       "top5": [
         {
           "name": "Salmon salad",
@@ -233,7 +233,7 @@
         "edamam": 0
       },
       "providerErrors": [],
-      "elapsedMs": 684,
+      "elapsedMs": 1329,
       "top5": [
         {
           "name": "Banana, raw",
@@ -288,7 +288,7 @@
         "edamam": 0
       },
       "providerErrors": [],
-      "elapsedMs": 682,
+      "elapsedMs": 1382,
       "top5": [
         {
           "name": "Beans and brown rice",
@@ -343,14 +343,14 @@
         "edamam": 0
       },
       "providerErrors": [],
-      "elapsedMs": 713,
+      "elapsedMs": 1365,
       "top5": [
         {
           "name": "Chicken",
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 101g - Calories: 239kcal | Fat: 13.60g | Carbs: 0.00g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -358,7 +358,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 101g - Calories: 454kcal | Fat: 40.68g | Carbs: 0.00g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -367,7 +367,7 @@
           "verified": true,
           "kcal": "450/100g",
           "portion": "—",
-          "score": 0.63,
+          "score": 0.21000000000000002,
           "tier": "verified"
         },
         {
@@ -375,7 +375,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 101g - Calories: 254kcal | Fat: 13.19g | Carbs: 4.27g | ",
-          "score": 0.425,
+          "score": 0.07500000000000001,
           "tier": "estimated"
         },
         {
@@ -383,7 +383,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 2360g - Calories: 2738kcal | Fat: 143.74g | Carbs: 153.8",
-          "score": 0.425,
+          "score": 0.07500000000000001,
           "tier": "estimated"
         }
       ]
@@ -396,14 +396,14 @@
         "edamam": 0
       },
       "providerErrors": [],
-      "elapsedMs": 1237,
+      "elapsedMs": 1615,
       "top5": [
         {
           "name": "Hummus",
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 100g - Calories: 177kcal | Fat: 8.59g | Carbs: 20.12g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -411,7 +411,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 100g - Calories: 177kcal | Fat: 8.59g | Carbs: 20.12g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -419,7 +419,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 100g - Calories: 166kcal | Fat: 9.60g | Carbs: 14.29g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -427,7 +427,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 2 tbsp - Calories: 80kcal | Fat: 7.00g | Carbs: 4.00g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         },
         {
@@ -435,7 +435,7 @@
           "source": "FatSecret",
           "kcal": "—",
           "portion": "Per 2 tbsp - Calories: 80kcal | Fat: 6.00g | Carbs: 4.00g | ",
-          "score": 0.64,
+          "score": 0.29000000000000004,
           "tier": "estimated"
         }
       ]
