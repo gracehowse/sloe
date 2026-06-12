@@ -122,6 +122,11 @@ describe("F-79 — ingest layer pulls full micro set", () => {
     expect(SRC.webSearch).toMatch(/\/api\/off\/search/);
     expect(SRC.webSearch).toMatch(/microsPer100g:\s*h\.microsPer100g/);
   });
+
+  it("ENG-1062 — preview surfaces scaled vendor micros beyond fibre/sugar/sodium", () => {
+    expect(SRC.modalAndPanel).toMatch(/foodSearchPreviewExtraMicroRows/);
+    expect(SRC.webSearch).toMatch(/foodSearchPreviewExtraMicroRows/);
+  });
 });
 
 describe("F-79 — UnifiedSearchResult / SelectedFood / FoodSearchSelection carry micros", () => {

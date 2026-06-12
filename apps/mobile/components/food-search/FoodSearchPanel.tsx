@@ -131,6 +131,7 @@ import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearc
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
+import { foodSearchPreviewExtraMicroRows } from "@suppr/shared/nutrition/foodSearchPreviewNutrition";
 import { foodSearchPreviewPlausibilityWarning } from "@suppr/shared/nutrition/portionPicker";
 import {
   matchHistoryFoods,
@@ -1140,6 +1141,21 @@ export default function FoodSearchPanel({
     return Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
   }, [preview]);
 
+  const previewExtraMicroRows = useMemo(
+    () =>
+      preview && previewMacros
+        ? foodSearchPreviewExtraMicroRows({
+            scaledMacros: previewMacros,
+            microsPer100g: preview.microsPer100g,
+            microsPerServing: preview.microsPerServing,
+            hasMacrosPerServing: Boolean(preview.macrosPerServing),
+            chosenPortion: preview.chosenPortion,
+            quantity: preview.quantity,
+          })
+        : [],
+    [preview, previewMacros],
+  );
+
   const previewPlausibilityWarning = useMemo(
     () =>
       foodSearchPreviewPlausibilityWarning(
@@ -1858,6 +1874,7 @@ export default function FoodSearchPanel({
               ...(previewMacros.fiberG > 0 ? [["Fibre", `${previewMacros.fiberG} g`]] : []),
               ...(previewMacros.sugarG > 0 ? [["Sugar", `${previewMacros.sugarG} g`]] : []),
               ...(previewMacros.sodiumMg > 0 ? [["Sodium", `${previewMacros.sodiumMg} mg`]] : []),
+              ...previewExtraMicroRows.map((r) => [r.label, r.value] as const),
             ].map(([label, val]) => (
               <View key={label} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
                 <Text style={{ fontSize: 14, color: colors.textSecondary }}>{label}</Text>

@@ -110,6 +110,7 @@ import {
   localTimeInputValueFromIso,
 } from "@/lib/nutrition/mealEatenAt";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
+import { foodSearchPreviewExtraMicroRows } from "@/lib/nutrition/foodSearchPreviewNutrition";
 import {
   foodSearchTrustWeight,
   foodSearchRankScore,
@@ -1683,6 +1684,21 @@ export function FoodSearchPanel({
 
   const totalGrams = preview ? Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10 : 0;
 
+  const previewExtraMicroRows = useMemo(
+    () =>
+      preview && scaled
+        ? foodSearchPreviewExtraMicroRows({
+            scaledMacros: scaled,
+            microsPer100g: preview.microsPer100g,
+            microsPerServing: preview.microsPerServing,
+            hasMacrosPerServing: Boolean(preview.macrosPerServing),
+            chosenPortion: preview.chosenPortion,
+            quantity: preview.quantity,
+          })
+        : [],
+    [preview, scaled],
+  );
+
   const previewPlausibilityWarning = useMemo(
     () =>
       foodSearchPreviewPlausibilityWarning(
@@ -2118,6 +2134,8 @@ export function FoodSearchPanel({
                 ["Fat", `${scaled.fat}g`],
                 ...(scaled.fiberG > 0 ? [["Fibre", `${scaled.fiberG}g`]] : []),
                 ...(scaled.sugarG > 0 ? [["Sugar", `${scaled.sugarG}g`]] : []),
+                ...(scaled.sodiumMg > 0 ? [["Sodium", `${scaled.sodiumMg}mg`]] : []),
+                ...previewExtraMicroRows.map((r) => [r.label, r.value] as const),
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-1 border-b border-border">
                   <span className="text-muted-foreground">{label}</span>
