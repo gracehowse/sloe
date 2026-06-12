@@ -21,4 +21,8 @@ describe("planner leftover badge uses Lucide, not emoji (ENG-808)", () => {
     expect(SRC).toContain("Package");
     expect(SRC).toMatch(/variant="leftover"[\s\S]*icon=\{[\s\S]*<Package/);
   });
+
+  it("imports Package from lucide-react-native (not inline emoji glyph)", () => {
+    expect(SRC).toMatch(/import\s*\{[^}]*Package[^}]*\}\s*from\s*["']lucide-react-native["']/);
+  });
 });
