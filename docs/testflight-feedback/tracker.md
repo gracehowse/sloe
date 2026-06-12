@@ -44,9 +44,9 @@ Full audit run on 2026-05-11 — every item below classified as one of: shipped 
 | `AKtXKSnRdbli2_NJ7Hroov0` | F-168 | 🟡 | List slow to load — **ENG-1063** stale-while-revalidate on Library tab-focus refresh (**PR #393** merged); pending TF58+ |
 | `AIzVrhOEKFsC4ZoDnSePlRo` | F-169 | ⏳ | Odd spacing |
 | `AHuEHuKyt8POeAEKzQ0gBUo` | F-170 | ⏳ | Very odd spacing |
-| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** tab-blur + **PR #391** in-tab deep-link dismiss (launch queue #8); pending TF58+ |
+| `AEbpw8v-oZv8Ti1loRmgfIo` | F-171 | 🟡 | Library recipes missing or tab not clickable — **PR #389** tab-blur + **PR #391** in-tab deep-link dismiss (launch queue #8); iOS sim Gate A smoke PASS 2026-06-12 (`openLog=1` → `suppr:///library` dismisses sheet + Recipes reachable; Log sheet **Library** sub-tab shows saved meals) — pending TF58+ |
 | `AJQL077DLT8fEgDX69f-_qQ` | F-172 | ⏳ | Review styling (unspecified surface) |
-| `APA3hfV90AqxrDdUEl5ILP0` | F-173 | 🟢 | Need ingredient switcher like before — **ENG-1066** visible Swap pill on verify rows (**PR #394** merged); unit/source PASS 2026-06-12; iOS sim visual PASS via `suppr:///recipe/verify?fixture=1` + Maestro `eng_1066_verify_swap_fixture.yaml` (2026-06-12 sweep) — pending TF58+ human confirm |
+| `APA3hfV90AqxrDdUEl5ILP0` | F-173 | 🟡 | Need ingredient switcher like before — **ENG-1066** visible Swap pill on verify rows (**PR #394** merged); unit/source PASS 2026-06-12; iOS sim Gate A PASS via `suppr:///recipe/verify?fixture=1` (Swap pill → food search, reconfirmed 2026-06-12 after sim crash relaunch) — pending TF58+ physical confirm |
 | `ALFGUcreM4vMYwtxCsQK1Sk` | F-174 | ⏳ | Card corner radii inconsistent |
 | `AHnw-5uxweSfR5sbJcuuR5s` | F-175 | ⏳ | Card corner radii inconsistent (recurrence) |
 | `AONgkKyACkIXK9NdoALp9yw` | F-176 | ⏳ | Random/inconsistent visual treatment |

@@ -95,7 +95,7 @@ Grace-only Gate A items (Gate0 5/5, ENG-859, ENG-670, TF screenshot triage) stay
 | 2 | ~~**#8** Deep-link dismisses Log sheet~~ | **SHIPPED** PR #389 + #391. |
 | 3 | **ENG-840** Flag-force in bundled apps | TestFlight cannot QA flag-gated surfaces (`editable_eaten_at`, etc.) without bundle-safe overrides. |
 | 4 | **ENG-874** Health sync (engineering tail) | Device matrix needs Grace; code/docs fixes for sync failures can proceed in parallel. |
-| 5 | **ENG-772** visual parity sign-off | Shipped on `main`; confirm edit-meal / food-search time UI on web + iOS with flag on. |
+| 5 | **ENG-772** visual parity sign-off | Shipped on `main`; iOS sim **PASS** 2026-06-12 via `suppr:///dev/edit-meal-states` fixture (`Time eaten` + `edit-meal-time-eaten`); web + live flag path still pending |
 
 ## Before adding Urgent to Todo
 
