@@ -50,6 +50,7 @@ import {
   Cookie,
   Lock,
   MoreHorizontal,
+  Package,
   Plus,
   RefreshCw,
   RotateCw,
@@ -3323,7 +3324,15 @@ export default function PlannerScreen() {
                     <Badge
                       variant="leftover"
                       accessibilityLabel={`Leftover of ${meal.recipeTitle}`}
-                      icon={<Text>🍱</Text>}
+                      icon={
+                        <Package
+                          size={10}
+                          color={Accent.warning}
+                          strokeWidth={2}
+                          accessibilityElementsHidden
+                          importantForAccessibility="no"
+                        />
+                      }
                       style={{ marginTop: 4 }}
                     >
                       Leftover of {meal.recipeTitle}
