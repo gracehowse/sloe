@@ -903,6 +903,17 @@ export default function TrackerScreen() {
     }, [params.openLog, params._t, router]),
   );
 
+  // Launch queue #8 / F-171 (ENG-1061) — LogSheet is a Modal on Today.
+  // If `fabSheetOpen` stays true after switching tabs, the scrim blocks
+  // the tab bar and other screens (Recipes "not clickable").
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setFabSheetOpen(false);
+      };
+    }, []),
+  );
+
   // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
   // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
   // inline there. Today no longer owns the sheet.

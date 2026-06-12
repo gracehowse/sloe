@@ -51,6 +51,12 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
       /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
     );
   });
+
+  it("dismisses LogSheet when Today loses focus (ENG-1061 / launch queue #8)", () => {
+    expect(indexSrc).toMatch(
+      /ENG-1061[\s\S]+?useFocusEffect[\s\S]+?return \(\) => \{[\s\S]+?setFabSheetOpen\(false\)/,
+    );
+  });
 });
 
 describe("Today composition root — tracking-extras prefs (P0-3, 2026-04-28)", () => {
