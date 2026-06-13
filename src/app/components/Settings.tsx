@@ -38,6 +38,7 @@ import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
 import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
+import { SupprButton } from "./suppr/suppr-button";
 import {
   ACTIVITY_SHORT_LABELS,
   type ActivityLevel,
@@ -825,13 +826,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             Sloe Pro
           </span>
         </span>
-        {/* Manage — aubergine OUTLINE pill (Sloe treatment #1, 2026-06-08).
-            The banner stays a soft aubergine tint (Pro = the brand accent);
-            "Manage" reads as a button (1.5px outline + solid label), not
-            flat coloured text. Mirrors the mobile Pro-banner Manage pill. */}
+        {/* Manage — GHOST treatment (Sloe button canon, 2026-06-12). The
+            whole banner is the clickable `<Link>`, so this stays a decorative
+            pill (a nested <button> inside an <a> would be invalid) — we apply
+            the ghost grammar by hand: transparent, no border, plum label.
+            Mirrors the mobile Pro-banner Manage pill. */}
         <span
-          className="text-sm font-semibold rounded-full border-[1.5px] px-3.5 py-1.5"
-          style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
+          className="rounded-full px-3.5 py-1.5 text-sm font-semibold"
+          style={{ color: "var(--accent-primary-solid)" }}
         >
           Manage
         </span>
@@ -921,21 +923,18 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 autoComplete="name"
                 className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
-              {/* Save name — aubergine OUTLINE (Sloe treatment #1,
-                  2026-06-08). The everyday primary CTA is an accent line,
-                  not a filled slab: transparent fill, 1.5px border +
-                  label in `--accent-primary-solid` (AA on the page).
-                  Mirrors the mobile Settings name-save button. */}
-              <button
-                type="button"
+              {/* Save name — GHOST (Sloe button canon, 2026-06-12). Inline
+                  secondary alongside the name input: transparent, no border,
+                  plum label. Mirrors the mobile Settings name-save button. */}
+              <SupprButton
+                variant="ghost"
                 data-testid="settings-name-save"
                 onClick={() => void handleSaveName()}
                 disabled={nameSaving || nameInput.trim() === storedName}
-                className="px-5 py-3 bg-transparent rounded-xl text-sm font-semibold border-[1.5px] transition-all hover:bg-[var(--accent-primary-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ borderColor: "var(--accent-primary-solid)", color: "var(--accent-primary-solid)" }}
+                loading={nameSaving}
               >
-                {nameSaving ? "Saving…" : "Save"}
-              </button>
+                Save
+              </SupprButton>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Used to greet you on Today (&ldquo;Good morning,{" "}
@@ -1609,9 +1608,16 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             autoComplete="off"
             className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
-          <button
-            type="button"
+          {/* Apply promo — PRIMARY (Sloe button canon, 2026-06-12): the promo
+              card's own action → solid aubergine SupprButton, mirroring mobile
+              SettingsBundleContent (loading + same disabled gate). Was a raw
+              near-black bg-foreground slab (off-system). Treatment-only — the
+              redeem handler + copy are unchanged. */}
+          <SupprButton
+            variant="primary"
+            aria-label="Apply promo code"
             disabled={promoSubmitting || !promoCode.trim()}
+            loading={promoSubmitting}
             onClick={async () => {
               setPromoSubmitting(true);
               try {
@@ -1638,10 +1644,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 setPromoSubmitting(false);
               }
             }}
-            className="px-6 py-2.5 rounded-xl bg-foreground text-background font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
-            {promoSubmitting ? "Applying…" : "Apply"}
-          </button>
+            Apply
+          </SupprButton>
         </div>
       </SupprCard>
       </div>

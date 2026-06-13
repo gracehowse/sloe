@@ -4,6 +4,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
 import { useRouter } from "next/navigation";
 import {
@@ -357,19 +358,25 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
           </p>
           <div className="flex flex-col gap-2.5 mt-6 max-w-[280px] mx-auto">
-            <button
-              type="button"
+            {/* Button system (2026-06-12): the empty-library card's ONE primary
+                action → `SupprButton` variant="primary" (solid aubergine fill,
+                white label + glyph, pill, no border/shadow). Supersedes the old
+                aubergine-OUTLINE treatment. Mirror of mobile library empty-state
+                `ctaBtn`. "Explore Discover" stays the quieter secondary below. */}
+            <SupprButton
+              variant="primary"
               onClick={() => {
                 const url = new URL(window.location.href);
                 url.searchParams.set("view", "import");
                 window.history.pushState({}, "", url.toString());
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
-              className="w-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
+              className="w-full gap-2"
+              aria-label="Import a recipe"
             >
               <Icons.import className="w-4 h-4" aria-hidden />
               Import a recipe
-            </button>
+            </SupprButton>
             {onGoDiscover ? (
               <button
                 type="button"
@@ -392,17 +399,21 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           <p className="text-muted-foreground mb-5 text-sm">
             Try another search term, category, or clear the filters.
           </p>
-          <button
-            type="button"
+          {/* Button system (2026-06-12): a secondary "reset" action on a
+              no-matches state → `SupprButton` variant="ghost" (transparent, no
+              border, plum label). Supersedes the old aubergine-OUTLINE
+              treatment. Mirror: no mobile equivalent — mobile shows a search-
+              only empty state with no Clear-filters control. */}
+          <SupprButton
+            variant="ghost"
             onClick={() => {
               setCategory("all");
               setEntryKind(null);
               setSearchQuery("");
             }}
-            className="px-5 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold text-sm hover:bg-primary/5 transition-colors"
           >
             Clear filters
-          </button>
+          </SupprButton>
         </div>
       )}
 
@@ -601,18 +612,24 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         per the parity requirement; rendered as small
                         inline chips beneath the meta row. */}
                     {kind === "created" && recipe.isPublished === false ? (
-                      <button
-                        type="button"
+                      // Button system (2026-06-12): "Go public" is a secondary
+                      // per-card action → `SupprButton` variant="ghost"
+                      // (transparent, no border, plum label). Supersedes the old
+                      // aubergine-OUTLINE chip. Mirror of mobile `goPublicBtn`.
+                      // Sized down (h-auto + caption type) to read as an inline
+                      // card chip, not a full-width CTA.
+                      <SupprButton
+                        variant="ghost"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
                           router.replace(`/home?${q}`, { scroll: false });
                         }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-[11px] font-semibold hover:bg-primary/5 transition-colors"
+                        className="mt-3 h-auto px-2.5 py-1 text-[11px]"
                       >
                         Go public
-                      </button>
+                      </SupprButton>
                     ) : null}
                     {kind === "imported" ? (
                       <button

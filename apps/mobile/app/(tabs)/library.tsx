@@ -35,6 +35,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { FontFamily, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -692,22 +693,17 @@ export default function LibraryScreen() {
       fontWeight: "700",
       color: colors.background,
     },
-    // Inline "Go public" — aubergine OUTLINE (Sloe treatment §1): transparent
-    // ground + 1.5px aubergine border + aubergine label, not a filled slab.
+    // Inline "Go public" — LAYOUT-ONLY override for the ghost SupprButton
+    // (2026-06-12 button system). The CTA colour/label come from the ghost
+    // variant; this trims the CTA's default padding + left-aligns it so it reads
+    // as an inline card chip, not a full-width CTA. The retired aubergine-
+    // OUTLINE treatment (transparent ground + 1.5px accentInk border + label
+    // colour) was removed — that grammar now lives in SupprButton variant="ghost".
     goPublicBtn: {
       marginTop: Spacing.sm,
       alignSelf: "flex-start",
       paddingHorizontal: Spacing.dense,
       paddingVertical: 8,
-      borderRadius: Radius.md,
-      backgroundColor: "transparent",
-      borderWidth: 1.5,
-      borderColor: accentInk,
-    },
-    goPublicBtnText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: accentInk,
     },
     // P2-32 (2026-04-25): the visible remove-from-library trash icon
     // was replaced by a long-press confirm flow on the card itself.
@@ -760,19 +756,11 @@ export default function LibraryScreen() {
       lineHeight: 21,
     },
     emptyActions: { marginTop: 24, gap: Spacing.dense, width: "100%", maxWidth: 280 },
-    // Empty-state primary "Import a recipe" — aubergine OUTLINE (Sloe treatment
-    // §1). The grey-outline "Explore Discover" (ctaBtnSecondary) sits below it
-    // as the quieter secondary, keeping a clear emphasis ladder.
-    ctaBtn: {
-      paddingHorizontal: 24,
-      paddingVertical: Spacing.dense,
-      backgroundColor: "transparent",
-      borderRadius: Radius.full,
-      borderWidth: 1.5,
-      borderColor: accentInk,
-      alignItems: "center",
-    },
-    ctaBtnText: { color: accentInk, fontWeight: "600", fontSize: 14 },
+    // Empty-state primary "Import a recipe" now renders via SupprButton
+    // variant="primary" (2026-06-12 button system) — the old aubergine-OUTLINE
+    // `ctaBtn`/`ctaBtnText` styles were removed. The grey-outline "Explore
+    // Discover" (ctaBtnSecondary) sits below it as the quieter secondary,
+    // keeping a clear emphasis ladder.
     ctaBtnSecondary: {
       paddingHorizontal: 24,
       paddingVertical: Spacing.dense,
@@ -908,17 +896,21 @@ export default function LibraryScreen() {
               ) : null}
             </View>
             {showGoPublic ? (
-              <Pressable
+              // Button system (2026-06-12): "Go public" is a secondary per-card
+              // action → SupprButton variant="ghost" (transparent, no border,
+              // plum label). Supersedes the old aubergine-OUTLINE goPublicBtn.
+              // Web parity: src/app/components/Library.tsx "Go public" chip.
+              // `goPublicBtn` layout style trims the CTA padding so it reads as
+              // an inline card chip (left-aligned), not a full-width CTA.
+              <SupprButton
+                variant="ghost"
+                label="Go public"
                 style={styles.goPublicBtn}
-                onPress={(e) => {
-                  e.stopPropagation();
+                onPress={() => {
                   void handleGoPublic(item);
                 }}
-                accessibilityRole="button"
                 accessibilityLabel={`Publish ${item.title} to Discover`}
-              >
-                <Text style={styles.goPublicBtnText}>Go public</Text>
-              </Pressable>
+              />
             ) : null}
             {/* GW-08 (audit 2026-04-28): TrustChip removed for the same
                 reason as Discover hero — the source label was fabricated
@@ -1118,9 +1110,17 @@ export default function LibraryScreen() {
                   Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
                 </Text>
                 <View style={styles.emptyActions}>
-                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/import-shared")}>
-                    <Text style={styles.ctaBtnText}>Import a recipe</Text>
-                  </Pressable>
+                  {/* Button system (2026-06-12): the empty-library slab's ONE
+                      primary action → SupprButton variant="primary" (solid
+                      aubergine fill, white label, pill, no border/shadow).
+                      Supersedes the old aubergine-OUTLINE ctaBtn. Web parity:
+                      src/app/components/Library.tsx empty state. "Explore
+                      Discover" stays the quieter grey-outline secondary below. */}
+                  <SupprButton
+                    variant="primary"
+                    label="Import a recipe"
+                    onPress={() => router.push("/import-shared")}
+                  />
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/(tabs)/discover")}>
                     <Text style={styles.ctaBtnSecondaryText}>Explore Discover</Text>
                   </Pressable>

@@ -91,6 +91,7 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
+import { SupprButton } from "./suppr/suppr-button.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
@@ -1447,16 +1448,15 @@ function ProgressDashboardContent() {
               step="0.1"
               aria-label="Log weight"
             />
-            <button
+            <SupprButton
+              variant="primary"
               onClick={() => void saveTodayWeight()}
               data-testid="progress-log-weight"
-              /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
-                 (transparent fill, 1.5px primarySolid border + label). */
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
+              aria-label="Log weight"
             >
               <Icons.add className="h-4 w-4" aria-hidden />
               Log weight
-            </button>
+            </SupprButton>
           </div>
           {/* Gap 13 parity (web mirror of weight-tracker.tsx 2026-06-09):
               editorial coaching line in Newsreader italic 14px — matches
@@ -2388,7 +2388,7 @@ function ProgressDashboardContent() {
             onChange={(e) => setStepsInput(e.target.value)}
             type="number"
           />
-          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
+          <SupprButton variant="ghost" onClick={() => void saveTodaySteps()}>Save</SupprButton>
         </div>
       </SupprCard>
 
@@ -2409,7 +2409,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors">Save</button>
+          <SupprButton variant="ghost" onClick={() => void saveBodyFat()}>Save</SupprButton>
         </div>
       </SupprCard>
       <p
