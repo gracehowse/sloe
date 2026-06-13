@@ -402,6 +402,78 @@ export const DiscoverFeed = memo(function DiscoverFeed({
     );
   }
 
+  // ENG-1089 — the import-from-Reel card is the viral-hook acquisition surface;
+  // on mobile native it's the FIRST feed item, but on web mobile-web it rendered
+  // BELOW the 5 cuisine cluster carousels (Wave-4 inserted them above it). Render
+  // it ABOVE the carousels to restore the documented "import is the first thing
+  // the user sees" intent + web↔mobile parity. Flag-gated for reversibility; OFF
+  // keeps the old below-carousels position. WEB-ONLY (mobile has no carousels, so
+  // nothing to reorder there). The card JSX is extracted to `importCard` so it
+  // renders at exactly one position (no duplication, testID count unchanged).
+  const importAboveCarousels = isFeatureEnabled("discover_import_above_carousels_v1");
+  const importCard = (
+    <div className="md:hidden">
+      {isFeatureEnabled("discover_import_hero_v1") ? (
+        // ENG-1087 — hero affordance (parity with mobile discover.tsx). Keeps
+        // the tinted-slab grammar (flat-card law) but raises the weight so the
+        // viral-hook import beats a settings row: stronger ~20% tint, a SOLID
+        // plum icon circle (white glyph), a serif headline title, and a filled
+        // "Paste link" pill in place of the passive chevron. The whole slab is
+        // the tap target → the import/paste view; the pill is the affordance.
+        <div
+          role="button"
+          tabIndex={0}
+          data-testid="discover-import-cta-top"
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("view", "import");
+            window.history.pushState({}, "", url.toString());
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-colors"
+          style={{ background: "var(--accent-primary-soft-strong)" }}
+        >
+          <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
+            <Icons.import />
+          </span>
+          <div className="flex-1">
+            <p className="text-foreground" style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "22px", fontWeight: 500, letterSpacing: "-0.1px" }}>Import from TikTok, Instagram &amp; YouTube</p>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-primary-solid px-3 py-1.5 text-[13px] font-semibold text-white">Paste link</span>
+        </div>
+      ) : (
+        // Legacy nav-row slab (flag-off / kill switch). Aubergine SOFT-TINT
+        // nudge card (Sloe treatment §10, ENG-1082) — a DELIBERATE tinted
+        // affordance, NOT a white recipe card. testID preserved for Maestro.
+        <div
+          role="button"
+          tabIndex={0}
+          data-testid="discover-import-cta-top"
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("view", "import");
+            window.history.pushState({}, "", url.toString());
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+          className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+          style={{ background: "var(--accent-primary-soft)" }}
+        >
+          <IconBox size="lg" tone="primary">
+            <Icons.import />
+          </IconBox>
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+          </div>
+          <Icons.forward className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-background pb-12 md:max-w-6xl md:px-pm-5">
       {/* Title area — prototype treatment: BROWSE overline + large
@@ -605,6 +677,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             community uploads (`displayRecipes` = `nonSeedRecipes`)
             so seeds aren't duplicated. */}
 
+        {/* ENG-1089 — NEW position: the import-from-Reel card renders FIRST on
+            mobile-web (above the cluster carousels), matching the mobile native
+            order. `md:hidden` inside `importCard`, so desktop is unaffected.
+            Flag-off falls back to the old below-carousels position (line ~880). */}
+        {importAboveCarousels ? importCard : null}
+
         {/* Wave 4 (2026-05-02) — cuisine cluster carousels. Five
             horizontal carousels (Mediterranean → Asian → Latin →
             Comfort → Healthy bowls) render when no search/filter
@@ -802,74 +880,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           </div>
         ) : null}
 
-        {/* 2026-05-12 (premium-bar audit web parity, DC13 + refuse-
-            to-pass #8): permanent Import card above the feed on
-            mobile-web. Mirrors the mobile placement (shipped in
-            f69a279) — Import is the first thing the user sees on
-            Discover, not buried at the bottom under "From your
-            sources". `testID` preserved for the Maestro flow on
-            iOS, but the click handler uses History API parity with
-            the rest of the mobile-web nav. */}
-        <div className="md:hidden">
-          {isFeatureEnabled("discover_import_hero_v1") ? (
-            // ENG-1087 — hero affordance (parity with mobile discover.tsx). Keeps
-            // the tinted-slab grammar (flat-card law) but raises the weight so the
-            // viral-hook import beats a settings row: stronger ~20% tint, a SOLID
-            // plum icon circle (white glyph), a serif headline title, and a filled
-            // "Paste link" pill in place of the passive chevron. The whole slab is
-            // the tap target → the import/paste view; the pill is the affordance.
-            <div
-              role="button"
-              tabIndex={0}
-              data-testid="discover-import-cta-top"
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set("view", "import");
-                window.history.pushState({}, "", url.toString());
-                window.dispatchEvent(new PopStateEvent("popstate"));
-              }}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-              className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-colors"
-              style={{ background: "var(--accent-primary-soft-strong)" }}
-            >
-              <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
-                <Icons.import />
-              </span>
-              <div className="flex-1">
-                <p className="text-foreground" style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "22px", fontWeight: 500, letterSpacing: "-0.1px" }}>Import from TikTok, Instagram &amp; YouTube</p>
-                <p className="text-[13px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-primary-solid px-3 py-1.5 text-[13px] font-semibold text-white">Paste link</span>
-            </div>
-          ) : (
-            // Legacy nav-row slab (flag-off / kill switch). Aubergine SOFT-TINT
-            // nudge card (Sloe treatment §10, ENG-1082) — a DELIBERATE tinted
-            // affordance, NOT a white recipe card. testID preserved for Maestro.
-            <div
-              role="button"
-              tabIndex={0}
-              data-testid="discover-import-cta-top"
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set("view", "import");
-                window.history.pushState({}, "", url.toString());
-                window.dispatchEvent(new PopStateEvent("popstate"));
-              }}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-              className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-              style={{ background: "var(--accent-primary-soft)" }}
-            >
-              <IconBox size="lg" tone="primary">
-                <Icons.import />
-              </IconBox>
-              <div className="flex-1">
-                <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
-              </div>
-              <Icons.forward className="w-4 h-4 text-muted-foreground" />
-            </div>
-          )}
-        </div>
+        {/* ENG-1089 — OLD position (below the cluster carousels). Rendered only
+            when `discover_import_above_carousels_v1` is OFF (the kill switch).
+            Flag-on renders `importCard` ABOVE the carousels (see line ~616) so
+            the viral-hook import is the first feed item on mobile-web, matching
+            the mobile native order. The card JSX lives in the `importCard` const
+            (declared before `return`) so it's rendered at exactly one position. */}
+        {importAboveCarousels ? null : importCard}
 
         {/* Section 1 + 2: recipe sections — only when there's content
             MOBILE-WEB ONLY (below `md`). Desktop uses the flat grid
