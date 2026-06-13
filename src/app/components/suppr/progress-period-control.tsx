@@ -160,16 +160,35 @@ export function usePeriodSwipe(
   threshold = 64,
 ) {
   const startX = React.useRef<number | null>(null);
+  const startY = React.useRef<number | null>(null);
+  const reset = () => {
+    startX.current = null;
+    startY.current = null;
+  };
 
   return {
     onPointerDown: (e: React.PointerEvent) => {
       startX.current = e.clientX;
+      startY.current = e.clientY;
     },
+    // Reset on a cancelled/left gesture (no pointerup) so a stale start can't
+    // leak into a later unrelated pointerup. Mobile gets this free from the
+    // PanResponder lifecycle (ENG-1031 review hardening).
+    onPointerCancel: reset,
+    onPointerLeave: reset,
     onPointerUp: (e: React.PointerEvent) => {
-      if (startX.current == null) return;
+      if (startX.current == null || startY.current == null) {
+        reset();
+        return;
+      }
       const dx = e.clientX - startX.current;
-      startX.current = null;
+      const dy = e.clientY - startY.current;
+      reset();
       if (Math.abs(dx) < threshold) return;
+      // Axis guard (parity with the mobile PanResponder `shouldClaimChartSwipe`):
+      // only page on a deliberately HORIZONTAL gesture, so a diagonal scroll-fling
+      // with a >threshold horizontal component doesn't spuriously change period.
+      if (Math.abs(dx) <= Math.abs(dy)) return;
       // Swipe right (dx > 0) → go back in time (prev); swipe left → forward.
       if (dx > 0) onChange(previousPeriod(period));
       else if (!isCurrentPeriod(period)) onChange(nextPeriod(period));

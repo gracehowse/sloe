@@ -41,7 +41,7 @@ import {
   progressPeriodToWeightRange,
   type ProgressPeriod,
 } from "../../lib/nutrition/progressPeriod.ts";
-import { ProgressPeriodControl } from "./suppr/progress-period-control.tsx";
+import { ProgressPeriodControl, usePeriodSwipe } from "./suppr/progress-period-control.tsx";
 import { computeWeightTrendCopy } from "../../lib/nutrition/weightTrendTile.ts";
 import {
   computeWeightTrend,
@@ -244,6 +244,14 @@ function ProgressDashboardContent() {
   // Y + paging covers history (Apple has no All either). Shared period helper
   // (`progressPeriod.ts`) feeds both platforms identical windows + labels.
   const [period, setPeriod] = useState<ProgressPeriod>(DEFAULT_PERIOD);
+  // ENG-1031 — horizontal swipe accelerator on the chart area. Additive on top
+  // of the segmented control + chevron paging (ENG-1030); chevrons remain the
+  // primary/accessible path. Threshold 64px (both platforms). Direction: swipe
+  // RIGHT = previous period (past), swipe LEFT = next period (future), clamped
+  // at the current period (no-future) inside the hook. Same `setPeriod` the
+  // chevrons/segments use → identical period model + clamp. Mirror of the
+  // mobile chart-swipe lane.
+  const periodSwipe = usePeriodSwipe(period, setPeriod, 64);
   // Sloe Figma 492:2 — weight card Trend/Scale segmented toggle. "trend"
   // renders the smoothed moving-average line (calm Withings-style trend);
   // "scale" renders the raw weigh-ins. Mirrors mobile.
@@ -1485,7 +1493,19 @@ function ProgressDashboardContent() {
           amber = over, a small goal dot above each bar. Reads the same
           `dailyCaloriesData` (effective-target colouring) the detailed
           chart used; this is the frame-styled primary surface. */}
-      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-4" data-testid="progress-daily-calories-card">
+      {/* ENG-1031 — chart-area swipe accelerator. Pointer handlers from
+          `usePeriodSwipe` page prev/next on a >64px horizontal drag (swipe
+          right = past, left = future, clamped at the current period). Purely
+          additive to the chevrons/segments above; a tap (dx≈0) no-ops below
+          threshold so it never hijacks the card's own controls. */}
+      <SupprCard
+        elevation="card"
+        padding="lg"
+        radius="lg"
+        className="mb-4 touch-pan-y"
+        data-testid="progress-daily-calories-card"
+        {...periodSwipe}
+      >
         <div className="flex items-baseline justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">

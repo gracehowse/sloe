@@ -3,6 +3,7 @@ import {
   GestureResponderEvent,
   LayoutChangeEvent,
   PanResponder,
+  PanResponderGestureState,
   StyleSheet,
   Text,
   View,
@@ -33,6 +34,50 @@ const PAD_BOTTOM = 22;
 const PAD_LEFT = 8;
 const PAD_RIGHT = 48;
 
+// ENG-1031 — horizontal swipe-to-page on the chart area. Commit threshold is
+// 64px (shared with web — see `src/app/components/suppr/progress-period-control`
+// parity). The gesture is purely ADDITIVE: chevrons remain the required,
+// accessible path; swipe is a power-user shortcut, never the sole affordance.
+// Direction follows the chevrons' time axis: swipe RIGHT (dx > 0) = previous
+// (older), swipe LEFT (dx < 0) = next (newer). The no-future clamp is owned by
+// the caller (it passes `canSwipeNext=false` when on the current period).
+export const SWIPE_COMMIT_PX = 64;
+// Minimum horizontal travel before we even consider claiming the gesture — and
+// it must be more horizontal than vertical, so a vertical ScrollView drag still
+// wins and the scrubber tap/short-drag still reaches the inner responder.
+export const SWIPE_CLAIM_PX = 10;
+
+/**
+ * ENG-1031 — the capture-phase claim predicate, extracted as a pure fn so it's
+ * unit-testable without the RN PanResponder runtime (absent in the test shim).
+ * Claim the horizontal swipe ONLY when the drag is unambiguously horizontal:
+ * past the 10px deadzone AND more horizontal than vertical. The `|dx| > |dy|`
+ * guard is what keeps a vertical ScrollView drag (page scroll) from being
+ * stolen, and keeps a tap/short-drag reaching the inner scrubber responder.
+ */
+export function shouldClaimChartSwipe(dx: number, dy: number): boolean {
+  return Math.abs(dx) > SWIPE_CLAIM_PX && Math.abs(dx) > Math.abs(dy);
+}
+
+/**
+ * ENG-1031 — the release-phase commit decision, pure + testable. Maps the
+ * horizontal travel at release to a paging direction once it crosses the 64px
+ * commit threshold:
+ *   - swipe RIGHT (dx ≥ +64)  → "prev"  (older period; matches the ‹ chevron)
+ *   - swipe LEFT  (dx ≤ -64)  → "next"  (newer period; matches the › chevron),
+ *     but only when `canSwipeNext` — the no-future clamp, mirroring the
+ *     disabled forward chevron on the current period.
+ *   - anything short of the threshold (or a clamped forward swipe) → null.
+ */
+export function resolveChartSwipe(
+  dx: number,
+  canSwipeNext: boolean,
+): "prev" | "next" | null {
+  if (dx >= SWIPE_COMMIT_PX) return "prev";
+  if (dx <= -SWIPE_COMMIT_PX && canSwipeNext) return "next";
+  return null;
+}
+
 type Props = {
   trend: WeightTrendResult;
   goalKg: number | null;
@@ -52,6 +97,29 @@ type Props = {
    * fall back to the old "first / last date" two-tick behaviour.
    */
   range?: "1w" | "1m" | "3m" | "1y" | "all";
+  /**
+   * ENG-1031 — page to the previous (older) period. Fired when the user
+   * swipes RIGHT past the 64px commit threshold on the chart area. The caller
+   * wires this to the SAME `previousPeriod` helper the ‹ chevron uses, so the
+   * clamp/label logic is shared, not duplicated. Optional — omit to disable the
+   * swipe-back affordance (e.g. on the standalone weight-tracker route that has
+   * no period model).
+   */
+  onSwipePrev?: () => void;
+  /**
+   * ENG-1031 — page to the next (newer) period. Fired on a LEFT swipe past the
+   * commit threshold. The caller wires this to the SAME `nextPeriod` helper the
+   * › chevron uses. The no-future clamp is the caller's: pass
+   * `canSwipeNext={false}` when already on the current period and this callback
+   * is never invoked (mirroring the disabled forward chevron).
+   */
+  onSwipeNext?: () => void;
+  /**
+   * ENG-1031 — whether forward (newer) paging is allowed. Defaults to true.
+   * Pass `false` on the current period so a LEFT swipe is inert, exactly like
+   * the dimmed/disabled forward chevron — no future past now.
+   */
+  canSwipeNext?: boolean;
 };
 
 /** kg → lb at the canonical 2.20462 factor used elsewhere in mobile. */
@@ -249,7 +317,15 @@ function buildXAxisTicks(
   return ticks;
 }
 
-export function WeightChart({ trend, goalKg, isImperial = false, range }: Props) {
+export function WeightChart({
+  trend,
+  goalKg,
+  isImperial = false,
+  range,
+  onSwipePrev,
+  onSwipeNext,
+  canSwipeNext = true,
+}: Props) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the weight line.
   // The over-goal caution band keeps `Accent.warning`.
@@ -340,6 +416,56 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
   );
 
   /**
+   * ENG-1031 — horizontal swipe-to-page responder, mounted on a WRAPPER View
+   * around the chart so it can win a clearly-horizontal drag *before* the inner
+   * scrubber claims it. Capture-phase negotiation is deliberate:
+   *
+   *   - `onMoveShouldSetPanResponderCapture` only returns true once the drag is
+   *     unambiguously horizontal (|dx| > 10 AND |dx| > |dy|). Below that
+   *     threshold the parent stays out of the way, so:
+   *       • a vertical drag falls through to the outer ScrollView (page scroll
+   *         is never stolen — the |dx| > |dy| guard), and
+   *       • a tap or short horizontal drag still reaches the inner scrubber
+   *         responder (read-a-point-on-the-line stays intact).
+   *   - On release we commit if travel crossed the 64px threshold, mapping
+   *     direction to the SAME prev/next helpers the chevrons call. The caller
+   *     fires the selection haptic + owns the no-future clamp; we additionally
+   *     gate LEFT (next) on `canSwipeNext` so an inert forward swipe never even
+   *     reaches the callback (mirrors the disabled forward chevron).
+   *
+   * Defensive guard mirrors NorthStarBlock: the test-time RN shim has no
+   * PanResponder, so fall back to empty handlers there (the gesture path is
+   * on-device only; unit tests target the chevron path).
+   */
+  const swipeEnabled = (onSwipePrev != null || onSwipeNext != null) && count >= 2;
+  const swipeResponder = useMemo(() => {
+    if (
+      typeof PanResponder === "undefined" ||
+      typeof (PanResponder as { create?: unknown })?.create !== "function"
+    ) {
+      return { panHandlers: {} } as { panHandlers: Record<string, unknown> };
+    }
+    return PanResponder.create({
+      // Never claim on start — let the scrubber grab taps; we only steal a
+      // committed horizontal drag during the move phase.
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (
+        _evt: GestureResponderEvent,
+        g: PanResponderGestureState,
+      ) => swipeEnabled && shouldClaimChartSwipe(g.dx, g.dy),
+      onPanResponderRelease: (
+        _evt: GestureResponderEvent,
+        g: PanResponderGestureState,
+      ) => {
+        if (!swipeEnabled) return;
+        const decision = resolveChartSwipe(g.dx, canSwipeNext);
+        if (decision === "prev") onSwipePrev?.();
+        else if (decision === "next") onSwipeNext?.();
+      },
+    });
+  }, [swipeEnabled, canSwipeNext, onSwipePrev, onSwipeNext]);
+
+  /**
    * 2026-05-06: avoid goal-line label colliding with grid labels.
    * If the goal is within ~7 px of a grid value, push the label up
    * by 8 px so it's still readable.
@@ -357,6 +483,10 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
   const scrubMa = scrubIdx != null ? movingAvg[scrubIdx] : null;
 
   return (
+    // ENG-1031 — outer wrapper owns the swipe-to-page responder so it can win a
+    // committed horizontal drag in the capture phase, before the inner scrubber
+    // claims it. The inner View keeps the scrubber `panResponder` + `onLayout`.
+    <View {...swipeResponder.panHandlers}>
     <View
       onLayout={onLayout}
       style={{ height: CHART_HEIGHT + 24 }}
@@ -698,6 +828,7 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
           </View>
         );
       })()}
+    </View>
     </View>
   );
 }

@@ -92,15 +92,18 @@ describe("ProgressPeriodControl (web)", () => {
 
 describe("usePeriodSwipe (web optional accelerator)", () => {
   // The handler factory is pure (no DOM), so we drive its handlers directly
-  // with the only field they read (`clientX`). jsdom's synthetic PointerEvent
-  // doesn't carry a meaningful `clientX`, so DOM dispatch can't exercise the
-  // delta maths — direct invocation is the honest unit boundary here.
+  // with the fields they read (`clientX` + `clientY`). jsdom's synthetic
+  // PointerEvent doesn't carry meaningful coords, so DOM dispatch can't
+  // exercise the delta maths — direct invocation is the honest unit boundary.
+  // clientY defaults to 0 so these pure-horizontal drags clear the |dx|>|dy|
+  // axis guard added in ENG-1031.
   let captured: ReturnType<typeof usePeriodSwipe> | null = null;
   function Harness({ period, onChange }: { period: ProgressPeriod; onChange: (p: ProgressPeriod) => void }) {
     captured = usePeriodSwipe(period, onChange);
     return <div data-testid="swipe-area" />;
   }
-  const ptr = (clientX: number) => ({ clientX }) as unknown as React.PointerEvent;
+  const ptr = (clientX: number, clientY = 0) =>
+    ({ clientX, clientY }) as unknown as React.PointerEvent;
 
   it("a rightward drag pages back in time", () => {
     const onChange = vi.fn();
