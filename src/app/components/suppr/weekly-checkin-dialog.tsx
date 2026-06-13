@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { SupprButton } from "./suppr-button";
 import type { WeeklyCheckinContent } from "../../../lib/nutrition/weeklyCheckin";
 
 /**
@@ -118,25 +119,28 @@ export function WeeklyCheckinDialog({
         </div>
 
         <div className="flex flex-col gap-2 mt-4">
-          {/* Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline; the "Keep current" tertiary below keeps
-              its neutral grey outline. Mirror of mobile `WeeklyCheckinModal`. */}
-          <button
+          {/* Sloe button system (2026-06-12): main CTA → SupprButton
+              variant="primary" (solid aubergine pill); the "Keep current"
+              tertiary → variant="ghost" (transparent / plum label). Mirror
+              of mobile `WeeklyCheckinModal`. */}
+          <SupprButton
+            variant="primary"
             type="button"
             onClick={onAccept}
             aria-label="Accept new target"
-            className="w-full py-3 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors"
+            className="w-full py-3"
           >
             Accept new target
-          </button>
-          <button
+          </SupprButton>
+          <SupprButton
+            variant="ghost"
             type="button"
             onClick={onDismiss}
             aria-label="Keep current target"
-            className="w-full py-3 rounded-xl border border-border bg-transparent text-foreground font-semibold text-sm hover:bg-accent/40 transition-colors"
+            className="w-full py-3"
           >
             Keep current
-          </button>
+          </SupprButton>
         </div>
       </DialogContent>
     </Dialog>

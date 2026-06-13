@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { FoodHistoryItem } from "../../../lib/nutrition/foodHistory";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import { SupprButton } from "./suppr-button";
 
 /**
  * TodayEatAgainBanner — "Eat again" one-tap re-log prompt.
@@ -55,19 +56,19 @@ export function TodayEatAgainBanner({
           {Math.round(suggestion.carbs)}g C · {Math.round(suggestion.fat)}g F · into {slot}
         </p>
       </div>
-      {/* Sloe treatment system (2026-06-08): primary inline CTA →
-          aubergine outline (transparent fill + 1.5px primary-solid
-          border + primary-solid label), not a filled or tinted slab.
-          Sits on the soft-tint nudge with a white inner fill so the
-          outline reads crisp against the wash. */}
-      <button
+      {/* Sloe button system (2026-06-12): this is a NUDGE banner (same category
+          as the activity-bonus nudge) — the CTA → SupprButton variant="ghost"
+          (transparent / no border / plum label). The north-star hero owns the
+          primary "Log it" moment. Mirror of mobile `TodayEatAgainBanner`. */}
+      <SupprButton
+        variant="ghost"
         type="button"
         onClick={onLog}
-        className="px-3 py-1.5 rounded-md text-[11px] font-bold border-[1.5px] border-primary-solid bg-background text-primary-solid hover:bg-primary/5"
+        className="h-auto px-3 py-1.5 rounded-md text-[11px] font-bold"
         aria-label={`Log ${suggestion.recipeTitle} to ${slot}`}
       >
         Log it
-      </button>
+      </SupprButton>
       <button
         type="button"
         onClick={onDismiss}

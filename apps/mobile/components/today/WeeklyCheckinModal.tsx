@@ -3,8 +3,9 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, TrendingUp } from "lucide-react-native";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import type { WeeklyCheckinContent } from "@/lib/weeklyCheckin";
 
 /**
@@ -289,49 +290,27 @@ export function WeeklyCheckinModal({
             </Text>
           ) : null}
 
-          {/* Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline (transparent fill + 1.5px primarySolid
-              border + primarySolid label). The "Keep current" tertiary
-              below keeps its neutral grey outline so the hierarchy reads. */}
-          <Pressable
-            onPress={onAccept}
-            accessibilityRole="button"
+          {/* Button system (2026-06-12): the modal's main CTA "Accept new
+              target" → SOLID-aubergine primary `SupprButton` (white label,
+              full-width pill). "Keep current" is the tertiary → GHOST
+              `SupprButton` (transparent, plum label, no border). Supersedes
+              the old aubergine-OUTLINE primary + neutral-grey-outline
+              tertiary. Mirror of web `WeeklyCheckinDialog`. */}
+          <SupprButton
+            variant="primary"
+            label="Accept new target"
             accessibilityLabel="Accept new target"
-            style={({ pressed }) => ({
-              width: "100%",
-              paddingVertical: 16,
-              borderRadius: Radius.md,
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
-              marginBottom: Spacing.sm,
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
-              Accept new target
-            </Text>
-          </Pressable>
+            onPress={onAccept}
+            style={{ width: "100%", marginBottom: Spacing.sm }}
+          />
 
-          <Pressable
-            onPress={onDismiss}
-            accessibilityRole="button"
+          <SupprButton
+            variant="ghost"
+            label="Keep current"
             accessibilityLabel="Keep current target"
-            style={{
-              width: "100%",
-              paddingVertical: 16,
-              borderRadius: Radius.md,
-              backgroundColor: "transparent",
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor,
-            }}
-          >
-            <Text style={{ color: textColor, fontWeight: "600", fontSize: 16 }}>
-              Keep current
-            </Text>
-          </Pressable>
+            onPress={onDismiss}
+            style={{ width: "100%" }}
+          />
         </View>
       </View>
     </Modal>

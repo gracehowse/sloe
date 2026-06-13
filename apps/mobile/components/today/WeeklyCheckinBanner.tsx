@@ -37,8 +37,9 @@
 import { Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface WeeklyCheckinBannerProps {
@@ -104,24 +105,20 @@ export function WeeklyCheckinBanner({
           See last week&rsquo;s intake, weight delta, and adjust your goal pace.
         </Text>
       </View>
-      {/* Sloe treatment system (2026-06-08): primary inline CTA →
-          aubergine outline (transparent fill + 1.5px primarySolid border
-          + primarySolid label), not a filled slab. Mobile-only banner
-          (no web mirror — web surfaces the Digest on Progress instead). */}
-      <Pressable
-        accessibilityRole="button"
+      {/* Button system (2026-06-12): this nudge banner opens the check-in
+          modal — a SECONDARY action (the modal owns the primary "Accept"),
+          so its CTA is a GHOST `SupprButton` (transparent, plum label, no
+          border). Supersedes the old aubergine-OUTLINE treatment. Compact
+          padding overrides the default CTA size to fit the banner row.
+          Mobile-only banner (no web mirror — web surfaces the Digest on
+          Progress instead). */}
+      <SupprButton
+        variant="ghost"
+        haptic="selection"
         accessibilityLabel="Open weekly check-in"
         onPress={onOpen}
         testID="weekly-checkin-banner-open"
-        style={({ pressed }) => ({
-          paddingHorizontal: Spacing.dense,
-          paddingVertical: Spacing.sm,
-          borderRadius: Radius.sm,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          opacity: pressed ? 0.6 : 1,
-        })}
+        style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
       >
         <Text
           style={{
@@ -133,7 +130,7 @@ export function WeeklyCheckinBanner({
         >
           OPEN
         </Text>
-      </Pressable>
+      </SupprButton>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Dismiss weekly check-in banner"
