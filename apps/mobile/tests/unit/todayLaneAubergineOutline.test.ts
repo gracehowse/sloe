@@ -102,13 +102,32 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     expect(EDIT_MEAL).toMatch(/Accent\.destructive/); // Delete unchanged
   });
 
-  it("Complete-day modal 'View my progress' is an aubergine outline", () => {
-    expect(COMPLETE_DAY).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,200}>View my progress</);
+  it("Complete-day modal 'View my progress' is a SOLID primary SupprButton (its sole CTA)", () => {
+    // Button system (2026-06-12): the confirmation sheet's one/only action →
+    // solid SupprButton primary (white label, full-width pill).
+    expect(COMPLETE_DAY).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    expect(COMPLETE_DAY).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="View my progress"/);
+    // Must NOT regress to the retired aubergine-outline.
+    expect(COMPLETE_DAY).not.toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 
-  it("Weekly check-in modal 'Accept new target' is an outline; banner 'OPEN' is an outline", () => {
-    expect(CHECKIN_MODAL).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}Accept new target/);
-    expect(CHECKIN_BANNER).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}OPEN/);
+  it("Weekly check-in modal 'Accept' is a SOLID primary + 'Keep current' a GHOST; banner 'OPEN' is a GHOST", () => {
+    // Button system (2026-06-12): the modal's main CTA "Accept new target" →
+    // solid primary; the "Keep current" tertiary → ghost. The nudge banner's
+    // "OPEN" routes to the modal (secondary) → ghost.
+    expect(CHECKIN_MODAL).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    expect(CHECKIN_MODAL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="Accept new target"/);
+    expect(CHECKIN_MODAL).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Keep current"/);
+    expect(CHECKIN_BANNER).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    // The OPEN nudge is the banner's only CTA → ghost SupprButton wrapping the
+    // compact caps label (a long inline comment + attrs sit between the tag and
+    // the label text, so assert tag + label as two pins rather than a tight
+    // single-window match).
+    expect(CHECKIN_BANNER).toMatch(/<SupprButton\s+variant="ghost"/);
+    expect(CHECKIN_BANNER).toMatch(/>\s*OPEN\s*<\/Text>\s*<\/SupprButton>/);
+    // Must NOT regress to the retired aubergine-outline on either surface.
+    expect(CHECKIN_MODAL).not.toMatch(/borderColor:\s*accent\.primarySolid/);
+    expect(CHECKIN_BANNER).not.toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 
   it("Milestone 'Keep going' is a SOLID-plum SupprButton primary (button system 2026-06-12)", () => {
@@ -208,9 +227,19 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
     expect(SNAP).not.toMatch(/borderRadius:\s*22,\s*\n\s*backgroundColor:\s*accent\.primary,/);
   });
 
-  it("Eat-again nudge is a soft-tint card with an outline 'Log it' CTA", () => {
+  it("Eat-again nudge is a soft-tint card with a GHOST 'Log it' CTA", () => {
+    // Button system (2026-06-12): the eat-again prompt is a NUDGE banner (same
+    // category as the activity-bonus discover nudge) — the north-star hero owns
+    // the primary "Log it" moment, so this secondary nudge CTA is a ghost
+    // SupprButton (transparent, plum label). The soft-tint card wash stays.
+    expect(EAT_AGAIN).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
     expect(EAT_AGAIN).toMatch(/accent\.primarySoft/); // card wash
-    expect(EAT_AGAIN).toMatch(/borderColor:\s*accent\.primarySolid/); // CTA outline
+    // Ghost CTA wrapping the "Log it" caption label (an inline comment + attrs
+    // sit between the tag and the label, so assert tag + label as two pins).
+    expect(EAT_AGAIN).toMatch(/<SupprButton\s+variant="ghost"/);
+    expect(EAT_AGAIN).toMatch(/>Log it<\/Text>\s*<\/SupprButton>/);
+    // Must NOT regress to the retired aubergine-outline.
+    expect(EAT_AGAIN).not.toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 });
 

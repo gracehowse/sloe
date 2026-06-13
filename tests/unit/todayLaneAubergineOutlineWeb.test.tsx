@@ -53,9 +53,17 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(NORTH_STAR).not.toMatch(OUTLINE);
   });
 
-  it("Eat-again 'Log it' CTA is an outline on a soft-tint nudge card", () => {
+  it("Eat-again 'Log it' CTA is a ghost SupprButton on a soft-tint nudge card", () => {
+    // Button system migration (2026-06-12, ENG-1079): this is a NUDGE banner
+    // (same category as the activity-bonus nudge, already ghost) — the CTA →
+    // `SupprButton` variant="ghost" (transparent, plum label, no border). The
+    // north-star hero owns the primary "Log it" moment. Mobile parity:
+    // TodayEatAgainBanner ghost. Supersedes the old aubergine-OUTLINE treatment.
     expect(EAT_AGAIN).toMatch(/bg-primary\/10/); // nudge card wash
-    expect(EAT_AGAIN).toMatch(/border-\[1\.5px\]\s+border-primary-solid[\s\S]{0,80}text-primary-solid/);
+    expect(EAT_AGAIN).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(EAT_AGAIN).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}>\s*Log it/);
+    // Must NOT keep the retired aubergine outline.
+    expect(EAT_AGAIN).not.toMatch(OUTLINE);
   });
 
   it("First-meal empty 'Log a meal' CTA is a SOLID primary SupprButton", () => {
@@ -81,9 +89,15 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(MEALS_SECTION).not.toMatch(OUTLINE);
   });
 
-  it("Complete-day dialog 'View my progress' is an aubergine outline", () => {
-    expect(COMPLETE_DAY).toMatch(OUTLINE);
-    expect(COMPLETE_DAY).not.toMatch(FILLED_SLAB);
+  it("Complete-day dialog 'View my progress' is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the modal's sole CTA →
+    // `SupprButton` variant="primary" (solid aubergine fill, white label, pill).
+    // Mobile parity: TodayCompleteDayModal primary. Supersedes the old
+    // aubergine-OUTLINE treatment.
+    expect(COMPLETE_DAY).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(COMPLETE_DAY).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}>\s*View my progress/);
+    // Must NOT keep the retired aubergine outline.
+    expect(COMPLETE_DAY).not.toMatch(OUTLINE);
   });
 
   it("Today 'Complete Day' button (NutritionTracker) is a SOLID primary SupprButton", () => {
@@ -95,8 +109,17 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(TRACKER).not.toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent text-primary-solid[\s\S]{0,160}>\s*Complete Day/);
   });
 
-  it("Weekly check-in dialog 'Accept new target' is an aubergine outline", () => {
-    expect(CHECKIN_DIALOG).toMatch(OUTLINE);
+  it("Weekly check-in dialog 'Accept new target' is a SOLID primary; 'Keep current' is a ghost", () => {
+    // Button system migration (2026-06-12, ENG-1079): the modal's main CTA →
+    // `SupprButton` variant="primary" (solid aubergine fill, white label, pill);
+    // the "Keep current" tertiary → variant="ghost" (transparent, plum label).
+    // Mobile parity: WeeklyCheckinModal. Supersedes the old aubergine-OUTLINE
+    // treatment.
+    expect(CHECKIN_DIALOG).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(CHECKIN_DIALOG).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}>\s*Accept new target/);
+    expect(CHECKIN_DIALOG).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}>\s*Keep current/);
+    // Must NOT keep the retired aubergine outline.
+    expect(CHECKIN_DIALOG).not.toMatch(OUTLINE);
   });
 
   it("Milestone dialog 'Keep going' is a SOLID primary SupprButton", () => {

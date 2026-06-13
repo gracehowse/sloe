@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Icons } from "../ui/icons";
+import { SupprButton } from "./suppr-button";
 import { projectWeight } from "../../../lib/weightProjection";
 import { kgToLb } from "../../../lib/nutrition/tdee";
 
@@ -92,16 +93,16 @@ export function TodayCompleteDayDialog({
               Great work logging today! Set your weight in your profile to see weight projections here.
             </p>
           )}
-          {/* Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline (transparent fill + 1.5px primary-solid
-              border + primary-solid label), not a filled slab. Mirror
-              of mobile `TodayCompleteDayModal`. */}
-          <button
+          {/* Sloe button system (2026-06-12): the modal's sole CTA → SupprButton
+              variant="primary" (solid aubergine pill / white label). Mirror of
+              mobile `TodayCompleteDayModal`. */}
+          <SupprButton
+            variant="primary"
             onClick={onViewProgress}
-            className="w-full py-3.5 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors"
+            className="w-full py-3.5"
           >
             View my progress
-          </button>
+          </SupprButton>
         </div>
       </DialogContent>
     </Dialog>

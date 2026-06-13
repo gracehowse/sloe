@@ -7,8 +7,9 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
 
@@ -112,28 +113,26 @@ export function TodayEatAgainBanner({
           {formatMacro(suggestion.carbs, "carbs")}g C · {formatMacro(suggestion.fat, "fat")}g F · into {slot}
         </Text>
       </View>
-      <Pressable
-        accessibilityRole="button"
+      {/* Button system (2026-06-12): this eat-again prompt is a NUDGE
+          banner (same category as the activity-bonus discover nudge, which
+          is already ghost) — the north-star hero owns the primary "Log it"
+          moment, so this secondary nudge CTA is a GHOST `SupprButton`
+          (transparent, plum label, no border). Supersedes the old
+          aubergine-OUTLINE treatment. Compact padding overrides the default
+          CTA size to fit the banner row. Mirror of web `TodayEatAgainBanner`. */}
+      <SupprButton
+        variant="ghost"
+        haptic="selection"
         accessibilityLabel={`Log ${suggestion.recipeTitle} to ${slot}`}
         onPress={onLog}
-        style={{
-          paddingHorizontal: Spacing.dense,
-          paddingVertical: Spacing.sm,
-          borderRadius: Radius.sm,
-          // Sloe treatment system (2026-06-08): primary inline CTA →
-          // aubergine outline (transparent fill + 1.5px primarySolid
-          // border + primarySolid label), not a filled slab.
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-        }}
+        style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
       >
         {/* 2026-05-12 (premium-bar audit copy unify): "LOG" all-caps
             was the lone outlier across Today CTAs. The canonical verb
             on the Today + LogSheet + NorthStar surfaces is "Log it"
             (sentence case). This banner now matches. */}
         <Text style={{ ...Type.caption, color: accent.primarySolid, fontWeight: "700" }}>Log it</Text>
-      </Pressable>
+      </SupprButton>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Dismiss Eat again suggestion"

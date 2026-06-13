@@ -4,8 +4,9 @@ import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { projectWeight } from "@/lib/weightProjection";
 
 /**
@@ -155,32 +156,18 @@ export function TodayCompleteDayModal({
             </Text>
           )}
 
-          {/* Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline (transparent fill + 1.5px primarySolid
-              border + primarySolid label), not a filled slab. Mirror
-              of web `TodayCompleteDayDialog`. */}
-          <Pressable
+          {/* Button system (2026-06-12): this confirmation sheet's sole CTA →
+              SOLID-aubergine primary `SupprButton` (white label, full-width
+              pill). It's the one/only action on the modal, so it earns the
+              primary treatment. Supersedes the old aubergine-OUTLINE.
+              Mirror of web `TodayCompleteDayDialog`. */}
+          <SupprButton
+            variant="primary"
+            label="View my progress"
+            accessibilityLabel="View my progress"
             onPress={onViewProgress}
-            style={({ pressed }) => ({
-              width: "100%",
-              // ENG-1064 (TF57 F-167): full-width prominent modal CTA is the
-              // "large" outline tier — Radius.xl, matching its web twin
-              // `today-complete-day-dialog`'s xl-radius TIER (web --radius-xl
-              // resolves 10px vs mobile 12px — a pre-existing token-scale
-              // divergence, same intent, not pixel-exact), not the small
-              // inline Radius.md it had drifted to. Spacing.md vertical
-              // padding (was a literal 16).
-              paddingVertical: Spacing.md,
-              borderRadius: Radius.xl,
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>View my progress</Text>
-          </Pressable>
+            style={{ width: "100%" }}
+          />
         </View>
       </View>
     </Modal>
