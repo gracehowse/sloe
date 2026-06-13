@@ -345,10 +345,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // Flat-card surfaces (2026-06-12, Withings grammar — decision:
   // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft `--elev-card-soft`
   // lift is RETIRED here (this slab applied the token inline, bypassing the
-  // `.card-slab` primitive the CORE flattened). Separation is now the white
-  // slab against the cream ground alone — zero shadow — mirroring mobile flat.
+  // `.card-slab` primitive the CORE flattened). Separation is now a true-white
+  // `--card` slab against the warm `--background-secondary` page — zero shadow —
+  // mirroring mobile flat. (Was `--background` cream, which on the
+  // `--background-secondary` page reads as ~no separation once the shadow is
+  // gone; `--card` white restores the white-on-cream contrast the decision
+  // specifies.)
   const whiteSlabStyle: React.CSSProperties = {
-    backgroundColor: "var(--background)",
+    backgroundColor: "var(--card)",
   };
 
   // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no
