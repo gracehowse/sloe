@@ -198,4 +198,53 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(MOBILE_SRC).toMatch(/consumeNewSocialRecipeUrlFromClipboard/);
     });
   });
+
+  // ── ENG-1082 (2026-06-13) — §7 filter-chip + import-banner cohesion.
+  // The Discover filter chips must render byte-identical to the Library
+  // row: the soft tint IS the only selection signal, so a rest chip carries
+  // NO light-mode ring (the border is gated through `cardElevation.useBorder`,
+  // dead → flat-card decision). The import banner is a deliberate soft-tint
+  // affordance (NOT a white recipe card), token-sourced, with no border.
+  describe("ENG-1082 — §7 filter-chip + import-banner cohesion (cross-platform)", () => {
+    it("mobile filter chips gate the border through cardElevation (no hardcoded light-mode ring)", () => {
+      // Pre-fix: `borderWidth: StyleSheet.hairlineWidth` unconditionally,
+      // putting a ring on Discover rest chips that Library's identical row
+      // does not carry. Post-fix both rows gate it the same way.
+      expect(MOBILE_SRC).toMatch(
+        /borderWidth: cardElevation\.useBorder \? StyleSheet\.hairlineWidth : 0/,
+      );
+      // The unconditional hairline on the chip is gone.
+      expect(MOBILE_SRC).not.toMatch(
+        /minHeight: 36,[\s\S]{0,200}borderWidth: StyleSheet\.hairlineWidth,/,
+      );
+    });
+
+    it("mobile filter chips use the soft-tint selection grammar (accentSoft fill + accentInk label, no solid slab)", () => {
+      // Rest = quiet card slab; selected = accentSoft fill + accentInk label.
+      expect(MOBILE_SRC).toMatch(/backgroundColor: following \? accentSoft : colors\.card/);
+      expect(MOBILE_SRC).toMatch(/backgroundColor: active \? accentSoft : colors\.card/);
+      expect(MOBILE_SRC).toMatch(/color: following \? accentInk : colors\.textSecondary/);
+      expect(MOBILE_SRC).toMatch(/color: active \? accentInk : colors\.textSecondary/);
+    });
+
+    it("web filter chips use bg-primary-soft selected + bg-card rest, with NO selected ring (ENG-1022 parity)", () => {
+      expect(WEB_SRC).toMatch(/bg-primary-soft text-primary-solid font-semibold/);
+      expect(WEB_SRC).toMatch(/bg-card text-muted-foreground/);
+      // No solid accent ring survived on the chips.
+      expect(WEB_SRC).not.toMatch(/border-primary-solid[\s\S]{0,40}data-testid="discover-category/);
+    });
+
+    it("mobile import banner is a token-sourced soft-tint affordance with NO border or off-token hex", () => {
+      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySoft/);
+      // The pre-fix off-token literal-hex fill + tint border are gone.
+      expect(MOBILE_SRC).not.toMatch(/backgroundColor: t\.accent \+ "08"/);
+      expect(MOBILE_SRC).not.toMatch(/borderColor: t\.accent \+ "22"/);
+    });
+
+    it("web import banner is a token-sourced soft-tint affordance with NO ring border", () => {
+      expect(WEB_SRC).toMatch(/background: "var\(--accent-primary-soft\)"/);
+      // Border ring dropped per the flat-surface law.
+      expect(WEB_SRC).not.toMatch(/borderColor: "var\(--accent-primary-ring\)"/);
+    });
+  });
 });

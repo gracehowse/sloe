@@ -698,11 +698,18 @@ export default function DiscoverScreen() {
               paddingHorizontal: Spacing.dense,
               paddingVertical: 8,
               minHeight: 36,
-              // Chips census (2026-06-10): Radius.full + quiet card fill —
-              // the literal 20 and transparent ground were the drift vs
-              // Library's identical row (§7 selection grammar).
+              // Chips census (2026-06-13, ENG-1082): §7 grammar = the soft
+              // tint IS the only selection signal — NO ring. Rest is a quiet
+              // card slab on the cream ground; selected is `accentSoft` fill +
+              // `accentInk` label. The pre-fix unconditional hairline put a
+              // light-mode ring on Discover chips that the identical Library
+              // row (`library.tsx` `filterPill`) does NOT carry — the drift
+              // this pass converges. Border is now gated through
+              // `cardElevation.useBorder` (dead → flat-card decision) so the
+              // two rows render byte-identical: flat in light, fill-only in
+              // dark. Selected border == fill so it never reads as a ring.
               borderRadius: Radius.full,
-              borderWidth: StyleSheet.hairlineWidth,
+              borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
               borderColor: following ? accentSoft : colors.cardBorder,
               backgroundColor: following ? accentSoft : colors.card,
               justifyContent: "center",
@@ -733,9 +740,12 @@ export default function DiscoverScreen() {
                   paddingHorizontal: Spacing.dense,
                   paddingVertical: 8,
                   minHeight: 36,
-                  // Chips census (2026-06-10): see the Following pill above.
+                  // Chips census (2026-06-13, ENG-1082): see the Following pill
+                  // above — border gated through `cardElevation.useBorder` so
+                  // the rest chip carries no light-mode ring (§7 "tint is the
+                  // signal"), matching Library's identical row exactly.
                   borderRadius: Radius.full,
-                  borderWidth: StyleSheet.hairlineWidth,
+                  borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                   borderColor: active ? accentSoft : colors.cardBorder,
                   backgroundColor: active ? accentSoft : colors.card,
                   justifyContent: "center",
@@ -847,10 +857,18 @@ export default function DiscoverScreen() {
             // Spacing.md (16); marginBottom 14 → Spacing.md (16).
             gap: Spacing.md,
             padding: Spacing.md,
-            borderRadius: Radius.lg,
-            backgroundColor: t.accent + "08",
-            borderWidth: 1,
-            borderColor: t.accent + "22",
+            // Import banner (2026-06-13, ENG-1082): a DELIBERATE soft-tint
+            // affordance, NOT a white recipe card — it's the import nudge,
+            // so it reads as a tinted slab that stands apart from the white
+            // feed cards (Sloe treatment §10, documented in the canon). Two
+            // fixes converge here: (1) the fill moves off the off-token
+            // literal hex `t.accent + "08"`/`"22"` to the scheme-aware
+            // `accent.primarySoft` token (== web `--accent-primary-soft`),
+            // killing the call-site hex; (2) the border is dropped per the
+            // flat-surface law — the soft tint IS the separation, same as a
+            // selected chip. Radius matches the sibling My Library CARD below.
+            borderRadius: CARD_RADIUS,
+            backgroundColor: accent.primarySoft,
             marginBottom: Spacing.md,
           }}
         >
