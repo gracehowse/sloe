@@ -3,6 +3,7 @@ import { classifyMealType } from "./classifyMealType";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { normaliseSource } from "@suppr/shared/recipes/persistSourceAttribution";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import { deriveImportedRecipeTitle } from "@suppr/shared/recipes/deriveImportedRecipeTitle";
 import { isStructuredSource } from "@suppr/shared/nutrition/structuredSourceGate";
 import {
   IMPORT_ERROR_COPY,
@@ -98,14 +99,6 @@ export async function saveImportedRecipe(
   userId: string,
   recipe: ApiImportedRecipe,
 ): Promise<{ recipeId: string } | { error: string }> {
-  // Polish (2026-04-25): title-case ALL-CAPS imported titles. Many publisher
-  // sites store schema.org `name` in ALL CAPS for visual emphasis; raw
-  // pass-through made the whole app read like spam. Helper preserves any
-  // author-chosen mixed case ("Banh Mi" stays as-is).
-  const title =
-    normalizeRecipeTitle(recipe.title) === "Untitled recipe"
-      ? "Imported recipe"
-      : normalizeRecipeTitle(recipe.title);
   const instructions = normalizeInstructions(recipe.instructions);
   const ingredients = normalizeIngredients(recipe.ingredients);
   const servings =
@@ -128,6 +121,18 @@ export async function saveImportedRecipe(
   const { source_url: sourceUrl, source_name: sourceName } = normaliseSource({
     url: recipe.sourceUrl ?? (recipe as { source_url?: string | null }).source_url ?? null,
     name: recipe.sourceName ?? (recipe as { source_name?: string | null }).source_name ?? null,
+  });
+
+  // Title (2026-04-25 polish + ENG-1047): title-case ALL-CAPS publisher titles
+  // (`normalizeRecipeTitle` — many sites store schema.org `name` in ALL CAPS so
+  // raw pass-through read like spam; author mixed-case like "Banh Mi" is kept),
+  // then for untitled imports fall back first-ingredient → source-domain →
+  // "Imported recipe" via the shared `deriveImportedRecipeTitle` (web parity).
+  const normalizedTitle = normalizeRecipeTitle(recipe.title);
+  const title = deriveImportedRecipeTitle({
+    sanitizedTitle: normalizedTitle === "Untitled recipe" ? null : normalizedTitle,
+    ingredients,
+    sourceUrl,
   });
 
   /**
