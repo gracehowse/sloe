@@ -77,10 +77,13 @@ describe("verifyIngredients golden (estimation-only, mocked OFF)", () => {
     expect(result.totals.calories).toBe(0);
   });
 
-  it("parseRawIngredients: 3 medium onions estimate is preserved but excluded from totals", async () => {
-    const structured = parseRawIngredients(["3 medium onions"]);
+  it("parseRawIngredients: 3 medium shallots estimate is preserved but excluded from totals", async () => {
+    // shallot is absent from the curated genericFoods table (ENG-746), so it
+    // exercises the count-to-weight estimation fallback rather than the curated
+    // short-circuit that "onion" now takes.
+    const structured = parseRawIngredients(["3 medium shallots"]);
     expect(structured[0]!.amount).toBeTruthy();
-    expect(structured[0]!.name.toLowerCase()).toContain("onion");
+    expect(structured[0]!.name.toLowerCase()).toContain("shallot");
     const result = await verifyIngredients({
       ingredients: structured,
       servings: 1,

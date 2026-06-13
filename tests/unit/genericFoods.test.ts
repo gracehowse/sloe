@@ -25,6 +25,9 @@ describe("matchGenericFood — F-73 follow-up", () => {
     expect(matchGenericFood("oats")?.id).toBe("oats-raw");
     expect(matchGenericFood("greek yogurt")?.id).toBe("greek-yogurt");
     expect(matchGenericFood("peanut butter")?.id).toBe("peanut-butter");
+    // ENG-746 staple addition (all-purpose flour)
+    expect(matchGenericFood("flour")?.id).toBe("flour");
+    expect(matchGenericFood("all-purpose flour")?.id).toBe("flour");
   });
 
   it("matches plurals / case-insensitive / whitespace tolerant", () => {
@@ -38,6 +41,15 @@ describe("matchGenericFood — F-73 follow-up", () => {
     expect(matchGenericFood("greek yoghurt")?.id).toBe("greek-yogurt");
     expect(matchGenericFood("courgette")).toBeNull(); // not in v1, deliberately
     expect(matchGenericFood("tinned tuna")?.id).toBe("tuna-canned");
+    // ENG-746: plain flour (UK) maps to the all-purpose entry
+    expect(matchGenericFood("plain flour")?.id).toBe("flour");
+  });
+
+  it("does NOT collapse non-plain flours onto the all-purpose entry", () => {
+    // self-raising / bread / wholemeal flours differ — must fall through
+    expect(matchGenericFood("self-raising flour")).toBeNull();
+    expect(matchGenericFood("wholemeal flour")).toBeNull();
+    expect(matchGenericFood("bread flour")).toBeNull();
   });
 
   it("returns null for empty / whitespace input", () => {
@@ -80,6 +92,7 @@ describe("GENERIC_FOODS table integrity", () => {
     expect(ids).toContain("greek-yogurt");
     expect(ids).toContain("peanut-butter");
     expect(ids).toContain("almonds");
+    expect(ids).toContain("flour");
   });
 
   it("every food has at least one alias and a positive serving size", () => {
@@ -125,5 +138,12 @@ describe("GENERIC_FOODS table integrity", () => {
       expect(f.per100g.calories).toBeGreaterThanOrEqual(0);
       expect(f.per100g.calories).toBeLessThanOrEqual(900);
     }
+  });
+
+  it("the ENG-746 flour entry carries its nutrition-engine-validated per-100g", () => {
+    // Locked against silent drift. Source: USDA SR Legacy #20081 (all-purpose,
+    // enriched); micros baked from Foundation #789890 (kcal Δ 0.5%).
+    const flour = GENERIC_FOODS.find((f) => f.id === "flour")!;
+    expect(flour.per100g).toMatchObject({ calories: 364, protein: 10.3, carbs: 76.3, fat: 1.0, sodiumMg: 2 });
   });
 });

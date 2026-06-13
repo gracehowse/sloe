@@ -21,8 +21,8 @@ import {
 import { GENERIC_FOODS } from "../../src/lib/nutrition/genericFoods";
 
 describe("GENERIC_FOOD_MICROS — table shape", () => {
-  it("covers exactly 35 generic foods", () => {
-    expect(Object.keys(GENERIC_FOOD_MICROS)).toHaveLength(35);
+  it("covers exactly 36 generic foods", () => {
+    expect(Object.keys(GENERIC_FOOD_MICROS)).toHaveLength(36);
   });
 
   it("keys every baked micro panel to a real GenericFood id (no orphans)", () => {

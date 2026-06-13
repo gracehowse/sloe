@@ -55,10 +55,14 @@ describe("POST /api/nutrition/verify-recipe", () => {
   });
 
   it("returns 200 with stable verify shape (golden estimation path)", async () => {
+    // Both ingredients are absent from the curated genericFoods/genericBeverages
+    // tables (ENG-746) so they hit the estimation fallback, keeping this an
+    // all-Estimated golden path. A curated staple (e.g. "chicken breast") would
+    // now short-circuit to a "Suppr" match and flip primarySource.
     const body = {
       ingredients: [
         { name: "olive oil", amount: "2", unit: "tbsp" },
-        { name: "chicken breast", amount: "200", unit: "g" },
+        { name: "sirloin steak", amount: "200", unit: "g" },
       ],
       servings: 2,
       provider: "auto" as const,
