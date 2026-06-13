@@ -35,6 +35,7 @@ import {
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
 import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
+import { clampTargetToSafetyFloor, coerceSex } from "../lib/onboarding/targets.ts";
 import {
   coerceWeightSurfaceMode,
   type WeightSurfaceMode,
@@ -519,7 +520,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setProfileDisplayName(local?.displayName ?? null);
       setProfileMeasurementSystem(local?.measurementSystem ?? "metric");
       if (local?.targets) {
-        setNutritionTargets(normalizeMacroTargets(local.targets));
+        // ENG-793 floor-leak fix (degraded error / no-DB path): the local cache
+        // can hold a sub-floor target (onboarding persists the soft-warn-not-block
+        // derived value), so clamp it UP to the sex-aware floor here too. local.sex
+        // is already the Sex union (UserProfile), so no coercion is needed.
+        setNutritionTargets(
+          normalizeMacroTargets({
+            ...local.targets,
+            calories: clampTargetToSafetyFloor(local.targets.calories, local.sex),
+          }),
+        );
       }
       setPreferActivityAdjustedCalories(local?.preferActivityAdjustedCalories ?? false);
       return;
@@ -529,7 +539,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
+          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -541,7 +551,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setProfileDisplayName(local?.displayName ?? null);
         setProfileMeasurementSystem(local?.measurementSystem ?? "metric");
         if (local?.targets) {
-          setNutritionTargets(normalizeMacroTargets(local.targets));
+          // ENG-793 floor-leak fix (degraded error / no-DB path): the local cache
+        // can hold a sub-floor target (onboarding persists the soft-warn-not-block
+        // derived value), so clamp it UP to the sex-aware floor here too. local.sex
+        // is already the Sex union (UserProfile), so no coercion is needed.
+        setNutritionTargets(
+          normalizeMacroTargets({
+            ...local.targets,
+            calories: clampTargetToSafetyFloor(local.targets.calories, local.sex),
+          }),
+        );
         }
         setPreferActivityAdjustedCalories(local?.preferActivityAdjustedCalories ?? false);
         return;
@@ -577,7 +596,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } else {
         const local = loadLocalProfile(authedUserId);
         if (local?.targets) {
-          setNutritionTargets(normalizeMacroTargets(local.targets));
+          // ENG-793 floor-leak fix (degraded error / no-DB path): the local cache
+        // can hold a sub-floor target (onboarding persists the soft-warn-not-block
+        // derived value), so clamp it UP to the sex-aware floor here too. local.sex
+        // is already the Sex union (UserProfile), so no coercion is needed.
+        setNutritionTargets(
+          normalizeMacroTargets({
+            ...local.targets,
+            calories: clampTargetToSafetyFloor(local.targets.calories, local.sex),
+          }),
+        );
         }
         if (local) {
           setPreferActivityAdjustedCalories(local.preferActivityAdjustedCalories ?? false);
@@ -594,7 +622,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
+        "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -616,7 +644,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (hasTargets) {
       setNutritionTargets(
         normalizeMacroTargets({
-          calories: data!.target_calories as number,
+          // ENG-793 floor-leak fix: clamp the stored target UP to the sex-aware
+          // safety floor at READ time so a sub-floor value (e.g. 901) can't reach
+          // the Today ring. normalizeMacroTargets stays sex-free (it also serves
+          // legacy snapshots + the local cache that lack sex).
+          calories: clampTargetToSafetyFloor(
+            data!.target_calories as number,
+            coerceSex(data!.sex as string | null),
+          ),
           protein: data!.target_protein as number,
           carbs: data!.target_carbs as number,
           fat: data!.target_fat as number,

@@ -156,7 +156,7 @@ export function WeeklyCheckinModal({
             }}
           >
             <Row
-              label="Avg this week"
+              label="Avg logged daily"
               value={content.avgThisWeekLabel}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}

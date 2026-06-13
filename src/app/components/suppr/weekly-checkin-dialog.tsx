@@ -62,7 +62,7 @@ export function WeeklyCheckinDialog({
         </DialogHeader>
 
         <div className="rounded-xl border border-border px-4 py-3 mt-1 space-y-2">
-          <Row label="Avg this week" value={content.avgThisWeekLabel} />
+          <Row label="Avg logged daily" value={content.avgThisWeekLabel} />
           {content.weightDeltaLabel ? (
             <Row label="Weight delta" value={content.weightDeltaLabel} />
           ) : null}
