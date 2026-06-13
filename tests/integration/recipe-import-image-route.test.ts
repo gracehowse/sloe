@@ -141,8 +141,12 @@ describe("POST /api/recipe-import/image", () => {
     mockTier.mockResolvedValue("pro");
 
     const modelPayload = {
+      // Both absent from the curated genericFoods/genericBeverages tables
+      // (ENG-746) so they hit the estimation fallback — the assertion below
+      // expects estimation-only nutrition. A curated staple (e.g. "chicken
+      // breast") would now short-circuit to a "Suppr" match.
       title: "Test soup",
-      ingredients: ["200 g chicken breast", "1 tbsp olive oil"],
+      ingredients: ["200 g sirloin steak", "1 tbsp olive oil"],
       steps: ["Simmer."],
       notes: null,
     };

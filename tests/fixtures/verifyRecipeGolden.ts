@@ -16,21 +16,31 @@ export type GoldenEstimationCase = {
   servings: number;
 };
 
-/** Fixtures run under mocks: no USDA/FatSecret/OFF hits → all lines use Estimated or Unverified. */
+/**
+ * Fixtures run under mocks: no USDA/FatSecret/OFF hits → all lines use Estimated
+ * or Unverified.
+ *
+ * Ingredients are deliberately ABSENT from the curated genericFoods/
+ * genericBeverages tables (sirloin steak, shallot, thyme — no beef/shallot/herb
+ * rows there). ENG-746 wired those tables in as a high-priority exact-alias
+ * short-circuit, so a curated staple (chicken breast, onion, …) would resolve to
+ * a "Suppr" match instead of the estimation fallback these cases exercise. Don't
+ * swap these back to curated staples or the cases stop testing estimation.
+ */
 export const GOLDEN_ESTIMATION_CASES: GoldenEstimationCase[] = [
   {
-    id: "staples-oil-and-chicken",
+    id: "staples-oil-and-steak",
     note: "Volume + mass; totals and perServing must stay consistent with verifyIngredients rounding",
     ingredients: [
       { name: "olive oil", amount: "2", unit: "tbsp" },
-      { name: "chicken breast", amount: "200", unit: "g" },
+      { name: "sirloin steak", amount: "200", unit: "g" },
     ],
     servings: 2,
   },
   {
-    id: "count-medium-onions",
+    id: "count-medium-shallots",
     note: "Count-to-weight path (medium ×3)",
-    ingredients: [{ name: "onion", amount: "3", unit: "medium" }],
+    ingredients: [{ name: "shallot", amount: "3", unit: "medium" }],
     servings: 1,
   },
   {

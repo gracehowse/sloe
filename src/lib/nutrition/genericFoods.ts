@@ -272,6 +272,26 @@ export const GENERIC_FOODS: ReadonlyArray<GenericFood> = [
     per100g: { calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiberG: 2.7, sugarG: 5.7, sodiumMg: 491 },
     subtitle: "Per slice",
   },
+  {
+    // USDA FDC SR Legacy #20081 "Wheat flour, white, all-purpose, enriched,
+    // bleached" per 100g (dry, as-sold). Plain/all-purpose only — self-raising,
+    // bread (strong) and wholemeal flours differ and deliberately fall through
+    // to the search/USDA path. ENG-746.
+    id: "flour",
+    name: "All-purpose flour",
+    aliases: [
+      "flour",
+      "plain flour",
+      "all purpose flour",
+      "all-purpose flour",
+      "white flour",
+      "plain white flour",
+    ],
+    servingG: 125,
+    servingLabel: "1 cup (125g)",
+    per100g: { calories: 364, protein: 10.3, carbs: 76.3, fat: 1.0, fiberG: 2.7, sugarG: 0.3, sodiumMg: 2 },
+    subtitle: "Dry · all-purpose",
+  },
 
   // ── Protein (raw — this is how recipes spec it; cooked weights drop ~25%) ──
   {

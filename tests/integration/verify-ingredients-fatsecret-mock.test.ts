@@ -34,11 +34,11 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
 
   it("accepts a high-confidence FatSecret hit and scales macros for grams", async () => {
     fatSecretFoodSearch.mockResolvedValue([
-      { food_id: "fs-1", food_name: "Chicken breast, skinless, raw" },
+      { food_id: "fs-1", food_name: "Sirloin steak, raw" },
     ]);
     fatSecretFoodGet.mockResolvedValue({
       food_id: "fs-1",
-      food_name: "Chicken breast, skinless, raw",
+      food_name: "Sirloin steak, raw",
       servings: {
         serving: {
           metric_serving_amount: "100",
@@ -55,14 +55,14 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
     });
 
     const result = await verifyIngredients({
-      ingredients: [{ name: "chicken breast", amount: "100", unit: "g" }],
+      ingredients: [{ name: "sirloin steak", amount: "100", unit: "g" }],
       servings: 1,
       provider: "auto",
     });
 
     expect(result.verified).toHaveLength(1);
     expect(result.verified[0]!.source).toBe("FatSecret");
-    expect(result.verified[0]!.matchedName).toMatch(/chicken breast/i);
+    expect(result.verified[0]!.matchedName).toMatch(/sirloin steak/i);
     expect(result.verified[0]!.macros?.calories).toBe(165);
     expect(result.verified[0]!.macros?.protein).toBe(31);
     expect(result.primarySource).toBe("FatSecret");
@@ -107,19 +107,18 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
   });
 
   it("uses FatSecret when provider is fatsecret (USDA not consulted)", async () => {
-    // ENG-691: the candidate name must clear the 0.70 accept floor for the
-    // routing assertion to be meaningful. "Whole milk" matches exactly; the
-    // noisier "Whole milk, 3.25%" scores ~0.66 and is now (correctly per the
-    // raised floor) rejected — that over-rejection is tracked in
-    // tests/unit/confidenceGating.test.ts, not exercised here.
-    fatSecretFoodSearch.mockResolvedValue([{ food_id: "fs-2", food_name: "Whole milk" }]);
+    // ENG-746: ingredient is "sirloin steak" (absent from the curated
+    // genericFoods/genericBeverages tables) so the exact-alias short-circuit
+    // doesn't intercept it and the FatSecret branch is genuinely exercised.
+    // "Sirloin steak" matches the candidate exactly, clearing the accept floor.
+    fatSecretFoodSearch.mockResolvedValue([{ food_id: "fs-2", food_name: "Sirloin steak" }]);
     fatSecretFoodGet.mockResolvedValue({
       food_id: "fs-2",
-      food_name: "Whole milk",
+      food_name: "Sirloin steak",
       servings: {
         serving: {
           metric_serving_amount: "100",
-          metric_serving_unit: "ml",
+          metric_serving_unit: "g",
           calories: "61",
           protein: "3.2",
           carbohydrate: "4.8",
@@ -132,7 +131,7 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
     });
 
     const result = await verifyIngredients({
-      ingredients: [{ name: "whole milk", amount: "200", unit: "ml" }],
+      ingredients: [{ name: "sirloin steak", amount: "200", unit: "g" }],
       servings: 1,
       provider: "fatsecret",
     });
@@ -144,14 +143,14 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
   // ── ENG-691 — accept floor (0.70) + totals exclusion ──────────────────────
 
   it("an accepted FatSecret match (≥0.70) is NOT flagged below-floor and DOES sum into totals", async () => {
-    fatSecretFoodSearch.mockResolvedValue([{ food_id: "fs-ok", food_name: "Whole milk" }]);
+    fatSecretFoodSearch.mockResolvedValue([{ food_id: "fs-ok", food_name: "Sirloin steak" }]);
     fatSecretFoodGet.mockResolvedValue({
       food_id: "fs-ok",
-      food_name: "Whole milk",
+      food_name: "Sirloin steak",
       servings: {
         serving: {
           metric_serving_amount: "100",
-          metric_serving_unit: "ml",
+          metric_serving_unit: "g",
           calories: "61",
           protein: "3.2",
           carbohydrate: "4.8",
@@ -164,7 +163,7 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
     });
 
     const result = await verifyIngredients({
-      ingredients: [{ name: "whole milk", amount: "200", unit: "ml" }],
+      ingredients: [{ name: "sirloin steak", amount: "200", unit: "g" }],
       servings: 1,
       provider: "fatsecret",
     });
@@ -173,7 +172,7 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
     expect(result.verified[0]!.confidence).toBeGreaterThanOrEqual(0.7);
     expect(result.verified[0]!.belowAcceptFloor).toBeUndefined();
     expect(result.belowAcceptFloorCount).toBe(0);
-    // 61 kcal/100ml × 200ml = ~122 kcal flows into the headline.
+    // 61 kcal/100g × 200g = ~122 kcal flows into the headline.
     expect(result.totals.calories).toBeGreaterThan(0);
     expect(result.totals.calories).toBe(result.verified[0]!.macros?.calories);
   });
@@ -200,16 +199,16 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
 
   it("mixed recipe: accepted row sums, sub-floor row is excluded and counted", async () => {
     fatSecretFoodSearch.mockImplementation(async (_cfg: unknown, query: string) => {
-      if (/milk/i.test(query)) return [{ food_id: "fs-mix", food_name: "Whole milk" }];
+      if (/steak/i.test(query)) return [{ food_id: "fs-mix", food_name: "Sirloin steak" }];
       return []; // the second ingredient finds no provider hit → local estimate.
     });
     fatSecretFoodGet.mockResolvedValue({
       food_id: "fs-mix",
-      food_name: "Whole milk",
+      food_name: "Sirloin steak",
       servings: {
         serving: {
           metric_serving_amount: "100",
-          metric_serving_unit: "ml",
+          metric_serving_unit: "g",
           calories: "61",
           protein: "3.2",
           carbohydrate: "4.8",
@@ -223,19 +222,19 @@ describe("verifyIngredients FatSecret (mocked client)", () => {
 
     const result = await verifyIngredients({
       ingredients: [
-        { name: "whole milk", amount: "200", unit: "ml" },
+        { name: "sirloin steak", amount: "200", unit: "g" },
         { name: "olive oil", amount: "1", unit: "tbsp" },
       ],
       servings: 1,
       provider: "fatsecret",
     });
 
-    const milk = result.verified.find((v) => v.source === "FatSecret")!;
+    const steak = result.verified.find((v) => v.source === "FatSecret")!;
     const oil = result.verified.find((v) => v.source === "Estimated")!;
-    expect(milk.belowAcceptFloor).toBeUndefined();
+    expect(steak.belowAcceptFloor).toBeUndefined();
     expect(oil.belowAcceptFloor).toBe(true);
     expect(result.belowAcceptFloorCount).toBe(1);
-    // Totals reflect ONLY the accepted milk row.
-    expect(result.totals.calories).toBe(milk.macros?.calories);
+    // Totals reflect ONLY the accepted (FatSecret) row.
+    expect(result.totals.calories).toBe(steak.macros?.calories);
   });
 });

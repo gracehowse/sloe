@@ -1,7 +1,10 @@
 /**
  * Shared ingredient verification pipeline.
- * Tries: USDA → Open Food Facts → Edamam → FatSecret → local estimation fallback.
- * Used by both /api/nutrition/verify-recipe and /api/recipe-import.
+ * Tries: barcode override → curated generic foods/beverages (exact-alias) →
+ * Suppr user foods → USDA → Open Food Facts → Edamam → FatSecret → local
+ * estimation fallback.
+ * Used by both /api/nutrition/verify-recipe and /api/recipe-import (so mobile,
+ * which POSTs to these routes, inherits every change here).
  */
 
 import { fatSecretConfigFromEnv, fatSecretFoodGet, fatSecretFoodSearch } from "@/lib/fatsecret/client";
@@ -22,6 +25,8 @@ import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceC
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
 import { searchUserFoods } from "@/lib/nutrition/userFoodsLookup";
 import { checkScaledLogPlausibility } from "@/lib/nutrition/macroPlausibility";
+import { matchGenericFood } from "@/lib/nutrition/genericFoods";
+import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
 
 export type VerifiedIngredient = {
   input: { name: string; amount: string; unit: string };
@@ -80,9 +85,16 @@ export type IngredientOverride = {
  *
  * SHIPPED at 0.55: above 0.42 (still tightens, kills weak dish-word matches)
  * while keeping staples accepted. The 0.70 *band* stays as the display/trust
- * signal in `verifyConfidencePolicy` (acceptance ≠ display confidence). One knob
- * to re-tune; ENG-746 tracks the genericFoods-wiring + scorer work that makes a
- * genuine 0.70 accept floor achievable.
+ * signal in `verifyConfidencePolicy` (acceptance ≠ display confidence).
+ *
+ * ENG-746 piece 1 (DONE): the curated genericFoods/genericBeverages tables are
+ * now wired as a high-priority exact-alias short-circuit above (resolves common
+ * staples at 0.95, bypassing the verbose-descriptor penalty). Piece 2 — raising
+ * this floor to a genuine 0.70 + re-tuning `confidenceForMatch` for the verbose
+ * USDA long-tail — is still open: it has broad blast radius on the recipe-import
+ * critical path and needs an empirical over-rejection measurement on a real
+ * ingredient corpus before flipping (can't be validated against mocked
+ * providers). One knob to re-tune when that validation lands.
  */
 export const MIN_ACCEPT_CONFIDENCE = 0.55;
 
@@ -531,6 +543,54 @@ export async function verifyIngredients(opts: {
             source: "OFF",
             macros: barcodeMacros,
           };
+        }
+      }
+    }
+
+    // 1b. Curated generic foods + beverages (exact-alias, in-memory — no
+    // network). ENG-746: the same canonical USDA-sourced tables that seed the
+    // food-search picker (genericFoods / genericBeverages) now short-circuit
+    // the recipe-verify cascade for common staples (rice, salmon, milk, flour,
+    // chicken breast, egg, …). An exact-alias hit is a curated, verified match, so
+    // it resolves at high confidence WITHOUT going through confidenceForMatch
+    // (which over-penalises verbose USDA descriptors — the reason these staples
+    // scored ~0.50 before). Beverage-first then food, mirroring the search path
+    // (apps/mobile/lib/verifyRecipe.ts searchFoods). Mobile inherits this via
+    // /api/nutrition/verify-recipe. Source "Suppr" matches how the search rows
+    // present these.
+    {
+      const beverage = matchGenericBeverage(query);
+      const food = beverage ? null : matchGenericFood(query);
+      if (beverage || food) {
+        const per100g = beverage
+          ? {
+              calories: beverage.per100ml.calories,
+              protein: beverage.per100ml.protein,
+              carbs: beverage.per100ml.carbs,
+              fat: beverage.per100ml.fat,
+              // per-100ml ≈ per-100g for liquids (1 g/ml); fibre/sugar/sodium
+              // aren't tracked on the beverage table (0 = not tracked, never
+              // invented — same convention as the search path).
+              fiberG: 0,
+              sugarG: 0,
+              sodiumMg: 0,
+            }
+          : food!.per100g;
+        if (per100gPlausible(per100g)) {
+          const genericMacros = scaleMacros(per100g, grams / 100);
+          if (scaledMacrosPlausible(genericMacros)) {
+            return {
+              input: raw,
+              resolved,
+              fatSecretFoodId: beverage
+                ? `generic-beverage:${beverage.id}`
+                : `generic-food:${food!.id}`,
+              matchedName: (beverage ?? food!).name,
+              confidence: 0.95,
+              source: "Suppr" as const,
+              macros: genericMacros,
+            };
+          }
         }
       }
     }
