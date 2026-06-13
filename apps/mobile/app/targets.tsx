@@ -44,6 +44,7 @@ import {
   buildMacroTiles,
   buildGoalCard,
 } from "@suppr/shared/targets/targetsView";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
@@ -753,41 +754,21 @@ export default function TargetsScreen() {
               </View>
             </PostHogMaskView>
           ) : null}
-          {/* Recalculate — aubergine OUTLINE button (Sloe treatment #1,
-              2026-06-08). The everyday primary CTA is an accent LINE, not a
-              filled slab: transparent fill, 1.5px border in
-              `accent.primarySolid` (#4E3260, ≈8.7:1 on the white card — AA),
-              label in the same. Pressed state lifts a faint aubergine wash.
-              The FAB + conversion CTAs keep the fill; this everyday recompute
-              reads as the calm outline. */}
-          <Pressable
+          {/* Recalculate — ghost CTA (button-system canon, 2026-06-12). This is
+              the secondary action on the targets screen (the screen is a
+              read-out, not a commit form); ghost = transparent / no border /
+              plum label. SupprButton owns the spinner via `loading`, so the
+              manual ActivityIndicator is gone. */}
+          <SupprButton
+            variant="ghost"
             onPress={() => void onRecalculate()}
             disabled={recalculating}
-            accessibilityRole="button"
+            loading={recalculating}
             accessibilityLabel="Recalculate targets from current profile data"
             testID="targets-recalculate"
-            style={({ pressed }) => ({
-              marginTop: Spacing.md,
-              alignSelf: "center",
-              paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.sm,
-              borderRadius: Radius.full,
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              backgroundColor: pressed ? accent.primarySoft : "transparent",
-              opacity: recalculating ? 0.6 : 1,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.sm,
-            })}
-          >
-            {recalculating ? (
-              <ActivityIndicator size="small" color={accent.primarySolid} />
-            ) : null}
-            <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid }}>
-              {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
-            </Text>
-          </Pressable>
+            label={recalcToast ? "Updated" : "Recalculate"}
+            style={{ marginTop: Spacing.md, alignSelf: "center" }}
+          />
           {/* Numbers audit 2026-05-04 #3: when activity-adjusted calories
               are on, Today's ring goal is `targets.calories +
               dayActivityBudgetAddon(...)`. The Targets number above is

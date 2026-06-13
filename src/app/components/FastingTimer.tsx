@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase/browserClient";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { Icons } from "./ui/icons";
+import { SupprButton } from "./suppr/suppr-button";
 import {
   FASTING_WINDOW_PRESETS,
   fastingWindowLabel,
@@ -424,20 +425,36 @@ export function FastingTimer() {
             </div>
           </section>
 
-          {/* End fast — clay pill (Complete keeps sage when goal met). */}
-          <button
-            type="button"
-            onClick={endFast}
-            aria-label={isComplete ? "Complete fast" : "End fast early"}
-            data-testid="fasting-end-button"
-            className={`w-full font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 transition-colors ${
-              isComplete
-                ? "bg-[var(--success)] text-white hover:opacity-90"
-                : "bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5"
-            }`}
-          >
-            {isComplete ? "Complete fast" : "End fast"}
-          </button>
+          {/* End / Complete fast — the timer's ONE action for this state.
+              Button system (2026-06-12,
+              `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+              "End fast" → `SupprButton` variant="primary" (solid aubergine
+              fill, white label, pill, no border/shadow — supersedes the old
+              aubergine-OUTLINE treatment). "Complete fast" keeps the sage
+              `--success` celebration fill when the goal is met (deliberate
+              goal-reached state, not the retired outline). Mirror of mobile
+              `app/fasting.tsx`. */}
+          {isComplete ? (
+            <button
+              type="button"
+              onClick={endFast}
+              aria-label="Complete fast"
+              data-testid="fasting-end-button"
+              className="w-full font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 transition-colors bg-[var(--success)] text-white hover:opacity-90"
+            >
+              Complete fast
+            </button>
+          ) : (
+            <SupprButton
+              variant="primary"
+              onClick={endFast}
+              aria-label="End fast early"
+              data-testid="fasting-end-button"
+              className="w-full py-4 text-base"
+            >
+              End fast
+            </SupprButton>
+          )}
 
           {/* Stage narrative — italic serif quote. Descriptive, hedged. */}
           {!isComplete && (
@@ -484,15 +501,20 @@ export function FastingTimer() {
             {fastingWindowLabel(fastingWindow)} — {fastHours}h fast, {eatHours}h eat
           </p>
 
-          <button
-            type="button"
+          {/* Start fast — the landing state's ONE action. Button system
+              (2026-06-12,
+              `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+              `SupprButton` variant="primary" (solid aubergine fill, white
+              label, pill, no border/shadow — supersedes the old aubergine-
+              OUTLINE treatment). Mirror of mobile `app/fasting.tsx`. */}
+          <SupprButton
+            variant="primary"
             onClick={startFast}
             data-testid="fasting-landing-start"
-            /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE. */
-            className="w-full max-w-xs font-[family-name:var(--font-body)] font-semibold text-base rounded-full py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5 transition-colors"
+            className="w-full max-w-xs py-4 text-base"
           >
             Start {fastingWindowLabel(fastingWindow)} fast
-          </button>
+          </SupprButton>
 
           {/* Quick-start chips — one tap = set window + start fast. */}
           <div

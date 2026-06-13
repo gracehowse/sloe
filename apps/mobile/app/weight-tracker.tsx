@@ -39,6 +39,7 @@ import {
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 
 import { WeightChart } from "@/components/progress/WeightChart";
+import { SupprButton } from "@/components/ui/SupprButton";
 import MiniBarChart from "@/components/charts/MiniBarChart";
 import TimeRangeSelector, {
   daysForRange,
@@ -636,18 +637,6 @@ export default function ProgressScreen() {
           fontSize: 16,
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
-        // Gap 7 — §3.3: CTA button minHeight 52pt; Sloe treatment outline style.
-        btn: {
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          borderRadius: Radius.md,
-          paddingVertical: Spacing.md,
-          minHeight: 52,
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        btnText: { color: accent.primarySolid, fontWeight: "700" },
         // Gap 6 — §3.1: journey bar uses a named const height, no raw 12.
         journeyBar: {
           height: 8, // Spacing.sm (8) — refined track per §7.1 spec
@@ -959,12 +948,12 @@ export default function ProgressScreen() {
                     setWeightInput(t);
                   }}
                 />
-                <Pressable
-                  style={[styles.btn, { paddingHorizontal: Spacing.xl }]}
+                <SupprButton
+                  variant="primary"
                   onPress={() => void saveWeight()}
-                >
-                  <Text style={styles.btnText}>Save</Text>
-                </Pressable>
+                  label="Save"
+                  style={{ paddingHorizontal: Spacing.xl }}
+                />
               </View>
               {/* DC12 (2026-05-14, premium-bar audit) + Gap 13 §2.2 display-italic:
                   Headspace-style supportive coaching line rendered in

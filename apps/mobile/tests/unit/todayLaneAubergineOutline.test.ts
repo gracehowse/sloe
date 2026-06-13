@@ -266,9 +266,16 @@ describe("CTA weight map — Spec 2 outline/pill conversions (2026-06-09)", () =
     expect(IMPORT_SHARED).not.toMatch(/outlineImportBtn/);
   });
 
-  it("whats-new 'Done' is a compact outline pill, not bold accent text", () => {
-    expect(WHATS_NEW).toMatch(/testID="whats-new-done"[\s\S]{0,260}borderColor:\s*accent\.primarySolid/);
-    expect(WHATS_NEW).toMatch(/testID="whats-new-done"[\s\S]{0,320}borderRadius:\s*Radius\.full/);
-    expect(WHATS_NEW).toMatch(/color:\s*accent\.primarySolid\s*\}\}>\s*\n?\s*Done/);
+  it("whats-new 'Done' is a SupprButton ghost (2026-06-12 canon), not an outline pill", () => {
+    // 2026-06-12 button-system canon: the header dismiss pill is a dismiss, not
+    // a commit → ghost (transparent, no border, plum label).
+    expect(WHATS_NEW).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}testID="whats-new-done"/,
+    );
+    expect(WHATS_NEW).toMatch(/<SupprButton[\s\S]{0,300}label="Done"/);
+    // The retired outline must be gone — no primarySolid border on the pill.
+    expect(WHATS_NEW).not.toMatch(
+      /testID="whats-new-done"[\s\S]{0,300}borderColor:\s*accent\.primarySolid/,
+    );
   });
 });

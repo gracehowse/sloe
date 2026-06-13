@@ -15,8 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
-import { Colors, FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
@@ -119,10 +119,6 @@ export function LogWeightSheet({
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
-  // Aubergine accent for the Save CTA. Sloe treatment system (2026-06-08, §1):
-  // the weight Save/Update is a primary inline CTA → aubergine OUTLINE, not a
-  // filled slab.
-  const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [input, setInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
@@ -293,30 +289,17 @@ export function LogWeightSheet({
           >
             Every check-in gives us better data for you.
           </Text>
-          <Pressable
+          {/* Save weight — primary (button-system canon, 2026-06-12): the
+              sheet's one main commit. SupprButton owns the loading spinner +
+              disabled dim. */}
+          <SupprButton
+            variant="primary"
             onPress={handleSave}
-            disabled={saving || !input.trim()}
-            style={[
-              styles.cta,
-              {
-                // Sloe treatment §1: aubergine OUTLINE (transparent fill,
-                // 1.5px primarySolid border). Disabled keeps the dim.
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                opacity: saving || !input.trim() ? 0.5 : 1,
-              },
-            ]}
+            disabled={!input.trim()}
+            loading={saving}
             testID="log-weight-save"
-          >
-            <Text style={[styles.ctaLabel, { color: accent.primarySolid }]}>
-              {saving
-                ? "Saving..."
-                : isEditing
-                  ? "Update weigh-in"
-                  : "Save weight"}
-            </Text>
-          </Pressable>
+            label={isEditing ? "Update weigh-in" : "Save weight"}
+          />
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -391,15 +374,5 @@ const styles = StyleSheet.create({
   unit: {
     ...Type.body,
     marginLeft: Spacing.sm,
-  },
-  cta: {
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.lg,
-    alignItems: "center",
-  },
-  ctaLabel: {
-    color: Colors.light.primaryForeground,
-    fontSize: 16,
-    fontWeight: "700",
   },
 });

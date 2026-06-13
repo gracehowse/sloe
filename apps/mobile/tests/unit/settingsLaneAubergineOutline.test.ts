@@ -21,15 +21,17 @@
  * `docs/decisions/2026-06-12-button-system-solid-primary.md`): the SETTINGS
  * CTAs (name Save, promo Apply, Pro-banner Manage, reset Refresh-my-plan, the
  * target-picker Save/Done) migrated to the SupprButton primary/ghost grammar
- * — see the updated name-Save/promo-Apply case below. The goal-pace sheet
- * commit CTAs (editor Save, retune Confirm) ALSO migrated in the same wave:
- * each is its sheet's ONE commit action → SupprButton variant="primary"
- * (solid aubergine pill), with the Cancel sibling → variant="ghost". See the
- * updated goal-pace case below. The household CTAs (Save changes footer, solo
- * Invite) ALSO migrated on 2026-06-13 (ENG-1080 household wave) — Save →
- * variant="primary", solo Invite → variant="ghost"; see the updated household
- * case below. The Targets / Profile / Health lanes remain OUT of scope and
- * still assert the aubergine outline.
+ * — see the cases below. Across the ENG-1080 button-cohesion waves (Wave D
+ * Settings, Wave E goal-pace + household, Wave F Targets + Profile + Health),
+ * EVERY CTA on these surfaces has now migrated to the SupprButton primary/ghost
+ * grammar: name Save / Pro-banner Manage / invite Copy = ghost; promo Apply /
+ * Refresh-my-plan = primary; goal-pace editor Save + retune Confirm = primary
+ * with Cancel = ghost; household Save = primary, solo Invite = ghost; Targets
+ * Recalculate = ghost; Profile Save Targets = primary, Cancel = ghost; Health
+ * Connect/Sync = primary, both error-recovery actions (Try again + Open iOS
+ * Settings) = ghost (the error banner co-renders above the Connect/Sync primary,
+ * so it must not add a second solid). No aubergine OUTLINE remains on this lane;
+ * each case below pins the new grammar + an anti-regression negative.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -46,20 +48,31 @@ const GOAL_RETUNE = read("components/recap/GoalPaceRetuneSheet.tsx");
 const BUNDLE = read("components/settings/SettingsBundleContent.tsx");
 
 describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
-  it("Targets Recalculate is an outline (primarySolid border + label), not a filled slab", () => {
-    // The recalculate Pressable references primarySolid for its border, and
-    // the label is rendered in primarySolid (text colour).
-    expect(TARGETS).toMatch(/testID="targets-recalculate"[\s\S]{0,400}borderColor:\s*accent\.primarySolid/);
-    expect(TARGETS).toMatch(/color:\s*accent\.primarySolid\s*\}\}>\s*\{recalculating/);
-    // It must NOT fill the recalculate control with the accent slab.
-    expect(TARGETS).not.toMatch(/testID="targets-recalculate"[\s\S]{0,400}backgroundColor:\s*accent\.primary\b/);
+  it("Targets Recalculate is a SupprButton ghost (2026-06-12 canon), not an outline", () => {
+    // 2026-06-12 button-system canon: the everyday aubergine OUTLINE retired.
+    // Recalculate is the secondary action on the read-out targets screen → ghost.
+    expect(TARGETS).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}testID="targets-recalculate"/,
+    );
+    // The retired outline must be gone — no primarySolid border on the control.
+    expect(TARGETS).not.toMatch(
+      /testID="targets-recalculate"[\s\S]{0,400}borderColor:\s*accent\.primarySolid/,
+    );
   });
 
-  it("Profile Save Targets is an aubergine outline", () => {
-    // saveBtn carries a transparent fill + primarySolid border + label.
-    expect(PROFILE).toMatch(/saveBtn:\s*\{[\s\S]{0,200}borderColor:\s*accent\.primarySolid/);
-    expect(PROFILE).toMatch(/saveBtnText:\s*\{\s*color:\s*accent\.primarySolid/);
-    expect(PROFILE).not.toMatch(/saveBtn:\s*\{[\s\S]{0,120}backgroundColor:\s*accent\.primary/);
+  it("Profile Save Targets is a SupprButton primary, Cancel sibling is ghost (2026-06-12 canon)", () => {
+    // 2026-06-12 button-system canon: Save Targets is the screen's one commit →
+    // primary; the Cancel sibling (the dismiss/recovery) → ghost.
+    expect(PROFILE).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,300}label="Save Targets"/,
+    );
+    expect(PROFILE).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}label="Cancel"/,
+    );
+    // The retired outline styles must be gone.
+    expect(PROFILE).not.toMatch(/saveBtn:\s*\{/);
+    expect(PROFILE).not.toMatch(/saveBtnText:\s*\{/);
+    expect(PROFILE).not.toMatch(/cancelBtn:\s*\{/);
   });
 
   it("Profile selected dietary pill uses the aubergine soft tint (not sage)", () => {
@@ -87,10 +100,28 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     );
   });
 
-  it("Health connect / sync CTAs are aubergine outlines", () => {
-    // The shared outline style carries primarySolid border + label.
-    expect(HEALTH).toMatch(/btnOutline:\s*\{[\s\S]{0,200}borderColor:\s*accent\.primarySolid/);
-    expect(HEALTH).toMatch(/btnOutlineText:\s*\{[^}]*color:\s*accent\.primarySolid/);
+  it("Health connect / sync / recovery CTAs are SupprButtons (2026-06-12 canon)", () => {
+    // 2026-06-12 button-system canon: the aubergine OUTLINE retired here too.
+    // Connect Health Data + Sync Now (one logical primary across two render
+    // states) → SupprButton primary; the error banner co-renders ABOVE the
+    // Connect/Sync primary (it's a sibling, not a replacement), so BOTH error
+    // recovery actions are ghost — "Try again" + "Open iOS Settings" — keeping
+    // Connect/Sync the screen's one solid primary (Wave F review, 2026-06-13).
+    expect(HEALTH).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,260}label="Connect Health Data"/,
+    );
+    expect(HEALTH).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,260}label="Sync Now"/,
+    );
+    expect(HEALTH).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,260}testID="health-sync-error-retry"/,
+    );
+    expect(HEALTH).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,260}testID="health-sync-error-open-settings"/,
+    );
+    // The retired outline style must be gone.
+    expect(HEALTH).not.toMatch(/btnOutline:\s*\{/);
+    expect(HEALTH).not.toMatch(/btnOutlineText:\s*\{/);
   });
 
   it("Goal-pace Save (editor) + Confirm (retune) are SupprButton primaries; Cancel siblings are ghosts (2026-06-12 canon)", () => {

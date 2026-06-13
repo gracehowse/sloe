@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useHaptics } from "@/hooks/useHaptics";
 import { Flame, Moon } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -364,7 +365,17 @@ export default function FastingScreen() {
           marginTop: 4,
           fontVariant: ["tabular-nums"],
         },
-        // End-fast pill — clay, full-width, rounded-full.
+        // Landing "Start fast" CTA — layout only. The `SupprButton`
+        // primitive owns fill/radius/label colour/padding (button system,
+        // 2026-06-12); this just sets the top gap + stretches it full-width.
+        landingStartCta: {
+          marginTop: Spacing.sm,
+          alignSelf: "stretch",
+        },
+        // End / Complete fast pill — full-width, rounded-full. Shared by the
+        // primary "Hold to end fast" SupprButton (layout only — primitive owns
+        // fill/padding/radius) AND the sage "Complete fast" Pressable (which
+        // still relies on padding/radius/alignItems here for its shape).
         endBtn: {
           marginHorizontal: Spacing.lg,
           paddingVertical: 16,
@@ -521,29 +532,20 @@ export default function FastingScreen() {
             {fastingWindowLabel(fastingWindow)} — {fastHours}h fast, {eatHours}h eat
           </Text>
 
-          <Pressable
+          {/* Start fast — the landing state's ONE action. Button system
+              (2026-06-12,
+              `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+              `SupprButton` variant="primary" (solid aubergine fill, white
+              label, pill, no border/shadow — supersedes the old aubergine-
+              OUTLINE treatment). Mirror of web `FastingTimer.tsx`. */}
+          <SupprButton
             testID="fasting-landing-start"
-            accessibilityRole="button"
+            variant="primary"
             accessibilityLabel={`Start a ${fastingWindowLabel(fastingWindow)} fast`}
+            label="Start fast"
             onPress={startFast}
-            style={{
-              marginTop: Spacing.sm,
-              paddingVertical: Spacing.md,
-              paddingHorizontal: Spacing.xl,
-              borderRadius: Radius.full,
-              // Sloe treatment system (§1): primary inline CTA = aubergine
-              // OUTLINE (transparent fill, 1.5px primarySolid border + label).
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
-              alignSelf: "stretch",
-            }}
-          >
-            <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>
-              Start fast
-            </Text>
-          </Pressable>
+            style={styles.landingStartCta}
+          />
 
           {/* One-tap quick-start chips — set window + start (16:8 / 18:6 /
               OMAD). Web-parity with the FastingTimer landing chips. */}
@@ -700,15 +702,18 @@ export default function FastingScreen() {
           active 16h+ fast doesn't kill it (web uses single-tap; pointer
           precision makes a stray hit unlikely there). */}
       {isFasting && !isComplete ? (
-        <Pressable
-          style={[
-            styles.endBtn,
-            // Sloe treatment system (§1): End-fast is a primary inline CTA →
-            // aubergine OUTLINE, not a filled slab (ending a fast is a normal
-            // completion, not a destructive-red action).
-            { backgroundColor: "transparent", borderWidth: 1.5, borderColor: accent.primarySolid },
-          ]}
-          accessibilityRole="button"
+        // End fast — the in-progress state's ONE action. Button system
+        // (2026-06-12,
+        // `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+        // `SupprButton` variant="primary" (solid aubergine fill, white
+        // label, pill, no border/shadow — supersedes the old aubergine-
+        // OUTLINE treatment). Hold-to-confirm is preserved (long-press →
+        // end; tap → "hold to confirm" hint) so a stray tap on an active
+        // 16h+ fast can't kill it; web uses single-tap (pointer precision
+        // makes a stray hit unlikely there). Mirror of web `FastingTimer.tsx`.
+        <SupprButton
+          variant="primary"
+          style={styles.endBtn}
           accessibilityLabel="End fast — long-press to confirm"
           accessibilityHint="Long-press for one second to end your fast"
           onPress={() => {
@@ -728,8 +733,8 @@ export default function FastingScreen() {
           }}
           delayLongPress={650}
         >
-          <Text style={[styles.endBtnText, { color: accent.primarySolid }]}>Hold to end fast</Text>
-        </Pressable>
+          <Text style={[styles.endBtnText, { color: "#fff" }]}>Hold to end fast</Text>
+        </SupprButton>
       ) : isFasting && isComplete ? (
         <Pressable
           style={[styles.endBtn, { backgroundColor: Accent.success }]}
