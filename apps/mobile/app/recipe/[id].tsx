@@ -25,6 +25,7 @@ import { useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import RecipeEditSheet, { type RecipeEditSavePayload } from "@/components/recipe/RecipeEditSheet";
 import { canEditRecipe } from "@suppr/shared/recipes/recipeEdit";
+import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
@@ -728,10 +729,15 @@ export default function RecipeDetailScreen() {
 
   const recipeByline = useMemo(() => {
     if (!recipe) return { label: "", href: null as string | null };
-    const src = recipe.source_name?.trim();
+    // Route source + creator through displayAttribution (ENG-1084) so the
+    // detail byline calms the legal seed string "Suppr Kitchen" → "Sloe Kitchen"
+    // (and drops internal-seed strings → "") exactly like the Discover/Library
+    // card. The remap lives only at the display boundary; the stored
+    // `source_name` stays legal.
+    const src = displayAttribution({ source: recipe.source_name });
     const looksLikeNutritionDb =
       Boolean(src) &&
-      /^(USDA|OFF|Open Food Facts|FatSecret|Estimated|Unverified|Site)\b/i.test(src ?? "");
+      /^(USDA|OFF|Open Food Facts|FatSecret|Estimated|Unverified|Site)\b/i.test(src);
     if (src && !looksLikeNutritionDb) return { label: src, href: recipe.source_url?.trim() ?? null };
     const url = recipe.source_url?.trim();
     if (url) {
@@ -744,7 +750,7 @@ export default function RecipeDetailScreen() {
         /* ignore */
       }
     }
-    const author = recipe.author?.display_name?.trim();
+    const author = displayAttribution({ creatorName: recipe.author?.display_name });
     if (author) {
       const creatorHref = recipe.creator_id ? `/creator/${recipe.creator_id}` : null;
       return { label: author, href: creatorHref };
