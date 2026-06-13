@@ -18,6 +18,7 @@ import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
+import { deriveImportedRecipeTitle } from "@/lib/recipes/deriveImportedRecipeTitle";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import {
   traceExtraction,
@@ -327,7 +328,11 @@ export async function POST(req: Request) {
           return NextResponse.json({
             ok: true,
             recipe: {
-              title: sanitiseImportedTitle(websiteRecipe.title) ?? "Imported recipe",
+              title: deriveImportedRecipeTitle({
+                sanitizedTitle: sanitiseImportedTitle(websiteRecipe.title),
+                ingredients: ingList,
+                sourceUrl: trimmed,
+              }),
               // ENG-857 (P0, legal): this is the web/blog server-fetch posture
               // (a link found in a caption, then scraped). The JSON-LD
               // `description` is the creator's verbatim headnote — protected
@@ -451,10 +456,12 @@ export async function POST(req: Request) {
       // tester `AFVnLJIVdjQY` showed the LLM can still leak caption
       // shape past the prompt rules, so the helper is the only gate
       // we trust at the response boundary.
-      const safeTitle =
-        sanitiseImportedTitle(recipe.title) ??
-        sanitiseImportedTitle(meta.title) ??
-        "Imported recipe";
+      const safeTitle = deriveImportedRecipeTitle({
+        sanitizedTitle:
+          sanitiseImportedTitle(recipe.title) ?? sanitiseImportedTitle(meta.title),
+        ingredients: recipe.ingredients,
+        sourceUrl: trimmed,
+      });
 
       // Audit I03 (2026-05-05) — filter empty / whitespace-only entries
       // before the empty-recipe check is meaningful. The LLM occasionally
@@ -767,7 +774,12 @@ export async function POST(req: Request) {
           // `parsed.title` from the HTML-scrape branch, which can
           // be a long meta-tag caption. Override with the sanitised
           // value so the response title always passes the helper.
-          title: sanitiseImportedTitle(parsed.title) ?? "Imported recipe",
+          // ENG-1047: untitled scrapes fall back to first-ingredient → domain.
+          title: deriveImportedRecipeTitle({
+            sanitizedTitle: sanitiseImportedTitle(parsed.title),
+            ingredients: ingList,
+            sourceUrl: currentUrl,
+          }),
           // ENG-857 (P0, legal): the spread above also carries
           // `parsed.description` — the creator's verbatim JSON-LD headnote,
           // which is protected creative prose (Publications Int'l v. Meredith;
