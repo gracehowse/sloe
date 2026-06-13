@@ -1,8 +1,8 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
-import { Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Spacing, Type } from "@/constants/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 
 /**
@@ -48,9 +48,6 @@ export function TodayFirstMealEmptyState({
   void _cardColor;
   void _cardBorderColor;
   const showTip = isBrandNew && !tipDismissed;
-  // Secondary accent (Frost flag → damson, else clay) for the "Log a meal"
-  // CTA. Web parity flips via the `.flag-frost` CSS cascade.
-  const accent = useAccent();
   return (
     <SupprCard
       // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
@@ -90,35 +87,20 @@ export function TodayFirstMealEmptyState({
       >
         No pressure — log when you&apos;re ready.
       </Text>
-      {/* Sloe treatment system (2026-06-08): primary inline CTA →
-          aubergine outline (transparent fill + 1.5px primarySolid border
-          + primarySolid label/glyph), not a filled slab. Mirror of web
+      {/* Button system (2026-06-12): this card's ONE primary action →
+          `SupprButton` variant="primary" (solid aubergine fill, white
+          label + glyph, pill, no shadow — the solid fill IS the affordance).
+          Supersedes the old aubergine-OUTLINE treatment. Mirror of web
           `TodayFirstMealEmptyState`. */}
-      <Pressable
-        onPress={onLogMeal}
-        accessibilityRole="button"
+      <SupprButton
+        variant="primary"
         accessibilityLabel="Log a meal"
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: Spacing.sm,
-          // ENG-1064 (TF57 F-167): snap to the canonical Today outline-CTA
-          // grammar — Spacing.md padding, Radius.sm corner (= web Button
-          // primitive `rounded-md` 4px), so this button matches the eat-again /
-          // weekly-checkin outline buttons instead of being a notch rounder.
-          paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.dense,
-          borderRadius: Radius.sm,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          marginTop: Spacing.xs,
-          opacity: pressed ? 0.6 : 1,
-        })}
+        onPress={onLogMeal}
+        style={{ marginTop: Spacing.xs, alignSelf: "center" }}
       >
-        <Plus size={16} color={accent.primarySolid} />
-        <Text style={{ ...Type.body, fontWeight: "700", color: accent.primarySolid }}>Log a meal</Text>
-      </Pressable>
+        <Plus size={16} color="#fff" />
+        <Text style={{ ...Type.headline, color: "#fff", marginLeft: Spacing.sm }}>Log a meal</Text>
+      </SupprButton>
       {showTip && (
         <View
           accessibilityRole="text"

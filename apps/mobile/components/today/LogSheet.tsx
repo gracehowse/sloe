@@ -29,6 +29,7 @@ import {
 } from "lucide-react-native";
 import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import * as Haptics from "expo-haptics";
 
@@ -570,9 +571,8 @@ function LoggedConfirmation({
   confirmation: NonNullable<LogSheetProps["confirmation"]>;
 }) {
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the Done CTA. The
-  // success check keeps `Accent.successSolid`.
-  const accent = useAccent();
+  // The Done/Undo CTAs are now SupprButtons (solid-plum / ghost) — they own
+  // their own colour. The success check keeps `Accent.successSolid`.
   const { title, kcal, slot, source, onDone, onUndo } = confirmation;
   return (
     <View
@@ -618,13 +618,15 @@ function LoggedConfirmation({
         </View>
       </View>
 
-      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
-          system (2026-06-08): the primary inline CTA is AUBERGINE
-          OUTLINE (transparent fill + 1.5px primarySolid border +
-          primarySolid label), not a filled slab. */}
+      {/* Actions — primary Done + optional ghost Undo. Button system
+          (2026-06-12, docs/decisions/2026-06-12-button-system-solid-primary.md):
+          the sheet's single commit action is the SOLID-plum SupprButton
+          primary; the secondary Undo is the ghost variant (transparent, plum
+          label). The sheet keeps its sanctioned elevation; the buttons inside
+          carry none. */}
       <View style={{ width: "100%", marginTop: Spacing.lg, gap: Spacing.sm }}>
-        <Pressable
-          accessibilityRole="button"
+        <SupprButton
+          variant="primary"
           accessibilityLabel="Done"
           onPress={() => {
             if (process.env.EXPO_OS === "ios") {
@@ -632,31 +634,17 @@ function LoggedConfirmation({
             }
             onDone();
           }}
-          style={({ pressed }) => [
-            styles.confirmPrimary,
-            {
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              opacity: pressed ? 0.6 : 1,
-            },
-          ]}
-        >
-          <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
-            Done
-          </Text>
-        </Pressable>
+          label="Done"
+          style={styles.confirmPrimary}
+        />
         {onUndo ? (
-          <Pressable
-            accessibilityRole="button"
+          <SupprButton
+            variant="ghost"
             accessibilityLabel="Undo log"
             onPress={onUndo}
-            style={({ pressed }) => [styles.confirmUndo, { opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "600" }}>
-              Undo
-            </Text>
-          </Pressable>
+            label="Undo"
+            style={styles.confirmUndo}
+          />
         ) : null}
       </View>
     </View>
@@ -1233,9 +1221,8 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the empty-state
-  // "Browse recipes" CTA.
-  const accent = useAccent();
+  // The empty-state "Browse recipes" CTA is now a ghost SupprButton (it owns
+  // its own plum label).
   const { recipes, onPick, onBrowseRecipes, state } = library;
 
   if (state?.loading) {
@@ -1253,28 +1240,19 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
           Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
         </Text>
         {onBrowseRecipes ? (
-          <Pressable
-            accessibilityRole="button"
+          <SupprButton
+            variant="ghost"
             accessibilityLabel="Browse recipes"
-            onPress={() => {
-              if (process.env.EXPO_OS === "ios") {
-                void Haptics.selectionAsync();
-              }
-              onBrowseRecipes();
-            }}
-            style={({ pressed }) => [
-              styles.libraryEmptyCta,
-              {
-                // Sloe treatment system (2026-06-08): "Browse" is a
-                // SECONDARY action → off-white fill (colors.card
-                // #F6F5F2) + ink label, no accent. Mirror of web.
-                backgroundColor: colors.card,
-                opacity: pressed ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text style={[styles.libraryEmptyCtaText, { color: colors.text }]}>Browse recipes</Text>
-          </Pressable>
+            label="Browse recipes"
+            // Navigation, not a commit → the lighter selection haptic (the
+            // primitive fires it via PressableScale, so no manual call here).
+            haptic="selection"
+            onPress={onBrowseRecipes}
+            // Button system (2026-06-12): the empty-state "Browse recipes" is a
+            // SECONDARY action → ghost (transparent, plum label), replacing the
+            // old off-white colors.card fill. Mirror of web.
+            style={styles.libraryEmptyCta}
+          />
         ) : null}
       </View>
     );
@@ -1426,8 +1404,8 @@ function BarcodeManualEntry({
   onConfirm?: NonNullable<NonNullable<LogSheetProps["barcode"]>["onConfirmManual"]>;
 }) {
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the "Log it" CTA.
-  const accent = useAccent();
+  // The "Log it" commit CTA is now a solid-plum SupprButton (it owns its own
+  // colour).
   const [portion, setPortion] = React.useState("100");
   const [kcal, setKcal] = React.useState("");
   const [protein, setProtein] = React.useState("");
@@ -1544,9 +1522,16 @@ function BarcodeManualEntry({
         </View>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
+      {/* Button system (2026-06-12): the manual-entry commit is the sheet's
+          single primary action → SOLID-plum SupprButton primary. The success
+          notification haptic stays (it's the "logged" confirmation, not press
+          feedback), so the primitive's own press haptic is suppressed to avoid
+          a double buzz on one tap. */}
+      <SupprButton
+        variant="primary"
         accessibilityLabel="Log it"
+        label="Log it"
+        haptic="none"
         onPress={() => {
           if (!onConfirm) return;
           if (process.env.EXPO_OS === "ios") {
@@ -1561,22 +1546,7 @@ function BarcodeManualEntry({
             fat: Number(fat) || 0,
           });
         }}
-        style={{
-          height: 44,
-          // Sloe DS — pill-soft CTA (mirrors web `rounded-xl`).
-          borderRadius: Radius.xl,
-          // Sloe treatment system (2026-06-08): primary inline CTA →
-          // aubergine outline (transparent fill + 1.5px primarySolid
-          // border + primarySolid label), not a filled slab.
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>Log it</Text>
-      </Pressable>
+      />
     </ScrollView>
   );
 }
@@ -1743,17 +1713,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     alignItems: "center",
   },
+  // Layout-only override for the ghost "Browse recipes" SupprButton (the
+  // primitive owns the pill radius + padding + plum label).
   libraryEmptyCta: {
     marginTop: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.dense,
-    borderRadius: Radius.md,
-  },
-  libraryEmptyCtaText: {
-    // Colour is set inline to colors.text (secondary off-white-fill
-    // treatment) — overridden by the caller.
-    fontSize: 14,
-    fontWeight: "700",
   },
   libraryMealTag: {
     marginLeft: Spacing.sm,
@@ -1809,17 +1772,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  // Layout-only overrides for the SupprButton CTAs (full-width, no colour/
+  // radius/shadow — the primitive owns the pill + solid-fill grammar).
   confirmPrimary: {
-    height: 48,
-    borderRadius: Radius.xl,
-    alignItems: "center",
-    justifyContent: "center",
+    width: "100%",
   },
   confirmUndo: {
-    height: 48,
-    borderRadius: Radius.xl,
-    alignItems: "center",
-    justifyContent: "center",
+    width: "100%",
   },
 });
 

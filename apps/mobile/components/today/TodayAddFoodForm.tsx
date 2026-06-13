@@ -1,9 +1,10 @@
 import React from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Search } from "lucide-react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprButton } from "@/components/ui/SupprButton";
 
 /**
  * TodayAddFoodForm — inline quick-add card with slot toggle + 4 macro
@@ -138,27 +139,31 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
         />
       </View>
       <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-        {/* Primary "Add to Today" inherits the aubergine-outline
-            `submitBtn` style. The sibling "Search" is a SECONDARY action
-            → off-white fill (colors.card #F6F5F2) + ink label, no border. */}
-        <Pressable style={[styles.submitBtn, { flex: 1 }]} onPress={onSubmit}>
-          <Text style={styles.submitBtnText}>Add to Today</Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.submitBtn,
-            {
-              flex: 1,
-              flexDirection: "row",
-              backgroundColor: colors.card,
-              borderWidth: 0,
-            },
-          ]}
+        {/* Button system (2026-06-12,
+            `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+            "Add to Today" is this quick-add card's ONE primary action →
+            `SupprButton` variant="primary" (solid aubergine fill, white
+            label, pill, no shadow). Its "Search" sibling is the SECONDARY
+            action → variant="ghost" (transparent, plum label, no border).
+            Supersedes the old aubergine-OUTLINE + beige `colors.card` pair.
+            Mirror of web `today-add-meal-dialog.tsx`. */}
+        <SupprButton
+          variant="primary"
+          accessibilityLabel="Add to Today"
+          label="Add to Today"
+          onPress={onSubmit}
+          style={{ flex: 1 }}
+        />
+        <SupprButton
+          variant="ghost"
+          haptic="selection"
+          accessibilityLabel="Search"
           onPress={onOpenSearch}
+          style={{ flex: 1 }}
         >
-          <Search size={16} color={colors.text} style={{ marginRight: 4 }} />
-          <Text style={[styles.submitBtnText, { color: colors.text }]}>Search</Text>
-        </Pressable>
+          <Search size={16} color={accent.primarySolid} style={{ marginRight: Spacing.xs }} />
+          <Text style={{ ...Type.headline, color: accent.primarySolid }}>Search</Text>
+        </SupprButton>
       </View>
     </View>
   );

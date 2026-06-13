@@ -65,8 +65,13 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(COMPLETE_DAY).not.toMatch(FILLED_SLAB);
   });
 
-  it("Today 'Complete Day' button (NutritionTracker) is an aubergine outline", () => {
-    expect(TRACKER).toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent text-primary-solid[\s\S]{0,160}>\s*Complete Day/);
+  it("Today 'Complete Day' button (NutritionTracker) is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the day's terminal
+    // action → `SupprButton` variant="primary" (solid aubergine fill, white
+    // label, pill). Mobile parity: TodayCompleteDayButton solid pin.
+    expect(TRACKER).toMatch(/<SupprButton\s+variant="primary"\s+label="Complete Day"/);
+    // Must NOT regress to the old aubergine outline.
+    expect(TRACKER).not.toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent text-primary-solid[\s\S]{0,160}>\s*Complete Day/);
   });
 
   it("Weekly check-in dialog 'Accept new target' is an aubergine outline", () => {
@@ -82,13 +87,20 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(ACTIVITY_BONUS).toMatch(OUTLINE);
   });
 
-  it("Log sheet 'Done' + barcode 'Log it' are aubergine outlines; 'Browse recipes' is a secondary", () => {
-    const outlineMatches = LOG_SHEET.match(/border-\[1\.5px\]\s+border-primary-solid/g) ?? [];
-    expect(outlineMatches.length).toBeGreaterThanOrEqual(2);
-    // Browse recipes empty state is an off-white secondary (bg-secondary +
-    // ink label), not a filled accent.
-    expect(LOG_SHEET).toMatch(/bg-secondary px-5 text-\[13px\] font-bold text-foreground/);
-    expect(LOG_SHEET).toMatch(/bg-secondary px-5[\s\S]{0,300}>\s*Browse recipes/);
+  it("Log sheet 'Done' + barcode 'Log it' are SOLID primaries; 'Undo' + 'Browse recipes' are ghosts", () => {
+    // Button system migration (2026-06-12, ENG-1079): the two sheet commit CTAs
+    // → SupprButton variant="primary" (solid plum fill, white label, pill); the
+    // secondary Undo + empty-state Browse → variant="ghost" (transparent, plum
+    // label). Mobile parity in
+    // apps/mobile/tests/unit/todayLaneAubergineOutline.test.ts.
+    expect(LOG_SHEET).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Done"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="Log it"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,160}label="Undo"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Browse recipes"/);
+    // Must NOT keep the retired aubergine outline or off-white Browse fill.
+    expect(LOG_SHEET).not.toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent[\s\S]{0,120}>\s*Done/);
+    expect(LOG_SHEET).not.toMatch(/bg-secondary px-5[\s\S]{0,300}>\s*Browse recipes/);
   });
 
   it("Add-meal dialog 'Add meal' is an aubergine outline (per-instance Button override)", () => {

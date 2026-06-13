@@ -13,8 +13,9 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 const PORTIONS: { value: number; label: string }[] = [
@@ -149,29 +150,20 @@ export function PortionPickerSheet({
             ))}
           </View>
 
-          {/* Cancel */}
-          <Pressable
+          {/* Cancel — Button system (2026-06-12,
+              docs/decisions/2026-06-12-button-system-solid-primary.md): the
+              secondary dismiss is a ghost SupprButton (transparent, plum
+              label), replacing the old bordered-outline treatment. The portion
+              rows above are selection rows (commit-on-tap), not buttons — they
+              stay as-is. The sheet itself keeps its sanctioned elevation. */}
+          <SupprButton
+            variant="ghost"
             onPress={onClose}
-            accessibilityRole="button"
             accessibilityLabel="Cancel"
-            style={{
-              paddingVertical: Spacing.dense,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              borderRadius: Radius.md,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: colors.text,
-              }}
-            >
-              Cancel
-            </Text>
-          </Pressable>
+            label="Cancel"
+            haptic="selection"
+            style={{ alignSelf: "stretch" }}
+          />
         </Pressable>
       </Pressable>
     </Modal>

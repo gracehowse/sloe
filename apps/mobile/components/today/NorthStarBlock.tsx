@@ -32,6 +32,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
+import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
@@ -603,31 +604,22 @@ function NorthStarDefault({
             </Text>
           </View>
 
-          {/* Sloe treatment system (2026-06-08): the everyday primary
-              inline CTA is AUBERGINE OUTLINE — transparent fill, 1.5px
-              primarySolid border, primarySolid label — never a filled
-              slab. This keeps the FAB as the one filled moment (the
-              premium-bar papercut #3 intent: the outline is quieter than
-              both a fill and the old 8% tint, so the FAB stays the
-              loudest pixel) while matching the approved ladder. */}
-          <Pressable
-            accessibilityRole="button"
+          {/* Button system (2026-06-12,
+              `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+              the "what to eat next" CTA is this card's ONE primary action →
+              `SupprButton` variant="primary" (solid aubergine fill, white
+              label, pill, no shadow — the solid fill IS the affordance).
+              Supersedes the old aubergine-OUTLINE treatment which read
+              weak/floating on the flat cream ground. The FAB stays the
+              screen-level loudest pixel (FAB-excepted from one-per-screen).
+              Mirror of web `north-star-block.tsx`. */}
+          <SupprButton
+            variant="primary"
             accessibilityLabel={ctaLabel}
+            label={ctaLabel}
             onPress={onPrimaryCta}
-            style={({ pressed }) => [
-              styles.cta,
-              {
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                marginTop: 8,
-                alignSelf: "flex-start",
-                opacity: pressed ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text style={[styles.ctaLabel, { color: accent.primarySolid }]}>{ctaLabel}</Text>
-          </Pressable>
+            style={styles.cta}
+          />
         </View>
       </SupprCard>
     </AnimatedView>
@@ -675,17 +667,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   cta: {
-    height: 36,
-    paddingHorizontal: Spacing.dense,
-    borderRadius: Radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ctaLabel: {
-    // Colour is set inline to Accent.primarySolid (aubergine outline
-    // treatment) — this default is overridden by every caller.
-    fontSize: 13,
-    fontWeight: "700",
+    // Layout only — the `SupprButton` primitive owns fill/radius/label
+    // colour/padding (button system, 2026-06-12). The CTA hugs its label
+    // at the start of the card body rather than stretching full-width.
+    marginTop: 8,
+    alignSelf: "flex-start",
   },
   skipButton: {
     position: "absolute",

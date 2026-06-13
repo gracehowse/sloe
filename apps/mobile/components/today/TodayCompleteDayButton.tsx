@@ -1,8 +1,7 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { Layout } from "@/constants/layout";
-import { Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { exportDayToHealth, isHealthSyncAvailable } from "@/lib/healthSync";
 
@@ -12,9 +11,12 @@ import { exportDayToHealth, isHealthSyncAvailable } from "@/lib/healthSync";
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (ENG-1065 / F-158) so the
  * Today screen file moves toward the 400-line target rather than away from it.
  *
- * Sloe treatment system (2026-06-08): primary inline CTA → aubergine OUTLINE
- * (transparent fill + 1.5px `accent.primarySolid` border + primary-solid
- * label), not a filled slab. Mirror of web `NutritionTracker`.
+ * Button system (2026-06-12, `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+ * Complete Day is this card/section's ONE primary action → `SupprButton`
+ * `variant="primary"` (solid aubergine fill, white label, pill, no shadow —
+ * the solid fill IS the affordance). Supersedes the old aubergine-OUTLINE
+ * treatment which read weak/floating on the flat cream ground. Mirror of web
+ * `NutritionTracker` Complete Day.
  *
  * F-158 (founder TF57): the button read as "stylistically out of place —
  * floating in dead space" because it was the one scroll-body element that
@@ -22,7 +24,7 @@ import { exportDayToHealth, isHealthSyncAvailable } from "@/lib/healthSync";
  * where every sibling section uses `Layout.todaySectionBreak` (32), and no
  * section wrapper. It now sits in a section <View> on the standard 32pt
  * cadence as the final section, so it reads as the day's closing action rather
- * than a stray button. Outline tier + label + behaviour unchanged.
+ * than a stray button. Label + behaviour unchanged.
  *
  * Side-effect parity with the old inline handler: on press it opens the
  * Complete-Day modal AND, when the user has opted into HealthKit nutrition
@@ -43,11 +45,12 @@ export function TodayCompleteDayButton({
   selectedDate,
   onComplete,
 }: TodayCompleteDayButtonProps) {
-  const accent = useAccent();
-
   return (
     <View style={{ marginTop: Layout.todaySectionBreak }}>
-      <Pressable
+      <SupprButton
+        variant="primary"
+        accessibilityLabel="Complete day"
+        label="Complete Day"
         onPress={async () => {
           onComplete();
           // Auto-export to HealthKit if the user opted in.
@@ -62,20 +65,7 @@ export function TodayCompleteDayButton({
             } catch {}
           }
         }}
-        accessibilityRole="button"
-        accessibilityLabel="Complete day"
-        style={({ pressed }) => ({
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          alignItems: "center",
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Text style={{ color: accent.primarySolid, ...Type.headline }}>Complete Day</Text>
-      </Pressable>
+      />
     </View>
   );
 }

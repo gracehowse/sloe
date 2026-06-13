@@ -63,6 +63,7 @@ import {
 import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "../ui/utils";
+import { SupprButton } from "./suppr-button";
 import { FoodFallbackThumb } from "./food-fallback-thumb";
 import { SourceDot, type SourceDotSource } from "../ui/source-dot";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
@@ -605,37 +606,28 @@ function LoggedConfirmation({
         </div>
       </div>
 
-      {/* Actions — primary Done + optional quiet Undo. Sloe treatment
-          system (2026-06-08): the primary inline CTA is AUBERGINE
-          OUTLINE (transparent fill + 1.5px primary-solid border +
-          primary-solid label), not a filled slab. Mirror of mobile
-          `LogSheet`. */}
+      {/* Actions — primary Done + optional ghost Undo. Button system
+          (2026-06-12, docs/decisions/2026-06-12-button-system-solid-primary.md):
+          the sheet's single commit action is the SOLID-plum SupprButton
+          primary; the secondary Undo is the ghost variant. Mirror of mobile
+          `LogSheet`. The sheet keeps its sanctioned elevation; the buttons
+          inside carry none. */}
       <div className="mt-6 flex w-full flex-col gap-2">
-        <button
-          type="button"
+        <SupprButton
+          variant="primary"
           onClick={onDone}
           aria-label="Done"
-          className={cn(
-            "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
-            "hover:bg-primary/5 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          )}
-        >
-          Done
-        </button>
+          label="Done"
+          className="w-full"
+        />
         {onUndo ? (
-          <button
-            type="button"
+          <SupprButton
+            variant="ghost"
             onClick={onUndo}
             aria-label="Undo log"
-            className={cn(
-              "h-11 w-full rounded-xl text-[13px] font-semibold text-muted-foreground",
-              "hover:bg-muted/50 transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            )}
-          >
-            Undo
-          </button>
+            label="Undo"
+            className="w-full"
+          />
         ) : null}
       </div>
     </div>
@@ -1172,21 +1164,17 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
           Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
         </p>
         {onBrowseRecipes ? (
-          // Sloe treatment system (2026-06-08): "Browse" is a SECONDARY
-          // action → off-white fill (bg-secondary #F6F5F2) + ink label,
-          // no accent. Mirror of mobile `LibraryList`.
-          <button
-            type="button"
+          // Button system (2026-06-12): the empty-state "Browse recipes" is a
+          // SECONDARY action → ghost SupprButton (transparent, plum label),
+          // replacing the old off-white bg-secondary fill. Mirror of mobile
+          // `LibraryList`.
+          <SupprButton
+            variant="ghost"
             onClick={onBrowseRecipes}
             aria-label="Browse recipes"
-            className={cn(
-              "mt-3 h-10 rounded-xl bg-secondary px-5 text-[13px] font-bold text-foreground",
-              "hover:bg-secondary/80 transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            )}
-          >
-            Browse recipes
-          </button>
+            label="Browse recipes"
+            className="mt-3"
+          />
         ) : null}
       </div>
     );
@@ -1376,9 +1364,15 @@ function BarcodeManualEntry({
         ))}
       </div>
 
-      <button
-        type="button"
+      {/* Button system (2026-06-12,
+          docs/decisions/2026-06-12-button-system-solid-primary.md): the
+          manual-entry commit is the sheet's single primary action → SOLID-plum
+          SupprButton primary. Mirror of mobile LogSheet `BarcodeManualEntry`. */}
+      <SupprButton
+        variant="primary"
         aria-label="Log it"
+        label="Log it"
+        className="w-full"
         onClick={() => {
           if (!onConfirm) return;
           onConfirm({
@@ -1390,18 +1384,7 @@ function BarcodeManualEntry({
             fat: Number(fat) || 0,
           });
         }}
-        // Sloe treatment system (2026-06-08): primary inline CTA →
-        // aubergine outline (transparent fill + 1.5px primary-solid border
-        // + primary-solid label), not a filled slab. Mirror of mobile
-        // LogSheet `BarcodeManualEntry`.
-        className={cn(
-          "h-11 w-full rounded-xl border-[1.5px] border-primary-solid bg-transparent text-[13px] font-bold text-primary-solid",
-          "hover:bg-primary/5 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-        )}
-      >
-        Log it
-      </button>
+      />
     </div>
   );
 }

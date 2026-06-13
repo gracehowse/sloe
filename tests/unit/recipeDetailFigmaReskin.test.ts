@@ -399,10 +399,11 @@ describe("mobile detail — Figma radii (delta 6)", () => {
   });
 
   it("primary action + sticky-footer pills are radius-full", () => {
-    // Re-pinned 2026-06-09: the action pills + the sticky footer's Cook Mode
-    // pill moved into the extracted `RecipeActionPills` / `RecipeServingsFooter`
-    // components. Both round to Radius.full.
-    expect(MOBILE_ACTION_PILLS).toContain("borderRadius: Radius.full");
+    // ENG-1079: the action pills moved onto SupprButton (Radius.full lives in
+    // the primitive, pinned by supprButton.test.tsx) — assert the pills render
+    // via SupprButton. The sticky footer's Cook Mode pill is unmigrated and
+    // still rounds to Radius.full directly.
+    expect(MOBILE_ACTION_PILLS).toContain("SupprButton");
     expect(MOBILE_SERVINGS_FOOTER).toContain("borderRadius: Radius.full");
   });
 

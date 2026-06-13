@@ -641,11 +641,13 @@ describe("createRecipeWizard — premium parity pins (ENG-1011)", () => {
     expect(COMPONENT_SRC).not.toMatch(/padding:\s*10\b/);
   });
 
-  it("disabled Continue CTA opacity floor is ≥ 0.65 (not 0.45)", () => {
-    // Gap 6: 0.45 reads as 'broken/dead'; 0.65 reads as 'not yet'.
-    // The source must NOT contain the old 0.45 on the Continue CTA.
+  it("disabled Continue CTA delegates to SupprButton (0.65 floor lives in the primitive)", () => {
+    // ENG-1079: Continue migrated to SupprButton variant="primary"; the
+    // disabled dim is the primitive's 0.65 floor (pinned in
+    // supprButton.test.tsx), fed via disabled={!advanceEnabled}. No inline
+    // opacity on the wizard CTA, and never the old broken-looking 0.45.
     expect(COMPONENT_SRC).not.toMatch(/!advanceEnabled[\s\S]*?opacity:\s*0\.45/);
-    expect(COMPONENT_SRC).toMatch(/!advanceEnabled[\s\S]*?opacity:\s*0\.6[5-9]/);
+    expect(COMPONENT_SRC).toMatch(/<SupprButton[\s\S]{0,200}disabled=\{!advanceEnabled\}/);
   });
 
   it("inline helper copy explains why Continue is disabled on the title step", () => {

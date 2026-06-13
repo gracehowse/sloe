@@ -268,16 +268,20 @@ describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () =
     // The commit CTAs (Start Cooking / Log / Cook Mode / servings) are
     // `PressableScale` in the extracted action-pill + footer components, fed a
     // flag-gated haptic from the screen.
-    expect(ACTION_PILLS).toMatch(/import \{ PressableScale \} from "@\/components\/ui\/PressableScale"/);
+    // ENG-1079: the action-pill commit CTAs (Log/Add) migrated to SupprButton,
+    // which wraps PressableScale internally and takes the flag-gated haptic via
+    // its `haptic` prop. The servings footer stepper is unmigrated PressableScale.
+    expect(ACTION_PILLS).toMatch(/import \{ SupprButton \} from "@\/components\/ui\/SupprButton"/);
+    expect(ACTION_PILLS).toMatch(/haptic=\{haptic\}/);
     expect(SERVINGS_FOOTER).toMatch(/import \{ PressableScale \} from "@\/components\/ui\/PressableScale"/);
-    // The screen derives the flag-gated haptic and threads it into the CTAs.
+    // The screen still derives the flag-gated haptic and threads it into the CTAs.
     expect(SRC).toMatch(/const winMomentFeedback = isFeatureEnabled\("redesign_winmoment"\)/);
-    const hapticUses = SRC.match(/haptic=\{winMomentFeedback \? "confirm" : "none"\}/g) ?? [];
-    expect(hapticUses.length).toBeGreaterThanOrEqual(2);
-    // The action pills are PressableScale (not bare Pressable any more); the
-    // dominant pill is Log (cook entry deduped to the footer — gap 1).
+    const hapticUses = SRC.match(/winMomentFeedback \? "confirm" : "none"/g) ?? [];
+    expect(hapticUses.length).toBeGreaterThanOrEqual(1);
+    // The dominant Log pill is a SupprButton (ENG-1079; PressableScale now
+    // lives INSIDE the primitive). Cook entry deduped to the footer (gap 1).
     expect(ACTION_PILLS).toMatch(
-      /<PressableScale[\s\S]{0,600}testID="recipe-action-log"/,
+      /<SupprButton[\s\S]{0,600}testID="recipe-action-log"/,
     );
   });
 });

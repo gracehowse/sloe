@@ -41,20 +41,13 @@ describe("LANE D gap 1 — cook-CTA dedup (one cook entry; Log is the top-row pr
     expect(ACTION_PILLS).not.toMatch(/onStartCooking,/);
   });
 
-  it("Log is the dominant top-row pill — wider (flex 1.6) aubergine outline", () => {
-    // Log carries the dominant flex weight + the aubergine OUTLINE treatment
-    // (transparent ground, 1.5px outlineColor border, outlineColor label).
-    expect(ACTION_PILLS).toMatch(
-      /testID="recipe-action-log"[\s\S]{0,400}flex:\s*1\.6/,
-    );
-    expect(ACTION_PILLS).toMatch(/borderColor:\s*outlineColor/);
-    // outlineColor is the scheme-resolved aubergine. ENG-1013 colour migration
-    // 2026-06-10: useAccent() already resolves primarySolid per scheme (light
-    // #3B2A4D / dark #C4ACD0), so the value-source is now a direct
-    // `accent.primarySolid` read — the old `colors.background === "#FFFFFF"
-    // ? primarySolid : primarySolidDark` probe was a scheme bug (broke once the
-    // light ground moved off pure white to cream). Still no raw hex.
-    expect(ACTION_PILLS).toMatch(/outlineColor\s*=\s*accent\.primarySolid/);
+  it("Log is the dominant top-row pill — wider (flex 1.6) SOLID primary", () => {
+    // ENG-1079: Log is now SupprButton variant="primary" (solid aubergine fill,
+    // white label, no border) and still carries the dominant flex weight.
+    expect(ACTION_PILLS).toMatch(/variant="primary"[\s\S]{0,300}testID="recipe-action-log"/);
+    expect(ACTION_PILLS).toMatch(/testID="recipe-action-log"[\s\S]{0,400}flex:\s*1\.6/);
+    // No outline/border any more — solid fill IS the affordance (ENG-1079).
+    expect(ACTION_PILLS).not.toMatch(/borderColor:\s*outlineColor/);
     expect(ACTION_PILLS).not.toMatch(/colors\.background === "#FFFFFF"/);
   });
 
