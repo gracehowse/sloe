@@ -47,6 +47,13 @@ export const Accent = {
    *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */
   primarySoft: 'rgba(91, 59, 110, 0.12)',
   primarySoftDark: 'rgba(154, 123, 170, 0.18)',
+  /** Stronger soft fill (~20%) for the ONE hero tinted-slab affordance that
+   *  must out-weigh a settings row without becoming a solid slab — the
+   *  Discover import-from-Reel card (ENG-1087). Flat-card law still holds: the
+   *  tint IS the separation, just louder. Reserve for that hero; everyday
+   *  selected pills/nudges stay on `primarySoft` (12%). */
+  primarySoftStrong: 'rgba(91, 59, 110, 0.20)',
+  primarySoftStrongDark: 'rgba(154, 123, 170, 0.28)',
   /** Legacy alias — now deep plum. Macro identity (protein) uses
    *  MacroColors.protein (olive-sage), a different hue. */
   brandBlue: '#3B2A4D',

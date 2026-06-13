@@ -9,6 +9,7 @@ import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import {
   DISCOVER_CATEGORY_PILLS,
@@ -810,39 +811,64 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             iOS, but the click handler uses History API parity with
             the rest of the mobile-web nav. */}
         <div className="md:hidden">
-          <div
-            role="button"
-            tabIndex={0}
-            data-testid="discover-import-cta-top"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("view", "import");
-              window.history.pushState({}, "", url.toString());
-              window.dispatchEvent(new PopStateEvent("popstate"));
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-            className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-            // Aubergine SOFT-TINT nudge card (Sloe treatment §10) — a DELIBERATE
-            // tinted affordance, NOT a white recipe card, so the import nudge
-            // stands apart from the white feed cards. Parity with the mobile
-            // Discover import banner (`apps/mobile/app/(tabs)/discover.tsx`):
-            // (1) the `--accent-primary-soft` fill == mobile `accent.primarySoft`;
-            // (2) the ring border is dropped per the flat-surface law — the
-            // soft tint IS the separation (ENG-1082, 2026-06-13); (3) radius
-            // bumped to `rounded-3xl` (24) to match the sibling card grammar.
-            style={{ background: "var(--accent-primary-soft)" }}
-          >
-            <IconBox size="lg" tone="primary">
-              <Icons.import />
-            </IconBox>
-            <div className="flex-1">
-              {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis.
-                  Mirrors mobile discover.tsx copy change. */}
-              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+          {isFeatureEnabled("discover_import_hero_v1") ? (
+            // ENG-1087 — hero affordance (parity with mobile discover.tsx). Keeps
+            // the tinted-slab grammar (flat-card law) but raises the weight so the
+            // viral-hook import beats a settings row: stronger ~20% tint, a SOLID
+            // plum icon circle (white glyph), a serif headline title, and a filled
+            // "Paste link" pill in place of the passive chevron. The whole slab is
+            // the tap target → the import/paste view; the pill is the affordance.
+            <div
+              role="button"
+              tabIndex={0}
+              data-testid="discover-import-cta-top"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("view", "import");
+                window.history.pushState({}, "", url.toString());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+              className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-colors"
+              style={{ background: "var(--accent-primary-soft-strong)" }}
+            >
+              <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
+                <Icons.import />
+              </span>
+              <div className="flex-1">
+                <p className="text-foreground" style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "22px", fontWeight: 500, letterSpacing: "-0.1px" }}>Import from TikTok, Instagram &amp; YouTube</p>
+                <p className="text-[13px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-primary-solid px-3 py-1.5 text-[13px] font-semibold text-white">Paste link</span>
             </div>
-            <Icons.forward className="w-4 h-4 text-muted-foreground" />
-          </div>
+          ) : (
+            // Legacy nav-row slab (flag-off / kill switch). Aubergine SOFT-TINT
+            // nudge card (Sloe treatment §10, ENG-1082) — a DELIBERATE tinted
+            // affordance, NOT a white recipe card. testID preserved for Maestro.
+            <div
+              role="button"
+              tabIndex={0}
+              data-testid="discover-import-cta-top"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("view", "import");
+                window.history.pushState({}, "", url.toString());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+              className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+              style={{ background: "var(--accent-primary-soft)" }}
+            >
+              <IconBox size="lg" tone="primary">
+                <Icons.import />
+              </IconBox>
+              <div className="flex-1">
+                <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+              </div>
+              <Icons.forward className="w-4 h-4 text-muted-foreground" />
+            </div>
+          )}
         </div>
 
         {/* Section 1 + 2: recipe sections — only when there's content

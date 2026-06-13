@@ -242,9 +242,50 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
 
     it("web import banner is a token-sourced soft-tint affordance with NO ring border", () => {
+      // Legacy (flag-off) path keeps the 12% soft-tint fill.
       expect(WEB_SRC).toMatch(/background: "var\(--accent-primary-soft\)"/);
       // Border ring dropped per the flat-surface law.
       expect(WEB_SRC).not.toMatch(/borderColor: "var\(--accent-primary-ring\)"/);
+    });
+  });
+
+  // ENG-1087 — the import-from-Reel card promoted from a settings-row slab to a
+  // hero affordance: flag-gated (default-on) with the legacy nav row kept as the
+  // kill switch. Treatment-only (the rendered POSITION on web mobile-web is
+  // tracked separately in ENG-1089). Source-structural, both platforms.
+  describe("import card → hero affordance (ENG-1087, flag-gated)", () => {
+    it("mobile gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
+      expect(MOBILE_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
+      expect(MOBILE_SRC).toMatch(/importHero \? \(/);
+      // Two import-cta blocks now exist (hero + legacy); only one renders.
+      const ctas = MOBILE_SRC.match(/testID="discover-import-cta"/g) ?? [];
+      expect(ctas.length).toBe(2);
+    });
+
+    it("mobile hero raises the weight: stronger tint + solid plum icon + 'Paste link' pill", () => {
+      // Stronger ~20% tint (the hero), not the 12% soft tint (legacy).
+      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySoftStrong/);
+      // Solid plum icon circle with a WHITE glyph (not the soft IconBox).
+      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySolid,[\s\S]{0,160}<LinkIcon size=\{20\} color=\{Accent\.primaryForeground\}/);
+      // Serif headline title + filled "Paste link" pill replacing the chevron.
+      expect(MOBILE_SRC).toMatch(/\.\.\.Type\.headline[\s\S]{0,120}Import from TikTok/);
+      expect(MOBILE_SRC).toMatch(/Paste link/);
+    });
+
+    it("web gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
+      expect(WEB_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
+      // Two import-cta blocks now exist (hero + legacy); only one renders.
+      const ctas = WEB_SRC.match(/data-testid="discover-import-cta-top"/g) ?? [];
+      expect(ctas.length).toBe(2);
+    });
+
+    it("web hero raises the weight: stronger tint + solid plum icon + 'Paste link' pill", () => {
+      expect(WEB_SRC).toMatch(/background: "var\(--accent-primary-soft-strong\)"/);
+      // Solid plum icon circle (white glyph) instead of the soft IconBox.
+      expect(WEB_SRC).toMatch(/rounded-full bg-primary-solid text-white/);
+      // Serif headline title + filled "Paste link" pill.
+      expect(WEB_SRC).toMatch(/fontFamily: "var\(--font-headline\)"[\s\S]{0,160}Import from TikTok/);
+      expect(WEB_SRC).toMatch(/bg-primary-solid px-3 py-1\.5[\s\S]{0,40}Paste link/);
     });
   });
 });
