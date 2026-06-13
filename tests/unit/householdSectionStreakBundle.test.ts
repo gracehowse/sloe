@@ -205,18 +205,28 @@ describe("Premium parity — household settings redesign (2026-06-09)", () => {
     expect(WEB_HOUSEHOLD).not.toMatch(/tracking-\[0\.1em\]/);
   });
 
-  // GAP 6: Save CTA is aubergine-outline on both platforms.
-  it("mobile Save CTA is an outline (not a filled button)", () => {
-    // The mobile CTA has backgroundColor colors.card + borderColor accent.primarySolid (scheme-resolved via useAccent).
-    expect(MOBILE_HOUSEHOLD).toContain("accent.primarySolid");
-    expect(MOBILE_HOUSEHOLD).toContain("borderWidth: 1.5");
+  // GAP 6: Save CTA is a SupprButton primary on both platforms.
+  // 2026-06-13 (ENG-1080 household wave) — the household Save footer migrated
+  // off the aubergine OUTLINE onto the SupprButton primary/ghost grammar
+  // (`docs/decisions/2026-06-12-button-system-solid-primary.md`). The footer's
+  // ONE commit action is now a solid-aubergine pill, not an outline.
+  it("mobile Save CTA is a SupprButton primary (not an outline)", () => {
+    expect(MOBILE_HOUSEHOLD).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,400}testID="household-settings-save"/,
+    );
+    // The retired outline treatment (1.5px primarySolid border) is gone from the Save CTA.
+    expect(MOBILE_HOUSEHOLD).not.toMatch(
+      /testID="household-settings-save"[\s\S]{0,400}borderWidth:\s*1\.5/,
+    );
   });
 
-  it("web Save CTA is aubergine-outline (bg-card, border-primary, text-primary)", () => {
-    // The save button itself must not be a filled accent button.
-    // The old pattern was: className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground ...".
+  it("web Save CTA is a SupprButton primary (not an outline)", () => {
+    expect(WEB_HOUSEHOLD).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,400}data-testid="household-settings-save"/,
+    );
+    // Neither the old filled slab nor the retired aubergine-outline remains.
     expect(WEB_HOUSEHOLD).not.toMatch(/rounded-xl bg-primary text-primary-foreground/);
-    expect(WEB_HOUSEHOLD).toContain("bg-card border border-primary text-primary");
+    expect(WEB_HOUSEHOLD).not.toContain("bg-card border border-primary text-primary");
   });
 
   // GAP 13: "You" pill on the self row — both platforms.

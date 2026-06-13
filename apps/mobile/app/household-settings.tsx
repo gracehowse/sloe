@@ -56,6 +56,7 @@ import {
   type HouseholdData,
 } from "@suppr/shared/household/householdClient";
 import HouseholdInviteSheet from "@/components/household/HouseholdInviteSheet";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   SHARE_TARGETS_TOGGLE_HELPER,
   SHARE_TARGETS_TOGGLE_LABEL,
@@ -567,32 +568,23 @@ export default function HouseholdSettingsScreen() {
                     Invite a partner, flatmate, or family member to share
                     meal plans and shopping lists.
                   </Text>
-                  {/* Invite — secondary action → off-white fill (Sloe
-                      treatment #3, 2026-06-08). Invite is a secondary action
-                      (not the conversion CTA), so it reads as an off-white
-                      slab with an aubergine glyph + ink label rather than a
-                      filled accent button. */}
-                  <Pressable
-                    accessibilityRole="button"
+                  {/* Invite — secondary action → SupprButton variant="ghost"
+                      (button system 2026-06-12): transparent, no border, plum
+                      label + plum glyph. Supersedes the off-white `colors.card`
+                      slab. Web parity:
+                      `src/app/components/HouseholdSettingsPage.tsx`
+                      (`household-settings-solo-invite`). */}
+                  <SupprButton
+                    variant="ghost"
                     accessibilityLabel="Invite a household member"
                     testID="household-settings-solo-invite"
                     onPress={() => setInviteSheetOpen(true)}
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: Spacing.sm,
-                      paddingHorizontal: Spacing.lg,
-                      paddingVertical: Spacing.sm + 2,
-                      borderRadius: Radius.md,
-                      backgroundColor: colors.card,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
                   >
                     <Plus size={16} color={accent.primarySolid} strokeWidth={2.25} />
-                    <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                    <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
                       Invite
                     </Text>
-                  </Pressable>
+                  </SupprButton>
                 </View>
               </View>
             ) : null}
@@ -1048,35 +1040,22 @@ export default function HouseholdSettingsScreen() {
             backgroundColor: colors.background + "ee",
           }}
         >
-          {/* Save changes — aubergine OUTLINE (Sloe treatment #1,
-              2026-06-08). The everyday primary CTA is an accent line on a
-              white backing (the sticky footer behind it is translucent, so
-              the button fills white to stay crisp), 1.5px border +
-              `accent.primarySolid` label. */}
-          <Pressable
+          {/* Save changes — the footer's ONE commit action → SupprButton
+              variant="primary" (solid aubergine pill, white label — button
+              system 2026-06-12). Supersedes the aubergine-OUTLINE treatment.
+              DC12 (2026-05-14, premium-bar audit) — specific confirmation
+              copy ("Household saved", not generic "Saved"); during the
+              async save the primitive swaps the label for a spinner. Web
+              parity: `src/app/components/HouseholdSettingsPage.tsx`. */}
+          <SupprButton
+            variant="primary"
             onPress={() => void onSave()}
-            disabled={saving || !household.isOwner}
+            loading={saving}
+            disabled={!household.isOwner}
             testID="household-settings-save"
-            accessibilityRole="button"
             accessibilityLabel="Save household settings"
-            style={{
-              paddingVertical: Spacing.md,
-              borderRadius: Radius.lg,
-              backgroundColor: colors.card,
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
-              opacity: saving || !household.isOwner ? 0.5 : 1,
-            }}
-          >
-            <Text style={{ color: accent.primarySolid, fontSize: 14, fontWeight: "700" }}>
-              {/* DC12 (2026-05-14, premium-bar audit) — specific
-                  confirmation. The button is "Save changes" so the
-                  affirmed state should mirror that, not the generic
-                  "Saved". */}
-              {saving ? "Saving…" : savedToast ? "Household saved" : "Save changes"}
-            </Text>
-          </Pressable>
+            label={savedToast ? "Household saved" : "Save changes"}
+          />
           {!household.isOwner ? (
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm, textAlign: "center" }}>
               Only the household owner can change sharing.

@@ -31,6 +31,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
+import { SupprButton } from "./suppr/suppr-button";
 import HouseholdInviteDialog from "./household/HouseholdInviteDialog";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
@@ -414,17 +415,19 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 px-2">
             Invite a partner, flatmate, or family member to share meal plans and shopping lists.
           </p>
-          {/* Invite — secondary action, aubergine outline (matches mobile solo-invite CTA) */}
-          <button
+          {/* Invite — secondary action → ghost (button system, 2026-06-12).
+              Transparent, no border, plum label + plum glyph. Matches mobile
+              solo-invite CTA. */}
+          <SupprButton
+            variant="ghost"
             type="button"
             onClick={() => setInviteDialogOpen(true)}
             data-testid="household-settings-solo-invite"
             aria-label="Invite a household member"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-card border border-primary text-[13px] font-bold text-primary hover:opacity-90 transition-opacity"
           >
             <Icons.add className="w-3.5 h-3.5" aria-hidden />
             Invite
-          </button>
+          </SupprButton>
         </div>
       ) : null}
 
@@ -709,22 +712,25 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
       {/* Save — sticky so long grids don't bury the primary action */}
       <div className="sticky bottom-2 mt-6 pt-4 bg-gradient-to-t from-background via-background/90 to-transparent">
-        {/* Aubergine OUTLINE — Sloe treatment #1 (2026-06-08), matches mobile Save CTA.
-            bg-card + border-primary (plum) + text-primary so both surfaces read identically. */}
-        <button
+        {/* The footer's ONE commit action → SupprButton variant="primary"
+            (solid aubergine pill, white label — button system 2026-06-12).
+            Supersedes the aubergine-OUTLINE treatment. Mobile parity:
+            `apps/mobile/app/household-settings.tsx`. */}
+        <SupprButton
+          variant="primary"
           type="button"
           onClick={() => void onSave()}
-          disabled={saving || !household.isOwner}
+          loading={saving}
+          disabled={!household.isOwner}
           data-testid="household-settings-save"
-          className="w-full py-3.5 rounded-xl bg-card border border-primary text-primary text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-          style={{ borderWidth: "1.5px" }}
+          className="w-full"
           title={household.isOwner ? undefined : "Only the household owner can change sharing"}
         >
           {/* DC12 (2026-05-14, premium-bar audit) — specific
               confirmation. Mobile parity:
               `apps/mobile/app/household-settings.tsx`. */}
           {saving ? "Saving…" : savedToast ? "Household saved" : "Save changes"}
-        </button>
+        </SupprButton>
         {!household.isOwner ? (
           <p className="text-[11px] text-muted-foreground mt-2 text-center">
             Only the household owner can change sharing.

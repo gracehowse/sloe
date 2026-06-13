@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Accent, Radius, MacroColors } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprButton } from "@/components/ui/SupprButton";
 // Direct-to-Supabase household client. Replaced the old
 // `fetch("/api/household")` calls (which never worked from React Native —
 // no origin → silent failure, TestFlight feedback AAegi1DJEiscjIFi_pYaep4).
@@ -324,13 +325,12 @@ export function HouseholdCard() {
         </Text>
 
         {mode === "idle" ? (
+          // Button system (2026-06-12) — Create = primary (solid aubergine
+          // pill), Join = ghost. Mirror of web `HouseholdPanel` idle pair
+          // ("Create Household" primary + "Join with Code" ghost).
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Pressable onPress={() => setMode("create")} style={{ flex: 1, backgroundColor: t.accent, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-              <Text style={{ color: colors.primaryForeground, fontSize: 13, fontWeight: "600" }}>Create</Text>
-            </Pressable>
-            <Pressable onPress={() => setMode("join")} style={{ flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-              <Text style={{ color: t.text, fontSize: 13, fontWeight: "600" }}>Join</Text>
-            </Pressable>
+            <SupprButton variant="primary" label="Create" onPress={() => setMode("create")} style={{ flex: 1 }} />
+            <SupprButton variant="ghost" label="Join" onPress={() => setMode("join")} style={{ flex: 1 }} />
           </View>
         ) : (
           <View style={{ gap: 8 }}>
@@ -352,13 +352,22 @@ export function HouseholdCard() {
                 {HOUSEHOLD_JOIN_DISCLOSURE_COPY}
               </Text>
             )}
+            {/* Button system (2026-06-12) — the input form's ONE commit
+                action (Create/Join) = primary (solid aubergine pill); Cancel
+                = ghost. Mirror of web `HouseholdPanel` input pairs. */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable onPress={() => void (mode === "create" ? createHousehold() : joinHousehold())} style={{ flex: 1, backgroundColor: t.accent, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-                <Text style={{ color: colors.primaryForeground, fontSize: 13, fontWeight: "600" }}>{mode === "create" ? "Create" : "Join"}</Text>
-              </Pressable>
-              <Pressable onPress={() => { setMode("idle"); setInputValue(""); }} style={{ flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
-                <Text style={{ color: t.text, fontSize: 13, fontWeight: "600" }}>Cancel</Text>
-              </Pressable>
+              <SupprButton
+                variant="primary"
+                label={mode === "create" ? "Create" : "Join"}
+                onPress={() => void (mode === "create" ? createHousehold() : joinHousehold())}
+                style={{ flex: 1 }}
+              />
+              <SupprButton
+                variant="ghost"
+                label="Cancel"
+                onPress={() => { setMode("idle"); setInputValue(""); }}
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         )}

@@ -24,8 +24,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -544,68 +544,29 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                 marginTop: Spacing.sm,
               }}
             >
-              <Pressable
-                accessibilityRole="button"
+              {/* Sloe button-system canon (2026-06-12): Confirm = the sheet's
+                  ONE commit action → SupprButton variant="primary" (solid
+                  aubergine pill). Cancel = secondary sibling → variant="ghost".
+                  The flex 1 / 2 split is preserved as a layout-only override. */}
+              <SupprButton
+                variant="ghost"
                 accessibilityLabel="Cancel"
                 onPress={onClose}
                 disabled={saving}
                 testID="goal-pace-retune-cancel"
-                style={{
-                  flex: 1,
-                  paddingVertical: Spacing.md,
-                  borderRadius: Radius.md,
-                  borderWidth: 1.5,
-                  borderColor: colors.cardBorder,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: saving ? 0.5 : 1,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: colors.text,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </Pressable>
-              {/* Confirm — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-                  The goal/pace confirm is an everyday primary CTA: transparent
-                  fill, 1.5px `accent.primarySolid` border + label. */}
-              <Pressable
-                accessibilityRole="button"
+                label="Cancel"
+                style={{ flex: 1 }}
+              />
+              <SupprButton
+                variant="primary"
                 accessibilityLabel="Confirm new pace"
                 onPress={handleConfirm}
                 disabled={saving || !preview}
+                loading={saving}
                 testID="goal-pace-retune-confirm"
-                style={{
-                  flex: 2,
-                  paddingVertical: Spacing.md,
-                  borderRadius: Radius.md,
-                  backgroundColor: "transparent",
-                  borderWidth: 1.5,
-                  borderColor: accent.primarySolid,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: saving || !preview ? 0.5 : 1,
-                }}
-              >
-                {saving ? (
-                  <ActivityIndicator color={accent.primarySolid} />
-                ) : (
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: accent.primarySolid,
-                    }}
-                  >
-                    Confirm
-                  </Text>
-                )}
-              </Pressable>
+                label="Confirm"
+                style={{ flex: 2 }}
+              />
             </View>
           </ScrollView>
         </View>

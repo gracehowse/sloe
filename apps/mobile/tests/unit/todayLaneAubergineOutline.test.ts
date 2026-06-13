@@ -254,16 +254,16 @@ describe("CTA weight map — Spec 2 outline/pill conversions (2026-06-09)", () =
     expect(PLANNED_MEALS).not.toMatch(/style=\{\{\s*paddingHorizontal:\s*8,\s*paddingVertical:\s*Spacing\.dense\s*\}\}/);
   });
 
-  it("import-shared 'Import' (both idle paths) is an aubergine outline, not the filled primaryBtn", () => {
-    // The dedicated outline style carries the primarySolid border + label.
-    expect(IMPORT_SHARED).toMatch(/outlineImportBtn:\s*\{[\s\S]{0,300}borderColor:\s*accent\.primarySolid/);
-    expect(IMPORT_SHARED).toMatch(/outlineImportBtnText:\s*\{\s*color:\s*accent\.primarySolid/);
-    // Both idle Import buttons reference the outline style (redesign + legacy).
-    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import"[\s\S]{0,200}styles\.outlineImportBtnText[\s\S]{0,40}>Import</);
-    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import-legacy"[\s\S]{0,200}styles\.outlineImportBtnText[\s\S]{0,40}>Import</);
-    // The cold-open Import must NOT reuse the filled primaryBtn slab. (The
-    // shared filled primaryBtn stays for the mid-task commit CTAs.)
-    expect(IMPORT_SHARED).not.toMatch(/<Pressable style=\{styles\.primaryBtn\} onPress=\{onManualImport\}>/);
+  it("import-shared 'Import' (both idle paths) is a SOLID primary SupprButton", () => {
+    // Sloe button-system canon (2026-06-12): the import action is the screen's
+    // commit, so it's the solid aubergine SupprButton variant="primary".
+    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import"[\s\S]{0,200}label="Import"/);
+    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import-legacy"[\s\S]{0,200}label="Import"/);
+    // Both idle Import buttons are the primary variant (redesign + legacy).
+    expect(IMPORT_SHARED).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import"/);
+    expect(IMPORT_SHARED).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import-legacy"/);
+    // The retired aubergine-outline style must be gone.
+    expect(IMPORT_SHARED).not.toMatch(/outlineImportBtn/);
   });
 
   it("whats-new 'Done' is a compact outline pill, not bold accent text", () => {

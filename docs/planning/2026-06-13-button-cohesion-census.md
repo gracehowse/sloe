@@ -305,3 +305,8 @@ question.
 ### Wave C follow-ups (tracked, not silent)
 - **AddIngredientSheet "Find match"** (mid-body, ~L296) stays a hand-rolled aubergine outline while the sheet's footer Cancel is now ghost — small same-sheet cohesion gap. Migrate to `SupprButton variant="ghost"` (or document why it's deliberately outline) in a follow-up cohesion pass / fold into Wave E. Documented in `recipeSheetsButtonSystem.test.ts`.
 - **OverrideIngredientSheet `btn` style** padding literal `paddingVertical: 12` → swap for `Spacing.dense` when next touched (tokens-only nit; still used by the destructive Reset button, not dead).
+
+### Wave E resolution notes (2026-06-13)
+- **FoodSearchPanel "Add" → GHOST, not primary** (census pass-1 listed primary — CORRECTED). The preview footer's dominant commit is "Use this" (the solid primary); "Add" stages to basket → ghost, per the one-filled-CTA law. Pinned by `waveEFoodSearchHouseholdDigestButtons.test.ts`.
+- **Follow-up:** FoodSearchPanel "Use this" commit is still a hand-rolled solid Pressable (commitCtaColor + Radius.md, a Check glyph) — correctly the one primary, but not the SupprButton primitive, so it sits beside the now-ghost "Add" with a different radius/press. Migrate "Use this" → `SupprButton variant="primary"` in a follow-up for full footer cohesion (food-search-preview-use-this).
+- **HouseholdCard "Join"** is two controls: idle Join *toggle* = ghost (mirrors web "Join with Code"); join-*form commit* = primary. Both pinned.
