@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import {
@@ -40,7 +41,7 @@ import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
 import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Colors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1332,8 +1333,6 @@ export default function RecipeDetailScreen() {
     container: { flex: 1, backgroundColor: colors.backgroundSecondary },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
     errorText: { color: colors.text, fontSize: 16 },
-    backBtn: { paddingHorizontal: 20, paddingVertical: Spacing.dense, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
-    backBtnText: { color: colors.text, fontWeight: "600" },
 
     // Page body — single-scroll editorial stack (Figma 332:2 §2–7).
     body: { padding: Spacing.xl, gap: Spacing.xl },
@@ -1409,9 +1408,7 @@ export default function RecipeDetailScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <Text style={styles.errorText}>Recipe not found</Text>
-          <Pressable style={styles.backBtn} onPress={goBack}>
-            <Text style={styles.backBtnText}>Go back</Text>
-          </Pressable>
+          <SupprButton variant="primary" label="Go back" onPress={goBack} />
         </View>
       </View>
     );
@@ -1938,11 +1935,6 @@ export default function RecipeDetailScreen() {
           1,
           Math.round((recipe?.servings ?? 1) * cookScaleFactor * 100) / 100,
         );
-        // Aubergine OUTLINE colour for the cook-mode "Next" step CTA — light
-        // detects via the white page; dark uses the lifted aubergine so the
-        // outline + label clear AA on the dark cook surface.
-        const cookNextOutline =
-          colors.background === Colors.light.background ? accent.primarySolid : accent.primarySolidDark;
         const rawStep = instructionSteps[cookStep] ?? "";
         const cleanedStep = rawStep.replace(/^\d+[\.\)\-]\s*/, "");
         const scaledStep =
@@ -2034,32 +2026,23 @@ export default function RecipeDetailScreen() {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", gap: Spacing.md }}>
-                <Pressable
-                  style={{ flex: 1, backgroundColor: cookStep > 0 ? colors.card : colors.border, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
+                <SupprButton
+                  variant="ghost"
+                  style={{ flex: 1 }}
+                  label="Previous"
                   onPress={() => setCookStep((s) => Math.max(0, s - 1))}
                   disabled={cookStep === 0}
-                >
-                  <Text style={{ fontWeight: "700", color: cookStep > 0 ? colors.text : colors.textTertiary }}>Previous</Text>
-                </Pressable>
+                />
                 {cookStep < instructionSteps.length - 1 ? (
-                  // Aubergine OUTLINE (Sloe treatment §1) — the everyday "Next"
-                  // primary is an outline, not a filled slab. `Done!` (final
-                  // step) keeps the sage success fill below as a deliberate
-                  // landmark; the step-by-step Next is the calm outline.
-                  <Pressable
-                    style={{
-                      flex: 1,
-                      backgroundColor: "transparent",
-                      borderWidth: 1.5,
-                      borderColor: cookNextOutline,
-                      borderRadius: Radius.md,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                    }}
+                  // Step-by-step "Next" is the stepper's ONE action — solid
+                  // aubergine primary. `Done!` (final step) keeps its sage
+                  // success fill below as a deliberate landmark.
+                  <SupprButton
+                    variant="primary"
+                    style={{ flex: 1 }}
+                    label="Next"
                     onPress={() => setCookStep((s) => s + 1)}
-                  >
-                    <Text style={{ fontWeight: "700", color: cookNextOutline }}>Next</Text>
-                  </Pressable>
+                  />
                 ) : (
                   <Pressable
                     style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}

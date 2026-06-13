@@ -78,16 +78,20 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
     expect(src).not.toMatch(/borderStyle:\s*"dashed"/);
   });
 
-  it("RecipeEditSheet commit CTA is an aubergine OUTLINE (Sloe treatment system)", () => {
+  it("RecipeEditSheet commit CTA is a shared SupprButton solid primary (button system 2026-06-12)", () => {
     const src = sheet();
-    // Sloe treatment system (2026-06-08): the Save CTA is the everyday primary,
-    // so it's an aubergine OUTLINE — transparent ground + 1.5px aubergine border
-    // + aubergine `primarySolid` label (light/dark via the theme `resolved`
-    // flag), NOT a filled slab. Supersedes the earlier filled `accent.primary`.
-    expect(src).toContain('from "@/context/theme"');
-    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?backgroundColor:\s*"transparent"/);
-    expect(src).toMatch(/saveBtn:\s*\{[\s\S]*?borderColor:\s*accentInk/);
-    expect(src).toMatch(/saveText:\s*\{[\s\S]*?color:\s*accentInk/);
+    // Button system (2026-06-12, supersedes the 2026-06-08 aubergine-OUTLINE
+    // Sloe treatment): the Save CTA is the sheet's ONE primary, so it routes
+    // through the shared `SupprButton` (variant="primary" → solid aubergine
+    // fill, white label, full pill). Cancel is the ghost secondary. The bespoke
+    // outline `saveBtn`/`saveText` + bordered `cancelBtn` styles were retired.
+    expect(src).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\.\/ui\/SupprButton"/);
+    expect(src).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="Save"/);
+    expect(src).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Cancel"/);
+    // The retired aubergine-outline + bordered-cancel styles are gone.
+    expect(src).not.toMatch(/saveBtn:\s*\{/);
+    expect(src).not.toMatch(/cancelBtn:\s*\{/);
+    expect(src).not.toMatch(/accentInk/);
   });
 
   it("IngredientEditRow stays fully tokenised (no hardcoded hex)", () => {

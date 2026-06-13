@@ -1351,14 +1351,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             Use Import for URLs, cookbook scans, or anything you didn't write yourself—so your library stays honest and
             imports aren't offered as your creations.
           </p>
-          <button
-            type="button"
-            onClick={onSwitchToImport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors"
-          >
+          <SupprButton variant="ghost" type="button" onClick={onSwitchToImport}>
             <Icons.import className="w-4 h-4" />
             Open Import recipe
-          </button>
+          </SupprButton>
         </div>
       ) : null}
 
@@ -1677,14 +1673,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             >
               Paste ingredient list
             </button>
-            <button
-              type="button"
-              onClick={addIngredient}
-              className="px-4 py-2 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
+            <SupprButton variant="ghost" type="button" onClick={addIngredient}>
               <Icons.add className="w-4 h-4" />
               Add Ingredient
-            </button>
+            </SupprButton>
           </div>
         </div>
         <div className="bg-primary/10 rounded-xl p-4 mb-6 border border-primary/30">

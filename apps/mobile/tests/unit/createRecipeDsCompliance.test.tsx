@@ -13,7 +13,9 @@
  *  5 (sev3 space) on-scale padding only — no off-scale 10/12/14 literals
  *  6 (sev3 style) section eyebrows in sage (Accent.success), not tertiary grey
  *  7 (sev3 style) filled primary submit under the flag; outline only in the else
- *  9 (sev2 style) lifted clay photo quick-action under the flag
+ *  9 (sev2 style) quick-action row → three GHOST SupprButton peers (button
+ *                 system 2026-06-12 — none is the primary; supersedes the
+ *                 earlier flag-gated clay-fill photo lift)
  * 10 (sev2 style) lucide icons throughout — zero Ionicons
  * 11 (sev2 type)  per-serving values in serif (Type.heroValue) under the flag
  * 12 (sev2 fn)    publish toggle uses brand accent, never Accent.success green
@@ -156,10 +158,16 @@ describe("create-recipe — flag-gated structural redesign blocks", () => {
     expect(code).toMatch(/saveBtnLegacy:\s*\{[\s\S]*?backgroundColor:\s*"transparent"/);
   });
 
-  it("gap 9: lifted clay photo quick-action under the flag", () => {
+  it("gap 9: quick-action row is three GHOST SupprButton peers (button system 2026-06-12)", () => {
     const code = src();
-    expect(code).toMatch(/redesignOn \? styles\.quickBtnPrimary : styles\.quickBtn/);
-    expect(code).toMatch(/quickBtnPrimary:\s*\{[\s\S]*?backgroundColor:\s*accent\.primary/);
+    // The button-system canon retires the flag-gated clay-fill photo lift: all
+    // three entry actions (Paste list / Scan photo / Scan barcode) are peer
+    // ghost SupprButtons — none reads as the primary. The bespoke
+    // quickBtnPrimary / quickBtnTextPrimary styles were removed.
+    expect(code).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    expect(code).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,300}Scan photo/);
+    expect(code).not.toMatch(/quickBtnPrimary:\s*\{/);
+    expect(code).not.toMatch(/quickBtnTextPrimary:/);
   });
 
   it("gap 11: serif per-serving values under the flag", () => {
