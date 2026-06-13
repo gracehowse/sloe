@@ -87,7 +87,8 @@ export function SupprButton({
     backgroundColor: isPrimary ? accent.primarySolid : "transparent",
     // No border on either variant (ghost replaces the old outline) and no
     // shadow on either (flat-card canon — solid fill IS the affordance).
-    opacity: disabled ? 0.4 : 1,
+    // 0.65 floor (ENG-1011): 0.4 reads as 'broken/dead', 0.65 as 'not yet'.
+    opacity: disabled ? 0.65 : 1,
   };
 
   return (

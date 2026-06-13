@@ -19,10 +19,11 @@ describe("Today cohesion — NutritionTracker web host wiring", () => {
     expect(src).toMatch(/plannedMeals=\{mealPlan\?\.\[0\]\?\.meals \?\? \[\]\}/);
   });
 
-  it("F-158: Complete-Day CTA snapped onto the section rhythm (mt-10), not the old mt-4", () => {
+  it("F-158: Complete-Day CTA is a SupprButton primary on the section rhythm (mt-10), not old mt-4", () => {
     expect(src).toMatch(/Complete Day/);
-    // The button now lands on the 40px section cadence like every Today section.
-    expect(src).toMatch(/transition-colors mt-10/);
+    // ENG-1079: now <SupprButton variant="primary"> on the 40px section
+    // cadence (className mt-10), not the old raw outline button.
+    expect(src).toMatch(/<SupprButton[\s\S]{0,160}label="Complete Day"[\s\S]{0,120}className="mt-10/);
     expect(src).not.toMatch(/transition-colors mt-4/);
   });
 });

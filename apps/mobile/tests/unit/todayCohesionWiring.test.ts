@@ -46,9 +46,9 @@ describe("Today cohesion — TodayCompleteDayButton component", () => {
     expect(src).toMatch(/marginTop:\s*Layout\.todaySectionBreak/);
   });
 
-  it("keeps the outline tier (transparent fill + primarySolid border, no filled slab)", () => {
-    expect(src).toMatch(/backgroundColor:\s*"transparent"/);
-    expect(src).toMatch(/borderColor:\s*accent\.primarySolid/);
+  it("is a SOLID primary CTA via SupprButton (ENG-1079 — was outline)", () => {
+    expect(src).toMatch(/<SupprButton[\s\S]{0,120}variant="primary"/);
+    expect(src).not.toMatch(/backgroundColor:\s*"transparent"[\s\S]{0,120}borderColor:\s*accent\.primarySolid/);
   });
 
   it("preserves the HealthKit nutrition auto-export side-effect on press", () => {

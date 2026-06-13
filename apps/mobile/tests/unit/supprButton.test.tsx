@@ -87,7 +87,7 @@ describe("SupprButton (mobile)", () => {
     fireEvent.press(root);
     expect(onPress).not.toHaveBeenCalled();
     expect(root.props.accessibilityState?.disabled).toBe(true);
-    expect(flatten(root.props.style).opacity).toBe(0.4);
+    expect(flatten(root.props.style).opacity).toBe(0.65); // ENG-1011 disabled floor
   });
 
   it("loading shows the indicator and blocks onPress (no double-submit)", () => {
