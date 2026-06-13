@@ -66,9 +66,12 @@ import {
 import {
   DEFAULT_PERIOD,
   PERIOD_TYPES,
+  isCurrentPeriod,
+  nextPeriod,
   periodChartAnchorISO,
   periodLabel,
   periodWindow,
+  previousPeriod,
   progressPeriodToWeightRange,
   type ProgressPeriod,
 } from "@suppr/shared/nutrition/progressPeriod";
@@ -1406,6 +1409,23 @@ export default function ProgressScreen() {
                   goalKg={goalWeightKg ?? null}
                   isImperial={measurementSystem === "imperial"}
                   range={weightChartRange}
+                  // ENG-1031 — horizontal swipe-to-page on the chart area,
+                  // mirroring the ‹/› chevrons in ProgressPeriodControl. Reuse
+                  // the SAME shared previousPeriod/nextPeriod helpers the
+                  // chevrons call (no duplicated clamp — nextPeriod clamps the
+                  // offset to ≤0 and canSwipeNext gates the inert forward case
+                  // exactly like the disabled forward chevron), and fire the
+                  // SAME selection haptic the chevron PressableScales emit
+                  // (haptic="selection" → selectionAsync, == haptics.select()).
+                  onSwipePrev={() => {
+                    haptics.select();
+                    setPeriod(previousPeriod(period));
+                  }}
+                  onSwipeNext={() => {
+                    haptics.select();
+                    setPeriod(nextPeriod(period));
+                  }}
+                  canSwipeNext={!isCurrentPeriod(period)}
                 />
               </View>
             ) : null}

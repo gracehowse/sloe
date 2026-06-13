@@ -153,4 +153,19 @@ describe("ProgressDashboard render harness", () => {
     // The retired relative-range picker is gone.
     expect(screen.queryByTestId("progress-range-picker")).not.toBeInTheDocument();
   });
+
+  it("wires the chart-area swipe accelerator onto the Daily Calories card (ENG-1031)", async () => {
+    render(<ProgressDashboard />);
+    // The Daily Calories card is the chart surface the period swipe is
+    // attached to (`{...periodSwipe}`). The delta/direction/threshold(64)/
+    // no-future-clamp maths is pinned at the hook boundary in
+    // progressPeriodControl.test.tsx ("usePeriodSwipe"); here we guard the
+    // composition wiring — the card exists and is touch-pan-y so vertical
+    // scroll survives while horizontal drag pages. (jsdom does not forward
+    // PointerEvent.clientX, so the gesture maths can't be re-driven via DOM
+    // dispatch — only the hook unit can exercise it honestly.)
+    const card = await screen.findByTestId("progress-daily-calories-card");
+    expect(card).toBeInTheDocument();
+    expect(card.className).toContain("touch-pan-y");
+  });
 });
