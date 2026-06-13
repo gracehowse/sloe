@@ -61,6 +61,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -1589,10 +1590,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           center). The detailed upgrade/manage/promo rows still live in the
           Membership card below — this banner is the at-a-glance entry.
           2026-06-08: the card tint moved off the hardcoded clay rgba to
-          `accent.primarySoft` (Pro = the brand aubergine, treatment #9), and
-          the "Manage" text became an aubergine OUTLINE pill (treatment #1)
-          so the action reads as a button, not flat coloured text. Matches
-          the web banner (`Settings.tsx` — `--primary` 16% tint). */}
+          `accent.primarySoft` (Pro = the brand aubergine, treatment #9).
+          2026-06-12 (Sloe button canon): the "Manage" pill dropped its
+          aubergine outline for the GHOST grammar — transparent, no border,
+          plum label. Matches the web banner (`Settings.tsx`). */}
       <Pressable
         testID="settings-sloe-pro-banner"
         accessibilityRole="button"
@@ -1631,13 +1632,16 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             Sloe Pro
           </Text>
         </View>
+        {/* Manage — GHOST treatment (Sloe button canon, 2026-06-12). The
+            whole banner row is the Pressable, so this stays a decorative pill
+            (nesting a SupprButton inside the Pressable would double the press
+            target) — we apply the ghost grammar by hand: transparent, no
+            border, plum label. Mirrors the web Pro-banner Manage pill. */}
         <View
           style={{
             paddingHorizontal: 14,
             paddingVertical: 7,
             borderRadius: Radius.full,
-            borderWidth: 1.5,
-            borderColor: accent.primarySolid,
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
@@ -1764,31 +1768,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               fontSize: 14,
             }}
           />
-          {/* Save name — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-              Everyday primary CTA: transparent fill, 1.5px `accent.primarySolid`
-              border + label. */}
-          <Pressable
+          {/* Save name — GHOST (Sloe button canon, 2026-06-12). Inline
+              secondary alongside the name input: transparent, no border, plum
+              label. Mirrors the web Settings name-save button. */}
+          <SupprButton
+            variant="ghost"
             testID="settings-bundle-name-save"
             onPress={() => void handleSaveName()}
             disabled={nameSaving || nameInput.trim() === metadataFullName}
-            accessibilityRole="button"
+            loading={nameSaving}
+            label="Save"
             accessibilityLabel="Save your name"
-            style={{
-              paddingHorizontal: 18,
-              paddingVertical: 12,
-              borderRadius: 12,
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              opacity:
-                nameSaving || nameInput.trim() === metadataFullName ? 0.4 : 1,
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
-              {nameSaving ? "..." : "Save"}
-            </Text>
-          </Pressable>
+          />
         </View>
       </SettingsCard>
 
@@ -1963,27 +1954,16 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 fontSize: 14,
               }}
             />
-            {/* Apply promo — aubergine OUTLINE (Sloe treatment #1,
-                2026-06-08). */}
-            <Pressable
+            {/* Apply promo — PRIMARY (Sloe button canon, 2026-06-12). The
+                promo card's own action: solid aubergine pill, white label. */}
+            <SupprButton
+              variant="primary"
               testID="settings-bundle-promo-code-apply"
               onPress={() => void handleRedeemPromo()}
               disabled={promoSubmitting || !promoCode.trim()}
-              style={{
-                paddingHorizontal: 20,
-                paddingVertical: 12,
-                borderRadius: 12,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
-                {promoSubmitting ? "..." : "Apply"}
-              </Text>
-            </Pressable>
+              loading={promoSubmitting}
+              label="Apply"
+            />
           </View>
         </View>
         ) : null}
@@ -2721,39 +2701,35 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               </View>
             </View>
 
-            {/* Refresh my plan — aubergine OUTLINE (Sloe treatment #1,
-                2026-06-08). The primary (non-destructive) action in the reset
-                modal: transparent fill, 1.5px `accent.primarySolid` border +
-                label, sitting visually above the red "Erase everything" so the
-                safe path reads calm and the destructive path stays red. */}
-            <Pressable
+            {/* Refresh my plan — PRIMARY (Sloe button canon, 2026-06-12). The
+                main (non-destructive) action in the reset modal: solid
+                aubergine pill, white label + white sub-line, sitting visually
+                above the red "Erase everything" so the safe path reads as the
+                affirmative CTA and the destructive path stays red. */}
+            <SupprButton
+              variant="primary"
               onPress={() => handleRefreshPlan()}
               disabled={resetting}
-              style={{
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                borderRadius: Radius.md,
-                paddingVertical: 16,
-                alignItems: "center",
-                marginBottom: Spacing.sm,
-                opacity: resetting ? 0.5 : 1,
-              }}
+              loading={resetting}
+              accessibilityLabel="Refresh my plan"
+              style={{ marginBottom: Spacing.sm }}
             >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
-                {resetting ? "Starting..." : "Refresh my plan"}
-              </Text>
-              <Text
-                style={{
-                  color: accent.primarySolid,
-                  opacity: 0.7,
-                  fontSize: 11,
-                  marginTop: 2,
-                }}
-              >
-                Re-run setup — keeps recipes, plans, saves
-              </Text>
-            </Pressable>
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                  Refresh my plan
+                </Text>
+                <Text
+                  style={{
+                    color: "#fff",
+                    opacity: 0.8,
+                    fontSize: 11,
+                    marginTop: 2,
+                  }}
+                >
+                  Re-run setup — keeps recipes, plans, saves
+                </Text>
+              </View>
+            </SupprButton>
 
             <Pressable
               onPress={() => {
@@ -3132,23 +3108,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 </Pressable>
               );
             })}
-            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
-            <Pressable
+            {/* Done — GHOST (Sloe button canon, 2026-06-12). Inline picker
+                dismiss action: transparent, no border, plum label. */}
+            <SupprButton
+              variant="ghost"
               onPress={() => setWidgetPickerOpen(false)}
-              style={{
-                marginTop: Spacing.lg,
-                paddingVertical: 14,
-                borderRadius: Radius.md,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
-                Done
-              </Text>
-            </Pressable>
+              label="Done"
+              style={{ marginTop: Spacing.lg }}
+            />
           </View>
         </View>
       </Modal>
@@ -3239,9 +3206,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             >
               Example: 400 mg ≈ 4 cups of coffee.
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            {/* Save — GHOST (Sloe button canon, 2026-06-12). Inline picker
+                confirm action: transparent, no border, plum label. */}
+            <SupprButton
+              variant="ghost"
               accessibilityLabel="Save caffeine limit"
+              label="Save"
+              style={{ marginTop: Spacing.lg }}
               onPress={async () => {
                 const n = Math.max(
                   0,
@@ -3262,21 +3233,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setCaffeineTargetPickerOpen(false);
               }}
-              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-              style={{
-                marginTop: Spacing.lg,
-                paddingVertical: 14,
-                borderRadius: Radius.md,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
-                Save
-              </Text>
-            </Pressable>
+            />
           </View>
         </View>
       </Modal>
@@ -3358,9 +3315,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 color: colors.text,
               }}
             />
-            <Pressable
-              accessibilityRole="button"
+            {/* Save — GHOST (Sloe button canon, 2026-06-12). Inline picker
+                confirm action: transparent, no border, plum label. */}
+            <SupprButton
+              variant="ghost"
               accessibilityLabel="Save alcohol limit"
+              label="Save"
+              style={{ marginTop: Spacing.lg }}
               onPress={async () => {
                 const n = Math.max(
                   0,
@@ -3381,21 +3342,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 }
                 setAlcoholTargetPickerOpen(false);
               }}
-              // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-              style={{
-                marginTop: Spacing.lg,
-                paddingVertical: 14,
-                borderRadius: Radius.md,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
-                Save
-              </Text>
-            </Pressable>
+            />
           </View>
         </View>
       </Modal>
@@ -3543,23 +3490,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackColor={{ false: colors.border, true: accent.primary }}
               />
             </View>
-            {/* Done — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). */}
-            <Pressable
+            {/* Done — GHOST (Sloe button canon, 2026-06-12). Inline picker
+                dismiss action: transparent, no border, plum label. */}
+            <SupprButton
+              variant="ghost"
               onPress={() => setWeeklyRecapPushPickerOpen(false)}
-              style={{
-                marginTop: Spacing.lg,
-                paddingVertical: 14,
-                borderRadius: Radius.md,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>
-                Done
-              </Text>
-            </Pressable>
+              label="Done"
+              style={{ marginTop: Spacing.lg }}
+            />
           </View>
         </View>
       </Modal>

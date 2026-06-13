@@ -16,6 +16,14 @@
  * reskin can't silently drift. We deliberately assert on `accent.primarySolid` (scheme-resolved via useAccent — dark inverts)
  * (the AA-safe #4E3260 text/border-on-light variant), not the `accent.primary`
  * fill hue.
+ *
+ * 2026-06-12 (Sloe button-system canon,
+ * `docs/decisions/2026-06-12-button-system-solid-primary.md`): the SETTINGS
+ * CTAs (name Save, promo Apply, Pro-banner Manage, reset Refresh-my-plan, the
+ * target-picker Save/Done) migrated to the SupprButton primary/ghost grammar
+ * — see the updated name-Save/promo-Apply case below. The Targets /
+ * Profile / Household / Health / goal-pace lanes are OUT of scope for that
+ * migration and still assert the aubergine outline.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -71,13 +79,21 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     expect(GOAL_RETUNE).toMatch(/testID="goal-pace-retune-confirm"[\s\S]{0,300}borderColor:\s*accent\.primarySolid/);
   });
 
-  it("Settings name Save + promo Apply are aubergine outlines", () => {
-    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
+  it("Settings name Save is a SupprButton ghost, promo Apply is a SupprButton primary (2026-06-12 canon)", () => {
+    // 2026-06-12 button-system canon: the everyday aubergine OUTLINE retired.
+    // Name Save → ghost (inline secondary); promo Apply → primary (the promo
+    // card's own action). Neither carries the retired primarySolid border.
     expect(BUNDLE).toMatch(
-      /testID="settings-bundle-name-save"[\s\S]{0,600}borderColor:\s*(?:Accent|accent)\.primarySolid/,
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}testID="settings-bundle-name-save"/,
     );
     expect(BUNDLE).toMatch(
-      /testID="settings-bundle-promo-code-apply"[\s\S]{0,600}borderColor:\s*(?:Accent|accent)\.primarySolid/,
+      /<SupprButton\s+variant="primary"[\s\S]{0,300}testID="settings-bundle-promo-code-apply"/,
+    );
+    expect(BUNDLE).not.toMatch(
+      /testID="settings-bundle-name-save"[\s\S]{0,400}borderColor:\s*(?:Accent|accent)\.primarySolid/,
+    );
+    expect(BUNDLE).not.toMatch(
+      /testID="settings-bundle-promo-code-apply"[\s\S]{0,400}borderColor:\s*(?:Accent|accent)\.primarySolid/,
     );
   });
 

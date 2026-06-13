@@ -4,6 +4,7 @@ import * as React from "react";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
 import { SupprWordmark } from "../ui/suppr-mark";
+import { SupprButton } from "./suppr-button";
 import type { UserTier } from "../../../types/recipe";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 import {
@@ -526,14 +527,17 @@ function SidebarUpgradeSlot({
         <p className="mb-2.5 text-xs leading-snug text-muted-foreground">
           Pro adds week planning, recipe import, and adaptive macro coaching.
         </p>
-        <button
-          type="button"
+        {/* See Pro — PRIMARY (Sloe button canon, 2026-06-12). Conversion
+            CTA: solid aubergine pill, white label, flat (no shadow — the
+            solid fill is the affordance). `px-3 py-1.5 text-xs` keeps the
+            compact sidebar-slot footprint. */}
+        <SupprButton
+          variant="primary"
           onClick={() => onNavigate("settings")}
-          className="flex w-full items-center justify-center rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-shadow hover:shadow-md"
-          style={{ boxShadow: "0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent)" }}
+          className="h-auto w-full px-3 py-1.5 text-xs"
         >
           See Pro
-        </button>
+        </SupprButton>
       </div>
     </div>
   );

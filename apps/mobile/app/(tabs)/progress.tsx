@@ -20,6 +20,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS, SupprCard } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/constants/layout";
@@ -1425,31 +1426,15 @@ export default function ProgressScreen() {
                 </View>
               ))}
             </View>
-            {/* ＋ Log weight (centred) + View all measurements */}
-            <Pressable
+            {/* ＋ Log weight (centred) — the weight card's ONE primary action */}
+            <SupprButton
+              variant="primary"
               testID="progress-log-weight"
-              accessibilityRole="button"
               accessibilityLabel="Log weight"
               onPress={() => setLogWeightOpen(true)}
-              style={({ pressed }) => [{
-                marginTop: Spacing.md,
-                alignSelf: "center",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: Spacing.xs,
-                paddingHorizontal: Spacing.lg,
-                paddingVertical: Spacing.sm,
-                borderRadius: Radius.full,
-                // Sloe treatment system (§1): primary inline CTA = aubergine
-                // OUTLINE (transparent fill, 1.5px primarySolid border + label).
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: t.accentSolid,
-                opacity: pressed ? 0.9 : 1,
-              }]}
-            >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: t.accentSolid }}>＋  Log weight</Text>
-            </Pressable>
+              label="＋  Log weight"
+              style={{ marginTop: Spacing.md, alignSelf: "center" }}
+            />
             {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable
                 onPress={() => setAllWeightDataOpen(true)}

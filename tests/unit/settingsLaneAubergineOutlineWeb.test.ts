@@ -1,15 +1,20 @@
 /**
- * Web Settings / Targets / goal-pace lane — Sloe aubergine-outline
- * treatment (2026-06-08). Web mirror of the mobile
- * `settingsLaneAubergineOutline.test.ts`.
+ * Web Settings / Targets / goal-pace lane — Sloe button-system canon
+ * (2026-06-12, `docs/decisions/2026-06-12-button-system-solid-primary.md`).
+ * Web mirror of the mobile `settingsLaneAubergineOutline.test.ts`.
  *
- * The everyday primary CTAs on the web settings surfaces (Save name, Sloe
- * Pro banner Manage, goal-pace Save) read as an aubergine OUTLINE — a 1.5px
- * `--accent-primary-solid` border + label on a transparent fill — not a
- * filled slab. The segmented control's active label carries the aubergine
- * solid (`text-primary-solid`). This is a source-level structural pin
- * (mirrors `settingsYourNameParity` / `settingsMacroTokens`); it breaks if a
- * CTA regresses to a filled `bg-primary` slab.
+ * The 2026-06-12 canon retired the everyday aubergine-OUTLINE primary in
+ * favour of two SupprButton variants: `primary` (solid aubergine pill, white
+ * label — a surface's ONE main action) and `ghost` (transparent, no border,
+ * plum label — secondaries / inline Save / Manage). On the Settings surfaces
+ * the name Save + the Sloe Pro banner Manage are GHOST. The segmented
+ * control's active label still carries the aubergine solid
+ * (`text-primary-solid`). This is a source-level structural pin (mirrors
+ * `settingsYourNameParity` / `settingsMacroTokens`); it breaks if a CTA
+ * regresses to a filled `bg-primary` slab or the retired outline.
+ *
+ * NOTE: the goal-pace Save (dialog) is OUT of scope for the 2026-06-12
+ * Settings CTA migration and still asserts the aubergine outline below.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -26,20 +31,29 @@ const SEGMENTED = readFileSync(
   "utf8",
 );
 
-describe("Web settings lane — aubergine OUTLINE primary CTAs", () => {
-  it("the name Save button is an aubergine outline, not a filled bg-primary slab", () => {
+describe("Web settings lane — Sloe button canon (ghost secondaries)", () => {
+  it("the name Save button is a SupprButton ghost, not a filled slab or the retired outline", () => {
     expect(SETTINGS).toMatch(
-      /data-testid="settings-name-save"[\s\S]{0,500}--accent-primary-solid/,
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}data-testid="settings-name-save"/,
     );
-    // It must no longer carry the filled `bg-primary text-white` treatment.
+    // It must no longer carry the filled `bg-primary text-white` treatment
+    // nor the retired aubergine 1.5px outline.
     expect(SETTINGS).not.toMatch(
       /data-testid="settings-name-save"[\s\S]{0,200}bg-primary text-white/,
     );
+    expect(SETTINGS).not.toMatch(
+      /data-testid="settings-name-save"[\s\S]{0,200}border-\[1\.5px\]/,
+    );
   });
 
-  it("the Sloe Pro banner Manage reads as an outline pill", () => {
+  it("the Sloe Pro banner Manage reads as a ghost pill (no border)", () => {
+    // The whole banner is the <Link>; the Manage pill is a decorative
+    // <span> carrying the ghost grammar — transparent, NO border, plum label.
     expect(SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1200}rounded-full border-\[1\.5px\][\s\S]{0,200}Manage/,
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Manage/,
+    );
+    expect(SETTINGS).not.toMatch(
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}border-\[1\.5px\][\s\S]{0,200}Manage/,
     );
   });
 
