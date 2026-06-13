@@ -13,19 +13,27 @@
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
  * same variants, same UN-GATED elevation behaviour as mobile).
  *
- * ── Elevation model (Design Direction 2026) ──
+ * ── Elevation model (Design Direction 2026 → FLAT-CARD, 2026-06-12) ──
  * Resting tier (`elevation="slab-flat"`, default) is a FLAT warm slab — no
  * shadow, no hairline; the `bg-card` fill on the page is the separation (the
- * Sloe Figma `654:2` look). The `card` tier is the SOFT opt-in for the elevated
- * recipe-card surfaces: `.card-slab` soft shadow in light, no hairline; dark
- * uses a tonal lift + hairline (no shadow). Matches
- * `apps/mobile/hooks/useCardElevation.ts` (mobile `lift="flat"` default /
- * `lift="soft"` opt-in). `sheet` / `float` / `none` keep their prior shadows.
+ * Sloe Figma `654:2` look). The `card` tier is NO LONGER a soft-shadow lift:
+ * the flat-card decision (`docs/decisions/2026-06-12-flat-card-surfaces.md`,
+ * Withings grammar) flipped the `.card-slab` utility (`src/styles/theme.css`)
+ * to FLAT — `box-shadow: none; border-width: 0`. So `card` now resolves flat
+ * too: identical to `slab-flat` in LIGHT (flat `--card`, white-on-cream contrast
+ * is the only separation); in DARK it takes the tonal `--card-elevated` fill
+ * (the lone remaining differentiation — still no shadow, no hairline). The
+ * internal `softSlab` flag name is historical; the tier is flat. Mirrors
+ * `apps/mobile/hooks/useCardElevation.ts`, which the same decision flipped
+ * soft→flat. `sheet` / `float` keep their shadows — they are TRANSIENT surfaces
+ * (the one place elevation is still allowed); `none` has no elevation.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
  *  - `elevation`: `none` / `slab-flat` (default — flat warm slab) / `card`
- *                 (soft-lift opt-in) / `sheet` / `float`
+ *                 (also flat since the 2026-06-12 flat-card decision; tonal
+ *                 `--card-elevated` fill in dark only) / `sheet` / `float`
+ *                 (transient surfaces — keep shadow)
  *  - `gradient`: bool — applies the north-star gradient when `tone='primary'`
  *  - `border`: bool (default true)
  *  - `padding`: token key — `sm` (8px) / `md` (12px) / `lg` (16px) /
