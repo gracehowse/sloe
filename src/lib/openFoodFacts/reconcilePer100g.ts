@@ -67,7 +67,18 @@ function reconcileOne(
 
   // Can't reconstruct without both a per-serving value and a serving mass.
   if (perServing == null || servingG == null || servingG <= 0) {
-    return { value: pub, corrected: false };
+    // ENG-774: a product that DECLARES a per-serving basis but omits
+    // `serving_quantity` gives us no mass to reconstruct or verify — its
+    // published `*_100g` field may actually hold per-serving values (the
+    // Chobani-class bug) and we cannot correct it. Flag the row so the existing
+    // soft-warn fires ("double-check these numbers") and confidence is demoted;
+    // never silently trust it. The value is left as `pub` (we have nothing
+    // better) and `per100gFactor` stays 1 (no scaling on an unverifiable row).
+    // A genuine per-100g row, or a serving-basis row that still has a mass but
+    // is missing only THIS macro's per-serving value, is not the documented
+    // danger — leave those unflagged.
+    const noServingMass = servingG == null || servingG <= 0;
+    return { value: pub, corrected: treatServingAsTruth && noServingMass && pub > 0 };
   }
 
   const reconstructed = perServing / (servingG / 100);
