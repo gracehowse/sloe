@@ -128,7 +128,7 @@ export function SponsoredDisclosure({
           gap: 4,
           paddingHorizontal: 8,
           paddingVertical: 2,
-          borderRadius: 999,
+          borderRadius: Radius.full,
           backgroundColor: bg,
           alignSelf: "flex-start",
         },

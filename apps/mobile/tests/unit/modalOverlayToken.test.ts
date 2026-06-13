@@ -24,6 +24,11 @@ const FILES = [
   "../../app/create-recipe.tsx",
   "../../components/household/HouseholdInviteSheet.tsx",
   "../../app/(tabs)/discover.tsx",
+  // ENG-1013 token-sweep-mobile lane (2026-06-12): migrated the exact-40%
+  // (rgba(0,0,0,0.4)) backdrops on these to the shared scrim token.
+  "../../components/PortionPicker.tsx",
+  "../../components/recap/GoalPaceEditorSheet.tsx",
+  "../../components/HydrationStimulantsCard.tsx",
 ] as const;
 
 describe("MODAL_OVERLAY_SCRIM (ENG-1013)", () => {

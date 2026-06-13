@@ -171,7 +171,7 @@ export default function OverrideIngredientSheet({
           }}
         >
           <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
+            <View style={{ width: 36, height: 4, borderRadius: Radius.full, backgroundColor: colors.cardBorder }} />
           </View>
 
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>

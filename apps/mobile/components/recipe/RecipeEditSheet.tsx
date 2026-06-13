@@ -594,7 +594,7 @@ const makeStyles = (
     servingsBtn: {
       width: 40,
       height: 40,
-      borderRadius: 20,
+      borderRadius: Radius.full,
       borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
       alignItems: "center",
@@ -614,7 +614,7 @@ const makeStyles = (
     chip: {
       paddingVertical: 8,
       paddingHorizontal: Spacing.dense,
-      borderRadius: 999,
+      borderRadius: Radius.full,
       borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
       backgroundColor: ce.liftBg ?? colors.card,

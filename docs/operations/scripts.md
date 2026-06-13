@@ -34,6 +34,12 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 | `verify-production-env.ts` | Check Stripe / Supabase production vars (warns; exits 1 only with `VERIFY_STRICT=1` when Stripe is misconfigured) | `npm run verify:production-env` — on `main` CI sets `VERIFY_STRICT=1` |
 | `production-smoke.ts` | HTTP smoke test against production URL | `npm run smoke:production` |
 
+### Audits
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `audit-tiktok-reels.ts` | Reel parse-rate audit for the viral-push gate (ENG-7 / ENG-670). POSTs a battery of Reel URLs at the live `/api/recipe-import`, records per-URL ok/error-code/duration/imageUsed, writes `docs/testing/audit-tiktok-reels-<date>.{md,json}`, and emits per-attempt `recipe_import_stage_changed` events (`audit_batch: true`). Env-gated + never runs in CI (live AI + Supadata quota). | `AUDIT_TIKTOK_REELS=1 npx tsx scripts/audit-tiktok-reels.ts [urls.json]` — needs `npm run dev` running + a throwaway audit account (`REEL_AUDIT_EMAIL`/`REEL_AUDIT_PASSWORD`). Gate definition: [viral-push-gate.md](./viral-push-gate.md). |
+
 ## Trusted recipe domains (user-import quality)
 
 Sites whose schema.org JSON-LD is reliable when a **user** pastes one of their own recipes into their private account. Suppr does **not** republish content from these sites to the public Discover feed — doing so would be a copyright / ToS violation. Per-user imports stay private to that user's account.

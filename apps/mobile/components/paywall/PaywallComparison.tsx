@@ -22,7 +22,8 @@ import {
  * restriction positioning. See `docs/ux/redesign/paywall.md` §3a.
  */
 // Damson-lilac wash for the PRO column (mirrors web --accent-info-soft).
-const PRO_COLUMN_WASH = "rgba(106, 75, 122, 0.08)";
+// Accent.win (#6A4B7A = rgb(106,75,122)) @ ~8% via the alpha-suffix pattern.
+const PRO_COLUMN_WASH = Accent.win + "14";
 
 function Cell({
   value,

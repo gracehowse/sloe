@@ -237,7 +237,7 @@ export default function VoiceLogSheet({
             }}
           >
             <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
+              <View style={{ width: 36, height: 4, borderRadius: Radius.full, backgroundColor: colors.cardBorder }} />
             </View>
             {/* Header row: title + X close (audit 2026-04-30 modal-dismiss
                 sweep — keyboard-up on iOS can hide the backdrop strip). */}
@@ -283,7 +283,7 @@ export default function VoiceLogSheet({
                     style={{
                       width: 56,
                       height: 56,
-                      borderRadius: 28,
+                      borderRadius: Radius.full,
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: isRecording ? Accent.success : Accent.success + "22",

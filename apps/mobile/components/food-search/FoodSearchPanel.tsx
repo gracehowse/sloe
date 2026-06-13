@@ -1822,7 +1822,7 @@ export default function FoodSearchPanel({
                   return { ...p, quantity: newQ, quantityText: String(newQ) };
                 });
               }}
-              style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+              style={{ width: 36, height: 36, borderRadius: Radius.full, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
             >
               <Minus size={18} color={colors.text} />
             </Pressable>
@@ -1848,7 +1848,7 @@ export default function FoodSearchPanel({
                   return { ...p, quantity: newQ, quantityText: String(newQ) };
                 });
               }}
-              style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+              style={{ width: 36, height: 36, borderRadius: Radius.full, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
             >
               <Plus size={18} color={colors.text} />
             </Pressable>
@@ -2303,7 +2303,7 @@ export default function FoodSearchPanel({
               style={{
                 paddingHorizontal: Spacing.dense,
                 paddingVertical: Spacing.sm,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 borderWidth: 1,
                 borderColor: isActive ? accent.primary : colors.border,
                 backgroundColor: isActive ? accent.primary : "transparent",
@@ -2345,7 +2345,7 @@ export default function FoodSearchPanel({
                 borderWidth: 1,
                 borderColor: colors.border,
                 backgroundColor: colors.cardBorder,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 paddingVertical: 4,
                 paddingHorizontal: Spacing.dense,
               }}

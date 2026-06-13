@@ -488,10 +488,14 @@ export function LogSheet({
 
           {/* ENG-773 — log-time meal-slot selector. Mirrors the mobile
               LogSheet `slot` row: the slot the item will land in is
-              visible + tappable here, not a hidden clock guess. Selected
-              state uses the canonical soft-tint + primary-border language
-              (NOT solid primary) so the `text-foreground` label clears
-              WCAG AA — primary text on the tint is only ~3.34:1. */}
+              visible + tappable here, not a hidden clock guess. §7 option-chip
+              grammar (web parity 2026-06-12, ENG-1022): `rounded-full`, the
+              soft tint IS the selection signal — `bg-primary-soft` fill +
+              `border-primary-soft` (no accent ring), `text-foreground` label
+              (primary text on the tint is only ~3.34:1 and would fail WCAG AA
+              for this 13px label; foreground clears it). Was `rounded-lg`
+              + a solid `border-primary` ring. Mirror of the mobile
+              `slotPill` (§7, `Radius.full`, `primarySoft` border + fill). */}
           {slot && !inConfirmationMode ? (
             <div
               role="radiogroup"
@@ -510,10 +514,10 @@ export function LogSheet({
                     data-testid={`log-sheet-slot-${s.toLowerCase()}`}
                     onClick={() => slot.onChange(s)}
                     className={cn(
-                      "flex-1 rounded-lg border px-2 py-1.5 text-[13px] font-semibold transition-colors",
+                      "flex-1 rounded-full border px-2 py-1.5 text-[13px] font-semibold transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
                       active
-                        ? "border-primary bg-primary/10 text-foreground"
+                        ? "border-primary-soft bg-primary-soft text-foreground"
                         : "border-border text-muted-foreground hover:border-primary/30",
                     )}
                   >
@@ -857,7 +861,7 @@ function DefaultComposition({
             <div
               role="tablist"
               aria-label="Browse meals"
-              className="mx-3 mt-3 flex rounded-xl bg-muted p-0.5"
+              className="mx-3 mt-3 flex rounded-full bg-muted p-0.5"
             >
               {visibleTabs.map((id) => {
                 const active = activeTab === id;
@@ -882,10 +886,14 @@ function DefaultComposition({
                     }
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
-                      "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
-                      // Sloe treatment system (2026-06-08): segmented
-                      // control active segment = white lift + primary-solid
-                      // label; inactive = muted on the warm-grey rail.
+                      "flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors",
+                      // §8 segmented grammar (web parity 2026-06-12, ENG-1022):
+                      // fully-round rail + segments (matches the MacroDetail /
+                      // Progress Trend-Scale toggles), active segment = white
+                      // `bg-background` lift + `primary-solid` label + shadow;
+                      // inactive = muted on the warm-grey rail. Was a
+                      // `rounded-xl` rail + `rounded-md` thumb — converged so
+                      // every web §8 control reads identically.
                       active
                         ? "bg-background text-primary-solid shadow-sm"
                         : "text-muted-foreground hover:text-foreground",

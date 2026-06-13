@@ -476,7 +476,7 @@ export default function LibraryScreen() {
     quietCreate: {
       width: 30,
       height: 30,
-      borderRadius: 15,
+      borderRadius: Radius.full,
       backgroundColor: "transparent",
       borderWidth: 1.5,
       borderColor: accentInk,
@@ -615,7 +615,7 @@ export default function LibraryScreen() {
       right: Spacing.sm,
       width: 32,
       height: 32,
-      borderRadius: 16,
+      borderRadius: Radius.full,
       backgroundColor: "rgba(255,255,255,0.9)",
       alignItems: "center",
       justifyContent: "center",
@@ -738,7 +738,7 @@ export default function LibraryScreen() {
     emptyBadge: {
       width: 56,
       height: 56,
-      borderRadius: 28,
+      borderRadius: Radius.full,
       backgroundColor: colors.ringTrack, // frost-mist #EDEAF1
       alignItems: "center",
       justifyContent: "center",

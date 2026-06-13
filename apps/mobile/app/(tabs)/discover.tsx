@@ -922,7 +922,7 @@ export default function DiscoverScreen() {
                     marginTop: Spacing.sm,
                     paddingHorizontal: Spacing.md,
                     paddingVertical: 8,
-                    borderRadius: 8,
+                    borderRadius: Radius.lg,
                     borderWidth: 1,
                     borderColor: accent.primary,
                     backgroundColor: accent.primary + "10",

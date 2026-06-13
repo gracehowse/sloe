@@ -1,0 +1,18 @@
+[
+  "# PLACEHOLDER FIXTURE — replace with Grace's curated 100-Reel battery before any gate read.",
+  "# This is a JSON array of URL strings. Lines starting with '#' and blank strings are ignored",
+  "# by the harness, so these notes are safe to leave in or delete.",
+  "# Run: AUDIT_TIKTOK_REELS=1 npx tsx scripts/audit-tiktok-reels.ts scripts/fixtures/reel-urls.sample.json",
+  "# The 10 URLs below are illustrative shapes only (TikTok / Instagram / YouTube recipe posts).",
+  "# A real gate read needs 100 genuine recipe Reels — see docs/operations/viral-push-gate.md.",
+  "https://www.tiktok.com/@placeholder/video/0000000000000000001",
+  "https://www.tiktok.com/@placeholder/video/0000000000000000002",
+  "https://www.tiktok.com/@placeholder/video/0000000000000000003",
+  "https://www.instagram.com/reel/PLACEHOLDER0001/",
+  "https://www.instagram.com/reel/PLACEHOLDER0002/",
+  "https://www.instagram.com/reel/PLACEHOLDER0003/",
+  "https://www.tiktok.com/@placeholder/video/0000000000000000004",
+  "https://www.tiktok.com/@placeholder/video/0000000000000000005",
+  "https://www.instagram.com/reel/PLACEHOLDER0004/",
+  "https://www.youtube.com/shorts/PLACEHOLDER001"
+]

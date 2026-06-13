@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, Text, useColorScheme, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -85,21 +86,51 @@ export function TodayPlannedMealsCard({
   onLogPlannedMealWithPortion,
 }: TodayPlannedMealsCardProps) {
   const colors = useThemeColors();
+  const router = useRouter();
   // Secondary accent (Frost flag → damson, else clay) for the "Log today" CTA.
   const accent = useAccent();
   const [picker, setPicker] = useState<{ meal: TodayPlannedMealEntry } | null>(null);
+
+  const isEmpty = plannedMeals.length === 0;
 
   return (
     <View>
       {/* Sloe TD3 "Planned" section header — Newsreader title above the card. */}
       <Text style={{ ...Type.title, color: colors.navPrimary, marginBottom: Spacing.sm }}>Planned</Text>
 
-      {/* Card chrome (fill, radius, soft lift on an outer wrapper, corner-clip
+      {/* F-178/F-179 (ENG-1065): empty days used to vanish (host hid the whole
+          card when plannedMeals was empty), so the Today scroll lost a section
+          and the founder read it as inconsistent vs populated days. The empty
+          branch now carries the SAME <SupprCard> shell + the SAME "Planned"
+          header above, with a calm one-liner and a ghost "Plan your day →"
+          affordance into the Plan tab. Padding snaps to the F-159 rhythm
+          (Spacing.md = 16) — same horizontal/vertical inset a populated row uses,
+          so the two states read as one element in two states. The host gates
+          whether this mounts when empty behind `today_planned_empty_state`. */}
+      {isEmpty ? (
+        <SupprCard lift="soft" padding="none">
+          <View style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: Spacing.dense }}>
+            <Text style={{ ...Type.body, color: colors.textSecondary }}>
+              Nothing planned for today
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/planner")}
+              accessibilityRole="button"
+              accessibilityLabel="Plan your day"
+              hitSlop={8}
+              style={({ pressed }) => ({ alignSelf: "flex-start", opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text style={{ ...Type.label, color: accent.primarySolid }}>Plan your day →</Text>
+            </Pressable>
+          </View>
+        </SupprCard>
+      ) : (
+      /* Card chrome (fill, radius, soft lift on an outer wrapper, corner-clip
           on the inner view, dark hairline) is the shared <SupprCard lift="soft">
           shell — soft because the card sits on the Today scroll ground
           (one-treatment, Grace 2026-06-09). The divided rows are the inner
-          contents; padding="none" because each row owns its own padding. */}
-      {/* Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
+          contents; padding="none" because each row owns its own padding.
+          Sits on the Today scroll ground → soft lift. */
       <SupprCard lift="soft" padding="none">
         {plannedMeals.map((pm, i) => {
           const name = pm.recipe_title ?? pm.name ?? "Planned meal";
@@ -148,6 +179,7 @@ export function TodayPlannedMealsCard({
           );
         })}
       </SupprCard>
+      )}
 
       <PortionPickerSheet
         visible={picker !== null}

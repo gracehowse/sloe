@@ -272,7 +272,7 @@ export function MobileMfpCsvImportCard({
                   backgroundColor: Accent.success + "26",
                   paddingHorizontal: 8,
                   paddingVertical: 3,
-                  borderRadius: 999,
+                  borderRadius: Radius.full,
                 }}
               >
                 <Check
@@ -314,7 +314,7 @@ export function MobileMfpCsvImportCard({
                 alignSelf: "flex-start",
                 paddingHorizontal: 14,
                 paddingVertical: 8,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 backgroundColor: colors.inputBg,
                 borderWidth: 1,
                 borderColor: colors.border,
@@ -413,7 +413,7 @@ export function MobileMfpCsvImportCard({
                   alignSelf: "flex-start",
                   paddingHorizontal: 14,
                   paddingVertical: 8,
-                  borderRadius: 999,
+                  borderRadius: Radius.full,
                   backgroundColor: colors.inputBg,
                   borderWidth: 1,
                   borderColor: colors.border,

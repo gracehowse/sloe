@@ -159,7 +159,7 @@ export default function SaveMealSheet({
                 style={{
                   width: 36,
                   height: 4,
-                  borderRadius: 2,
+                  borderRadius: Radius.full,
                   backgroundColor: colors.cardBorder,
                 }}
               />
@@ -268,7 +268,7 @@ export default function SaveMealSheet({
                       style={{
                         paddingHorizontal: 12,
                         paddingVertical: 7,
-                        borderRadius: 999,
+                        borderRadius: Radius.full,
                         borderWidth: 1,
                         borderColor: isActive ? accent.primary : colors.cardBorder,
                         backgroundColor: isActive ? accent.primary + "18" : "transparent",

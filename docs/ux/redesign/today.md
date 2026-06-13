@@ -752,3 +752,17 @@ Calculated contrast of success green #5E7C5A on white #FFFFFF is approximately 3
 - Under-ring coach line on web (§3.6) would be a new web component. It must match the mobile line exactly — do not reimplement the copy or slot logic; import `todayRoomForMeal` + `nextUnloggedMealSlot` from `@suppr/shared/copy/today` (the canonical shared source).
 - Unified hero stats row (§3.2) is a cross-platform change. Mobile and web components must be updated in the same commit.
 - Typography: if Fraunces or Newsreader is not yet loaded on mobile via Expo Fonts, the font load must be added before any serif numeral is rendered. Fallback: system serif (`Georgia` on iOS). The fallback must be verified in a sim capture before push.
+
+---
+
+## 12. TF57 cohesion fixes — implemented 2026-06-12 (ENG-1065)
+
+Founder TestFlight 57 flagged three Today-scroll cohesion issues (tracker F-158 / F-159 / F-178 / F-179). All shipped in the Wave-2 launch visual program; web parity in the same change.
+
+- **F-158 — "Complete Day button stylistically out of place / floating in dead space."** Root cause: it was the only scroll-body element that skipped the section grammar — an off-rhythm `marginTop: Spacing.lg` (20) where every sibling section uses `Layout.todaySectionBreak` (32), and no section wrapper. Fix (non-structural — no element added/moved/removed): the CTA is now the extracted `apps/mobile/components/today/TodayCompleteDayButton.tsx`, rendered inside a section `<View>` on the standard 32pt cadence so it reads as the day's terminal section. Outline tier + HealthKit nutrition auto-export behaviour preserved. Web twin: the `<button>` in `NutritionTracker` snapped from `mt-4` (16) to `mt-10` (40) to match the web section rhythm. Shipped unflagged (founder-requested spacing fix).
+- **F-159 — "Spacing between cards inconsistent / too much."** Census of every page-ground section break in `index.tsx`: Meals / Weekly insight / Planned / Activity / Hydration now all use `Layout.todaySectionBreak` (32). The Planned card previously had NO section break (relied only on the scroll `gap: 8`) — snapped onto 32 to match its siblings. Shipped unflagged.
+- **F-178 / F-179 — "Empty plan day styling should match populated days" / "review styling of planned section."** The Planned card used to vanish entirely on empty days (host hid it when `plannedMeals` was empty). It now carries an empty-state branch with the SAME card shell + "Planned" header, a calm "Nothing planned for today" one-liner, and a ghost "Plan your day →" affordance routing to the Plan tab (`/(tabs)/planner` mobile, `/plan` web). Gated behind `today_planned_empty_state` (flag OFF = prior hide-when-empty behaviour, preserved in the host `else`). Implemented in `apps/mobile/components/today/TodayPlannedMealsCard.tsx` + `src/app/components/suppr/today-planned-meals-card.tsx`.
+
+Tests: `apps/mobile/tests/unit/todayPlannedMealsCardPortionPicker.test.tsx` (empty-state RNTL branch, both forks), `tests/unit/todayPlannedMealsCard.test.tsx` (web empty-state branch), `apps/mobile/tests/unit/todayCohesionWiring.test.ts` + `tests/unit/todayCohesionWiringWeb.test.ts` (host source-pins for the section rhythm + flag gates, since the screen files are too large to mount).
+
+Out of lane (NOT touched here): F-160's white-slab meal cards (`TodayMealsSection.tsx`) — awaiting the ENG-1078 flat-card red-line.

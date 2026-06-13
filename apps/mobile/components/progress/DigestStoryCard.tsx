@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -195,7 +195,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                     style={{
                       paddingHorizontal: Spacing.dense,
                       paddingVertical: 4,
-                      borderRadius: 999,
+                      borderRadius: Radius.full,
                       backgroundColor: deltaBg,
                     }}
                   >

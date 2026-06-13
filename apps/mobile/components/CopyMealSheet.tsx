@@ -143,7 +143,7 @@ export default function CopyMealSheet({
           }}
         >
           <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
+            <View style={{ width: 36, height: 4, borderRadius: Radius.full, backgroundColor: colors.cardBorder }} />
           </View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
             Copy meal to another day
@@ -211,7 +211,7 @@ export default function CopyMealSheet({
                       style={{
                         width: 34,
                         height: 34,
-                        borderRadius: 17,
+                        borderRadius: Radius.full,
                         alignItems: "center",
                         justifyContent: "center",
                         backgroundColor: isSel ? accent.primary : "transparent",
@@ -253,7 +253,7 @@ export default function CopyMealSheet({
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 6,
-                    borderRadius: 999,
+                    borderRadius: Radius.full,
                     borderWidth: 1,
                     borderColor: isActive ? accent.primary : colors.cardBorder,
                     backgroundColor: isActive ? accent.primary : "transparent",

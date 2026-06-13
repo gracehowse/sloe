@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -292,7 +293,7 @@ function UnitPickerModal(props: {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <Pressable
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" }}
+        style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "center", alignItems: "center" }}
         onPress={onDismiss}
         accessibilityRole="button"
         accessibilityLabel="Dismiss unit picker"

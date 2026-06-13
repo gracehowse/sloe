@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -278,7 +279,7 @@ function Row({
           accessibilityRole="button"
           accessibilityLabel="Dismiss menu"
           onPress={() => setMenuOpen(false)}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" }}
+          style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "center", alignItems: "center" }}
         >
           <View
             style={[{
