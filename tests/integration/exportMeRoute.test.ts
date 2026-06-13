@@ -132,7 +132,6 @@ describe("GET /api/export/me", () => {
     const mealLogRows = [{ id: "n1", date_key: "2026-04-30", calories: 500 }];
     const weightRows = [{ id: 1, captured_at: "2026-04-29T08:00:00Z", weight_kg: 70 }];
     const customFoodRows = [{ id: "c1", name: "MyShake" }];
-    const planRows = [{ id: "p1", title: "April plan" }];
     const planDayRows = [{ id: "d1", plan_id: "p1" }];
     const planMealRows = [{ id: "m1", plan_day_id: "d1" }];
     const shoppingRows = [{ id: "s1", item: "milk", is_active: true }];
@@ -148,7 +147,6 @@ describe("GET /api/export/me", () => {
       nutrition_entries: mealLogRows,
       health_snapshots: weightRows,
       user_custom_foods: customFoodRows,
-      meal_plans: planRows,
       meal_plan_days: planDayRows,
       meal_plan_meals: planMealRows,
       shopping_items: shoppingRows,
@@ -179,7 +177,9 @@ describe("GET /api/export/me", () => {
     expect(body.mealLog).toEqual(mealLogRows);
     expect(body.weightHistory).toEqual(weightRows);
     expect(body.customFoods).toEqual(customFoodRows);
-    expect(body.plans).toEqual(planRows);
+    // `plans` was removed in export schema v2 (ENG-850) — the `meal_plans`
+    // table was dropped 2026-04-21; plan data lives in planDays + planMeals.
+    expect(body.plans).toBeUndefined();
     expect(body.planDays).toEqual(planDayRows);
     expect(body.planMeals).toEqual(planMealRows);
     expect(body.shopping).toEqual(shoppingRows);

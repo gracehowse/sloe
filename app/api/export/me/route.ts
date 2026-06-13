@@ -61,7 +61,8 @@ type ExportPayload = {
   mealLog: unknown[];
   weightHistory: unknown[];
   customFoods: unknown[];
-  plans: unknown[];
+  // `meal_plans` was dropped 2026-04-21 (normalised into meal_plan_days +
+  // meal_plan_meals); plan data is exported via planDays + planMeals below.
   planDays: unknown[];
   planMeals: unknown[];
   shopping: unknown[];
@@ -158,7 +159,6 @@ export async function GET(req: Request) {
       mealLogRes,
       weightRes,
       customFoodsRes,
-      plansRes,
       planDaysRes,
       shoppingRes,
       savedMealsRes,
@@ -180,7 +180,6 @@ export async function GET(req: Request) {
         .gte("captured_at", sinceIso)
         .order("captured_at", { ascending: true }),
       sb.from("user_custom_foods").select("*").eq("user_id", userId),
-      sb.from("meal_plans").select("*").eq("user_id", userId),
       sb.from("meal_plan_days").select("*").eq("user_id", userId),
       sb
         .from("shopping_items")
@@ -223,7 +222,6 @@ export async function GET(req: Request) {
       "customFoods",
       [],
     );
-    const plans = unwrap<unknown[]>(plansRes, "plans", []);
     const planDays = unwrap<unknown[]>(planDaysRes, "planDays", []);
     const shopping = unwrap<unknown[]>(shoppingRes, "shopping", []);
     const savedMeals = unwrap<unknown[]>(savedMealsRes, "savedMeals", []);
@@ -288,7 +286,6 @@ export async function GET(req: Request) {
       mealLog,
       weightHistory,
       customFoods,
-      plans,
       planDays,
       planMeals,
       shopping,
@@ -310,7 +307,7 @@ export async function GET(req: Request) {
       mealLogCount: mealLog.length,
       weightCount: weightHistory.length,
       customFoodCount: customFoods.length,
-      planCount: plans.length,
+      planCount: planDays.length,
       shoppingCount: shopping.length,
       schemaVersion: SUPPR_EXPORT_SCHEMA_VERSION,
       platform: req.headers.get("user-agent")?.toLowerCase().includes("expo")
