@@ -1618,6 +1618,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 ? { fg: "var(--destructive)", bg: "color-mix(in srgb, var(--destructive) 12%, transparent)" }
                 : { fg: "var(--warning)", bg: "color-mix(in srgb, var(--warning) 12%, transparent)" }
             : null;
+          // ENG-1085 — confident SOLID verdict banner (white on a scheme-constant
+          // dark tone, AA-safe in both schemes; mirrors mobile RecipeTitleBlock).
+          // Flag default-ON; the legacy 10%-wash pill stays in the `else`.
+          const verdictBannerOn = isFeatureEnabled("fit_verdict_banner_v1");
+          const [verdictHead, ...verdictRest] = (verdict?.label ?? "").split(" · ");
+          const verdictTail = verdictRest.join(" · ");
+          const verdictBannerBg = verdict
+            ? verdict.tone === "success"
+              ? "var(--verdict-banner-success)"
+              : verdict.tone === "warning"
+                ? "var(--verdict-banner-warning)"
+                : "var(--verdict-banner-destructive)"
+            : null;
           return (
             <div className="space-y-3" data-testid="recipe-title-block">
               <h1
@@ -1674,18 +1687,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 </p>
               ) : null}
               {verdict && verdictChip ? (
-                <div
-                  data-testid="recipe-fits-your-day"
-                  role="status"
-                  aria-label={verdict.a11y}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 text-xs font-bold"
-                  style={{ color: verdictChip.fg, backgroundColor: verdictChip.bg }}
-                >
-                  {verdict.fits ? (
-                    <Icons.check className="w-3.5 h-3.5" strokeWidth={3} aria-hidden />
-                  ) : null}
-                  <span>{verdict.label}</span>
-                </div>
+                verdictBannerOn ? (
+                  <div
+                    data-testid="recipe-fits-your-day"
+                    role="status"
+                    aria-label={verdict.a11y}
+                    className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-white animate-in fade-in zoom-in-95 duration-300"
+                    style={{ backgroundColor: verdictBannerBg ?? "var(--verdict-banner-success)" }}
+                  >
+                    {verdict.fits ? (
+                      <Icons.check className="w-[18px] h-[18px]" strokeWidth={3} aria-hidden />
+                    ) : null}
+                    <span className="text-[15px] font-bold">{verdictHead}</span>
+                    {verdictTail ? (
+                      <span className="ml-auto text-[13px] font-medium text-white/80">
+                        {verdictTail}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div
+                    data-testid="recipe-fits-your-day"
+                    role="status"
+                    aria-label={verdict.a11y}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 text-xs font-bold"
+                    style={{ color: verdictChip.fg, backgroundColor: verdictChip.bg }}
+                  >
+                    {verdict.fits ? (
+                      <Icons.check className="w-3.5 h-3.5" strokeWidth={3} aria-hidden />
+                    ) : null}
+                    <span>{verdict.label}</span>
+                  </div>
+                )
               ) : null}
               {kcalForLine > 0 && hasScaledAway && totalKcalForView > 0 ? (
                 <div

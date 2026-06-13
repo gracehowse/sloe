@@ -171,6 +171,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
+  // ENG-1085 — recipe-detail "Fits your day" confident verdict banner (mirror
+  // of the mobile default-on; legacy 10%-wash pill stays as the kill switch).
+  "fit_verdict_banner_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

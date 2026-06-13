@@ -149,6 +149,14 @@
   --accent-warning: #C9892C;
   --accent-warning-solid: #956619;
   --accent-warning-soft: rgba(201, 137, 44, 0.12);
+  /* ENG-1085 — "Fits your day" verdict-banner fills. SCHEME-CONSTANT (defined
+   * only here, not overridden in .dark) dark tones so WHITE text clears AA in
+   * BOTH light and dark — unlike --accent-*-solid, which lightens in dark
+   * (success → #83A57E) and would fail white-on-fill. Values match the mobile
+   * Accent.successSolid / warningSolid / destructiveSolid (scheme-constant). */
+  --verdict-banner-success: #466046;
+  --verdict-banner-warning: #956619;
+  --verdict-banner-destructive: #9E3F2E;
   --accent-destructive: #B04434;
   --accent-destructive-foreground: #ffffff;
   --accent-destructive-solid: #9E3F2E;
