@@ -77,6 +77,7 @@ import {
 } from "@suppr/shared/nutrition/progressPeriod";
 import { ProgressPeriodControl } from "@/components/progress/ProgressPeriodControl";
 import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
+import { clampTargetToSafetyFloor, coerceSex } from "@suppr/shared/onboarding/targets";
 import {
   readFreezeLedger,
   type FreezeLedger,
@@ -497,7 +498,15 @@ export default function ProgressScreen() {
 
     if (profile) {
       setTargets({
-        calories: (profile.target_calories as number) ?? DEFAULT_TARGETS.calories,
+        // ENG-793 floor-leak fix: Progress reads profiles directly (not via
+        // resolveTargets), so clamp the stored target UP to the sex-aware safety
+        // floor here too — otherwise a sub-floor value (e.g. 901) leaks onto the
+        // Progress today-bar + average-adherence math while Today (clamped)
+        // disagrees. The SELECT already fetches `sex`.
+        calories: clampTargetToSafetyFloor(
+          (profile.target_calories as number) ?? DEFAULT_TARGETS.calories,
+          coerceSex(profile.sex as string | null),
+        ),
         protein: (profile.target_protein as number) ?? DEFAULT_TARGETS.protein,
         carbs: (profile.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
         fat: (profile.target_fat as number) ?? DEFAULT_TARGETS.fat,

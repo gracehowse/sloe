@@ -81,7 +81,7 @@ describe("WeeklyCheckinModal", () => {
         {...BASE_COLORS}
       />,
     );
-    expect(getByText("Avg this week")).toBeTruthy();
+    expect(getByText("Avg logged daily")).toBeTruthy();
     expect(getByText("1,750 kcal/day")).toBeTruthy();
     expect(getByText("Weight delta")).toBeTruthy();
     expect(getByText("−0.4 kg")).toBeTruthy();

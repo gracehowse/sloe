@@ -68,7 +68,7 @@ describe("WeeklyCheckinDialog (web parity)", () => {
         onDismiss={() => {}}
       />,
     );
-    expect(screen.getByText("Avg this week")).toBeInTheDocument();
+    expect(screen.getByText("Avg logged daily")).toBeInTheDocument();
     expect(screen.getByText("1,750 kcal/day")).toBeInTheDocument();
     expect(screen.getByText("Weight delta")).toBeInTheDocument();
     expect(screen.getByText("−0.4 kg")).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { calculateBudget, type PlanPace } from "@suppr/shared/nutrition/tdee";
+import { clampTargetToSafetyFloor, coerceSex } from "@suppr/shared/onboarding/targets";
 
 /** Body-stat fields fetched from profiles */
 export type BodyStats = {
@@ -260,7 +261,11 @@ export function resolveTargets(
     const f = nn(dbTargets.target_fat);
     const fib = nn(dbTargets.target_fiber_g);
     return {
-      calories: Math.round(cal),
+      // ENG-793 floor-leak fix: a stored sub-floor target (e.g. 901) must not
+      // reach the Today ring. Clamp the explicit stored value UP to the
+      // sex-aware safety floor at READ time (the computed/default branches below
+      // already sit above the floor). Monotonic + macros untouched.
+      calories: clampTargetToSafetyFloor(Math.round(cal), coerceSex(bodyStats.sex)),
       protein: p != null && p > 0 ? Math.round(p) : NUTRITION_DEFAULTS.protein,
       carbs: c != null && c > 0 ? Math.round(c) : NUTRITION_DEFAULTS.carbs,
       fat: f != null && f > 0 ? Math.round(f) : NUTRITION_DEFAULTS.fat,

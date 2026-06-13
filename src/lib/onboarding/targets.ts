@@ -120,6 +120,36 @@ export function safetyFloorFor(sex: Sex | null): number {
   return 1350; // unspecified — Suppr policy midpoint
 }
 
+/** Coerce a raw `profiles.sex` string (or null/undefined) to the `Sex` union.
+ *  Unknown / missing values map to `null` → `safetyFloorFor` returns the 1350
+ *  policy midpoint. We deliberately NEVER default unknown sex to "male" (1500):
+ *  that would wrongly raise a legitimate female 1,200 target (ENG-793). */
+export function coerceSex(raw: string | null | undefined): Sex | null {
+  if (raw === "male" || raw === "female" || raw === "unspecified") return raw;
+  return null;
+}
+
+/** Clamp a stored / effective daily calorie target UP to the sex-aware safety
+ *  floor (`safetyFloorFor`). ENG-793 floor-leak fix: the floor was enforced only
+ *  on the weekly-check-in SUGGESTION preview, so a stored sub-floor target (e.g.
+ *  901) reached the Today ring on both platforms. This is the READ-time guard —
+ *  apply it at the effective-target resolvers ONLY, never at the derive/write
+ *  layer (that would defeat the deliberate soft-warn-not-block design) and never
+ *  on past-day snapshots (that would retroactively rewrite history).
+ *
+ *  Monotonic: only ever RAISES a target to the floor, never lowers it, so it
+ *  cannot make a target more dangerous. Macros are intentionally left unchanged
+ *  — the kcal floor is the safety control; under-eating macros is not the harm
+ *  vector. Non-finite / non-positive values pass through untouched (the caller's
+ *  default/computed paths own those). */
+export function clampTargetToSafetyFloor(
+  targetKcal: number,
+  sex: Sex | null,
+): number {
+  if (!Number.isFinite(targetKcal) || targetKcal <= 0) return targetKcal;
+  return Math.max(safetyFloorFor(sex), targetKcal);
+}
+
 /** Severity of a pace warning. UI renders one banner per level. */
 export type WarningLevel = "info" | "warn" | "danger";
 
