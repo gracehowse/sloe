@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   ActivityIndicator,
   Alert,
@@ -917,22 +918,11 @@ export default function CreateRecipeScreen() {
       borderRadius: Radius.full, backgroundColor: colors.background + "E6",
     },
     quickRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
-    quickBtn: {
-      flexDirection: "row", alignItems: "center", gap: Spacing.xs,
-      paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
-      borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.border,
-      backgroundColor: colors.card,
-    },
-    // Gap 9 (sev 2): the magic/viral photo path is lifted to a clay-filled
-    // quick-action so it reads as the primary import affordance, not one of
-    // three identical hairline pills. Flag-gated.
-    quickBtnPrimary: {
-      flexDirection: "row", alignItems: "center", gap: Spacing.xs,
-      paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
-      borderRadius: Radius.xl, backgroundColor: accent.primary,
-    },
-    quickBtnText: { fontSize: 13, fontWeight: "600", color: colors.text },
-    quickBtnTextPrimary: { fontSize: 13, fontWeight: "700", color: colors.primaryForeground },
+    // Three peer entry actions — all ghost SupprButtons (no one is the primary).
+    // Layout-only: the icon→label gap. Padding / radius / colour come from the
+    // button system (ghost = transparent, plum label/icon).
+    quickBtn: { gap: Spacing.xs },
+    quickBtnText: { fontSize: 13, fontWeight: "600", color: accent.primarySolid },
 
     // Gap 13 (sev 2): boxed servings stepper (−/[n]/+) shared shape with Recipe
     // Detail. Flag-gated; legacy = the lone 80pt numeric input.
@@ -1105,35 +1095,36 @@ export default function CreateRecipeScreen() {
               affordance, not one of three identical hairline pills. Gap 10
               (sev 2): lucide line icons across the row (one icon family). */}
           <View style={styles.quickRow}>
-            <Pressable
-              style={[styles.quickBtn, (bulkMatching || !session) && { opacity: 0.45 }]}
+            <SupprButton
+              variant="ghost"
+              style={styles.quickBtn}
               onPress={() => setPasteModalOpen(true)}
               disabled={bulkMatching || !session}
+              accessibilityLabel="Paste list"
             >
-              <ClipboardList size={18} color={accent.primary} />
+              <ClipboardList size={18} color={accent.primarySolid} />
               <Text style={styles.quickBtnText}>Paste list</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                redesignOn ? styles.quickBtnPrimary : styles.quickBtn,
-                (imageExtracting || !session) && { opacity: 0.45 },
-              ]}
+            </SupprButton>
+            <SupprButton
+              variant="ghost"
+              style={styles.quickBtn}
               onPress={() => void importRecipeFromPhoto()}
               disabled={imageExtracting || !session}
+              accessibilityLabel="Scan photo"
             >
-              <Camera size={18} color={redesignOn ? colors.primaryForeground : accent.primary} />
-              <Text style={redesignOn ? styles.quickBtnTextPrimary : styles.quickBtnText}>Scan photo</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.quickBtn, !session && { opacity: 0.45 }]}
+              <Camera size={18} color={accent.primarySolid} />
+              <Text style={styles.quickBtnText}>Scan photo</Text>
+            </SupprButton>
+            <SupprButton
+              variant="ghost"
+              style={styles.quickBtn}
               onPress={() => setBarcodeOpen(true)}
               disabled={!session}
-              accessibilityRole="button"
               accessibilityLabel="Scan barcode to add ingredient"
             >
-              <Barcode size={18} color={accent.primary} />
+              <Barcode size={18} color={accent.primarySolid} />
               <Text style={styles.quickBtnText}>Scan barcode</Text>
-            </Pressable>
+            </SupprButton>
           </View>
           {(bulkMatching || imageExtracting) && (
             <View style={styles.row}>

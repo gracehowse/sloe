@@ -35,7 +35,7 @@ import {
 import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
 import { Elevation, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent, useTheme } from "@/context/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
@@ -53,6 +53,7 @@ import {
 import IngredientEditRow, {
   type EditableIngredient,
 } from "./IngredientEditRow";
+import { SupprButton } from "../ui/SupprButton";
 
 export type EditableRecipe = {
   id: string;
@@ -126,10 +127,9 @@ export default function RecipeEditSheet({
   // the add-ingredient affordance, the ingredient-load spinner, and the Save
   // CTA. Threaded into the module-level StyleSheet factory.
   const accent = useAccent();
-  const { resolved } = useTheme();
   const styles = useMemo(
-    () => makeStyles(colors, card, accent, resolved),
-    [colors, card, accent, resolved],
+    () => makeStyles(colors, card, accent),
+    [colors, card, accent],
   );
   const isOwner = canEditRecipe(recipe.author_id, userId);
 
@@ -500,27 +500,22 @@ export default function RecipeEditSheet({
           </ScrollView>
 
           <View style={styles.footer}>
-            <Pressable
+            <SupprButton
+              variant="ghost"
               onPress={() => !saving && onClose()}
-              style={[styles.footerBtn, styles.cancelBtn]}
-              accessibilityLabel="Cancel"
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void handleSave()}
               disabled={saving}
-              style={[styles.footerBtn, styles.saveBtn, saving && { opacity: 0.6 }]}
+              label="Cancel"
+              accessibilityLabel="Cancel"
+              style={styles.footerBtn}
+            />
+            <SupprButton
+              variant="primary"
+              onPress={() => void handleSave()}
+              loading={saving}
+              label="Save"
               accessibilityLabel="Save recipe"
-            >
-              {saving ? (
-                <ActivityIndicator
-                  color={resolved === "light" ? accent.primarySolid : accent.primarySolidDark}
-                />
-              ) : (
-                <Text style={styles.saveText}>Save</Text>
-              )}
-            </Pressable>
+              style={styles.footerBtn}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -532,8 +527,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   const colors = useThemeColors();
   const ce = useCardElevation();
   const accent = useAccent();
-  const { resolved } = useTheme();
-  const styles = makeStyles(colors, ce, accent, resolved);
+  const styles = makeStyles(colors, ce, accent);
   return (
     <View style={{ gap: Spacing.xs }}>
       <Text style={styles.label}>{label}</Text>
@@ -546,13 +540,7 @@ const makeStyles = (
   colors: ReturnType<typeof useThemeColors>,
   ce: CardElevation,
   accent: ReturnType<typeof useAccent>,
-  resolved: "light" | "dark",
 ) => {
-  // Aubergine-on-surface ink (Sloe treatment system) — the "Save recipe" primary
-  // renders as an aubergine OUTLINE (treatment §1). Light uses the deep
-  // `primarySolid`; dark lifts to `primarySolidDark` so the outline + label
-  // clear AA on the dark sheet. (Scheme via the theme context, not a hex test.)
-  const accentInk = resolved === "light" ? accent.primarySolid : accent.primarySolidDark;
   return StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
@@ -651,26 +639,10 @@ const makeStyles = (
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },
+    // Layout-only: equal-width split. Padding / radius / colour / label now
+    // come from SupprButton (Cancel = ghost, Save = primary).
     footerBtn: {
       flex: 1,
-      paddingVertical: Spacing.dense,
-      borderRadius: Radius.md,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    cancelBtn: { borderWidth: 1, borderColor: colors.border },
-    cancelText: { fontWeight: "700", color: colors.text, fontSize: 15 },
-    // "Save recipe" — aubergine OUTLINE (Sloe treatment §1): transparent ground
-    // + 1.5px aubergine border + aubergine label, not a filled slab.
-    saveBtn: {
-      backgroundColor: "transparent",
-      borderWidth: 1.5,
-      borderColor: accentInk,
-    },
-    saveText: {
-      fontWeight: "800",
-      color: accentInk,
-      fontSize: 15,
     },
   });
 };

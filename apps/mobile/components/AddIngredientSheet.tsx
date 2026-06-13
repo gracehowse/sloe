@@ -29,6 +29,7 @@ import Constants from "expo-constants";
 
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "./ui/SupprButton";
 import { authedFetch } from "@/lib/authedFetch";
 import {
   sanitizeOverrideInput,
@@ -281,18 +282,9 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
       marginTop: Spacing.md,
       justifyContent: "flex-end",
     },
-    btn: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: 12,
-      borderRadius: Radius.md,
-      alignItems: "center",
-      justifyContent: "center",
-      minWidth: 96,
-    },
-    btnPrimary: { backgroundColor: accent.primary },
-    btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
-    btnPrimaryText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
-    btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
+    // Layout-only override for the SupprButton Cancel/Add (padding/radius/colour
+    // come from the button system; this only sets the min commit-button width).
+    btnLayout: { minWidth: 96 },
     matchCard: {
       backgroundColor: colors.background,
       borderWidth: 1,
@@ -491,24 +483,23 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
           </ScrollView>
 
           <View style={styles.footer}>
-            <Pressable
-              style={[styles.btn, styles.btnGhost]}
+            <SupprButton
+              variant="ghost"
+              style={styles.btnLayout}
               onPress={onClose}
               disabled={saving}
-              accessibilityRole="button"
+              label="Cancel"
               accessibilityLabel="Cancel add ingredient"
-            >
-              <Text style={styles.btnGhostText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.btn, styles.btnPrimary, (!canAdd || saving) && { opacity: 0.6 }]}
+            />
+            <SupprButton
+              variant="primary"
+              style={styles.btnLayout}
               onPress={() => void handleAdd()}
-              disabled={!canAdd || saving}
-              accessibilityRole="button"
+              disabled={!canAdd}
+              loading={saving}
+              label="Add"
               accessibilityLabel="Add ingredient to recipe"
-            >
-              <Text style={styles.btnPrimaryText}>{saving ? "Adding…" : "Add"}</Text>
-            </Pressable>
+            />
           </View>
         </Pressable>
       </Pressable>

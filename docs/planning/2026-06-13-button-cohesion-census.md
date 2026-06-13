@@ -273,3 +273,35 @@ progress", weekly-checkin modal "Accept new target" (→ primary, modal sole CTA
 commit; Delete stays destructive). Migrate both platforms + repoint both tests.
 The eat-again banner "Log it" treatment is decided by reading the mobile twin in
 A-1 (card-primary vs secondary-nudge).
+
+---
+
+## Wave C (Recipe) — scope split (2026-06-13)
+
+Reading the surfaces surfaced a STRUCTURAL parity divergence on the recipe-detail
+action row that's a design decision, not a mechanical migration:
+- **Mobile** `RecipeActionPills`: Log ("Add to today") = primary, Edit = ghost,
+  and **"Start Cooking" was DEDUPED** (premium-audit 2026-06-09 gap 1 — cook entry
+  moved to the floating Cook Mode pill in `RecipeServingsFooter`).
+- **Web** `RecipeDetail` action row still has all three off-system: Start Cooking
+  = aubergine outline (flex-1.6), Log = beige `bg-background-secondary border`,
+  Edit = beige. No footer Cook pill.
+
+True parity = match mobile = Log→primary, Edit→ghost, **remove Start Cooking from
+the row + add a footer Cook entry** (structural). Making web Start Cooking ghost
++ Log primary in place is on-system but leaves the structural divergence and an
+odd wide-ghost-vs-narrow-primary visual. **DECISION NEEDED (Grace):** (a) full
+structural parity (dedup Start Cooking on web, add footer Cook pill), or (b)
+keep web's inline Start Cooking and pick the row's one primary (Cook vs Log).
+Deferred from the mechanical Wave C — flagged on ENG-1080.
+
+**Wave C-clean (executed):** RecipeUpload "Open Import"/"Add Ingredient" → ghost;
+recipe/[id] cook-stepper Next → primary / Previous → ghost, error "Go back" →
+primary; create-recipe quick-actions (Paste/Scan/Barcode) → ghost; sheet Cancels
+(RecipeEditSheet, OverrideIngredientSheet, AddIngredientSheet) → ghost. All
+unambiguous secondary→ghost / sole-CTA→primary; no one-primary or structural
+question.
+
+### Wave C follow-ups (tracked, not silent)
+- **AddIngredientSheet "Find match"** (mid-body, ~L296) stays a hand-rolled aubergine outline while the sheet's footer Cancel is now ghost — small same-sheet cohesion gap. Migrate to `SupprButton variant="ghost"` (or document why it's deliberately outline) in a follow-up cohesion pass / fold into Wave E. Documented in `recipeSheetsButtonSystem.test.ts`.
+- **OverrideIngredientSheet `btn` style** padding literal `paddingVertical: 12` → swap for `Spacing.dense` when next touched (tokens-only nit; still used by the destructive Reset button, not dead).

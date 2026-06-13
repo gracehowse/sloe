@@ -21,7 +21,7 @@ import {
 } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { SupprButton } from "./ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   sanitizeOverrideInput,
@@ -61,9 +61,6 @@ export default function OverrideIngredientSheet({
   onReset,
   colors,
 }: Props) {
-  // Secondary accent (Frost flag → damson, else clay) for the primary Save CTA.
-  // The destructive "Reset" button keeps `Accent.destructive`.
-  const accent = useAccent();
   const [cal, setCal] = useState("");
   const [p, setP] = useState("");
   const [c, setC] = useState("");
@@ -141,6 +138,7 @@ export default function OverrideIngredientSheet({
       justifyContent: "flex-end",
       flexWrap: "wrap",
     },
+    // Destructive (Reset) keeps its own treatment — NOT a SupprButton variant.
     btn: {
       paddingHorizontal: Spacing.lg,
       paddingVertical: 12,
@@ -149,11 +147,10 @@ export default function OverrideIngredientSheet({
       justifyContent: "center",
       minWidth: 96,
     },
-    btnPrimary: { backgroundColor: accent.primary },
-    btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
+    // Layout-only override for the SupprButton Cancel/Save (padding/radius/colour
+    // come from the button system; this only matches the destructive button width).
+    btnLayout: { minWidth: 96 },
     btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
-    btnPrimaryText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
-    btnGhostText: { color: colors.text, fontWeight: "600", fontSize: 14 },
     btnDestructiveText: { color: Accent.destructive, fontWeight: "600", fontSize: 14 },
   });
 
@@ -256,24 +253,22 @@ export default function OverrideIngredientSheet({
                 <Text style={styles.btnDestructiveText}>Reset to match</Text>
               </Pressable>
             ) : null}
-            <Pressable
-              style={[styles.btn, styles.btnGhost]}
+            <SupprButton
+              variant="ghost"
+              style={styles.btnLayout}
               onPress={onClose}
               disabled={saving}
-              accessibilityRole="button"
+              label="Cancel"
               accessibilityLabel="Cancel edit"
-            >
-              <Text style={styles.btnGhostText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.btn, styles.btnPrimary, saving && { opacity: 0.6 }]}
+            />
+            <SupprButton
+              variant="primary"
+              style={styles.btnLayout}
               onPress={() => void handleSave()}
-              disabled={saving}
-              accessibilityRole="button"
+              loading={saving}
+              label="Save"
               accessibilityLabel="Save nutrition values"
-            >
-              <Text style={styles.btnPrimaryText}>{saving ? "Saving…" : "Save"}</Text>
-            </Pressable>
+            />
           </View>
         </Pressable>
       </Pressable>
