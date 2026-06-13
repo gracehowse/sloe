@@ -1725,9 +1725,13 @@ export default function PlannerScreen() {
           paddingHorizontal: 4,
           // Chips census (2026-06-10): Radius.full — chip family is round.
           borderRadius: Radius.full,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
+          // Flat-card grammar (2026-06-12): a SECONDARY add affordance →
+          // quiet fill (`colors.fillQuiet` #F2EFE9), NO border. The white-
+          // card + hairline read as a second elevated surface inside the
+          // day card; quiet fill is the Withings nested-affordance language.
+          // `addSlotChipText` stays textSecondary (#6A6072 on #F2EFE9 =
+          // 5.19:1, clears AA); the Plus glyph is the same muted tier.
+          backgroundColor: colors.fillQuiet,
         },
         addSlotChipText: {
           fontSize: 11,

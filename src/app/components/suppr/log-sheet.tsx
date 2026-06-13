@@ -587,8 +587,13 @@ function LoggedConfirmation({
         Logged{slot ? ` to ${slot}` : ""}
       </h2>
 
-      {/* Logged-item card — cream slab, 16px corner, soft lift. */}
-      <div className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left shadow-[var(--elev-card-soft)]">
+      {/* Logged-item card — flat cream slab, 16px corner. Flat-card surfaces
+          (2026-06-12, Withings grammar — decision:
+          docs/decisions/2026-06-12-flat-card-surfaces.md): this nested resting
+          card sits FLAT on the sheet ground — the retired soft lift
+          (`--elev-card-soft`) and the hairline are both dropped; the card fill
+          is the separation, matching `.card-slab`. */}
+      <div className="mt-4 flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-foreground">{title}</p>
           <div className="mt-1 flex items-center gap-1.5">
@@ -937,15 +942,20 @@ function DefaultComposition({
           {/* Footer: "Or add manually" — escape hatch for users who want
               to type macros directly. Host wires this to the manual
               quick-add form. Hidden in inline-search mode (the panel
-              owns the bottom of the sheet). */}
+              owns the bottom of the sheet). Flat-card grammar (web
+              parity 2026-06-12, docs/decisions/2026-06-12-flat-card-surfaces.md):
+              a SECONDARY add affordance → quiet fill (`bg-fill-quiet`
+              #F2EFE9, `rounded-xl`, inset margin, NO top divider), not a
+              full-bleed `border-t` row. Muted label stays (#6A6072 on
+              #F2EFE9 = 5.19:1, clears AA). Mirror of mobile `manualFooter`. */}
           {onAddManually ? (
             <button
               type="button"
               onClick={onAddManually}
               aria-label="Or add manually"
               className={cn(
-                "flex w-full items-center gap-2 border-t px-4 py-3 text-left text-[13px] text-muted-foreground",
-                "hover:bg-muted/40 transition-colors",
+                "mx-3 mb-3 mt-2 flex items-center gap-2 rounded-xl bg-fill-quiet px-4 py-3 text-left text-[13px] text-muted-foreground",
+                "hover:bg-fill-quiet/80 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
             >

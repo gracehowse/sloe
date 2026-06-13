@@ -61,7 +61,7 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Accent, MacroColors, Spacing, Radius, Type, FontFamily, Elevation } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -784,7 +784,10 @@ export default function CreateRecipeWizard() {
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: colors.card,
-          ...(Elevation.cardSoft),
+          // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+          // docs/decisions/2026-06-12-flat-card-surfaces.md): the photo-fallback
+          // tile is a flat slab; the soft lift (`Elevation.cardSoft`) is retired,
+          // the card fill on the cream ground is the separation.
         },
         // Camera overlay label inside the warm fallback tile.
         photoFallbackLabel: {

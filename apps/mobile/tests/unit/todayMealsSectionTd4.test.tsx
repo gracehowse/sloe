@@ -23,10 +23,12 @@
  *      empty-slot add path).
  */
 import * as React from "react";
+import { StyleSheet } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
+import { Colors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 vi.mock("../../lib/analytics", () => ({
@@ -124,6 +126,35 @@ describe("TodayMealsSection — TD4 in-card Add food action", () => {
   it("Add food carries an explicit per-slot accessibility label", () => {
     const { getByLabelText } = renderSection({});
     expect(getByLabelText("Add food to Breakfast")).toBeTruthy();
+  });
+
+  // F-160 / flat-card surfaces (2026-06-12 decision) — the in-card Add food
+  // affordance is the FIRST quiet-fill adoption. With the card now FLAT, the
+  // action sits on the `colors.fillQuiet` token inside a contained, borderless
+  // pill (no second white card, no border) — Withings grammar. This pins that
+  // the affordance is a quiet-fill pill (not a bare text link that would float
+  // on the flat card) and that it carries no surface border.
+  it("Add food is a quiet-fill pill (fillQuiet bg, no border)", () => {
+    const { getByTestId } = renderSection({});
+    const addFood = getByTestId("today-add-food-Breakfast");
+    const style = StyleSheet.flatten(addFood.props.style) as {
+      backgroundColor?: string;
+      borderWidth?: number;
+      borderRadius?: number;
+    };
+    // Scheme-agnostic — the test renderer resolves dark by default, so accept
+    // either the light or dark `fillQuiet` token (the component reads the
+    // resolved scheme via useThemeColors). The point is it's the quiet-fill
+    // token, NOT a card fill and NOT a transparent text-link background.
+    const fillTokens = [
+      Colors.light.fillQuiet.toLowerCase(),
+      Colors.dark.fillQuiet.toLowerCase(),
+    ];
+    expect(fillTokens).toContain(style.backgroundColor?.toLowerCase());
+    // No surface border — separation is the quiet fill, not an edge.
+    expect(style.borderWidth ?? 0).toBe(0);
+    // Radius is on the tightened ladder (Radius.lg = 8), matching siblings.
+    expect(style.borderRadius).toBe(8);
   });
 });
 

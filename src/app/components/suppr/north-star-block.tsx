@@ -257,8 +257,9 @@ function NorthStarFigmaHeroBlock({
         type="button"
         onClick={onPrimaryCta}
         className={cn(
+          // Flat-card surfaces (2026-06-12): hero lift retired — mobile twin
+          // NorthStarBlock.figmaHeroCard flattened in the same wave.
           "relative block w-full h-80 rounded-2xl overflow-hidden text-left",
-          "shadow-[0_4px_14px_rgba(34,27,38,0.10)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}
         aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}

@@ -10,7 +10,7 @@
  */
 import { Pressable, Text, View } from "react-native";
 import { CheckCircle, UtensilsCrossed } from "lucide-react-native";
-import { Elevation, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import type { PlanImportVerifiedRecipe, PlanImportNutritionMode } from "@suppr/shared/planning/planImport/types";
@@ -40,11 +40,13 @@ export function CookbookReviewRow({ item, excluded, nutritionMode, onToggle }: P
     <Pressable
       onPress={() => onToggle(item.key)}
       testID={`cookbook-recipe-${item.key}`}
-      // Elevation on outer wrapper (RN overflow:hidden clips iOS shadows on inner).
+      // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+      // docs/decisions/2026-06-12-flat-card-surfaces.md): the resting recipe
+      // row is a FLAT slab now — the soft outer lift (`...Elevation.cardSoft`)
+      // is retired; separation comes from the card fill on the cream ground.
       style={{
         borderRadius: Radius.lg,
         marginBottom: Spacing.md,
-        ...Elevation.cardSoft,
       }}
     >
       <View

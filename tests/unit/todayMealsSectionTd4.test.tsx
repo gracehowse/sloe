@@ -98,4 +98,18 @@ describe("TodayMealsSection — TD4 per-slot cards (web)", () => {
     );
     expect(screen.queryByTestId("today-add-food-Breakfast")).toBeNull();
   });
+
+  // F-160 / flat-card surfaces (2026-06-12 decision) — the in-card Add food
+  // affordance is the FIRST quiet-fill adoption (web `bg-fill-quiet` ↔ mobile
+  // `colors.fillQuiet`). With the card now FLAT a bare text link floats; the
+  // action sits on the quiet-fill token inside a contained borderless pill.
+  // This pins the quiet-fill class and that no card-surface border is drawn.
+  it("Add food is a quiet-fill pill (bg-fill-quiet, no border) — flat-card surfaces parity", () => {
+    render(<TodayMealsSection {...baseProps()} />);
+    const addFood = screen.getByTestId("today-add-food-Breakfast");
+    expect(addFood.className).toContain("bg-fill-quiet");
+    expect(addFood.className).toContain("rounded-lg");
+    // No surface border class — separation is the quiet fill, not an edge.
+    expect(addFood.className).not.toMatch(/\bborder\b/);
+  });
 });

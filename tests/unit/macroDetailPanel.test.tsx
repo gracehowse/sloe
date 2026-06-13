@@ -127,10 +127,12 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
       <MacroDetailPanel macro="protein" meals={[]} open onClose={() => undefined} />,
     );
     const empty = screen.getByTestId("macro-detail-empty");
-    // Card container (div) — not the legacy <p>; carries the modern
-    // rounded-xl corner + ambient shadow.
+    // Card container (div) — not the legacy <p>; modern rounded-xl corner.
+    // Flat-card surfaces (2026-06-12): the ambient lift is retired — this is a
+    // flat slab now, separation from the cream ground is the fill alone.
     expect(empty.tagName.toLowerCase()).toBe("div");
     expect(empty.className).toContain("rounded-xl");
+    expect(empty.className).not.toContain("shadow-[");
     expect(empty).toHaveTextContent("No meals logged yet");
     expect(empty).toHaveTextContent("Log a meal to see your protein broken down here.");
   });

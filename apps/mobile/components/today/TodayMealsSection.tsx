@@ -835,30 +835,39 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   </Pressable>
                 </MealRowSwipeable>
               ))}
-              <Pressable
-                onPress={() => onOpenFabForSlot(slot)}
+              {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
+                  affordance — same element, same treatment as the legacy-branch
+                  Add-food pill. Contained `colors.fillQuiet` pill inside a
+                  card-edge inset (no border, no second white card). */}
+              <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: Spacing.sm,
-                  paddingVertical: Spacing.sm,
-                  paddingHorizontal: Spacing.md,
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                  borderTopColor: cardBorderColor + "20",
+                  paddingHorizontal: Spacing.dense,
+                  paddingTop: Spacing.sm,
+                  paddingBottom: Spacing.dense,
                 }}
-                accessibilityRole="button"
-                accessibilityLabel={`Add food to ${slot}`}
-                testID={`today-add-food-${slot}`}
               >
-                {/* Sloe treatment system (2026-06-08): text-only inline
-                    action → primarySolid (the AA-safe deep aubergine for
-                    labels on the warm-grey card), matching the sibling
-                    add-food link below. */}
-                <Plus size={16} color={accent.primarySolid} strokeWidth={2} />
-                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
-                  Add food
-                </Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => onOpenFabForSlot(slot)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: Spacing.sm,
+                    paddingVertical: Spacing.sm,
+                    paddingHorizontal: Spacing.dense,
+                    borderRadius: Radius.lg,
+                    backgroundColor: colors.fillQuiet,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add food to ${slot}`}
+                  testID={`today-add-food-${slot}`}
+                >
+                  <Plus size={16} color={accent.primarySolid} strokeWidth={2} />
+                  <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
+                    Add food
+                  </Text>
+                </Pressable>
+              </View>
             </View>
             );
           }}
@@ -896,13 +905,16 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               entering={FadeInDown.delay(slotIndex * 50).duration(350)}
               testID={`today-slot-${slot}`}
               style={{
-                // TD4 — each slot is its own card. The card CHROME (warm-grey
-                // fill, radius, soft lift on an outer wrapper, corner-clip,
-                // hairline) is the shared <SupprCard lift="soft"> shell below — no
-                // more hand-rolled per-slot chrome (Grace 2026-06-04). This animated
-                // wrapper only carries the entering animation, the bottom gap,
-                // and the empty-slot dim (logged slots read as the live ones).
-                marginBottom: Spacing.dense,
+                // TD4 — each slot is its own card. The card CHROME (white fill,
+                // radius, FLAT post flat-card surfaces 2026-06-12 — no lift) is the
+                // shared <SupprCard> shell below — no more hand-rolled per-slot
+                // chrome (Grace 2026-06-04). This animated wrapper only carries the
+                // entering animation, the bottom gap, and the empty-slot dim.
+                // F-160 (TF57): with the lift retired the cards no longer need air
+                // to separate them — the gap tightens to the pre-inversion rhythm
+                // (`Spacing.sm` 8, was `Spacing.dense` 12) so the four slots read as
+                // a tight grouped block, not floating slabs.
+                marginBottom: Spacing.sm,
                 opacity: hasMeals ? 1 : 0.55,
               }}
             >
@@ -913,10 +925,15 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  borderBottomWidth: hasMeals && isOpen ? 1 : 0,
+                  borderBottomWidth: hasMeals && isOpen ? StyleSheet.hairlineWidth : 0,
                   borderBottomColor: cardBorderColor,
-                  padding: Spacing.dense,
-                  paddingHorizontal: Spacing.md,
+                  // F-160 (TF57): pre-inversion header density — vertical pad +
+                  // horizontal pad both snap to `Spacing.dense` (12). The redesign
+                  // had ballooned the horizontal pad to `Spacing.md` (16); the
+                  // pre-inversion header sat at 12/14 and read tighter. Also drop
+                  // the 1pt rule to a hairline (matches the food-row dividers).
+                  paddingVertical: Spacing.dense,
+                  paddingHorizontal: Spacing.dense,
                   gap: Spacing.sm,
                 }}
               >
@@ -937,7 +954,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     alignItems: "center",
                     flex: 1,
                     minWidth: 0,
-                    gap: Spacing.dense,
+                    // F-160 (TF57): icon↔title gap back to the pre-inversion
+                    // `Spacing.sm` (8) — the redesign widened it to `Spacing.dense`
+                    // (12), pushing the serif title off the left edge.
+                    gap: Spacing.sm,
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={
@@ -950,21 +970,20 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 >
                   <View
                     style={{
-                      // TD4 icon chip — 36pt rounded square. The frame uses a
-                      // flat frost-mist chip for every slot; we keep the
-                      // per-slot tint (dossier D-4 — slots stay distinguishable
-                      // by hue + icon + position) so the four cards still read
-                      // apart at a glance. The slot-tint chip is the "keep from
-                      // live where stronger" call vs the frame's monochrome chip.
-                      width: 36,
-                      height: 36,
+                      // Slot icon chip — per-slot tint (dossier D-4: slots stay
+                      // distinguishable by hue + icon + position). F-160 (TF57):
+                      // back to the pre-inversion 32pt chip (was 36) so the header
+                      // row is shorter and the four slots stack tighter; radius
+                      // stays `Radius.lg` (8) on-scale.
+                      width: 32,
+                      height: 32,
                       borderRadius: Radius.lg,
                       backgroundColor: col + "18",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <SlotIcon Glyph={ic} size={18} color={col} />
+                    <SlotIcon Glyph={ic} size={16} color={col} />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     {/* TD4 — meal name reads in Newsreader (`Type.headline`),
@@ -1436,38 +1455,50 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </Pressable>
               )}
 
-              {/* TD4 — per-card "Add food" action. The Sloe frame puts an
-                  `+ Add food` clay link inside every open meal card so adding
-                  to a populated slot is a one-tap, in-context action (the
-                  pre-TD4 layout only offered the central FAB once a slot had
-                  items). Routes through the SAME `onOpenFabForSlot(slot)`
-                  handler the empty-slot header tap fires — pre-selects this
-                  slot then opens the canonical Log sheet. No new logic, no new
-                  data path. Clay = the warm "do it" accent (deep `primarySolid`
-                  for AA on the warm-grey card). Empty slots keep their
-                  header-as-tap-target (no body), so this only renders when the
-                  card is open with items. */}
+              {/* Per-card "Add food" action — adds to a populated slot in
+                  one tap (routes through the SAME `onOpenFabForSlot(slot)` the
+                  empty-slot header tap fires; no new data path). Empty slots
+                  keep their header-as-tap-target (no body), so this only renders
+                  when the card is open with items.
+
+                  F-160 / flat-card surfaces (2026-06-12 decision — the FIRST
+                  quiet-fill adoption): with the card now FLAT, a bare text link
+                  reads as floating. The nested affordance sits on the new
+                  quiet-fill token (`colors.fillQuiet` — Withings grammar) inside
+                  a contained pill — no second white card, no border. Clay deep
+                  `primarySolid` keeps AA on the quiet fill. A wrapper carries the
+                  card-edge inset so the pill doesn't run to the card corners. */}
               {hasMeals && isOpen && (
-                <Pressable
-                  testID={`today-add-food-${slot}`}
-                  onPress={() => onOpenFabForSlot(slot)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add food to ${slot}`}
-                  hitSlop={6}
+                <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: Spacing.sm,
-                    paddingTop: Spacing.dense,
+                    paddingHorizontal: Spacing.dense,
+                    paddingTop: Spacing.sm,
                     paddingBottom: Spacing.dense,
-                    paddingHorizontal: Spacing.md,
                   }}
                 >
-                  <Plus size={15} color={accent.primarySolid} strokeWidth={2.25} />
-                  <Text style={{ ...Type.body, color: accent.primarySolid }}>
-                    Add food
-                  </Text>
-                </Pressable>
+                  <Pressable
+                    testID={`today-add-food-${slot}`}
+                    onPress={() => onOpenFabForSlot(slot)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add food to ${slot}`}
+                    hitSlop={6}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      paddingVertical: Spacing.sm,
+                      paddingHorizontal: Spacing.dense,
+                      borderRadius: Radius.lg,
+                      backgroundColor: colors.fillQuiet,
+                    }}
+                  >
+                    <Plus size={15} color={accent.primarySolid} strokeWidth={2.25} />
+                    <Text style={{ ...Type.body, color: accent.primarySolid }}>
+                      Add food
+                    </Text>
+                  </Pressable>
+                </View>
               )}
               </SupprCard>
             </ReAnimated.View>

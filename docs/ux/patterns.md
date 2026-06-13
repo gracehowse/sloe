@@ -192,6 +192,34 @@ Buttons, pills, badges, chips, inputs, textareas, dropdown menu cells, modal han
 - Use `rounded-card` (web) or `Radius.lg` (mobile) on the outer shell.
 - Do not introduce new radius tokens. If the design truly needs one, raise it with `product-lead` first.
 
+## Quiet-fill nested affordances (flat-card surfaces, 2026-06-12)
+
+Decision: `docs/decisions/2026-06-12-flat-card-surfaces.md` (Withings grammar).
+
+Page-ground cards are now **flat** (no shadow, no border — the ground↔card
+contrast is the separation). Because the card no longer lifts, a bare
+text-link action *inside* a card reads as floating. Interactive rows nested in
+a flat card — add-food rows, "show all" affordances, toggles, sub-tiles — sit
+on the **quiet-fill** token inside a contained, borderless pill. Never a second
+white card, never a border.
+
+- **Token:** `--fill-quiet` / `bg-fill-quiet` (web, `#F2EFE9` light · `#2C2A30`
+  dark) ↔ `Colors.fillQuiet` (mobile, same values). Registered in
+  `src/styles/theme.css` (`--color-fill-quiet`) and
+  `apps/mobile/constants/theme.ts`.
+- **Shape:** centred row, `bg-fill-quiet`, `rounded-lg` (web) / `Radius.lg`
+  (mobile), **no border**, card-edge inset via a padded wrapper (so the pill
+  doesn't run to the card corners). Label/glyph stay `primary-solid` (deep
+  aubergine) for AA on the quiet fill.
+- **First adoption:** the per-slot "+ Add food" action in the Today meal
+  section (`apps/mobile/components/today/TodayMealsSection.tsx` /
+  `src/app/components/suppr/today-meals-section.tsx`) — both the legacy per-slot
+  layout and the Figma-654 expanded-slot layout. Pinned by
+  `todayMealsSectionTd4.test.tsx` (web + mobile).
+- **Same element, same treatment:** any new nested affordance on a flat card
+  uses this exact pill — do not reintroduce a bordered sub-card or a bare text
+  link.
+
 ## Progressive disclosure defaults (audit M4, 2026-04-18)
 
 The **Today screen** is the product's most-used surface. When every card shows

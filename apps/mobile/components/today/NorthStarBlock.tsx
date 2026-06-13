@@ -702,11 +702,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: "hidden",
     position: "relative",
-    shadowColor: Colors.light.text,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 4,
+    // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+    // docs/decisions/2026-06-12-flat-card-surfaces.md): the "What to eat next"
+    // hero is a resting card and sits FLAT now — the soft lift is retired; the
+    // full-bleed photo/gradient fill on the cream ground is the separation.
   },
   figmaFitsBadge: {
     position: "absolute",

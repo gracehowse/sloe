@@ -34,16 +34,17 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   const targets = normalizeMacroTargets(nutritionTargets);
   const todayDk = todayKey();
 
-  // ENG-822 (2026-05-31 design-director review) — soft resting-card elevation
-  // behind `design_system_elevation`, mirroring the mobile metric-detail sweep
-  // and the web recipe/dialog surfaces: flag ON drops the hairline border and
-  // rides the soft `--elev-card-soft` shadow; flag OFF keeps today's
-  // `border border-border` flat treatment. Mirror of the mobile
-  // `useCardElevation` branch so both platforms move off flat hairlines
-  // together.
+  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md). This metric-detail card
+  // was a straggler riding the raw `--elev-card-soft` token directly (bypassing
+  // the `.card-slab` primitive the CORE flattened), so it kept the retired soft
+  // lift. Flattened to match the primitive: the `design_system_elevation` ON
+  // path is now borderless + FLAT (no shadow) — separation comes from the card
+  // fill on the cream ground, mirroring the mobile `useCardElevation` flat
+  // result. The OFF path keeps the legacy flat hairline.
   const elevated = isFeatureEnabled("design_system_elevation");
   const cardCls = elevated
-    ? "border border-transparent shadow-[var(--elev-card-soft)]"
+    ? "border border-transparent"
     : "border border-border";
 
   // F-2 (2026-04-19) — snapshot targets for this week so past-day

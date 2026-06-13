@@ -53,7 +53,9 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting inbox card
+          sits flat — `shadow-lg` lift retired. */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {notificationsInbox.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
