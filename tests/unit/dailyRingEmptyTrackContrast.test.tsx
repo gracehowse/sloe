@@ -24,15 +24,20 @@ function strokes(container: HTMLElement): { stroke: string | null; strokeWidth: 
 }
 
 describe("DailyRing — empty-state track contrast (gap 1)", () => {
-  it("lifts the empty outer track to --border-strong and draws a 1px inner hairline", () => {
+  it("empty ring paints the brand-gradient loop over the stronger track (ENG-1086)", () => {
     const { container } = render(<DailyRing consumed={0} target={2000} />);
     const s = strokes(container);
-    // Outer track + empty progress arc both reference the stronger token.
+    // Outer track still lifts to --border-strong on the empty state (audit gap 1).
     expect(s.some((c) => c.stroke === "var(--border-strong)")).toBe(true);
-    // A 1px inner hairline at --border-strong is present on the empty ring.
+    // ENG-1086 (default-on `ring_empty_gradient_v1`): the empty ring now paints
+    // the brand-gradient loop instead of the old 1px grey hairline — the loop is
+    // the largest object on cold-open Today, so it must read as a confident
+    // brand surface, not a loading skeleton. The 1px hairline is the FLAG-OFF
+    // kill-switch path (pinned in source by `ringEmptyGradient.test.ts`).
+    expect(s.some((c) => c.stroke === "url(#ringEmptyGradient)")).toBe(true);
     expect(
       s.some((c) => c.stroke === "var(--border-strong)" && c.strokeWidth === "1"),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("keeps the soft --ring-bg track once a value is logged (no over-darkening)", () => {
@@ -41,9 +46,10 @@ describe("DailyRing — empty-state track contrast (gap 1)", () => {
     // Filled state: the outer track stays the soft frost-mist so the plum arc
     // holds contrast against it.
     expect(s.some((c) => c.stroke === "var(--ring-bg)")).toBe(true);
-    // The 1px empty hairline is gone once logged.
+    // Neither the empty hairline nor the empty gradient loop renders once logged.
     expect(
       s.some((c) => c.stroke === "var(--border-strong)" && c.strokeWidth === "1"),
     ).toBe(false);
+    expect(s.some((c) => c.stroke === "url(#ringEmptyGradient)")).toBe(false);
   });
 });
