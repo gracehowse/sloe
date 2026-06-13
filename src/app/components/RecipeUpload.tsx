@@ -36,6 +36,7 @@ import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPa
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
+import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
@@ -1392,22 +1393,22 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             placeholder={"2 tbsp olive oil\n1 onion, diced\n400 g canned tomatoes"}
           />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
+            <SupprButton
+              variant="ghost"
               type="button"
               onClick={() => setPasteDialogOpen(false)}
               disabled={verifying}
-              className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/60 disabled:opacity-40"
             >
               Cancel
-            </button>
-            <button
+            </SupprButton>
+            <SupprButton
+              variant="primary"
               type="button"
-              disabled={verifying}
+              loading={verifying}
               onClick={() => void applyPasteListMatch()}
-              className="px-4 py-2 rounded-lg bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-40"
             >
               {verifying ? "Matching…" : "Match to database"}
-            </button>
+            </SupprButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1463,14 +1464,14 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 placeholder="https://…"
                 className="flex-1 px-4 py-3 rounded-[var(--radius-card)] border border-border bg-muted/30 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
-              <button
+              <SupprButton
+                variant="primary"
                 type="button"
-                disabled={importBusy}
+                loading={importBusy}
                 onClick={() => void runImportFromUrl()}
-                className="px-6 py-3 rounded-[var(--radius-card)] bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-semibold disabled:opacity-50 hover:bg-primary/5 transition-colors"
               >
                 {importBusy ? "Importing…" : "Import"}
-              </button>
+              </SupprButton>
             </div>
             {importHint ? (
               <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
@@ -2278,14 +2279,16 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             Publishing isn't available on this screen—imported copies are for your account only. To share original work
             with the community, use Create recipe.
           </p>
-          <button
+          <SupprButton
+            variant="primary"
             type="button"
+            loading={saving === "draft"}
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-[var(--radius-card)] hover:bg-primary/5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
-          </button>
+          </SupprButton>
         </div>
       ) : (
         <div className="space-y-4">
@@ -2301,23 +2304,27 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </span>
           </label>
           <div className="flex gap-4">
-            <button
+            <SupprButton
+              variant="ghost"
               type="button"
+              loading={saving === "draft"}
               disabled={saving !== null}
               onClick={() => void saveRecipe(false)}
-              className="flex-1 px-6 py-4 border-2 border-border rounded-xl hover:bg-muted/60 transition-all text-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1"
             >
               {saving === "draft" ? "Saving…" : "Save as draft"}
-            </button>
-            <button
+            </SupprButton>
+            <SupprButton
+              variant="primary"
               type="button"
+              loading={saving === "publish"}
               disabled={saving !== null}
               onClick={() => void saveRecipe(true)}
-              className="flex-1 px-6 py-4 bg-transparent border-[1.5px] border-primary-solid text-primary-solid rounded-xl hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1"
             >
               <Icons.upload className="w-5 h-5" />
               {saving === "publish" ? "Publishing…" : "Publish recipe"}
-            </button>
+            </SupprButton>
           </div>
         </div>
       )}

@@ -2,16 +2,16 @@
  * Recipe detail — action-pill row (Figma `332:2`, section 3). Web parity:
  * the action-pill row in `src/app/components/RecipeDetail.tsx`.
  *
- * Horizontal pills, 46px tall, rounded-full:
- *   - Log — aubergine OUTLINE (transparent bg, 1.5px aubergine border +
- *     aubergine label/icon), the DOMINANT top-row action → opens the log flow.
- *     Logging is the product's spine, so it is the everyday primary here
- *     (premium-audit 2026-06-09, gap 1 + CTA map
+ * Horizontal pills, rounded-full, on the `SupprButton` grammar
+ * (`docs/decisions/2026-06-12-button-system-solid-primary.md`):
+ *   - Log ("Add to today") — `SupprButton variant="primary"`: SOLID aubergine
+ *     fill + white PlusCircle/label, the DOMINANT top-row action → opens the
+ *     log flow. Logging is the product's spine, so it is the everyday primary
+ *     here (premium-audit 2026-06-09, gap 1 + CTA map
  *     `docs/ux/specs/2026-06-09-skia-ring-cta-map-serif-titles.md` §2). The
- *     everyday primary is an outline, not a filled slab (Sloe treatment system,
- *     2026-06-08 — `docs/prototypes/sloe-component-treatments.html` §1); fill
- *     is reserved for the FAB + conversion-critical CTAs.
- *   - Edit — cream pill → edit recipe (owner-only; hidden otherwise)
+ *     solid fill IS the affordance — no border, no shadow (flat-card canon).
+ *   - Edit — `SupprButton variant="ghost"`: transparent, plum Pencil/label →
+ *     edit recipe (owner-only; hidden otherwise). Replaces the old cream fill.
  *
  * Cook entry deduped (premium-audit 2026-06-09, gap 1): the top-row
  * "Start Cooking" pill was the SAME destination as the sticky-footer
@@ -24,13 +24,12 @@
  * `185:2`). Building a placeholder screen would violate the no-fakes rule.
  * See report + `docs/ux/redesign/figma-migration-tracker.md`.
  */
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Pencil, PlusCircle } from "lucide-react-native";
 
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
-import { useThemeColors } from "@/hooks/use-theme-colors";
-import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprButton } from "@/components/ui/SupprButton";
 
 type RecipeActionPillsProps = {
   onLog: () => void;
@@ -46,36 +45,14 @@ export function RecipeActionPills({
   onEdit,
   haptic = "none",
 }: RecipeActionPillsProps) {
-  const colors = useThemeColors();
-  // Aubergine accent for the DOMINANT "Log" CTA — rendered as an OUTLINE
-  // (1.5px `primarySolid` border + `primarySolid` label/icon on a transparent
-  // ground), per the Sloe treatment system + the 2026-06-09 CTA map (Log is
-  // the product's spine, so the top-row primary). The cream Edit pill keeps
-  // theme surfaces. On dark, `primarySolidDark` carries the lifted aubergine
-  // so the outline + label stay legible on the dark card.
+  // Aubergine accent for the ghost Edit pill's plum label/icon. The dominant
+  // "Log" CTA's solid fill + white label come from SupprButton variant="primary".
   const accent = useAccent();
-  // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
-  // (#3B2A4D light / #C4ACD0 dark); the old pure-white background probe broke
-  // when the light ground moved to cream #FBF8F3. Read the accent directly.
-  const outlineColor = accent.primarySolid;
 
-  const creamPill = {
-    flex: 1,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    gap: Spacing.sm,
-    height: 46,
-    borderRadius: Radius.full,
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  };
   const pillLabel = {
     fontFamily: FontFamily.sansSemibold,
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: colors.text,
+    fontWeight: "700" as const,
   };
 
   return (
@@ -83,63 +60,38 @@ export function RecipeActionPills({
       style={{ flexDirection: "row", gap: Spacing.dense }}
       testID="recipe-action-pills"
     >
-      <PressableScale
+      <SupprButton
+        variant="primary"
         haptic={haptic}
         onPress={onLog}
-        disabled={logging}
-        accessibilityRole="button"
+        loading={logging}
         accessibilityLabel="Log this recipe"
         testID="recipe-action-log"
-        style={{
-          // Dominant primary — wider than the owner Edit pill.
-          flex: 1.6,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.sm,
-          height: 46,
-          borderRadius: Radius.full,
-          // Aubergine OUTLINE (Sloe treatment §1): transparent ground +
-          // 1.5px aubergine border, NOT a filled slab.
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: outlineColor,
-          opacity: logging ? 0.6 : 1,
-        }}
+        // Dominant primary — wider than the owner Edit pill.
+        style={{ flex: 1.6, gap: Spacing.sm }}
       >
-        {logging ? (
-          <ActivityIndicator color={outlineColor} />
-        ) : (
-          <>
-            <PlusCircle size={18} color={outlineColor} />
-            <Text
-              style={{
-                fontFamily: FontFamily.sansSemibold,
-                fontSize: 14,
-                fontWeight: "700",
-                color: outlineColor,
-              }}
-              numberOfLines={1}
-            >
-              Log
-            </Text>
-          </>
-        )}
-      </PressableScale>
+        <PlusCircle size={18} color="#fff" />
+        <Text style={[pillLabel, { color: "#fff" }]} numberOfLines={1}>
+          Log
+        </Text>
+      </SupprButton>
 
       {onEdit ? (
-        <PressableScale
+        <SupprButton
+          variant="ghost"
           onPress={onEdit}
-          accessibilityRole="button"
           accessibilityLabel="Edit recipe"
           testID="recipe-action-edit"
-          style={creamPill}
+          style={{ flex: 1, gap: Spacing.sm }}
         >
-          <Pencil size={16} color={colors.text} />
-          <Text style={pillLabel} numberOfLines={1}>
+          <Pencil size={16} color={accent.primarySolid} />
+          <Text
+            style={[pillLabel, { color: accent.primarySolid }]}
+            numberOfLines={1}
+          >
             Edit
           </Text>
-        </PressableScale>
+        </SupprButton>
       ) : null}
     </View>
   );

@@ -51,35 +51,49 @@ const IMPORT_SHARED = read("app/import-shared.tsx");
 const WHATS_NEW = read("app/whats-new.tsx");
 
 describe("Today lane — aubergine OUTLINE primary CTAs", () => {
-  it("North-star 'Cook this'/'Log it' CTA is an outline, not the old 8% tint fill", () => {
-    expect(NORTH_STAR).toMatch(/borderColor:\s*accent\.primarySolid/);
-    // The CTA label renders in primarySolid (style array → JSX expr).
-    expect(NORTH_STAR).toMatch(/color:\s*accent\.primarySolid\s*\}\]\}>\s*\{ctaLabel\}/);
-    // Must NOT reuse the old subtle-fill (8% accent) on the default CTA.
+  // ── Button system migration (2026-06-12, ENG-1079) ─────────────────
+  // The Today-surface CTAs below were migrated from the aubergine-OUTLINE
+  // treatment to the `SupprButton` solid-primary / ghost grammar
+  // (`docs/decisions/2026-06-12-button-system-solid-primary.md`). These
+  // pins now assert the new grammar — each card's ONE primary action is a
+  // `<SupprButton variant="primary">` (solid fill, white label, pill, no
+  // shadow), secondaries are `variant="ghost"`. Web parity:
+  // `tests/unit/todayLaneAubergineOutlineWeb.test.tsx`.
+  it("North-star 'Cook this'/'Log it' CTA is a SOLID primary SupprButton", () => {
+    // The "what to eat next" moment is the card's one primary action.
+    expect(NORTH_STAR).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label=\{ctaLabel\}/);
+    // Must NOT regress to the old outline (1.5px primarySolid border) or the
+    // even-older 8% subtle fill on the default CTA.
+    expect(NORTH_STAR).not.toMatch(/borderColor:\s*accent\.primarySolid/);
     expect(NORTH_STAR).not.toMatch(/backgroundColor:\s*`\$\{accent\.primary\}14`/);
   });
 
-  it("Today 'Complete Day' CTA is an aubergine outline", () => {
+  it("Today 'Complete Day' CTA is a SOLID primary SupprButton", () => {
     // Wave-2 (ENG-1065 F-158): the CTA was extracted from index.tsx to
-    // <TodayCompleteDayButton> — the outline pin follows the component.
+    // <TodayCompleteDayButton>. Button-system migration: the day's terminal
+    // action is the section's one primary → solid SupprButton.
     const COMPLETE_DAY_BUTTON = read("components/today/TodayCompleteDayButton.tsx");
-    expect(COMPLETE_DAY_BUTTON).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}>Complete Day</);
-    expect(COMPLETE_DAY_BUTTON).not.toMatch(/backgroundColor:\s*accent\.primary\b/);
+    expect(COMPLETE_DAY_BUTTON).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="Complete Day"/);
+    expect(COMPLETE_DAY_BUTTON).not.toMatch(/borderColor:\s*accent\.primarySolid/);
     // And the host renders the extracted component (not a re-inlined CTA).
     expect(INDEX).toMatch(/<TodayCompleteDayButton/);
   });
 
-  it("Quick-add submit ('Add to Today') is an outline; the sibling Search is an off-white secondary", () => {
-    // The host-owned submitBtn style carries the outline; Search overrides to colors.card.
-    expect(INDEX).toMatch(/submitBtn:\s*\{[\s\S]{0,200}borderColor:\s*accent\.primarySolid/);
-    expect(INDEX).toMatch(/submitBtnText:\s*\{\s*color:\s*accent\.primarySolid/);
-    expect(INDEX).not.toMatch(/submitBtn:\s*\{\s*\n\s*backgroundColor:\s*accent\.primary,/);
-    expect(ADD_FORM).toMatch(/backgroundColor:\s*colors\.card/);
+  it("Quick-add submit ('Add to Today') is a SOLID primary; the sibling Search is a GHOST", () => {
+    // Migrated `<TodayAddFoodForm>` to SupprButton: primary "Add to Today" +
+    // ghost "Search" (replaces the old outline submitBtn + beige Search).
+    expect(ADD_FORM).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Add to Today"/);
+    expect(ADD_FORM).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}accessibilityLabel="Search"/);
+    // The old host-owned aubergine-outline submitBtn must no longer back this
+    // pair (the styles linger only for TodayEditMealModal's Save Changes).
+    expect(ADD_FORM).not.toMatch(/styles\.submitBtn/);
   });
 
-  it("First-meal empty state 'Log a meal' CTA is an aubergine outline", () => {
-    expect(FIRST_MEAL).toMatch(/borderColor:\s*accent\.primarySolid/);
-    expect(FIRST_MEAL).toMatch(/<Plus size=\{16\} color=\{accent\.primarySolid\}/);
+  it("First-meal empty state 'Log a meal' CTA is a SOLID primary SupprButton", () => {
+    expect(FIRST_MEAL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}accessibilityLabel="Log a meal"/);
+    expect(FIRST_MEAL).not.toMatch(/borderColor:\s*accent\.primarySolid/);
+    // The glyph rides on the solid fill → white, not plum.
+    expect(FIRST_MEAL).toMatch(/<Plus size=\{16\} color="#fff"/);
   });
 
   it("Edit-meal 'Save changes' is an outline; Delete stays destructive red", () => {
@@ -97,18 +111,33 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     expect(CHECKIN_BANNER).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}OPEN/);
   });
 
-  it("Milestone 'Keep going' is an aubergine outline (not a filled celebration slab)", () => {
-    expect(MILESTONE).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}Keep going/);
+  it("Milestone 'Keep going' is a SOLID-plum SupprButton primary (button system 2026-06-12)", () => {
+    // Button system (docs/decisions/2026-06-12-button-system-solid-primary.md):
+    // the single celebration CTA migrated from aubergine-outline to the
+    // SupprButton primary (solid plum fill, white label, pill, no shadow).
+    expect(MILESTONE).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    expect(MILESTONE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,260}label="Keep going"/);
+    // Must NOT regress to the retired aubergine-outline.
+    expect(MILESTONE).not.toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}Keep going/);
   });
 
-  it("Saved-meal portion confirm is an aubergine outline", () => {
-    // borderColor is injected inline via the hook-resolved accent; the static
-    // confirmBtn sheet entry handles the non-colour shape (border width, radius, padding).
-    expect(SAVED_PORTION).toMatch(/borderColor:\s*(?:Accent|accent)\.primarySolid/);
+  it("Saved-meal portion confirm is a SOLID-plum SupprButton primary (button system 2026-06-12)", () => {
+    // The sheet's commit action migrated from aubergine-outline to the
+    // SupprButton primary; the flag-gated confirm haptic is preserved.
+    expect(SAVED_PORTION).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\.\/ui\/SupprButton"/);
+    expect(SAVED_PORTION).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,260}testID="saved-portion-confirm"/);
+    expect(SAVED_PORTION).toMatch(/haptic=\{motionEnabled \? "confirm" : "none"\}/);
+    // Must NOT regress to the retired aubergine-outline.
+    expect(SAVED_PORTION).not.toMatch(/borderColor:\s*(?:Accent|accent)\.primarySolid/);
   });
 
-  it("Activity-bonus 'enable' discover CTA is an aubergine outline", () => {
-    expect(ACTIVITY_BONUS).toMatch(/borderColor:\s*accent\.primarySolid/);
+  it("Activity-bonus 'enable' discover CTA is a GHOST SupprButton (secondary nudge)", () => {
+    // Button system (2026-06-12): the discover nudge is a SECONDARY action on
+    // Today (Complete Day / "what to eat next" own primary), so its CTA + the
+    // "Not now" sibling are ghost SupprButtons (transparent, plum label, no
+    // border) — replaces the old aubergine outline.
+    expect(ACTIVITY_BONUS).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label=\{ACTIVITY_BUDGET_DISCOVER_CTA\}/);
+    expect(ACTIVITY_BONUS).not.toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 
   it("Post-onboarding push 'Notify me' is an aubergine outline", () => {
@@ -122,19 +151,25 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     expect(NUDGE_BANNER).not.toMatch(/backgroundColor:\s*accent\.primary,\s*\n\s*alignItems[\s\S]{0,200}color:\s*"#ffffff"/);
   });
 
-  it("Log sheet 'Done' confirmation + barcode 'Log it' are aubergine outlines", () => {
-    expect(LOG_SHEET).toMatch(/borderColor:\s*accent\.primarySolid/);
-    // Two distinct outline CTAs (Done + barcode Log it) reference primarySolid.
-    const matches = LOG_SHEET.match(/borderColor:\s*accent\.primarySolid/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+  it("Log sheet 'Done' confirmation + barcode 'Log it' are SOLID-plum SupprButton primaries", () => {
+    // Button system (2026-06-12): both sheet commit CTAs migrated from
+    // aubergine-outline to the SupprButton primary (one per sheet view).
+    expect(LOG_SHEET).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,400}label="Done"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Log it"/);
+    // The Done success haptic + the barcode success-notification both survive.
+    // Must NOT regress to the retired aubergine-outline.
+    expect(LOG_SHEET).not.toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 
-  it("Log sheet 'Browse recipes' empty state is an off-white SECONDARY, not a filled accent", () => {
-    // The Browse-recipes CTA fills with colors.card and labels in colors.text.
-    expect(LOG_SHEET).toMatch(/backgroundColor:\s*colors\.card[\s\S]{0,400}>Browse recipes</);
-    expect(LOG_SHEET).toMatch(/color:\s*colors\.text\s*\}\]\}>Browse recipes</);
-    // Must NOT fill the Browse CTA with the accent.
-    expect(LOG_SHEET).not.toMatch(/backgroundColor:\s*accent\.primary,[\s\S]{0,120}>Browse recipes</);
+  it("Log sheet 'Undo' confirmation + 'Browse recipes' empty state are GHOST SupprButtons", () => {
+    // Button system (2026-06-12): the secondary Undo + the empty-state Browse
+    // are ghost SupprButtons (transparent, plum label), replacing the old quiet
+    // text + off-white colors.card fill.
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Undo"/);
+    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,260}label="Browse recipes"/);
+    // Must NOT keep the retired off-white fill on the Browse CTA.
+    expect(LOG_SHEET).not.toMatch(/backgroundColor:\s*colors\.card[\s\S]{0,400}>Browse recipes</);
   });
 });
 

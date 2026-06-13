@@ -28,7 +28,6 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -72,6 +71,7 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { SupprButton } from "@/components/ui/SupprButton";
 import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
@@ -967,46 +967,17 @@ export default function CreateRecipeWizard() {
           paddingHorizontal: Spacing.xl,
           paddingTop: Spacing.md,
         },
-        // Primary wizard CTA (Continue / Save private) — aubergine OUTLINE
-        // (treatment §1): transparent ground + 1.5px aubergine border +
-        // aubergine label. Create-recipe is not conversion-critical, so the
-        // primary is an outline, not a filled slab.
-        // Gap 5: paddingVertical 16 = Spacing.md (already on-scale, confirmed).
-        // Gap 13: Radius.xl (12).
-        primaryBtn: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.sm,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accentInk,
-          borderRadius: Radius.xl,
-          paddingVertical: Spacing.md,
-        },
-        // Gap 2: use canonical font token for CTA label.
+        // Wizard CTAs now ride the shared SupprButton primitive
+        // (`docs/decisions/2026-06-12-button-system-solid-primary.md`):
+        // Continue / Save private = variant="primary" (solid aubergine fill,
+        // white label, full pill, no border/shadow); Publish to community =
+        // variant="ghost" (transparent, plum label). This label style only
+        // carries the icon-paired "Save private" text colour (white-on-solid).
         primaryBtnText: {
           ...Type.body,
           fontFamily: FontFamily.sansBold,
           fontSize: 16,
-          color: accentInk,
-        },
-        // Secondary "Publish to community" — OFF-WHITE FILL (treatment §3).
-        // Gap 5: paddingVertical 14 → Spacing.md (16); Gap 13: Radius.xl (12).
-        secondaryBtn: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.sm,
-          backgroundColor: colors.card,
-          borderRadius: Radius.xl,
-          paddingVertical: Spacing.md,
-        },
-        // Gap 2: use canonical font token.
-        secondaryBtnText: {
-          ...Type.body,
-          fontFamily: FontFamily.sansBold,
-          color: colors.text,
+          color: "#fff",
         },
       }),
     [colors, cardElevation, accent, accentInk],
@@ -1407,55 +1378,41 @@ export default function CreateRecipeWizard() {
       >
         {step === "save" ? (
           <View style={{ gap: Spacing.sm }}>
-            <Pressable
-              style={[styles.primaryBtn, saving && { opacity: 0.5 }]}
+            <SupprButton
+              variant="primary"
               onPress={() => void onSave(false)}
+              loading={saving && !publish}
               disabled={saving}
               accessibilityLabel="Save recipe to private library"
+              style={{ gap: Spacing.sm }}
             >
-              {saving && !publish ? (
-                <ActivityIndicator color={accentInk} />
-              ) : (
-                <>
-                  <Check size={20} color={accentInk} />
-                  <Text style={styles.primaryBtnText}>Save private</Text>
-                </>
-              )}
-            </Pressable>
-            <Pressable
-              style={[styles.secondaryBtn, saving && { opacity: 0.5 }]}
+              <Check size={20} color="#fff" />
+              <Text style={styles.primaryBtnText}>Save private</Text>
+            </SupprButton>
+            <SupprButton
+              variant="ghost"
               onPress={() => {
                 setPublish(true);
                 void onSave(true);
               }}
+              loading={saving && publish}
               disabled={saving}
               accessibilityLabel="Publish recipe to community"
-            >
-              {saving && publish ? (
-                <ActivityIndicator color={colors.text} />
-              ) : (
-                <Text style={styles.secondaryBtnText}>Publish to community</Text>
-              )}
-            </Pressable>
+              label="Publish to community"
+            />
           </View>
         ) : (
-          // Gap 6: disabled opacity floor raised to 0.65 (from 0.45) so the
-          // outline CTA reads as "not yet" rather than "broken/dead" on cold
-          // open when the title field is empty. An inline helper below the
-          // button communicates what is needed when the step is blocked.
+          // Gap 6: the disabled primary reads as "not yet" via SupprButton's
+          // disabled-opacity (0.4) rather than "broken/dead". An inline helper
+          // below the button communicates what is needed when the step is blocked.
           <View style={{ gap: Spacing.xs }}>
-            <Pressable
-              style={[
-                styles.primaryBtn,
-                !advanceEnabled && { opacity: 0.65 },
-              ]}
+            <SupprButton
+              variant="primary"
               onPress={goNext}
               disabled={!advanceEnabled}
               accessibilityLabel={`Continue to step ${stepIdx + 2}`}
-              accessibilityState={{ disabled: !advanceEnabled }}
-            >
-              <Text style={styles.primaryBtnText}>Continue</Text>
-            </Pressable>
+              label="Continue"
+            />
             {!advanceEnabled && step === "title-photo" && (
               <Text
                 style={{ ...Type.caption, color: colors.textTertiary, textAlign: "center" }}

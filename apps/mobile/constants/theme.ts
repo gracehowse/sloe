@@ -508,6 +508,10 @@ export const Type = {
    *  navTitle (ui-product-designer Spec 3, 2026-06-09). */
   navTitle: { fontFamily: FontFamily.serifMedium, fontSize: 18, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1 },
   body:    { fontFamily: FontFamily.sansMedium, fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0 },
+  /** CTA / button label — Inter SemiBold 16. Sans, NOT the Newsreader serif
+   *  ramp (headline/title): serif on a control reads dated; every comparable
+   *  (Withings/Alma) uses a sans semibold button label. Grace 2026-06-12. */
+  button:  { fontFamily: FontFamily.sansSemibold, fontSize: 16, lineHeight: 20, fontWeight: '600' as const, letterSpacing: 0 },
   bodyMuted:{ fontFamily: FontFamily.sansRegular, fontSize: 14, lineHeight: 20, fontWeight: '400' as const, letterSpacing: 0 },
   label:   {
     fontFamily: FontFamily.sansBold,

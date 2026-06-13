@@ -70,6 +70,7 @@ import {
 } from "../../lib/nutrition/microNutrientDisplay.ts";
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
+import { SupprButton } from "./suppr/suppr-button";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
@@ -2961,22 +2962,25 @@ export const NutritionTracker = memo(function NutritionTracker({
         </section>
       ) : null}
 
-      {/* Complete Day — Sloe treatment system (2026-06-08): primary inline
-          CTA → aubergine outline (transparent fill + 1.5px primary-solid
-          border + primary-solid label), not a filled slab. Mirror of mobile
-          Today host.
+      {/* Complete Day — button system (2026-06-12,
+          `docs/decisions/2026-06-12-button-system-solid-primary.md`): this
+          section's ONE primary action → `SupprButton` variant="primary"
+          (solid aubergine fill, white label, pill, no shadow — the solid fill
+          IS the affordance). Supersedes the old aubergine-OUTLINE treatment
+          which read weak/floating on the flat cream ground. Mirror of mobile
+          `<TodayCompleteDayButton>`.
           F-158 (ENG-1065): was `mt-4` (16px) — off the section rhythm where
           every Today section uses `mt-10` (40px) — so it read as a button
           floating in dead space. Snapped to `mt-10` so it lands as the day's
           terminal section on the same cadence as Activity / Hydration above,
           matching the mobile `<TodayCompleteDayButton>` section-break fix. */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
-        <button
+        <SupprButton
+          variant="primary"
+          label="Complete Day"
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-lg border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-10"
-        >
-          Complete Day
-        </button>
+          className="mt-10 w-full"
+        />
       )}
 
       </>

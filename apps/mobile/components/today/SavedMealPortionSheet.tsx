@@ -24,7 +24,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { useSheetMorph } from "@/lib/motion";
 import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
-import { PressableScale } from "../ui/PressableScale";
+import { SupprButton } from "../ui/SupprButton";
 import { PortionStepper, formatMultiplier } from "./PortionStepper";
 
 /**
@@ -251,21 +251,21 @@ export function SavedMealPortionSheet({
               </View>
             </ScrollView>
 
-            {/* Footer — single primary commit (blue per Phase 0). Quiet
-                log-confirm haptic on tap when motion is on. */}
+            {/* Footer — single primary commit. Button system (2026-06-12,
+                docs/decisions/2026-06-12-button-system-solid-primary.md): the
+                sheet's commit action is the SOLID-plum SupprButton primary
+                (white label, pill, no shadow). Quiet log-confirm haptic on tap
+                when motion is on; the sheet keeps its sanctioned elevation. */}
             <View style={[s.footer, { borderTopColor: colors.border }]}>
-              <PressableScale
+              <SupprButton
+                variant="primary"
                 onPress={() => onConfirm(mult)}
                 haptic={motionEnabled ? "confirm" : "none"}
-                accessibilityRole="button"
                 accessibilityLabel={`Log ${formatMultiplier(mult)} times to ${slot}`}
                 testID="saved-portion-confirm"
-                style={[s.confirmBtn, { borderColor: accent.primarySolid }]}
-              >
-                <Text style={{ color: accent.primarySolid, ...Type.headline }}>
-                  {`Log ${formatMultiplier(mult)}× to ${slot}`}
-                </Text>
-              </PressableScale>
+                label={`Log ${formatMultiplier(mult)}× to ${slot}`}
+                style={s.confirmBtn}
+              />
             </View>
             </View>
           </Animated.View>
@@ -312,18 +312,11 @@ const s = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
-  // outline (transparent fill + 1.5px primarySolid border + primarySolid
-  // label), not a filled slab. `borderColor` is injected inline from
-  // `accent.primarySolid` (scheme-resolved hook) so dark gets the lifted
-  // aubergine; the rest of the shape is static.
+  // Layout-only override for the SupprButton primary commit CTA (full-width;
+  // the primitive owns the solid-plum fill, pill radius, padding, no shadow per
+  // the 2026-06-12 button system).
   confirmBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: Radius.md,
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    height: 48,
+    width: "100%",
   },
 });
 

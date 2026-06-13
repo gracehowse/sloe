@@ -8,6 +8,7 @@ import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, Radius, 
 import { useAccent } from "@/context/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
@@ -307,33 +308,27 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4, lineHeight: 15 }}>
             {ACTIVITY_BUDGET_DISCOVER_BODY}
           </Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-            {/* Sloe treatment system (2026-06-08): primary inline CTA →
-                aubergine outline (transparent fill + 1.5px primarySolid
-                border + primarySolid label), not a filled slab. */}
-            <Pressable
-              accessibilityRole="button"
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+            {/* Button system (2026-06-12): this discover nudge is a SECONDARY
+                action on Today (Complete Day / "what to eat next" own primary),
+                so its CTA is a GHOST `SupprButton` (transparent, plum label, no
+                border). Supersedes the old aubergine-OUTLINE treatment. */}
+            <SupprButton
+              variant="ghost"
+              haptic="selection"
+              accessibilityLabel={ACTIVITY_BUDGET_DISCOVER_CTA}
+              label={ACTIVITY_BUDGET_DISCOVER_CTA}
               onPress={onEnableActivityBudget}
-              style={({ pressed }) => ({
-                paddingHorizontal: Spacing.dense,
-                paddingVertical: Spacing.sm,
-                borderRadius: Radius.sm,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
+            />
+            <SupprButton
+              variant="ghost"
+              haptic="selection"
               accessibilityLabel="Dismiss"
+              label="Not now"
               onPress={onDismissActivityBudgetDiscover}
-              hitSlop={8}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "600", color: textSecondaryColor }}>Not now</Text>
-            </Pressable>
+              style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
+            />
           </View>
         </View>
       ) : null}

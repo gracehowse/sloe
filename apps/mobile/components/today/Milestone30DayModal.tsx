@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
 import { Accent, Radius, Spacing, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
@@ -298,32 +299,23 @@ export function Milestone30DayModal({
             ) : null}
           </ScrollView>
 
-          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll).
-              Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline (transparent fill + 1.5px primarySolid border
-              + primarySolid label), not a filled slab. Mirror of web
+          {/* Outside ScrollView so the CTA always receives taps (Fabric modal +
+              long scroll). Button system (2026-06-12,
+              docs/decisions/2026-06-12-button-system-solid-primary.md): the
+              single celebration CTA is the SOLID-plum SupprButton primary
+              (white label, pill, no shadow). Mirror of web
               `milestone-30-day-dialog`. */}
-          <Pressable
+          <SupprButton
+            variant="primary"
             onPress={onDismiss}
-            accessibilityRole="button"
             accessibilityLabel="Keep going"
-            style={({ pressed }) => ({
+            label="Keep going"
+            style={{
               width: "100%",
-              paddingVertical: 16,
-              borderRadius: Radius.full,
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
               marginTop: Spacing.sm,
               marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 16 }}>
-              Keep going
-            </Text>
-          </Pressable>
+            }}
+          />
         </View>
       </View>
     </Modal>
