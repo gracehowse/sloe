@@ -43,6 +43,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   Radius,
   Spacing,
@@ -470,24 +471,21 @@ export default function WhatsNewScreen() {
   // push screen. The "Done" dismissal pill survives as the header's
   // `rightSlot` so the dismissal affordance is unchanged. Screen is added to
   // `STACK_HEADER_HIDDEN` in `_layout.tsx` so the native header is suppressed.
+  // Done — ghost (button-system canon, 2026-06-12): this is a dismiss, not a
+  // commit. Compact padding override keeps it tight in the header right-slot.
   const donePill = (
-    <Pressable
+    <SupprButton
+      variant="ghost"
       onPress={goBack}
-      hitSlop={12}
-      accessibilityRole="button"
+      haptic="selection"
       accessibilityLabel="Done"
       testID="whats-new-done"
-      style={({ pressed }) => ({
+      label="Done"
+      style={{
         paddingHorizontal: Spacing.dense,
         paddingVertical: Spacing.xs,
-        borderRadius: Radius.full,
-        borderWidth: 1.5,
-        borderColor: accent.primarySolid,
-        backgroundColor: pressed ? accent.primarySoft : "transparent",
-      })}
-    >
-      <Text style={{ ...Type.body, color: accent.primarySolid }}>Done</Text>
-    </Pressable>
+      }}
+    />
   );
 
   return (

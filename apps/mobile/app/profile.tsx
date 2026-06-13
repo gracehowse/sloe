@@ -34,6 +34,7 @@ import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
@@ -325,31 +326,6 @@ export default function ProfileScreen() {
       gap: Spacing.md,
       marginTop: Spacing.sm,
     },
-    // Save Targets — aubergine OUTLINE (Sloe treatment, 2026-06-08). Every
-    // everyday settings-surface commit CTA uses the 1.5px `accent.primarySolid`
-    // border + `accent.primarySolid` label on a transparent fill, matching the
-    // settingsLaneAubergineOutline spec. FABs and conversion CTAs keep the
-    // filled slab; daily-use writes use the calm outline.
-    saveBtn: {
-      flex: 1,
-      backgroundColor: "transparent",
-      borderRadius: Radius.md,
-      borderWidth: 1.5,
-      borderColor: accent.primarySolid,
-      paddingVertical: 16,
-      alignItems: "center",
-    },
-    saveBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
-    cancelBtn: {
-      flex: 1,
-      backgroundColor: "transparent",
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingVertical: 16,
-      alignItems: "center",
-    },
-    cancelBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },
 
     dietaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     dietaryChip: {
@@ -894,28 +870,27 @@ export default function ProfileScreen() {
               reverts every field to the last-loaded snapshot so the
               user has a one-tap undo. */}
           <View style={styles.saveRow}>
-            <Pressable
-              style={styles.cancelBtn}
+            {/* Cancel — ghost (button-system canon, 2026-06-12): the
+                secondary / dismiss action that reverts edits. */}
+            <SupprButton
+              variant="ghost"
               onPress={cancel}
-              accessibilityRole="button"
               accessibilityLabel="Cancel and revert target edits"
               disabled={saving}
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.saveBtn,
-                (!canSave || saving) && { opacity: 0.5 },
-              ]}
+              label="Cancel"
+              style={{ flex: 1 }}
+            />
+            {/* Save Targets — primary (the screen's one main commit).
+                SupprButton owns the loading spinner + disabled dim. */}
+            <SupprButton
+              variant="primary"
               onPress={save}
-              disabled={!canSave || saving}
-              accessibilityRole="button"
+              disabled={!canSave}
+              loading={saving}
               accessibilityLabel="Save target edits"
-              accessibilityState={{ disabled: !canSave || saving }}
-            >
-              <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Save Targets"}</Text>
-            </Pressable>
+              label="Save Targets"
+              style={{ flex: 1 }}
+            />
           </View>
         </View>
 

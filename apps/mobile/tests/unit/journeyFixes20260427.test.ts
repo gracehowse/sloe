@@ -170,7 +170,13 @@ describe("Fix 4 — Profile target editor matches web parity", () => {
   });
 
   it("the Save button is disabled when !canSave (or while saving)", () => {
-    expect(SRC.profile).toMatch(/disabled=\{\s*!canSave\s*\|\|\s*saving\s*\}/);
+    // Button-system migration (ENG-1080 Wave F): Save Targets is now a
+    // SupprButton primary. The combined `disabled={!canSave || saving}` split
+    // into `disabled={!canSave}` + `loading={saving}` — SupprButton blocks the
+    // press when `disabled || loading`, so the effective "disabled when
+    // !canSave OR saving" guard is preserved (and `loading` adds the spinner).
+    expect(SRC.profile).toMatch(/disabled=\{\s*!canSave\s*\}/);
+    expect(SRC.profile).toMatch(/loading=\{\s*saving\s*\}/);
   });
 
   it("save() returns early when !canSave", () => {

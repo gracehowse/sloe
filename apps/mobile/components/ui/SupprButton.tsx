@@ -43,6 +43,18 @@ export type SupprButtonVariant = "primary" | "ghost";
 export interface SupprButtonProps {
   variant: SupprButtonVariant;
   onPress?: () => void;
+  /**
+   * Optional long-press handler. When set, the button supports
+   * hold-to-confirm — used by safety-critical CTAs (e.g. End fast) where a
+   * stray tap shouldn't fire the action. `onPress` then typically surfaces a
+   * "hold to confirm" hint rather than committing. Forwarded to the
+   * underlying `PressableScale`/`Pressable` alongside `delayLongPress`.
+   */
+  onLongPress?: () => void;
+  /** Long-press delay in ms (RN default 500). Only meaningful with `onLongPress`. */
+  delayLongPress?: number;
+  /** Press-in side effect (e.g. a warning haptic on a destructive-adjacent hold). */
+  onPressIn?: () => void;
   disabled?: boolean;
   loading?: boolean;
   /** Convenience text label. Ignored if `children` is provided. */
@@ -54,11 +66,15 @@ export interface SupprButtonProps {
   /** Press haptic weight. Default `confirm` (medium impact) per the grammar. */
   haptic?: PressableScaleHaptic;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export function SupprButton({
   variant,
   onPress,
+  onLongPress,
+  delayLongPress,
+  onPressIn,
   disabled = false,
   loading = false,
   label,
@@ -67,6 +83,7 @@ export function SupprButton({
   testID,
   haptic = "confirm",
   accessibilityLabel,
+  accessibilityHint,
 }: SupprButtonProps) {
   const accent = useAccent();
   const isPrimary = variant === "primary";
@@ -80,6 +97,11 @@ export function SupprButton({
     if (blocked) return;
     onPress?.();
   }, [blocked, onPress]);
+
+  const handleLongPress = React.useCallback(() => {
+    if (blocked) return;
+    onLongPress?.();
+  }, [blocked, onLongPress]);
 
   const labelColor = isPrimary ? "#fff" : accent.primarySolid;
 
@@ -96,10 +118,14 @@ export function SupprButton({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: blocked, busy: loading }}
       disabled={blocked}
       haptic={blocked ? "none" : haptic}
       onPress={handlePress}
+      onPressIn={blocked ? undefined : onPressIn}
+      onLongPress={onLongPress ? handleLongPress : undefined}
+      delayLongPress={delayLongPress}
       style={[styles.base, containerStyle, style]}
     >
       {loading ? (

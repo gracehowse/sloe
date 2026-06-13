@@ -310,3 +310,7 @@ question.
 - **FoodSearchPanel "Add" → GHOST, not primary** (census pass-1 listed primary — CORRECTED). The preview footer's dominant commit is "Use this" (the solid primary); "Add" stages to basket → ghost, per the one-filled-CTA law. Pinned by `waveEFoodSearchHouseholdDigestButtons.test.ts`.
 - **Follow-up:** FoodSearchPanel "Use this" commit is still a hand-rolled solid Pressable (commitCtaColor + Radius.md, a Check glyph) — correctly the one primary, but not the SupprButton primitive, so it sits beside the now-ghost "Add" with a different radius/press. Migrate "Use this" → `SupprButton variant="primary"` in a follow-up for full footer cohesion (food-search-preview-use-this).
 - **HouseholdCard "Join"** is two controls: idle Join *toggle* = ghost (mirrors web "Join with Code"); join-*form commit* = primary. Both pinned.
+
+### Wave F follow-ups (tracked, not silent)
+- **A11y — whats-new "Done" header pill** (apps/mobile/app/whats-new.tsx ~L484) uses `paddingVertical: Spacing.xs` (≈28pt height) < the 44pt HIG touch target. Compact header dismiss (likely pre-existing). Fix in a dedicated a11y pass: add an optional `hitSlop` prop to `SupprButton`/`PressableScale` and pass `hitSlop={12}` here (keeps the compact visual + meets 44pt). Touches the shared primitive → its own change + `supprButton.test.tsx` update.
+- **weight-tracker Save** (~L962): optional polish — thread a `saving` boolean into `loading`/`disabled` so the inline Save shows SupprButton's spinner (currently relies on optimistic input-clear). Not required for ship.

@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import {
@@ -19,6 +19,7 @@ import {
   Utensils,
 } from "lucide-react-native";
 import { Accent, Elevation, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -711,20 +712,14 @@ export default function HealthSyncScreen() {
           marginBottom: Spacing.xs,
         },
         desc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-        // Aubergine OUTLINE primary CTA (Sloe treatment #1, 2026-06-08) —
-        // transparent fill, 1.5px border in `accent.primarySolid`, label in
-        // the same. The everyday primary action reads as an accent line.
-        btnOutline: {
+        // Connect / Sync primary CTA — layout only. Colour, radius, padding,
+        // and the pill shape come from SupprButton (Sloe button-system canon,
+        // 2026-06-12). This style carries just the screen-margin placement the
+        // retired btnOutline used to own.
+        cta: {
           marginHorizontal: Spacing.xl,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          backgroundColor: "transparent",
-          alignItems: "center" as const,
           marginBottom: Spacing.md,
         },
-        btnOutlineText: { fontSize: 16, fontWeight: "700" as const, color: accent.primarySolid },
         // Category row — 44pt minimum height (design-system §3.3 + settings.md §2).
         // paddingVertical: 12pt gives ~44pt with 20pt icon + label.
         feature: {
@@ -1061,50 +1056,32 @@ export default function HealthSyncScreen() {
           <Text style={{ fontSize: 13, color: colors.text, lineHeight: 18 }}>
             {errorState.message}
           </Text>
-          {/* Recovery actions — both aubergine OUTLINE (Sloe treatment #1,
-              2026-06-08). "Try again" is the primary recovery and "Open iOS
-              Settings" the secondary; both read as accent lines (the prior
-              filled "Try again" is now an outline to match the calm
-              everyday-primary grammar). */}
+          {/* Recovery actions — Sloe button-system canon (2026-06-12,
+              docs/decisions/2026-06-12-button-system-solid-primary.md). BOTH
+              recovery actions are GHOST: the error banner is a sibling block
+              that renders ABOVE the always-present Connect/Sync CTA (it does
+              NOT replace it), so the Connect/Sync button stays the screen's
+              ONE solid primary. Making "Try again" a second solid slab here
+              would break the one-primary-per-screen law (ENG-1080 Wave F
+              review, 2026-06-13; matches the census plan). "Try again" reads as
+              the leading ghost; "Open iOS Settings" the secondary ghost. */}
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.xs }}>
-            <Pressable
+            <SupprButton
+              variant="ghost"
               testID="health-sync-error-retry"
               onPress={handleRetryAfterError}
-              accessibilityRole="button"
               accessibilityLabel="Try again"
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: Spacing.dense,
-                borderRadius: Radius.md,
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                backgroundColor: pressed ? accent.primarySoft : "transparent",
-                alignItems: "center" as const,
-              })}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: accent.primarySolid }}>
-                Try again
-              </Text>
-            </Pressable>
-            <Pressable
+              label="Try again"
+              style={{ flex: 1 }}
+            />
+            <SupprButton
+              variant="ghost"
               testID="health-sync-error-open-settings"
               onPress={handleOpenIOSSettings}
-              accessibilityRole="button"
               accessibilityLabel="Open iOS Settings to manage Apple Health permissions"
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: Spacing.dense,
-                borderRadius: Radius.md,
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-                alignItems: "center" as const,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "700" as const, color: accent.primarySolid }}>
-                Open iOS Settings
-              </Text>
-            </Pressable>
+              label="Open iOS Settings"
+              style={{ flex: 1 }}
+            />
           </View>
           <Text style={{ fontSize: 11, color: colors.textTertiary, lineHeight: 14, marginTop: 2 }}>
             In Settings: tap Privacy & Security → Health → Sloe → enable
@@ -1113,44 +1090,33 @@ export default function HealthSyncScreen() {
         </View>
       )}
 
-      {/* Connect / Sync — aubergine OUTLINE (Sloe treatment #1, 2026-06-08).
-          The everyday primary CTA is an accent line, not a filled slab:
-          transparent fill, 1.5px border + `accent.primarySolid` label. The
-          unavailable Connect state stays a muted grey outline so the disabled
-          affordance still reads as a button. (The ink Apple Sign-In button on
-          auth screens is unaffected — this is the Health connect CTA.) */}
+      {/* Connect / Sync — Sloe button-system canon (2026-06-12,
+          docs/decisions/2026-06-12-button-system-solid-primary.md). This is
+          the screen's ONE main action in whichever state it's in: SOLID
+          aubergine primary, white label. Connect and Sync are the same logical
+          primary across the two render states (only one shows at a time).
+          SupprButton owns disabled (0.65-floor opacity + blocked press) and
+          loading (ActivityIndicator swap + no double-submit), so the
+          hand-rolled spinner + muted-border disabled treatment retire.
+          (The ink Apple Sign-In button on auth screens is unaffected.) */}
       {!connected ? (
-        <Pressable
-          style={[
-            styles.btnOutline,
-            {
-              borderColor: available && !connecting ? accent.primarySolid : colors.textTertiary,
-            },
-          ]}
+        <SupprButton
+          variant="primary"
+          style={styles.cta}
           onPress={handleConnect}
           disabled={!available || connecting}
-        >
-          {connecting ? (
-            <ActivityIndicator color={accent.primarySolid} />
-          ) : (
-            <Text
-              style={[
-                styles.btnOutlineText,
-                { color: available ? accent.primarySolid : colors.textTertiary },
-              ]}
-            >
-              Connect Health Data
-            </Text>
-          )}
-        </Pressable>
+          loading={connecting}
+          label="Connect Health Data"
+        />
       ) : (
-        <Pressable style={styles.btnOutline} onPress={handleSync} disabled={syncing}>
-          {syncing ? (
-            <ActivityIndicator color={accent.primarySolid} />
-          ) : (
-            <Text style={styles.btnOutlineText}>Sync Now</Text>
-          )}
-        </Pressable>
+        <SupprButton
+          variant="primary"
+          style={styles.cta}
+          onPress={handleSync}
+          disabled={syncing}
+          loading={syncing}
+          label="Sync Now"
+        />
       )}
 
       {lastResult && (
