@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
+import { SupprButton } from "./suppr/suppr-button.tsx";
 import { ListChecks, Play } from "lucide-react";
 import { toast } from "sonner";
 import type { IngredientRow, RecipeCard } from "../../types/recipe.ts";
@@ -562,16 +563,17 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               {stepTimers.map((t, i) => {
                 const rangeHint = t.isRange ? ` (timer uses upper bound)` : "";
                 return (
-                  <button
+                  <SupprButton
                     key={`${i}:${t.startIndex}`}
+                    variant="ghost"
                     type="button"
                     onClick={() => startTimer(t)}
                     aria-label={`Start ${formatTimer(t.totalSeconds)} timer${rangeHint}`}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors text-base font-semibold"
+                    className="h-auto gap-1.5 px-2 py-0.5 text-base"
                   >
                     <Play className="w-3.5 h-3.5" fill="currentColor" />
                     <span>{t.label}</span>
-                  </button>
+                  </SupprButton>
                 );
               })}
             </div>
@@ -591,16 +593,17 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       const label = t.label;
       const rangeHint = t.isRange ? ` (timer uses upper bound)` : "";
       nodes.push(
-        <button
+        <SupprButton
           key={`${i}:${t.startIndex}`}
+          variant="ghost"
           type="button"
           onClick={() => startTimer(t)}
           aria-label={`Start ${formatTimer(t.totalSeconds)} timer${rangeHint}`}
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 mx-0.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors text-[0.9em] font-semibold align-baseline"
+          className="h-auto gap-1.5 px-2 py-0.5 mx-0.5 text-[0.9em] align-baseline"
         >
           <Play className="w-3.5 h-3.5" fill="currentColor" />
           <span>{label}</span>
-        </button>,
+        </SupprButton>,
       );
       cursor = t.endIndex;
     });
@@ -660,16 +663,17 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               renders only when `recipe.sourceUrl` is set. Mirrors the
               mobile cook screen pill (Lucide `Play` + same label). */}
           {watchOriginalUrl ? (
-            <button
+            <SupprButton
+              variant="ghost"
               type="button"
               onClick={onWatchOriginalClick}
               data-testid="cook-watch-original"
               aria-label="Watch original video"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 transition-colors"
+              className="px-3 text-sm"
             >
               <Play className="w-4 h-4" />
               <span className="hidden sm:inline">Watch original</span>
-            </button>
+            </SupprButton>
           ) : null}
           <button
             type="button"
@@ -861,13 +865,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 >
                   <Icons.back className="w-6 h-6" />
                 </button>
-                <button
+                <SupprButton
+                  variant="primary"
                   type="button"
                   onClick={goNext}
-                  className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all text-lg"
+                  className="px-8 py-3 text-lg"
                 >
                   {isLastStep ? "Finish" : "Next"}
-                </button>
+                </SupprButton>
                 <button
                   type="button"
                   onClick={goNext}
@@ -954,41 +959,40 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 </p>
               )}
 
-              {/* Save button — writes the row to recipe_cook_history. */}
-              <button
+              {/* Save button — writes the row to recipe_cook_history.
+                  Ghost per the button-system canon (2026-06-12); the
+                  pre-log done state's ONE solid primary is "Log this
+                  meal" below. Stateful label preserved; `loading` shows
+                  the spinner + blocks double-submit during the write. */}
+              <SupprButton
+                variant="ghost"
                 type="button"
                 onClick={() => void handleSaveHistory()}
+                loading={savingHistory}
                 disabled={historySaved || savingHistory}
                 aria-label={historySaved ? "Saved this cook" : "Save this cook"}
-                className={`inline-flex items-center justify-center gap-2 w-full px-6 py-3 rounded-2xl font-semibold mb-6 transition-all ${
-                  historySaved
-                    ? "bg-success text-white"
-                    : savingHistory
-                      ? "bg-primary/60 text-white cursor-wait"
-                      : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
-                } disabled:cursor-not-allowed`}
+                className="w-full mb-6"
               >
                 {historySaved ? (
                   <>
-                    <Icons.success className="w-4 h-4" />
+                    <Icons.success className="w-4 h-4 text-success" />
                     Saved
                   </>
-                ) : savingHistory ? (
-                  "Saving…"
                 ) : (
                   "Save this cook"
                 )}
-              </button>
+              </SupprButton>
 
               {!logged ? (
-                <button
+                <SupprButton
+                  variant="primary"
                   type="button"
                   onClick={handleLogMeal}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg hover:shadow-xl hover:shadow-primary/30 transition-all mb-4"
+                  className="px-8 py-4 text-lg mb-4"
                 >
                   <Icons.success className="w-5 h-5" />
                   Log this meal
-                </button>
+                </SupprButton>
               ) : (
                 <div className="flex flex-col items-center gap-3 mb-4">
                   <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-success/10 text-success font-semibold">
@@ -996,25 +1000,27 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                     Logged to tracker
                   </div>
                   {onViewTracker && (
-                    <button
+                    <SupprButton
+                      variant="primary"
                       type="button"
                       onClick={() => { onExit(); onViewTracker(); }}
-                      className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+                      className="px-6 py-3"
                     >
                       View in Tracker
-                    </button>
+                    </SupprButton>
                   )}
                 </div>
               )}
 
               <div>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  className="px-6 py-3 rounded-xl text-muted-foreground font-medium hover:bg-muted/60 transition-colors"
-                >
+                {/* Done-card dismiss → ghost (parity with mobile cook.tsx
+                    "Back to recipe"/"Done"). Was a hand-rolled muted <button>;
+                    the sanctioned exit is the header "Exit Cook Mode" icon, so
+                    this card CTA routes through the SupprButton ghost grammar
+                    (ENG-1080 Wave B, 2026-06-13). */}
+                <SupprButton variant="ghost" type="button" onClick={onExit}>
                   Back to recipe
-                </button>
+                </SupprButton>
               </div>
             </div>
           )}
