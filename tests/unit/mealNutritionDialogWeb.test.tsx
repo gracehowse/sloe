@@ -116,7 +116,7 @@ describe("MealNutritionDialog (web) — meal WITH data", () => {
     expect(screen.getAllByText(/% of kcal/).length).toBe(3);
   });
 
-  it("paints the '% of kcal' caption in neutral muted-foreground, NOT the macro hue (ENG-1020 #5)", () => {
+  it("paints the '% of kcal' caption in neutral muted-foreground, NOT the macro hue (ENG-1020 #7)", () => {
     // e2e walk 2026-06-10: the share-of-energy caption is a neutral stat. It
     // must NOT inherit the macro hue — `--macro-fat` is amber (the over-budget
     // signal), so the Fat caption used to read as a warning. All three render
