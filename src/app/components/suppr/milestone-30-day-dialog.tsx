@@ -13,6 +13,7 @@ import {
   MILESTONE_30_DAY_THRESHOLD,
   type Milestone30DayContent,
 } from "../../../lib/nutrition/milestone30Day";
+import { SupprButton } from "./suppr-button";
 
 /**
  * Milestone30DayDialog — web parity for the mobile Milestone30DayModal
@@ -124,18 +125,19 @@ export function Milestone30DayDialog({
           </div>
         ) : null}
 
-        {/* Sloe treatment system (2026-06-08): primary inline CTA →
-            aubergine outline (transparent fill + 1.5px primary-solid
-            border + primary-solid label). Mirror of mobile
-            `Milestone30DayModal`. */}
-        <button
-          type="button"
+        {/* Button system (2026-06-12,
+            docs/decisions/2026-06-12-button-system-solid-primary.md): the
+            single celebration CTA is the SOLID-plum SupprButton primary
+            (white label, pill, no shadow). Mirror of mobile
+            `Milestone30DayModal`. Supersedes the old aubergine-OUTLINE. */}
+        <SupprButton
+          variant="primary"
           onClick={onDismiss}
           aria-label="Keep going"
-          className="w-full py-3 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-4"
+          className="w-full mt-4"
         >
           Keep going
-        </button>
+        </SupprButton>
       </DialogContent>
     </Dialog>
   );

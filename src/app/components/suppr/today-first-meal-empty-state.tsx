@@ -2,6 +2,8 @@
 
 import { Plus, Sparkles, X } from "lucide-react";
 
+import { SupprButton } from "./suppr-button";
+
 /**
  * TodayFirstMealEmptyState — friendly empty card surfaced under the
  * calorie ring when the user has logged 0 meals today AND has zero
@@ -52,19 +54,20 @@ export function TodayFirstMealEmptyState({
       >
         No pressure — log when you&apos;re ready.
       </p>
-      {/* Sloe treatment system (2026-06-08): primary inline CTA →
-          aubergine outline (transparent fill + 1.5px primary-solid border
-          + primary-solid label/glyph), not a filled slab. Mirror of
-          mobile `TodayFirstMealEmptyState`. */}
-      <button
-        type="button"
+      {/* Button system (2026-06-12): this card's ONE primary action →
+          `SupprButton` variant="primary" (solid aubergine fill, white
+          label + glyph, pill, no shadow — the solid fill IS the affordance).
+          Supersedes the old aubergine-OUTLINE treatment. Mirror of mobile
+          `TodayFirstMealEmptyState`. */}
+      <SupprButton
+        variant="primary"
         onClick={onLogMeal}
-        className="mt-1 inline-flex items-center gap-1.5 rounded-md border-[1.5px] border-primary-solid bg-transparent px-4 py-2 text-xs font-bold text-primary-solid hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-1 gap-1.5"
         aria-label="Log a meal"
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
         Log a meal
-      </button>
+      </SupprButton>
       {showTip && (
         <div
           className="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground"

@@ -28,6 +28,7 @@ import * as React from "react";
 import { Check, Clock, Flame, Sparkles, X } from "lucide-react";
 
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import {
@@ -471,25 +472,22 @@ function NorthStarDefaultBlock({
           </span>
         </div>
 
-        {/* Sloe treatment system (2026-06-08): the everyday primary
-            inline CTA is AUBERGINE OUTLINE — transparent fill, 1.5px
-            primary-solid border, primary-solid label — never a filled
-            slab. Keeps the FAB as the one filled moment (the premium-bar
-            papercut #3 intent: the outline is quieter than both a fill
-            and the old 10% tint, so the FAB stays the loudest pixel)
-            while matching the approved ladder. Mirror of the same change
-            in mobile `NorthStarBlock.tsx`. */}
-        <button
-          type="button"
+        {/* Button system (2026-06-12,
+            `docs/decisions/2026-06-12-button-system-solid-primary.md`):
+            the "what to eat next" CTA is this card's ONE primary action →
+            `SupprButton` variant="primary" (solid aubergine fill, white
+            label, pill, no shadow — the solid fill IS the affordance).
+            Supersedes the old aubergine-OUTLINE treatment which read
+            weak/floating on the flat cream ground. The FAB stays the
+            screen-level loudest pixel (FAB-excepted from one-per-screen).
+            Mirror of mobile `NorthStarBlock.tsx`. */}
+        <SupprButton
+          variant="primary"
           onClick={onPrimaryCta}
-          className={cn(
-            "mt-1 inline-flex h-9 items-center justify-center self-start rounded-md border-[1.5px] border-primary-solid bg-transparent px-3 text-[13px] font-semibold text-primary-solid",
-            "hover:bg-primary/5",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          )}
+          className="mt-1 h-9 self-start"
         >
           {ctaLabel}
-        </button>
+        </SupprButton>
       </div>
     </SupprCard>
   );

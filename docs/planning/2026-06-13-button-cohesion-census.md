@@ -241,3 +241,35 @@ Ordered by traffic × ambiguity-low-first. Non-destructive, unambiguous, high-tr
 6. **Wave F — Fasting + Health-sync + Targets + Weight + Profile + What's-new**: ~12.
 7. **Wave G — Destructive cluster** (Delete account / Remove household / Log out — after the `destructive` variant decision + implementation).
 8. **Wave H — Auth + Onboarding** (judgment lanes; Apple stays HIG; onboarding per its own design — smallest blast radius, last).
+
+---
+
+## Wave A (Today) — CORRECTION (2026-06-13, before execution)
+
+Reading the guard tests before executing caught a parity trap: **mobile already
+migrated its inline Today card CTAs to SOLID PRIMARY in ENG-1079** (north-star
+"Log it", first-meal "Log a meal", quick-add "Add to Today", milestone "Keep
+going", log-sheet commits = `SupprButton variant="primary"`; activity-bonus +
+"Not now" = `ghost` as the secondary discover nudge). **Web still renders these
+as aubergine OUTLINE** (`apps/mobile/tests/unit/todayLaneAubergineOutline.test.ts`
+is the authoritative spec; `tests/unit/todayLaneAubergineOutlineWeb.test.tsx` is
+the lagging web twin).
+
+So Wave A is mostly a **web→mobile PARITY fix → SOLID PRIMARY**, NOT ghost. (An
+earlier read of the web 2026-06-08 "FAB is the one filled moment" comments
+suggested ghost — that intent was superseded on mobile by ENG-1079's
+per-card-primary treatment. Mirroring web onto mobile's existing treatment is
+the parity-correct move; the only ghost is the secondary nudge, matching mobile.)
+
+**Wave A-1 (parity mirror — web catches up to mobile):** for each Today web
+component, read its mobile twin's CURRENT SupprButton treatment and mirror it
+exactly. primary: north-star, first-meal, meals-section empty, milestone,
+quick-add/add-meal. ghost: activity-bonus + "Not now". Repoint the web outline
+test. Cannot create divergence — it copies mobile.
+
+**Wave A-2 (outline holdouts on BOTH platforms):** complete-day modal "View my
+progress", weekly-checkin modal "Accept new target" (→ primary, modal sole CTA)
++ banner "OPEN" (→ ghost, nudge), edit-meal "Save changes" (→ primary, modal
+commit; Delete stays destructive). Migrate both platforms + repoint both tests.
+The eat-again banner "Log it" treatment is decided by reading the mobile twin in
+A-1 (card-primary vs secondary-nudge).

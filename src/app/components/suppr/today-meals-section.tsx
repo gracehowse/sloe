@@ -13,6 +13,7 @@ import {
 } from "../ui/dropdown-menu";
 import { SupprMark } from "../ui/suppr-mark";
 import { SupprCard } from "../ui/suppr-card.tsx";
+import { SupprButton } from "./suppr-button";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
@@ -1046,20 +1047,22 @@ export function TodayMealsSection({
             <p className="text-[13px] text-muted-foreground mb-5">
               Tap below to search, scan, snap a photo, or use your voice.
             </p>
-            {/* Sloe treatment system (2026-06-08): primary inline CTA →
-                aubergine outline (transparent fill + 1.5px primary-solid
-                border + primary-solid label/glyph), not a filled slab.
-                Matches the mobile `TodayFirstMealEmptyState` "Log a meal". */}
-            <button
-              type="button"
+            {/* Button system (2026-06-12): the empty-day "Log a meal" CTA →
+                `SupprButton` variant="primary" (solid aubergine fill, white
+                label + glyph, pill, no shadow — the solid fill IS the
+                affordance). Supersedes the old aubergine-OUTLINE treatment.
+                Mirrors the mobile `TodayFirstMealEmptyState` "Log a meal",
+                the cold-start CTA authority (primary). */}
+            <SupprButton
+              variant="primary"
               onClick={onOpenLogSheet}
               data-testid="today-meals-empty-cta"
               aria-label="Log a meal"
-              className="inline-flex items-center gap-2 rounded-xl border-[1.5px] border-primary-solid bg-transparent px-6 py-3 font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
+              className="gap-2"
             >
               <Icons.add className="h-5 w-5" />
               Log a meal
-            </button>
+            </SupprButton>
           </div>
         </SupprCard>
       ) : null}

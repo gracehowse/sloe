@@ -42,8 +42,15 @@ const OUTLINE = /border-\[1\.5px\]\s+border-primary-solid[\s\S]{0,80}text-primar
 const FILLED_SLAB = /bg-primary\s+(?:px-|py-|text-primary-foreground)/;
 
 describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
-  it("North-star CTA is an outline, not the old bg-primary/10 tint", () => {
-    expect(NORTH_STAR).toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent px-3 text-\[13px\] font-semibold text-primary-solid/);
+  it("North-star 'what to eat next' CTA is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the card's ONE primary
+    // action → `SupprButton` variant="primary" (solid aubergine fill, white
+    // label, pill). Mobile parity: NorthStarBlock primary. Supersedes the old
+    // aubergine-OUTLINE treatment.
+    expect(NORTH_STAR).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(NORTH_STAR).toMatch(/<SupprButton\s+variant="primary"/);
+    // Must NOT keep the retired aubergine outline.
+    expect(NORTH_STAR).not.toMatch(OUTLINE);
   });
 
   it("Eat-again 'Log it' CTA is an outline on a soft-tint nudge card", () => {
@@ -51,13 +58,27 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(EAT_AGAIN).toMatch(/border-\[1\.5px\]\s+border-primary-solid[\s\S]{0,80}text-primary-solid/);
   });
 
-  it("First-meal empty 'Log a meal' CTA is an aubergine outline", () => {
-    expect(FIRST_MEAL).toMatch(OUTLINE);
-    expect(FIRST_MEAL).not.toMatch(FILLED_SLAB);
+  it("First-meal empty 'Log a meal' CTA is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the cold-start card's ONE
+    // primary action → `SupprButton` variant="primary" (solid aubergine fill,
+    // white label + glyph, pill). Mobile parity: TodayFirstMealEmptyState
+    // primary. Supersedes the old aubergine-OUTLINE treatment.
+    expect(FIRST_MEAL).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(FIRST_MEAL).toMatch(/<SupprButton\s+variant="primary"/);
+    // Must NOT keep the retired aubergine outline.
+    expect(FIRST_MEAL).not.toMatch(OUTLINE);
   });
 
-  it("Meals-section empty 'Log a meal' CTA is an aubergine outline", () => {
-    expect(MEALS_SECTION).toMatch(OUTLINE);
+  it("Meals-section empty 'Log a meal' CTA is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the empty-day "Log a meal"
+    // CTA → `SupprButton` variant="primary" (solid aubergine fill, white label +
+    // glyph, pill), mirroring the cold-start primary. Mobile parity:
+    // TodayMealsSection / TodayFirstMealEmptyState primary. Supersedes the old
+    // aubergine-OUTLINE treatment.
+    expect(MEALS_SECTION).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(MEALS_SECTION).toMatch(/<SupprButton\s+variant="primary"/);
+    // Must NOT keep the retired aubergine outline.
+    expect(MEALS_SECTION).not.toMatch(OUTLINE);
   });
 
   it("Complete-day dialog 'View my progress' is an aubergine outline", () => {
@@ -78,13 +99,25 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(CHECKIN_DIALOG).toMatch(OUTLINE);
   });
 
-  it("Milestone dialog 'Keep going' is an aubergine outline", () => {
-    expect(MILESTONE).toMatch(OUTLINE);
-    expect(MILESTONE).not.toMatch(FILLED_SLAB);
+  it("Milestone dialog 'Keep going' is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the single celebration
+    // CTA → `SupprButton` variant="primary" (solid plum fill, white label,
+    // pill). Mobile parity: Milestone30DayModal primary.
+    expect(MILESTONE).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(MILESTONE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}>\s*Keep going/);
+    // Must NOT keep the retired aubergine outline.
+    expect(MILESTONE).not.toMatch(OUTLINE);
   });
 
-  it("Activity-bonus discover CTA is an aubergine outline", () => {
-    expect(ACTIVITY_BONUS).toMatch(OUTLINE);
+  it("Activity-bonus discover CTAs are ghost SupprButtons (secondary nudge)", () => {
+    // Button system migration (2026-06-12, ENG-1079): this discover nudge is a
+    // SECONDARY action on Today, so both its CTAs → variant="ghost"
+    // (transparent, plum label, no border). Mobile parity: both ghost.
+    expect(ACTIVITY_BONUS).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    const ghostHits = ACTIVITY_BONUS.match(/<SupprButton\s+variant="ghost"/g) ?? [];
+    expect(ghostHits.length).toBeGreaterThanOrEqual(2);
+    // Must NOT keep the retired aubergine outline.
+    expect(ACTIVITY_BONUS).not.toMatch(OUTLINE);
   });
 
   it("Log sheet 'Done' + barcode 'Log it' are SOLID primaries; 'Undo' + 'Browse recipes' are ghosts", () => {
@@ -103,8 +136,14 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(LOG_SHEET).not.toMatch(/bg-secondary px-5[\s\S]{0,300}>\s*Browse recipes/);
   });
 
-  it("Add-meal dialog 'Add meal' is an aubergine outline (per-instance Button override)", () => {
-    expect(ADD_MEAL).toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent text-primary-solid/);
+  it("Add-meal dialog 'Add meal' is a SOLID primary SupprButton", () => {
+    // Button system migration (2026-06-12, ENG-1079): the dialog's ONE primary
+    // action → `SupprButton` variant="primary" (solid plum fill, white label,
+    // pill). Mobile parity: quick-add "Add to Today" primary.
+    expect(ADD_MEAL).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
+    expect(ADD_MEAL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,80}>\s*Add meal/);
+    // Must NOT keep the retired per-instance aubergine outline on the Button.
+    expect(ADD_MEAL).not.toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent text-primary-solid/);
   });
 });
 
