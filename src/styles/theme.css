@@ -338,6 +338,9 @@
      docs/decisions/2026-06-12-flat-card-surfaces.md). NOT a card fill. */
   --fill-quiet: #F2EFE9;
   --ring-bg: #EDEAF1;
+  /** Opacity of the empty cold-open ring's brand-gradient loop (ENG-1086).
+   *  Mirrors mobile `RING_EMPTY_GRADIENT_OPACITY`. Tunable without a deploy. */
+  --ring-empty-gradient-opacity: 0.36;
   /** Alias of `--ring-bg`. The progress arc is `--macro-calories` (plum) in
    *  EVERY state — under AND over budget (web ring parity 2026-06-10; the old
    *  `--destructive` over-recolour is retired, the over verdict lives in the

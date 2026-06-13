@@ -183,6 +183,14 @@ function DailyRing({
         ? RING_LABELS.over
         : RING_LABELS.remaining;
   const isEmpty = consumed === 0 || target <= 0;
+  // ENG-1086 — paint the empty cold-open ring as a confident brand-gradient
+  // loop instead of a grey skeleton (mobile CalorieRing parity). Default-on;
+  // off → the legacy grey track + 1px hairline empty render. The empty ring
+  // also wears the bold collapsed-hero stroke (0.085·S) so the loop reads as
+  // intentional, not a thin outline.
+  const emptyGradientOn = isFeatureEnabled("ring_empty_gradient_v1");
+  const emptyBoldStroke = Math.round(size * 0.085);
+  const showEmptyGradient = isEmpty && emptyGradientOn;
   /** Centre copy stays ink — the plum ring (always plum, never recoloured)
    *  is the only state surface; the LEFT/OVER verdict carries the rest. */
   const centerValueColor = "var(--foreground)";
@@ -305,6 +313,16 @@ function DailyRing({
             <stop offset="50%" stopColor="#C8794E" />
             <stop offset="100%" stopColor="#C9892C" />
           </linearGradient>
+          {/* ENG-1086 — empty cold-open ring brand-gradient (NOT winSpectrum,
+              which is the warm celebration variant). The plum → aubergine →
+              lift stops stay in lockstep with `--accent-win-gradient` + mobile
+              `AccentWinGradient`. ~120° via the bbox vector (the whole svg is
+              -rotate-90, so the painted angle rotates with it). */}
+          <linearGradient id="ringEmptyGradient" x1="0%" y1="100%" x2="86%" y2="0%">
+            <stop offset="0%" stopColor="#3B2A4D" />
+            <stop offset="50%" stopColor="#5B3B6E" />
+            <stop offset="100%" stopColor="#7E5C92" />
+          </linearGradient>
         </defs>
         {/* Outer track. On the EMPTY state the track lifts to the stronger
             `--border-strong` (#C9C2D6 light) so the ring's shape reads on a
@@ -317,13 +335,25 @@ function DailyRing({
           r={radius}
           fill="none"
           stroke={isEmpty ? "var(--border-strong)" : "var(--ring-bg)"}
-          strokeWidth={strokeWidth}
+          strokeWidth={showEmptyGradient ? emptyBoldStroke : strokeWidth}
           opacity={1}
         />
-        {/* Empty-state inner hairline (audit gap 1) — a 1px ring just inside
-            the track so the empty circle reads as intentional geometry, not a
-            faint outline. Hidden the moment anything is logged. */}
-        {isEmpty ? (
+        {/* ENG-1086 — empty cold-open ring. Flag-on (default): a full-circle
+            brand-gradient loop at ~0.36 over the track, so the largest object on
+            the most-viewed screen reads as a confident brand loop, not a grey
+            skeleton. Flag-off: the legacy 1px inner hairline (audit gap 1). */}
+        {showEmptyGradient ? (
+          <circle
+            cx={cx}
+            cy={cx}
+            r={radius}
+            fill="none"
+            stroke="url(#ringEmptyGradient)"
+            strokeWidth={emptyBoldStroke}
+            strokeLinecap="round"
+            style={{ opacity: "var(--ring-empty-gradient-opacity)" }}
+          />
+        ) : isEmpty ? (
           <circle
             cx={cx}
             cy={cx}
@@ -391,7 +421,7 @@ function DailyRing({
             The plum overage lap on the outer ring carries the over-budget
             signal — the inner arcs don't need to repeat it, and dimming
             them collapsed the multi-colour language. */}
-        {expanded && macroRings.map((ring, i) => {
+        {expanded && !isEmpty && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
           return (

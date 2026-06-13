@@ -20,7 +20,7 @@ import {
   PREMIUM_MOTION_COUNT_MS,
 } from "@suppr/shared/preferences/premiumMotion";
 
-import { Accent, Colors, MacroColors, Type } from "@/constants/theme";
+import { Accent, AccentWinGradient, Colors, MacroColors, RING_EMPTY_GRADIENT_OPACITY, Type } from "@/constants/theme";
 import { ringPhase, ringPhaseEvent } from "@/lib/ringPhase";
 import type { SkiaRingArcs as SkiaRingArcsT } from "./SkiaRingArcs";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -348,6 +348,13 @@ export default function CalorieRing({
   // native lib can never crash on import while flagged off; if the native
   // module is missing at runtime, we fall back to SVG silently.
   const skiaFlagOn = isFeatureEnabled("ring_skia_v1");
+  // ENG-1086 — paint the empty cold-open ring as a confident brand-gradient
+  // loop (Skia sweep at ~0.36) instead of a grey skeleton. Default-on; off →
+  // the legacy grey-track + hairline empty render. The bold collapsed-hero
+  // stroke (0.085·S) is applied to the EMPTY ring only, and only on the Skia
+  // path, so populated/collapsed states and the SVG fallback are untouched.
+  const emptyGradientOn = isFeatureEnabled("ring_empty_gradient_v1");
+  const emptyBoldStroke = Math.round(SIZE * 0.085);
   const SkiaArcs: typeof SkiaRingArcsT | null = useMemo(() => {
     if (!skiaFlagOn) return null;
     // 2026-06-10 INCIDENT: a try/catch around the require is NOT enough —
@@ -481,7 +488,17 @@ export default function CalorieRing({
           // ring_skia_v1 — Skia arc layer (SPEC 1). Centre overlay below is
           // shared with the SVG path; only the arcs swap renderers.
           <SkiaArcs
-            geom={{ SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R }}
+            geom={{
+              SIZE,
+              // ENG-1086: the empty ring wears the confident collapsed-hero
+              // stroke (0.085·S) so the gradient loop reads as intentional, not
+              // a thin skeleton. Populated/collapsed keep their existing stroke.
+              STROKE: isEmpty && emptyGradientOn ? emptyBoldStroke : STROKE,
+              MACRO_STROKE,
+              CX,
+              R,
+              MACRO_R,
+            }}
             fillPct={pct}
             overFrac={overFrac}
             bonusFrac={bonusFrac}
@@ -499,6 +516,9 @@ export default function CalorieRing({
             isOver={isOver}
             expanded={expanded}
             goalHitCount={goalHitCount}
+            emptyGradient={emptyGradientOn}
+            emptyGradientStops={AccentWinGradient.stops}
+            emptyGradientOpacity={RING_EMPTY_GRADIENT_OPACITY}
           />
         ) : (
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
