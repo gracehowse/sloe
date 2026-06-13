@@ -183,6 +183,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // parity fix). WEB-ONLY — mobile has no carousel branch, so there is no mobile
   // mirror. Legacy below-carousels position is the kill switch.
   "discover_import_above_carousels_v1",
+  // ENG-1086 — empty cold-open calorie ring paints the brand-gradient loop
+  // instead of a grey skeleton (mirror of mobile; legacy grey empty as kill switch).
+  "ring_empty_gradient_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

@@ -34,6 +34,8 @@ import {
   Group,
   Path,
   Skia,
+  SweepGradient,
+  vec,
 } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
@@ -80,6 +82,14 @@ export type SkiaRingArcsProps = {
   isEmpty: boolean;
   isOver: boolean;
   expanded: boolean;
+  /** ENG-1086 — when true (default), the empty ring paints a full 360° brand
+   *  gradient sweep instead of the grey track + 1px hairline. Kill switch:
+   *  `ring_empty_gradient_v1` off → the legacy grey-skeleton empty render. */
+  emptyGradient?: boolean;
+  /** Brand-gradient stops for the empty sweep (host passes AccentWinGradient). */
+  emptyGradientStops?: readonly string[];
+  /** Opacity of the empty gradient sweep (host passes RING_EMPTY_GRADIENT_OPACITY). */
+  emptyGradientOpacity?: number;
   /** Monotonic counter — increments when the ring crosses 100% (goal hit).
    *  Triggers the 600ms glow pulse. 0 = never hit this mount. */
   goalHitCount: number;
@@ -115,6 +125,9 @@ export function SkiaRingArcs({
   isOver,
   expanded,
   goalHitCount,
+  emptyGradient = false,
+  emptyGradientStops,
+  emptyGradientOpacity = 0.36,
 }: SkiaRingArcsProps) {
   const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = geom;
   const reduceMotion = useReducedMotion();
@@ -189,8 +202,26 @@ export function SkiaRingArcs({
         strokeWidth={STROKE}
         color={trackColor}
       />
-      {/* Empty-state inner hairline (audit gap 1 parity with the SVG layer). */}
-      {isEmpty ? (
+      {/* ENG-1086 — empty cold-open ring. Flag-on (default): a full 360° brand
+          gradient sweep at ~0.36 opacity over the grey track, so the largest
+          object on the most-viewed screen reads as a confident brand loop, not
+          a grey loading skeleton. The first stop is repeated at the tail so the
+          sweep wraps seamlessly (no hard seam at 3 o'clock). Flag-off: the
+          legacy 1px inner hairline (audit gap 1 grey-skeleton render). */}
+      {isEmpty && emptyGradient && emptyGradientStops && emptyGradientStops.length > 0 ? (
+        <Path
+          path={mainPath}
+          style="stroke"
+          strokeWidth={STROKE}
+          strokeCap="round"
+          opacity={emptyGradientOpacity}
+        >
+          <SweepGradient
+            c={vec(CX, CX)}
+            colors={[...emptyGradientStops, emptyGradientStops[0]!]}
+          />
+        </Path>
+      ) : isEmpty ? (
         <Path
           path={circlePath(CX, R - STROKE / 2 - 1)}
           style="stroke"
@@ -262,8 +293,10 @@ export function SkiaRingArcs({
       {/* Over-budget: the ring caps at FULL — one complete circle; the
           centre verdict ("356 OVER") + chip carry it (Grace's final call,
           2026-06-10, on the overage-treatments survey). */}
-      {/* Inner macro arcs (multi-ring) — track + fill per macro. */}
-      {expanded
+      {/* Inner macro arcs (multi-ring) — track + fill per macro. Hidden in the
+          empty state (ENG-1086): three nested grey tracks made the cold-open
+          read as a wireframe; the single confident gradient loop carries it. */}
+      {expanded && !isEmpty
         ? MACRO_R.map((r, i) => (
             <Group key={i}>
               <Path

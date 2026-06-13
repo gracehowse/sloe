@@ -165,6 +165,14 @@ export const AccentWinGradient: WinGradient = {
   offsets: [0, 0.5, 1] as const,
 };
 
+/** Opacity of the cold-open empty calorie-ring brand-gradient sweep (ENG-1086).
+ *  The empty ring paints a full 360° AccentWinGradient at this opacity so the
+ *  largest object on the most-viewed screen reads as a confident brand loop,
+ *  not a grey loading skeleton. ~0.36 keeps it present but clearly "ready/empty"
+ *  vs the full-opacity populated fill. Mirrored on web as
+ *  `--ring-empty-gradient-opacity`. */
+export const RING_EMPTY_GRADIENT_OPACITY = 0.36;
+
 // Accent history: the Frost flag (`brand_frost_secondary`) was retired
 // 2026-06-08; clay was briefly the unconditional accent, then SUPERSEDED the
 // same day by the aubergine-violet `#5B3B6E` system (Julienne-restraint review
