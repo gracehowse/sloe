@@ -35,6 +35,7 @@ const DARK_ACCENT: typeof Accent = {
   primaryLight: Accent.purpleLight, // #9A7BAA
   primarySolid: Accent.primarySolidDark, // #C4ACD0
   primarySoft: Accent.primarySoftDark, // rgba(154,123,170,0.18)
+  primarySoftStrong: Accent.primarySoftStrongDark, // rgba(154,123,170,0.28) — ENG-1087 hero import slab
   brandBlue: Accent.primaryDark, // #7E5C92
   brandBlueLight: Accent.purpleLight, // #9A7BAA
 };

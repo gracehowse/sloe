@@ -8,6 +8,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
@@ -395,6 +396,12 @@ export default function DiscoverScreen() {
   // returned the dark values in LIGHT mode. Dropping the probe fixes it.
   const accentInk = accent.primarySolid;
   const accentSoft = accent.primarySoft;
+
+  // ENG-1087 — the import-from-Reel card is the viral-hook acquisition surface;
+  // promote it from a settings-row slab to a hero affordance (stronger tint,
+  // solid plum icon, "Paste link" pill). Flag-gated; the legacy nav row stays
+  // in the `else` as the kill switch.
+  const importHero = isFeatureEnabled("discover_import_hero_v1");
 
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped
@@ -845,43 +852,87 @@ export default function DiscoverScreen() {
             first thing the user sees on Discover, not buried beneath
             recipe rows. Mirrors Recime's import-link pattern. testID
             preserved for the Maestro 25_import_shared flow. */}
-        <Pressable
-          onPress={() => router.push("/import-shared" as Href)}
-          accessibilityRole="button"
-          accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
-          testID="discover-import-cta"
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            // Gap-3 fix (2026-06-09): gap 12 → Spacing.md (16); padding 14 →
-            // Spacing.md (16); marginBottom 14 → Spacing.md (16).
-            gap: Spacing.md,
-            padding: Spacing.md,
-            // Import banner (2026-06-13, ENG-1082): a DELIBERATE soft-tint
-            // affordance, NOT a white recipe card — it's the import nudge,
-            // so it reads as a tinted slab that stands apart from the white
-            // feed cards (Sloe treatment §10, documented in the canon). Two
-            // fixes converge here: (1) the fill moves off the off-token
-            // literal hex `t.accent + "08"`/`"22"` to the scheme-aware
-            // `accent.primarySoft` token (== web `--accent-primary-soft`),
-            // killing the call-site hex; (2) the border is dropped per the
-            // flat-surface law — the soft tint IS the separation, same as a
-            // selected chip. Radius matches the sibling My Library CARD below.
-            borderRadius: CARD_RADIUS,
-            backgroundColor: accent.primarySoft,
-            marginBottom: Spacing.md,
-          }}
-        >
-          <IconBox color={t.accent} size={36}>
-            <LinkIcon size={18} color={t.accent} />
-          </IconBox>
-          <View style={{ flex: 1 }}>
-            {/* Gap-7 fix (2026-06-09): completed brand list — no dangling ellipsis. */}
-            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram & YouTube</Text>
-            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
-          </View>
-          <ChevronRight size={16} color={colors.textTertiary} />
-        </Pressable>
+        {importHero ? (
+          // ENG-1087 — hero affordance. Keeps the tinted-slab grammar (flat-card
+          // law) but raises the weight so the viral-hook import beats a settings
+          // row: stronger ~20% tint, a SOLID plum icon circle (white glyph), a
+          // serif headline title, and a filled "Paste link" pill in place of the
+          // passive chevron (do-it-here, not navigate). The whole slab is the tap
+          // target → the import/paste screen; the pill is the affordance, not a
+          // nested pressable.
+          <Pressable
+            onPress={() => router.push("/import-shared" as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
+            testID="discover-import-cta"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.md,
+              padding: Spacing.md,
+              borderRadius: CARD_RADIUS,
+              backgroundColor: accent.primarySoftStrong,
+              marginBottom: Spacing.md,
+            }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: Radius.full,
+                backgroundColor: accent.primarySolid,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <LinkIcon size={20} color={Accent.primaryForeground} />
+            </View>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text style={{ ...Type.headline, color: colors.navPrimary }}>Import from TikTok, Instagram & YouTube</Text>
+              <Text style={{ ...Type.caption, color: colors.textSecondary }}>Paste a link or share from any app</Text>
+            </View>
+            <View
+              style={{
+                paddingHorizontal: Spacing.dense,
+                paddingVertical: Spacing.sm,
+                borderRadius: Radius.full,
+                backgroundColor: accent.primarySolid,
+              }}
+            >
+              <Text style={{ ...Type.caption, fontWeight: "600", color: Accent.primaryForeground }}>Paste link</Text>
+            </View>
+          </Pressable>
+        ) : (
+          /* Legacy nav-row slab (flag-off / kill switch). 2026-05-12 premium-bar
+             audit DC13 + ENG-1082: a DELIBERATE soft-tint affordance, NOT a
+             white recipe card, so it stands apart from the white feed cards
+             (Sloe treatment §10). testID preserved for the Maestro
+             25_import_shared flow. */
+          <Pressable
+            onPress={() => router.push("/import-shared" as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
+            testID="discover-import-cta"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.md,
+              padding: Spacing.md,
+              borderRadius: CARD_RADIUS,
+              backgroundColor: accent.primarySoft,
+              marginBottom: Spacing.md,
+            }}
+          >
+            <IconBox color={t.accent} size={36}>
+              <LinkIcon size={18} color={t.accent} />
+            </IconBox>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram & YouTube</Text>
+              <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textTertiary} />
+          </Pressable>
+        )}
 
         {/* ── Prototype port (2026-04-20, screens-mobile.jsx
             `DiscoverScreen` lines 345–438): three stacked sections.

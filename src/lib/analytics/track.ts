@@ -174,6 +174,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1085 — recipe-detail "Fits your day" confident verdict banner (mirror
   // of the mobile default-on; legacy 10%-wash pill stays as the kill switch).
   "fit_verdict_banner_v1",
+  // ENG-1087 — Discover import-from-Reel card promoted to a hero affordance
+  // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
+  // stays in the `else` as the kill switch.
+  "discover_import_hero_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

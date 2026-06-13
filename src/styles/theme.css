@@ -116,6 +116,10 @@
   --accent-primary-foreground: #ffffff;
   --accent-primary-solid: #3B2A4D;
   --accent-primary-soft: rgba(91, 59, 110, 0.12);
+  /* Stronger soft fill (~20%) — the ONE hero tinted-slab affordance (Discover
+     import-from-Reel card, ENG-1087). Mirrors mobile Accent.primarySoftStrong.
+     Flat-card law holds: the tint IS the separation, just louder. */
+  --accent-primary-soft-strong: rgba(91, 59, 110, 0.2);
   --accent-primary-ring: rgba(91, 59, 110, 0.24);
 
   /** Legacy aliases — old token names still resolve to new values so
@@ -402,6 +406,7 @@
   --accent-primary-foreground: #ffffff;
   --accent-primary-solid: #C4ACD0;
   --accent-primary-soft: rgba(154, 123, 170, 0.18);
+  --accent-primary-soft-strong: rgba(154, 123, 170, 0.28); /* ENG-1087 hero import slab */
   --accent-primary-ring: rgba(154, 123, 170, 0.30);
 
   --primary: var(--accent-primary);

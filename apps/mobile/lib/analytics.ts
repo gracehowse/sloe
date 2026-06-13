@@ -300,6 +300,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Default ON (Grace ratified the design-review direction 2026-06-13); the
   // legacy 10%-wash pill stays in the component `else` as the kill switch.
   "fit_verdict_banner_v1",
+  // ENG-1087 — Discover import-from-Reel card promoted to a hero affordance
+  // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
+  // stays in the component `else` as the kill switch.
+  "discover_import_hero_v1",
   "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",
