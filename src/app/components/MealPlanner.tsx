@@ -29,6 +29,7 @@ import {
   type PlanWeekHeadlineTone,
 } from "../../lib/planning/planWeekSummary.ts";
 import { SupprCard } from "./ui/suppr-card";
+import { SupprButton } from "./suppr/suppr-button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { TextPromptDialog } from "./suppr/text-prompt-dialog";
@@ -762,30 +763,28 @@ export const MealPlanner = memo(function MealPlanner({
               ) : null}
             </div>
           </div>
+          {/* Cohesion wave (2026-06-13, ENG-1080): Regenerate is this card's
+              ONE primary action → solid `SupprButton` primary; Shopping list
+              is the secondary → `ghost`. Was an outline pill + beige
+              `bg-card` slab. Mobile parity: summary card's primary
+              Generate + ghost Adjust pairing. */}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleShoppingList}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
-              style={{ padding: "8px 14px", fontSize: 13 }}
+            <SupprButton
+              variant="primary"
+              loading={isGenerating}
+              onClick={handleRegenerate}
             >
+              <RefreshCw size={14} strokeWidth={2} />
+              {/* DC12 parity (2026-06-13): "Regenerate" misreads in the
+                  placeholder-slots / no-real-meals form of this card — nothing
+                  has been generated yet. Use "Generate" there, matching mobile's
+                  summary-card verb + the bottom-row CTA's plan-state flip. */}
+              {planHasRealMeals ? "Regenerate" : "Generate"}
+            </SupprButton>
+            <SupprButton variant="ghost" onClick={handleShoppingList}>
               <ShoppingCart size={14} strokeWidth={2} />
               Shopping list
-            </button>
-            <button
-              type="button"
-              onClick={handleRegenerate}
-              disabled={isGenerating}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ padding: "8px 14px", fontSize: 13 }}
-            >
-              <RefreshCw
-                size={14}
-                strokeWidth={2}
-                className={isGenerating ? "animate-spin" : ""}
-              />
-              Regenerate
-            </button>
+            </SupprButton>
           </div>
         </SupprCard>
       ) : null}
@@ -1017,12 +1016,23 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
-      {isPlanEmpty ? (
+      {/* ONE-CTA LAW (ENG-1080 cohesion wave, 2026-06-13): the big empty-state
+          card carries its own solid Generate, so it must NOT co-render with the
+          summary card (which also leads with a solid Generate/Regenerate). When
+          a summary card is showing — including its "Plan your week" /
+          placeholder-slots form (`showSummaryCard` true, `planHasRealMeals`
+          false) — the summary card is the lead and we drop to the kanban, whose
+          7 empty day columns + add chips mirror mobile's empty day rows exactly.
+          The empty-state card only leads when there is NO summary card (truly no
+          plan/targets). Without `&& !showSummaryCard` both cards rendered two
+          solid primaries on the most-seen Plan state. */}
+      {isPlanEmpty && !showSummaryCard ? (
         <SupprCard
           data-testid="planner-empty-state"
-          // One-treatment soft lift (2026-06-09): the empty-state slab is
-          // page-ground, so it lifts soft like the summary card + the mobile
-          // `PlanEmptyState` twin. Was the flat default.
+          // Flat-card surfaces (2026-06-12, Withings grammar): `elevation="card"`
+          // now resolves to the flat `.card-slab` (zero shadow/border) — the
+          // soft lift was retired with the flat-card decision. White-on-cream
+          // contrast is the separation. Matches the mobile `PlanEmptyState` twin.
           elevation="card"
           padding="none"
           radius="xl"
@@ -1052,17 +1062,21 @@ export const MealPlanner = memo(function MealPlanner({
               ? `Pick where your recipes come from above, then hit generate — Suppr balances a ${planDays}-day plan to your calorie and macro targets.`
               : `Hit generate and we'll build a ${planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.`}
           </p>
-          <button
+          {/* Cohesion wave (2026-06-13, ENG-1080): the empty-state Generate
+              is this surface's ONE action → solid `SupprButton` primary
+              (aubergine fill, white sans label, pill). Was the retired
+              aubergine OUTLINE pill. `loading` disables + spins; the
+              source-blocked case stays disabled via `disabled`. Mobile
+              parity: `planner.tsx` `plan-generate-menu` solid primary. */}
+          <SupprButton
             data-testid="planner-empty-generate-btn"
-            /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
-               (transparent fill, 1.5px primarySolid border + label). */
-            className="rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid hover:bg-primary/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
+            variant="primary"
+            loading={isGenerating}
+            disabled={!sourceCanGenerate}
             onClick={handleRegenerate}
-            disabled={isGenerating || !sourceCanGenerate}
           >
             {isGenerating ? "Generating…" : "Generate meal plan"}
-          </button>
+          </SupprButton>
           {/* ENG-790: the only way generate is blocked under the flag is
               "My library" picked at 0 saves — point the user back at the
               selector (Discovery always has recipes) so 0 saved isn't a
@@ -1544,41 +1558,35 @@ export const MealPlanner = memo(function MealPlanner({
       )}
 
       {/* F2-F (2026-04-28): bottom CTA row only renders when the
-          summary card isn't taking the lead — i.e. on empty plans
-          (so the user can still kick off generation) and when the
-          score isn't computable (no targets / no plan). When the
-          summary card is up, its in-card CTAs are the canonical
-          way to regenerate or open the shopping list. */}
+          summary card isn't taking the lead AND the plan isn't empty —
+          i.e. a plan exists but the score isn't computable (no targets).
+          When the summary card is up, its in-card CTAs are canonical;
+          when the plan is EMPTY, the empty-state card owns the sole
+          Generate CTA (ENG-1080 cohesion wave, 2026-06-13: excluding
+          `isPlanEmpty` here keeps exactly ONE solid primary on the empty
+          state — without it the empty-state Generate + this row both
+          rendered two solid primaries, breaking the one-CTA law. Mirrors
+          mobile `planner.tsx` `!plan` exclusivity). */}
       <div
         data-testid="planner-desktop-cta-row"
         // Audit 2026-04-30 visual-qa P1 #7 — Tailwind JIT can purge
         // a class only injected via interpolation (`${... ? "hidden" : ""}`).
         // Both branches are explicit literals now so the class always
         // ends up in the production CSS.
-        className={showSummaryCard ? "hidden" : "flex"}
+        className={showSummaryCard || isPlanEmpty ? "hidden" : "flex"}
         style={{ gap: 8, marginTop: 20 }}
       >
-        <button
-          type="button"
-          onClick={handleShoppingList}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-transparent border-[1.5px] border-primary-solid text-primary-solid font-semibold hover:bg-primary/5 transition-colors"
-          style={{ padding: "8px 16px", fontSize: 13 }}
-        >
-          <ShoppingCart size={14} strokeWidth={2} />
-          Shopping list
-        </button>
-        <button
-          type="button"
+        {/* Cohesion wave (2026-06-13, ENG-1080): Generate/Regenerate is the
+            ONE primary action on this row → solid `SupprButton` primary;
+            Shopping list → `ghost`. Was an outline pill + beige `bg-card`
+            slab. Primary leads. Mobile parity: planner solid Generate. */}
+        <SupprButton
+          variant="primary"
+          loading={isGenerating}
+          disabled={!sourceCanGenerate}
           onClick={handleRegenerate}
-          disabled={isGenerating || !sourceCanGenerate}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ padding: "8px 16px", fontSize: 13 }}
         >
-          <RefreshCw
-            size={14}
-            strokeWidth={2}
-            className={isGenerating ? "animate-spin" : ""}
-          />
+          <RefreshCw size={14} strokeWidth={2} />
           {/* DC12 (2026-05-14, premium-bar audit) — when no plan
               exists yet this is the empty-state CTA; the verb
               "Regenerate" misreads at that moment (nothing has
@@ -1588,7 +1596,11 @@ export const MealPlanner = memo(function MealPlanner({
               `apps/mobile/app/(tabs)/planner.tsx` "Generate my
               plan". */}
           {plan.length > 0 ? "Regenerate week" : "Generate my plan"}
-        </button>
+        </SupprButton>
+        <SupprButton variant="ghost" onClick={handleShoppingList}>
+          <ShoppingCart size={14} strokeWidth={2} />
+          Shopping list
+        </SupprButton>
       </div>
 
       {/* Modal-dismissibility audit (2026-04-30) — migrated from a

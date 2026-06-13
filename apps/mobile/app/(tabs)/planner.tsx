@@ -7,7 +7,6 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   ActionSheetIOS,
   Platform,
@@ -77,6 +76,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   generateSmartPlan,
   ALL_MEAL_SLOTS,
@@ -1458,35 +1458,28 @@ export default function PlannerScreen() {
           marginBottom: Spacing.lg,
         },
         summaryActions: { flexDirection: "row", gap: Spacing.sm },
-        // Sloe treatment system (2026-06-08, docs/prototypes/sloe-component-
-        // treatments.html §1): the everyday PRIMARY inline CTA is an aubergine
-        // OUTLINE, not a filled slab. Transparent fill, 1.5px primarySolid
-        // border, primarySolid label/icon. The filled aubergine is rationed to
-        // the FAB + conversion-critical CTAs (paywall / onboarding).
+        // 2026-06-13 cohesion wave (ENG-1080): the everyday Plan CTAs migrated
+        // off the hand-rolled outline/beige treatment onto the SupprButton
+        // primitive (Generate = solid `primary`, Adjust = `ghost`) per the
+        // button-system canon. SupprButton owns fill/border/radius/padding;
+        // these style overrides carry layout-only (the icon+label row + gap)
+        // so the icon sits beside its sans label.
         summaryPrimaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
           paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.dense,
-          borderRadius: Radius.lg,
         },
-        summaryPrimaryText: { color: accent.primarySolid, fontSize: 13, fontWeight: "700" },
+        summaryPrimaryText: { ...Type.button, color: "#fff", fontSize: 13 },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
-          backgroundColor: colors.background,
-          borderWidth: 1,
-          borderColor: colors.border,
           paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.dense,
-          borderRadius: Radius.lg,
         },
-        summarySecondaryText: { color: colors.text, fontSize: 13, fontWeight: "600" },
+        summarySecondaryText: { ...Type.button, color: accent.primarySolid, fontSize: 13 },
 
         // Sloe DS — filter chip row (plan length+start / meals). Calm cream
         // chips with a hairline border + soft radius replace the flat grey
@@ -1648,18 +1641,23 @@ export default function PlannerScreen() {
         // selected-filter-pill treatment. Was `colors.text` (warm ink).
         dayBtnTextActivePrimary: { color: accent.primarySolid, fontWeight: "700" },
 
-        // Sloe treatment system (2026-06-08, §1): primary inline CTA →
-        // aubergine OUTLINE. Used by "Generate my plan" + "Generate Shopping
-        // List" — the everyday do-it action, an accent line not a slab.
+        // Button-system canon (2026-06-13, ENG-1080 cohesion wave): the
+        // setup-card "Generate my plan" CTA is this surface's ONE action →
+        // SOLID aubergine fill, white sans label, full pill (matches
+        // `SupprButton variant="primary"` + web's now-solid empty-state
+        // Generate). Was the retired aubergine OUTLINE pill. Stays a styled
+        // Pressable rather than routing through `SupprButton` ON PURPOSE: its
+        // loading state is the bespoke 7-dot sequential-fill ribbon (premium-
+        // bar decision DC, 2026-05-13) that the shared primitive's plain
+        // spinner can't express — a documented affordance divergence, not
+        // drift. Fill/label/radius otherwise match the primary grammar exactly.
         generateBtn: {
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          borderRadius: Radius.md,
+          backgroundColor: accent.primarySolid,
+          borderRadius: Radius.full,
           paddingVertical: 16,
           alignItems: "center",
         },
-        generateBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 16 },
+        generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
         // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
         // week scans as a calm editorial list of days, not a stack of bold
@@ -2696,33 +2694,27 @@ export default function PlannerScreen() {
                 so the user can change day count / start / slots
                 without scrolling to find the disclosure. */}
             <View style={styles.summaryActions}>
-              <Pressable
+              <SupprButton
+                variant="primary"
                 testID="plan-generate-menu"
                 style={styles.summaryPrimaryBtn}
                 onPress={openGenerateMenu}
-                disabled={generating}
-                accessibilityRole="button"
+                loading={generating}
                 accessibilityLabel="Generate or import plan"
               >
-                {generating ? (
-                  <ActivityIndicator size="small" color={accent.primarySolid} />
-                ) : (
-                  <>
-                    <RefreshCw size={14} color={accent.primarySolid} strokeWidth={1.75} />
-                    <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
-                  </>
-                )}
-              </Pressable>
-              <Pressable
+                <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
+                <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
+              </SupprButton>
+              <SupprButton
+                variant="ghost"
+                testID="plan-summary-adjust-constraints"
                 style={styles.summarySecondaryBtn}
                 onPress={() => setPlanSetupExpanded(true)}
-                accessibilityRole="button"
                 accessibilityLabel="Adjust plan constraints"
-                testID="plan-summary-adjust-constraints"
               >
-                <Sliders size={14} color={colors.text} strokeWidth={1.75} />
+                <Sliders size={14} color={accent.primarySolid} strokeWidth={1.75} />
                 <Text style={styles.summarySecondaryText}>Adjust constraints</Text>
-              </Pressable>
+              </SupprButton>
             </View>
           </View>
         )}
@@ -2999,7 +2991,7 @@ export default function PlannerScreen() {
 
             {!libraryEmptySubcase && (
             <Pressable
-              style={[styles.generateBtn, generateDisabled && { opacity: 0.4 }]}
+              style={[styles.generateBtn, generateDisabled && { opacity: 0.65 }]}
               onPress={generatePlan}
               disabled={generating || generateDisabled}
             >
@@ -3025,9 +3017,10 @@ export default function PlannerScreen() {
                           width: 6,
                           height: 6,
                           borderRadius: Radius.full,
-                          // Outline CTA (Sloe §1): dots in aubergine so they
-                          // read on the transparent/white button fill.
-                          backgroundColor: accent.primarySolid,
+                          // Solid CTA (button-system canon): dots in WHITE so
+                          // they read on the solid aubergine fill (was
+                          // aubergine for the retired outline treatment).
+                          backgroundColor: "#fff",
                           opacity: 0.35 + (i / 7) * 0.6,
                         }}
                       />

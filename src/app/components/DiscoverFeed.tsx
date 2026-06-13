@@ -821,11 +821,16 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               window.dispatchEvent(new PopStateEvent("popstate"));
             }}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-            className="mx-4 mt-3 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-            // Aubergine SOFT-TINT nudge card (Sloe treatment §10) — was a stale
-            // hardcoded brand-blue; aligned to the aubergine accent + parity
-            // with the mobile Discover import card.
-            style={{ background: "var(--accent-primary-soft)", borderColor: "var(--accent-primary-ring)" }}
+            className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+            // Aubergine SOFT-TINT nudge card (Sloe treatment §10) — a DELIBERATE
+            // tinted affordance, NOT a white recipe card, so the import nudge
+            // stands apart from the white feed cards. Parity with the mobile
+            // Discover import banner (`apps/mobile/app/(tabs)/discover.tsx`):
+            // (1) the `--accent-primary-soft` fill == mobile `accent.primarySoft`;
+            // (2) the ring border is dropped per the flat-surface law — the
+            // soft tint IS the separation (ENG-1082, 2026-06-13); (3) radius
+            // bumped to `rounded-3xl` (24) to match the sibling card grammar.
+            style={{ background: "var(--accent-primary-soft)" }}
           >
             <IconBox size="lg" tone="primary">
               <Icons.import />
@@ -1026,7 +1031,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   setFeedScope("forYou");
                   setCategory("all");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-transparent border-[1.5px] border-primary-solid px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
+                // Button-system canon (2026-06-13, ENG-1082 cohesion wave):
+                // tertiary reset → GHOST (transparent, NO border, plum sans
+                // label). Was the retired aubergine OUTLINE pill
+                // (`border-[1.5px] border-primary-solid`) — the empty-results
+                // card has no solid primary, so this reads as a quiet ghost,
+                // never a stray outline competing for attention.
+                className="inline-flex items-center gap-1.5 rounded-full bg-transparent px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
               >
                 Reset filters
               </button>
