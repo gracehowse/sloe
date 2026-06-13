@@ -483,7 +483,7 @@ export default function PhotoLogSheet({
             }}
           >
             <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
+              <View style={{ width: 36, height: 4, borderRadius: Radius.full, backgroundColor: colors.cardBorder }} />
             </View>
             {/* Header row: title + X close */}
             <View
@@ -801,7 +801,7 @@ export default function PhotoLogSheet({
                             gap: 4,
                             paddingHorizontal: 10,
                             paddingVertical: 6,
-                            borderRadius: 999,
+                            borderRadius: Radius.full,
                             borderWidth: 1,
                             borderColor: colors.cardBorder,
                             backgroundColor: colors.background,

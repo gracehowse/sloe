@@ -46,6 +46,7 @@ import { useRouter } from "expo-router";
 import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -107,7 +108,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
       testID="goal-pace-editor-sheet"
     >
       <View
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+        style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
       >
         <View
           style={{

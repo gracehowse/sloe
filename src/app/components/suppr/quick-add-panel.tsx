@@ -501,11 +501,13 @@ export function QuickAddPanel({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(t)}
-              // Sloe treatment system (2026-06-08): filter pill selected
-              // = aubergine soft-tint (bg-primary/10) + primary-solid
+              // §7 filter-pill grammar (web parity 2026-06-12, ENG-1022):
+              // selected = aubergine soft-tint (bg-primary/10) + primary-solid
               // label, NOT a solid fill; unselected = off-white (bg-muted
-              // #F6F5F2) + muted label. Mirror of mobile QuickAddPanel.
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors ${
+              // #F6F5F2) + muted label. `rounded-md` (4px) matches the mobile
+              // QuickAddPanel tab pill (`Radius.sm` = 4px) — was `rounded-lg`
+              // (6px), a 2px radius drift vs the mobile sibling.
+              className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors ${
                 active ? "bg-primary/10 text-primary-solid" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
             >

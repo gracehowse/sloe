@@ -1044,7 +1044,7 @@ export default function ProgressScreen() {
       style={({ pressed }) => [{
         width: 36,
         height: 36,
-        borderRadius: 18,
+        borderRadius: Radius.full,
         backgroundColor: t.elevated,
         borderWidth: 1,
         borderColor: t.border,
@@ -1147,9 +1147,9 @@ export default function ProgressScreen() {
                 minHeight: 86,
               }, tileElevation.shadowStyle]}
             >
-              <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
-              <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: Spacing.sm }} />
-              <View style={{ width: 100, height: 10, borderRadius: 3, backgroundColor: t.border }} />
+              <View style={{ width: 60, height: 10, borderRadius: Radius.sm, backgroundColor: t.border, marginBottom: Spacing.sm }} />
+              <View style={{ width: 80, height: 18, borderRadius: Radius.sm, backgroundColor: t.border, marginBottom: Spacing.sm }} />
+              <View style={{ width: 100, height: 10, borderRadius: Radius.sm, backgroundColor: t.border }} />
             </View>
           ))}
         </View>
@@ -1470,7 +1470,7 @@ export default function ProgressScreen() {
           testID="progress-weight-chart-pending"
           style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20, minHeight: 140 }, cardElevation.shadowStyle]}
         >
-          <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+          <View style={{ width: 110, height: 12, borderRadius: Radius.sm, backgroundColor: t.border, marginBottom: 16 }} />
           <ActivityIndicator size="small" color={colors.tint} />
         </View>
       ) : null}
@@ -1514,7 +1514,7 @@ export default function ProgressScreen() {
             testID="progress-charts-pending"
             style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20, minHeight: 140 }, cardElevation.shadowStyle]}
           >
-            <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+            <View style={{ width: 110, height: 12, borderRadius: Radius.sm, backgroundColor: t.border, marginBottom: 16 }} />
             <ActivityIndicator size="small" color={colors.tint} />
           </View>
         ) : (
@@ -1559,7 +1559,7 @@ export default function ProgressScreen() {
                       ) : null}
                       <View
                         testID={`progress-day-bar-${d.key}`}
-                        style={{ width: "100%", height: barH, borderRadius: 6, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.85 }}
+                        style={{ width: "100%", height: barH, borderRadius: Radius.md, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.85 }}
                       />
                       <Text style={{ fontSize: 10, fontWeight: isDayToday ? "700" : "500", color: isDayToday ? t.text : t.dim, marginTop: Spacing.sm }}>{d.label.charAt(0)}</Text>
                     </Pressable>
@@ -1570,11 +1570,11 @@ export default function ProgressScreen() {
           })()}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: Spacing.dense }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
+              <View style={{ width: 8, height: 8, borderRadius: Radius.sm, backgroundColor: t.green }} />
               <Text style={{ fontSize: 11, color: t.dim }}>On target</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+              <View style={{ width: 8, height: 8, borderRadius: Radius.sm, backgroundColor: t.amber }} />
               <Text style={{ fontSize: 11, color: t.dim }}>Over</Text>
             </View>
           </View>
@@ -1681,7 +1681,7 @@ export default function ProgressScreen() {
                       (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
                       (level === "high" && adaptiveConfidence === "high");
                     return (
-                      <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
+                      <View key={level} style={{ width: 20, height: 4, borderRadius: Radius.full, backgroundColor: filled ? t.green : t.border }} />
                     );
                   })}
                 </View>
@@ -1870,8 +1870,8 @@ export default function ProgressScreen() {
                       <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
                       <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
                     </View>
-                    <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
-                      <View style={{ width: `${progressPct}%` as any, height: "100%", borderRadius: 3, backgroundColor: progressPct >= 100 ? t.green : t.accent }} />
+                    <View style={{ height: 6, borderRadius: Radius.full, backgroundColor: t.border }}>
+                      <View style={{ width: `${progressPct}%` as any, height: "100%", borderRadius: Radius.full, backgroundColor: progressPct >= 100 ? t.green : t.accent }} />
                     </View>
                     <Text
                       testID="progress-journey-copy"

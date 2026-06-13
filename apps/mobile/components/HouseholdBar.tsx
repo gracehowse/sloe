@@ -171,7 +171,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
             paddingVertical: 6,
             paddingHorizontal: 10,
             backgroundColor: allChip.bg,
-            borderRadius: 999,
+            borderRadius: Radius.full,
           }}
         >
           <Ionicons name="people-outline" size={12} color={allChip.fg} />
@@ -200,14 +200,14 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
                 paddingRight: 10,
                 paddingLeft: 4,
                 backgroundColor: chip.bg,
-                borderRadius: 999,
+                borderRadius: Radius.full,
               }}
             >
               <View
                 style={{
                   width: 22,
                   height: 22,
-                  borderRadius: 11,
+                  borderRadius: Radius.full,
                   backgroundColor: color,
                   alignItems: "center",
                   justifyContent: "center",

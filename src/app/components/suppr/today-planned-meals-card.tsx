@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { formatPlannedMealMacroParts } from "@/lib/nutrition/plannedMealDisplay";
+import Link from "next/link";
 import { Icons } from "../ui/icons";
 import { SupprCard } from "../ui/suppr-card";
 import type { DayPlanMeal } from "../../../types/recipe.ts";
@@ -12,9 +14,14 @@ import type { DayPlanMeal } from "../../../types/recipe.ts";
  * portion picker (½× / 1× / 1½× / 2×) so the user can one-tap log a
  * planned meal at a non-default serving.
  *
- * Visibility: parent gates on `plannedMeals.length > 0` so the card
- * only appears when the user actually has a plan for today (matches
- * mobile gating at `apps/mobile/app/(tabs)/index.tsx` 2920).
+ * Visibility / empty state: when `today_planned_empty_state` is ON the host
+ * mounts this card even on empty days; the card then renders an empty-state
+ * branch carrying the SAME card shell + "Planned" header, a calm one-liner
+ * ("Nothing planned for today"), and a ghost "Plan your day →" link into the
+ * Plan tab — so the Today scroll keeps its section grammar whether or not a
+ * plan exists (F-178/F-179, ENG-1065). Flag OFF: parent only mounts the card
+ * when `plannedMeals.length > 0`, the prior hide-when-empty behaviour. Mobile
+ * parity: `apps/mobile/components/today/TodayPlannedMealsCard.tsx`.
  */
 
 export interface TodayPlannedMealsCardProps {
@@ -33,6 +40,8 @@ export function TodayPlannedMealsCard({
   plannedMeals,
   onLogPlannedMealWithPortion,
 }: TodayPlannedMealsCardProps) {
+  const isEmpty = plannedMeals.length === 0;
+
   return (
     <SupprCard
       elevation="card"
@@ -43,19 +52,28 @@ export function TodayPlannedMealsCard({
     >
       <header className="flex items-center justify-between px-4 pt-4 pb-3">
         <h3 className="text-sm font-bold tracking-tight text-foreground-brand">Planned</h3>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          From your meal plan
-        </span>
       </header>
-      <ul className="divide-y divide-border">
-        {plannedMeals.map((meal, i) => (
-          <PlannedMealRow
-            key={`planned-${i}-${meal.recipeTitle ?? meal.name}`}
-            meal={meal}
-            onLog={(portion) => onLogPlannedMealWithPortion(meal, portion)}
-          />
-        ))}
-      </ul>
+      {isEmpty ? (
+        <div className="flex flex-col items-start gap-3 px-4 pb-4">
+          <p className="text-sm text-muted-foreground">Nothing planned for today</p>
+          <Link
+            href="/plan"
+            className="text-sm font-bold text-primary-solid hover:underline focus:outline-none focus-visible:underline"
+          >
+            Plan your day →
+          </Link>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {plannedMeals.map((meal, i) => (
+            <PlannedMealRow
+              key={`planned-${i}-${meal.recipeTitle ?? meal.name}`}
+              meal={meal}
+              onLog={(portion) => onLogPlannedMealWithPortion(meal, portion)}
+            />
+          ))}
+        </ul>
+      )}
     </SupprCard>
   );
 }
@@ -74,6 +92,16 @@ function PlannedMealRow({
   const fat = Math.round(meal.fat ?? 0);
   const title = meal.recipeTitle ?? meal.name;
 
+  // D2 (wave-2 parity review): macro line comes from the SAME shared
+  // formatter as mobile (number-first "28g P"), not a hand-rolled
+  // label-first string that can drift.
+  const parts = formatPlannedMealMacroParts(
+    Number(calories) || 0,
+    Number(protein) || 0,
+    Number(carbs) || 0,
+    Number(fat) || 0,
+  );
+
   return (
     <li className="flex items-start gap-3 px-4 py-3">
       <div className="flex-1 min-w-0">
@@ -81,7 +109,7 @@ function PlannedMealRow({
           {title}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-          {calories} kcal · P {protein}g · C {carbs}g · F {fat}g
+          {parts.kcal} kcal · {parts.protein}g P · {parts.carbs}g C · {parts.fat}g F
         </p>
       </div>
       <div className="relative">

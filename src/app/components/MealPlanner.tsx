@@ -906,10 +906,16 @@ export const MealPlanner = memo(function MealPlanner({
               aria-checked={active}
               onClick={() => handleDayCountSelect(d)}
               data-testid={`planner-day-count-${d}`}
+              // §7 option-pill grammar (web parity 2026-06-12, ENG-1022): the
+              // tint IS the selection signal — `bg-primary/10` fill +
+              // `border-primary/10` (a 10% tint edge, NO solid accent ring) +
+              // `primary-solid` label. Mirror of the mobile `dayBtnActivePrimary`
+              // (`tint + "1A"` border + fill, `primarySolid` label). Was a solid
+              // `border-primary` accent ring — the §7 drift this pass converges.
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary-solid"
+                  ? "border-primary/10 bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
                 locked ? "opacity-60" : "",
               ].join(" ")}
@@ -948,10 +954,15 @@ export const MealPlanner = memo(function MealPlanner({
               aria-disabled={isLast}
               onClick={() => handleSlotToggle(slot)}
               data-testid={`planner-slot-toggle-${slot}`}
+              // §7 option-pill grammar (web parity 2026-06-12, ENG-1022): tint
+              // IS the signal — `bg-primary/10` + `border-primary/10` (no solid
+              // accent ring) + `primary-solid` label. Same treatment as the
+              // Plan-length + Start pills, and the mobile slot toggle reuses the
+              // same `dayBtnActivePrimary` style. Was `border-primary`.
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
-                  ? "border-primary bg-primary/10 text-primary-solid"
+                  ? "border-primary/10 bg-primary/10 text-primary-solid"
                   : "border-border text-muted-foreground hover:bg-muted/60",
                 isLast ? "cursor-not-allowed opacity-80" : "",
               ].join(" ")}
@@ -989,10 +1000,14 @@ export const MealPlanner = memo(function MealPlanner({
               aria-checked={active}
               onClick={() => setStartOffset(offset)}
               data-testid={`planner-start-${offset}`}
+              // §7 option-pill grammar (web parity 2026-06-12, ENG-1022):
+              // tint IS the signal — `bg-primary/10` + `border-primary/10`
+              // (no solid accent ring) + `primary-solid` label. Identical
+              // treatment to the "Plan length" pills above. Was `border-primary`.
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary-solid"
+                  ? "border-primary/10 bg-primary/10 text-primary-solid"
                   : "border-border text-foreground hover:bg-muted/60",
               ].join(" ")}
             >

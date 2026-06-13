@@ -60,8 +60,13 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   });
 
   it("Today 'Complete Day' CTA is an aubergine outline", () => {
-    expect(INDEX).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,200}>Complete Day</);
-    expect(INDEX).not.toMatch(/backgroundColor:\s*accent\.primary,\s*\n\s*alignItems:\s*"center",\s*\n\s*\}\)?\s*\n\s*\}?\s*>\s*\n\s*<Text[^>]*color:\s*"#fff"[^>]*>Complete Day/);
+    // Wave-2 (ENG-1065 F-158): the CTA was extracted from index.tsx to
+    // <TodayCompleteDayButton> — the outline pin follows the component.
+    const COMPLETE_DAY_BUTTON = read("components/today/TodayCompleteDayButton.tsx");
+    expect(COMPLETE_DAY_BUTTON).toMatch(/borderColor:\s*accent\.primarySolid[\s\S]{0,400}>Complete Day</);
+    expect(COMPLETE_DAY_BUTTON).not.toMatch(/backgroundColor:\s*accent\.primary\b/);
+    // And the host renders the extracted component (not a re-inlined CTA).
+    expect(INDEX).toMatch(/<TodayCompleteDayButton/);
   });
 
   it("Quick-add submit ('Add to Today') is an outline; the sibling Search is an off-white secondary", () => {

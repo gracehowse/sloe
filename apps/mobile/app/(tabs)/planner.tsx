@@ -1409,7 +1409,7 @@ export default function PlannerScreen() {
         headerIconBtn: {
           width: 38,
           height: 38,
-          borderRadius: 19,
+          borderRadius: Radius.full,
           borderWidth: 1,
           borderColor: colors.border,
           backgroundColor: colors.card,
@@ -1739,6 +1739,8 @@ export default function PlannerScreen() {
         mealIconBox: {
           width: 36,
           height: 36,
+          // ENG-1018: r10 is exactly between Radius.lg (8) and Radius.xl (12);
+          // left as a literal — ambiguous snap reported, not guessed.
           borderRadius: 10,
           backgroundColor: colors.border + "66",
           alignItems: "center",
@@ -1769,7 +1771,7 @@ export default function PlannerScreen() {
         mealOverflowBtn: {
           width: 30,
           height: 30,
-          borderRadius: 8,
+          borderRadius: Radius.lg,
           backgroundColor: colors.border + "66",
           alignItems: "center",
           justifyContent: "center",
@@ -2413,7 +2415,7 @@ export default function PlannerScreen() {
             style={{
               width: 28,
               height: 28,
-              borderRadius: 14,
+              borderRadius: Radius.full,
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: accent.primary + "1A",
@@ -2549,7 +2551,7 @@ export default function PlannerScreen() {
                   gap: 4,
                   paddingHorizontal: Spacing.dense,
                   paddingVertical: Spacing.sm,
-                  borderRadius: 999,
+                  borderRadius: Radius.full,
                   borderWidth: 1,
                   borderColor: active ? colors.textSecondary : colors.border,
                   backgroundColor: active ? colors.textSecondary + "18" : colors.card,
@@ -2598,7 +2600,7 @@ export default function PlannerScreen() {
               gap: 4,
               paddingHorizontal: Spacing.dense,
               paddingVertical: Spacing.sm,
-              borderRadius: 999,
+              borderRadius: Radius.full,
               borderWidth: 1,
               borderColor: colors.border,
               borderStyle: "dashed",
@@ -3018,7 +3020,7 @@ export default function PlannerScreen() {
                         style={{
                           width: 6,
                           height: 6,
-                          borderRadius: 3,
+                          borderRadius: Radius.full,
                           // Outline CTA (Sloe §1): dots in aubergine so they
                           // read on the transparent/white button fill.
                           backgroundColor: accent.primarySolid,
@@ -3367,7 +3369,7 @@ export default function PlannerScreen() {
                         style={{
                           paddingHorizontal: 6,
                           paddingVertical: 1,
-                          borderRadius: 4,
+                          borderRadius: Radius.sm,
                           backgroundColor: colors.backgroundSecondary,
                           borderWidth: 1,
                           borderColor: colors.border,
@@ -3440,7 +3442,7 @@ export default function PlannerScreen() {
                         marginTop: 4,
                         paddingHorizontal: 8,
                         paddingVertical: 2,
-                        borderRadius: 999,
+                        borderRadius: Radius.full,
                         backgroundColor: colors.textTertiary + "1A",
                       }}
                       accessibilityLabel="Recipe no longer in your library"
@@ -3472,7 +3474,7 @@ export default function PlannerScreen() {
                         marginTop: 4,
                         paddingHorizontal: 8,
                         paddingVertical: 2,
-                        borderRadius: 999,
+                        borderRadius: Radius.full,
                         backgroundColor: Accent.warning + "1F",
                       }}
                       accessibilityLabel="Estimated macros — open the recipe to verify"
@@ -3733,7 +3735,7 @@ export default function PlannerScreen() {
               paddingHorizontal: Spacing.xl,
             }}
           >
-            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {planSourceSelector ? "Plan setup" : "Plan length & start"}
             </Text>
@@ -3848,7 +3850,7 @@ export default function PlannerScreen() {
               paddingHorizontal: Spacing.xl,
             }}
           >
-            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               Which meals?
             </Text>
@@ -4108,7 +4110,7 @@ export default function PlannerScreen() {
                   paddingBottom: insets.bottom + Spacing.sm,
                 }}
               >
-                <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+                <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
                 <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
                   <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }} numberOfLines={1}>
                     {hasRecipeOv ? meal.recipeTitle : meal.name}

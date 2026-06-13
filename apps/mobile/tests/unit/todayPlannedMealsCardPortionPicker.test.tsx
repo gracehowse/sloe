@@ -20,6 +20,11 @@ import { TodayPlannedMealsCard } from "../../components/today/TodayPlannedMealsC
 
 void React;
 
+const routerPush = vi.fn();
+vi.mock("expo-router", () => ({
+  useRouter: () => ({ push: routerPush }),
+}));
+
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#0f172a",
@@ -171,5 +176,58 @@ describe("TodayPlannedMealsCard — Sloe TD3 re-skin", () => {
     fireEvent.press(getByLabelText("Log Greek yoghurt bowl today"));
     fireEvent.press(getByLabelText("1 × portion"));
     expect(onLog).toHaveBeenCalledWith(PLANNED[0], 1);
+  });
+});
+
+/**
+ * F-178/F-179 (ENG-1065) — empty-state branch. When the host mounts the card
+ * with no planned meals (flag-ON path, `today_planned_empty_state`), the card
+ * keeps the SAME shell + "Planned" header and shows a calm one-liner plus a
+ * ghost "Plan your day →" affordance that routes to the Plan tab. This is the
+ * component's render fork; the flag itself lives at the host (pinned below).
+ */
+describe("TodayPlannedMealsCard — empty-state branch (F-178/F-179)", () => {
+  it("renders the SAME 'Planned' header in the empty state", () => {
+    const { getByText } = render(
+      <TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={() => undefined} />,
+    );
+    // Header carries over from the populated card so both states read as one element.
+    expect(getByText("Planned")).toBeTruthy();
+  });
+
+  it("shows the calm one-liner and a 'Plan your day →' affordance when empty", () => {
+    const { getByText, getByLabelText } = render(
+      <TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={() => undefined} />,
+    );
+    expect(getByText("Nothing planned for today")).toBeTruthy();
+    expect(getByLabelText("Plan your day")).toBeTruthy();
+  });
+
+  it("routes to the Plan tab when 'Plan your day →' is pressed", () => {
+    routerPush.mockClear();
+    const { getByLabelText } = render(
+      <TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={() => undefined} />,
+    );
+    fireEvent.press(getByLabelText("Plan your day"));
+    expect(routerPush).toHaveBeenCalledTimes(1);
+    expect(routerPush).toHaveBeenCalledWith("/(tabs)/planner");
+  });
+
+  it("does NOT render meal rows or the portion CTA in the empty state", () => {
+    const onLog = vi.fn();
+    const { queryByText } = render(
+      <TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={onLog} />,
+    );
+    // No "Log today" pill, no portion sheet trigger — nothing to log.
+    expect(queryByText("Log today")).toBeNull();
+    expect(onLog).not.toHaveBeenCalled();
+  });
+
+  it("renders the populated rows (NOT the empty branch) when meals exist", () => {
+    const { getByText, queryByText } = render(
+      <TodayPlannedMealsCard plannedMeals={PLANNED} onLogPlannedMealWithPortion={() => undefined} />,
+    );
+    expect(getByText("Greek yoghurt bowl")).toBeTruthy();
+    expect(queryByText("Nothing planned for today")).toBeNull();
   });
 });

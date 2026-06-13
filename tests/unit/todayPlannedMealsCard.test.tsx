@@ -26,12 +26,14 @@ describe("TodayPlannedMealsCard", () => {
 
   it("formats the macro detail line with kcal + P/C/F", () => {
     render(<TodayPlannedMealsCard plannedMeals={[MEALS[0]!]} onLogPlannedMealWithPortion={() => {}} />);
-    // "320 kcal · P 28g · C 35g · F 8g"
+    // Number-first via the SHARED formatter (mobile parity, wave-2 D2):
+    // "320 kcal · 28g P · 35g C · 8g F"
     const text = document.body.textContent ?? "";
     expect(text).toMatch(/320 kcal/);
-    expect(text).toMatch(/P 28g/);
-    expect(text).toMatch(/C 35g/);
-    expect(text).toMatch(/F 8g/);
+    expect(text).toMatch(/28g P/);
+    expect(text).toMatch(/35g C/);
+    expect(text).toMatch(/8g F/);
+    expect(text).not.toMatch(/P 28g/);
   });
 
   it("opens the portion picker when 'Log today' is clicked", () => {
@@ -66,5 +68,40 @@ describe("TodayPlannedMealsCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onLog).not.toHaveBeenCalled();
     expect(screen.queryByRole("group", { name: /Choose portion/ })).toBeNull();
+  });
+});
+
+/**
+ * F-178/F-179 (ENG-1065) — empty-state branch, web parity with mobile
+ * `TodayPlannedMealsCard`. When the host mounts the card with no planned meals
+ * (flag-ON path, `today_planned_empty_state`), the card keeps the SAME shell +
+ * "Planned" header and shows a calm one-liner plus a ghost "Plan your day →"
+ * link into the Plan tab (`/plan`).
+ */
+describe("TodayPlannedMealsCard — empty-state branch (F-178/F-179)", () => {
+  it("renders the SAME 'Planned' header in the empty state", () => {
+    render(<TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={() => {}} />);
+    expect(screen.getByText("Planned")).toBeDefined();
+  });
+
+  it("shows the calm one-liner and a 'Plan your day →' link to /plan", () => {
+    render(<TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={() => {}} />);
+    expect(screen.getByText("Nothing planned for today")).toBeDefined();
+    const link = screen.getByRole("link", { name: /Plan your day/ });
+    expect(link).toBeDefined();
+    expect(link.getAttribute("href")).toBe("/plan");
+  });
+
+  it("does NOT render meal rows or a 'Log today' button in the empty state", () => {
+    const onLog = vi.fn();
+    render(<TodayPlannedMealsCard plannedMeals={[]} onLogPlannedMealWithPortion={onLog} />);
+    expect(screen.queryByRole("button", { name: "Log today" })).toBeNull();
+    expect(onLog).not.toHaveBeenCalled();
+  });
+
+  it("renders populated rows (NOT the empty branch) when meals exist", () => {
+    render(<TodayPlannedMealsCard plannedMeals={[MEALS[0]!]} onLogPlannedMealWithPortion={() => {}} />);
+    expect(screen.getByText("Greek yogurt bowl")).toBeDefined();
+    expect(screen.queryByText("Nothing planned for today")).toBeNull();
   });
 });

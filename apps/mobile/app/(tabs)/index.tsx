@@ -131,11 +131,7 @@ import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
-import {
-  syncHealthDataThrottled,
-  exportDayToHealth,
-  isHealthSyncAvailable,
-} from "@/lib/healthSync";
+import { syncHealthDataThrottled } from "@/lib/healthSync";
 import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { clampJournalDate } from "@/lib/journalNavigation";
 import {
@@ -277,6 +273,7 @@ import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
+import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";
 import { TodayAddFoodForm } from "@/components/today/TodayAddFoodForm";
 
 type TrackerMacroTargets = Pick<
@@ -5467,14 +5464,25 @@ export default function TrackerScreen() {
               cardBorderColor={colors.cardBorder}
             />
           )}
-        {/* Planned meals from the planner */}
-        {viewMode === "day" && plannedMeals.length > 0 && (
-          <TodayPlannedMealsCard
-            plannedMeals={plannedMeals}
-            onLogPlannedMealWithPortion={(pm, p) => void logPlannedMealWithPortion(pm, p)}
-            styles={styles}
-          />
-        )}
+        {/* Planned meals from the planner.
+            F-178/F-179 (ENG-1065): when `today_planned_empty_state` is ON the
+            "Planned" section persists on empty days too — the card renders an
+            empty-state branch (same shell + header) instead of vanishing, so the
+            Today scroll keeps its section grammar whether or not a plan exists.
+            Flag OFF keeps the old hide-when-empty behaviour exactly. The card
+            itself owns the empty/populated render fork off `plannedMeals.length`.
+            Section break is the standard `Layout.todaySectionBreak` (F-159) so it
+            sits on the same 32pt rhythm as Meals / Activity / Hydration. */}
+        {viewMode === "day" &&
+          (plannedMeals.length > 0 || isFeatureEnabled("today_planned_empty_state")) && (
+            <View style={{ marginTop: Layout.todaySectionBreak }}>
+              <TodayPlannedMealsCard
+                plannedMeals={plannedMeals}
+                onLogPlannedMealWithPortion={(pm, p) => void logPlannedMealWithPortion(pm, p)}
+                styles={styles}
+              />
+            </View>
+          )}
 
         {/* Add food form */}
         {viewMode === "day" && addOpen && (
@@ -5643,39 +5651,19 @@ export default function TrackerScreen() {
           </View>
         )}
 
-        {/* Complete Day button — only when viewing today and there are logged meals.
-            Sloe treatment system (2026-06-08): primary inline CTA → aubergine
-            outline (transparent fill + 1.5px primarySolid border + primarySolid
-            label), not a filled slab. Mirror of web NutritionTracker. */}
+        {/* Complete Day — only when viewing today with logged meals. Extracted
+            to <TodayCompleteDayButton> (ENG-1065 / F-158): it now sits in a
+            section wrapper on the standard `todaySectionBreak` (32) cadence as
+            the day's terminal section, fixing the "out of place / floating in
+            dead space" report (was an off-rhythm `marginTop: 20`, no wrapper).
+            Outline tier + HealthKit auto-export behaviour preserved inside the
+            component. Mirror of web NutritionTracker. */}
         {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
-          <Pressable
-            onPress={async () => {
-              setCompleteDayOpen(true);
-              // Auto-export to HealthKit if enabled
-              if (userId && isHealthSyncAvailable()) {
-                try {
-                  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-                  const exp = await AsyncStorage.getItem("health_export_nutrition");
-                  if (exp === "true") {
-                    const dk = dateKeyFromDate(selectedDate);
-                    void exportDayToHealth(userId, dk);
-                  }
-                } catch {}
-              }
-            }}
-            style={({ pressed }) => ({
-              marginTop: Spacing.lg,
-              paddingVertical: 16,
-              borderRadius: Radius.md,
-              backgroundColor: "transparent",
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignItems: "center",
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ color: accent.primarySolid, ...Type.headline }}>Complete Day</Text>
-          </Pressable>
+          <TodayCompleteDayButton
+            userId={userId ?? null}
+            selectedDate={selectedDate}
+            onComplete={() => setCompleteDayOpen(true)}
+          />
         )}
 
       </ScrollView>

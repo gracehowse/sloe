@@ -80,7 +80,7 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
             flexDirection: "row",
             alignItems: "center",
             gap: 4,
-            borderRadius: 999,
+            borderRadius: Radius.full,
             paddingHorizontal: 8,
             paddingVertical: 3,
             backgroundColor: cColor + "22",
@@ -90,7 +90,7 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
             style={{
               width: 6,
               height: 6,
-              borderRadius: 3,
+              borderRadius: Radius.full,
               backgroundColor: cColor,
             }}
           />

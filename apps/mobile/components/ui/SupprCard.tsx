@@ -5,7 +5,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 
@@ -229,7 +229,7 @@ function computeToneStyle(
       };
     case "success":
       return {
-        backgroundColor: "rgba(94, 124, 90, 0.10)", // Accent.success @ 10%
+        backgroundColor: Accent.success + "1A", // Accent.success @ ~10%
         borderColor: colors.sourceUsda,
       };
     case "warning":
@@ -239,7 +239,7 @@ function computeToneStyle(
       };
     case "magenta":
       return {
-        backgroundColor: "rgba(106, 75, 122, 0.10)", // Sloe damson @ 10%
+        backgroundColor: Accent.win + "1A", // Sloe damson (Accent.win) @ ~10%
         borderColor: colors.sourceAi,
       };
     case "neutral":

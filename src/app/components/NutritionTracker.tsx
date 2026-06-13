@@ -2796,12 +2796,17 @@ export const NutritionTracker = memo(function NutritionTracker({
         )}
       {/* Planned meals — show meals from today's plan so the user can
           one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).
-          Renders only when there's a plan with at least one meal for
-          today (mobile parity:
-          `apps/mobile/app/(tabs)/index.tsx` 2920). */}
-      {mealPlan && mealPlan.length > 0 && (mealPlan[0]?.meals ?? []).length > 0 ? (
+          F-178/F-179 (ENG-1065): when `today_planned_empty_state` is ON the
+          "Planned" card persists on empty days too — it renders an empty-state
+          branch (same shell + header) instead of vanishing, so the Today scroll
+          keeps its section grammar whether or not a plan exists. Flag OFF keeps
+          the prior render-only-when-populated behaviour exactly. The card owns
+          the empty/populated fork off `plannedMeals.length`. Mobile parity:
+          `apps/mobile/app/(tabs)/index.tsx` planned section. */}
+      {(mealPlan && mealPlan.length > 0 && (mealPlan[0]?.meals ?? []).length > 0) ||
+      (viewMode === "day" && isFeatureEnabled("today_planned_empty_state")) ? (
         <TodayPlannedMealsCard
-          plannedMeals={mealPlan[0]!.meals}
+          plannedMeals={mealPlan?.[0]?.meals ?? []}
           onLogPlannedMealWithPortion={async (meal, portion) => {
             const mult = Math.max(0.125, Math.min(24, portion));
             // Pull fiber/sugar/sodium off the saved recipe so the
@@ -2959,11 +2964,16 @@ export const NutritionTracker = memo(function NutritionTracker({
       {/* Complete Day — Sloe treatment system (2026-06-08): primary inline
           CTA → aubergine outline (transparent fill + 1.5px primary-solid
           border + primary-solid label), not a filled slab. Mirror of mobile
-          Today host. */}
+          Today host.
+          F-158 (ENG-1065): was `mt-4` (16px) — off the section rhythm where
+          every Today section uses `mt-10` (40px) — so it read as a button
+          floating in dead space. Snapped to `mt-10` so it lands as the day's
+          terminal section on the same cadence as Activity / Hydration above,
+          matching the mobile `<TodayCompleteDayButton>` section-break fix. */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
         <button
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-xl border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-4"
+          className="w-full py-3.5 rounded-lg border-[1.5px] border-primary-solid bg-transparent text-primary-solid font-bold text-sm hover:bg-primary/5 transition-colors mt-10"
         >
           Complete Day
         </button>

@@ -1982,7 +1982,7 @@ export default function RecipeDetailScreen() {
                           gap: 4,
                           paddingHorizontal: Spacing.sm,
                           paddingVertical: Spacing.xs,
-                          borderRadius: 999,
+                          borderRadius: Radius.full,
                           borderWidth: 1,
                           borderColor: accent.primary,
                           backgroundColor: accent.primary + "14",
