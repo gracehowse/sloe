@@ -21,10 +21,13 @@ const MOBILE = readFileSync(
 const COPY = readFileSync(resolve(ROOT, "src/lib/copy/today.ts"), "utf8");
 
 describe("Today hero layout parity", () => {
-  it("canonical copy exports macro-ring toggle labels", () => {
+  it("canonical copy exports treatment-agnostic macro toggle labels", () => {
     expect(COPY).toMatch(/MACRO_RING_TOGGLE/);
-    expect(COPY).toMatch(/Show macro rings/);
-    expect(COPY).toMatch(/Hide macro rings/);
+    expect(COPY).toMatch(/show: "Show macros"/);
+    expect(COPY).toMatch(/hide: "Hide macros"/);
+    // ENG design review 2026-06-13: the toggle label must NOT claim a shape
+    // ("rings"/"bars") — the hero reveals sub-rings, the below-hero is bars.
+    expect(COPY).not.toMatch(/(Show|Hide) macro rings/);
   });
 
   it("desktop hero uses one vertical stack (no ring+2x2 side-by-side grid)", () => {

@@ -31,38 +31,35 @@ function meal(partial: Partial<DayPlanMeal>): DayPlanMeal {
   };
 }
 
-describe("classifyDayDelta — symmetric tolerance bands", () => {
-  it("returns neutral within ±10% on both sides", () => {
-    // goal = 1000; 900 = -10%, 1000 = 0%, 1100 = +10% — all neutral
+describe("classifyDayDelta — directional tolerance bands (over only)", () => {
+  it("returns neutral at/under goal and within +10% over", () => {
+    // goal = 1000; under/at goal is always calm, +10% over still neutral
     expect(classifyDayDelta(900, 1000)).toBe("neutral");
     expect(classifyDayDelta(1000, 1000)).toBe("neutral");
     expect(classifyDayDelta(1100, 1000)).toBe("neutral");
   });
 
-  it("returns amber between 10% and 20% on both sides", () => {
-    // goal = 1000; 850 = -15% over band → amber, 1150 = +15% → amber
-    expect(classifyDayDelta(850, 1000)).toBe("amber");
-    expect(classifyDayDelta(1150, 1000)).toBe("amber");
-    // Boundary: exactly 20% → amber (inclusive)
-    expect(classifyDayDelta(800, 1000)).toBe("amber");
-    expect(classifyDayDelta(1200, 1000)).toBe("amber");
+  it("under-goal is NEVER a warning — under/empty days stay neutral (design review 2026-06-13)", () => {
+    // The bug this fixes: a far-under or untouched day used to read amber/red.
+    expect(classifyDayDelta(850, 1000)).toBe("neutral"); // -15%
+    expect(classifyDayDelta(800, 1000)).toBe("neutral"); // -20%
+    expect(classifyDayDelta(750, 1000)).toBe("neutral"); // -25%
+    expect(classifyDayDelta(0, 1000)).toBe("neutral"); // empty day — was "red"
   });
 
-  it("returns red outside ±20% on both sides", () => {
-    // goal = 1000; 750 = -25% → red, 1250 = +25% → red
-    expect(classifyDayDelta(750, 1000)).toBe("red");
-    expect(classifyDayDelta(1250, 1000)).toBe("red");
-    // Way outside
-    expect(classifyDayDelta(0, 1000)).toBe("red");
+  it("returns amber only when 10–20% OVER goal", () => {
+    expect(classifyDayDelta(1150, 1000)).toBe("amber"); // +15%
+    expect(classifyDayDelta(1200, 1000)).toBe("amber"); // +20% (inclusive)
+  });
+
+  it("returns red only when >20% OVER goal (renderers collapse to amber per carryover rule)", () => {
+    expect(classifyDayDelta(1250, 1000)).toBe("red"); // +25%
     expect(classifyDayDelta(5000, 1000)).toBe("red");
   });
 
-  it("is direction-agnostic — over and under trigger same tone at same |delta|", () => {
-    // The product requirement: exceeding goal is not 'bad' for
-    // gain-goal users. Over and under both classify the same.
-    const under = classifyDayDelta(850, 1000); // -15%
-    const over = classifyDayDelta(1150, 1000); // +15%
-    expect(under).toBe(over);
+  it("is directional — over escalates, the same magnitude under does not", () => {
+    expect(classifyDayDelta(850, 1000)).toBe("neutral"); // -15% → calm
+    expect(classifyDayDelta(1150, 1000)).toBe("amber"); // +15% → escalates
   });
 
   it("never divides by zero when goal is 0, negative, or non-finite", () => {
@@ -145,8 +142,9 @@ describe("buildDayTotalVsGoalLine — totals", () => {
     const line = buildDayTotalVsGoalLine([], goals);
     expect(line.totals).toEqual({ calories: 0, protein: 0, carbs: 0, fat: 0 });
     expect(line.hasTargets).toBe(true);
-    // 0 vs 2000 → -100% → red; pin the tone so UI visibly reads "far from goal"
-    expect(line.cells[0]!.tone).toBe("red");
+    // 0 vs 2000 → under goal → NEUTRAL (design review 2026-06-13): an empty
+    // day is the calm starting state, never an alarming amber/red.
+    expect(line.cells[0]!.tone).toBe("neutral");
     expect(line.cells[0]!.actual).toBe(0);
     expect(line.cells[0]!.goal).toBe(2000);
   });
@@ -219,8 +217,10 @@ describe("buildDayTotalVsGoalLine — cell classification in context", () => {
     expect(cal.goal).toBe(1411);
   });
 
-  it("classifies each macro independently — cal neutral, protein red", () => {
-    const meals = [meal({ calories: 2000, protein: 20, carbs: 200, fat: 65 })];
+  it("classifies each macro independently — cal neutral, an OVER macro escalates", () => {
+    // protein 250 vs 150 = +67% over → red; the others are at/under goal → neutral.
+    // (Under-goal protein would be neutral now — directional rule, design review 2026-06-13.)
+    const meals = [meal({ calories: 2000, protein: 250, carbs: 200, fat: 65 })];
     const line = buildDayTotalVsGoalLine(meals, {
       calories: 2000,
       protein: 150,
@@ -228,7 +228,7 @@ describe("buildDayTotalVsGoalLine — cell classification in context", () => {
       fat: 65,
     });
     expect(line.cells.find((c) => c.key === "calories")!.tone).toBe("neutral");
-    expect(line.cells.find((c) => c.key === "protein")!.tone).toBe("red"); // 20 vs 150 = -87%
+    expect(line.cells.find((c) => c.key === "protein")!.tone).toBe("red"); // 250 vs 150 = +67% over
     expect(line.cells.find((c) => c.key === "carbs")!.tone).toBe("neutral");
     expect(line.cells.find((c) => c.key === "fat")!.tone).toBe("neutral");
   });

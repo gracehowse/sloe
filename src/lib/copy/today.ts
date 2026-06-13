@@ -216,12 +216,15 @@ export const TODAY_STAT_LABELS = {
   net: "Net",
 } as const;
 
-/** Opt-in affordance for inner protein/carbs/fat rings on the calorie
- *  hero. Macros stay hidden by default; the macro tile grid below the
- *  hero is the primary surface. */
+/** Opt-in affordance for the inner protein/carbs/fat breakdown on the
+ *  calorie hero. Macros stay hidden by default; the macro tile grid below
+ *  the hero is the primary surface. Label stays treatment-agnostic
+ *  ("macros", not "rings"/"bars"): the toggle reveals the hero's inner
+ *  sub-rings, while the below-hero surface renders as bars/tiles, so
+ *  neither shape word is universally true. */
 export const MACRO_RING_TOGGLE = {
-  show: "Show macro rings",
-  hide: "Hide macro rings",
+  show: "Show macros",
+  hide: "Hide macros",
 } as const;
 
 /** Detail line for the `Net` stat — describes which side of maintenance

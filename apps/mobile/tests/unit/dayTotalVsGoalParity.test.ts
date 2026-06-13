@@ -79,6 +79,12 @@ describe("mobile planner — shared helper behaves as expected when called direc
     expect(classifyDayDelta(1373, 1411)).toBe("neutral");
   });
 
+  it("an empty/under day reads neutral, not amber (design review 2026-06-13)", () => {
+    expect(classifyDayDelta(0, 1411)).toBe("neutral"); // untouched day
+    expect(classifyDayDelta(900, 1411)).toBe("neutral"); // well under
+    expect(classifyDayDelta(1600, 1411)).toBe("amber"); // +13% over → escalates
+  });
+
   it("returns hasTargets=false when any goal is missing (new account)", () => {
     const line = buildDayTotalVsGoalLine(
       [
