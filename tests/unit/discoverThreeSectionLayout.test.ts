@@ -94,18 +94,27 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
   });
 
   describe("CTA reordering (Import as permanent first card; My Library at bottom)", () => {
-    it("web places the Import card as the FIRST surface above all recipe sections (2026-05-12 audit)", () => {
-      // Mirror of the mobile assertion — Import is now a permanent
-      // top card so the import affordance is the first thing on
-      // Discover, not buried beneath recipe rows.
-      const topImportIdx = WEB_SRC.indexOf('discover-import-cta-top');
+    it("web renders the Import card ABOVE the cluster carousels on mobile-web (ENG-1089, flag-gated)", () => {
+      // ENG-1089: the import card JSX is extracted to an `importCard` const and
+      // rendered at ONE of two positions by `discover_import_above_carousels_v1`.
+      // Flag-on (default) renders it ABOVE the carousels so it's the first feed
+      // item on mobile-web (mobile native parity); flag-off keeps the old
+      // below-carousels position as the kill switch.
+      expect(WEB_SRC).toMatch(/isFeatureEnabled\("discover_import_above_carousels_v1"\)/);
+      const newPosIdx = WEB_SRC.indexOf("importAboveCarousels ? importCard : null");
+      const carouselsIdx = WEB_SRC.indexOf("discover-cluster-carousels");
+      const oldPosIdx = WEB_SRC.indexOf("importAboveCarousels ? null : importCard");
       const matchesIdx = WEB_SRC.search(/>\s*Recipe ideas\s*</);
-      const moreIdeasIdx = WEB_SRC.search(/>\s*More ideas\s*</);
       const libraryHeadingIdx = WEB_SRC.search(/>\s*My Library\s*</);
-      expect(topImportIdx).toBeGreaterThan(0);
-      expect(matchesIdx).toBeGreaterThan(topImportIdx);
-      expect(moreIdeasIdx).toBeGreaterThan(topImportIdx);
-      expect(libraryHeadingIdx).toBeGreaterThan(moreIdeasIdx);
+      expect(newPosIdx).toBeGreaterThan(0);
+      expect(carouselsIdx).toBeGreaterThan(0);
+      expect(oldPosIdx).toBeGreaterThan(0);
+      // Flag-on render is ABOVE the carousels; legacy fallback stays below them.
+      expect(newPosIdx).toBeLessThan(carouselsIdx);
+      expect(oldPosIdx).toBeGreaterThan(carouselsIdx);
+      // The import card still leads the recipe sections + My Library rail.
+      expect(newPosIdx).toBeLessThan(matchesIdx);
+      expect(libraryHeadingIdx).toBeGreaterThan(matchesIdx);
     });
 
     it("web places the bottom My Library rail AFTER the More ideas section", () => {

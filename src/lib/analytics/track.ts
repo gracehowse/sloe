@@ -178,6 +178,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
   // stays in the `else` as the kill switch.
   "discover_import_hero_v1",
+  // ENG-1089 — render the Discover import card ABOVE the cluster carousels on web
+  // mobile-web (mobile native already shows it first; this is the web↔mobile
+  // parity fix). WEB-ONLY — mobile has no carousel branch, so there is no mobile
+  // mirror. Legacy below-carousels position is the kill switch.
+  "discover_import_above_carousels_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
