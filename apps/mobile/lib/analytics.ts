@@ -296,6 +296,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // silently keep the SVG layer. Re-enabled 2026-06-10 after the probe
   // landed (the first default-on predated it and red-boxed Grace's phone).
   "ring_skia_v1",
+  // ENG-1085 — recipe-detail "Fits your day" confident verdict banner.
+  // Default ON (Grace ratified the design-review direction 2026-06-13); the
+  // legacy 10%-wash pill stays in the component `else` as the kill switch.
+  "fit_verdict_banner_v1",
   "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",

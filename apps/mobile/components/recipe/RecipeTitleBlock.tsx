@@ -11,11 +11,14 @@
  *   tones for over-half / over-a-day. This is the recipe's fit-to-target
  *   verdict (the existing "% of your day" computation), restyled per the frame.
  */
+import { useEffect } from "react";
 import { Linking, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import { Check } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { FitsYourDayVerdict } from "@/lib/recipe/recipeDetailLayout";
 
 type Attribution = {
@@ -45,9 +48,36 @@ export function RecipeTitleBlock({
 }) {
   const colors = useThemeColors();
 
+  // ENG-1085 — the "Fits your day" differentiator is the screen's reason to
+  // exist; render it as a confident SOLID verdict banner (white on a *Solid
+  // tone, AA-safe), not the old 10%-wash pill. Flag-gated; the legacy pill
+  // stays in the `else` as the kill-switch path.
+  const bannerOn = isFeatureEnabled("fit_verdict_banner_v1");
+  const fits = verdict?.fits ?? false;
+  // A one-shot "felt yes" when the recipe fits your day — the moment that
+  // builds the import-then-check habit. Fires once per detail open / per
+  // re-fit; success notification haptic only.
+  useEffect(() => {
+    if (bannerOn && fits) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [bannerOn, fits]);
+  // Lead verb loud, the "% of your day" trailing quieter — split the shared
+  // verdict label on its " · " separator (degrades to all-head if absent).
+  const [bannerHead, ...bannerRest] = (verdict?.label ?? "").split(" · ");
+  const bannerTail = bannerRest.join(" · ");
+  const bannerBg = verdict
+    ? verdict.tone === "success"
+      ? Accent.successSolid
+      : verdict.tone === "warning"
+        ? Accent.warningSolid
+        : Accent.destructiveSolid
+    : null;
+
   // Chips census (2026-06-10): all three tones on *Solid tokens + a
   // token-derived 10–12% wash (the sage fg was an inlined literal that
-  // duplicated Accent.success — which itself fails AA as text).
+  // duplicated Accent.success — which itself fails AA as text). Legacy
+  // (flag-off / kill-switch) pill path only.
   const verdictTone = verdict
     ? verdict.tone === "success"
       ? { fg: Accent.successSolid, bg: Accent.success + "1A" }
@@ -105,30 +135,69 @@ export function RecipeTitleBlock({
         </Text>
       ) : null}
 
-      {verdict && verdictTone ? (
-        <View
-          testID="recipe-fits-your-day"
-          accessibilityRole="text"
-          accessibilityLabel={verdict.a11y}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            alignSelf: "flex-start",
-            gap: Spacing.xs,
-            height: 36,
-            paddingHorizontal: Spacing.md,
-            borderRadius: Radius.full,
-            backgroundColor: verdictTone.bg,
-          }}
-        >
-          {verdict.fits ? <Check size={15} color={verdictTone.fg} strokeWidth={3} /> : null}
-          <Text
-            style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "700", color: verdictTone.fg }}
-            numberOfLines={1}
+      {verdict && verdictTone && bannerBg ? (
+        bannerOn ? (
+          <View
+            testID="recipe-fits-your-day"
+            accessibilityRole="text"
+            accessibilityLabel={verdict.a11y}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "stretch",
+              gap: Spacing.sm,
+              paddingHorizontal: Spacing.md,
+              paddingVertical: Spacing.dense,
+              borderRadius: Radius.xl,
+              backgroundColor: bannerBg,
+            }}
           >
-            {verdict.label}
-          </Text>
-        </View>
+            {fits ? <Check size={18} color={Accent.primaryForeground} strokeWidth={3} /> : null}
+            <Text
+              style={{ fontFamily: FontFamily.sansSemibold, fontSize: 15, fontWeight: "700", color: Accent.primaryForeground }}
+              numberOfLines={1}
+            >
+              {bannerHead}
+            </Text>
+            {bannerTail ? (
+              <Text
+                style={{
+                  fontFamily: FontFamily.sansMedium,
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.82)",
+                  marginLeft: "auto",
+                }}
+                numberOfLines={1}
+              >
+                {bannerTail}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <View
+            testID="recipe-fits-your-day"
+            accessibilityRole="text"
+            accessibilityLabel={verdict.a11y}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "flex-start",
+              gap: Spacing.xs,
+              height: 36,
+              paddingHorizontal: Spacing.md,
+              borderRadius: Radius.full,
+              backgroundColor: verdictTone.bg,
+            }}
+          >
+            {verdict.fits ? <Check size={15} color={verdictTone.fg} strokeWidth={3} /> : null}
+            <Text
+              style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "700", color: verdictTone.fg }}
+              numberOfLines={1}
+            >
+              {verdict.label}
+            </Text>
+          </View>
+        )
       ) : null}
     </View>
   );

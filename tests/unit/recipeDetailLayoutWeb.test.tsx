@@ -205,14 +205,16 @@ describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)",
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("there is exactly one fits-your-day chip (no flag-OFF legacy duplicate)", () => {
-    // The intermediate design kept a flag-off legacy line as a second
-    // occurrence; the canonical frame renders one chip only, unflagged.
+  it("verdict is flag-gated (ENG-1085): confident banner (on) + legacy pill (off), exactly one renders", () => {
+    // ENG-1085 re-introduces the flag pattern per CLAUDE.md: gate the new
+    // banner, keep the old pill alive in the `else` as the kill switch. So the
+    // SOURCE now carries two `recipe-fits-your-day` blocks; only one renders.
     const matches = SRC.match(/data-testid="recipe-fits-your-day"/g) ?? [];
-    expect(matches.length).toBe(1);
-    // No `design_system_colours`-gated branch wrapping the chip any more.
+    expect(matches.length).toBe(2); // flag-on banner + flag-off legacy pill
+    expect(SRC).toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
+    expect(SRC).toMatch(/verdictBannerOn \? \(/);
+    // Still NOT wrapped in a design_system_colours branch.
     expect(SRC).not.toMatch(/if \(redesignColours\) \{[\s\S]{0,400}recipe-fits-your-day/);
-    expect(SRC).not.toMatch(/Flag-off legacy path — flat coloured glyph \+ text line/);
   });
 
   it("the chip palette is tinted INLINE from `verdict.tone`, not a shared helper or win-amber", () => {
@@ -229,12 +231,18 @@ describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)",
     expect(SRC).toMatch(/fg: "var\(--warning\)"/);
   });
 
-  it("the chip is a rounded-full pill with a real background fill from `verdictChip.bg`", () => {
+  it("verdict renders as a confident full-width solid banner (ENG-1085); legacy pill kept as the flag-off path", () => {
     const fitsIdx = SRC.indexOf('data-testid="recipe-fits-your-day"');
     expect(fitsIdx).toBeGreaterThan(0);
-    const block = SRC.slice(fitsIdx, fitsIdx + 400);
-    expect(block).toMatch(/rounded-full/);
-    expect(block).toMatch(/backgroundColor:\s*verdictChip\.bg/);
+    // Flag-on path (default-on): full-width, rounded-xl, solid scheme-constant
+    // tone fill, white text — not the old 10%-wash pill.
+    const banner = SRC.slice(fitsIdx, fitsIdx + 420);
+    expect(banner).toMatch(/w-full/);
+    expect(banner).toMatch(/rounded-xl/);
+    expect(banner).toMatch(/verdictBannerBg/);
+    expect(banner).toMatch(/text-white/);
+    // Legacy 10%-wash pill is still present as the flag-off / kill-switch path.
+    expect(SRC).toMatch(/rounded-full[\s\S]{0,160}verdictChip\.bg/);
   });
 
   it("a11y contract preserved — role='status' + aria-label from the verdict", () => {
