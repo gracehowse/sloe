@@ -318,7 +318,7 @@ export function TodayHeroRing({
                   ? isDark
                     ? Accent.successLight
                     : Accent.success
-                  : textTertiaryColor
+                  : secondaryColor
               }
               textSecondaryColor={secondaryColor}
               dividerColor={borderColor}

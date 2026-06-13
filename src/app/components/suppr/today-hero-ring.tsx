@@ -180,8 +180,8 @@ export function TodayHeroRing({
           <RingStatCell
             label="Bonus"
             value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
-            labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
-            valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-tertiary"}
+            labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
+            valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
             divider
           />
         </div>

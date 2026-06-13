@@ -11,12 +11,17 @@
  * - Day totals are the sum of each slot's **display** macros (same numbers
  *   as the meal rows). `dayPlanTotalsFromMeals` centralises placeholder skip +
  *   rounding; portion scale must already be baked into each meal (F-70).
- * - Tolerance bands are *symmetric* over/under the goal:
- *     |delta| / goal <= 10%  → neutral    (within goal band)
- *     10% < |delta| / goal <= 20% → amber (edge of band)
- *     |delta| / goal > 20%   → red       (outside band)
- *   Exceeding the goal is not always "bad" (e.g. bulk / gain users) —
- *   we classify by absolute deviation, not direction. No moralising.
+ * - Tolerance is *directional* — only OVER-goal escalates (ENG design
+ *   review 2026-06-13: an under/empty day must NOT read as a warning):
+ *     actual <= goal              → neutral  (under/at goal is the calm,
+ *                                             expected state; an empty day
+ *                                             at 0 reads neutral, not amber)
+ *     0 < over/goal <= 10%        → neutral  (within band)
+ *     10% < over/goal <= 20%      → amber    (edge of band)
+ *     over/goal > 20%             → red      (severity only; the day-total
+ *       renderers collapse this to amber per the 2026-04-25 "over-budget
+ *       reads amber, not red" carryover rule — red stays reserved for the
+ *       calorie ring's over-state).
  * - When any of the four goals (cal/P/C/F) is `<= 0` or non-finite, the
  *   whole line is omitted (`hasTargets: false`). Goal=0 never triggers
  *   a divide-by-zero; the cell gets `tone: "neutral"` with `goal: 0`
@@ -68,12 +73,15 @@ export interface DayTotalVsGoalLine {
   cells: DayTotalVsGoalCell[];
 }
 
-/** Symmetric tolerance bands. See module header for rationale. */
+/** Directional tolerance bands (over-goal only). See module header. */
 export const DAY_TOTAL_NEUTRAL_BAND = 0.1;
 export const DAY_TOTAL_AMBER_BAND = 0.2;
 
 /**
- * Classify actual-vs-goal by absolute deviation.
+ * Classify actual-vs-goal by how far OVER goal the day runs. Under or at
+ * goal is always `"neutral"` — a forward-looking plan never warns you for
+ * being under, and an untouched day (actual 0) must read calm, not amber
+ * (design review 2026-06-13).
  *
  * Returns `"neutral"` when `goal <= 0` or non-finite so the helper is
  * safe to call with missing goals without blowing up. Callers should
@@ -83,9 +91,10 @@ export const DAY_TOTAL_AMBER_BAND = 0.2;
 export function classifyDayDelta(actual: number, goal: number): DayTotalTone {
   if (!Number.isFinite(goal) || goal <= 0) return "neutral";
   if (!Number.isFinite(actual)) return "neutral";
-  const pct = Math.abs(actual - goal) / goal;
-  if (pct <= DAY_TOTAL_NEUTRAL_BAND) return "neutral";
-  if (pct <= DAY_TOTAL_AMBER_BAND) return "amber";
+  if (actual <= goal) return "neutral"; // under/at goal — calm, never a warning
+  const overPct = (actual - goal) / goal; // > 0: over goal
+  if (overPct <= DAY_TOTAL_NEUTRAL_BAND) return "neutral";
+  if (overPct <= DAY_TOTAL_AMBER_BAND) return "amber";
   return "red";
 }
 
