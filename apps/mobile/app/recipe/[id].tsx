@@ -1463,7 +1463,10 @@ export default function RecipeDetailScreen() {
                       Alert.alert("Couldn't delete", error.message);
                       return;
                     }
-                    void supabase.from("meal_plans").update({ recipe_id: null }).eq("recipe_id", recipe.id);
+                    // Plan references detach automatically: meal_plan_meals.recipe_id
+                    // is FK ON DELETE SET NULL (migration 20260511100000), so deleting
+                    // the recipe above nulls them at the DB level. No client cleanup
+                    // needed (web relies on the same FK — ENG-850).
                     void supabase.from("saves").delete().eq("recipe_id", recipe.id);
                     goBack();
                   } catch (e) {

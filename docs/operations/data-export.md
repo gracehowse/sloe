@@ -36,7 +36,6 @@ A single JSON blob with the following keys:
 | `mealLog`             | `nutrition_entries`      | last 365 days |
 | `weightHistory`       | `health_snapshots`       | last 365 days |
 | `customFoods`         | `user_custom_foods`      | all       |
-| `plans`               | `meal_plans`             | all       |
 | `planDays`            | `meal_plan_days`         | all       |
 | `planMeals`           | `meal_plan_meals`        | for own plan days |
 | `shopping`            | `shopping_items`         | active only |
@@ -79,12 +78,18 @@ JSON. UTF-8. Pretty-printed with 2-space indent. Filename:
 
 ## Schema version
 
-Currently `1`. Increment when the export shape breaks consumer
+Currently `2`. Increment when the export shape breaks consumer
 assumptions:
 
 - key rename
 - key removal
 - semantics change
+
+**v2 (2026-06-13, ENG-850):** removed the `plans` key. Its source
+table `meal_plans` was dropped 2026-04-21 (normalised into
+`meal_plan_days` + `meal_plan_meals`), so `plans` had been silently
+exporting `[]` ever since. Plan data is fully represented by `planDays`
++ `planMeals`.
 
 Additive new keys are NOT a breaking change — existing consumers
 ignore unknown fields.
