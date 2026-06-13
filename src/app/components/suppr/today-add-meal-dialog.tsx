@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { SupprButton } from "./suppr-button";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { clampPortionMultiplier } from "../../../lib/nutrition/portionMultiplier";
 import type { RecipeCard } from "../../../types/recipe";
@@ -124,8 +125,9 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
   // carry separation (no border-as-depth) under the flag. Mirror them exactly;
   // the flag-OFF path keeps today's white/hairline dialog alive (CLAUDE.md
   // feature-flag non-negotiable). Inputs already use semantic borders; the
-  // Add CTA now uses the Sloe aubergine-outline treatment (2026-06-08) via a
-  // per-instance className override on the shared Button.
+  // Add CTA is the dialog's ONE primary action → solid-plum `SupprButton`
+  // primary (button system 2026-06-12), mirroring mobile quick-add
+  // "Add to Today".
   const elevated = isFeatureEnabled("design_system_elevation");
   const surfaceCls = elevated
     ? "bg-background border-transparent shadow-[var(--elev-card-soft)]"
@@ -342,19 +344,14 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {/* Sloe treatment system (2026-06-08): primary inline CTA →
-              aubergine outline (transparent fill + 1.5px primary-solid
-              border + primary-solid label). Overrides the shared Button
-              default fill on this instance only. Mirror of mobile
-              quick-add "Add to Today". */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onSubmit}
-            className="border-[1.5px] border-primary-solid bg-transparent text-primary-solid hover:bg-primary/5 hover:text-primary-solid"
-          >
+          {/* Button system (2026-06-12,
+              docs/decisions/2026-06-12-button-system-solid-primary.md): the
+              dialog's ONE primary action is the SOLID-plum SupprButton primary
+              (white label, pill, no shadow). Mirror of mobile quick-add
+              "Add to Today" (primary). Supersedes the old aubergine-OUTLINE. */}
+          <SupprButton variant="primary" type="button" onClick={onSubmit}>
             Add meal
-          </Button>
+          </SupprButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
