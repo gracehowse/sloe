@@ -24,6 +24,7 @@ import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
@@ -841,8 +842,6 @@ export default function CookModeScreen() {
     errorText: { color: colors.text, fontSize: 16 },
     emptyHeading: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
     emptySub: { color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
-    backBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: accent.primary, marginTop: Spacing.lg },
-    backBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
 
     header: {
       flexDirection: "row",
@@ -858,24 +857,19 @@ export default function CookModeScreen() {
     headerExit: { color: colors.text, fontSize: 16, fontWeight: "600" },
     headerCounter: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
 
-    /** Recime parity (2026-04-30) — "Watch original" pill in the
+    /** Recime parity (2026-04-30) — "Watch original" ghost pill in the
      *  cook-screen header. Only rendered when `watchOriginalUrl` is
-     *  set. Uses the primary-tinted ghost-pill pattern (matching the
-     *  active scale pill / paywall accent strip) so it reads as a
-     *  link, not a primary CTA. */
+     *  set. Layout-only override on `SupprButton variant="ghost"`: a
+     *  compact header pill (tighter padding + gap than the primitive's
+     *  full-width base) reading as a link, not a primary CTA. The ghost
+     *  fill (transparent, no border) comes from the primitive. */
     watchOriginalPill: {
-      flexDirection: "row",
-      alignItems: "center",
       gap: 4,
       paddingHorizontal: Spacing.sm,
       paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: accent.primary,
-      backgroundColor: accent.primary + "14",
     },
     watchOriginalText: {
-      color: accent.primary,
+      color: accent.primarySolid,
       fontSize: 12,
       fontWeight: "700",
     },
@@ -1006,23 +1000,14 @@ export default function CookModeScreen() {
       color: colors.textTertiary,
       textAlign: "right",
     },
+    // Layout-only override on `SupprButton variant="ghost"` — the icon +
+    // stateful label share a 6px gap. Fill/radius/padding/press come from
+    // the primitive; disabled (saved) + loading (saving) are props.
     saveBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
       gap: 6,
-      paddingVertical: 12,
-      borderRadius: Radius.md,
-      backgroundColor: accent.primary,
-    },
-    saveBtnDisabled: {
-      opacity: 0.5,
-    },
-    saveBtnDone: {
-      backgroundColor: Accent.success,
     },
     saveBtnText: {
-      color: colors.primaryForeground,
+      color: accent.primarySolid,
       fontSize: 14,
       fontWeight: "700",
     },
@@ -1043,34 +1028,25 @@ export default function CookModeScreen() {
     },
     timerStopText: { color: Accent.destructive, fontWeight: "600", fontSize: 15 },
 
-    /** Parsed-duration pill row. Tapping renders inside `timerSection`
-     *  above the manual stopwatch button so the suggestion is the more
-     *  prominent option when present. */
+    /** Parsed-duration pill — layout-only override on `SupprButton
+     *  variant="ghost"`. Renders inside `timerSection` above the manual
+     *  stopwatch button so the suggestion is the more prominent option
+     *  when present. Icon + label share an 8px gap; the ghost fill
+     *  (transparent, no border) comes from the primitive. */
     suggestedTimerPill: {
-      flexDirection: "row",
-      alignItems: "center",
       gap: 8,
-      paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.sm,
-      borderRadius: 999,
-      backgroundColor: accent.primary + "15",
-      borderWidth: 1,
-      borderColor: accent.primary + "55",
     },
     suggestedTimerText: {
-      color: accent.primary,
+      color: accent.primarySolid,
       fontWeight: "700",
       fontSize: 14,
     },
+    // Layout-only override on `SupprButton variant="ghost"` for the
+    // manual-stopwatch link — tighter vertical padding than the
+    // primitive base; transparent fill comes from the primitive.
     timerSecondaryBtn: {
-      paddingHorizontal: Spacing.md,
       paddingVertical: 8,
-      borderRadius: Radius.md,
-    },
-    timerSecondaryText: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      fontWeight: "600",
     },
 
     /** Calmer completion card (audit P1, 2026-04-30). Replaces the
@@ -1107,23 +1083,16 @@ export default function CookModeScreen() {
       gap: Spacing.sm,
       marginVertical: Spacing.sm,
     },
+    // Layout-only override on `SupprButton variant="ghost"` — icon +
+    // stateful label share a 6px gap. Fill (transparent, no border) +
+    // radius + padding + press come from the primitive; added/disabled
+    // is a prop. The success-coloured label + check carry the "added"
+    // affordance inside the ghost (no green fill).
     addRegularsBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
       gap: 6,
-      paddingVertical: 12,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.background,
-    },
-    addRegularsBtnDone: {
-      borderColor: Accent.success + "55",
-      backgroundColor: Accent.success + "15",
     },
     addRegularsText: {
-      color: colors.text,
+      color: accent.primarySolid,
       fontSize: 14,
       fontWeight: "600",
     },
@@ -1149,23 +1118,13 @@ export default function CookModeScreen() {
     },
     navBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },
     navBtnDisabled: { opacity: 0.4 },
-    nextBtn: {
-      flex: 1,
-      paddingVertical: 16,
-      borderRadius: Radius.md,
-      backgroundColor: accent.primary,
-      alignItems: "center",
-    },
-    nextBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
 
+    // Layout-only override on `SupprButton variant="primary"` (the done
+    // state's ONE solid CTA) — just the top margin off the card. Solid
+    // aubergine fill / radius / padding / press come from the primitive.
     doneBtn: {
       marginTop: Spacing.lg,
-      backgroundColor: accent.primary,
-      paddingHorizontal: Spacing.xxxl,
-      paddingVertical: 14,
-      borderRadius: Radius.md,
     },
-    doneBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
 
     // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
     // sits in the right slot of the header where the layout
@@ -1233,14 +1192,13 @@ export default function CookModeScreen() {
               "This recipe doesn't have step-by-step instructions. You can still log it from the recipe page."
             }
           </Text>
-          <Pressable
-            style={[styles.backBtn, { alignSelf: "stretch", alignItems: "center", paddingVertical: 14, marginTop: Spacing.xl }]}
+          <SupprButton
+            variant="primary"
+            style={{ alignSelf: "stretch", marginTop: Spacing.xl }}
             onPress={() => router.back()}
-            accessibilityRole="button"
             accessibilityLabel="Back to recipe"
-          >
-            <Text style={styles.backBtnText}>Back to recipe</Text>
-          </Pressable>
+            label="Back to recipe"
+          />
         </View>
       </View>
     );
@@ -1268,17 +1226,17 @@ export default function CookModeScreen() {
             flips (journey-architect P1). */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {watchOriginalUrl ? (
-            <Pressable
+            <SupprButton
+              variant="ghost"
               onPress={onWatchOriginalPress}
-              accessibilityRole="link"
               accessibilityLabel="Watch original video"
               testID="cook-watch-original"
-              hitSlop={6}
+              haptic="selection"
               style={styles.watchOriginalPill}
             >
-              <Play size={14} color={accent.primary} />
+              <Play size={14} color={accent.primarySolid} />
               <Text style={styles.watchOriginalText}>Watch original</Text>
-            </Pressable>
+            </SupprButton>
           ) : null}
           {COOK_HANDSFREE_FEATURE_ENABLED ? (
             <Pressable
@@ -1440,33 +1398,32 @@ export default function CookModeScreen() {
               <>
                 {showSuggestedPill && suggestedTimer && (
                   <Animated.View style={{ transform: [{ scale: pulseRef }] }}>
-                    <Pressable
-                      accessibilityRole="button"
+                    <SupprButton
+                      variant="ghost"
                       accessibilityLabel={`Set ${formatTimer(suggestedTimer.totalSeconds)} timer`}
                       onPress={() => startCountdown(suggestedTimer)}
+                      haptic="selection"
                       style={styles.suggestedTimerPill}
                     >
                       <TimerIcon
                         size={16}
-                        color={accent.primary}
+                        color={accent.primarySolid}
                         strokeWidth={2.25}
                       />
                       <Text style={styles.suggestedTimerText}>
                         Set {formatTimer(suggestedTimer.totalSeconds)} timer
                       </Text>
-                    </Pressable>
+                    </SupprButton>
                   </Animated.View>
                 )}
-                <Pressable
+                <SupprButton
+                  variant="ghost"
                   style={styles.timerSecondaryBtn}
                   onPress={startTimer}
-                  accessibilityRole="button"
+                  haptic="selection"
                   accessibilityLabel="Start stopwatch"
-                >
-                  <Text style={styles.timerSecondaryText}>
-                    {showSuggestedPill ? "Or start a stopwatch" : "Start stopwatch"}
-                  </Text>
-                </Pressable>
+                  label={showSuggestedPill ? "Or start a stopwatch" : "Start stopwatch"}
+                />
               </>
             )}
           </View>
@@ -1480,11 +1437,13 @@ export default function CookModeScreen() {
             >
               <Text style={styles.navBtnText}>Previous</Text>
             </Pressable>
-            <Pressable style={styles.nextBtn} onPress={goNext}>
-              <Text style={styles.nextBtnText}>
-                {current === totalSteps - 1 ? "Done!" : "Next Step"}
-              </Text>
-            </Pressable>
+            <SupprButton
+              variant="primary"
+              style={{ flex: 1 }}
+              onPress={goNext}
+              accessibilityLabel={current === totalSteps - 1 ? "Done!" : "Next Step"}
+              label={current === totalSteps - 1 ? "Done!" : "Next Step"}
+            />
           </View>
         </View>
       ) : (
@@ -1576,19 +1535,17 @@ export default function CookModeScreen() {
                 duration, scale, rating, and note. Idempotent. Locally
                 cached when the network write fails so the user's note
                 is never lost. */}
-            <Pressable
-              accessibilityRole="button"
+            <SupprButton
+              variant="ghost"
               accessibilityLabel={historySaved ? "Saved this cook" : "Save this cook"}
               onPress={() => void handleSaveHistory()}
-              disabled={historySaved || savingHistory}
-              style={[
-                styles.saveBtn,
-                (historySaved || savingHistory) && styles.saveBtnDisabled,
-                historySaved && styles.saveBtnDone,
-              ]}
+              disabled={historySaved}
+              loading={savingHistory}
+              haptic="success"
+              style={styles.saveBtn}
             >
               {historySaved && (
-                <CheckCircle2 size={16} color={colors.primaryForeground} strokeWidth={2.25} />
+                <CheckCircle2 size={16} color={Accent.success} strokeWidth={2.25} />
               )}
               <Text style={styles.saveBtnText}>
                 {/* DC12 (2026-05-14, premium-bar audit) — specific
@@ -1601,23 +1558,21 @@ export default function CookModeScreen() {
                     ? "Saving…"
                     : "Save this cook"}
               </Text>
-            </Pressable>
+            </SupprButton>
 
             {/* Add to my regulars — writes a saved meal so the user can
                 one-tap re-log this recipe from Quick Add tomorrow. */}
-            <Pressable
-              accessibilityRole="button"
+            <SupprButton
+              variant="ghost"
               accessibilityLabel={
                 addedToRegulars
                   ? "Already added to your regulars"
                   : "Add to my regulars"
               }
-              onPress={handleAddToRegulars}
+              onPress={() => void handleAddToRegulars()}
               disabled={addedToRegulars}
-              style={[
-                styles.addRegularsBtn,
-                addedToRegulars && styles.addRegularsBtnDone,
-              ]}
+              haptic="success"
+              style={styles.addRegularsBtn}
             >
               {addedToRegulars && (
                 <CheckCircle2
@@ -1634,7 +1589,7 @@ export default function CookModeScreen() {
               >
                 {addedToRegulars ? "Added to regulars" : "Add to my regulars"}
               </Text>
-            </Pressable>
+            </SupprButton>
           </View>
 
           {/* P2-24 (2026-04-25): Log this meal — closes the loop from cook
@@ -1642,7 +1597,8 @@ export default function CookModeScreen() {
               + an `autoLog=1` query param; the recipe page already owns
               the journal-write logic with the coercion guard (P0-3) so we
               don't fork the write path. */}
-          <Pressable
+          <SupprButton
+            variant="primary"
             style={styles.doneBtn}
             onPress={() => {
               if (recipeId) {
@@ -1660,19 +1616,19 @@ export default function CookModeScreen() {
                 router.back();
               }
             }}
-          >
-            <Text style={styles.doneBtnText}>Log this meal</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.doneBtn, { backgroundColor: "transparent", marginTop: Spacing.sm }]}
+            label="Log this meal"
+          />
+          <SupprButton
+            variant="ghost"
+            style={{ marginTop: Spacing.sm }}
             onPress={() => router.back()}
-          >
-            <Text style={[styles.doneBtnText, { color: colors.textSecondary }]}>
-              {savedRating != null || addedToRegulars || historySaved
+            haptic="selection"
+            label={
+              savedRating != null || addedToRegulars || historySaved
                 ? "Done"
-                : "Skip — back to recipe"}
-            </Text>
-          </Pressable>
+                : "Skip — back to recipe"
+            }
+          />
         </ScrollView>
       )}
     </View>
