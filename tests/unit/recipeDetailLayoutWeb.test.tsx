@@ -247,18 +247,17 @@ describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)",
  * press payoff (web analog of the mobile confirm haptic). Both flag-gated.
  */
 describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () => {
-  it("resting detail cards are UNCONDITIONAL white slabs lifting off cream (Figma 332:2)", () => {
-    // Superseded 2026-06-07 (Figma 332:2): the page is now cream, so resting
-    // cards are unconditional WHITE slabs with the soft elevation — the old
-    // `design_system_elevation`-gated `cardElevationClass` is gone, in lockstep
-    // with mobile's unconditional `useCardElevation` soft lift. The slab style
-    // (white bg + `--elev-card-soft`) is shared via `whiteSlabStyle`.
+  it("resting detail cards are FLAT white slabs on the warm page (flat-card surfaces 2026-06-12)", () => {
+    // Flat-card surfaces (docs/decisions/2026-06-12-flat-card-surfaces.md):
+    // the soft `--elev-card-soft` lift is RETIRED. Resting cards are true-white
+    // `--card` slabs on the `--background-secondary` page — separation is the
+    // white-on-warm contrast alone, zero shadow (mirrors mobile flat). The
+    // shared `whiteSlabStyle` carries it.
     expect(SRC).not.toMatch(/const cardElevationClass = redesignElevation/);
     expect(SRC).toMatch(/const whiteSlabStyle: React\.CSSProperties/);
-    expect(SRC).toMatch(/boxShadow: "var\(--elev-card-soft\)"/);
-    // Applied to the resting section cards (steps / micronutrients) via the
-    // shared white-slab style, not the old `bg-card ... cardElevationClass`.
-    expect(SRC).not.toMatch(/bg-card rounded-2xl overflow-hidden \$\{cardElevationClass\}/);
+    // FLAT: no soft-lift shadow; true-white card fill for separation.
+    expect(SRC).not.toMatch(/boxShadow: "var\(--elev-card-soft\)"/);
+    expect(SRC).toMatch(/whiteSlabStyle[\s\S]{0,120}backgroundColor: "var\(--card\)"/);
     expect(SRC).toMatch(/rounded-2xl p-5 space-y-4" style=\{whiteSlabStyle\}/);
   });
 

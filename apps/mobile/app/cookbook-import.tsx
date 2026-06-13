@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Elevation, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -448,11 +448,15 @@ export default function CookbookImportScreen() {
           color: accent.primaryForeground,
           fontSize: 15,
         },
-        // DS §4: standard cards → radius-lg (8). Elevation on outer wrapper.
+        // DS §4: standard cards → radius-lg (8). Flat-card surfaces
+        // (2026-06-12, Withings grammar — decision:
+        // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft outer lift
+        // (`Elevation.cardSoft`) is retired; the inner card fill on the cream
+        // ground is the separation. Outer/inner split kept as a flat radius
+        // holder so the call site needs no churn.
         cardOuter: {
           borderRadius: Radius.lg,
           marginBottom: Spacing.md,
-          ...Elevation.cardSoft,
         },
         card: {
           backgroundColor: colors.card,

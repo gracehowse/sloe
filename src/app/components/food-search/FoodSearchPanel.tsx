@@ -931,15 +931,14 @@ export function FoodSearchPanel({
   const searchResultsRedesign = isFeatureEnabled("redesign_search_results");
   // ENG P5 parity (gap #5/#9). Two-flag relationship on this surface:
   //   `redesign_search_results` = STRUCTURE (segmented control + grouped cards)
-  //   `design_system_elevation` = DEPTH (the soft `--elev-card-soft` shadow)
-  // Mobile routes the identical surface through `useCardElevation()`, which
-  // reads `design_system_elevation` and falls back to a flat hairline border
-  // when off. Web previously painted the soft shadow UNCONDITIONALLY inside the
-  // structural block — so if elevation is held off while the structural flag
-  // ramps, web showed soft shadows mobile suppresses. Gate the depth here too,
-  // mirroring the other web consumers (Settings.tsx:652, RecipeDetail.tsx:322):
-  //   flag ON  → `--elev-card-soft` shadow, border dropped (no double edge).
-  //   flag OFF → flat hairline (`border border-border`), no shadow.
+  //   `design_system_elevation` = DEPTH — historically the soft
+  //     `--elev-card-soft` shadow.
+  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft lift is RETIRED.
+  // The `elevated` ON path now means BORDERLESS-FLAT (drop the hairline, no
+  // shadow) — the quiet card fill on the cream ground is the separation,
+  // mirroring the mobile `useCardElevation` flat result. OFF keeps the legacy
+  // flat hairline.
   const elevated = isFeatureEnabled("design_system_elevation");
   const [results, setResults] = useState<SearchResult[]>([]);
   // ENG-815 — one unified segmented control (replaces the prototype's two
@@ -2318,11 +2317,6 @@ export function FoodSearchPanel({
                       ? "bg-primary-soft text-primary-solid font-semibold"
                       : "bg-card text-muted-foreground font-medium hover:bg-muted/60"
                   }`}
-                  style={
-                    !isActive && elevated
-                      ? { boxShadow: "var(--elev-card-soft)" }
-                      : undefined
-                  }
                 >
                   {cat}
                 </button>
@@ -2486,11 +2480,15 @@ export function FoodSearchPanel({
                     <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                       {section.label}
                     </p>
+                    {/* Flat-card surfaces (2026-06-12): the grouped result
+                        card is FLAT now — the `elevated` ON path stays
+                        borderless (the Withings quiet-fill grammar) but the
+                        retired `--elev-card-soft` lift is dropped; the card
+                        fill on the cream ground is the separation. */}
                     <div
                       className={`mb-3.5 overflow-hidden rounded-2xl bg-card ${
                         elevated ? "border-0" : "border border-border"
                       }`}
-                      style={elevated ? { boxShadow: "var(--elev-card-soft)" } : undefined}
                     >
                       {section.rows.map((item) => renderRedesignedRow(item))}
                     </div>

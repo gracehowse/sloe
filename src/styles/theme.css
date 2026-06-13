@@ -322,6 +322,9 @@
 
   /** Ring empty track — Sloe frost-mist (readable on white hero; parity
    *  mobile `ringTrack`). */
+  /* Quiet fill — nested affordances inside flat cards (Withings grammar,
+     docs/decisions/2026-06-12-flat-card-surfaces.md). NOT a card fill. */
+  --fill-quiet: #F2EFE9;
   --ring-bg: #EDEAF1;
   /** Alias of `--ring-bg`. The progress arc is `--macro-calories` (plum) in
    *  EVERY state — under AND over budget (web ring parity 2026-06-10; the old
@@ -551,6 +554,8 @@
 
   /** Ring empty track — Sloe dark plum-mist. */
   --ring-bg: #372F44;
+  /* Quiet fill (dark) — one step above the dark card fill. */
+  --fill-quiet: #2C2A30;
   --ring-track: #372F44;
 
   /** Sidebar — Sloe dark. */
@@ -702,6 +707,7 @@
   --color-chart-5: var(--chart-5);
 
   /* Ring */
+  --color-fill-quiet: var(--fill-quiet);
   --color-ring-bg: var(--ring-bg);
   --color-ring-track: var(--ring-track);
 
@@ -887,9 +893,13 @@
    * Resting Sloe card shell — #F6F5F2 on white, soft lift in light,
    * tonal lift + hairline in dark (mirrors mobile useCardElevation).
    */
+  /* FLAT-CARD SURFACES (2026-06-12, Withings grammar — see
+     docs/decisions/2026-06-12-flat-card-surfaces.md): soft lift retired;
+     flat white on the cream ground, zero shadow/border. Mirrors mobile
+     useCardElevation. */
   .card-slab {
     background-color: var(--card);
-    box-shadow: var(--elev-card-soft);
+    box-shadow: none;
     border-color: transparent;
     border-width: 0;
   }
@@ -910,25 +920,26 @@
   }
 
   .dark .card-slab {
+    /* Dark flat: tonal fill IS the separation — hairline dropped (2026-06-12). */
     background-color: var(--card-elevated);
     box-shadow: none;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--border);
+    border-width: 0;
+    border-color: transparent;
   }
 
   .card-elevated {
-    box-shadow: var(--elev-card-soft);
+    /* Flat-card surfaces (2026-06-12): lift retired here too. */
+    box-shadow: none;
     border-color: transparent;
     border-width: 0;
   }
 
   .dark .card-elevated {
+    /* Dark flat (2026-06-12): tonal fill only, hairline dropped. */
     background-color: var(--card-elevated);
     box-shadow: none;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--border);
+    border-width: 0;
+    border-color: transparent;
   }
 
   .card-elevated-hero {

@@ -36,10 +36,14 @@ describe("ENG-822 — metric-detail soft elevation (both platforms)", () => {
     expect(MOBILE_METRIC).toContain("cardElevation.shadowStyle");
   });
 
-  it("web metric-detail gates the soft shadow behind design_system_elevation", () => {
+  it("web metric-detail is FLAT on the elevation-ON path (flat-card surfaces, 2026-06-12)", () => {
     expect(WEB_METRIC).toContain('isFeatureEnabled("design_system_elevation")');
-    // Flag ON → soft shadow + no border; flag OFF → today's flat hairline.
-    expect(WEB_METRIC).toContain("shadow-[var(--elev-card-soft)]");
+    // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+    // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft lift is
+    // retired. Flag ON → borderless + FLAT (no soft shadow); flag OFF → legacy
+    // flat hairline. The raw `--elev-card-soft` token no longer appears here.
+    expect(WEB_METRIC).not.toContain("shadow-[var(--elev-card-soft)]");
+    expect(WEB_METRIC).toContain("border border-transparent");
     expect(WEB_METRIC).toContain("border border-border");
   });
 });

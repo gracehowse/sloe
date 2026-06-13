@@ -69,6 +69,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     backgroundSecondary: "#fafafa",
     card: "#fff",
     cardBorder: "#eee",
+    fillQuiet: "#F2EFE9",
     border: "#eee",
     inputBg: "#f4f4f4",
     sourceUsda: "#5E7C5A",

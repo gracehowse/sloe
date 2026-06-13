@@ -1022,7 +1022,14 @@ function BrowseAndFooter({
 
       {/* Footer: "Or add manually" — escape hatch for users who want
           to type macros directly. Host wires this to the manual
-          quick-add form. */}
+          quick-add form. Flat-card grammar (2026-06-12): a SECONDARY
+          add affordance → quiet fill (`colors.fillQuiet` #F2EFE9,
+          radius 12, NO border), not a top-hairline divider. Muted
+          label stays `textSecondary` (#6A6072 on #F2EFE9 = 5.19:1,
+          clears AA). The trailing chevron stays `textTertiary` — a
+          decorative directional glyph whose role is carried by the
+          labelled Pressable, matching the CopyYesterday / Library
+          row chevrons. */}
       {onAddManually ? (
         <Pressable
           accessibilityRole="button"
@@ -1030,7 +1037,7 @@ function BrowseAndFooter({
           onPress={onAddManually}
           style={({ pressed }) => [
             styles.manualFooter,
-            { borderTopColor: colors.border, opacity: pressed ? 0.6 : 1 },
+            { backgroundColor: colors.fillQuiet, opacity: pressed ? 0.6 : 1 },
           ]}
         >
           <PencilLine size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
@@ -1699,13 +1706,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  // Flat-card grammar (2026-06-12): quiet-fill add affordance — inset
+  // chip-row (margin + radius 12), no border, no top divider.
   manualFooter: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.xl,
   },
   skeletonRow: {
     flexDirection: "row",

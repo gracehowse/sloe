@@ -338,14 +338,21 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
   // Figma 332:2 — the in-app detail page is now warm cream
   // (`background-secondary`), so resting detail cards become clean WHITE
-  // slabs that lift off the cream with the soft `--elev-card-soft` shadow
-  // (was cream `bg-card` on a white page → blended; inverting page↔card is
-  // what makes the slabs read as distinct editorial blocks, matching the
-  // mobile detail + the public-share frame). `--background` is white in
-  // light, the elevated tier in dark.
+  // slabs (inverting page↔card is what makes the slabs read as distinct
+  // editorial blocks, matching the mobile detail + the public-share frame).
+  // `--background` is white in light, the elevated tier in dark.
+  //
+  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft `--elev-card-soft`
+  // lift is RETIRED here (this slab applied the token inline, bypassing the
+  // `.card-slab` primitive the CORE flattened). Separation is now a true-white
+  // `--card` slab against the warm `--background-secondary` page — zero shadow —
+  // mirroring mobile flat. (Was `--background` cream, which on the
+  // `--background-secondary` page reads as ~no separation once the shadow is
+  // gone; `--card` white restores the white-on-cream contrast the decision
+  // specifies.)
   const whiteSlabStyle: React.CSSProperties = {
-    backgroundColor: "var(--background)",
-    boxShadow: "var(--elev-card-soft)",
+    backgroundColor: "var(--card)",
   };
 
   // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no

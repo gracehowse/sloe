@@ -1362,7 +1362,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       ) : null}
 
       {mode === "create" && recipeId && !loadedPublished ? (
-        <div className="backdrop-blur-xl bg-card/70 border border-border/60 rounded-2xl p-6 mb-6 shadow-lg">
+        <div className="backdrop-blur-xl bg-card/70 border border-border/60 rounded-2xl p-6 mb-6">
           <h3 className="text-foreground mb-1">Ready to share?</h3>
           <p className="text-sm text-muted-foreground mb-4">
             When you go public, other people can discover and save this recipe. Only publish if it's your original work.
@@ -1493,7 +1493,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}
-      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
+          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
+          separation. */}
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <label className="block mb-3 text-sm font-medium text-foreground">Recipe photo</label>
         <p className="text-xs text-muted-foreground mb-3">
           {mode === "import"
@@ -1554,7 +1557,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Basic Info */}
-      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
+          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
+          separation. */}
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
           <div>
@@ -1649,7 +1655,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Ingredients */}
-      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
+          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
+          separation. */}
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
           <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
@@ -2248,7 +2257,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       </div>
 
       {/* Instructions */}
-      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6 shadow-lg">
+      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
+          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
+          separation. */}
+      <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-4">Cooking instructions</h3>
         <textarea
           value={instructions}

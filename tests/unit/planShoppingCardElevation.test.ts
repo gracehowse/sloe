@@ -107,10 +107,17 @@ describe("Plan — mobile page-ground cards lift soft (one-treatment)", () => {
   });
 });
 
-describe("Shopping — mobile page-ground cards already lift soft", () => {
-  it("progress + section cards carry Elevation.cardSoft via cardOuter", () => {
-    expect(MOBILE_SHOPPING).toContain("...Elevation.cardSoft");
-    // cardOuter is applied to BOTH the progress card and each section card.
+describe("Shopping — mobile page-ground cards are FLAT (flat-card surfaces 2026-06-12)", () => {
+  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md) supersedes the soft-lift
+  // half of the 2026-06-09 one-treatment decision. The mobile Shopping progress
+  // + section cards no longer carry `Elevation.cardSoft` on `cardOuter`; the
+  // card fill on the cream ground is the separation. The outer/inner split is
+  // kept as a flat radius holder so the section call sites need no churn.
+  it("cardOuter no longer carries Elevation.cardSoft (flat)", () => {
+    expect(MOBILE_SHOPPING).not.toContain("...Elevation.cardSoft");
+    // cardOuter is still applied to BOTH the progress card and each section
+    // card — flat now, but the structural wrapper persists.
     const usages = (MOBILE_SHOPPING.match(/styles\.cardOuter/g) ?? []).length;
     expect(usages).toBeGreaterThanOrEqual(2);
   });

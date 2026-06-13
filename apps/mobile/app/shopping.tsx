@@ -46,7 +46,7 @@ import {
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
-import { Accent, Elevation, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -485,12 +485,13 @@ export default function ShoppingListScreen() {
     },
 
     // Sloe DS — cream slab; soft xl radius to match the Plan-tab cards.
-    // Gap 10: Elevation.cardSoft replaces the flat hairline-only treatment so
-    // these cards sit consistently with Today/Plan elevated cards. Shadow
-    // must be on an outer wrapper (RN overflow:hidden clips iOS shadows) —
-    // see the JSX for the split outer/inner pattern.
+    // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+    // docs/decisions/2026-06-12-flat-card-surfaces.md): these cards sit FLAT
+    // now to match Today/Plan (whose primitives flattened in the CORE) — the
+    // soft outer lift (`Elevation.cardSoft`) is retired; the card fill on the
+    // cream ground is the separation. The outer/inner split is kept (harmless
+    // radius holder) so the section-card call sites need no churn.
     cardOuter: {
-      ...Elevation.cardSoft,
       borderRadius: Radius.xl,
     },
     card: {
@@ -782,7 +783,7 @@ export default function ShoppingListScreen() {
         ) : (
           <>
             <ReAnimated.View style={progressEntrance.style}>
-            {/* Gap 10: cardOuter carries Elevation.cardSoft; inner view clips overflow.
+            {/* Flat-card (2026-06-12): cardOuter is now a flat radius holder; inner view clips overflow.
                 Gap 2: use checkedGroupCount/totalGroupCount (both group-based) so the
                 progress card denominator matches the pill count 80px above it.
                 Gap 11: heroValue serif for the progress count (DS §2.3.3). */}
@@ -822,7 +823,7 @@ export default function ShoppingListScreen() {
                 isShoppingGroupFullyChecked(g),
               ).length;
               return (
-                // Gap 10: cardOuter carries Elevation.cardSoft so section cards match Today/Plan.
+                // Flat-card (2026-06-12): cardOuter is a flat radius holder; section cards match Today/Plan (flat).
                 <View key={section.name} style={styles.cardOuter}>
                 <View style={styles.card}>
                   <View

@@ -508,16 +508,22 @@ export function TodayMealsSection({
                   </div>
                   </SwipeDeleteRow>
                 ))}
-                <button
-                  type="button"
-                  data-testid={`today-add-food-${sectionName}`}
-                  onClick={() => onOpenAddForSlot(sectionName)}
-                  className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left text-sm font-semibold text-[var(--primary-solid)] hover:opacity-80"
-                  aria-label={`Add food to ${sectionName}`}
-                >
-                  <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
-                  Add food
-                </button>
+                {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
+                    affordance — same element, same treatment as the legacy-branch
+                    Add-food pill. Contained `bg-fill-quiet` pill, card-edge inset,
+                    no border. */}
+                <div className="px-3 pb-3 pt-2">
+                  <button
+                    type="button"
+                    data-testid={`today-add-food-${sectionName}`}
+                    onClick={() => onOpenAddForSlot(sectionName)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-fill-quiet px-3 py-2 text-sm font-semibold text-[var(--primary-solid)] transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={`Add food to ${sectionName}`}
+                  >
+                    <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
+                    Add food
+                  </button>
+                </div>
               </div>
               );
             }}
@@ -537,7 +543,11 @@ export function TodayMealsSection({
           ) : null}
         </>
       ) : (
-      <div className="flex flex-col gap-3">
+      // F-160 (TF57): with the lift retired (flat-card surfaces 2026-06-12) the
+      // slot cards no longer need air to separate them — the inter-card gap
+      // tightens to the pre-inversion rhythm (`gap-2` 8px, was `gap-3` 12px) so
+      // the four slots read as one tight grouped block (mobile `Spacing.sm` parity).
+      <div className="flex flex-col gap-2">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           const hasMeals = sectionMeals.length > 0;
           const isOpen = !collapsedSlots.has(sectionName);
@@ -992,17 +1002,25 @@ export function TodayMealsSection({
                     </button>
                   )}
 
-                  {/* TD4 — in-card Add food (populated, open slots only). */}
-                  <button
-                    type="button"
-                    data-testid={`today-add-food-${sectionName}`}
-                    onClick={() => onOpenAddForSlot(sectionName)}
-                    className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left text-sm font-semibold text-[var(--primary-solid)] hover:opacity-80"
-                    aria-label={`Add food to ${sectionName}`}
-                  >
-                    <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
-                    Add food
-                  </button>
+                  {/* In-card Add food (populated, open slots only).
+                      F-160 / flat-card surfaces (2026-06-12 decision — the
+                      FIRST quiet-fill adoption): with the card now FLAT, a bare
+                      text link reads as floating. The nested affordance sits on
+                      the `bg-fill-quiet` token (Withings grammar) inside a
+                      contained, card-edge-inset pill — no second card, no border.
+                      Mirror: apps/mobile/.../TodayMealsSection.tsx quiet-fill pill. */}
+                  <div className="px-3 pb-3 pt-2">
+                    <button
+                      type="button"
+                      data-testid={`today-add-food-${sectionName}`}
+                      onClick={() => onOpenAddForSlot(sectionName)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-fill-quiet px-3 py-2 text-sm font-semibold text-[var(--primary-solid)] transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label={`Add food to ${sectionName}`}
+                    >
+                      <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
+                      Add food
+                    </button>
+                  </div>
                 </div>
               )}
             </SupprCard>

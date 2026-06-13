@@ -16,7 +16,7 @@
 import { Pressable, Text, TextInput, View } from "react-native";
 import { CircleX, Sparkles } from "lucide-react-native";
 
-import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   classifyConfidence,
   isLowConfidence,
@@ -138,11 +138,15 @@ export default function AiLogReviewItem({
           padding: Spacing.md,
           marginBottom: Spacing.sm,
         },
-        // Redesign: elevated result-card grammar (soft shadow, no hairline)
-        // for non-low-confidence rows. The low-confidence amber border is a
-        // load-bearing trust signal and is always kept.
+        // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+        // docs/decisions/2026-06-12-flat-card-surfaces.md): the redesigned
+        // result-card grammar is now a FLAT slab — borderless, zero shadow,
+        // separation from the sheet ground comes from the card fill alone
+        // (was `...Elevation.cardSoft`, the retired soft lift). The
+        // low-confidence amber border is a load-bearing trust signal and is
+        // always kept.
         searchRedesign && !low
-          ? { borderWidth: 0, borderColor: "transparent", ...Elevation.cardSoft }
+          ? { borderWidth: 0, borderColor: "transparent", backgroundColor: colors.card }
           : null,
       ]}
     >

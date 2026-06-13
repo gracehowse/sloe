@@ -183,7 +183,10 @@ export function MacroDetailPanel({
             redesignElevation ? (
               <div
                 data-testid="macro-detail-empty"
-                className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center shadow-[0_4px_12px_rgba(28,25,22,0.08)]"
+                // Flat-card surfaces (2026-06-12, Withings grammar): the
+                // redesign empty-state card sits flat — the ambient lift
+                // (`shadow-[0_4px_12px_…]`, a soft-lift-wave sibling) is retired.
+                className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center"
               >
                 <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                   <Salad className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />

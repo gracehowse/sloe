@@ -288,7 +288,12 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(inactivePill?.style.boxShadow ?? "").toBe("");
   });
 
-  it("structure ON + elevation ON: grouped cards lift with the soft shadow and drop the border", async () => {
+  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): the elevation-ON path is
+  // now BORDERLESS-FLAT — the soft `--elev-card-soft` lift is retired; the
+  // grouped card drops its border (Withings quiet-fill grammar) but carries NO
+  // shadow. The inactive pills no longer carry any lift on either flag state.
+  it("structure ON + elevation ON: grouped cards are borderless-FLAT (no soft shadow, no border)", async () => {
     enableFlags("redesign_search_results", "design_system_elevation");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
@@ -297,13 +302,15 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     const card = await screen.findByTestId("food-search-results-redesign");
     const group = card.querySelector<HTMLElement>(".rounded-2xl");
     expect(group).not.toBeNull();
-    expect(group?.style.boxShadow).toContain("var(--elev-card-soft)");
+    // Flat: no soft lift, even with elevation ON.
+    expect(group?.style.boxShadow ?? "").toBe("");
+    // Borderless quiet-fill grammar retained.
     expect(group?.className).toMatch(/\bborder-0\b/);
-    // Inactive pills carry the soft shadow when elevation is on.
+    // Inactive pills carry no lift when elevation is on (flat-card).
     const inactivePill = container.querySelector<HTMLElement>(
       '[data-testid="food-search-category-Custom"]',
     );
-    expect(inactivePill?.style.boxShadow).toContain("var(--elev-card-soft)");
+    expect(inactivePill?.style.boxShadow ?? "").toBe("");
   });
 
   // ── ENG P5 parity (gap #30) — segmented control is query-gated, not result-gated ──
