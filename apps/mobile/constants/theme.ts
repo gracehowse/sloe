@@ -314,7 +314,8 @@ export const Colors = {
     background: '#FBF8F3',
     backgroundSecondary: '#F6F5F2',
     card: '#FFFFFF',                // white card on cream ground (inversion §1) — real tonal presence
-    cardElevated: '#FFFFFF',        // same fill in light; dark uses a stepped lift; soft shadow carries elevation on non-flat cards
+    cardElevated: '#FFFFFF',        // same fill in light; dark uses a stepped lift (fill IS the separation post flat-cards 2026-06-12)
+    fillQuiet: '#F2EFE9',           // quiet fill — nested affordances inside flat cards (Withings grammar, 2026-06-12 decision); ↔ web --fill-quiet
     cardBorder: '#E8E2EC',          // hairline (Sloe line)
     border: '#E8E2EC',
     borderStrong: '#C9C2D6',
@@ -361,6 +362,7 @@ export const Colors = {
     backgroundSecondary: '#232126', // ↔ web --background-secondary
     card: '#232126',                // ↔ web --card
     cardElevated: '#2A2730',        // ↔ web --card-elevated (premium tier)
+    fillQuiet: '#2C2A30',           // quiet fill (dark) — one step above the dark card fill; ↔ web dark --fill-quiet
     cardBorder: '#35323A',          // ↔ web --border
     border: '#35323A',
     borderStrong: '#47424F',        // ↔ web --border-strong

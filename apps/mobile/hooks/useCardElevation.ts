@@ -1,6 +1,5 @@
 import { StyleSheet, type ViewStyle } from "react-native";
 
-import { Elevation } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useTheme } from "@/context/theme";
 
@@ -98,21 +97,26 @@ export function useCardElevation(
     };
   }
 
+  // FLAT-CARD SURFACES (Grace, 2026-06-12 — Withings grammar; decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md). The soft-lift treatment
+  // is RETIRED: page-ground cards are flat white on the cream ground — zero
+  // shadow, zero border — separation comes from ground↔card contrast alone.
+  // Shipped UNGATED per Grace's standing elevation directive recorded above
+  // ("turn everything on; never flag-gate again") — the prior elevation flag
+  // only ever hid the design from the founder. `variant: "soft"` is kept as
+  // an accepted no-op so ~30 call sites + their tests need no signature churn;
+  // the dark tonal lift (`liftBg`) survives as fill-based separation (NOT a
+  // shadow/border), mirroring web `.dark .card-slab`'s `--card-elevated` fill.
   if (isDark) {
-    // Dark soft-elevation — tonal lift + hairline, no shadow.
     return {
       shadowStyle: undefined,
-      useBorder: true,
+      useBorder: false,
       liftBg: colors.cardElevated,
     };
   }
 
-  // Light soft-elevation (opt-in via `variant: "soft"`) — soft shadow carries
-  // the separation, NO border. The shadow lifts the `#F6F5F2` card off the
-  // `#FFFFFF` page so it never blends in. Consumers that clip children with
-  // `overflow: 'hidden'` must spread this onto an OUTER wrapper or iOS clips it.
   return {
-    shadowStyle: Elevation.cardSoft,
+    shadowStyle: undefined,
     useBorder: false,
     liftBg: undefined,
   };
