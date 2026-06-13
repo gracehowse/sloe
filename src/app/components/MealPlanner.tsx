@@ -124,8 +124,10 @@ function formatPortionMultiplier(mult: number | null | undefined): string | null
  * Web Meal Planner — prototype rewrite (2026-04-20).
  *
  * Paste-level fidelity to `docs/ux/claude-design-bundles/prototype/
- * project/screens-web.jsx` `WebPlan` (lines 250–323): 24px title,
- * 13px subtitle with hits-target count, 7-column `grid-cols-7 gap-3`
+ * project/screens-web.jsx` `WebPlan` (lines 250–323): serif title
+ * (the page subtitle was retired in ENG-1020 — the week-date now rides
+ * the summary-card eyebrow; the hits-target count is the card headline),
+ * 7-column `grid-cols-7 gap-3`
  * of day cards, `breakfast / lunch / dinner` slot blocks (snacks
  * intentionally omitted — not in the prototype grid), 22×22
  * `refresh-cw` swap button, and a two-button Shopping-list / Regenerate
@@ -253,22 +255,39 @@ export const MealPlanner = memo(function MealPlanner({
     [mealPlan, targetCalories],
   );
 
-  const weekOfLabel = useMemo(() => {
-    // F2-D (2026-04-28): the "Week of {date}" subtitle now reflects
-    // the chosen start offset (Today / Tomorrow / Next week) instead
-    // of always anchoring to today. The `mealPlan[0].day` offset still
-    // contributes for backwards-compat with plans persisted before
-    // the picker existed.
-    const first = planCalendarDateForIndex(0, startOffset);
-    if (mealPlan && mealPlan.length > 0 && typeof mealPlan[0]?.day === "number") {
-      first.setDate(first.getDate() + (mealPlan[0]!.day - 1));
+  // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
+  // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring
+  // mobile `apps/mobile/app/(tabs)/planner.tsx` `summaryOverline`. Previously
+  // the page subtitle read "Week of {date} · hits targets N of M days", which
+  // duplicated the "Hits your targets N of M days" headline sitting directly
+  // below it in the summary card. Mobile resolved the same duplication on the
+  // 2026-06-10 e2e walk by dropping its page subheader and keeping only the
+  // card eyebrow; web now matches. Falls back to "This week" when the date
+  // math can't resolve (defensive — mirrors mobile).
+  const weekRangeEyebrow = useMemo(() => {
+    try {
+      const planLen = mealPlan?.length ?? 0;
+      // F2-D (2026-04-28): reflect the chosen start offset (Today / Tomorrow /
+      // Next week). The persisted `mealPlan[0].day` offset still contributes
+      // for backwards-compat with plans saved before the picker existed.
+      const first = planCalendarDateForIndex(0, startOffset);
+      if (planLen > 0 && typeof mealPlan?.[0]?.day === "number") {
+        first.setDate(first.getDate() + (mealPlan[0]!.day - 1));
+      }
+      const last = planCalendarDateForIndex(Math.max(planLen - 1, 0), startOffset);
+      if (planLen > 0 && typeof mealPlan?.[0]?.day === "number") {
+        last.setDate(last.getDate() + (mealPlan[0]!.day - 1));
+      }
+      const fmt = (d: Date) =>
+        d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      if (first.getMonth() === last.getMonth()) {
+        return `${fmt(first)} – ${last.getDate()} · Meal plan`;
+      }
+      return `${fmt(first)} – ${fmt(last)} · Meal plan`;
+    } catch {
+      return "This week";
     }
-    return first.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   }, [mealPlan, startOffset]);
-
-  const subtitle = summary
-    ? `Week of ${weekOfLabel} · hits targets ${summary.hits} of ${summary.total} day${summary.total === 1 ? "" : "s"}`
-    : `Week of ${weekOfLabel}`;
 
   /** F2-F (2026-04-28) — week summary card. Promotes the subtitle's
    *  "hits targets" line into a dedicated card with a worst-short-day
@@ -661,19 +680,18 @@ export const MealPlanner = memo(function MealPlanner({
           serif plum (`text-foreground-brand`), matching the Today / Progress /
           Settings landmark headings. Replaces the prior Inter-bold ink H1 so
           the Plan tab speaks the same warm-editorial language. */}
+      {/* ENG-1020 (2026-06-13): the page subtitle ("Week of {date} · hits
+          targets N of M days") was dropped — it duplicated the summary card's
+          "Hits your targets N of M days" headline below, and the week-date
+          now rides the card's "{start} – {end} · Meal plan" eyebrow. Mirrors
+          mobile `planner.tsx`, where the page subheader was dropped on the
+          2026-06-10 e2e walk in favour of the single card eyebrow. */}
       <h1
         className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
-        style={{ margin: "0 0 4px" }}
+        style={{ margin: "0 0 20px" }}
       >
         Meal plan
       </h1>
-      <p
-        data-testid="planner-desktop-subtitle"
-        className="text-muted-foreground"
-        style={{ fontSize: 13, marginBottom: 20 }}
-      >
-        {subtitle}
-      </p>
       </div>
 
       {/* F2-L (audit 2026-04-28): household bar — mobile parity at
@@ -723,6 +741,18 @@ export const MealPlanner = memo(function MealPlanner({
           `}</style>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
+              {/* ENG-1020 (2026-06-13): week-range eyebrow. Mirrors mobile
+                  `summaryOverline` ("{start} – {end} · Meal plan") and takes
+                  over the week-date that used to sit in the page subtitle.
+                  Web eyebrow grammar (uppercase / 0.1em tracking / muted),
+                  matching the slot-switcher + add-slot eyebrows on this
+                  surface. */}
+              <p
+                data-testid="planner-week-summary-eyebrow"
+                className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground mb-1"
+              >
+                {weekRangeEyebrow}
+              </p>
               {/* ENG-820 — state-aware headline. Inline `color` (when the win
                   flag is on) wins over `text-foreground`; flag-off leaves the
                   class colour. `data-tone` + testid let the parity test pin the

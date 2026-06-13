@@ -37,8 +37,25 @@ describe("MealPlanner prototype rewrite (2026-04-21)", () => {
     expect(SRC).toMatch(/text-3xl font-medium tracking-tight text-foreground-brand/);
   });
 
-  it("subtitle carries the 'hits targets N of M day(s)' pattern", () => {
-    expect(SRC).toMatch(/hits targets \$\{summary\.hits\} of \$\{summary\.total\}/);
+  it("summary-card headline carries the 'Hits your targets N of M day(s)' pattern", () => {
+    // ENG-1020 (2026-06-13): the hits-target count lives ONLY in the summary
+    // card headline now — the page subtitle that duplicated it (and the
+    // week-date) was retired for web↔mobile parity. The week-date moved to
+    // the card's "{start} – {end} · Meal plan" eyebrow.
+    expect(SRC).toMatch(/Hits your targets \$\{summary\.hits\} of \$\{summary\.total\}/);
+  });
+
+  it("retires the duplicate page subtitle and carries the week-date on the card eyebrow", () => {
+    // The old `planner-desktop-subtitle` <p> ("Week of {date} · hits targets
+    // N of M days") is gone — it stacked the same hits-target line directly
+    // above the summary card headline. Mirrors mobile, which dropped its page
+    // subheader on the 2026-06-10 e2e walk and kept only the card eyebrow.
+    expect(SRC).not.toMatch(/planner-desktop-subtitle/);
+    expect(SRC).not.toMatch(/Week of \$\{weekOfLabel\}/);
+    // The week-range eyebrow ("{start} – {end} · Meal plan") is the single
+    // source of the week-date now — same string shape as mobile's overline.
+    expect(SRC).toMatch(/planner-week-summary-eyebrow/);
+    expect(SRC).toMatch(/· Meal plan/);
   });
 
   it("renders the 7-column day grid + all four canonical slots (Breakfast / Lunch / Dinner / Snacks)", () => {

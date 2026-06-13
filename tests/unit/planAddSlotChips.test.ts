@@ -23,9 +23,14 @@ describe("Plan add-slot chips", () => {
     expect(PLANNER).not.toMatch(/flexWrap: "wrap", gap: 10/);
   });
 
-  it("mobile abbreviates slot labels for narrow widths", () => {
+  it("mobile add-slot chips use full slot names — no 'Bfast' abbreviation (ENG-1020)", () => {
     expect(PLANNER).toMatch(/function compactPlanSlotLabel/);
     expect(PLANNER).toMatch(/compactPlanSlotLabel\(slot\)/);
+    // The label helper returns full "Breakfast" (only "Snacks" → singular
+    // "Snack" for the one-action read). "Bfast" was the last abbreviation in
+    // the app and read as a typo — it must not return from any code path.
+    expect(PLANNER).toMatch(/case "Breakfast":\s*\n\s*return "Breakfast";/);
+    expect(PLANNER).not.toMatch(/return "Bfast"/);
   });
 
   it("web uses a single nowrap row under an Add label", () => {
