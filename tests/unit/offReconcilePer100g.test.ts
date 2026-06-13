@@ -88,6 +88,51 @@ describe("reconcileOffPer100g — per-serving-basis hardening", () => {
     expect(recon.servingBasis).toBe(false);
   });
 
+  it("ENG-774: a declared serving-basis row WITHOUT serving_quantity is flagged (no mass to verify)", () => {
+    // The blind spot: `nutrition_data_per:"serving"` but no `serving_quantity`,
+    // so there is no mass to reconstruct/verify. The `*_100g` field may secretly
+    // hold per-serving values; we can't correct it, so we FLAG the row
+    // (corrected:true → soft-warn + demoted confidence) instead of silently
+    // trusting it. Value is left as published; no scaling is applied.
+    const nutriments = {
+      "energy-kcal_100g": 480, // possibly per-serving in disguise — unverifiable
+      "energy-kcal_serving": 480,
+      proteins_100g: 5,
+      proteins_serving: 5,
+      carbohydrates_100g: 68,
+      carbohydrates_serving: 68,
+      fat_100g: 22,
+      fat_serving: 22,
+    };
+    const recon = reconcileOffPer100g(nutriments, { nutrition_data_per: "serving" }); // no serving_quantity
+    expect(recon.servingBasis).toBe(true);
+    expect(recon.corrected).toBe(true); // was silently false before ENG-774
+    expect(recon.calories).toBe(480); // unchanged — nothing better to use
+    expect(recon.per100gFactor).toBe(1); // no scaling on an unverifiable row
+  });
+
+  it("ENG-774: serving-basis without mass still flags when only `*_100g` are present", () => {
+    const recon = reconcileOffPer100g(
+      { "energy-kcal_100g": 300, proteins_100g: 9 },
+      { nutrition_data_per: "serving" },
+    );
+    expect(recon.servingBasis).toBe(true);
+    expect(recon.corrected).toBe(true);
+    expect(recon.calories).toBe(300);
+  });
+
+  it("ENG-774: a per-100g-basis row without serving_quantity is NOT flagged (no false positive)", () => {
+    // Same missing-mass shape, but declared per-100g → no basis ambiguity, so it
+    // must stay unflagged. Guards against the new flag over-firing.
+    const recon = reconcileOffPer100g(
+      { "energy-kcal_100g": 250, proteins_100g: 8 },
+      { nutrition_data_per: "100g" },
+    );
+    expect(recon.servingBasis).toBe(false);
+    expect(recon.corrected).toBe(false);
+    expect(recon.calories).toBe(250);
+  });
+
   it("uses the reconstructed value when the published _100g is missing", () => {
     const nutriments = {
       "energy-kcal_serving": 200,
