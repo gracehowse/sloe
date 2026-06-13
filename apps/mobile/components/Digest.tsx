@@ -33,6 +33,7 @@ import {
   type WeightSurfaceMode,
 } from "@suppr/shared/nutrition/weightSurfaceMode";
 import { DigestBlended } from "@/components/DigestBlended";
+import { SupprButton } from "@/components/ui/SupprButton";
 
 export type DigestSlot = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 
@@ -455,33 +456,21 @@ function DigestLegacy(props: DigestProps) {
               ? `You've logged the same one ${usual.repeats} times in 2 weeks.`
               : "Save it once, log it in one tap."}
           </Text>
-          {/* Sloe treatment system (§1): inline CTA inside the nudge =
-              aubergine OUTLINE (transparent fill, 1.5px primarySolid border +
-              label), not a filled slab — keeps the accent rationed. */}
+          {/* Sloe button-system canon (2026-06-12): the nudge's ONE commit
+              action — save this prompt as a meal — is the SOLID aubergine
+              primary. White bookmark glyph + white label inside the pill. */}
           {onStartUsualMealSave || onOpenSaveCombo ? (
-            <Pressable
+            <SupprButton
+              variant="primary"
               onPress={handlePromptTap}
-              accessibilityRole="button"
               accessibilityLabel={`Save ${promptSlot} as a usual meal`}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                alignSelf: "flex-start",
-                marginTop: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: Radius.sm,
-                backgroundColor: "transparent",
-                borderWidth: 1.5,
-                borderColor: accent.primarySolid,
-              }}
+              style={{ alignSelf: "flex-start", marginTop: 8 }}
             >
-              <Ionicons name="bookmark-outline" size={12} color={accent.primarySolid} />
-              <Text style={{ fontSize: 11, fontWeight: "700", color: accent.primarySolid }}>
+              <Ionicons name="bookmark-outline" size={12} color="#fff" />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", marginLeft: 4 }}>
                 Save {promptSlot} as a meal
               </Text>
-            </Pressable>
+            </SupprButton>
           ) : null}
         </View>
       ) : null}

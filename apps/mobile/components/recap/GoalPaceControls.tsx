@@ -5,10 +5,11 @@
  * lives in `useGoalPaceEditor`.
  */
 
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { EditorDbGoal } from "@suppr/shared/nutrition/goalEditorPace";
@@ -95,57 +96,31 @@ export function GoalPaceFooter({
    *  the sheet body is the next action). Defaults true (above-floor). */
   canSave?: boolean;
 }) {
-  const accent = useAccent();
-  const colors = useThemeColors();
-  // Save — aubergine OUTLINE (Sloe treatment #1, 2026-06-08). The goal/pace
-  // Save is an everyday primary CTA: transparent fill, 1.5px
-  // `accent.primarySolid` border + label, sitting alongside the neutral
-  // grey-outline Cancel.
+  // Sloe button-system canon (2026-06-12): Save = the footer's ONE commit
+  // action → SupprButton variant="primary" (solid aubergine pill). Cancel =
+  // secondary sibling → variant="ghost" (transparent, plum label). The
+  // flex 1 / 2 split is preserved as a layout-only style override.
   return (
     <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}>
-      <Pressable
-        accessibilityRole="button"
+      <SupprButton
+        variant="ghost"
         accessibilityLabel="Cancel"
         onPress={onCancel}
         disabled={saving}
         testID="goal-pace-editor-cancel"
-        style={{
-          flex: 1,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          borderWidth: 1.5,
-          borderColor: colors.cardBorder,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: saving ? 0.5 : 1,
-        }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Cancel</Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
+        label="Cancel"
+        style={{ flex: 1 }}
+      />
+      <SupprButton
+        variant="primary"
         accessibilityLabel="Save goal and pace"
         onPress={onSave}
         disabled={saving || !dirty || !canSave}
+        loading={saving}
         testID="goal-pace-editor-save"
-        style={{
-          flex: 2,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: saving || !dirty || !canSave ? 0.5 : 1,
-        }}
-      >
-        {saving ? (
-          <ActivityIndicator color={accent.primarySolid} />
-        ) : (
-          <Text style={{ fontSize: 15, fontWeight: "700", color: accent.primarySolid }}>Save</Text>
-        )}
-      </Pressable>
+        label="Save"
+        style={{ flex: 2 }}
+      />
     </View>
   );
 }

@@ -124,6 +124,7 @@ import CreateCustomFoodSheet, {
 } from "../CreateCustomFoodSheet";
 import Badge from "../Badge";
 import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAutocompleteClient";
@@ -1997,16 +1998,22 @@ export default function FoodSearchPanel({
             <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
           </Pressable>
           {onAddToBasket ? (
-            <Pressable
+            // Sloe button-system canon (2026-06-12): "Add" is the secondary
+            // basket-stage action sitting beside the dominant solid "Use this"
+            // log commit — so it is variant="ghost" (transparent, NO border,
+            // plum label + plum icon), the treatment that retires the old
+            // aubergine OUTLINE. NOT primary: two solid CTAs in one row would
+            // break the one-filled-CTA rule and erase the log/stage hierarchy.
+            <SupprButton
+              variant="ghost"
               testID="food-search-preview-add-to-basket"
-              accessibilityRole="button"
               accessibilityLabel={`Add ${preview.name} to basket`}
-              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1.5, borderColor: accent.primarySolid }}
+              style={{ flex: 1 }}
               onPress={onAddPreviewToBasket}
             >
               <Plus size={18} color={accent.primarySolid} />
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>Add</Text>
-            </Pressable>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15, marginLeft: Spacing.sm }}>Add</Text>
+            </SupprButton>
           ) : null}
         </View>
         <Pressable

@@ -55,12 +55,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
@@ -863,32 +862,24 @@ export default function WeeklyRecapScreen() {
               bodyStats?.sex &&
               currentTdeeKcal != null &&
               bodyStats.goal != null ? (
-                <Pressable
-                  accessibilityRole="button"
+                <SupprButton
+                  variant="ghost"
                   accessibilityLabel="Adjust goal pace"
                   onPress={() => setRetuneSheetVisible(true)}
                   testID="weekly-checkin-retune-cta"
-                  style={{
-                    marginTop: Spacing.md,
-                    paddingVertical: Spacing.sm,
-                    paddingHorizontal: Spacing.md,
-                    borderRadius: Radius.md,
-                    borderWidth: 1.5,
-                    borderColor: accent.primary,
-                    alignSelf: "flex-start",
-                  }}
+                  style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}
                 >
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "700",
-                      color: accent.primary,
+                      color: accent.primarySolid,
                       letterSpacing: 0.2,
                     }}
                   >
                     Adjust goal pace
                   </Text>
-                </Pressable>
+                </SupprButton>
               ) : null}
             </View>,
             "weekly-checkin-section",
@@ -940,13 +931,12 @@ export default function WeeklyRecapScreen() {
           >
             {emptyCopy.body}
           </Text>
-          {/* "Log a meal" — aubergine OUTLINE pill per the 2026-06-09 CTA
-              weight map (filled = FAB + conversion only; this everyday
-              primary reads as an outline). Scheme-resolved accent.primarySolid
-              border + label; PressableScale for the pressed state. */}
-          <PressableScale
+          {/* "Log a meal" — the empty state's ONE commit action, so it's the
+              SOLID aubergine primary per the 2026-06-12 button-system canon
+              (white label). PressableScale + haptic come from SupprButton. */}
+          <SupprButton
+            variant="primary"
             haptic="selection"
-            accessibilityRole="button"
             accessibilityLabel="Log a meal"
             onPress={() =>
               // ENG-1009: `_t` cache-buster so the Today consumer re-fires
@@ -956,27 +946,19 @@ export default function WeeklyRecapScreen() {
                 params: { openLog: "1", _t: String(Date.now()) },
               })
             }
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{
-              paddingVertical: Spacing.dense,
-              paddingHorizontal: Spacing.lg,
-              borderRadius: Radius.full,
-              borderWidth: 1.5,
-              borderColor: accent.primarySolid,
-              alignSelf: "center",
-            }}
+            style={{ alignSelf: "center" }}
           >
             <Text
               style={{
                 fontFamily: FontFamily.sansSemibold,
                 fontSize: 14,
-                color: accent.primarySolid,
+                color: "#fff",
                 letterSpacing: 0.1,
               }}
             >
               Log a meal
             </Text>
-          </PressableScale>
+          </SupprButton>
         </View>
       ) : (
         <>

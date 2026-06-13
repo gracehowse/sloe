@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import {
   Alert,
   Modal,
@@ -218,26 +219,17 @@ export function PlanTemplatesSheet({
                 {error}
               </Text>
             ) : null}
-            {/* Sloe treatment system (§1): primary inline CTA = aubergine
-                OUTLINE (transparent fill, 1.5px primarySolid border + label).
-                Disabled = muted hairline border + tertiary label. */}
-            <Pressable
+            {/* Sloe button-system canon (2026-06-12): the sheet's ONE commit
+                action = SupprButton variant="primary" (solid aubergine pill). */}
+            <SupprButton
+              variant="primary"
               onPress={handleSave}
               disabled={!canSave}
-              style={[
-                styles.primaryBtn,
-                {
-                  backgroundColor: "transparent",
-                  borderWidth: 1.5,
-                  borderColor: canSave ? accent.primarySolid : colors.cardBorder,
-                },
-              ]}
+              loading={saving}
+              label={saving ? "Saving…" : "Save template"}
               accessibilityLabel="Save template"
-            >
-              <Text style={{ color: canSave ? accent.primarySolid : colors.textTertiary, fontWeight: "700" }}>
-                {saving ? "Saving…" : "Save template"}
-              </Text>
-            </Pressable>
+              style={{ marginTop: Spacing.lg }}
+            />
           </View>
         ) : (
           <ScrollView
@@ -370,12 +362,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  primaryBtn: {
-    marginTop: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    alignItems: "center",
   },
   templateRow: {
     flexDirection: "row",

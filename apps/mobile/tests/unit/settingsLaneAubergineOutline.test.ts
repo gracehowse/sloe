@@ -21,9 +21,15 @@
  * `docs/decisions/2026-06-12-button-system-solid-primary.md`): the SETTINGS
  * CTAs (name Save, promo Apply, Pro-banner Manage, reset Refresh-my-plan, the
  * target-picker Save/Done) migrated to the SupprButton primary/ghost grammar
- * — see the updated name-Save/promo-Apply case below. The Targets /
- * Profile / Household / Health / goal-pace lanes are OUT of scope for that
- * migration and still assert the aubergine outline.
+ * — see the updated name-Save/promo-Apply case below. The goal-pace sheet
+ * commit CTAs (editor Save, retune Confirm) ALSO migrated in the same wave:
+ * each is its sheet's ONE commit action → SupprButton variant="primary"
+ * (solid aubergine pill), with the Cancel sibling → variant="ghost". See the
+ * updated goal-pace case below. The household CTAs (Save changes footer, solo
+ * Invite) ALSO migrated on 2026-06-13 (ENG-1080 household wave) — Save →
+ * variant="primary", solo Invite → variant="ghost"; see the updated household
+ * case below. The Targets / Profile / Health lanes remain OUT of scope and
+ * still assert the aubergine outline.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -61,10 +67,24 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     expect(PROFILE).not.toMatch(/dietaryChipActive:\s*\{[\s\S]{0,140}Accent\.success/);
   });
 
-  it("Household Save changes is an outline; solo Invite is an off-white secondary", () => {
-    expect(HOUSEHOLD).toMatch(/testID="household-settings-save"[\s\S]{0,500}borderColor:\s*accent\.primarySolid/);
-    // Solo-empty Invite reads as an off-white (colors.card) secondary, not a filled accent.
-    expect(HOUSEHOLD).toMatch(/testID="household-settings-solo-invite"[\s\S]{0,500}backgroundColor:\s*colors\.card/);
+  it("Household Save changes is a SupprButton primary; solo Invite is a SupprButton ghost (2026-06-13 canon)", () => {
+    // 2026-06-13 button-system canon (ENG-1080 household wave): the household
+    // CTAs migrated off the aubergine OUTLINE / off-white slab onto the
+    // SupprButton primary/ghost grammar. Save = the footer's one commit
+    // action → primary; solo Invite = secondary → ghost. Neither carries the
+    // retired primarySolid border or colors.card fill.
+    expect(HOUSEHOLD).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,400}testID="household-settings-save"/,
+    );
+    expect(HOUSEHOLD).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,400}testID="household-settings-solo-invite"/,
+    );
+    expect(HOUSEHOLD).not.toMatch(
+      /testID="household-settings-save"[\s\S]{0,400}borderColor:\s*accent\.primarySolid/,
+    );
+    expect(HOUSEHOLD).not.toMatch(
+      /testID="household-settings-solo-invite"[\s\S]{0,400}backgroundColor:\s*colors\.card/,
+    );
   });
 
   it("Health connect / sync CTAs are aubergine outlines", () => {
@@ -73,10 +93,28 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     expect(HEALTH).toMatch(/btnOutlineText:\s*\{[^}]*color:\s*accent\.primarySolid/);
   });
 
-  it("Goal-pace Save (editor) + Confirm (retune) are aubergine outlines", () => {
-    expect(GOAL_CONTROLS).toMatch(/testID="goal-pace-editor-save"[\s\S]{0,260}borderColor:\s*accent\.primarySolid/);
-    expect(GOAL_CONTROLS).not.toMatch(/testID="goal-pace-editor-save"[\s\S]{0,200}backgroundColor:\s*accent\.primary/);
-    expect(GOAL_RETUNE).toMatch(/testID="goal-pace-retune-confirm"[\s\S]{0,300}borderColor:\s*accent\.primarySolid/);
+  it("Goal-pace Save (editor) + Confirm (retune) are SupprButton primaries; Cancel siblings are ghosts (2026-06-12 canon)", () => {
+    // 2026-06-12 button-system canon: each sheet's ONE commit action is a
+    // solid-aubergine SupprButton primary; the Cancel sibling is a ghost.
+    // The retired aubergine OUTLINE (primarySolid border) is gone from both.
+    expect(GOAL_CONTROLS).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,300}testID="goal-pace-editor-save"/,
+    );
+    expect(GOAL_CONTROLS).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}testID="goal-pace-editor-cancel"/,
+    );
+    expect(GOAL_CONTROLS).not.toMatch(
+      /testID="goal-pace-editor-save"[\s\S]{0,300}borderColor:\s*accent\.primarySolid/,
+    );
+    expect(GOAL_RETUNE).toMatch(
+      /<SupprButton\s+variant="primary"[\s\S]{0,300}testID="goal-pace-retune-confirm"/,
+    );
+    expect(GOAL_RETUNE).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,300}testID="goal-pace-retune-cancel"/,
+    );
+    expect(GOAL_RETUNE).not.toMatch(
+      /testID="goal-pace-retune-confirm"[\s\S]{0,300}borderColor:\s*accent\.primarySolid/,
+    );
   });
 
   it("Settings name Save is a SupprButton ghost, promo Apply is a SupprButton primary (2026-06-12 canon)", () => {

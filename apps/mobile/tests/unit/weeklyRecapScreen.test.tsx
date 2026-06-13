@@ -395,21 +395,35 @@ describe("WeeklyRecap screen — render states", () => {
     expect(queryByText(/come back after your first meal/)).toBeNull();
   });
 
-  it("‘Log a meal’ CTA is an aubergine OUTLINE pill (border + primarySolid label), not a bare text-link", async () => {
+  it("‘Log a meal’ CTA is a SOLID aubergine primary pill (filled, no border), not an outline", async () => {
     setMode("ready");
     loadEmpty();
     const { findByLabelText } = render(<WeeklyRecapScreen />);
     const cta = await findByLabelText("Log a meal");
-    // The pill carries a 1.5px aubergine outline + full radius. The
-    // PressableScale flattens its style array onto the underlying
-    // Pressable; assert the border landed (the CTA is no longer a bare
-    // text-link per the 2026-06-09 CTA weight map).
-    const flat = Array.isArray(cta.props.style)
-      ? Object.assign({}, ...cta.props.style.filter(Boolean))
-      : cta.props.style;
-    expect(flat.borderWidth).toBe(1.5);
+    // Sloe button-system canon (2026-06-12): the empty-state commit is the
+    // solid aubergine SupprButton variant="primary" — opaque fill, full
+    // radius, NO border. PressableScale layers an animated style atop
+    // SupprButton's [base, container, layout] array, so the style prop is a
+    // *nested* array — flatten it deeply before asserting.
+    const deepFlatten = (
+      s: unknown,
+      acc: Record<string, unknown> = {},
+    ): Record<string, unknown> => {
+      if (!s) return acc;
+      if (Array.isArray(s)) {
+        for (const part of s) deepFlatten(part, acc);
+        return acc;
+      }
+      if (typeof s === "object") Object.assign(acc, s as Record<string, unknown>);
+      return acc;
+    };
+    const flat = deepFlatten(cta.props.style);
     expect(flat.borderRadius).toBe(9999); // Radius.full
-    expect(typeof flat.borderColor).toBe("string");
+    // Solid fill IS the affordance — there is no border on either variant.
+    expect(flat.borderWidth).toBeUndefined();
+    // Filled (non-transparent) background = the primary variant.
+    expect(flat.backgroundColor).toBeTruthy();
+    expect(flat.backgroundColor).not.toBe("transparent");
   });
 
   it("hero numerals use the Newsreader serif font family token (§2.3 rule 3)", async () => {
