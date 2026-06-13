@@ -173,13 +173,14 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
   });
 
   it("resting detail cards are FLAT WHITE slabs on cream (whiteSlabStyle, no lift)", () => {
-    // The shared white-slab style replaces the cream `bg-card` cards that
-    // blended on the cream page. Flat-card surfaces (2026-06-12, Withings
-    // grammar — docs/decisions/2026-06-12-flat-card-surfaces.md): the soft
-    // `--elev-card-soft` lift is RETIRED — separation is the white slab on the
-    // cream ground alone, zero shadow.
+    // Flat-card surfaces (2026-06-12, Withings grammar —
+    // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft
+    // `--elev-card-soft` lift is RETIRED. Separation is a true-white `--card`
+    // slab on the warm `--background-secondary` page, zero shadow. (Was cream
+    // `--background`, which on that page reads as ~no separation once the
+    // shadow is gone — fixed to white.)
     expect(WEB_SRC).toContain("whiteSlabStyle");
-    expect(WEB_SRC).toContain('backgroundColor: "var(--background)"');
+    expect(WEB_SRC).toContain('backgroundColor: "var(--card)"');
     expect(WEB_SRC).not.toContain('boxShadow: "var(--elev-card-soft)"');
   });
 
