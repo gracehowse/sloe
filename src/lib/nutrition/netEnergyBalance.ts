@@ -62,8 +62,23 @@ export function netEnergyMarkerFraction(
   isDeficit: boolean,
 ): number {
   if (maintenanceKcal != null && maintenanceKcal > 0) {
-    const ratio = 0.5 - netKcal / (maintenanceKcal * 2);
-    return Math.min(0.94, Math.max(0.06, ratio));
+    // State-anchored bands (ENG-878; SSOT `_buildenergy.mjs#markerPctForNet`):
+    // the marker is positioned by the SAME `CHIP_THRESHOLD_KCAL` the chip reads,
+    // so it can NEVER disagree with the Deficit/Maintenance/Surplus chip.
+    //   maintenance (|net| ≤ threshold) → 50% (centre)
+    //   deficit  (net >  threshold)     → left third  42% → 8%   (deepening)
+    //   surplus  (net < -threshold)     → right third 58% → 92%  (deepening)
+    // `intensity` = distance past the threshold as a fraction of one
+    // maintenance-worth of kcal, clamped to keep a clear deficit/surplus inside
+    // its third (never ambiguously mid-bar). Supersedes the old
+    // `0.5 - net/(maintenance*2)`, which barely moved off centre and could land
+    // in a third that visually contradicted the chip.
+    if (Math.abs(netKcal) <= CHIP_THRESHOLD_KCAL) return 0.5;
+    const span = Math.max(maintenanceKcal, 1);
+    const intensity = Math.min(1, (Math.abs(netKcal) - CHIP_THRESHOLD_KCAL) / span);
+    return netKcal > CHIP_THRESHOLD_KCAL
+      ? Math.round(42 - intensity * 34) / 100
+      : Math.round(58 + intensity * 34) / 100;
   }
   if (consumedCalories === 0) return 0.31;
   return isDeficit ? 0.25 : 0.75;
