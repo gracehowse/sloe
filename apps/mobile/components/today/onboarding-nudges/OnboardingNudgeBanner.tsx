@@ -6,6 +6,8 @@ import { BookOpen, Heart, Link2 } from "lucide-react-native";
 import { FontWeight, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { SupprCard } from "@/components/ui/SupprCard";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions } from "@/lib/healthSync";
 import {
@@ -270,20 +272,17 @@ export function OnboardingNudgeBanner({
 
   const Icon = NUDGE_ICON[nudge.id];
 
-  return (
-    <View
-      accessibilityRole="summary"
-      accessibilityLabel={NUDGE_ACCESSIBILITY_LABEL[nudge.id]}
-      style={{
-        marginHorizontal: Spacing.md,
-        marginTop: Spacing.sm,
-        padding: Spacing.md,
-        borderRadius: Radius.md,
-        backgroundColor: accent.primary + "0A",
-        borderWidth: 1,
-        borderColor: accent.primary + "30",
-      }}
-    >
+  // ENG-1097 (Grace 2026-06-13: "is this in keeping with styling?") — the nudge
+  // now renders as a flat WHITE card via the shared SupprCard primitive, so it
+  // matches every sibling Today card exactly (the legacy clay-wash + 1px border
+  // predated the flat-card law and read as a muted nag box). The "Try it" CTA
+  // becomes a solid aubergine pill — the import wedge is a conversion surface
+  // (the FAB / conversion exception to one-filled-CTA). Legacy tinted+bordered
+  // slab + outline CTA stays behind the flag-off path as the kill switch.
+  const flatWhite = isFeatureEnabled("import_nudge_flat_white_v1");
+
+  const body = (
+    <>
       <View
         style={{
           flexDirection: "row",
@@ -347,10 +346,11 @@ export function OnboardingNudgeBanner({
           alignItems: "center",
         }}
       >
-        {/* Sloe treatment system (2026-06-08): primary inline CTA →
-            aubergine outline (transparent fill + 1.5px primarySolid border
-            + primarySolid label), not a filled slab. The "Later" sibling
-            below stays a tertiary text dismiss. */}
+        {/* ENG-1097: on the flat-white card the "Try it" CTA is a SOLID
+            aubergine pill (button-system solid-primary; the import wedge is the
+            conversion exception to one-filled-CTA). The flag-off path keeps the
+            Sloe 2026-06-08 aubergine OUTLINE. "Maybe later" stays a tertiary
+            text dismiss in both. */}
         <Pressable
           onPress={() => void onPrimary()}
           disabled={busy}
@@ -360,13 +360,9 @@ export function OnboardingNudgeBanner({
           style={({ pressed }) => ({
             paddingHorizontal: Spacing.lg,
             height: 36,
-            // ENG-1064 (TF57 F-167): was `Radius.sm + 2` (6) — off-scale
-            // arithmetic. Snap to the canonical Today outline-CTA radius
-            // `Radius.sm` (4) so this matches the empty-state / eat-again
-            // outline buttons.
             borderRadius: Radius.sm,
-            backgroundColor: "transparent",
-            borderWidth: 1.5,
+            backgroundColor: flatWhite ? accent.primarySolid : "transparent",
+            borderWidth: flatWhite ? 0 : 1.5,
             borderColor: accent.primarySolid,
             alignItems: "center",
             justifyContent: "center",
@@ -375,7 +371,7 @@ export function OnboardingNudgeBanner({
         >
           <Text
             style={{
-              color: accent.primarySolid,
+              color: flatWhite ? colors.primaryForeground : accent.primarySolid,
               // eslint-disable-next-line no-restricted-syntax
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -409,6 +405,40 @@ export function OnboardingNudgeBanner({
           </Text>
         </Pressable>
       </View>
+    </>
+  );
+
+  // Flat-white card (flag-on): the shared SupprCard primitive guarantees the
+  // exact sibling chrome (white fill, radius 24, flat, no border) — the nudge
+  // can never drift from the other Today cards again.
+  if (flatWhite) {
+    return (
+      <SupprCard
+        accessibilityLabel={NUDGE_ACCESSIBILITY_LABEL[nudge.id]}
+        padding="md"
+        style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm }}
+      >
+        {body}
+      </SupprCard>
+    );
+  }
+
+  // Legacy kill switch: the tinted clay-wash + 1px border slab.
+  return (
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel={NUDGE_ACCESSIBILITY_LABEL[nudge.id]}
+      style={{
+        marginHorizontal: Spacing.md,
+        marginTop: Spacing.sm,
+        padding: Spacing.md,
+        borderRadius: Radius.md,
+        backgroundColor: accent.primary + "0A",
+        borderWidth: 1,
+        borderColor: accent.primary + "30",
+      }}
+    >
+      {body}
     </View>
   );
 }

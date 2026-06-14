@@ -163,11 +163,15 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     expect(PUSH_EXPLAINER).toMatch(/borderColor:\s*accent\.primarySolid/);
   });
 
-  it("Onboarding nudge banner primary CTA is an aubergine outline", () => {
-    expect(NUDGE_BANNER).toMatch(/borderColor:\s*accent\.primarySolid/);
-    expect(NUDGE_BANNER).toMatch(/color:\s*accent\.primarySolid[\s\S]{0,240}\{nudge\.primaryLabel\}/);
-    // The CTA must NOT regress to a filled accent slab with a white label.
-    expect(NUDGE_BANNER).not.toMatch(/backgroundColor:\s*accent\.primary,\s*\n\s*alignItems[\s\S]{0,200}color:\s*"#ffffff"/);
+  it("Onboarding nudge banner primary CTA is SOLID aubergine on the flat-white card, outline in the flag-off fallback (ENG-1097)", () => {
+    // ENG-1097 — the nudge migrated OUT of the outline lane: on the flat-white
+    // card (default-on) the "Try it" CTA is a SOLID aubergine pill (it's the
+    // import wedge — a conversion surface). The aubergine OUTLINE survives only
+    // in the flag-off legacy tinted-slab path. Both branches are flag-gated on
+    // `flatWhite`, so this pins the dual-path rather than the retired outline.
+    expect(NUDGE_BANNER).toMatch(/backgroundColor: flatWhite \? accent\.primarySolid : "transparent"/);
+    expect(NUDGE_BANNER).toMatch(/borderWidth: flatWhite \? 0 : 1\.5/);
+    expect(NUDGE_BANNER).toMatch(/color: flatWhite \? colors\.primaryForeground : accent\.primarySolid/);
   });
 
   it("Log sheet 'Done' confirmation + barcode 'Log it' are SOLID-plum SupprButton primaries", () => {
