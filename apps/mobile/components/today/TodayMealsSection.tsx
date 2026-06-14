@@ -15,6 +15,7 @@ import { figmaSlotSummaryTitle } from "@suppr/shared/copy/today";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
+import { useCalmMode } from "@/lib/calmMode";
 import {
   Bookmark,
   CalendarPlus,
@@ -622,6 +623,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // redistributing helper, so a partial day's aims shrink honestly. Gated on
   // `plan_today_aim_empty_v1`; off → the bare-name empty + the 0.55 dim.
   const aimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (the empty slot still
+  // renders at full opacity; only the "Aim ~X kcal" line is hidden). Shared key
+  // with web.
+  const [calmMode] = useCalmMode();
   const consumedBySlot = useMemo(() => {
     const map: Record<string, number> = {};
     for (const s of slots) {
@@ -1041,6 +1046,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         kcalColor={textSecondaryColor}
                       />
                     ) : aimEmptyOn &&
+                      !calmMode &&
                       effectiveCalorieTarget != null &&
                       (() => {
                         // ENG-1092 — empty slot purpose line. Occupies the exact

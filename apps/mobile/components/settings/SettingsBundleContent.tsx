@@ -39,6 +39,7 @@ import {
   Download,
   FileText,
   Flame,
+  EyeOff,
   HeartPulse,
   HelpCircle,
   LayoutGrid,
@@ -74,6 +75,7 @@ import {
   useMacroDisplayStyle,
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
+import { useCalmMode } from "@/lib/calmMode";
 import { supabase } from "@/lib/supabase";
 import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
@@ -951,6 +953,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // the Cronometer/Lose It-style "Name … Value / Target" vertical
   // list with thin colored bars (Grace 2026-05-17 ask).
   const [macroDisplayStyle, setMacroDisplayStyle] = useMacroDisplayStyle();
+  // ENG-1098 "Calm mode" — body-neutral display pref; v1 hides the per-slot
+  // "Aim ~X kcal" numbers (Today + Plan). Client-side, shared key with web.
+  const [calmMode, setCalmMode] = useCalmMode();
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -2324,6 +2329,55 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           onChange={(next) => setThemePreference(next as ThemePreference)}
           colors={colors}
         />
+
+        {/* Calm mode (ENG-1098). Body-neutral opt-out raised by
+            diversity-inclusion during the ENG-1092 "Aim ~X kcal" sign-off.
+            v1 hides those per-slot aims (Today + Plan); the umbrella name lets
+            the upcoming hide-weight / streak toggles fold in under one switch
+            without a rename (product-lead 2026-06-14). Shared key with web. */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderTopWidth: 1,
+            borderTopColor: colors.cardBorder,
+          }}
+        >
+          <IconBox color={t.accent}>
+            <EyeOff size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.text,
+                lineHeight: 17,
+              }}
+            >
+              Hide calorie aims
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              Hides the “Aim ~X kcal” suggestions on empty meals. Your targets
+              still apply — they just stay quiet.
+            </Text>
+          </View>
+          <Switch
+            testID="settings-calm-mode-toggle"
+            value={calmMode}
+            onValueChange={(v) => setCalmMode(v)}
+            trackColor={{ true: accent.primary }}
+          />
+        </View>
       </SettingsCard>
 
       {/* Connections — Sloe DS (Figma 09 Settings `335:2`): device /

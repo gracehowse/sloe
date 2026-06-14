@@ -34,6 +34,7 @@ import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
+import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { sheetTransition } from "../../../lib/motion";
 import { figmaSlotSummaryTitle } from "../../../lib/copy/today";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
@@ -357,6 +358,9 @@ export function TodayMealsSection({
   // the shared helper so partial-day aims shrink honestly. Gated on
   // `plan_today_aim_empty_v1`; off → bare empty slots (pre-ENG-1092).
   const aimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (the empty slot still
+  // renders; only the "Aim ~X kcal" line is hidden). Shared key with mobile.
+  const [calmMode] = useCalmMode();
   const consumedBySlot = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const g of mealsGrouped) {
@@ -685,11 +689,12 @@ export function TodayMealsSection({
                       fat={slotFat}
                       fiber={slotFiber}
                     />
-                  ) : aimEmptyOn ? (
+                  ) : aimEmptyOn && !calmMode ? (
                     (() => {
                       // ENG-1092 — empty-slot purpose line, in the exact spot the
                       // macro chips fill on a populated slot. `null` (no target /
                       // day at-or-over budget) → no line, never "Aim ~0 kcal".
+                      // ENG-1098: hidden entirely under Calm mode.
                       const aim = emptySlotAimKcal(
                         sectionName,
                         effectiveCalorieTarget,
