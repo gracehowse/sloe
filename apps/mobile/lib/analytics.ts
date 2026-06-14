@@ -311,6 +311,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "flat white for now, maybe circle back"). Default-on; off → the legacy lilac
   // insight wash / aubergine Pro tint (kept for a possible Option-C accent).
   "card_cohesion_white_v1",
+  // ENG-1092 — "Purposeful empties": empty meal slots (Today + Plan) show a
+  // tinted icon + "Aim ~X kcal" (redistributed budget) instead of a bare name /
+  // "Empty slot", and empty slots render at full opacity (matching web). Default
+  // on; off → pre-ENG-1092 empties (bare name + the 0.55 dim on Today).
+  "plan_today_aim_empty_v1",
   // ENG-1085 — recipe-detail "Fits your day" confident verdict banner.
   // Default ON (Grace ratified the design-review direction 2026-06-13); the
   // legacy 10%-wash pill stays in the component `else` as the kill switch.

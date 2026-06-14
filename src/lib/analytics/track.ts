@@ -201,6 +201,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // already does this). Default-on; off → the legacy populated-only list + the
   // single "Log a meal" empty card (kill switch).
   "today_meals_all_slots_v1",
+  // ENG-1092 — "Purposeful empties": empty meal slots (Today + Plan) show a
+  // tinted icon + "Aim ~X kcal" (redistributed budget) instead of a bare name /
+  // "Empty slot", and empty slots render at full opacity. Default-on; off → the
+  // pre-ENG-1092 empties (bare name on Today, "Empty slot" on Plan).
+  "plan_today_aim_empty_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
