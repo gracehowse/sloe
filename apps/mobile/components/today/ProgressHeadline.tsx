@@ -6,6 +6,7 @@ import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
 import {
   splitBodyIntoSegments,
@@ -49,6 +50,12 @@ export function ProgressHeadline({
   const cardElevation = useCardElevation({ variant: "soft" });
   const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
+  // ENG-1081 — card-fill cohesion (Grace 2026-06-13: "flat white for now, maybe
+  // circle back"). The ~12% lilac wash read as a lone grey card beside the white
+  // siblings; render the insight card as a white slab (the ✦ + THIS WEEK eyebrow
+  // + serif headline carry the insight role). Flag-gated so the lilac accent can
+  // be revisited (Option C) without a revert.
+  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
 
   return (
     <View
@@ -59,10 +66,12 @@ export function ProgressHeadline({
         styles.card,
         cardElevation.shadowStyle,
         {
-          // Sloe Figma 492:2 — lilac insight wash + hairline damson edge
-          // (was cream `colors.card`). The frame's THIS WEEK card is lilac.
-          backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
-          borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
+          // ENG-1081: white slab (cohesion) by default; lilac wash kept behind
+          // the flag-off path (Figma 492:2) for a possible Option-C revisit.
+          backgroundColor: cohesionWhite
+            ? cardElevation.liftBg ?? colors.card
+            : PROGRESS_INSIGHT_LILAC_BG,
+          borderColor: cohesionWhite ? colors.cardBorder : PROGRESS_INSIGHT_LILAC_BORDER,
           borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,

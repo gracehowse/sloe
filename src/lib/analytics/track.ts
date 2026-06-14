@@ -186,6 +186,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1086 — empty cold-open calorie ring paints the brand-gradient loop
   // instead of a grey skeleton (mirror of mobile; legacy grey empty as kill switch).
   "ring_empty_gradient_v1",
+  // ENG-1081 — card-fill cohesion: Progress "This Week" insight card + Settings
+  // "Sloe Pro" banner render as flat WHITE slabs (mirror of mobile; legacy lilac
+  // insight wash / aubergine Pro tint kept behind the flag-off path).
+  "card_cohesion_white_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
