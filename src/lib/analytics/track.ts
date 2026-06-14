@@ -196,6 +196,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Sloe Pro" banner render as flat WHITE slabs (mirror of mobile; legacy lilac
   // insight wash / aubergine Pro tint kept behind the flag-off path).
   "card_cohesion_white_v1",
+  // ENG-1095 — web Today meals render the four standard slots (Breakfast/Lunch/
+  // Dinner/Snacks) ALWAYS, matching mobile's fixed `slots` list. Web-only (mobile
+  // already does this). Default-on; off → the legacy populated-only list + the
+  // single "Log a meal" empty card (kill switch).
+  "today_meals_all_slots_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
