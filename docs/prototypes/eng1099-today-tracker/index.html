@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ENG-1099 — Today tracker: current → tier (M1–M6)</title>
+<!-- Faithful Sloe tokens (apps/mobile/constants/theme.ts, light):
+     cream #FBF8F3 · card #FFFFFF · ink #221B26 · 2nd #6A6072 · 3rd #9B93A3
+     border #E8E2EC · fillQuiet #F2EFE9 · plum #3B2A4D · ringTrack #EDEAF1
+     macros protein #7C8466 · carbs #C8794E · fat #C9892C · fibre #4A7878
+     success #5E7C5A/#466046 · warning #C9892C/#956619 -->
+<style>
+  :root{
+    --cream:#FBF8F3; --card:#FFFFFF; --ink:#221B26; --ink2:#6A6072; --ink3:#9B93A3;
+    --border:#E8E2EC; --fillQuiet:#F2EFE9; --plum:#3B2A4D; --ringTrack:#EDEAF1;
+    --protein:#7C8466; --carbs:#C8794E; --fat:#C9892C; --fibre:#4A7878;
+    --success:#5E7C5A; --warningSolid:#956619;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+    --sans:Inter,-apple-system,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#EFEAE2;font-family:var(--sans);color:var(--ink);padding:32px 16px 64px;-webkit-font-smoothing:antialiased}
+  h1{font-family:var(--serif);font-weight:500;font-size:26px;text-align:center;color:var(--plum);margin-bottom:4px}
+  .sub{text-align:center;color:var(--ink2);font-size:13px;margin-bottom:28px}
+  .stage{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .col h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ink2)}
+  .col .tag{font-size:11px;color:var(--ink3)}
+  /* iPhone frame */
+  .phone{width:340px;border-radius:46px;background:#000;padding:11px;box-shadow:0 24px 60px rgba(34,27,38,.22)}
+  .screen{border-radius:36px;background:var(--cream);overflow:hidden;height:720px;position:relative}
+  .notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:108px;height:28px;background:#000;border-radius:16px;z-index:9}
+  .scroll{height:100%;overflow:hidden;padding:44px 0 0}
+  .statusbar{position:absolute;top:13px;width:100%;display:flex;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600;z-index:8}
+  .hdr{padding:6px 0 2px}
+  .hdr .wm{font-family:var(--serif);font-size:20px;color:var(--plum);font-weight:500}
+  .hdr .greet{font-size:12px;color:var(--ink2);margin-top:2px}
+
+  /* shared bits */
+  .ring-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 0}
+  .ring{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;position:relative}
+  .ring .num{font-family:var(--serif);font-size:42px;font-weight:500;color:var(--ink);line-height:1}
+  .ring .lab{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+  .stats{display:flex;justify-content:space-around;width:78%;padding-top:8px;border-top:1px solid var(--border);margin-top:10px}
+  .stats div{text-align:center}
+  .stats .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+  .stats .v{font-family:var(--serif);font-size:18px;font-weight:400;margin-top:1px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:999px}
+
+  .macros{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mtile{background:var(--card);border-radius:24px}
+  .mtop{display:flex;align-items:center;gap:6px}
+  .mtop .dot{width:14px;height:14px;border-radius:5px;display:inline-block}
+  .mtop .ml{font-size:11px;font-weight:600;color:var(--ink2)}
+  .mval{font-family:var(--serif);font-weight:500}
+  .slot{display:flex;align-items:center;gap:12px}
+  .slot .ic{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:15px}
+  .slot .nm{font-family:var(--serif);font-size:17px;font-weight:500}
+  .slot .sub{font-size:11px;color:var(--ink3);margin-top:1px}
+  .ns{border-radius:24px;background:rgba(91,59,110,.08)}
+  .ns .ey{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--plum);font-weight:700}
+  .ns .t{font-family:var(--serif);font-size:17px;font-weight:500;margin-top:4px}
+  .legend{max-width:760px;margin:30px auto 0;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 22px;font-size:13px;line-height:1.65;color:var(--ink)}
+  .legend b{color:var(--plum)}
+  .legend .m{display:inline-block;min-width:30px;font-weight:700;color:var(--plum)}
+
+  /* ============ BEFORE (current 7) — soft-lift, bars+captions, washes, uneven gaps ============ */
+  .before .blk{margin:0 18px}
+  .before .card{background:var(--card);border-radius:24px;box-shadow:0 6px 18px rgba(34,27,38,.10);padding:16px}
+  .before .ring{background:conic-gradient(var(--success) 0 62%, var(--ringTrack) 62% 100%)}
+  .before .ring::after{content:"";position:absolute;width:122px;height:122px;border-radius:50%;background:var(--card)}
+  .before .ring .num,.before .ring .lab{position:relative;z-index:2}
+  .before .chip{background:rgba(94,124,90,.15);color:var(--success);padding:4px 10px;margin-top:6px}
+  .before .macros{margin-top:8px}            /* 8 gap (cramped) */
+  .before .mtile{padding:12px;box-shadow:0 6px 18px rgba(34,27,38,.10);min-height:96px;display:flex;flex-direction:column;justify-content:space-between}
+  .before .mval{font-size:20px;color:var(--ink)}
+  .before .bar{height:4px;border-radius:2px;background:var(--fillQuiet);margin-top:8px;overflow:hidden}
+  .before .bar i{display:block;height:100%;border-radius:2px}
+  .before .cap{font-size:11px;color:var(--ink3);margin-top:4px}
+  .before .meals{margin-top:32px;display:flex;flex-direction:column;gap:8px}  /* 32 break stacked on 8 */
+  .before .slot.card .ic{font-size:15px}
+  .before .ns{margin-top:32px;box-shadow:0 6px 18px rgba(34,27,38,.10);padding:16px}
+  .before .ns .chipx{display:inline-flex;font-size:10px;font-weight:700;background:rgba(34,168,96,.10);color:#3B2A4D;padding:2px 7px;border-radius:6px;margin-top:6px}
+
+  /* ============ AFTER (tier 9) — flat, one 24 rhythm, stripped tiles, colour values, quieted ============ */
+  .after .scroll{display:flex;flex-direction:column;gap:24px;padding:44px 24px 0}   /* M1: one 24 cadence */
+  .after .card{background:var(--card);border-radius:24px;padding:20px}               /* M2: flat */
+  .after .ring{background:conic-gradient(var(--success) 0 62%, var(--ringTrack) 62% 100%)}
+  .after .ring::after{content:"";position:absolute;width:122px;height:122px;border-radius:50%;background:var(--card)}
+  .after .ring .num,.after .ring .lab{position:relative;z-index:2}
+  .after .chip{background:none;color:var(--success);padding:4px 0;margin-top:8px}    /* M5: de-tinted */
+  .after .macros{}                                                                   /* 12 grid gap (token) */
+  .after .mtile{padding:16px;min-height:64px;display:flex;flex-direction:column;gap:8px}
+  .after .mval{font-size:20px}                                                       /* M3: colour = macro identity */
+  .after .meals{display:flex;flex-direction:column;gap:8px}
+  .after .slot{background:var(--card);border-radius:16px;padding:12px}
+  .after .slot .ic{font-size:14px}                                                   /* M6: tint 18→12% */
+  .after .ns{padding:20px}
+  .after .ns .chipx{display:inline-flex;font-size:10px;font-weight:700;background:rgba(94,124,90,.10);color:var(--success);padding:2px 7px;border-radius:6px;margin-top:6px}
+  .grp{display:flex;flex-direction:column;gap:8px}
+</style>
+</head>
+<body>
+  <h1>ENG-1099 — Today tracker: current → tier</h1>
+  <div class="sub">M1–M6 from the redesign spec · faithful Sloe tokens · iOS surface · light mode · the right-hand phone is the proposal Grace red-lines</div>
+
+  <div class="stage">
+
+    <!-- ============ BEFORE ============ -->
+    <div class="col">
+      <h2>Current · reads 7</h2>
+      <div class="phone before"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀛨</span></div>
+        <div class="scroll">
+          <div class="blk hdr"><div class="wm">Sloe</div><div class="greet">Morning, Grace · Sun 14 Jun</div></div>
+          <!-- hero (soft lift) -->
+          <div class="blk card" style="margin-top:8px;display:flex;flex-direction:column;align-items:center">
+            <div class="ring-wrap"><div class="ring"><div class="num">470</div><div class="lab">left</div></div>
+            <span class="chip">✓ On track</span>
+            <div class="stats"><div><div class="k">Goal</div><div class="v">1,231</div></div><div><div class="k">Eaten</div><div class="v">761</div></div><div><div class="k">Bonus</div><div class="v">0</div></div></div>
+            </div>
+          </div>
+          <!-- macro tiles: bar + caption + value (4 mini-dashboards) -->
+          <div class="blk macros">
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--protein)"></span><span class="ml">Protein</span></div><div class="mval">68<span style="font-size:13px;color:var(--ink3)"> / 99g</span></div><div class="bar"><i style="width:69%;background:var(--protein)"></i></div><div class="cap">31g to go</div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--carbs)"></span><span class="ml">Carbs</span></div><div class="mval">92<span style="font-size:13px;color:var(--ink3)"> / 117g</span></div><div class="bar"><i style="width:79%;background:var(--carbs)"></i></div><div class="cap">25g to go</div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fat)"></span><span class="ml">Fat</span></div><div class="mval">44<span style="font-size:13px;color:var(--ink3)"> / 41g</span></div><div class="bar"><i style="width:100%;background:var(--fat)"></i></div><div class="cap">3g over</div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fibre)"></span><span class="ml">Fibre</span></div><div class="mval">14<span style="font-size:13px;color:var(--ink3)"> / 27g</span></div><div class="bar"><i style="width:52%;background:var(--fibre)"></i></div><div class="cap">13g to go</div></div>
+          </div>
+          <!-- meals: soft-lift cards, tinted chips -->
+          <div class="blk meals">
+            <div class="slot card" style="background:#fff;border-radius:24px;box-shadow:0 6px 18px rgba(34,27,38,.10);padding:14px"><span class="ic" style="background:rgba(124,132,102,.18);color:var(--protein)">☕️</span><div style="flex:1"><div class="nm">Breakfast</div><div class="sub">Greek yogurt + berries · 320 kcal</div></div></div>
+            <div class="slot card" style="background:#fff;border-radius:24px;box-shadow:0 6px 18px rgba(34,27,38,.10);padding:14px"><span class="ic" style="background:rgba(200,121,78,.18);color:var(--carbs)">🍽️</span><div style="flex:1"><div class="nm">Lunch</div><div class="sub">Empty slot · Aim ~370 kcal</div></div></div>
+          </div>
+          <div class="blk ns"><div class="ey">What to eat next</div><div class="t">Slow-cooker beef chili</div><span class="chipx">Close fit · +12 protein</span></div>
+        </div>
+      </div></div>
+      <div class="tag">soft-lift slabs · 8/12/20/32 gaps · bars + captions · tinted washes</div>
+    </div>
+
+    <!-- ============ AFTER ============ -->
+    <div class="col">
+      <h2>Proposed · tier 9</h2>
+      <div class="phone after"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀛨</span></div>
+        <div class="scroll">
+          <div class="hdr"><div class="wm">Sloe</div><div class="greet">Morning, Grace · Sun 14 Jun</div></div>
+          <!-- hero (flat) -->
+          <div class="card" style="display:flex;flex-direction:column;align-items:center">
+            <div class="ring-wrap"><div class="ring"><div class="num">470</div><div class="lab">left</div></div>
+            <span class="chip">✓ On track</span>
+            <div class="stats"><div><div class="k">Goal</div><div class="v">1,231</div></div><div><div class="k">Eaten</div><div class="v">761</div></div><div><div class="k">Bonus</div><div class="v">0</div></div></div>
+            </div>
+          </div>
+          <!-- macro tiles: stripped to value + /target, colour = macro identity, fat over = amber -->
+          <div class="macros">
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--protein)"></span><span class="ml">Protein</span></div><div class="mval" style="color:var(--protein)">68<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 99g</span></div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--carbs)"></span><span class="ml">Carbs</span></div><div class="mval" style="color:var(--carbs)">92<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 117g</span></div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fat)"></span><span class="ml">Fat</span></div><div class="mval" style="color:var(--warningSolid)">44<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 41g</span></div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fibre)"></span><span class="ml">Fibre</span></div><div class="mval" style="color:var(--fibre)">14<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 27g</span></div></div>
+          </div>
+          <!-- meals: flat group, de-chromed -->
+          <div class="grp">
+            <div class="slot"><span class="ic" style="background:rgba(124,132,102,.12);color:var(--protein)">☕️</span><div style="flex:1"><div class="nm">Breakfast</div><div class="sub">Greek yogurt + berries · 320 kcal</div></div></div>
+            <div class="slot"><span class="ic" style="background:rgba(200,121,78,.12);color:var(--carbs)">🍽️</span><div style="flex:1"><div class="nm">Lunch</div><div class="sub">Aim ~370 kcal</div></div></div>
+          </div>
+          <div class="ns"><div class="ey">What to eat next</div><div class="t">Slow-cooker beef chili</div><span class="chipx">Close fit · +12 protein</span></div>
+        </div>
+      </div></div>
+      <div class="tag">flat on cream · one 24 rhythm · value-colour, no bars · sage chip</div>
+    </div>
+
+    <!-- ============ AFTER · Calm mode ============ -->
+    <div class="col">
+      <h2>Proposed · Calm mode on</h2>
+      <div class="phone after"><div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀛨</span></div>
+        <div class="scroll">
+          <div class="hdr"><div class="wm">Sloe</div><div class="greet">Morning, Grace · Sun 14 Jun</div></div>
+          <div class="card" style="display:flex;flex-direction:column;align-items:center">
+            <div class="ring-wrap"><div class="ring"><div class="num">470</div><div class="lab">left</div></div>
+            <span class="chip">✓ On track</span>
+            <div class="stats"><div><div class="k">Goal</div><div class="v">1,231</div></div><div><div class="k">Eaten</div><div class="v">761</div></div><div><div class="k">Bonus</div><div class="v">0</div></div></div>
+            </div>
+          </div>
+          <div class="macros">
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--protein)"></span><span class="ml">Protein</span></div><div class="mval" style="color:var(--protein)">68<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 99g</span></div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--carbs)"></span><span class="ml">Carbs</span></div><div class="mval" style="color:var(--carbs)">92<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 117g</span></div></div>
+            <!-- Grace's call: amber NEUTRALISED under Calm mode → fat over stays the macro hue -->
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fat)"></span><span class="ml">Fat</span></div><div class="mval" style="color:var(--fat)">44<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 41g</span></div></div>
+            <div class="mtile"><div class="mtop"><span class="dot" style="background:var(--fibre)"></span><span class="ml">Fibre</span></div><div class="mval" style="color:var(--fibre)">14<span style="font-size:13px;color:var(--ink3);font-family:var(--sans)"> / 27g</span></div></div>
+          </div>
+          <div class="grp">
+            <div class="slot"><span class="ic" style="background:rgba(124,132,102,.12);color:var(--protein)">☕️</span><div style="flex:1"><div class="nm">Breakfast</div><div class="sub">Greek yogurt + berries · 320 kcal</div></div></div>
+            <!-- Calm mode: the per-slot aim line is hidden → name only -->
+            <div class="slot"><span class="ic" style="background:rgba(200,121,78,.12);color:var(--carbs)">🍽️</span><div style="flex:1"><div class="nm">Lunch</div></div></div>
+          </div>
+          <div class="ns"><div class="ey">What to eat next</div><div class="t">Slow-cooker beef chili</div><span class="chipx">Close fit · +12 protein</span></div>
+        </div>
+      </div></div>
+      <div class="tag">amber over-signal → macro hue · aim lines hidden</div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <b>What changed (M1–M6).</b><br/>
+    <span class="m">M1</span> one 24px rhythm between every block (was 8/12/20/32) — the seam fix.<br/>
+    <span class="m">M2</span> flat cards on cream — the hero ring is still the largest element, just not shadow-floated (single-hero cap holds).<br/>
+    <span class="m">M3</span> macro tiles stripped to the recipe-strip pattern: serif value + /target, <b>no bar, no caption</b>; over/under reads off the <b>value colour</b> (macro identity hue; <b>amber</b> only when over a flagged macro — fat here). Numbers stay visible.<br/>
+    <span class="m">M4</span> two serif tiers — ring 48 / block values 20 — collapsing five mid sizes; hero-stat row → one 18 ramp step (web + mobile converge).<br/>
+    <span class="m">M5</span> washes quieted so the ring is the one confident note: status chip de-tinted, slot icon tint 18→12%.<br/>
+    <span class="m">M6</span> meal log de-chromed to a flat list grammar; slot identity (hue + icon + position) kept.<br/>
+    <br/>
+    <b>Grace's calls baked in:</b> Calm mode <b>neutralises the amber over-signal</b> (fat value stays the calm macro hue) and hides the per-slot aim line (Lunch shows name only). Skia over-budget overflow arc = separate ticket. 24 rhythm extends to the whole scroll. Coloured values use AA-tuned (`*Solid`) tones in production.<br/>
+    <br/>
+    <i>Static mock — fonts/anti-aliasing approximate; the real ring uses the gradient/SVG arc. Red-line the rhythm, the stripped tiles, the value-colour signal, and the de-tinted washes.</i>
+  </div>
+</body>
+</html>
