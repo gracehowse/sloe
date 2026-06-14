@@ -46,6 +46,7 @@ import {
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useCalmMode } from "../../lib/preferences/useCalmMode.ts";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -211,6 +212,10 @@ export const MealPlanner = memo(function MealPlanner({
   // popover holds the full pickers. OFF → the three inline rows (unchanged).
   // Web-only flag (mobile already collapsed); default-OFF until Grace red-lines.
   const planAdjustCollapsed = isFeatureEnabled("plan_adjust_collapsed_v1");
+  // ENG-1098 "Calm mode" — when on, quiet the per-slot "Aim ~X kcal" numbers
+  // (the empty-slot rows still render; only the number is hidden). Client-side
+  // display preference (no DB), shared key with mobile.
+  const [calmMode] = useCalmMode();
   const [planSource, setPlanSource] = useState<PlanSourceMode>(
     DEFAULT_PLAN_SOURCE_MODE,
   );
@@ -279,7 +284,8 @@ export const MealPlanner = memo(function MealPlanner({
   // set. Used for every empty slot (absent-slot card AND placeholder row), so
   // the dominant fresh-grid empty state reads its purpose, not "Empty slot".
   const canonicalSlotAim = useMemo<Record<string, number | null>>(() => {
-    if (!planAimEmptyOn || !(nutritionTargets.calories > 0)) return {};
+    // ENG-1098: Calm mode → no aims at all (empty cells fall back to "Empty slot").
+    if (!planAimEmptyOn || calmMode || !(nutritionTargets.calories > 0)) return {};
     const targets = {
       calories: nutritionTargets.calories,
       protein: nutritionTargets.protein,
@@ -292,7 +298,7 @@ export const MealPlanner = memo(function MealPlanner({
     return Object.fromEntries(
       SLOTS.map((s, i) => [s, planSlotAimKcal(s, perSlot[i]!.calories)]),
     );
-  }, [planAimEmptyOn, nutritionTargets]);
+  }, [planAimEmptyOn, calmMode, nutritionTargets]);
 
   // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
   // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring

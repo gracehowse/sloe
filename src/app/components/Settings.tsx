@@ -63,6 +63,7 @@ import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 import { SubscriptionCard } from "./settings/SubscriptionCard";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
+import { useCalmMode } from "../../lib/preferences/useCalmMode";
 import type { MacroDisplayStyle } from "../../lib/preferences/macroDisplayStyle";
 import { SupprCard } from "./ui/suppr-card";
 
@@ -142,6 +143,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // mirrors via AsyncStorage (`apps/mobile/lib/macroDisplayStyle.ts`).
   // Grace ask 2026-05-17.
   const [macroDisplayStyle, setMacroDisplayStyle] = useMacroDisplayStyle();
+  // ENG-1098 "Calm mode" — body-neutral display preference; v1 hides the
+  // per-slot "Aim ~X kcal" numbers (Today + Plan). Client-side, shared key with
+  // mobile (`apps/mobile/lib/calmMode.ts`).
+  const [calmMode, setCalmMode] = useCalmMode();
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
@@ -1213,6 +1218,34 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               one full-width list; better only if you track many extras
               (sugar, sodium, water).
             </p>
+          </div>
+
+          {/* Calm mode (ENG-1098). Body-neutral opt-out raised by
+              diversity-inclusion during the ENG-1092 "Aim ~X kcal" sign-off:
+              standing per-slot calorie aims are a numeric nudge with no opt-out.
+              v1 hides those aims; the umbrella name lets the upcoming
+              hide-weight / streak toggles fold in here without a rename
+              (product-lead call 2026-06-14). Client-side pref, mobile parity. */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 mr-4">
+              <label
+                htmlFor="calm-mode-toggle"
+                className="block text-sm font-medium text-foreground cursor-pointer"
+              >
+                Hide calorie aims
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Hides the &ldquo;Aim ~X kcal&rdquo; suggestions on empty meals.
+                Your targets still apply &mdash; they just stay quiet.
+              </p>
+            </div>
+            <Switch
+              id="calm-mode-toggle"
+              aria-label="Hide calorie aims"
+              data-testid="settings-calm-mode-toggle"
+              checked={calmMode}
+              onCheckedChange={(next) => setCalmMode(!!next)}
+            />
           </div>
 
           {/* Week start picker.

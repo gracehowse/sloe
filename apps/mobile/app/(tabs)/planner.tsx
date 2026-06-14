@@ -148,6 +148,7 @@ import {
 } from "@suppr/shared/planning/planDayLabel";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { isFeatureEnabled, track } from "@/lib/analytics";
+import { useCalmMode } from "@/lib/calmMode";
 import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
@@ -579,6 +580,9 @@ export default function PlannerScreen() {
   // bare "Empty slot" / "Empty". Same flag as Today (increment 1) — the spine
   // across all four surfaces. OFF → legacy "Empty slot" / "Empty" copy.
   const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (rows still render;
+  // only the "Aim ~X kcal" line is hidden). Shared key with web + Today.
+  const [calmMode] = useCalmMode();
   // When EITHER the source selector or the v2 empty state is on, the
   // day/start/meal pills render in the primary accent (web parity).
   const primaryPills = planSourceSelector || planEmptyStateV2;
@@ -3283,7 +3287,9 @@ export default function PlannerScreen() {
                   ).map((t, i) => planSlotAimKcal(ALL_MEAL_SLOTS[i]!, t.calories));
                   return ALL_MEAL_SLOTS.map((slot, i) => {
                     const slotKey = resolvePlanSlotIconKey(slot);
-                    const aim = slotAims[i];
+                    // ENG-1098 Calm mode → the rows stay (slot name + icon), the
+                    // aim number is hidden.
+                    const aim = calmMode ? null : slotAims[i];
                     return (
                       <View key={`empty-${dp.day}-${slot}`} style={styles.mealRow}>
                         <PlanMealThumb
@@ -3339,7 +3345,7 @@ export default function PlannerScreen() {
               // targets aren't set → no aim line (never "Aim ~0 kcal"). Computed
               // only for genuinely empty rows; populated rows show real kcal.
               const planRowAim =
-                planAimEmptyOn && !planMealHasRecipe(meal) && aimPlannerTargets
+                planAimEmptyOn && !calmMode && !planMealHasRecipe(meal) && aimPlannerTargets
                   ? planSlotAimKcal(
                       meal.name,
                       slotMacroTargets(
