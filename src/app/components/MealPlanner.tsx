@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarRange,
+  ChevronDown,
   Coffee,
   Cookie,
   Lock,
@@ -8,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   ShoppingCart,
+  Sliders,
   Sun,
   UtensilsCrossed,
   X,
@@ -31,6 +33,7 @@ import {
 import { SupprCard } from "./ui/suppr-card";
 import { SupprButton } from "./suppr/suppr-button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { TextPromptDialog } from "./suppr/text-prompt-dialog";
 import { HouseholdBar } from "./HouseholdBar.tsx";
@@ -201,6 +204,13 @@ export const MealPlanner = memo(function MealPlanner({
   // "Empty slot". Same flag as Today (increment 1) — the spine across all four
   // surfaces; mobile twin reads the same flag. OFF → legacy "Empty slot".
   const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-1092 increment 3 — collapse the always-open Plan-length / Slots / Start
+  // chip rows behind ONE "Adjust plan" control (web parity catch-up to mobile,
+  // which already condenses these into chips → sheets). The trigger shows the
+  // current settings ("7 days · Today · All meals") so defaults stay loud; the
+  // popover holds the full pickers. OFF → the three inline rows (unchanged).
+  // Web-only flag (mobile already collapsed); default-OFF until Grace red-lines.
+  const planAdjustCollapsed = isFeatureEnabled("plan_adjust_collapsed_v1");
   const [planSource, setPlanSource] = useState<PlanSourceMode>(
     DEFAULT_PLAN_SOURCE_MODE,
   );
@@ -940,6 +950,27 @@ export const MealPlanner = memo(function MealPlanner({
         </div>
       ) : null}
 
+      {(() => {
+      // ENG-1092 inc 3 — the three config rows, defined once so they render
+      // either inline (flag off) or inside the "Adjust plan" popover (flag on).
+      const startLabel =
+        startOffset === 0 ? "Today" : startOffset === 1 ? "Tomorrow" : "Next week";
+      const enabledList = SLOTS.filter((s) => enabledSlots.has(s));
+      const SHORT_SLOT: Record<string, string> = {
+        breakfast: "Brk",
+        lunch: "Lun",
+        dinner: "Din",
+        snacks: "Snk",
+      };
+      const mealsLabel =
+        enabledList.length === SLOTS.length
+          ? "All meals"
+          : enabledList.length === 0
+          ? "No meals"
+          : enabledList.map((s) => SHORT_SLOT[s] ?? s).join(" · ");
+      const planSummaryLabel = `${planDays} day${planDays > 1 ? "s" : ""} · ${startLabel} · ${mealsLabel}`;
+      const configRows = (
+      <>
       {/* F2-B (2026-04-28): day-count picker. Mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1734-1757`. F2-C: Free
           tier sees a lock glyph on 3-day and 7-day chips and tapping
@@ -1074,6 +1105,33 @@ export const MealPlanner = memo(function MealPlanner({
           );
         })}
       </div>
+      </>
+      );
+      if (!planAdjustCollapsed) return configRows;
+      // Collapsed: one ghost "Adjust plan" control showing the current settings
+      // (defaults stay loud), opening a popover with the full pickers.
+      return (
+        <div className="mb-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                data-testid="planner-adjust-plan"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label={`Adjust plan — currently ${planSummaryLabel}`}
+              >
+                <Sliders size={14} aria-hidden />
+                <span className="tabular-nums">{planSummaryLabel}</span>
+                <ChevronDown size={14} aria-hidden />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 space-y-1.5">
+              {configRows}
+            </PopoverContent>
+          </Popover>
+        </div>
+      );
+      })()}
 
       {/* ONE-CTA LAW (ENG-1080 cohesion wave, 2026-06-13): the big empty-state
           card carries its own solid Generate, so it must NOT co-render with the
