@@ -90,6 +90,11 @@ export type SkiaRingArcsProps = {
   emptyGradientStops?: readonly string[];
   /** Opacity of the empty gradient sweep (host passes RING_EMPTY_GRADIENT_OPACITY). */
   emptyGradientOpacity?: number;
+  /** ENG-1093 — when true and `expanded`, an EMPTY ring renders the populated
+   *  multi-ring unpopulated (calorie track + 3 grey macro tracks) and drops the
+   *  cold-open hairline, so empty + Show-macros matches a populated day exactly,
+   *  just empty. The collapsed-empty cold-open loop is unaffected. */
+  emptyMacroParity?: boolean;
   /** Monotonic counter — increments when the ring crosses 100% (goal hit).
    *  Triggers the 600ms glow pulse. 0 = never hit this mount. */
   goalHitCount: number;
@@ -128,7 +133,10 @@ export function SkiaRingArcs({
   emptyGradient = false,
   emptyGradientStops,
   emptyGradientOpacity = 0.36,
+  emptyMacroParity = false,
 }: SkiaRingArcsProps) {
+  // ENG-1093 — empty + Show-macros renders the unpopulated multi-ring.
+  const emptyShowsMacros = isEmpty && expanded && emptyMacroParity;
   const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = geom;
   const reduceMotion = useReducedMotion();
 
@@ -221,7 +229,7 @@ export function SkiaRingArcs({
             colors={[...emptyGradientStops, emptyGradientStops[0]!]}
           />
         </Path>
-      ) : isEmpty ? (
+      ) : isEmpty && !emptyShowsMacros ? (
         <Path
           path={circlePath(CX, R - STROKE / 2 - 1)}
           style="stroke"
@@ -294,9 +302,11 @@ export function SkiaRingArcs({
           centre verdict ("356 OVER") + chip carry it (Grace's final call,
           2026-06-10, on the overage-treatments survey). */}
       {/* Inner macro arcs (multi-ring) — track + fill per macro. Hidden in the
-          empty state (ENG-1086): three nested grey tracks made the cold-open
-          read as a wireframe; the single confident gradient loop carries it. */}
-      {expanded && !isEmpty
+          COLLAPSED empty state (ENG-1086): three nested grey tracks made the
+          cold-open read as a wireframe; the single confident gradient loop
+          carries it. ENG-1093: when macros are SHOWN on an empty day the grey
+          tracks DO render (unpopulated) so it matches a populated day exactly. */}
+      {expanded && (!isEmpty || emptyShowsMacros)
         ? MACRO_R.map((r, i) => (
             <Group key={i}>
               <Path

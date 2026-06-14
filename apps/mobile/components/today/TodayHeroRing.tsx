@@ -345,10 +345,18 @@ export function TodayHeroRing({
         })}
       >
         <Text
+          numberOfLines={1}
           style={{
             fontSize: 11,
             fontWeight: "600",
             color: isDark ? accent.primarySolidDark : accent.primarySolid,
+            // ENG-1093 (Grace): "Hide macros" / "Show macros" are the same width
+            // so the centred control never wobbles between states. A fixed
+            // minWidth + centred text pins both labels to one footprint (the
+            // two strings are equal length but "Show"/"Hide" differ in glyph
+            // width). Mirrors web `min-w-[84px] text-center`.
+            minWidth: 84,
+            textAlign: "center",
           }}
         >
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}

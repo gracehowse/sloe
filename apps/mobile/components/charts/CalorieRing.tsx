@@ -355,6 +355,16 @@ export default function CalorieRing({
   // path, so populated/collapsed states and the SVG fallback are untouched.
   const emptyGradientOn = isFeatureEnabled("ring_empty_gradient_v1");
   const emptyBoldStroke = Math.round(SIZE * 0.085);
+  // ENG-1093 — empty + Show-macros parity. When the user shows macros on an
+  // EMPTY day, render the populated multi-ring unpopulated (calorie track + 3
+  // grey macro tracks) rather than the single bold cold-open loop, so it looks
+  // exactly like a populated day, just empty (Grace 2026-06-13). The cold-open
+  // gradient loop (ENG-1086) is therefore scoped to the COLLAPSED empty state:
+  // macros shown ⇒ fall through to the multi-ring tracks. Default-on; off →
+  // empty always shows the single loop (pre-ENG-1093).
+  const emptyMacroParityOn = isFeatureEnabled("ring_empty_macro_parity_v1");
+  // The bold gradient cold-open loop paints only when macros are HIDDEN.
+  const showEmptyLoop = isEmpty && emptyGradientOn && !(emptyMacroParityOn && expanded);
   const SkiaArcs: typeof SkiaRingArcsT | null = useMemo(() => {
     if (!skiaFlagOn) return null;
     // 2026-06-10 INCIDENT: a try/catch around the require is NOT enough —
@@ -492,8 +502,10 @@ export default function CalorieRing({
               SIZE,
               // ENG-1086: the empty ring wears the confident collapsed-hero
               // stroke (0.085·S) so the gradient loop reads as intentional, not
-              // a thin skeleton. Populated/collapsed keep their existing stroke.
-              STROKE: isEmpty && emptyGradientOn ? emptyBoldStroke : STROKE,
+              // a thin skeleton. ENG-1093: only while the loop is shown (macros
+              // hidden) — macros shown ⇒ the thin multi-ring stroke so the empty
+              // ring matches a populated one. Populated keeps its existing stroke.
+              STROKE: showEmptyLoop ? emptyBoldStroke : STROKE,
               MACRO_STROKE,
               CX,
               R,
@@ -516,7 +528,8 @@ export default function CalorieRing({
             isOver={isOver}
             expanded={expanded}
             goalHitCount={goalHitCount}
-            emptyGradient={emptyGradientOn}
+            emptyGradient={showEmptyLoop}
+            emptyMacroParity={emptyMacroParityOn}
             emptyGradientStops={AccentWinGradient.stops}
             emptyGradientOpacity={RING_EMPTY_GRADIENT_OPACITY}
           />
@@ -550,8 +563,10 @@ export default function CalorieRing({
           {/* Empty-state inner hairline (audit gap 1) — a 1px ring just inside
               the track so the empty circle reads as intentional geometry, not
               a faint outline. Sits at the track's inner edge. Hidden the moment
-              anything is logged (the plum arc then carries the shape). */}
-          {isEmpty ? (
+              anything is logged (the plum arc then carries the shape). ENG-1093:
+              also hidden when macros are shown on an empty day — the multi-ring
+              tracks below carry the shape, matching a populated day. */}
+          {isEmpty && !(emptyMacroParityOn && expanded) ? (
             <Circle
               cx={CX}
               cy={CX}
