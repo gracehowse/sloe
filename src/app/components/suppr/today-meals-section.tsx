@@ -16,6 +16,7 @@ import { SupprCard } from "../ui/suppr-card.tsx";
 import { SupprButton } from "./suppr-button";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
+import { MEAL_SLOTS } from "../../../lib/nutrition/mealSlots";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
@@ -327,6 +328,29 @@ export function TodayMealsSection({
   // flag (off) for reversibility. Web↔mobile parity: TodayMealsSection.tsx.
   const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout");
 
+  // ENG-1095 — web↔mobile meals parity (Grace 2026-06-13). Mobile iterates a
+  // FIXED slot list (Breakfast/Lunch/Dinner/Snacks) so all four rows render on
+  // every day, including an empty one; web only ever built slots that had
+  // logged meals, so an empty day collapsed to a single "Log a meal" card and
+  // logging Breakfast made Lunch/Dinner/Snacks vanish. Render the four standard
+  // slots ALWAYS (+ any extra populated slot, e.g. a legacy "Other"/"Planned",
+  // appended in their existing order so no logged meal is dropped), mirroring
+  // mobile's `slots.map`. Gated on `today_meals_all_slots_v1` (default-on);
+  // off → the legacy populated-only list + the "Log a meal" empty card (kept in
+  // the else as the kill switch). Web-only: mobile already renders all four.
+  const allSlotsOn = isFeatureEnabled("today_meals_all_slots_v1");
+  const slotsToRender = React.useMemo(() => {
+    if (!allSlotsOn) return mealsGrouped;
+    const byName = new Map(mealsGrouped.map((g) => [g.name, g]));
+    const standard = MEAL_SLOTS.map(
+      (name) => byName.get(name) ?? { name, meals: [] },
+    );
+    const extras = mealsGrouped.filter(
+      (g) => !(MEAL_SLOTS as readonly string[]).includes(g.name),
+    );
+    return [...standard, ...extras];
+  }, [allSlotsOn, mealsGrouped]);
+
   return (
     <div className="mb-6">
       {!mealsFigmaLayout ? (
@@ -553,7 +577,7 @@ export function TodayMealsSection({
       // tightens to the pre-inversion rhythm (`gap-2` 8px, was `gap-3` 12px) so
       // the four slots read as one tight grouped block (mobile `Spacing.sm` parity).
       <div className="flex flex-col gap-2">
-        {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
+        {slotsToRender.map(({ name: sectionName, meals: sectionMeals }) => {
           const hasMeals = sectionMeals.length > 0;
           const isOpen = !collapsedSlots.has(sectionName);
           const slotCals = Math.round(sectionMeals.reduce((sum, m) => sum + m.calories, 0));
@@ -597,7 +621,13 @@ export function TodayMealsSection({
               radius="lg"
               padding="none"
               data-testid={`today-slot-${sectionName}`}
-              className={`overflow-hidden ${hasMeals ? "" : "opacity-55"}`}
+              // ENG-1095: every slot row reads at full opacity — empty or
+              // populated — matching mobile's crisp per-slot rows (the MFP/
+              // Lifesum "all slots always visible" pattern). The "+" affordance
+              // + absence of macro chips already distinguishes an empty slot;
+              // the old `opacity-55` dim never actually shipped (empty slots
+              // weren't rendered pre-ENG-1095) and isn't on mobile.
+              className="overflow-hidden"
             >
               {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
@@ -681,10 +711,23 @@ export function TodayMealsSection({
                     </span>
                   </button>
                 )}
-                <Icons.down
-                  data-testid={`today-slot-chevron-${sectionName}`}
-                  className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`}
-                />
+                {/* ENG-1095: empty slots show a "+" (add) affordance, not a
+                    chevron — a downward chevron on an empty row reads as
+                    "expand" when there's nothing to expand. Matches mobile's
+                    trailing "+" on empty per-slot rows. Populated slots keep the
+                    expand/collapse chevron. */}
+                {hasMeals ? (
+                  <Icons.down
+                    data-testid={`today-slot-chevron-${sectionName}`}
+                    className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`}
+                  />
+                ) : (
+                  <Icons.add
+                    data-testid={`today-slot-add-${sectionName}`}
+                    className="w-4 h-4 text-muted-foreground"
+                    aria-hidden
+                  />
+                )}
               </div>
 
               {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
@@ -1034,7 +1077,11 @@ export function TodayMealsSection({
       </div>
       )}
 
-      {!mealsFigmaLayout && mealsForSelectedDate.length === 0 ? (
+      {!mealsFigmaLayout && !allSlotsOn && mealsForSelectedDate.length === 0 ? (
+        // ENG-1095: superseded by the always-render four-slot list when
+        // `today_meals_all_slots_v1` is on (empty day shows the four per-slot
+        // rows, mobile parity). This single "Log a meal" card is the flag-off
+        // kill switch only.
         // One-treatment elevation (Grace 2026-06-09): empty-state card sits on
         // the page ground → soft lift (`elevation="card"`). Was slab-flat.
         <SupprCard elevation="card" radius="lg" padding="none" className="overflow-hidden">
