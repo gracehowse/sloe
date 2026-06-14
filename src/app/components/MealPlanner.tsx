@@ -53,8 +53,10 @@ import {
   DEFAULT_PLANNER_BANDS,
   refitDayMealsToTargets,
   scaleMacros,
+  slotMacroTargets,
 } from "../../lib/nutrition/mealPlanAlgo.ts";
 import { coerceMacrosWhenCaloriesButNoGrams } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
+import { planSlotAimKcal, aimKcalLabel } from "../../lib/nutrition/mealSlotAim.ts";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -194,6 +196,11 @@ export const MealPlanner = memo(function MealPlanner({
   // saved-only path with the hard 0-saved gate. Mobile twin:
   // `apps/mobile/app/(tabs)/planner.tsx`.
   const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  // ENG-1092 increment 2 ("Purposeful empties") — empty Plan day-card slots
+  // state "Aim ~X kcal" (static per-slot dietitian share) instead of the bare
+  // "Empty slot". Same flag as Today (increment 1) — the spine across all four
+  // surfaces; mobile twin reads the same flag. OFF → legacy "Empty slot".
+  const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
   const [planSource, setPlanSource] = useState<PlanSourceMode>(
     DEFAULT_PLAN_SOURCE_MODE,
   );
@@ -254,6 +261,28 @@ export const MealPlanner = memo(function MealPlanner({
     () => computePlanWeekSummaryScore(mealPlan ?? [], targetCalories),
     [mealPlan, targetCalories],
   );
+
+  // ENG-1092 ("Purposeful empties") — the static per-slot aim, keyed by
+  // canonical slot. `slotMacroTargets` over the four canonical SLOTS = the
+  // dietitian ratio (breakfast .25 / lunch .3 / dinner .35 / snack .1), the
+  // spec's Plan source. null on the optional Snacks slot or when no target is
+  // set. Used for every empty slot (absent-slot card AND placeholder row), so
+  // the dominant fresh-grid empty state reads its purpose, not "Empty slot".
+  const canonicalSlotAim = useMemo<Record<string, number | null>>(() => {
+    if (!planAimEmptyOn || !(nutritionTargets.calories > 0)) return {};
+    const targets = {
+      calories: nutritionTargets.calories,
+      protein: nutritionTargets.protein,
+      carbs: nutritionTargets.carbs,
+      fat: nutritionTargets.fat,
+      fiber: nutritionTargets.fiber ?? 28,
+      ...DEFAULT_PLANNER_BANDS,
+    };
+    const perSlot = slotMacroTargets([...SLOTS], targets);
+    return Object.fromEntries(
+      SLOTS.map((s, i) => [s, planSlotAimKcal(s, perSlot[i]!.calories)]),
+    );
+  }, [planAimEmptyOn, nutritionTargets]);
 
   // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
   // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring
@@ -1287,6 +1316,10 @@ export const MealPlanner = memo(function MealPlanner({
                 const SlotIcon = SLOT_ICONS[slot];
                 const entry = bySlot.get(slot);
                 if (!entry) {
+                  // ENG-1092 — an absent slot states its aim ("Aim ~X kcal")
+                  // instead of "Empty slot"; null (optional Snacks / no target /
+                  // flag off) keeps the legacy copy.
+                  const emptyAim = canonicalSlotAim[slot] ?? null;
                   return (
                     <div
                       key={slot}
@@ -1307,8 +1340,11 @@ export const MealPlanner = memo(function MealPlanner({
                         <SlotIcon size={11} aria-hidden />
                         {slot}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Empty slot
+                      <p
+                        className="text-[11px] text-muted-foreground tabular-nums"
+                        data-testid={emptyAim != null ? `plan-slot-aim-${slot}` : undefined}
+                      >
+                        {emptyAim != null ? aimKcalLabel(emptyAim) : "Empty slot"}
                       </p>
                     </div>
                   );
@@ -1317,6 +1353,9 @@ export const MealPlanner = memo(function MealPlanner({
                 const isPlaceholder = isMealPlanPlaceholderLikeTitle(meal.recipeTitle, {
                   isPlaceholder: meal.isPlaceholder,
                 });
+                // ENG-1092 — aim for this empty (placeholder) slot; null on the
+                // optional Snacks slot, no target, or a populated row.
+                const slotAim = isPlaceholder ? (canonicalSlotAim[slot] ?? null) : null;
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
@@ -1387,6 +1426,11 @@ export const MealPlanner = memo(function MealPlanner({
                       >
                         {slot}
                       </p>
+                      {/* ENG-1092: an empty slot with an aim drops the "Empty
+                          slot" title — the slot eyebrow above + the "Aim ~X
+                          kcal" line below carry it. Populated rows + no-aim
+                          empties keep the title. */}
+                      {isPlaceholder && slotAim != null ? null : (
                       <div className="flex items-start gap-1 mb-1" style={{ paddingRight: 20 }}>
                         <p
                           className="text-foreground flex-1 min-w-0"
@@ -1416,6 +1460,7 @@ export const MealPlanner = memo(function MealPlanner({
                           </span>
                         ) : null}
                       </div>
+                      )}
                       {/* Recipe-wave (2026-05-10) — "Recipe removed"
                           badge for plan rows whose `recipeId` no
                           longer resolves to a live recipe. Pre-fix
@@ -1466,8 +1511,20 @@ export const MealPlanner = memo(function MealPlanner({
                       <p
                         className="text-muted-foreground tabular-nums"
                         style={{ fontSize: 10 }}
+                        data-testid={
+                          isPlaceholder && slotAim != null
+                            ? `plan-slot-aim-${slot}`
+                            : undefined
+                        }
                       >
-                        {isPlaceholder ? "— kcal · — P" : `${kcal} kcal · ${prot} P`}
+                        {/* ENG-1092: empty slot states its aim where a populated
+                            row shows kcal · P. No aim (optional/no target) → the
+                            legacy dash line. */}
+                        {isPlaceholder
+                          ? slotAim != null
+                            ? aimKcalLabel(slotAim)
+                            : "— kcal · — P"
+                          : `${kcal} kcal · ${prot} P`}
                       </p>
                       {!isPlaceholder &&
                         (meal as { macrosAreEstimated?: boolean }).macrosAreEstimated && (

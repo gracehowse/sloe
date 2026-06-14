@@ -36,7 +36,14 @@ import { distributeMealBudget } from "./mealBudget";
  *  agreed resolution is to suppress the aim on optional slots entirely. Snacks
  *  stays in the budget ratios, so the main meals' aims still leave ~15% implicit
  *  headroom for snacking — just unnamed. */
-const OPTIONAL_AIM_SLOTS = new Set(["Snacks", "Snack"]);
+const OPTIONAL_AIM_SLOTS = new Set(["snacks", "snack"]);
+
+/** Case-insensitive optional-slot test — Today passes capitalised slot names
+ *  ("Snacks"), the web Plan grid passes lowercase ("snacks"); both must suppress
+ *  the aim on the optional slot identically. */
+function isOptionalSlot(slot: string): boolean {
+  return OPTIONAL_AIM_SLOTS.has(slot.toLowerCase());
+}
 
 export function emptySlotAimKcal(
   slot: string,
@@ -44,7 +51,7 @@ export function emptySlotAimKcal(
   totalFiber: number,
   consumedBySlot: Record<string, number>,
 ): number | null {
-  if (OPTIONAL_AIM_SLOTS.has(slot)) return null;
+  if (isOptionalSlot(slot)) return null;
   if (!(totalCalories > 0)) return null;
   const budget = distributeMealBudget(totalCalories, totalFiber, consumedBySlot);
   const entry = budget.find((b) => b.slot === slot);
@@ -64,7 +71,7 @@ export function emptySlotAimKcal(
  * Returns `null` for optional slots (Snacks) or a non-positive target.
  */
 export function planSlotAimKcal(slot: string, slotTargetKcal: number): number | null {
-  if (OPTIONAL_AIM_SLOTS.has(slot)) return null;
+  if (isOptionalSlot(slot)) return null;
   if (!(slotTargetKcal > 0)) return null;
   return Math.round(slotTargetKcal / 5) * 5;
 }

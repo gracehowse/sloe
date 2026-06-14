@@ -23,6 +23,14 @@ describe("planSlotAimKcal (Plan day-card static per-slot target)", () => {
     expect(planSlotAimKcal("Snack", 200)).toBeNull();
   });
 
+  it("suppresses Snacks case-insensitively — the web Plan grid passes lowercase slot names", () => {
+    // src/app/components/MealPlanner.tsx SLOTS = ["breakfast","lunch","dinner","snacks"].
+    expect(planSlotAimKcal("snacks", 200)).toBeNull();
+    expect(planSlotAimKcal("snack", 200)).toBeNull();
+    // ...but a lowercase MAIN slot still resolves an aim.
+    expect(planSlotAimKcal("breakfast", 308)).toBe(310);
+  });
+
   it("returns null for a non-positive target", () => {
     expect(planSlotAimKcal("Breakfast", 0)).toBeNull();
     expect(planSlotAimKcal("Breakfast", -5)).toBeNull();
@@ -96,5 +104,27 @@ describe("ENG-1092 wiring (web + mobile reference the shared helper + flag)", ()
 
   it("mobile drops the 0.55 empty-slot dim when the flag is on", () => {
     expect(MOBILE).toMatch(/hasMeals \|\| aimEmptyOn \? 1 : 0\.55/);
+  });
+});
+
+describe("ENG-1092 increment 2 — Plan day cards reference the shared helper + flag", () => {
+  const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
+  const WEB_PLAN = read("src/app/components/MealPlanner.tsx");
+  const MOBILE_PLAN = read("apps/mobile/app/(tabs)/planner.tsx");
+
+  it("both Plan surfaces gate the aim on the same flag as Today (one spine, no drift)", () => {
+    for (const src of [WEB_PLAN, MOBILE_PLAN]) {
+      expect(src).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
+      expect(src).toMatch(/planSlotAimKcal/);
+      expect(src).toMatch(/aimKcalLabel/);
+      // The aim line carries a stable per-slot testID on both platforms.
+      expect(src).toMatch(/plan-slot-aim-/);
+    }
+  });
+
+  it("both Plan surfaces source the per-slot target from slotMacroTargets (static dietitian ratio)", () => {
+    for (const src of [WEB_PLAN, MOBILE_PLAN]) {
+      expect(src).toMatch(/slotMacroTargets\(/);
+    }
   });
 });

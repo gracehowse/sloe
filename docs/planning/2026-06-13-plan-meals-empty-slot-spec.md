@@ -1,6 +1,10 @@
 # Plan / meals empty-slot redesign — "Purposeful empties" (ENG-1092)
 
-**Date:** 2026-06-13 · **Status:** spec ready, **awaiting Grace's red-line on the prototype** (no production code yet) · **Source:** design panel (3 ui-product-designer directions → design-director synthesis) + Lifesum study (`docs/ux/research/2026-06-13-lifesum-inspiration.md`).
+**Date:** 2026-06-13 · **Status:** **increment 1 (Today) + increment 2 (Plan day cards) SHIPPED** (default-on, web+mobile); increment 3 (web config-chip collapse, flag `plan_adjust_collapsed_v1`) pending · **Source:** design panel (3 ui-product-designer directions → design-director synthesis) + Lifesum study (`docs/ux/research/2026-06-13-lifesum-inspiration.md`).
+
+## Shipped log
+- **Increment 1 (Today empty slots → "Aim ~X kcal")** — PR #437. Redistributing `distributeMealBudget` source; full-opacity empties; Snacks suppressed (diversity-inclusion + brand-manager sign-off); flag `plan_today_aim_empty_v1` default-on.
+- **Increment 2 (Plan day cards → "Aim ~X kcal")** — same `plan_today_aim_empty_v1` flag (the shared spine). Static `slotMacroTargets` source (dietitian ratio breakfast .25 / lunch .3 / dinner .35 / snack .1 → Breakfast ~310 / Lunch ~370 / **Dinner ~430** / Snacks suppressed on a ~1,231 day — note the higher dinner vs Today's .30). Web: aim on both the absent-slot card AND the placeholder row; the fresh 7-day grid now reads its purpose. Mobile: the "No meals planned" empty-day block replaced by informational canonical slot rows with aims (web parity); add-back chip strip suppressed on the fresh day (Generate is the action). SEE-verified web + iOS sim — numbers match across platforms. Two deferrals tracked in **ENG-1100** (shared `EmptyMealSlotRow` extraction; always-render canonical rows on *partial* mobile days). Helper made case-insensitive for the optional-slot check (web passes lowercase slot names).
 
 ## Problem
 
