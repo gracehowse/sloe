@@ -1,4 +1,4 @@
-import React, { useState, type ReactNode } from "react";
+import React, { useMemo, useState, type ReactNode } from "react";
 import {
   Alert,
   Image,
@@ -50,6 +50,7 @@ import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
+import { emptySlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
 import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
 import { MealRowSwipeable } from "./MealRowSwipeable";
 
@@ -74,6 +75,11 @@ export interface TodayMealsSectionProps {
   slots: readonly string[];
   mealGroups: Record<string, JournalMeal[]>;
   mealsTodayCount: number;
+  /** ENG-1092 — day calorie + fibre targets, so an empty slot can show
+   *  "Aim ~X kcal" (redistributed across the still-empty slots). Optional:
+   *  when absent (or <= 0) the aim line simply doesn't render. */
+  effectiveCalorieTarget?: number;
+  fiberTarget?: number;
   collapsedSlots: Set<string>;
   onToggleSlotCollapse: (slot: string) => void;
   onOpenFabForSlot: (slot: string) => void;
@@ -543,6 +549,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     slots,
     mealGroups,
     mealsTodayCount,
+    effectiveCalorieTarget,
+    fiberTarget,
     collapsedSlots,
     onToggleSlotCollapse,
     onOpenFabForSlot,
@@ -608,6 +616,19 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // secondary-accent and keep their own `MacroColors`/`SlotColors` imports.
   const accent = useAccent();
   const colors = useThemeColors();
+
+  // ENG-1092 "Purposeful empties" — empty slots show "Aim ~X kcal" + render at
+  // full opacity. `consumedBySlot` (from the full mealGroups) feeds the shared
+  // redistributing helper, so a partial day's aims shrink honestly. Gated on
+  // `plan_today_aim_empty_v1`; off → the bare-name empty + the 0.55 dim.
+  const aimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  const consumedBySlot = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of slots) {
+      map[s] = (mealGroups[s] ?? []).reduce((a, m) => a + m.calories, 0);
+    }
+    return map;
+  }, [slots, mealGroups]);
 
   // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
   // `Log usual: <name>` chip moves out of the section-header trailing
@@ -922,7 +943,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 // (`Spacing.sm` 8, was `Spacing.dense` 12) so the four slots read as
                 // a tight grouped block, not floating slabs.
                 marginBottom: Spacing.sm,
-                opacity: hasMeals ? 1 : 0.55,
+                // ENG-1092: empty slots read at full opacity once they carry an
+                // "Aim ~X kcal" purpose line (matches web); the 0.55 dim made
+                // empties look disabled. Flag-off keeps the legacy dim.
+                opacity: hasMeals || aimEmptyOn ? 1 : 0.55,
               }}
             >
               {/* Per-slot card sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
@@ -1016,9 +1040,34 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         fiber={slotFiber}
                         kcalColor={textSecondaryColor}
                       />
-                    ) : null /* Canonical 2026-05-22 D2: "Tap to add" microcopy
-                        removed on empty slots — the row IS the tap target,
-                        explicit instruction is iOS 6-era hand-holding. */}
+                    ) : aimEmptyOn &&
+                      effectiveCalorieTarget != null &&
+                      (() => {
+                        // ENG-1092 — empty slot purpose line. Occupies the exact
+                        // spot SlotMacroChips fills on a populated card, so empty
+                        // and full cards share one rhythm. `null` (day at/over
+                        // budget) → no line, never "Aim ~0 kcal".
+                        const aim = emptySlotAimKcal(
+                          slot,
+                          effectiveCalorieTarget,
+                          fiberTarget ?? 0,
+                          consumedBySlot,
+                        );
+                        return aim == null ? null : (
+                          <Text
+                            testID={`today-slot-aim-${slot}`}
+                            style={{
+                              ...Type.caption,
+                              color: textTertiaryColor,
+                              marginTop: 1,
+                              fontVariant: ["tabular-nums"],
+                            }}
+                            numberOfLines={1}
+                          >
+                            {aimKcalLabel(aim)}
+                          </Text>
+                        );
+                      })()}
                   </View>
                 </Pressable>
                 {hasMeals && onPressSlotSummary ? (

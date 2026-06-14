@@ -5326,6 +5326,9 @@ export default function TrackerScreen() {
             slots={MEAL_SLOTS}
             mealGroups={mealGroups}
             mealsTodayCount={mealsToday.length}
+            // ENG-1092 — activity-adjusted day target (mobile's effectiveCalorieGoal
+            // ↔ web's effectiveCalorieTarget) so empty slots can show "Aim ~X kcal".
+            effectiveCalorieTarget={effectiveCalorieGoal}
             collapsedSlots={collapsedSlots}
             onToggleSlotCollapse={toggleSlotCollapse}
             onOpenFabForSlot={(slot) => { setActiveMealSlot(slot); setFabSheetOpen(true); }}

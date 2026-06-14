@@ -19,6 +19,7 @@ import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { MEAL_SLOTS } from "../../../lib/nutrition/mealSlots";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
+import { emptySlotAimKcal, aimKcalLabel } from "../../../lib/nutrition/mealSlotAim";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 import {
   Dialog,
@@ -351,6 +352,19 @@ export function TodayMealsSection({
     return [...standard, ...extras];
   }, [allSlotsOn, mealsGrouped]);
 
+  // ENG-1092 "Purposeful empties" — empty slots show "Aim ~X kcal" (redistributed
+  // budget) where the macro chips sit on a populated slot. `consumedBySlot` feeds
+  // the shared helper so partial-day aims shrink honestly. Gated on
+  // `plan_today_aim_empty_v1`; off → bare empty slots (pre-ENG-1092).
+  const aimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  const consumedBySlot = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const g of mealsGrouped) {
+      map[g.name] = g.meals.reduce((a, m) => a + m.calories, 0);
+    }
+    return map;
+  }, [mealsGrouped]);
+
   return (
     <div className="mb-6">
       {!mealsFigmaLayout ? (
@@ -671,6 +685,26 @@ export function TodayMealsSection({
                       fat={slotFat}
                       fiber={slotFiber}
                     />
+                  ) : aimEmptyOn ? (
+                    (() => {
+                      // ENG-1092 — empty-slot purpose line, in the exact spot the
+                      // macro chips fill on a populated slot. `null` (no target /
+                      // day at-or-over budget) → no line, never "Aim ~0 kcal".
+                      const aim = emptySlotAimKcal(
+                        sectionName,
+                        effectiveCalorieTarget,
+                        fiberTarget,
+                        consumedBySlot,
+                      );
+                      return aim == null ? null : (
+                        <p
+                          data-testid={`today-slot-aim-${sectionName}`}
+                          className="text-[11px] text-muted-foreground tabular-nums mt-0.5"
+                        >
+                          {aimKcalLabel(aim)}
+                        </p>
+                      );
+                    })()
                   ) : null}
                 </div>
                 {/* Ship M1 — `Log usual: {name}` pill on slot headers with
