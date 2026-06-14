@@ -166,11 +166,15 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     );
   });
 
-  it("Sloe Pro banner uses the aubergine soft tint, not the hardcoded clay rgba", () => {
-    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
-    expect(BUNDLE).toMatch(
-      /testID="settings-sloe-pro-banner"[\s\S]{0,900}backgroundColor:\s*(?:Accent|accent)\.primarySoft/,
-    );
+  it("Sloe Pro banner: white by default (ENG-1081), aubergine soft tint kept as the flag-off path, never a hardcoded clay rgba", () => {
+    // ENG-1081 (Grace 2026-06-13: "flat white for now"): card-fill cohesion —
+    // the banner is a flat WHITE slab by default; the aubergine tint
+    // (accent.primarySoft) lives behind the card_cohesion_white_v1 flag-off path.
+    expect(BUNDLE).toMatch(/testID="settings-sloe-pro-banner"/);
+    expect(BUNDLE).toMatch(/isFeatureEnabled\("card_cohesion_white_v1"\)/);
+    // Both paths present: flag-on white (colors.card) → flag-off tint (accent.primarySoft).
+    expect(BUNDLE).toMatch(/cohesionWhite[\s\S]{0,120}colors\.card[\s\S]{0,120}accent\.primarySoft/);
+    // Off-token clay rgba never returns either way.
     expect(BUNDLE).not.toContain("rgba(200, 121, 78, 0.16)");
   });
 

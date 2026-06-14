@@ -6,6 +6,7 @@ import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import {
   PROGRESS_INSIGHT_LILAC_BG,
   PROGRESS_INSIGHT_LILAC_BORDER,
@@ -53,6 +54,9 @@ export function ProgressStoryGate({
   const colors = useThemeColors();
   // Mirrors ProgressHeadline (geometry-twin contract) — soft page-ground lift.
   const cardElevation = useCardElevation({ variant: "soft" });
+  // ENG-1081 — white slab by default (cohesion), lilac wash behind the flag-off
+  // path; must match ProgressHeadline so the slot doesn't change tone on unlock.
+  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
   const placeholder = buildProgressStoryPlaceholder(daysLogged, { hasHistory });
 
   // Day-count indicator — STORY_DATA_FLOOR_DAYS discrete ring segments
@@ -79,10 +83,12 @@ export function ProgressStoryGate({
         styles.card,
         cardElevation.shadowStyle,
         {
-          // Sloe Figma 492:2 — same lilac insight wash as <ProgressHeadline>
-          // so the slot doesn't change tone when the live story unlocks.
-          backgroundColor: PROGRESS_INSIGHT_LILAC_BG,
-          borderColor: PROGRESS_INSIGHT_LILAC_BORDER,
+          // ENG-1081: white slab (cohesion) by default; lilac wash (Figma 492:2)
+          // kept behind the flag-off path. Twin of ProgressHeadline.
+          backgroundColor: cohesionWhite
+            ? cardElevation.liftBg ?? colors.card
+            : PROGRESS_INSIGHT_LILAC_BG,
+          borderColor: cohesionWhite ? colors.cardBorder : PROGRESS_INSIGHT_LILAC_BORDER,
           borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,

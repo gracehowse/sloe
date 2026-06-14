@@ -300,6 +300,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (Skia sweep) instead of a grey skeleton. Default-on; off → legacy grey
   // track + hairline empty render.
   "ring_empty_gradient_v1",
+  // ENG-1081 — card-fill cohesion: the Progress "This Week" insight card + the
+  // Settings "Sloe Pro" banner render as flat WHITE slabs (Grace 2026-06-13:
+  // "flat white for now, maybe circle back"). Default-on; off → the legacy lilac
+  // insight wash / aubergine Pro tint (kept for a possible Option-C accent).
+  "card_cohesion_white_v1",
   // ENG-1085 — recipe-detail "Fits your day" confident verdict banner.
   // Default ON (Grace ratified the design-review direction 2026-06-13); the
   // legacy 10%-wash pill stays in the component `else` as the kill switch.
