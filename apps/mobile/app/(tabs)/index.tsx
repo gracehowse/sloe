@@ -776,6 +776,11 @@ export default function TrackerScreen() {
   // entry point. Flag-OFF preserves the auto-opening modal (both the gate at
   // the eligibility effect and the modal render below are guarded by this).
   const checkinAsCard = isFeatureEnabled("redesign_winmoment");
+  // ENG-1099 M1 — unify the Today scroll rhythm to one 24 cadence (the
+  // recipe-body grammar): the inter-block scroll gap becomes Spacing.xl and the
+  // 32 section-break margins collapse to 0, so blocks breathe at one rhythm
+  // instead of 8/32 stacking. Flag-off keeps the legacy 8 gap + 32 breaks.
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
@@ -3753,7 +3758,7 @@ export default function TrackerScreen() {
         scroll: {
           paddingHorizontal: Layout.todayScreenPaddingX,
           paddingBottom: Layout.screenPaddingBottom,
-          gap: Layout.todayScrollGap,
+          gap: tierV1 ? Spacing.xl : Layout.todayScrollGap,
           paddingTop: Spacing.sm,
         },
 
@@ -5320,7 +5325,7 @@ export default function TrackerScreen() {
 
         {viewMode === "day" && (
           <ReAnimated.View
-            style={[mealsEntrance.style, { marginTop: Layout.todaySectionBreak }]}
+            style={[mealsEntrance.style, { marginTop: tierV1 ? 0 : Layout.todaySectionBreak }]}
           >
           <TodayMealsSection
             slots={MEAL_SLOTS}
@@ -5400,7 +5405,7 @@ export default function TrackerScreen() {
             data layer exposes it. Every other figure is derived from
             `weekData` (already on screen). */}
         {viewMode === "day" && (
-          <View style={{ marginTop: Layout.todaySectionBreak }}>
+          <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
           <WeeklyInsightCard
             householdSize={1}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
@@ -5478,7 +5483,7 @@ export default function TrackerScreen() {
             sits on the same 32pt rhythm as Meals / Activity / Hydration. */}
         {viewMode === "day" &&
           (plannedMeals.length > 0 || isFeatureEnabled("today_planned_empty_state")) && (
-            <View style={{ marginTop: Layout.todaySectionBreak }}>
+            <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
               <TodayPlannedMealsCard
                 plannedMeals={plannedMeals}
                 onLogPlannedMealWithPortion={(pm, p) => void logPlannedMealWithPortion(pm, p)}
@@ -5516,7 +5521,7 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-activity-section"
-            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Activity & energy"
@@ -5607,7 +5612,7 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-hydration-section"
-            style={{ marginTop: Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Hydration & stimulants"

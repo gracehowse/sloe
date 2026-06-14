@@ -736,7 +736,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
         // this wrapper can never re-introduce it). Gated OFF on Today's main
         // scroll today (props kept wired for a future "logging section"). Sits on
         // the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        <SupprCard lift="soft" padding="none" style={{ marginBottom: Spacing.xs }}>
+        <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} padding="none" style={{ marginBottom: Spacing.xs }}>
           {showQuickAdd && (
             <View
               style={{
@@ -955,7 +955,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               }}
             >
               {/* Per-slot card sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
-              <SupprCard lift="soft" padding="none">
+              <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} padding="none">
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{
