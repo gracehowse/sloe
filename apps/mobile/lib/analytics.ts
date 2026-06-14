@@ -316,6 +316,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Empty slot", and empty slots render at full opacity (matching web). Default
   // on; off → pre-ENG-1092 empties (bare name + the 0.55 dim on Today).
   "plan_today_aim_empty_v1",
+  // ENG-1094 — the Today import onboarding nudge renders as a flat WHITE card
+  // (matching every sibling Today card via SupprCard) with a solid aubergine
+  // "Try it" CTA, instead of the legacy tinted+bordered slab + outline CTA that
+  // predated the flat-card law (Grace 2026-06-13: "is this in keeping with
+  // styling?"). iOS-only (the nudge has no web surface). Default-on; off → the
+  // legacy clay-wash + 1px border + outline CTA (kill switch).
+  "import_nudge_flat_white_v1",
   // ENG-1085 — recipe-detail "Fits your day" confident verdict banner.
   // Default ON (Grace ratified the design-review direction 2026-06-13); the
   // legacy 10%-wash pill stays in the component `else` as the kill switch.
