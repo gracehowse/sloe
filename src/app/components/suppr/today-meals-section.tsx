@@ -319,9 +319,13 @@ export function TodayMealsSection({
   // animation stays alive when the flag is off. See src/lib/motion.ts.
   const redesignMotion = isFeatureEnabled("redesign_motion");
 
-  // Figma `654:2` — summary meal cards (photo + Logged + Log {slot} CTA),
-  // not TD4 `481:2` slot-grouped IconBox headers.
-  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_654");
+  // ENG-1091 (Grace 2026-06-13): the MEALS layout is back on its own flag, split
+  // out of `today_meals_figma_654` (which still gates the North Star + Weekly
+  // Insight Figma-654 designs — unchanged). `today_meals_figma_layout` is NOT in
+  // REDESIGN_DEFAULT_ON → defaults OFF → the legacy TD4 `481:2` slot-grouped
+  // meal list (reskinned Sloe). The Figma `654:2` summary cards stay behind this
+  // flag (off) for reversibility. Web↔mobile parity: TodayMealsSection.tsx.
+  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout");
 
   return (
     <div className="mb-6">

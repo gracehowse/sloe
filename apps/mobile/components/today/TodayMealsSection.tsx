@@ -624,7 +624,14 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
   // verbatim. State holds the meal whose row was long-pressed.
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
-  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_654");
+  // ENG-1091 (Grace 2026-06-13): the MEALS layout is back on its own flag, split
+  // out of `today_meals_figma_654` (which still gates the North Star + Weekly
+  // Insight Figma-654 designs — those are unchanged). `today_meals_figma_layout`
+  // is deliberately NOT in REDESIGN_DEFAULT_ON, so it defaults OFF → the legacy
+  // per-slot meal list (Breakfast/Lunch/Dinner/Snacks rows), reskinned in the
+  // Sloe palette. The Figma summary-card layout stays behind this flag (off) for
+  // reversibility; remove it in a follow-up cleanup once the revert is settled.
+  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
   // Shared "Share meal" handler used by BOTH the native Alert path and
