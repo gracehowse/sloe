@@ -16,6 +16,13 @@ An empty Today meal slot now shows **"Aim ~X kcal"** in the exact spot a populat
 - **Copy "Aim ~X kcal"** (not "Recommended", not a range): a single tilde-value is honest (the budget helper returns one redistributed number — a ±band would be fabricated precision) and body-neutral (permission, not prescription). Design-panel call 2026-06-13.
 - **Dynamic** via `distributeMealBudget(effectiveCalorieTarget, fiberTarget, consumedBySlot)` — already computed-and-discarded in the web component; now wired. Eaten calories redistribute across the still-empty slots, so partial-day aims shrink honestly.
 - **The `calories:0` guard:** `distributeMealBudget` returns `calories: 0` for any slot with food, and `0` for empty slots once the day is at/over budget. The shared helper returns `null` in both cases so a slot never shows "Aim ~0 kcal"; callers also gate on `hasMeals === false`.
+- **Optional slots show no aim (Snacks):** an aim on a slot the user may deliberately skip reads as a quota to fill (diet-culture / ED-adjacent). `emptySlotAimKcal` returns `null` for `Snacks`/`Snack`. Snacks stays in the budget ratios, so the three main meals' aims still leave ~15% implicit headroom — just unnamed.
+
+## Sign-off (pre-ramp microcopy gate)
+
+- **brand-manager (2026-06-13): APPROVE "Aim ~X kcal".** On-voice (permission, estimate-honest), and it deliberately rhymes with the existing under-ring coach line (`todayRoomForMeal` → "Aim for about X kcal") — "Aim" is the shared verb for Today's forward-headroom family; don't split it. Vetoed a conditional "~X if you snack" as off-voice (app second-guessing).
+- **diversity-inclusion (2026-06-13): PASS-WITH-TWEAK** — the Snacks slot was the one gating finding (optional-slot quota pressure). Resolution (the option both sign-offs accept): suppress the aim on Snacks (above). Main meals ship as-is.
+- Open follow-up (not blocking): a "quiet the numbers" opt-out for per-slot aims, folded into the future body-surface controls cluster (with hide-weight / streak toggles) — see the Linear issue under the Today-tab project.
 
 ## Shared spine (parity)
 

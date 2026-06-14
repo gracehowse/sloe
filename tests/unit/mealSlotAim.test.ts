@@ -12,12 +12,18 @@ import { describe, expect, it } from "vitest";
 import { emptySlotAimKcal, aimKcalLabel } from "../../src/lib/nutrition/mealSlotAim";
 
 describe("emptySlotAimKcal", () => {
-  it("redistributes the day target across the four slots (25/30/30/15), rounded to 5", () => {
+  it("redistributes the day target across the main meals (25/30/30), rounded to 5", () => {
     const t = 1231;
     expect(emptySlotAimKcal("Breakfast", t, 30, {})).toBe(310); // 307.75 → 308 → 310
     expect(emptySlotAimKcal("Lunch", t, 30, {})).toBe(370); // 369.3 → 369 → 370
     expect(emptySlotAimKcal("Dinner", t, 30, {})).toBe(370);
-    expect(emptySlotAimKcal("Snacks", t, 30, {})).toBe(185); // 184.65 → 185 → 185
+  });
+
+  it("never shows an aim on the optional Snacks slot (diet-culture sign-off 2026-06-13)", () => {
+    // Snacks stays in the budget ratios (so the main meals leave ~15% headroom),
+    // but an aim on an optional slot reads as a quota — suppressed entirely.
+    expect(emptySlotAimKcal("Snacks", 1231, 30, {})).toBeNull();
+    expect(emptySlotAimKcal("Snack", 1231, 30, {})).toBeNull();
   });
 
   it("shrinks the remaining slots' aims when a slot is already logged (honest redistribution)", () => {
@@ -25,10 +31,8 @@ describe("emptySlotAimKcal", () => {
     const consumed = { Breakfast: 620 };
     const lunch = emptySlotAimKcal("Lunch", 1231, 30, consumed)!;
     const dinner = emptySlotAimKcal("Dinner", 1231, 30, consumed)!;
-    const snacks = emptySlotAimKcal("Snacks", 1231, 30, consumed)!;
     expect(lunch).toBeLessThan(370); // shrank from the empty-day 370
     expect(lunch).toBe(dinner); // equal ratios
-    expect(snacks).toBeLessThan(lunch);
   });
 
   it("returns null for a slot that already has food (the calories:0 trap — never 'Aim ~0')", () => {
@@ -36,7 +40,7 @@ describe("emptySlotAimKcal", () => {
   });
 
   it("returns null when the day is already at/over budget (no 'Aim ~0 kcal')", () => {
-    expect(emptySlotAimKcal("Snacks", 1231, 30, { Breakfast: 1300 })).toBeNull();
+    expect(emptySlotAimKcal("Lunch", 1231, 30, { Breakfast: 1300 })).toBeNull();
   });
 
   it("returns null when there is no target yet", () => {

@@ -29,12 +29,22 @@ import { distributeMealBudget } from "./mealBudget";
  * for a slot the caller already knows is empty. The `<= 0` guard below is the
  * backstop, but the caller must still gate on its own `hasMeals === false`.
  */
+/** Optional eating occasions never show an aim — a number on a slot the user may
+ *  deliberately skip reads as a quota to fill (diet-culture / ED-adjacent).
+ *  Sign-off 2026-06-13: diversity-inclusion (gating: Snacks-as-quota) +
+ *  brand-manager (vetoed a conditional "~X if you snack" as off-voice) → the
+ *  agreed resolution is to suppress the aim on optional slots entirely. Snacks
+ *  stays in the budget ratios, so the main meals' aims still leave ~15% implicit
+ *  headroom for snacking — just unnamed. */
+const OPTIONAL_AIM_SLOTS = new Set(["Snacks", "Snack"]);
+
 export function emptySlotAimKcal(
   slot: string,
   totalCalories: number,
   totalFiber: number,
   consumedBySlot: Record<string, number>,
 ): number | null {
+  if (OPTIONAL_AIM_SLOTS.has(slot)) return null;
   if (!(totalCalories > 0)) return null;
   const budget = distributeMealBudget(totalCalories, totalFiber, consumedBySlot);
   const entry = budget.find((b) => b.slot === slot);
