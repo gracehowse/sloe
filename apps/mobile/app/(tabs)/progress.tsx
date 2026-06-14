@@ -1455,14 +1455,23 @@ export default function ProgressScreen() {
                 </View>
               ))}
             </View>
-            {/* ＋ Log weight (centred) — the weight card's ONE primary action */}
+            {/* ＋ Log weight (centred) — the weight card's ONE primary action.
+                Compact footprint (Grace 2026-06-13: "feels like a very big
+                button"): tighter padding so it hugs the label instead of
+                dominating the card — the chart stays the hero. Still meets the
+                44pt touch target (12 vpad + Type.button label). */}
             <SupprButton
               variant="primary"
               testID="progress-log-weight"
               accessibilityLabel="Log weight"
               onPress={() => setLogWeightOpen(true)}
               label="＋  Log weight"
-              style={{ marginTop: Spacing.md, alignSelf: "center" }}
+              style={{
+                marginTop: Spacing.md,
+                alignSelf: "center",
+                paddingVertical: Spacing.dense,
+                paddingHorizontal: Spacing.md,
+              }}
             />
             {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable
