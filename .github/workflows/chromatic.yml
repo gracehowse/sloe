@@ -84,5 +84,13 @@ jobs:
           # (onlyChanged in chromatic.config.json) must be off for this job.
           onlyChanged: false
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          # 2026-06-14 (Grace) — Chromatic "UI Tests" is NOT a required status
+          # check (only `test` + `mobile` gate merge), but its "N changes must
+          # be accepted as baseline" pending state read as a blocker on every
+          # visual PR. Auto-accept so it never asks for manual baseline review:
+          # snapshots are still captured + browsable, but Chromatic informs
+          # rather than gates. Visual QA is carried by manual SEE + the
+          # Playwright golden specs. Set to `false` to re-enable review.
+          autoAcceptChanges: true
         env:
           CHROMATIC_ARCHIVE_LOCATION: ./test-results
