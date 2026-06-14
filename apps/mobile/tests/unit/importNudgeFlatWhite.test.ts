@@ -1,5 +1,5 @@
 /**
- * ENG-1094 — the Today import onboarding nudge renders as a flat WHITE card
+ * ENG-1097 — the Today import onboarding nudge renders as a flat WHITE card
  * (matching every sibling Today card via SupprCard) with a solid aubergine
  * "Try it" CTA, instead of the legacy tinted+bordered slab + outline CTA that
  * predated the flat-card law (Grace 2026-06-13: "is this import in keeping with
@@ -26,7 +26,7 @@ const MOBILE_FLAGS = readFileSync(
   "utf8",
 );
 
-describe("ENG-1094 — import nudge flat-white treatment", () => {
+describe("ENG-1097 — import nudge flat-white treatment", () => {
   it("registers `import_nudge_flat_white_v1` default-on (mobile)", () => {
     expect(MOBILE_FLAGS).toMatch(/"import_nudge_flat_white_v1"/);
   });

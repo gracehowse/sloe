@@ -272,7 +272,7 @@ export function OnboardingNudgeBanner({
 
   const Icon = NUDGE_ICON[nudge.id];
 
-  // ENG-1094 (Grace 2026-06-13: "is this in keeping with styling?") — the nudge
+  // ENG-1097 (Grace 2026-06-13: "is this in keeping with styling?") — the nudge
   // now renders as a flat WHITE card via the shared SupprCard primitive, so it
   // matches every sibling Today card exactly (the legacy clay-wash + 1px border
   // predated the flat-card law and read as a muted nag box). The "Try it" CTA
@@ -346,7 +346,7 @@ export function OnboardingNudgeBanner({
           alignItems: "center",
         }}
       >
-        {/* ENG-1094: on the flat-white card the "Try it" CTA is a SOLID
+        {/* ENG-1097: on the flat-white card the "Try it" CTA is a SOLID
             aubergine pill (button-system solid-primary; the import wedge is the
             conversion exception to one-filled-CTA). The flag-off path keeps the
             Sloe 2026-06-08 aubergine OUTLINE. "Maybe later" stays a tertiary

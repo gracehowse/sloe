@@ -316,7 +316,7 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Empty slot", and empty slots render at full opacity (matching web). Default
   // on; off → pre-ENG-1092 empties (bare name + the 0.55 dim on Today).
   "plan_today_aim_empty_v1",
-  // ENG-1094 — the Today import onboarding nudge renders as a flat WHITE card
+  // ENG-1097 — the Today import onboarding nudge renders as a flat WHITE card
   // (matching every sibling Today card via SupprCard) with a solid aubergine
   // "Try it" CTA, instead of the legacy tinted+bordered slab + outline CTA that
   // predated the flat-card law (Grace 2026-06-13: "is this in keeping with

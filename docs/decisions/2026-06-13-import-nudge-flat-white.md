@@ -1,4 +1,4 @@
-# Today import nudge → flat-white card (ENG-1094)
+# Today import nudge → flat-white card (ENG-1097)
 
 **Date:** 2026-06-13
 **Area:** Today tab / onboarding nudge (mobile, iOS-only)
@@ -59,3 +59,4 @@ primitive-identity + the rendered before/after comparison shown to Grace.)
 - ENG-1078 — flat-card surfaces (the law this restores).
 - ENG-1081 — card-fill cohesion flat-white (the same direction, Progress/Settings).
 - ENG-1087 — Discover import hero (the deliberate permanent-surface contrast).
+- ENG-1094 — the *Discover* import card (a different component; still open, awaiting Grace's A/B). The surface logic here (permanent hero vs transient flat-white) is the lens for that call.
