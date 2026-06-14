@@ -699,7 +699,7 @@ export function TodayMealsSection({
                       return aim == null ? null : (
                         <p
                           data-testid={`today-slot-aim-${sectionName}`}
-                          className="text-[12px] text-muted-foreground tabular-nums mt-0.5"
+                          className="text-[11px] text-muted-foreground tabular-nums mt-0.5"
                         >
                           {aimKcalLabel(aim)}
                         </p>
