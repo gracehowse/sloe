@@ -871,7 +871,10 @@ export default function DiscoverScreen() {
               gap: Spacing.md,
               padding: Spacing.md,
               borderRadius: CARD_RADIUS,
-              backgroundColor: accent.primarySoftStrong,
+              // ENG-1094 (Grace): a confident lavender-plum accent — Discover's
+              // one deliberate accent — instead of the muddy flat ~20%
+              // `primarySoftStrong` wash that read as grey.
+              backgroundColor: colors.importHeroBg,
               marginBottom: Spacing.md,
             }}
           >
