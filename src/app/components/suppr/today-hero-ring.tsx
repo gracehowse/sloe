@@ -190,7 +190,11 @@ export function TodayHeroRing({
         type="button"
         data-testid="today-macro-rings-toggle"
         onClick={onToggleExpanded}
-        className="text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
+        // ENG-1093 (Grace): "Hide macros" / "Show macros" share one width so the
+        // centred control never wobbles between states (the two strings are equal
+        // length but "Show"/"Hide" differ in glyph width). `min-w` + centred text
+        // pins both labels to one footprint. Mirrors mobile `minWidth: 84`.
+        className="inline-block min-w-[84px] text-center text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>

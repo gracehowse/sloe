@@ -186,6 +186,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1086 — empty cold-open calorie ring paints the brand-gradient loop
   // instead of a grey skeleton (mirror of mobile; legacy grey empty as kill switch).
   "ring_empty_gradient_v1",
+  // ENG-1093 — empty + Show-macros parity: an empty day with macros SHOWN renders
+  // the populated multi-ring unpopulated (calorie track + 3 grey macro tracks)
+  // instead of the single bold cold-open loop, so it matches a populated day
+  // exactly, just empty (Grace 2026-06-13). Collapsed-empty keeps the ENG-1086
+  // loop. Default-on; off → empty always shows the single loop (pre-ENG-1093).
+  "ring_empty_macro_parity_v1",
   // ENG-1081 — card-fill cohesion: Progress "This Week" insight card + Settings
   // "Sloe Pro" banner render as flat WHITE slabs (mirror of mobile; legacy lilac
   // insight wash / aubergine Pro tint kept behind the flag-off path).

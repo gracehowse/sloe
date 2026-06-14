@@ -190,7 +190,15 @@ function DailyRing({
   // intentional, not a thin outline.
   const emptyGradientOn = isFeatureEnabled("ring_empty_gradient_v1");
   const emptyBoldStroke = Math.round(size * 0.085);
-  const showEmptyGradient = isEmpty && emptyGradientOn;
+  // ENG-1093 — empty + Show-macros parity (mobile CalorieRing parity). When the
+  // user shows macros on an EMPTY day, render the populated multi-ring
+  // unpopulated (calorie track + 3 grey macro tracks) rather than the single
+  // bold cold-open loop, so it looks exactly like a populated day, just empty
+  // (Grace 2026-06-13). The ENG-1086 loop is therefore scoped to the COLLAPSED
+  // empty state. Default-on; off → empty always shows the single loop.
+  const emptyMacroParityOn = isFeatureEnabled("ring_empty_macro_parity_v1");
+  const emptyShowsMacros = isEmpty && expanded && emptyMacroParityOn;
+  const showEmptyGradient = isEmpty && emptyGradientOn && !emptyShowsMacros;
   /** Centre copy stays ink — the plum ring (always plum, never recoloured)
    *  is the only state surface; the LEFT/OVER verdict carries the rest. */
   const centerValueColor = "var(--foreground)";
@@ -353,7 +361,7 @@ function DailyRing({
             strokeLinecap="round"
             style={{ opacity: "var(--ring-empty-gradient-opacity)" }}
           />
-        ) : isEmpty ? (
+        ) : isEmpty && !emptyShowsMacros ? (
           <circle
             cx={cx}
             cy={cx}
@@ -421,7 +429,7 @@ function DailyRing({
             The plum overage lap on the outer ring carries the over-budget
             signal — the inner arcs don't need to repeat it, and dimming
             them collapsed the multi-colour language. */}
-        {expanded && !isEmpty && macroRings.map((ring, i) => {
+        {expanded && (!isEmpty || emptyShowsMacros) && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
           return (

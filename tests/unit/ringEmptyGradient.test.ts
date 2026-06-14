@@ -48,22 +48,29 @@ describe("empty calorie ring → brand-gradient loop (ENG-1086)", () => {
       expect(SKIA_SRC).toMatch(/strokeWidth=\{1\}\s*\n\s*color=\{emptyInnerColor\}/);
     });
 
-    it("hides the inner macro arcs in the empty state (single confident loop)", () => {
-      expect(SKIA_SRC).toMatch(/expanded && !isEmpty/);
+    it("hides the inner macro arcs only in the COLLAPSED empty state; shows the unpopulated multi-ring when macros are shown (ENG-1093)", () => {
+      // ENG-1093 superseded the unconditional `expanded && !isEmpty` — empty +
+      // Show-macros now renders the unpopulated multi-ring tracks.
+      expect(SKIA_SRC).toMatch(/expanded && \(!isEmpty \|\| emptyShowsMacros\)/);
+      expect(SKIA_SRC).toMatch(/emptyShowsMacros = isEmpty && expanded && emptyMacroParity/);
     });
   });
 
   describe("mobile (host wiring)", () => {
     it("gates on `ring_empty_gradient_v1` and feeds the brand gradient + opacity token", () => {
       expect(HOST_SRC).toMatch(/isFeatureEnabled\("ring_empty_gradient_v1"\)/);
-      expect(HOST_SRC).toMatch(/emptyGradient=\{emptyGradientOn\}/);
+      // ENG-1093 — the loop is now scoped to collapsed-empty via `showEmptyLoop`.
+      expect(HOST_SRC).toMatch(/emptyGradient=\{showEmptyLoop\}/);
       expect(HOST_SRC).toMatch(/emptyGradientStops=\{AccentWinGradient\.stops\}/);
       expect(HOST_SRC).toMatch(/emptyGradientOpacity=\{RING_EMPTY_GRADIENT_OPACITY\}/);
     });
 
-    it("the empty ring wears the bold collapsed-hero stroke (0.085·S), Skia path only", () => {
+    it("the empty COLD-OPEN loop wears the bold collapsed-hero stroke (0.085·S) only while macros are hidden (ENG-1093), Skia path only", () => {
       expect(HOST_SRC).toMatch(/emptyBoldStroke = Math\.round\(SIZE \* 0\.085\)/);
-      expect(HOST_SRC).toMatch(/STROKE: isEmpty && emptyGradientOn \? emptyBoldStroke : STROKE/);
+      expect(HOST_SRC).toMatch(
+        /showEmptyLoop = isEmpty && emptyGradientOn && !\(emptyMacroParityOn && expanded\)/,
+      );
+      expect(HOST_SRC).toMatch(/STROKE: showEmptyLoop \? emptyBoldStroke : STROKE/);
     });
 
     it("exposes the RING_EMPTY_GRADIENT_OPACITY token (~0.36)", () => {
@@ -77,9 +84,11 @@ describe("empty calorie ring → brand-gradient loop (ENG-1086)", () => {
       expect(WEB_RING_SRC).toMatch(/id="ringEmptyGradient"[\s\S]{0,260}#3B2A4D[\s\S]{0,80}#5B3B6E[\s\S]{0,80}#7E5C92/);
     });
 
-    it("gates on `ring_empty_gradient_v1` and strokes the empty ring with the gradient", () => {
+    it("gates on `ring_empty_gradient_v1` and strokes the empty ring with the gradient (loop scoped to collapsed-empty, ENG-1093)", () => {
       expect(WEB_RING_SRC).toMatch(/isFeatureEnabled\("ring_empty_gradient_v1"\)/);
-      expect(WEB_RING_SRC).toMatch(/showEmptyGradient = isEmpty && emptyGradientOn/);
+      expect(WEB_RING_SRC).toMatch(
+        /showEmptyGradient = isEmpty && emptyGradientOn && !emptyShowsMacros/,
+      );
       expect(WEB_RING_SRC).toMatch(/stroke="url\(#ringEmptyGradient\)"/);
       expect(WEB_RING_SRC).toMatch(/opacity: "var\(--ring-empty-gradient-opacity\)"/);
     });
@@ -89,8 +98,10 @@ describe("empty calorie ring → brand-gradient loop (ENG-1086)", () => {
       expect(WEB_RING_SRC).toMatch(/strokeWidth=\{showEmptyGradient \? emptyBoldStroke : strokeWidth\}/);
     });
 
-    it("hides the macro arcs in the empty state (parity with mobile)", () => {
-      expect(WEB_RING_SRC).toMatch(/expanded && !isEmpty && macroRings\.map/);
+    it("shows the unpopulated multi-ring when macros are shown on an empty day (ENG-1093 parity with mobile)", () => {
+      expect(WEB_RING_SRC).toMatch(
+        /expanded && \(!isEmpty \|\| emptyShowsMacros\) && macroRings\.map/,
+      );
     });
 
     it("exposes the --ring-empty-gradient-opacity token", () => {
