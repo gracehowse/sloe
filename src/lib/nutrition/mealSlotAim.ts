@@ -52,6 +52,23 @@ export function emptySlotAimKcal(
   return Math.round(entry.calories / 5) * 5;
 }
 
+/**
+ * Aim kcal for an empty PLAN day-card slot. The Plan surface uses the STATIC
+ * per-slot ratio (`slotMacroTargets` — breakfast .25 / lunch .3 / dinner .35 /
+ * snack .1, normalised over the day's enabled slots), NOT the dynamic
+ * redistribution Today uses — intentional + documented divergence (a plan day
+ * has no "consumed yet" to redistribute). The caller passes the slot's already-
+ * computed target kcal (the planner computes `slotMacroTargets` already), so this
+ * stays decoupled from `mealPlanAlgo`. Applies the SAME optional-slot suppression
+ * + rounding + label as Today, so the two surfaces can't drift on copy/policy.
+ * Returns `null` for optional slots (Snacks) or a non-positive target.
+ */
+export function planSlotAimKcal(slot: string, slotTargetKcal: number): number | null {
+  if (OPTIONAL_AIM_SLOTS.has(slot)) return null;
+  if (!(slotTargetKcal > 0)) return null;
+  return Math.round(slotTargetKcal / 5) * 5;
+}
+
 /** Body-neutral, permission-framed empty-slot label (single value, never a range). */
 export function aimKcalLabel(kcal: number): string {
   return `Aim ~${kcal.toLocaleString()} kcal`;

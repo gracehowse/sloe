@@ -9,7 +9,25 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { emptySlotAimKcal, aimKcalLabel } from "../../src/lib/nutrition/mealSlotAim";
+import { emptySlotAimKcal, planSlotAimKcal, aimKcalLabel } from "../../src/lib/nutrition/mealSlotAim";
+
+describe("planSlotAimKcal (Plan day-card static per-slot target)", () => {
+  it("rounds the passed slot-target kcal to the nearest 5", () => {
+    expect(planSlotAimKcal("Lunch", 600)).toBe(600);
+    expect(planSlotAimKcal("Dinner", 612)).toBe(610);
+    expect(planSlotAimKcal("Breakfast", 308)).toBe(310);
+  });
+
+  it("never shows an aim on the optional Snacks slot (same policy as Today)", () => {
+    expect(planSlotAimKcal("Snacks", 200)).toBeNull();
+    expect(planSlotAimKcal("Snack", 200)).toBeNull();
+  });
+
+  it("returns null for a non-positive target", () => {
+    expect(planSlotAimKcal("Breakfast", 0)).toBeNull();
+    expect(planSlotAimKcal("Breakfast", -5)).toBeNull();
+  });
+});
 
 describe("emptySlotAimKcal", () => {
   it("redistributes the day target across the main meals (25/30/30), rounded to 5", () => {
