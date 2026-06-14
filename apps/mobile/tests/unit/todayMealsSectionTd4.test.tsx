@@ -33,7 +33,7 @@ import type { JournalMeal } from "../../lib/nutritionJournal";
 
 vi.mock("../../lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_654",
+  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_layout",
 }));
 
 void React;

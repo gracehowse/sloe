@@ -140,11 +140,16 @@ describe("TodayMealsFigmaLayout (web)", () => {
   });
 });
 
-describe("today_meals_figma_654 flag wiring", () => {
-  it("defaults ON in redesign set (web + mobile)", () => {
+describe("today_meals_figma_layout flag wiring (ENG-1091 — split from 654)", () => {
+  it("the MEALS layout reads its own today_meals_figma_layout flag (web + mobile)", () => {
+    expect(WEB_MEALS).toMatch(/today_meals_figma_layout/);
+    expect(MOBILE_MEALS).toMatch(/today_meals_figma_layout/);
+  });
+  it("today_meals_figma_layout is NOT default-on — defaults OFF → legacy per-slot meal list (Grace 2026-06-13)", () => {
+    expect(TRACK).not.toMatch(/"today_meals_figma_layout"/);
+  });
+  it("today_meals_figma_654 still ships (it now gates only North Star + Weekly Insight)", () => {
     expect(TRACK).toMatch(/today_meals_figma_654/);
-    expect(WEB_MEALS).toMatch(/today_meals_figma_654/);
-    expect(MOBILE_MEALS).toMatch(/today_meals_figma_654/);
   });
 });
 

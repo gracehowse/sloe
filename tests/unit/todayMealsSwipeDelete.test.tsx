@@ -13,7 +13,7 @@ import {
 
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag === "today_meals_figma_654",
+  isFeatureEnabled: (flag: string) => flag === "today_meals_figma_layout",
 }));
 
 void React;

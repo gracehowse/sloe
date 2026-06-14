@@ -16,7 +16,7 @@ vi.mock("expo-router", () => ({
 
 vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag === "today_meals_figma_654",
+  isFeatureEnabled: (flag: string) => flag === "today_meals_figma_layout",
 }));
 
 const NOOP = () => undefined;
