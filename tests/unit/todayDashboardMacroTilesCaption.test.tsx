@@ -15,8 +15,18 @@
  * is still a zero, so the editorial numeral only earns its full ink weight when
  * there's data.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+
+// ENG-1099: the per-tile bar + caption are the LEGACY (flag-off) path — the
+// recipe-tier tile (today_tracker_tier_v1, default-on) drops them and moves the
+// signal onto the value colour. Force the flag OFF here so these tests exercise
+// the legacy caption they're about; a separate describe covers the tier-on case.
+vi.mock("../../src/lib/analytics/track", async (orig) => ({
+  ...(await orig<typeof import("../../src/lib/analytics/track")>()),
+  isFeatureEnabled: (flag: string) =>
+    flag === "today_tracker_tier_v1" ? false : true,
+}));
 
 import { TodayDashboardMacroTiles } from "../../src/app/components/suppr/today-dashboard-macro-tiles";
 

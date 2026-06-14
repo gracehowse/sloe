@@ -45,31 +45,35 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     expect(result.current.liftBg).toBeUndefined();
   });
 
-  // TodayHeroRing is the SOFT reference (the lift every page-ground card now
-  // matches under the one-treatment rule, Grace 2026-06-09).
-  it("components/today/TodayHeroRing.tsx uses lift=\"soft\" (the page-ground reference)", () => {
-    const src = readFileSync(
-      join(ROOT, "components/today/TodayHeroRing.tsx"),
-      "utf8",
-    );
-    expect(src).toMatch(/<SupprCard[\s\S]*?lift="soft"/);
-    // Guard: must NOT revert to flat (that was the pre-one-treatment state that
-    // made the top of Today read as one undifferentiated slab).
-    expect(src).not.toMatch(/<SupprCard[\s\S]*?lift="flat"/);
-  });
-
-  // Page-ground Today cards — each sits directly on the scroll background, so
-  // under the one-treatment rule (Grace 2026-06-09) they take the SOFT lift,
-  // matching the hero reference. (TodayDashboardMacroTiles is NOT here — the
-  // 2×2 macro tiles are the `size="tile"` exception that stays flat; pinned
-  // separately below.)
-  const TODAY_SOFT_PAGE_GROUND_SURFACES = [
+  // ENG-1099 (Grace 2026-06-14, "flatten all"): the TRACKER-HALF cards
+  // (hero ring, meal slots, north-star) flatten to recipe-screen grammar behind
+  // `today_tracker_tier_v1` — superseding the 2026-06-09 soft-lift for these
+  // three. The flag-gated form (`lift={... today_tracker_tier_v1? "flat":"soft"}`)
+  // keeps the soft path alive in the else. The OTHER page-ground cards (below the
+  // tracker half) stay soft — ENG-1099 is scoped to the tracker half.
+  const TODAY_TIER_FLAGGED_SURFACES = [
+    "components/today/TodayHeroRing.tsx",
     "components/today/TodayMealsSection.tsx",
+    "components/today/NorthStarBlock.tsx",
+  ];
+
+  it.each(TODAY_TIER_FLAGGED_SURFACES)(
+    "%s flag-gates its SupprCard lift on today_tracker_tier_v1 (ENG-1099 flat, soft in the else)",
+    (relPath) => {
+      const src = readFileSync(join(ROOT, relPath), "utf8");
+      expect(src).toMatch(/lift=\{[\s\S]*?today_tracker_tier_v1[\s\S]*?"flat"[\s\S]*?"soft"/);
+    },
+  );
+
+  // Page-ground Today cards BELOW the tracker half — each sits directly on the
+  // scroll background and stays on the SOFT lift (one-treatment rule, Grace
+  // 2026-06-09; not in ENG-1099's tracker-half scope). (TodayDashboardMacroTiles
+  // is NOT here — the 2×2 tiles are the `size="tile"` flat exception.)
+  const TODAY_SOFT_PAGE_GROUND_SURFACES = [
     "components/today/TodayMealsFigmaLayout.tsx",
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayActivityBonusCard.tsx",
     "components/today/TodayActivityCard.tsx",
-    "components/today/NorthStarBlock.tsx",
     "components/today/WeeklyCheckinBanner.tsx",
     "components/today/TodayFirstMealEmptyState.tsx",
     "components/today/TodayDashboardMacroBars.tsx",

@@ -22,8 +22,18 @@
  */
 import * as React from "react";
 import { Text } from "react-native";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
+
+// ENG-1099: the per-tile bar + the value-softening are the LEGACY (flag-off)
+// path — the recipe-tier tile (today_tracker_tier_v1, default-on) drops the bar
+// and uses macro-hue value colour. Force the flag OFF so these tests exercise
+// the legacy bar/value they pin.
+vi.mock("@/lib/analytics", async (orig) => ({
+  ...(await orig<typeof import("@/lib/analytics")>()),
+  isFeatureEnabled: (flag: string) =>
+    flag === "today_tracker_tier_v1" ? false : true,
+}));
 
 import { TodayDashboardMacroTiles } from "../../components/today/TodayDashboardMacroTiles";
 import { Accent } from "../../constants/theme";
