@@ -316,6 +316,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Empty slot", and empty slots render at full opacity (matching web). Default
   // on; off → pre-ENG-1092 empties (bare name + the 0.55 dim on Today).
   "plan_today_aim_empty_v1",
+  // ENG-1099 — Today tracker → recipe-tier craft pass (M1–M6: one 24 rhythm,
+  // flat cards, stripped macro tiles w/ value-colour over-signal, two serif
+  // tiers, quieted washes, de-chromed meal log). Default-on; OFF → pre-ENG-1099
+  // tracker. Rollback = remove from this set / PostHog off. (web twin same flag)
+  "today_tracker_tier_v1",
   // ENG-1097 — the Today import onboarding nudge renders as a flat WHITE card
   // (matching every sibling Today card via SupprCard) with a solid aubergine
   // "Try it" CTA, instead of the legacy tinted+bordered slab + outline CTA that

@@ -206,6 +206,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Empty slot", and empty slots render at full opacity. Default-on; off → the
   // pre-ENG-1092 empties (bare name on Today, "Empty slot" on Plan).
   "plan_today_aim_empty_v1",
+  // ENG-1092 increment 3 — web Plan config rows (Plan length / Slots / Start)
+  // collapse behind one "Adjust plan" popover (parity with mobile). Default-on
+  // (Grace 2026-06-14: ship + roll back if disliked). OFF → the three inline rows.
+  "plan_adjust_collapsed_v1",
+  // ENG-1099 — Today tracker → recipe-tier craft pass (M1–M6: one 24 rhythm,
+  // flat cards, stripped macro tiles w/ value-colour over-signal, two serif
+  // tiers, quieted washes, de-chromed meal log). Default-on; OFF → the
+  // pre-ENG-1099 tracker. Rollback = remove from this set / PostHog off.
+  "today_tracker_tier_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
