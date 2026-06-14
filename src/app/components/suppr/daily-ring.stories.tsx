@@ -42,7 +42,6 @@ function Ring({
     <DailyRing
       consumed={consumed}
       target={2000}
-      baseGoal={2000}
       size={GEO.size}
       strokeWidth={expanded ? GEO.strokeWidth : GEO.strokeWidthBold}
       ringRadius={GEO.radius}
@@ -62,6 +61,9 @@ const meta = {
   component: DailyRing,
   tags: ["ai-generated"],
   parameters: { layout: "centered" },
+  // Default args satisfy DailyRing's required `consumed`/`target`; every story
+  // overrides via its `render` wrapper, so these are placeholders only.
+  args: { consumed: 0, target: 2000 },
 } satisfies Meta<typeof DailyRing>;
 
 export default meta;
