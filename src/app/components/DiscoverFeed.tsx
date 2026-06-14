@@ -431,8 +431,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-colors"
-          style={{ background: "var(--accent-primary-soft-strong)" }}
+          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95"
+          // ENG-1094 (Grace): a confident lavender-plum accent — Discover's one
+          // deliberate accent — instead of the muddy flat
+          // --accent-primary-soft-strong dark-plum wash that read as grey.
+          style={{ background: "var(--import-hero-bg)" }}
         >
           <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
             <Icons.import />

@@ -271,9 +271,10 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(ctas.length).toBe(2);
     });
 
-    it("mobile hero raises the weight: stronger tint + solid plum icon + 'Paste link' pill", () => {
-      // Stronger ~20% tint (the hero), not the 12% soft tint (legacy).
-      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySoftStrong/);
+    it("mobile hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {
+      // ENG-1094 (Grace): a confident lavender-plum accent (`importHeroBg`), not
+      // the muddy flat ~20% `primarySoftStrong` dark-plum wash that read as grey.
+      expect(MOBILE_SRC).toMatch(/backgroundColor: colors\.importHeroBg/);
       // Solid plum icon circle with a WHITE glyph (not the soft IconBox).
       expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySolid,[\s\S]{0,160}<LinkIcon size=\{20\} color=\{Accent\.primaryForeground\}/);
       // Serif headline title + filled "Paste link" pill replacing the chevron.
@@ -288,8 +289,8 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(ctas.length).toBe(2);
     });
 
-    it("web hero raises the weight: stronger tint + solid plum icon + 'Paste link' pill", () => {
-      expect(WEB_SRC).toMatch(/background: "var\(--accent-primary-soft-strong\)"/);
+    it("web hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {
+      expect(WEB_SRC).toMatch(/background: "var\(--import-hero-bg\)"/);
       // Solid plum icon circle (white glyph) instead of the soft IconBox.
       expect(WEB_SRC).toMatch(/rounded-full bg-primary-solid text-white/);
       // Serif headline title + filled "Paste link" pill.

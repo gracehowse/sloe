@@ -357,6 +357,13 @@ export const Colors = {
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',
     northStarBorder: 'rgba(59, 42, 77, 0.18)',
+    /** ENG-1094 — Discover import-from-Reel hero (the permanent conversion
+     *  wedge). A confident lavender-plum accent: the lighter brand plum (#7E5C92)
+     *  at a higher opacity reads clearly as a deliberate accent, not the
+     *  desaturated grey of the muddy flat ~20% dark-plum wash it replaces.
+     *  Text-safe (the plum headline + grey subcopy stay legible). Grace
+     *  2026-06-13: "keep it a hero but a real accent." */
+    importHeroBg: 'rgba(126, 92, 146, 0.30)',
     overBudgetFg: '#B04434',        // Sloe destructive red (dossier D-2), AA-darkened 2026-06-09
     overBudgetSoft: 'rgba(176, 68, 52, 0.08)',
     /** Foreground tokens that previously lived only in CSS — wired
@@ -401,6 +408,8 @@ export const Colors = {
     northStarBgFrom: 'rgba(129, 94, 145, 0.16)',
     northStarBgTo: 'rgba(213, 138, 94, 0.06)',
     northStarBorder: 'rgba(129, 94, 145, 0.28)',
+    /** ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
+    importHeroBg: 'rgba(154, 123, 170, 0.30)',
     overBudgetFg: '#DC6B55',
     overBudgetSoft: 'rgba(220, 107, 85, 0.14)',
     destructiveForeground: '#ffffff',
