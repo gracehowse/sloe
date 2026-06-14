@@ -36,7 +36,14 @@ import { distributeMealBudget } from "./mealBudget";
  *  agreed resolution is to suppress the aim on optional slots entirely. Snacks
  *  stays in the budget ratios, so the main meals' aims still leave ~15% implicit
  *  headroom for snacking — just unnamed. */
-const OPTIONAL_AIM_SLOTS = new Set(["Snacks", "Snack"]);
+const OPTIONAL_AIM_SLOTS = new Set(["snacks", "snack"]);
+
+/** Case-insensitive optional-slot test — Today passes capitalised slot names
+ *  ("Snacks"), the web Plan grid passes lowercase ("snacks"); both must suppress
+ *  the aim on the optional slot identically. */
+function isOptionalSlot(slot: string): boolean {
+  return OPTIONAL_AIM_SLOTS.has(slot.toLowerCase());
+}
 
 export function emptySlotAimKcal(
   slot: string,
@@ -44,12 +51,29 @@ export function emptySlotAimKcal(
   totalFiber: number,
   consumedBySlot: Record<string, number>,
 ): number | null {
-  if (OPTIONAL_AIM_SLOTS.has(slot)) return null;
+  if (isOptionalSlot(slot)) return null;
   if (!(totalCalories > 0)) return null;
   const budget = distributeMealBudget(totalCalories, totalFiber, consumedBySlot);
   const entry = budget.find((b) => b.slot === slot);
   if (!entry || entry.calories <= 0) return null;
   return Math.round(entry.calories / 5) * 5;
+}
+
+/**
+ * Aim kcal for an empty PLAN day-card slot. The Plan surface uses the STATIC
+ * per-slot ratio (`slotMacroTargets` — breakfast .25 / lunch .3 / dinner .35 /
+ * snack .1, normalised over the day's enabled slots), NOT the dynamic
+ * redistribution Today uses — intentional + documented divergence (a plan day
+ * has no "consumed yet" to redistribute). The caller passes the slot's already-
+ * computed target kcal (the planner computes `slotMacroTargets` already), so this
+ * stays decoupled from `mealPlanAlgo`. Applies the SAME optional-slot suppression
+ * + rounding + label as Today, so the two surfaces can't drift on copy/policy.
+ * Returns `null` for optional slots (Snacks) or a non-positive target.
+ */
+export function planSlotAimKcal(slot: string, slotTargetKcal: number): number | null {
+  if (isOptionalSlot(slot)) return null;
+  if (!(slotTargetKcal > 0)) return null;
+  return Math.round(slotTargetKcal / 5) * 5;
 }
 
 /** Body-neutral, permission-framed empty-slot label (single value, never a range). */

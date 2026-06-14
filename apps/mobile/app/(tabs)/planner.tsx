@@ -95,6 +95,7 @@ import {
 import { generateShoppingListFromRecipeEntriesAsync } from "@suppr/shared/planning/generateShoppingList";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
+import { planSlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
 import {
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
@@ -573,6 +574,11 @@ export default function PlannerScreen() {
   // mobile can't silently diverge. Flag OFF → legacy planEmptyStateV2 path.
   // Override in sim via `EXPO_PUBLIC_FLAG_FORCE_PLAN_SOURCE_SELECTOR=true`.
   const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  // ENG-1092 increment 2 ("Purposeful empties") — empty Plan day-card slots
+  // state "Aim ~X kcal" (the static per-slot dietitian share) instead of the
+  // bare "Empty slot" / "Empty". Same flag as Today (increment 1) — the spine
+  // across all four surfaces. OFF → legacy "Empty slot" / "Empty" copy.
+  const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
   // When EITHER the source selector or the v2 empty state is on, the
   // day/start/meal pills render in the primary accent (web parity).
   const primaryPills = planSourceSelector || planEmptyStateV2;
@@ -1328,6 +1334,25 @@ export default function PlannerScreen() {
         ? computePlanWeekSummaryScore(plan, planTargets.calories)
         : null,
     [plan, planTargets],
+  );
+
+  // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
+  // line (same shape the swap handler builds). Drives `slotMacroTargets` per
+  // day card; null when targets aren't set → the aim line simply doesn't render.
+  const aimPlannerTargets = useMemo<PlannerTargets | null>(
+    () =>
+      planTargets
+        ? {
+            calories: planTargets.calories,
+            protein: planTargets.protein,
+            carbs: planTargets.carbs,
+            fat: planTargets.fat,
+            fiber: planTargets.fiber,
+            calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
+            carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
+          }
+        : null,
+    [planTargets],
   );
 
   // ENG-820 — make the "Hits your targets N of 7" headline state-aware. Behind
@@ -3244,14 +3269,62 @@ export default function PlannerScreen() {
 
             <View style={styles.planDayCard}>
             {dp.meals.length === 0 ? (
-              <View style={styles.dayEmptyState}>
-                <Text style={styles.dayEmptyText}>
-                  No meals planned for this day yet.
-                </Text>
-                <Text style={styles.dayEmptyHint}>
-                  Add a slot below, or regenerate the week.
-                </Text>
-              </View>
+              planAimEmptyOn && aimPlannerTargets ? (
+                // ENG-1092 — a fresh (un-generated) day states each canonical
+                // slot's aim ("Aim ~X kcal") instead of "No meals planned",
+                // mirroring the web grid's informational empty cards. Generate
+                // (above) is the action; these rows are display-only, exactly
+                // like the web `!entry` cards (web/mobile parity). Snacks (the
+                // optional slot) shows just its name. Flag-off → legacy block.
+                (() => {
+                  const slotAims = slotMacroTargets(
+                    [...ALL_MEAL_SLOTS],
+                    aimPlannerTargets,
+                  ).map((t, i) => planSlotAimKcal(ALL_MEAL_SLOTS[i]!, t.calories));
+                  return ALL_MEAL_SLOTS.map((slot, i) => {
+                    const slotKey = resolvePlanSlotIconKey(slot);
+                    const aim = slotAims[i];
+                    return (
+                      <View key={`empty-${dp.day}-${slot}`} style={styles.mealRow}>
+                        <PlanMealThumb
+                          hasRecipe={false}
+                          recipeId={null}
+                          recipeTitle=""
+                          imageUri={null}
+                          Icon={SLOT_ICON_MOBILE[slotKey]}
+                          tint={SLOT_COLOR_MOBILE[slotKey]}
+                          iconBoxStyle={styles.mealIconBox}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[styles.mealSlot, { color: SLOT_COLOR_MOBILE[slotKey] }]}
+                          >
+                            {slot}
+                          </Text>
+                          {aim == null ? null : (
+                            <Text
+                              testID={`plan-slot-aim-${slot}`}
+                              style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
+                              numberOfLines={1}
+                            >
+                              {aimKcalLabel(aim)}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  });
+                })()
+              ) : (
+                <View style={styles.dayEmptyState}>
+                  <Text style={styles.dayEmptyText}>
+                    No meals planned for this day yet.
+                  </Text>
+                  <Text style={styles.dayEmptyHint}>
+                    Add a slot below, or regenerate the week.
+                  </Text>
+                </View>
+              )
             ) : null}
             {(() => {
               const sortedMeals = sortMealsBySlotOrder(dp.meals);
@@ -3260,6 +3333,21 @@ export default function PlannerScreen() {
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
+              // ENG-1092 — empty-slot "Aim ~X kcal": the static per-slot share
+              // (`slotMacroTargets` over THIS day's slots, indexed by position —
+              // exact parity with web). null on the optional Snacks slot or when
+              // targets aren't set → no aim line (never "Aim ~0 kcal"). Computed
+              // only for genuinely empty rows; populated rows show real kcal.
+              const planRowAim =
+                planAimEmptyOn && !planMealHasRecipe(meal) && aimPlannerTargets
+                  ? planSlotAimKcal(
+                      meal.name,
+                      slotMacroTargets(
+                        dp.meals.map((m) => m.name),
+                        aimPlannerTargets,
+                      )[mealIndexInDay]?.calories ?? 0,
+                    )
+                  : null;
               return (
               <Pressable
                 key={`${dp.day}-${mealIndexInDay}-${meal.name}`}
@@ -3352,6 +3440,11 @@ export default function PlannerScreen() {
                       one-line macro string. Render the multiplier as a
                       separate trailing badge and clamp the title to a
                       single line. */}
+                  {/* ENG-1092: flag-on empty rows drop the redundant "Empty
+                      slot" title — the coloured slot name above + the "Aim ~X
+                      kcal" line below carry the row. Populated rows + flag-off
+                      empties keep the title row unchanged. */}
+                  {planMealHasRecipe(meal) || !planAimEmptyOn ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     <Text style={[styles.mealTitle, { flexShrink: 1 }]} numberOfLines={1}>
                       {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
@@ -3387,6 +3480,7 @@ export default function PlannerScreen() {
                       </View>
                     ) : null}
                   </View>
+                  ) : null}
                   {/* ENG-64 (2026-05-13): the macro line is dense
                       enough that `numberOfLines={1}` clipped mid-
                       token on narrow phones ("…· F…"), hiding Fat
@@ -3405,6 +3499,19 @@ export default function PlannerScreen() {
                     <Text style={styles.mealMacros} numberOfLines={1}>
                       {`${Math.round(meal.calories)} kcal`}
                     </Text>
+                  ) : planAimEmptyOn ? (
+                    // ENG-1092 — purposeful empty: state the slot's aim where a
+                    // populated row shows its kcal. `null` (optional Snacks slot
+                    // or no target) → no line, so the row is just the slot name.
+                    planRowAim == null ? null : (
+                      <Text
+                        testID={`plan-slot-aim-${meal.name}`}
+                        style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
+                        numberOfLines={1}
+                      >
+                        {aimKcalLabel(planRowAim)}
+                      </Text>
+                    )
                   ) : (
                     <Text style={styles.mealMacros} numberOfLines={1}>
                       Empty
@@ -3521,6 +3628,12 @@ export default function PlannerScreen() {
             });
             })()}
             {(() => {
+              // ENG-1092 — when the flag-on empty-day informational rows are
+              // showing (a 0-meal day), they already present every canonical
+              // slot, so the add-back chip strip would duplicate them; suppress
+              // it (Generate is the action, web parity — no per-slot add on a
+              // fresh day). Populated-but-missing-slot days keep the strip.
+              if (planAimEmptyOn && dp.meals.length === 0) return null;
               const missing = canonicalSlotsMissingFromDay(dp.meals);
               if (missing.length === 0) return null;
               return (
