@@ -831,7 +831,7 @@ function DefaultComposition({
           type="button"
           data-testid="log-sheet-barcode-free-promise"
           onClick={() => barcode.onOpen?.()}
-          className="mx-3 mt-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-lg bg-primary-soft/60 px-3 py-2 text-left text-[12px] text-foreground-secondary hover:bg-primary-soft transition-colors"
+          className="mx-3 mt-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-lg bg-primary-soft/60 px-3 py-2 text-left text-[13px] text-foreground-secondary hover:bg-primary-soft transition-colors"
         >
           <ScanBarcode width={14} height={14} className="shrink-0 text-primary" aria-hidden />
           <span>{BARCODE_FREE_FOREVER_HEADLINE}</span>

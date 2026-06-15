@@ -26,6 +26,7 @@ function loadEnvLocal(): void {
 
 loadEnvLocal();
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const authFile = authFileForBaseUrl(baseURL);
 const hasE2ECredentials = Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
 
@@ -47,7 +48,6 @@ const authedTestMatch = [
 ];
 
 const useMidsceneReporter = Boolean(process.env.MIDSCENE_MODEL_API_KEY?.trim());
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const isCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 /** GitHub Actions starts `next start` on PLAYWRIGHT_BASE_URL (see ci.yml); do not spawn a second server. */
 const startWebServerLocally =
