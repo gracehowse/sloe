@@ -44,6 +44,21 @@ describe("CookieConsent — chrome tokens (gap #31)", () => {
     expect(screen.getByText("Accept all")).toBeTruthy();
   });
 
+  it("uses top anchoring on marketing routes so hero CTAs stay tappable (ENG-802)", async () => {
+    const { container } = await renderBanner();
+    const strip = container.querySelector("div.fixed") as HTMLElement;
+    expect(strip.className).toContain("top-0");
+    expect(strip.className).toContain("border-b");
+    expect(strip.className).not.toContain("bottom-0");
+  });
+
+  it("lifts above mobile chrome on authed product routes", async () => {
+    mockPathname.mockReturnValue("/today");
+    const { container } = await renderBanner();
+    const strip = container.querySelector("div.fixed") as HTMLElement;
+    expect(strip.className).toContain("bottom-[calc(4.5rem");
+  });
+
   it("uses redesign surface tokens, not raw slate, on the container", async () => {
     const { container } = await renderBanner();
     const strip = container.querySelector("div.fixed") as HTMLElement;

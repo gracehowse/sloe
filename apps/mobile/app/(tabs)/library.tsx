@@ -48,6 +48,7 @@ import {
   planImportPillId,
 } from "@suppr/shared/planning/planImport/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
+import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
@@ -239,8 +240,16 @@ export default function LibraryScreen() {
   const filtered = useMemo(() => {
     let list = savedRecipes;
     if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((r) => r.title.toLowerCase().includes(q));
+      list = list.filter((r) =>
+        recipeSearchMatch(
+          {
+            title: r.title,
+            creatorName: r.creatorName,
+            tags: r.mealSlots ?? null,
+          },
+          search,
+        ),
+      );
     }
     // Primary: category (Figma `527:2`). Shared predicate → web parity.
     if (category !== "all") {

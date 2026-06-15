@@ -3,19 +3,27 @@
  *
  * Hits live search routes when credentials exist; skips otherwise so CI
  * stays green without FatSecret / USDA / Edamam secrets.
+ *
+ * ENG-880 — env gates are evaluated at test-run time (not module import)
+ * so CONSUMER_KEY + CLIENT_SECRET aliases match production wiring.
  */
 import { describe, expect, it } from "vitest";
 
 import { hasFatSecretEnv } from "@/lib/env/integrationEnv";
 
-const hasFatSecret = hasFatSecretEnv();
-const hasUsda = Boolean(process.env.USDA_FDC_API_KEY);
-const hasEdamam =
-  Boolean(process.env.EDAMAM_APP_ID) && Boolean(process.env.EDAMAM_APP_KEY);
-/** Routes require Clerk/session auth — skip live HTTP smoke without a bearer. */
-const hasLiveApiAuth = Boolean(process.env.SUPPR_TEST_AUTH_BEARER?.trim());
-
 const brandedQuery = "starbucks latte";
+
+function hasLiveApiAuth(): boolean {
+  return Boolean(process.env.SUPPR_TEST_AUTH_BEARER?.trim());
+}
+
+function hasUsdaEnv(): boolean {
+  return Boolean(process.env.USDA_FDC_API_KEY?.trim());
+}
+
+function hasEdamamEnv(): boolean {
+  return Boolean(process.env.EDAMAM_APP_ID?.trim() && process.env.EDAMAM_APP_KEY?.trim());
+}
 
 async function fetchSearch(path: string, query: string) {
   const base = process.env.SUPPR_TEST_API_BASE ?? "http://localhost:3000";
@@ -29,9 +37,13 @@ async function fetchSearch(path: string, query: string) {
 }
 
 describe("food search provider integration smoke", () => {
-  it.skipIf(!hasFatSecret || !hasLiveApiAuth)(
+  it(
     "FatSecret returns branded hits for chain query",
-    async () => {
+    async (ctx) => {
+      if (!hasFatSecretEnv() || !hasLiveApiAuth()) {
+        ctx.skip();
+        return;
+      }
       const { status, body } = await fetchSearch("/api/fatsecret/search", brandedQuery);
       expect(status).toBe(200);
       expect(body.ok).toBe(true);
@@ -40,9 +52,13 @@ describe("food search provider integration smoke", () => {
     15_000,
   );
 
-  it.skipIf(!hasUsda || !hasLiveApiAuth)(
+  it(
     "USDA returns hits for generic query",
-    async () => {
+    async (ctx) => {
+      if (!hasUsdaEnv() || !hasLiveApiAuth()) {
+        ctx.skip();
+        return;
+      }
       const { status, body } = await fetchSearch("/api/usda/search", "salmon");
       expect(status).toBe(200);
       expect(body.ok).toBe(true);
@@ -51,9 +67,13 @@ describe("food search provider integration smoke", () => {
     15_000,
   );
 
-  it.skipIf(!hasEdamam || !hasLiveApiAuth)(
+  it(
     "Edamam returns hits for generic query",
-    async () => {
+    async (ctx) => {
+      if (!hasEdamamEnv() || !hasLiveApiAuth()) {
+        ctx.skip();
+        return;
+      }
       const { status, body } = await fetchSearch("/api/edamam/search", "banana");
       expect(status).toBe(200);
       expect(body.ok).toBe(true);

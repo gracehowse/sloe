@@ -14,7 +14,7 @@ function classifySource(source?: string | null): SourceTier {
 }
 
 const CONFIG: Record<SourceTier, { label: string; abbr: string; color: string }> = {
-  verified: { label: "Verified", abbr: "✓", color: Accent.success },
+  verified: { label: "Structured", abbr: "✓", color: Accent.success },
   estimated: { label: "Estimated", abbr: "~", color: Accent.warning },
   manual: { label: "Manual", abbr: "✎", color: "#94a3b8" },
 };

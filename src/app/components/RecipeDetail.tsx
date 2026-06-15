@@ -51,17 +51,21 @@ import {
 import { structuredIngredientsForVerify } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import {
   flatMacroRowsFromVerifyJson,
+  isVerifiedFromVerifyRow,
   mergeVerifiedMacroRows,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
 } from "../../lib/nutrition/verifyRecipeResponse.ts";
-import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import {
+  ingredientVerifyNeedsReview,
+  RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+} from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
 import {
   recipeAggregateHasFatSecret,
   scrubFatSecretMacros,
-  ZEROED_RECIPE_AGGREGATE,
 } from "../../lib/nutrition/fatsecretCacheGuard.ts";
-import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
+import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngredientsRpc.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import {
@@ -881,8 +885,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         });
 
         if (isMyRecipe && snapIds.length > 0) {
-          for (let i = 0; i < Math.min(rows.length, snapIds.length); i++) {
-            const r = rows[i]!;
+          const ingredientUpdates = rows.slice(0, snapIds.length).map((r, i) => {
             const scrubbed = scrubFatSecretMacros({
               calories: Math.round(r.calories),
               protein: Math.round(r.protein),
@@ -893,15 +896,65 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               sodium_mg: Math.round(r.sodium),
               source: r.source,
               confidence: r.confidence,
-              is_verified: isStructuredSource(r.source) && r.confidence >= 0.5,
+              is_verified: isVerifiedFromVerifyRow(r.confidence, r.source ?? ""),
             });
-            await supabase.from("recipe_ingredients").update(scrubbed).eq("id", snapIds[i]!);
-          }
+            const ing = snap[i] as IngredientRow | undefined;
+            const rowIsVerified = Boolean(scrubbed.is_verified);
+            return {
+              id: snapIds[i]!,
+              name: String(ing?.name ?? ""),
+              amount: ing?.amount ?? null,
+              unit: ing?.unit ?? null,
+              calories: scrubbed.calories as number,
+              protein: scrubbed.protein as number,
+              carbs: scrubbed.carbs as number,
+              fat: scrubbed.fat as number,
+              fiber_g: scrubbed.fiber_g as number,
+              sugar_g: scrubbed.sugar_g as number,
+              sodium_mg: scrubbed.sodium_mg as number,
+              caffeine_mg: 0,
+              alcohol_g: 0,
+              is_verified: rowIsVerified,
+              source: scrubbed.source as string | undefined,
+              confidence: r.confidence ?? null,
+              override_macros: ing?.overrideMacros ?? null,
+              added_by_user: Boolean(ing?.addedByUser),
+            };
+          });
 
-          const aggregateHasFs = recipeAggregateHasFatSecret(rows.map((r) => ({ source: r.source ?? null })));
+          const aggregateHasFs = recipeAggregateHasFatSecret(
+            rows.map((r) => ({ source: r.source ?? null })),
+          );
           const overallConf = overallConfidenceFromVerifyJson(json);
-          const aggregateUpdate = aggregateHasFs
-            ? ZEROED_RECIPE_AGGREGATE
+          const allRowsVerified =
+            !aggregateHasFs &&
+            ingredientUpdates.every((row) => row.is_verified) &&
+            rows.every(
+              (r) =>
+                typeof r.confidence === "number" &&
+                r.confidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE &&
+                isVerifiedFromVerifyRow(r.confidence, r.source ?? ""),
+            );
+          const inferredAllergens = inferAllergensFromIngredients(
+            rows.map((r, i) => ({
+              name: String((snap[i] as IngredientRow | undefined)?.name ?? ""),
+              confidence: r.confidence ?? 0,
+            })),
+          );
+          const rpcRecipeUpdate = aggregateHasFs
+            ? {
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                fiber_g: 0,
+                sugar_g: 0,
+                sodium_mg: 0,
+                caffeine_mg: 0,
+                alcohol_g: 0,
+                is_verified: false,
+                allergens: [],
+              }
             : {
                 calories: Math.round(perServing.calories),
                 protein: Math.round(perServing.protein),
@@ -910,12 +963,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
                 sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
                 sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
-                is_verified: true,
+                caffeine_mg: 0,
+                alcohol_g: 0,
+                is_verified: allRowsVerified,
+                allergens: inferredAllergens,
                 verified_at: new Date().toISOString(),
-                verified_confidence: overallConf,
+                ...(overallConf != null ? { verified_confidence: overallConf } : {}),
                 verified_source: "auto_verify",
               };
-          await supabase.from("recipes").update(aggregateUpdate).eq("id", recipe.id);
+
+          const rpcResult = await saveVerifiedIngredientsRpc(
+            supabase,
+            recipe.id,
+            rpcRecipeUpdate,
+            ingredientUpdates,
+          );
+          if ("error" in rpcResult && rpcResult.error) {
+            console.error("[RecipeDetail] save_verified_ingredients failed:", rpcResult.error);
+            return;
+          }
         }
 
         autoVerifySucceededForRecipeId.current = recipe.id;
@@ -2274,7 +2340,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           : "var(--foreground-tertiary)";
                   const tierLabel =
                     verificationTier === "verified"
-                      ? "Verified"
+                      ? "Structured"
                       : verificationTier === "partial"
                         ? "Partial match"
                         : verificationTier === "estimated"

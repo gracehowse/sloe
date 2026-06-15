@@ -90,13 +90,6 @@ describe("decideDeepLinkAction — navigation deeplinks must NOT be intercepted"
     expect(decideDeepLinkAction("suppr:///progress")).toEqual({ kind: "ignore" });
   });
 
-  it("ignores suppr:///library", () => {
-    expect(decideDeepLinkAction("suppr:///library")).toEqual({ kind: "ignore" });
-  });
-
-  it("ignores suppr:///discover", () => {
-    expect(decideDeepLinkAction("suppr:///discover")).toEqual({ kind: "ignore" });
-  });
 });
 
 describe("decideDeepLinkAction — share-sheet handoffs must forward", () => {
@@ -183,6 +176,20 @@ describe("decideDeepLinkAction — well-known path aliases (ENG-800)", () => {
 
   it("does NOT alias an unrelated path that merely starts with 'plan'", () => {
     expect(decideDeepLinkAction("suppr:///plant-based")).toEqual({ kind: "ignore" });
+  });
+
+  it("navigates suppr:///library to the Library sub-tab (ENG-1162)", () => {
+    expect(decideDeepLinkAction("suppr:///library")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/library",
+    });
+  });
+
+  it("navigates suppr:///discover to the Discover sub-tab (ENG-1162)", () => {
+    expect(decideDeepLinkAction("suppr:///discover")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/discover",
+    });
   });
 
   it("still ignores a recipe-carrying plan link is impossible — recipe URL wins", () => {

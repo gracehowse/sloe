@@ -7,7 +7,6 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { formatMacroAdherenceBar } from "@suppr/shared/nutrition/progressWeekReport";
 import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
-import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * ProgressAverageAdherence — Sloe Figma `492:2` "AVERAGE ADHERENCE" card.
@@ -81,9 +80,7 @@ export function ProgressAverageAdherence({
   // ≤110% (on/under) path is identical to today's raw `{pct}%`, so a flag
   // flicker can't change a healthy user's number. Mirror: web.
   const overDisplay =
-    isFeatureEnabled("adherence_over_display") && adherencePct > 110
-      ? formatAdherenceHeadline(adherencePct)
-      : null;
+    adherencePct > 110 ? formatAdherenceHeadline(adherencePct) : null;
   return (
     <View
       testID="progress-average-adherence-card"

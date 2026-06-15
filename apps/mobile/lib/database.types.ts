@@ -790,6 +790,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_images: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          image_url: string | null
+          name_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          image_url?: string | null
+          name_key: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          image_url?: string | null
+          name_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           barcode: string | null
@@ -944,6 +974,7 @@ export type Database = {
           carbs: number
           created_at: string
           date_key: string
+          eaten_at: string | null
           fat: number
           fiber_g: number | null
           health_sample_id: string | null
@@ -965,6 +996,7 @@ export type Database = {
           carbs?: number
           created_at?: string
           date_key: string
+          eaten_at?: string | null
           fat?: number
           fiber_g?: number | null
           health_sample_id?: string | null
@@ -986,6 +1018,7 @@ export type Database = {
           carbs?: number
           created_at?: string
           date_key?: string
+          eaten_at?: string | null
           fat?: number
           fiber_g?: number | null
           health_sample_id?: string | null
@@ -1270,6 +1303,24 @@ export type Database = {
           max_uses?: number | null
           tier?: string
           uses_count?: number
+        }
+        Relationships: []
+      }
+      promo_redeem_throttle: {
+        Row: {
+          failed_count: number
+          user_id: string
+          window_started: string
+        }
+        Insert: {
+          failed_count?: number
+          user_id: string
+          window_started?: string
+        }
+        Update: {
+          failed_count?: number
+          user_id?: string
+          window_started?: string
         }
         Relationships: []
       }
@@ -2170,6 +2221,7 @@ export type Database = {
           fat: number
           fiber: number | null
           id: string
+          nutrition_micros: Json
           portion_multiplier: number
           position: number
           protein: number
@@ -2185,6 +2237,7 @@ export type Database = {
           fat?: number
           fiber?: number | null
           id?: string
+          nutrition_micros?: Json
           portion_multiplier?: number
           position?: number
           protein?: number
@@ -2200,6 +2253,7 @@ export type Database = {
           fat?: number
           fiber?: number | null
           id?: string
+          nutrition_micros?: Json
           portion_multiplier?: number
           position?: number
           protein?: number
@@ -2549,6 +2603,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      tier_rank: { Args: { p_tier: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never

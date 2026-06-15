@@ -1506,7 +1506,7 @@ export default function RecipeDetailScreen() {
     });
     const tierLabel =
       tier === "verified"
-        ? "Verified"
+        ? "Structured"
         : tier === "partial"
           ? "Partial match"
           : tier === "estimated"

@@ -150,6 +150,10 @@ import {
   type FavoriteSearchMatch,
 } from "@suppr/shared/nutrition/favoriteFoodsSearch";
 import { favoriteKey } from "@suppr/shared/nutrition/favoriteFoods";
+import {
+  optionalSanitizedMicrosPer100g,
+  sanitizeMicrosPer100g,
+} from "@suppr/shared/nutrition/microPlausibility";
 import { FavoriteStarButton } from "./FavoriteStarButton";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
@@ -784,7 +788,7 @@ export default function FoodSearchPanel({
           ? await getEdamamFoodMicros(item._edamamFoodId)
           : {};
         setLoadingKey(null);
-        const mergedMicros = { ...(item.microsPer100g ?? {}), ...fetchedMicros };
+        const mergedMicros = sanitizeMicrosPer100g({ ...(item.microsPer100g ?? {}), ...fetchedMicros });
         const allPortions = buildPortions([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
           ? { portion: allPortions[0], quantity: 1 }
@@ -835,7 +839,9 @@ export default function FoodSearchPanel({
           // per-100g panel (sat/poly/mono fat, cholesterol, sodium,
           // potassium) so the meal-detail "Vitamins, minerals & more"
           // surface populates for FatSecret-sourced logs.
-          ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
+          ...(optionalSanitizedMicrosPer100g(result.microsPer100g)
+            ? { microsPer100g: optionalSanitizedMicrosPer100g(result.microsPer100g) }
+            : {}),
           // 2026-05-06 — per-serving micros for the no-metric path,
           // commit applies `× quantity` directly without gram scaling.
           ...(result.microsPerServing ? { microsPerServing: result.microsPerServing } : {}),

@@ -55,6 +55,12 @@ export type DeepLinkAction =
  */
 const NAV_PATH_ALIASES: Readonly<Record<string, string>> = {
   plan: "/(tabs)/planner",
+  // ENG-1162 — Recipes sub-tabs must follow the deep-link path. Expo Router
+  // can land on the Recipes tab while the last-visited sub-tab (Discover)
+  // stays selected; explicit `router.replace` makes `/library` and
+  // `/discover` the source of truth for the sub-tab chrome.
+  library: "/(tabs)/library",
+  discover: "/(tabs)/discover",
 };
 
 /**

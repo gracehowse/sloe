@@ -23,13 +23,15 @@
  * raises the mean nudge so a recipe whose every line is "needs review"
  * also gets the recipe-level "review suggested" CTA.
  *
- * Acceptance gates (`MIN_ACCEPT_CONFIDENCE = 0.70`, with
- * `MIN_MATCH_CONFIDENCE = 0.70` and the stricter `MIN_OFF_CONFIDENCE
- * = 0.72`) live in `verifyIngredients.ts` — different role: they
- * decide whether to accept a candidate match at all, before any UI
- * threshold applies. Raised from 0.42/0.52 in ENG-691 (Decision D-05,
- * 2026-05-25) to match the published "reject < 0.70" band. Note the
- * accept floor (0.70) now sits ABOVE this review badge (0.50).
+ * Acceptance gates (`MIN_ACCEPT_CONFIDENCE = 0.55` in `verifyIngredients.ts`,
+ * with `MIN_MATCH_CONFIDENCE = 0.55` and `MIN_OFF_CONFIDENCE = 0.57`) decide
+ * whether to accept a candidate match at all, before any UI threshold applies.
+ * D-05 (2026-05-25) proposed 0.70; the nutrition-engine impact review (2026-05-26)
+ * shipped 0.55 so verbose-descriptor staples are not over-rejected. The **0.70
+ * band** remains the published display/trust signal for "high confidence" in
+ * product copy — it is not the live accept floor until ENG-746 piece 2 lands.
+ *
+ * Note the accept floor (0.55) now sits ABOVE this review badge (0.50).
  *
  * Distinct from `classifyConfidence` in `aiLogging.ts` (logging
  * buckets — different domain).

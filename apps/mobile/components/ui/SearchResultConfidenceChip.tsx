@@ -43,7 +43,7 @@ export interface SearchResultConfidenceChipProps {
 }
 
 const defaultLabel: Record<SearchResultConfidenceTier, string> = {
-  verified: "Verified",
+  verified: "Structured",
   estimated: "Estimated",
 };
 

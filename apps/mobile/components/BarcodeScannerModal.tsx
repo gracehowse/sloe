@@ -232,11 +232,25 @@ export default function BarcodeScannerModal({
 
   const scaled = useMemo(() => {
     if (!product) return null;
+    if (product.macrosPerServing && product.servingNoMass) {
+      const qty =
+        pickerState?.unit.kind === "serving" || pickerState?.unit.kind === "count"
+          ? Math.max(0, pickerState.amount)
+          : Math.max(0, grams);
+      const m = product.macrosPerServing;
+      return {
+        calories: Math.round(m.calories * qty),
+        protein: Math.round(m.protein * qty * 10) / 10,
+        carbs: Math.round(m.carbs * qty * 10) / 10,
+        fat: Math.round(m.fat * qty * 10) / 10,
+        fiberG: 0,
+      };
+    }
     return scaleMacrosByGrams(
       { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat, fiberG: product.fiberG },
       grams,
     );
-  }, [product, grams]);
+  }, [product, grams, pickerState]);
 
   const onBarcode = useCallback(
     async (e: { data: string }) => {
@@ -336,7 +350,11 @@ export default function BarcodeScannerModal({
         grams,
         { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat },
       );
-      if ((!plausibility.ok || product.basisCorrected) && !plausibilityOverrideRef.current) {
+      if (
+        !product.servingNoMass &&
+        (!plausibility.ok || product.basisCorrected) &&
+        !plausibilityOverrideRef.current
+      ) {
         const warnKcal = Math.round(scaled.calories);
         // protein is already rounded to 0.1 g by scaleMacrosByGrams; toFixed
         // keeps the warning copy whole-gram (the display tiles use formatMacro).
@@ -1519,14 +1537,18 @@ export default function BarcodeScannerModal({
                         onChange={setPickerState}
                         options={pickerOptions}
                         rememberedGrams={rememberedPortion}
-                        macrosPer100g={{
-                          calories: product.calories,
-                          protein: product.protein,
-                          carbs: product.carbs,
-                          fat: product.fat,
-                          fiberG: product.fiberG,
-                        }}
-                        basisCorrected={product.basisCorrected}
+                        macrosPer100g={
+                          product.servingNoMass && product.macrosPerServing
+                            ? null
+                            : {
+                                calories: product.calories,
+                                protein: product.protein,
+                                carbs: product.carbs,
+                                fat: product.fat,
+                                fiberG: product.fiberG,
+                              }
+                        }
+                        basisCorrected={product.servingNoMass ? false : product.basisCorrected}
                       />
                     ) : null}
                     {rememberedPortion != null && rememberedPortion > 0 ? (

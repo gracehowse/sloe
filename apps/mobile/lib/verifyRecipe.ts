@@ -39,7 +39,7 @@ import {
   isLowConfidenceDemotedRow,
 } from "@suppr/shared/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@suppr/shared/openFoodFacts/parseOffMicros";
-import { reconcileOffPer100g } from "@suppr/shared/openFoodFacts/reconcilePer100g";
+import { reconcileOffPer100g, extractOffMacrosPerServing } from "@suppr/shared/openFoodFacts/reconcilePer100g";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
@@ -262,6 +262,9 @@ export type BarcodeProduct = {
    * surfaces a "double-check these numbers" warning when set.
    */
   basisCorrected?: boolean;
+  /** ENG-774 — per-serving label with no gram mass; scale by serving count. */
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number };
+  servingNoMass?: boolean;
 };
 
 const FRAC_MAP: Record<string, number> = {
@@ -1789,6 +1792,8 @@ export async function lookupBarcode(
     // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis before
     // they scale (web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts).
     const recon = reconcileOffPer100g(n, p);
+    const macrosPerServing =
+      recon.servingNoMass ? extractOffMacrosPerServing(n) : null;
     // ENG-738 (2026-05-26) — fiber + micros + caffeine/alcohol below read the
     // raw `*_100g` fields, which secretly hold per-serving values on a
     // `nutrition_data_per:"serving"` row. Rescale them onto the same
@@ -1801,7 +1806,10 @@ export async function lookupBarcode(
       "Packaged food";
 
     const servingOptions = buildOffServingOptionsFromProduct(p);
-    const servingSizeG = pickDefaultServingGrams(servingOptions);
+    const servingSizeG =
+      recon.servingNoMass && macrosPerServing
+        ? 1
+        : pickDefaultServingGrams(servingOptions);
     // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
     // caffeine in g (convert to mg) and alcohol in g already. Null when
     // absent so the commit path knows to skip rather than assume zero.
@@ -1833,6 +1841,8 @@ export async function lookupBarcode(
       servingOptions,
       source: "open_food_facts",
       verified: false,
+      ...(macrosPerServing ? { macrosPerServing } : {}),
+      ...(recon.servingNoMass ? { servingNoMass: true } : {}),
     };
   } catch (e) {
     console.error("[lookupBarcode] failed:", e instanceof Error ? e.message : e);

@@ -131,6 +131,12 @@ export type ReconciledOffPer100g = {
    */
   servingBasis: boolean;
   /**
+   * ENG-774 — declared serving-basis row with no convertible serving mass
+   * (`serving_quantity` absent or zero). Per-100g reconstruction is
+   * unverifiable; callers should prefer `extractOffMacrosPerServing`.
+   */
+  servingNoMass: boolean;
+  /**
    * ENG-738 (2026-05-26) — the multiplier that converts a RAW `*_100g`
    * nutriment (which secretly holds per-serving data on a corrected
    * serving-basis row) to a TRUE per-100g value. It is the SAME transform
@@ -146,6 +152,28 @@ export type ReconciledOffPer100g = {
    */
   per100gFactor: number;
 };
+
+export type OffMacrosPerServing = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
+/** Read per-serving macro fields when the label publishes no gram mass. */
+export function extractOffMacrosPerServing(n: Nutriments): OffMacrosPerServing | null {
+  const cal = num(n["energy-kcal_serving"]);
+  const protein = num(n.proteins_serving);
+  const carbs = num(n.carbohydrates_serving);
+  const fat = num(n.fat_serving);
+  if (cal == null && protein == null && carbs == null && fat == null) return null;
+  return {
+    calories: Math.round(cal ?? 0),
+    protein: Math.round((protein ?? 0) * 10) / 10,
+    carbs: Math.round((carbs ?? 0) * 10) / 10,
+    fat: Math.round((fat ?? 0) * 10) / 10,
+  };
+}
 
 /**
  * Reconstruct trustworthy per-100g macros from an OFF nutriments payload.
@@ -169,6 +197,7 @@ export function reconcileOffPer100g(
   // also have per-serving fields + a serving mass, so a present
   // `serving_quantity` with agreeing bases is a no-op (the common case).
   const servingBasis = declaredServingBasis || servingG != null;
+  const servingNoMass = servingBasis && (servingG == null || servingG <= 0);
 
   const cal = reconcileOne(
     num(n["energy-kcal_100g"]),
@@ -220,6 +249,7 @@ export function reconcileOffPer100g(
     fat: fat.value,
     corrected,
     servingBasis,
+    servingNoMass,
     per100gFactor,
   };
 }

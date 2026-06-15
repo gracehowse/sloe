@@ -54,7 +54,6 @@ const KNOWN_FLAGS: readonly string[] = [
   "progress_trajectory_box",
   "progress_digest_blend",
   "progress_digest_beige_v2",
-  "adherence_over_display",
   "goal_editor",
   "cookbook_import_enabled",
   "paywall-default-monthly",

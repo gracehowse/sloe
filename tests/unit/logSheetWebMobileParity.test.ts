@@ -37,15 +37,16 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
   const web = read(WEB_LOG_SHEET);
   const mobile = read(MOBILE_LOG_SHEET);
 
-  it("both surfaces declare the same `BrowseTab` union (recent / library / saved)", () => {
+  it("both surfaces declare the same `BrowseTab` union (gotos / recent / library / saved)", () => {
     const browseTabRe =
-      /type BrowseTab = "recent" \| "library" \| "saved"/;
+      /type BrowseTab = "gotos" \| "recent" \| "library" \| "saved"/;
     expect(web).toMatch(browseTabRe);
     expect(mobile).toMatch(browseTabRe);
   });
 
   it("both surfaces emit the same testIDs for each browse tab", () => {
     for (const id of [
+      "log-sheet-tab-gotos",
       "log-sheet-tab-recent",
       "log-sheet-tab-library",
       "log-sheet-tab-saved",

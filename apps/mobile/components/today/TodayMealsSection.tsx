@@ -257,17 +257,17 @@ function SlotMacroChips({
       >
         {kcal} kcal
       </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.protein, fontVariant: ["tabular-nums"] }}>
+      <Text style={{ ...Type.caption, color: MacroColors.proteinSolid, fontVariant: ["tabular-nums"] }}>
         {Math.round(protein)}g
       </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.carbs, fontVariant: ["tabular-nums"] }}>
+      <Text style={{ ...Type.caption, color: MacroColors.carbsSolid, fontVariant: ["tabular-nums"] }}>
         {Math.round(carbs)}g
       </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.fat, fontVariant: ["tabular-nums"] }}>
+      <Text style={{ ...Type.caption, color: MacroColors.fatSolid, fontVariant: ["tabular-nums"] }}>
         {Math.round(fat)}g
       </Text>
       {Number.isFinite(fiber) && fiber > 0 ? (
-        <Text style={{ ...Type.caption, color: MacroColors.fiber, fontVariant: ["tabular-nums"] }}>
+        <Text style={{ ...Type.caption, color: MacroColors.fiberSolid, fontVariant: ["tabular-nums"] }}>
           {Math.round(fiber * 10) / 10}g
         </Text>
       ) : null}
@@ -1064,7 +1064,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             testID={`today-slot-aim-${slot}`}
                             style={{
                               ...Type.caption,
-                              color: textTertiaryColor,
+                              color: textSecondaryColor,
                               marginTop: 1,
                               fontVariant: ["tabular-nums"],
                             }}
@@ -1151,9 +1151,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             flexShrink: 1,
                           }}
                         >
-                          <RefreshCw size={11} color={col} />
+                          <RefreshCw size={11} color={textSecondaryColor} />
                           <Text
-                            style={{ ...Type.caption, color: col, maxWidth: 120 }}
+                            style={{ ...Type.caption, color: textSecondaryColor, maxWidth: 120 }}
                             numberOfLines={1}
                           >
                             {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
@@ -1171,7 +1171,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           accessibilityLabel={`Dismiss Log usual suggestion for ${slot}`}
                           style={{ paddingHorizontal: 2 }}
                         >
-                          <X size={11} color={col} strokeWidth={2.25} />
+                          <X size={11} color={textSecondaryColor} strokeWidth={2.25} />
                         </Pressable>
                       </View>
                     )}
@@ -1241,9 +1241,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         flexShrink: 1,
                       }}
                     >
-                      <RefreshCw size={12} color={col} />
+                      <RefreshCw size={12} color={textSecondaryColor} />
                       <Text
-                        style={{ ...Type.caption, color: col, flexShrink: 1 }}
+                        style={{ ...Type.caption, color: textSecondaryColor, flexShrink: 1 }}
                         numberOfLines={1}
                       >
                         {extraSavedCount > 0
@@ -1260,7 +1260,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       accessibilityLabel={`Dismiss Log usual suggestion for ${slot}`}
                       style={{ paddingHorizontal: 2 }}
                     >
-                      <X size={12} color={col} strokeWidth={2.25} />
+                      <X size={12} color={textSecondaryColor} strokeWidth={2.25} />
                     </Pressable>
                   </View>
                 </View>

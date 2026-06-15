@@ -166,7 +166,7 @@ export const ROADMAP: RoadmapBucket[] = [
       { text: "Meal planner with shopping list", status: "shipped" },
       { text: "Cook mode with step highlighting and inline timers", status: "shipped" },
       { text: "Apple Health sync + Adaptive TDEE", status: "shipped" },
-      { text: "Barcode scanning for packaged foods", status: "shipped" },
+      { text: "Barcode scanning — free forever", status: "shipped" },
       { text: "Voice food logging (Pro)", status: "shipped" },
       { text: "AI photo meal recognition (Pro)", status: "shipped" },
       { text: "Household sharing — plan meals across 2+ people", status: "shipped" },

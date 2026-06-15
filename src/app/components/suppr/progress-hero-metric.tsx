@@ -63,7 +63,6 @@ function adherenceTone(pct: number): {
 
 import { SupprCard } from "../ui/suppr-card";
 import { formatAdherenceHeadline } from "../../../lib/nutrition/adherenceDisplay";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * Sloe Figma 492:2 — 7-dot on-target ribbon. Filled sage dot = a logged
@@ -137,9 +136,7 @@ export function ProgressHeroMetric({
   // are unchanged, and the ≤110% path is untouched. Else = today's raw
   // red `{pct}%` centre. Mirror: mobile.
   const overDisplay =
-    isFeatureEnabled("adherence_over_display") && adherencePct > 110
-      ? formatAdherenceHeadline(adherencePct)
-      : null;
+    adherencePct > 110 ? formatAdherenceHeadline(adherencePct) : null;
 
   return (
     <SupprCard

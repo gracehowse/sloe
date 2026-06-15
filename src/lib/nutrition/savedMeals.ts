@@ -50,6 +50,8 @@ export type SavedMealItem = {
   portionMultiplier?: number;
   source?: string;
   sourceId?: string;
+  /** ENG-1106 — snapshot micronutrients at save time (same keys as journal `micros`). */
+  nutritionMicros?: Record<string, number>;
 };
 
 /** Parent row + its items in display order. */
@@ -86,7 +88,7 @@ export const SAVED_MEAL_NAME_MAX_LENGTH = 80;
 const SAVED_MEAL_LIST_COLUMNS =
   "id, name, default_meal_slot, created_at, last_logged_at, log_count";
 const SAVED_MEAL_ITEM_LIST_COLUMNS =
-  "id, saved_meal_id, position, recipe_title, calories, protein, carbs, fat, fiber, water_ml, portion_multiplier, source, source_id";
+  "id, saved_meal_id, position, recipe_title, calories, protein, carbs, fat, fiber, water_ml, portion_multiplier, source, source_id, nutrition_micros";
 
 /**
  * Normalise a saved-meal name for persistence: trim surrounding
@@ -148,6 +150,14 @@ function rowToItem(row: any): SavedMealItem {
   }
   if (row.source) item.source = String(row.source);
   if (row.source_id) item.sourceId = String(row.source_id);
+  const microsRaw = row.nutrition_micros;
+  if (microsRaw && typeof microsRaw === "object" && !Array.isArray(microsRaw)) {
+    const micros: Record<string, number> = {};
+    for (const [k, v] of Object.entries(microsRaw as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) micros[k] = v;
+    }
+    if (Object.keys(micros).length > 0) item.nutritionMicros = micros;
+  }
   return item;
 }
 
@@ -192,6 +202,9 @@ function itemToRow(
   }
   if (item.source) row.source = String(item.source);
   if (item.sourceId) row.source_id = String(item.sourceId);
+  if (item.nutritionMicros && Object.keys(item.nutritionMicros).length > 0) {
+    row.nutrition_micros = item.nutritionMicros;
+  }
   return row;
 }
 

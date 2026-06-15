@@ -161,17 +161,20 @@ function getMealIcon(name: string): {
 /** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
 function slotPillClassName(sectionName: string): string {
   const { tone } = getMealIcon(sectionName);
+  // ENG-1109 — 11px slot pills use secondary foreground on soft tints
+  // (slot hue alone fails WCAG AA at caption size).
+  const label = "text-foreground-secondary";
   switch (tone) {
     case "slot-breakfast":
-      return "border-slot-breakfast/30 bg-slot-breakfast-soft text-slot-breakfast hover:opacity-90";
+      return `border-slot-breakfast/30 bg-slot-breakfast-soft ${label} hover:opacity-90`;
     case "slot-lunch":
-      return "border-slot-lunch/30 bg-slot-lunch-soft text-slot-lunch hover:opacity-90";
+      return `border-slot-lunch/30 bg-slot-lunch-soft ${label} hover:opacity-90`;
     case "slot-dinner":
-      return "border-slot-dinner/30 bg-slot-dinner-soft text-slot-dinner hover:opacity-90";
+      return `border-slot-dinner/30 bg-slot-dinner-soft ${label} hover:opacity-90`;
     case "slot-snack":
-      return "border-slot-snack/30 bg-slot-snack-soft text-slot-snack hover:opacity-90";
+      return `border-slot-snack/30 bg-slot-snack-soft ${label} hover:opacity-90`;
     default:
-      return "border-border bg-muted text-muted-foreground";
+      return "border-border bg-muted text-foreground-secondary";
   }
 }
 
@@ -224,11 +227,11 @@ function SlotMacroChips({
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-[11px] tabular-nums">
       <span className="text-muted-foreground">{kcal} kcal</span>
-      <span className="text-[var(--macro-protein)]">{Math.round(protein)}g</span>
-      <span className="text-[var(--macro-carbs)]">{Math.round(carbs)}g</span>
-      <span className="text-[var(--macro-fat)]">{Math.round(fat)}g</span>
+      <span className="text-[var(--macro-protein-solid)]">{Math.round(protein)}g</span>
+      <span className="text-[var(--macro-carbs-solid)]">{Math.round(carbs)}g</span>
+      <span className="text-[var(--macro-fat-solid)]">{Math.round(fat)}g</span>
       {Number.isFinite(fiber) && fiber > 0 ? (
-        <span className="text-[var(--macro-fiber)]">{Math.round(fiber * 10) / 10}g</span>
+        <span className="text-[var(--macro-fiber-solid)]">{Math.round(fiber * 10) / 10}g</span>
       ) : null}
     </div>
   );
@@ -704,7 +707,7 @@ export function TodayMealsSection({
                       return aim == null ? null : (
                         <p
                           data-testid={`today-slot-aim-${sectionName}`}
-                          className="text-[11px] text-muted-foreground tabular-nums mt-0.5"
+                          className="text-[11px] text-foreground-secondary tabular-nums mt-0.5"
                         >
                           {aimKcalLabel(aim)}
                         </p>

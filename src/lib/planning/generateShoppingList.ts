@@ -3,6 +3,7 @@
 // the mobile shopping list through this shared generator, pulling it into
 // the mobile module graph for the first time.
 import type { ShoppingItem } from "../../types/recipe";
+import { effectivePortionMultiplier } from "../nutrition/portionMultiplier";
 import { guessGroceryCategory } from "./category";
 import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow";
 
@@ -13,6 +14,23 @@ function normalizeKey(name: string, unit: string): string {
 /** @deprecated Catalog removed — always returns false. Kept for API compat. */
 export function isCatalogRecipeId(_id: string): boolean {
   return false;
+}
+
+/**
+ * ENG-1134 — recipe ingredient rows are stored for the full recipe yield
+ * (`servings`). A planned 1-portion meal should buy 1/servings of each line,
+ * not the whole batch. Combines the plan's portion multiplier with yield.
+ */
+export function shoppingListIngredientMultiplier(
+  portionMultiplier: number | undefined,
+  recipeServings: number | undefined,
+): number {
+  const portion = effectivePortionMultiplier(portionMultiplier);
+  const servings =
+    typeof recipeServings === "number" && Number.isFinite(recipeServings) && recipeServings > 0
+      ? recipeServings
+      : 1;
+  return portion / servings;
 }
 
 function mergeRows(

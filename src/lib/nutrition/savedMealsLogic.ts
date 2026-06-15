@@ -20,6 +20,7 @@
 import type { SavedMeal, SavedMealItem } from "./savedMeals";
 import { mapMealSourceToDot } from "./sourceMap";
 import type { SourceDotSource } from "../types/source";
+import { scaleMicrosPerServing } from "./scaleMicrosPerServing";
 
 function safeNumber(n: unknown): number {
   const v = typeof n === "number" ? n : Number(n);
@@ -150,6 +151,7 @@ export type BuiltMealEntry = {
   portionMultiplier: number;
   source?: string;
   sourceId?: string;
+  micros?: Record<string, number>;
 };
 
 /**
@@ -224,6 +226,10 @@ export function buildMealEntriesFromSavedMeal<T extends BuiltMealEntry = BuiltMe
     }
     if (it.source) entry.source = String(it.source);
     if (it.sourceId) entry.sourceId = String(it.sourceId);
+    if (it.nutritionMicros && Object.keys(it.nutritionMicros).length > 0) {
+      const scaledMicros = scaleMicrosPerServing(it.nutritionMicros, pm);
+      if (Object.keys(scaledMicros).length > 0) entry.micros = scaledMicros;
+    }
 
     out.push(entry);
   }

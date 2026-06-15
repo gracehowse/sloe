@@ -141,6 +141,8 @@ import {
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "@suppr/shared/nutrition/foodHistory";
+import { computeSlotGoToFoods } from "@suppr/shared/nutrition/slotGoToFoods";
+import { normaliseMealSlot } from "@suppr/shared/nutrition/mealSlots";
 import { isHealthImportFallbackTitle } from "@suppr/shared/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { isMealSlot } from "@suppr/shared/nutrition/mealSlots";
@@ -700,6 +702,18 @@ export default function TrackerScreen() {
   // Non-IF users see no pill at all.
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
+  const [logSheetConfirmation, setLogSheetConfirmation] = useState<
+    NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
+  >(null);
+  const [logBasket, setLogBasket] = useState<
+    Array<{ basketId: string; selection: FoodSearchSelectedFood }>
+  >([]);
+  useEffect(() => {
+    if (!fabSheetOpen) {
+      setLogSheetConfirmation(null);
+      setLogBasket([]);
+    }
+  }, [fabSheetOpen]);
   // Batch 5.13 — Pro-gated Voice + AI photo logging state.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
@@ -1412,6 +1426,7 @@ export default function TrackerScreen() {
         if (m.fiberG != null) item.fiber = Math.max(0, Math.round(m.fiberG * 10) / 10);
         if (m.waterMl != null) item.waterMl = Math.max(0, Math.round(m.waterMl));
         if (m.source) item.source = m.source;
+        if (m.micros && Object.keys(m.micros).length > 0) item.nutritionMicros = { ...m.micros };
         return item;
       });
       // Canonical slot via shared guard (audit L5, 2026-04-18).
@@ -2043,7 +2058,7 @@ export default function TrackerScreen() {
       // alcohol micros so re-logging a coffee / wine / beer from
       // Recents / Frequent / Eat-again still bumps the daily totals.
       // Mirrors web `logHistoryItem`. Missing → no `micros` key.
-      const micros: Record<string, number> = {};
+      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
       if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
       if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
       const meal: JournalMeal = {
@@ -2724,8 +2739,8 @@ export default function TrackerScreen() {
       sex: profileSex,
     });
     setWeeklyCheckinContent(content);
-    // ENG-805: flag-ON skips the cold-open modal (banner is the entry instead).
-    if (!isFeatureEnabled("redesign_winmoment")) setWeeklyCheckinOpen(true);
+    // ENG-805 — never cold-open the blocking modal; the in-feed banner is
+    // the only entry point (matches web + redesign_winmoment default-on).
 
     // Optimistically stamp the shown-at on the row so we don't re-fire
     // on a hot reload, even if the analytics emit fails. Server is
@@ -4267,6 +4282,7 @@ export default function TrackerScreen() {
   const deleteMeal = useCallback((mealId: string) => {
     // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
     // self-healing because per-meal `micros` is the canonical SoT.
+    const removedMeal = (byDay[dayKey] ?? []).find((m) => m.id === mealId);
     setByDay((prev) => ({
       ...prev,
       [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
@@ -4297,11 +4313,186 @@ export default function TrackerScreen() {
             .delete()
             .eq("id", mealId);
           if (error) {
-            console.error("[tracker] delete meal failed:", error.message);
+            // ENG-1123 — mirror web `removeLoggedMeal`: restore the row and
+            // surface a retry message instead of silently losing sync.
+            if (removedMeal) {
+              setByDay((prev) => {
+                const day = prev[dayKey] ?? [];
+                if (day.some((m) => m.id === mealId)) return prev;
+                return { ...prev, [dayKey]: [...day, removedMeal] };
+              });
+            }
+            const { syncFailedRetryMessage } = await import("@/lib/supabaseErrors");
+            Alert.alert("Delete failed", syncFailedRetryMessage("nutrition log", error.message));
           }
         });
     }
-  }, [dayKey, userId]);
+  }, [byDay, dayKey, userId]);
+
+  const presentLogSheetConfirmation = useCallback(
+    (payload: { title: string; kcal: number; mealIds: string[] }) => {
+      setLogSheetConfirmation({
+        title: payload.title,
+        kcal: Math.round(payload.kcal),
+        slot: activeMealSlot,
+        onDone: () => {
+          setLogSheetConfirmation(null);
+          setFabSheetOpen(false);
+        },
+        onUndo: () => {
+          for (const mealId of payload.mealIds) deleteMeal(mealId);
+          setLogSheetConfirmation(null);
+        },
+      });
+    },
+    [activeMealSlot, deleteMeal],
+  );
+
+  const commitLogSheetFoodSelection = useCallback(
+    (result: FoodSearchSelectedFood): { id: string; title: string; kcal: number } => {
+      const scaled = foodSelectionToMealMacros(result);
+      const {
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        fiberG: mealFiberG,
+        micros,
+      } = scaled;
+      const source =
+        result.source === "CUSTOM"
+          ? "custom_food"
+          : result.source === "OFF"
+            ? "Open Food Facts"
+            : result.source === "Edamam"
+              ? "Edamam"
+              : result.source === "FatSecret"
+                ? "FatSecret"
+                : "USDA FoodData Central";
+      const eatenAt =
+        result.eatenAt ??
+        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey) : undefined);
+      const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt({ eatenAt }, dayKey);
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: result.name,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        source,
+        ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
+        ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        ...(result.imageUrl ? { recipeImageUrl: String(result.imageUrl).trim() } : {}),
+        ...(eatenAt ? { eatenAt } : {}),
+      };
+      startTransition(() => {
+        setByDay((prev) => ({
+          ...prev,
+          [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), meal],
+        }));
+      });
+      void persistMealsImmediate(dayKey, [meal]);
+      try {
+        track(AnalyticsEvents.food_logged, {
+          source: result.source === "CUSTOM" ? "custom_food" : "manual",
+          calories: meal.calories,
+          slot: activeMealSlot,
+        });
+      } catch {
+        // noop
+      }
+      return { id: meal.id, title: result.name, kcal: mealCalories };
+    },
+    [activeMealSlot, dayKey, persistMealsImmediate],
+  );
+
+  const logHistoryItemFromSheet = useCallback(
+    (item: FoodHistoryItem) => {
+      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
+      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
+      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: item.recipeTitle,
+        ...(item.recipeId ? { recipeId: item.recipeId } : {}),
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        ...(item.fiber != null ? { fiberG: item.fiber } : {}),
+        ...(item.source ? { source: item.source } : {}),
+        ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        ...(isFeatureEnabled("editable_eaten_at")
+          ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+          : {}),
+      };
+      startTransition(() => {
+        setByDay((prev) => ({
+          ...prev,
+          [dayKey]: [...(prev[dayKey] ?? []), meal],
+        }));
+      });
+      void persistMealsImmediate(dayKey, [meal]);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        track(AnalyticsEvents.food_logged, { source: "quick_add", slot: activeMealSlot });
+      } catch {
+        // noop
+      }
+      presentLogSheetConfirmation({
+        title: item.recipeTitle,
+        kcal: item.calories,
+        mealIds: [meal.id],
+      });
+    },
+    [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation],
+  );
+
+  const logSheetGoTos = useMemo(() => {
+    const slot = normaliseMealSlot(activeMealSlot);
+    if (!slot) return [];
+    return computeSlotGoToFoods(byDay, slot).map((item) => ({
+      id: foodHistoryKey(item.recipeTitle, item.calories),
+      title: item.recipeTitle,
+      kcal: Math.round(item.calories),
+      source: mapMealSourceToDot(item.source),
+      count: item.count,
+    }));
+  }, [byDay, activeMealSlot]);
+
+  const logBasketSummary = useMemo(() => {
+    let totalKcal = 0;
+    const items = logBasket.map(({ basketId, selection }) => {
+      const kcal = foodSelectionToMealMacros(selection).calories;
+      totalKcal += kcal;
+      return { id: basketId, title: selection.name, kcal: Math.round(kcal) };
+    });
+    return { items, totalKcal };
+  }, [logBasket]);
+
+  const commitLogBasket = useCallback(() => {
+    if (logBasket.length === 0) return;
+    const mealIds: string[] = [];
+    let totalKcal = 0;
+    let firstTitle = "";
+    for (const { selection } of logBasket) {
+      const result = commitLogSheetFoodSelection(selection);
+      mealIds.push(result.id);
+      totalKcal += result.kcal;
+      if (!firstTitle) firstTitle = result.title;
+    }
+    setLogBasket([]);
+    presentLogSheetConfirmation({
+      title: logBasket.length === 1 ? firstTitle : `${logBasket.length} items`,
+      kcal: totalKcal,
+      mealIds,
+    });
+  }, [logBasket, commitLogSheetFoodSelection, presentLogSheetConfirmation]);
 
   /**
    * Shared insert primitive for batch 1.4 "copy meal" / "duplicate day".
@@ -5771,6 +5962,8 @@ export default function TrackerScreen() {
       <LogSheet
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
+        confirmation={logSheetConfirmation ?? undefined}
+        showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with
         // `src/app/components/NutritionTracker.tsx`). Flag-gated visual
         // element (CLAUDE.md): the picker row is new structure so it
@@ -5794,7 +5987,35 @@ export default function TrackerScreen() {
           // legacy `onOpen` route stays in the LogSheet API as a
           // fallback for hosts that haven't migrated yet — Today uses
           // the inline path.
-          onSelect: handleFoodSearchSelect,
+          onSelect: (result) => {
+            let scaled;
+            try {
+              scaled = foodSelectionToMealMacros(result);
+            } catch (err) {
+              console.error("[tracker] logSheet food select failed:", err);
+              Alert.alert(
+                "Couldn't log this food",
+                "Something went wrong saving this item. Try again or log it manually.",
+              );
+              return;
+            }
+            if (!Number.isFinite(scaled.calories) || scaled.calories <= 0) {
+              Alert.alert(
+                "Couldn't log this food",
+                "Nutrition data for this item is missing or incomplete. Try another result or enter it manually.",
+              );
+              return;
+            }
+            const committed = commitLogSheetFoodSelection(result);
+            presentLogSheetConfirmation({
+              title: committed.title,
+              kcal: committed.kcal,
+              mealIds: [committed.id],
+            });
+          },
+          onAddToBasket: (selection) => {
+            setLogBasket((prev) => [...prev, { basketId: newMealId(), selection }]);
+          },
           macroTargets: {
             calories: effectiveCalorieGoal,
             protein: effectiveMacroTargets.protein,
@@ -5834,6 +6055,34 @@ export default function TrackerScreen() {
           onToggleFavorite: toggleFoodFavorite,
           favoritePendingKeys,
         }}
+        goTos={
+          logSheetGoTos.length > 0
+            ? {
+                entries: logSheetGoTos,
+                onPick: (entry) => {
+                  const slot = normaliseMealSlot(activeMealSlot);
+                  if (!slot) return;
+                  const item = computeSlotGoToFoods(byDay, slot).find(
+                    (i) => foodHistoryKey(i.recipeTitle, i.calories) === entry.id,
+                  );
+                  if (!item) return;
+                  logHistoryItemFromSheet(item);
+                },
+              }
+            : undefined
+        }
+        basket={
+          logBasketSummary.items.length > 0
+            ? {
+                items: logBasketSummary.items,
+                totalKcal: logBasketSummary.totalKcal,
+                onRemove: (id) =>
+                  setLogBasket((prev) => prev.filter((row) => row.basketId !== id)),
+                onCommit: commitLogBasket,
+                onClear: () => setLogBasket([]),
+              }
+            : undefined
+        }
         barcode={{
           // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
           // The "0 kcal manual entry" inline path activates when
@@ -5865,17 +6114,11 @@ export default function TrackerScreen() {
           // user data + new builds both stay filtered.
           entries: recentLogSheetEntries,
           onPick: (picked) => {
-            setFabSheetOpen(false);
             const found = recentMealsForPick.find(
               (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
             );
             if (!found) return;
-            // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
-            // in the afternoon was logging picks as Snacks because this
-            // path used currentSlotFromTime instead of the user's choice.
-            // Use activeMealSlot (set by the slot-specific FAB tap or
-            // reset to time-of-day when the generic FAB opens).
-            void logHistoryItemToSlot(found, activeMealSlot);
+            logHistoryItemFromSheet(found);
           },
         }}
         saved={{
@@ -5918,6 +6161,12 @@ export default function TrackerScreen() {
                 openPortionConfirm(meal, activeMealSlot);
               }
             : undefined,
+          // ENG-776 — advertised empty-state CTA; opens SaveMealSheet for
+          // the slot the user picked in the LogSheet selector.
+          onCreateSavedMeal: () => {
+            setFabSheetOpen(false);
+            openSaveMealSheetForSlot(activeMealSlot);
+          },
         }}
         library={{
           // 2026-05-01 (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8`

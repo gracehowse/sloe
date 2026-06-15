@@ -11,7 +11,7 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
-import { nutritionEntryDateKeyAndEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
+import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -189,7 +189,7 @@ export function useNutritionJournalState(opts: {
     // `tests/unit/foodLoggedSourceParity.test.ts` ensures no
     // regression to a bare `food_logged` emit.
     analyticsSource: FoodLoggedSource = "manual",
-  ) => {
+  ): string => {
     const id = newId("meal");
     const newMeal = { ...meal, id };
     const row = buildNutritionEntryRow(dayKey, newMeal, authedUserId ?? "");
@@ -247,6 +247,7 @@ export function useNutritionJournalState(opts: {
       source: resolvedSource,
       fromPlanner: meal.time === "Planned",
     });
+    return id;
   }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow]);
 
   /**
@@ -312,8 +313,8 @@ export function useNutritionJournalState(opts: {
   );
 
   const addLoggedMeal = useCallback(
-    (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => {
-      addLoggedMealForDate(selectedDateKey, meal, analyticsSource);
+    (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource): string => {
+      return addLoggedMealForDate(selectedDateKey, meal, analyticsSource);
     },
     [addLoggedMealForDate, selectedDateKey],
   );
@@ -379,7 +380,10 @@ export function useNutritionJournalState(opts: {
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       const meal = sourceDay.find((m) => m.id === mealId);
       if (!meal) return;
-      const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+      const cloned = reanchorMealEatenAt(
+        cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+        targetDayKey,
+      ) as Omit<LoggedMeal, "id">;
       addLoggedMealForDate(targetDayKey, cloned, "copy_meal");
       track(AnalyticsEvents.meal_copied, {
         source: "copy_meal",
@@ -410,7 +414,10 @@ export function useNutritionJournalState(opts: {
       if (!meal) return;
       let totalInserted = 0;
       for (const target of cleanTargets) {
-        const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+        const cloned = reanchorMealEatenAt(
+          cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+          target,
+        ) as Omit<LoggedMeal, "id">;
         const inserted = await addLoggedMealsForDate(target, [cloned]);
         totalInserted += inserted.length;
       }
@@ -446,7 +453,11 @@ export function useNutritionJournalState(opts: {
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       if (sourceDay.length === 0) return;
       const clones = sourceDay.map(
-        (meal) => cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+        (meal) =>
+          reanchorMealEatenAt(
+            cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+            targetDayKey,
+          ) as Omit<LoggedMeal, "id">,
       );
       const inserted = await addLoggedMealsForDate(targetDayKey, clones);
       track(AnalyticsEvents.day_duplicated, {
@@ -481,7 +492,11 @@ export function useNutritionJournalState(opts: {
       let totalInserted = 0;
       for (const target of cleanTargets) {
         const clones = sourceDay.map(
-          (meal) => cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+          (meal) =>
+            reanchorMealEatenAt(
+              cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+              target,
+            ) as Omit<LoggedMeal, "id">,
         );
         const inserted = await addLoggedMealsForDate(target, clones);
         totalInserted += inserted.length;

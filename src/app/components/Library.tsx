@@ -13,6 +13,7 @@ import {
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
+import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 
@@ -161,8 +162,15 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     const q = searchQuery.trim().toLowerCase();
     let list = savedRecipesForLibrary;
     if (q) {
-      list = list.filter(
-        (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
+      list = list.filter((r) =>
+        recipeSearchMatch(
+          {
+            title: r.title,
+            creatorName: r.creatorName,
+            tags: r.mealSlots ?? null,
+          },
+          q,
+        ),
       );
     }
     // Primary: category (Figma `527:2`). Reuses the shared predicate so

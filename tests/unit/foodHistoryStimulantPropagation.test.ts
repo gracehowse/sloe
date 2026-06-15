@@ -208,3 +208,36 @@ describe("foodHistory recent + eat-again propagation", () => {
     expect(out!.alcoholG).toBeUndefined();
   });
 });
+
+describe("foodHistory full micro panel propagation (ENG-1105)", () => {
+  it("surfaces sodiumMg and sugarG on the bucket (excluding stimulant keys from micros panel)", () => {
+    const byDay = {
+      "2026-04-30": [
+        meal("Greek yogurt", 150, {
+          micros: { sodiumMg: 65, sugarG: 12, caffeineMg: 0 },
+        }),
+      ],
+    };
+    const out = computeFrequentMeals(byDay);
+    expect(out[0]!.micros).toEqual({ sodiumMg: 65, sugarG: 12 });
+  });
+
+  it("computeRecentMeals carries micros forward for re-log", () => {
+    const byDay = {
+      "2026-04-30": [
+        meal("Soup", 220, { micros: { sodiumMg: 890, sugarG: 4 } }),
+      ],
+    };
+    const out = computeRecentMeals(byDay);
+    expect(out[0]!.micros).toEqual({ sodiumMg: 890, sugarG: 4 });
+  });
+
+  it("averages micro keys across occurrences", () => {
+    const byDay = {
+      "2026-04-28": [meal("Soup", 220, { micros: { sodiumMg: 800 } })],
+      "2026-04-30": [meal("Soup", 220, { micros: { sodiumMg: 1000 } })],
+    };
+    const out = computeFrequentMeals(byDay);
+    expect(out[0]!.micros!.sodiumMg).toBe(900);
+  });
+});

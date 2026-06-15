@@ -83,6 +83,7 @@ import {
 } from "../lib/planning/planSource.ts";
 import {
   generateShoppingListFromRecipeEntries,
+  shoppingListIngredientMultiplier,
   type RecipeIngredientRow,
 } from "../lib/planning/generateShoppingList.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
@@ -219,12 +220,12 @@ interface AppDataContextValue {
    * / barcode / voice / photo / copy_meal / duplicate_day / saved_meal
    * / custom_food) pass the matching enum so dashboards can slice.
    */
-  addLoggedMeal: (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => void;
+  addLoggedMeal: (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => string;
   addLoggedMealForDate: (
     dayKey: string,
     meal: Omit<LoggedMeal, "id">,
     analyticsSource?: FoodLoggedSource,
-  ) => void;
+  ) => string;
   removeLoggedMeal: (mealId: string) => void;
   /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day). */
   copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string) => Promise<void>;
@@ -1278,10 +1279,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           !(m as DayPlan["meals"][number] & { leftoverOf?: string }).leftoverOf &&
           titleToId(m.recipeTitle),
       )
-      .map((m) => ({
-        title: m.recipeTitle,
-        multiplier: effectivePortionMultiplier(m.portionMultiplier),
-      }));
+      .map((m) => {
+        const recipeId = titleToId(m.recipeTitle);
+        const servings = recipeId
+          ? planningPool.find((r) => r.id === recipeId)?.servings
+          : undefined;
+        return {
+          title: m.recipeTitle,
+          multiplier: shoppingListIngredientMultiplier(m.portionMultiplier, servings),
+        };
+      });
 
     const recipeIds = [
       ...new Set(

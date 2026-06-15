@@ -346,6 +346,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
+  // ENG-771 (Gate 1) — MFP-refugee logging loop: ship the loop features
+  // default-on; PostHog rows remain kill switches via isFeatureDisabled.
+  "today_log_again",
+  "log-sheet-slot-selector",
+  "today_log_usual_row_v2",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

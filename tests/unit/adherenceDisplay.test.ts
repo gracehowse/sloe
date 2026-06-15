@@ -141,11 +141,11 @@ describe("formatAdherenceHeadline", () => {
         );
       });
 
-      it(`${rel} gates the over-target branch behind isFeatureEnabled("adherence_over_display")`, () => {
+      it(`${rel} uses formatAdherenceHeadline when adherencePct > 110 (ENG-1073, no flag gate)`, () => {
         const src = readFileSync(join(repoRoot, rel), "utf8");
-        expect(src).toContain('isFeatureEnabled("adherence_over_display")');
-        // ...and only flips above the 110% band (the ≤110% path is untouched).
+        expect(src).not.toContain('isFeatureEnabled("adherence_over_display")');
         expect(src).toMatch(/adherencePct\s*>\s*110/);
+        expect(src).toMatch(/formatAdherenceHeadline\(adherencePct\)/);
       });
     }
   });

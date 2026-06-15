@@ -46,6 +46,7 @@ import FoodSearchPanel, {
 } from "@/components/food-search/FoodSearchPanel";
 import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/shared/nutrition/favoriteFoodsSearch";
 import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
+import { BARCODE_FREE_FOREVER_HEADLINE } from "@suppr/shared/nutrition/barcodeFreePromise";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -133,6 +134,22 @@ export interface LogSheetRecentEntry {
   kcal: number;
   source: SourceDotSource;
   bucket: "today" | "week";
+}
+
+/** ENG-928 — go-to row in the empty Log sheet. */
+export interface LogSheetGoToEntry {
+  id: string;
+  title: string;
+  kcal: number;
+  source: SourceDotSource;
+  count: number;
+}
+
+/** ENG-929 — staged basket row (host-owned id). */
+export interface LogSheetBasketItem {
+  id: string;
+  title: string;
+  kcal: number;
 }
 
 export interface LogSheetSavedMeal {
@@ -288,6 +305,10 @@ export interface LogSheetProps {
   saved?: {
     meals: LogSheetSavedMeal[];
     onPick: (meal: LogSheetSavedMeal) => void;
+    /** ENG-776 — open the host's save-usual-meal flow (SaveMealDialog /
+     *  SaveMealSheet). Shown in the Saved tab empty state and as a footer
+     *  CTA when the user has saved meals but wants to create another. */
+    onCreateSavedMeal?: () => void;
     /** ENG-783 — when set (flag `today-edit-entry-v2` on), tapping a saved
      *  meal opens the portion editor first instead of logging 1× instantly.
      *  Falls back to `onPick` when undefined (flag off → instant one-tap). */
@@ -342,6 +363,21 @@ export interface LogSheetProps {
    *  is responsible for the confirmation alert and the actual copy.
    *  When undefined (or count === 0) the row is hidden. */
   copyYesterday?: { count: number; onTap: () => void } | null;
+  /** ENG-928 — slot-aware go-to foods above browse tabs. */
+  goTos?: {
+    entries: LogSheetGoToEntry[];
+    onPick: (entry: LogSheetGoToEntry) => void;
+  };
+  /** ENG-929 — staged multi-add basket bar. */
+  basket?: {
+    items: LogSheetBasketItem[];
+    totalKcal: number;
+    onRemove: (id: string) => void;
+    onCommit: () => void;
+    onClear: () => void;
+  };
+  /** ENG-973 — show free-barcode promise under search row. */
+  showBarcodeFreePromise?: boolean;
   /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
    *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
    *  the user can see AND choose which meal the item lands in, instead
@@ -379,7 +415,7 @@ export interface LogSheetProps {
   } | null;
 }
 
-type BrowseTab = "recent" | "library" | "saved";
+type BrowseTab = "gotos" | "recent" | "library" | "saved";
 
 export function LogSheet({
   visible,
@@ -395,6 +431,9 @@ export function LogSheet({
   copyYesterday,
   slot,
   confirmation,
+  goTos,
+  basket,
+  showBarcodeFreePromise = false,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -407,7 +446,8 @@ export function LogSheet({
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
     if (!visible) setBrowseTab("recent");
-  }, [visible]);
+    else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
+  }, [visible, goTos]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
@@ -515,7 +555,7 @@ export function LogSheet({
                         style={{
                           fontSize: 12,
                           fontWeight: "700",
-                          color: active ? colors.text : colors.textSecondary,
+                          color: colors.text,
                         }}
                       >
                         {s}
@@ -547,6 +587,9 @@ export function LogSheet({
                 onBrowseTabChange={setBrowseTab}
                 onAddManually={onAddManually}
                 copyYesterday={copyYesterday}
+                goTos={goTos}
+                basket={basket}
+                showBarcodeFreePromise={showBarcodeFreePromise}
               />
             )}
           </View>
@@ -571,6 +614,7 @@ function LoggedConfirmation({
   confirmation: NonNullable<LogSheetProps["confirmation"]>;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   // The Done/Undo CTAs are now SupprButtons (solid-plum / ghost) — they own
   // their own colour. The success check keeps `Accent.successSolid`.
   const { title, kcal, slot, source, onDone, onUndo } = confirmation;
@@ -666,6 +710,9 @@ function DefaultComposition({
   onBrowseTabChange,
   onAddManually,
   copyYesterday,
+  goTos,
+  basket,
+  showBarcodeFreePromise,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -679,20 +726,24 @@ function DefaultComposition({
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
   copyYesterday?: LogSheetProps["copyYesterday"];
+  goTos?: LogSheetProps["goTos"];
+  basket?: LogSheetProps["basket"];
+  showBarcodeFreePromise?: boolean;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
-  // Show the multi-tab toggle whenever 2+ browse sources are wired.
-  // With Library added (2026-05-01), order is Recent / Library / Saved.
+  const showGoTos = !!(goTos && goTos.entries.length > 0);
   const visibleTabs = React.useMemo<BrowseTab[]>(() => {
     const tabs: BrowseTab[] = [];
+    if (showGoTos) tabs.push("gotos");
     if (showRecent) tabs.push("recent");
     if (showLibrary) tabs.push("library");
     if (showSaved) tabs.push("saved");
     return tabs;
-  }, [showRecent, showLibrary, showSaved]);
+  }, [showGoTos, showRecent, showLibrary, showSaved]);
   const showBrowseToggle = visibleTabs.length >= 2;
 
   // Inline-search mode is active when the host wired `search.onSelect`.
@@ -778,6 +829,32 @@ function DefaultComposition({
         )}
       </View>
 
+      {showBarcodeFreePromise && barcode?.onOpen ? (
+        <Pressable
+          testID="log-sheet-barcode-free-promise"
+          accessibilityRole="button"
+          accessibilityLabel={BARCODE_FREE_FOREVER_HEADLINE}
+          onPress={() => barcode.onOpen?.()}
+          style={({ pressed }) => ({
+            marginHorizontal: Spacing.md,
+            marginTop: Spacing.sm,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.sm,
+            borderRadius: Radius.lg,
+            backgroundColor: accent.primarySoft,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <ScanBarcode size={14} color={accent.primary} />
+          <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>
+            {BARCODE_FREE_FOREVER_HEADLINE}
+          </Text>
+        </Pressable>
+      ) : null}
+
       {/* Inline search results — only mounted when the user has
           actually started typing. Empty query keeps the existing
           Recent / Saved browse content visible so the sheet doesn't
@@ -795,6 +872,7 @@ function DefaultComposition({
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}
             favoritePendingKeys={search?.favoritePendingKeys}
+            onAddToBasket={search?.onAddToBasket}
             onSelect={(result) => {
               search?.onSelect?.(result);
               // After a successful pick the user has logged something —
@@ -817,6 +895,8 @@ function DefaultComposition({
             showRecent={showRecent}
             showSaved={showSaved}
             showLibrary={showLibrary}
+            showGoTos={showGoTos}
+            goTos={goTos}
             recent={recent}
             saved={saved}
             library={library}
@@ -824,8 +904,96 @@ function DefaultComposition({
             onBrowseTabChange={onBrowseTabChange}
             onAddManually={onAddManually}
           />
+          {basket && basket.items.length > 0 ? (
+            <LogSheetBasketBar basket={basket} />
+          ) : null}
         </>
       )}
+    </View>
+  );
+}
+
+/* -------------------------- Go-to foods (ENG-928) -------------------------- */
+
+function GoToList({
+  goTos,
+  embedded = false,
+}: {
+  goTos: NonNullable<LogSheetProps["goTos"]>;
+  embedded?: boolean;
+}) {
+  const colors = useThemeColors();
+  const accent = useAccent();
+  return (
+    <View
+      style={embedded ? undefined : { paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}
+      testID="log-sheet-go-tos"
+    >
+      {embedded ? null : (
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            color: colors.textSecondary,
+            marginBottom: Spacing.xs,
+          }}
+        >
+          Go-tos for this meal
+        </Text>
+      )}
+      {goTos.entries.map((entry) => (
+        <BrowseRow
+          key={entry.id}
+          title={entry.title}
+          kcal={entry.kcal}
+          source={entry.source}
+          onPick={() => goTos.onPick(entry)}
+        />
+      ))}
+    </View>
+  );
+}
+
+/* -------------------------- Multi-add basket (ENG-929) -------------------------- */
+
+function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["basket"]> }) {
+  const colors = useThemeColors();
+  const accent = useAccent();
+  const count = basket.items.length;
+  return (
+    <View
+      testID="log-sheet-basket-bar"
+      style={{
+        marginHorizontal: Spacing.md,
+        marginBottom: Spacing.md,
+        marginTop: Spacing.sm,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.xl,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: colors.border,
+        backgroundColor: accent.primarySoft,
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
+          {count === 1 ? "1 item staged" : `${count} items staged`}
+        </Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+          {Math.round(basket.totalKcal)} kcal total
+        </Text>
+      </View>
+      <SupprButton variant="ghost" label="Clear" onPress={basket.onClear} />
+      <SupprButton
+        variant="primary"
+        label={count === 1 ? "Log item" : `Log ${count} items`}
+        onPress={basket.onCommit}
+      />
     </View>
   );
 }
@@ -834,6 +1002,7 @@ function DefaultComposition({
 
 function CopyYesterdayRow({ count, onTap }: { count: number; onTap: () => void }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   const label = count === 1 ? "1 meal" : `${count} meals`;
   return (
     <Pressable
@@ -870,6 +1039,8 @@ function BrowseAndFooter({
   showRecent,
   showSaved,
   showLibrary,
+  showGoTos,
+  goTos,
   recent,
   saved,
   library,
@@ -882,6 +1053,8 @@ function BrowseAndFooter({
   showRecent: boolean;
   showSaved: boolean;
   showLibrary: boolean;
+  showGoTos: boolean;
+  goTos?: LogSheetProps["goTos"];
   recent: LogSheetProps["recent"];
   saved: LogSheetProps["saved"];
   library: LogSheetProps["library"];
@@ -890,9 +1063,9 @@ function BrowseAndFooter({
   onAddManually?: () => void;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   // Secondary accent (Frost flag → damson, else clay) for the saved-tab
   // indicator dot.
-  const accent = useAccent();
   // The active tab can become stale if a host removes one of its
   // sources mid-flight (rare). Snap back to the first visible tab to
   // keep the content area legible.
@@ -901,7 +1074,13 @@ function BrowseAndFooter({
     : (visibleTabs[0] ?? "recent");
 
   const labelFor = (id: BrowseTab) =>
-    id === "recent" ? "Recent" : id === "library" ? "Library" : "Saved meals";
+    id === "gotos"
+      ? "Go-tos"
+      : id === "recent"
+        ? "Recent"
+        : id === "library"
+          ? "Library"
+          : "Saved meals";
 
   return (
     <>
@@ -939,11 +1118,13 @@ function BrowseAndFooter({
                   showSavedDot ? `${baseLabel} — ${savedCount} saved` : baseLabel
                 }
                 testID={
-                  id === "recent"
-                    ? "log-sheet-tab-recent"
-                    : id === "library"
-                      ? "log-sheet-tab-library"
-                      : "log-sheet-tab-saved"
+                  id === "gotos"
+                    ? "log-sheet-tab-gotos"
+                    : id === "recent"
+                      ? "log-sheet-tab-recent"
+                      : id === "library"
+                        ? "log-sheet-tab-library"
+                        : "log-sheet-tab-saved"
                 }
                 style={[
                   styles.browsePill,
@@ -990,6 +1171,9 @@ function BrowseAndFooter({
 
       {/* Browse content */}
       <View style={{ flex: 1 }}>
+        {showGoTos && activeTab === "gotos" && goTos ? (
+          <GoToList goTos={goTos} embedded />
+        ) : null}
         {showRecent && activeTab === "recent" ? (
           <RecentList recent={recent!} />
         ) : null}
@@ -999,7 +1183,7 @@ function BrowseAndFooter({
         {showSaved && activeTab === "saved" ? (
           <SavedList saved={saved!} />
         ) : null}
-        {!showRecent && !showSaved && !showLibrary ? (
+        {!showGoTos && !showRecent && !showSaved && !showLibrary ? (
           <View style={{ flex: 1, padding: Spacing.lg, alignItems: "center", justifyContent: "center" }}>
             <Text style={[Type.caption, { color: colors.textSecondary, textAlign: "center" }]}>
               Search above for foods, or scan / speak / snap a photo.
@@ -1051,6 +1235,7 @@ function RightEdgeIcons({
   photo: LogSheetProps["photo"];
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   // Render the icons in the documented order: Scan → Voice → Photo
   // (matches the prior tab order to preserve user muscle memory from
   // the 6-tab era). Each icon only renders when the host wires its
@@ -1122,6 +1307,7 @@ function RightEdgeIcons({
 
 function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   const { entries, onPick, state } = recent;
   const today = entries.filter((e) => e.bucket === "today");
   const week = entries.filter((e) => e.bucket === "week");
@@ -1177,7 +1363,8 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
 function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
   const colors = useThemeColors();
-  const { meals, onPick, onRequestPortion, state } = saved;
+  const accent = useAccent();
+  const { meals, onPick, onRequestPortion, onCreateSavedMeal, state } = saved;
 
   if (state?.loading) {
     return <SkeletonList colors={colors} />;
@@ -1193,6 +1380,16 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
         <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
           Save a meal you eat often to log it in one tap.
         </Text>
+        {onCreateSavedMeal ? (
+          <SupprButton
+            variant="ghost"
+            accessibilityLabel="Save a usual meal"
+            label="Save a usual meal"
+            haptic="selection"
+            onPress={onCreateSavedMeal}
+            style={styles.libraryEmptyCta}
+          />
+        ) : null}
       </View>
     );
   }
@@ -1213,6 +1410,16 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           }
         />
       ))}
+      {onCreateSavedMeal ? (
+        <SupprButton
+          variant="ghost"
+          accessibilityLabel="Save another usual meal"
+          label="Save another usual meal"
+          haptic="selection"
+          onPress={onCreateSavedMeal}
+          style={{ marginTop: Spacing.sm }}
+        />
+      ) : null}
     </ScrollView>
   );
 }
@@ -1221,6 +1428,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   // The empty-state "Browse recipes" CTA is now a ghost SupprButton (it owns
   // its own plum label).
   const { recipes, onPick, onBrowseRecipes, state } = library;
@@ -1277,6 +1485,7 @@ function LibraryRow({
   onPick: () => void;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   return (
     <PressableScale
       accessibilityRole="button"
@@ -1339,6 +1548,7 @@ function BrowseRow({
   accessibilityLabel?: string;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   return (
     <PressableScale
       accessibilityRole="button"
@@ -1404,6 +1614,7 @@ function BarcodeManualEntry({
   onConfirm?: NonNullable<NonNullable<LogSheetProps["barcode"]>["onConfirmManual"]>;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   // The "Log it" commit CTA is now a solid-plum SupprButton (it owns its own
   // colour).
   const [portion, setPortion] = React.useState("100");

@@ -88,11 +88,11 @@ import {
   recipeSlotFitScore,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
+import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
 import {
-  effectivePortionMultiplier,
-  isMealPlanPlaceholderLikeTitle,
-} from "@suppr/shared/nutrition/portionMultiplier";
-import { generateShoppingListFromRecipeEntriesAsync } from "@suppr/shared/planning/generateShoppingList";
+  generateShoppingListFromRecipeEntriesAsync,
+  shoppingListIngredientMultiplier,
+} from "@suppr/shared/planning/generateShoppingList";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import { planSlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
@@ -1967,9 +1967,15 @@ export default function PlannerScreen() {
             });
           }
           if (!titleToId(m.recipeTitle)) continue;
+          const recipeId = titleToId(m.recipeTitle);
+          const recipeMeta = recipeId ? titleToRecipe.get(m.recipeTitle) : undefined;
+          const servings =
+            recipeMeta?.id != null
+              ? allRecipes.find((r) => r.id === recipeMeta.id)?.servings
+              : undefined;
           entries.push({
             title: m.recipeTitle,
-            multiplier: effectivePortionMultiplier(pm.portionMultiplier),
+            multiplier: shoppingListIngredientMultiplier(pm.portionMultiplier, servings),
           });
         }
       }
@@ -4048,7 +4054,7 @@ export default function PlannerScreen() {
                 Alert.alert("Sign in", "Sign in to log food to your tracker.");
                 return;
               }
-              const dk = dateKeyFromDate(new Date());
+              const dk = dateKeyFromDate(planCalendarDateForIndex(dayIdx, startOffset));
               const entryId = newMealId();
               const microsResOv = meal.recipeId
                 ? await fetchPlannedMealMicros(
@@ -4087,7 +4093,8 @@ export default function PlannerScreen() {
                 Alert.alert("Log failed", "Could not save to tracker. " + error.message);
               } else {
                 void snapshotDailyTargetIfMissing(supabase, userId);
-                Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
+                const dayLabel = shortWeekdayLabel(planCalendarDateForIndex(dayIdx, startOffset));
+                Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
               }
             };
             const doViewRecipe = () => {

@@ -7,6 +7,14 @@ describe("hasFatSecretEnv", () => {
     vi.unstubAllEnvs();
   });
 
+  it("accepts CLIENT_ID + CLIENT_SECRET (canonical OAuth 2.0 names)", () => {
+    vi.stubEnv("FATSECRET_CLIENT_ID", "k");
+    vi.stubEnv("FATSECRET_CLIENT_SECRET", "s");
+    vi.stubEnv("FATSECRET_CONSUMER_KEY", "");
+    vi.stubEnv("FATSECRET_CONSUMER_SECRET", "");
+    expect(hasFatSecretEnv()).toBe(true);
+  });
+
   it("accepts CONSUMER_KEY + CLIENT_SECRET", () => {
     vi.stubEnv("FATSECRET_CONSUMER_KEY", "k");
     vi.stubEnv("FATSECRET_CLIENT_SECRET", "s");

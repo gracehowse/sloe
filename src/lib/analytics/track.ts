@@ -215,6 +215,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // tiers, quieted washes, de-chromed meal log). Default-on; OFF → the
   // pre-ENG-1099 tracker. Rollback = remove from this set / PostHog off.
   "today_tracker_tier_v1",
+  // ENG-771 (Gate 1) — MFP-refugee logging loop (mirror mobile).
+  "today_log_again",
+  "log-sheet-slot-selector",
+  "today_log_usual_row_v2",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

@@ -32,6 +32,21 @@ import {
 import { PortionPickerWeb } from "./portion-picker";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 
+function scaleBarcodePreview(p: OffProductMacros, grams: number) {
+  if (p.macrosPerServing && p.servingNoMass) {
+    const qty = Math.max(0, grams);
+    const m = p.macrosPerServing;
+    return {
+      calories: Math.round(m.calories * qty),
+      protein: Math.round(m.protein * qty * 10) / 10,
+      carbs: Math.round(m.carbs * qty * 10) / 10,
+      fat: Math.round(m.fat * qty * 10) / 10,
+      fiberG: 0,
+    };
+  }
+  return scaleFromPer100gGrams(p, grams);
+}
+
 /**
  * TodayBarcodeDialog — the Open Food Facts barcode lookup + review.
  *
@@ -118,14 +133,18 @@ function BarcodePicker(props: {
       onChange={setPickerState}
       options={options}
       rememberedGrams={rememberedGrams}
-      macrosPer100g={{
-        calories: product.calories,
-        protein: product.protein,
-        carbs: product.carbs,
-        fat: product.fat,
-        fiberG: product.fiberG,
-      }}
-      basisCorrected={product.basisCorrected}
+      macrosPer100g={
+        product.servingNoMass && product.macrosPerServing
+          ? null
+          : {
+              calories: product.calories,
+              protein: product.protein,
+              carbs: product.carbs,
+              fat: product.fat,
+              fiberG: product.fiberG,
+            }
+      }
+      basisCorrected={product.servingNoMass ? false : product.basisCorrected}
     />
   );
 }
@@ -420,7 +439,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
             <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto pr-0.5">
               {(() => {
                 const p = barcodePreview;
-                const scaled = scaleFromPer100gGrams(p, barcodeGramsParsed);
+                const scaled = scaleBarcodePreview(p, barcodeGramsParsed);
                 const portion = barcodePortionLabel(p, barcodeGramsParsed);
                 const titleForLog = barcodeTitleOverride.trim() || p.name;
                 return (
@@ -462,7 +481,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                           const on = c === true;
                           onBarcodeMacrosManualChange(on);
                           if (on) {
-                            const s = scaleFromPer100gGrams(p, barcodeGramsParsed);
+                            const s = scaleBarcodePreview(p, barcodeGramsParsed);
                             onBarcodeEditCalChange(String(s.calories));
                             onBarcodeEditProChange(String(s.protein));
                             onBarcodeEditCarbChange(String(s.carbs));
@@ -576,7 +595,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     if (!p) return;
                     const portion = barcodePortionLabel(p, barcodeGramsParsed);
                     const titleForLog = barcodeTitleOverride.trim() || p.name;
-                    const scaled = scaleFromPer100gGrams(p, barcodeGramsParsed);
+                    const scaled = scaleBarcodePreview(p, barcodeGramsParsed);
                     let calories: number;
                     let protein: number;
                     let carbs: number;
@@ -621,6 +640,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     // reconcile also trips the warning.
                     const plausible =
                       barcodeMacrosManual ||
+                      p.servingNoMass ||
                       (checkScaledLogPlausibility(
                         { calories, protein, carbs, fat },
                         barcodeGramsParsed,

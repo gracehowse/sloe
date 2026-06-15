@@ -192,7 +192,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     await drain();
 
     expect(await screen.findByTestId("food-search-confidence-verified")).toBeInTheDocument();
-    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Structured")).toBeInTheDocument();
     // The verified row's byline names its source.
     expect(screen.getByText(/per 100g · USDA/i)).toBeInTheDocument();
   });
