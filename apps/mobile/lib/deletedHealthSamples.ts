@@ -189,9 +189,16 @@ export async function markHealthSampleDeleted(id: string | null | undefined): Pr
  * from Supabase (L2) and unions into the in-memory cache + AsyncStorage
  * so future reads are instant.
  */
-export async function loadDeletedHealthSampleIds(): Promise<ReadonlySet<string>> {
+export type LoadDeletedHealthSampleIdsOptions = {
+  /** When set, L2 tombstones older than this instant are ignored (ENG-879). L1 stays unscoped — local deletes are always honored. */
+  since?: Date;
+};
+
+export async function loadDeletedHealthSampleIds(
+  opts?: LoadDeletedHealthSampleIdsOptions,
+): Promise<ReadonlySet<string>> {
   const local = await loadFromAsyncStorage();
-  if (serverHydrated) return local;
+  if (serverHydrated && !opts?.since) return local;
 
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -200,10 +207,14 @@ export async function loadDeletedHealthSampleIds(): Promise<ReadonlySet<string>>
   }
   await drainPendingWrites(userId);
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("deleted_health_samples")
       .select("health_sample_id")
       .eq("user_id", userId);
+    if (opts?.since) {
+      query = query.gte("deleted_at", opts.since.toISOString());
+    }
+    const { data, error } = await query;
     if (error) {
       if (looksLikeMissingTable(error)) {
         serverHydrated = true; // don't keep retrying within the session
@@ -220,8 +231,8 @@ export async function loadDeletedHealthSampleIds(): Promise<ReadonlySet<string>>
         dirty = true;
       }
     }
-    if (dirty) await writeJsonArray(STORAGE_KEY, local);
-    serverHydrated = true;
+    if (dirty && !opts?.since) await writeJsonArray(STORAGE_KEY, local);
+    if (!opts?.since) serverHydrated = true;
     return local;
   } catch (err) {
     console.warn("[deletedHealthSamples] L2 read threw:", err);

@@ -3,6 +3,8 @@
  * Best-effort: many sites omit or misstructure fields.
  */
 
+import { isPrepStateOrServingLine } from "./isPrepStateLine";
+
 /** Decode common HTML entities that leak through JSON-LD text fields. */
 function decodeHtmlEntities(s: string): string {
   return s
@@ -457,7 +459,7 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
       if (Array.isArray(ingRaw)) {
         for (const x of ingRaw) {
           const line = normalizeIngredientText(x);
-          if (line) ingredients.push(line);
+          if (line && !isPrepStateOrServingLine(line)) ingredients.push(line);
         }
       }
 

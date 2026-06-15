@@ -458,7 +458,7 @@ function NorthStarDefaultBlock({
             className={cn(
               "inline-flex h-5 items-center rounded-full px-2 text-[11px] font-semibold",
               suggestion.bandTight
-                ? "bg-success/10 text-success"
+                ? "bg-success/10 text-success-solid"
                 : "bg-muted text-muted-foreground",
             )}
           >

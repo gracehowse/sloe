@@ -93,12 +93,13 @@ describe("web CookMode — servings handoff", () => {
     expect(WEB_COOK).toMatch(/Scaled for\s*\{servings\}\s*serving/);
   });
 
-  it("auto-log uses scaleFactor (not the buggy servings/baseServings inline)", () => {
-    // Pre-fix, handleLogMeal recomputed `portionMultiplier` from a
-    // local `baseServings` shadow. Post-fix it reuses the same
-    // `scaleFactor` constant the step text used, guaranteeing the
-    // logged calories match what the user actually cooked.
-    expect(WEB_COOK).toMatch(/portionMultiplier\s*=\s*scaleFactor/);
+  it("auto-log routes through commitLogMeal with servings eaten (ENG-1129)", () => {
+    // ENG-1129: confirm sheet passes servings eaten to commitLogMeal;
+    // legacy path (flag off) still calls commitLogMeal(scaleFactor).
+    expect(WEB_COOK).toMatch(/commitLogMeal/);
+    expect(WEB_COOK).toMatch(/servingsToLog/);
+    expect(WEB_COOK).toMatch(/portionMultiplier:\s*servingsToLog/);
+    expect(WEB_COOK).toMatch(/commitLogMeal\(scaleFactor\)/);
   });
 });
 

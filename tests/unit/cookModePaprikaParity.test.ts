@@ -56,14 +56,14 @@ describe("Web CookMode — recipe scaling source structure", () => {
   it("emits recipe_scale_changed analytics on commit", () => {
     expect(SOURCE).toMatch(/AnalyticsEvents\.recipe_scale_changed/);
   });
-  it("includes the Paprika scale in the Log this meal portionMultiplier (composed via scaleFactor)", () => {
-    // Servings handoff (P0, 2026-05-01): the journal entry's
-    // `portionMultiplier` reuses the same `scaleFactor` constant the
-    // step-text scaling used. `scaleFactor` is computed as
-    // `(servings / effectiveBaseServings) * scale`, so the Paprika
-    // preset still flows through — guaranteeing the journal entry
-    // matches what the user actually cooked.
-    expect(SOURCE).toMatch(/portionMultiplier\s*=\s*scaleFactor/);
+  it("logs via commitLogMeal with servings eaten (ENG-1129) and legacy scaleFactor fallback", () => {
+    // ENG-1129: primary path asks how many servings were eaten and
+    // passes that count to `commitLogMeal`. Legacy (flag off) still
+    // reuses `scaleFactor` so Paprika batch scale flows through.
+    expect(SOURCE).toMatch(/commitLogMeal/);
+    expect(SOURCE).toMatch(/servingsToLog/);
+    expect(SOURCE).toMatch(/portionMultiplier:\s*servingsToLog/);
+    expect(SOURCE).toMatch(/commitLogMeal\(scaleFactor\)/);
     expect(SOURCE).toMatch(
       /scaleFactor\s*=[\s\S]{0,120}servings\s*\/\s*effectiveBaseServings[\s\S]{0,40}\*\s*scale/,
     );

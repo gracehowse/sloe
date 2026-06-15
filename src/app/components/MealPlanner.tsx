@@ -1,13 +1,17 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowRightLeft,
   CalendarRange,
   ChevronDown,
   Coffee,
   Cookie,
+  LayoutTemplate,
   Lock,
+  MoreHorizontal,
   Package,
   Plus,
   RefreshCw,
+  Scale,
   ShoppingCart,
   Sliders,
   Sun,
@@ -45,7 +49,30 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
-import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { useAuthSession } from "../../context/AuthSessionContext.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
+import { moveMealInPlan } from "../../lib/nutrition/leftoversPlanner.ts";
+import {
+  applyTemplateToWeek,
+  buildTemplateFromWeek,
+  type PlanTemplate,
+} from "../../lib/nutrition/planTemplates.ts";
+import {
+  createPlanTemplate,
+  deletePlanTemplate,
+  listPlanTemplates,
+} from "../../lib/nutrition/planTemplatesClient.ts";
+import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
+import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
+import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { useCalmMode } from "../../lib/preferences/useCalmMode.ts";
 import {
   type PlanSourceMode,
@@ -212,6 +239,11 @@ export const MealPlanner = memo(function MealPlanner({
   // popover holds the full pickers. OFF → the three inline rows (unchanged).
   // Web-only flag (mobile already collapsed); default-OFF until Grace red-lines.
   const planAdjustCollapsed = isFeatureEnabled("plan_adjust_collapsed_v1");
+  // ENG-1131 — web Plan parity: move-meal, templates, portion stepper (mobile
+  // already ships these; web catches up behind one flag). Default-on; off → swap-
+  // only slot affordance and no templates entry point.
+  const planWebParity = isFeatureEnabled("plan_web_parity_v1");
+  const { authedUserId } = useAuthSession();
   // ENG-1098 "Calm mode" — when on, quiet the per-slot "Aim ~X kcal" numbers
   // (the empty-slot rows still render; only the number is hidden). Client-side
   // display preference (no DB), shared key with mobile.
@@ -256,6 +288,20 @@ export const MealPlanner = memo(function MealPlanner({
   // without snack rows.
   const [enabledSlots, setEnabledSlots] = useState<Set<SlotKey>>(
     () => new Set<SlotKey>(SLOTS),
+  );
+  const [moveFrom, setMoveFrom] = useState<{ day: number; slotIndex: number } | null>(
+    null,
+  );
+  const [portionTarget, setPortionTarget] = useState<{
+    day: number;
+    mealIndex: number;
+  } | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesLoadAttempt, setTemplatesLoadAttempt] = useState(0);
+  const [applyTemplateTarget, setApplyTemplateTarget] = useState<PlanTemplate | null>(
+    null,
   );
 
   const targetCalories = nutritionTargets.calories;
@@ -560,6 +606,127 @@ export const MealPlanner = memo(function MealPlanner({
     onNavigate?.("shopping");
   };
 
+  useEffect(() => {
+    if (!planWebParity || !templatesOpen || !authedUserId) return;
+    let cancelled = false;
+    setTemplatesLoading(true);
+    void listPlanTemplates(supabase, authedUserId).then(({ templates, error }) => {
+      if (cancelled) return;
+      if (error) {
+        toast.error("Could not load templates", { description: error });
+      } else {
+        setPlanTemplates(templates);
+      }
+      setTemplatesLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [planWebParity, templatesOpen, authedUserId, templatesLoadAttempt]);
+
+  const handleMoveMeal = useCallback(
+    (from: { day: number; slotIndex: number }, to: { day: number; slotIndex: number }) => {
+      if (from.day === to.day && from.slotIndex === to.slotIndex) return;
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        const fromDp = prev.find((d) => d.day === from.day);
+        const toDp = prev.find((d) => d.day === to.day);
+        const fromSlot = fromDp?.meals[from.slotIndex]?.name ?? "";
+        const toSlot = toDp?.meals[to.slotIndex]?.name ?? "";
+        const next = moveMealInPlan(prev, from, to);
+        track(AnalyticsEvents.meal_moved_in_plan, {
+          fromSlot,
+          toSlot,
+          crossDay: from.day !== to.day,
+        });
+        return next;
+      });
+      toast.success("Meal moved");
+    },
+    [setMealPlan],
+  );
+
+  const handlePortionSelect = useCallback(
+    (multiplier: number) => {
+      if (!portionTarget) return;
+      const recipePool = [...discoverRecipes, ...savedRecipesForLibrary].map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories,
+      }));
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        return prev.map((dp) => {
+          if (dp.day !== portionTarget.day) return dp;
+          const newMeals = dp.meals.map((m, mi) => {
+            if (mi !== portionTarget.mealIndex) return m;
+            const cur = planMealDisplayMultiplier(m, recipePool);
+            const baseCals = m.calories / cur;
+            const basePro = m.protein / cur;
+            const baseCarbs = m.carbs / cur;
+            const baseFat = m.fat / cur;
+            const baseFiber = ((m as { fiberG?: number }).fiberG ?? 0) / cur;
+            return {
+              ...m,
+              portionMultiplier: multiplier,
+              calories: Math.round(baseCals * multiplier),
+              protein: Math.round(basePro * multiplier),
+              carbs: Math.round(baseCarbs * multiplier),
+              fat: Math.round(baseFat * multiplier),
+              fiberG: Math.round(baseFiber * multiplier * 10) / 10,
+            };
+          });
+          const totals = newMeals.reduce(
+            (acc, m) => ({
+              calories: acc.calories + (Number(m.calories) || 0),
+              protein: acc.protein + (Number(m.protein) || 0),
+              carbs: acc.carbs + (Number(m.carbs) || 0),
+              fat: acc.fat + (Number(m.fat) || 0),
+              fiberG:
+                acc.fiberG + (Number((m as { fiberG?: number }).fiberG) || 0),
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
+          );
+          return { ...dp, meals: newMeals, totals };
+        });
+      });
+      toast.success("Portion updated");
+    },
+    [portionTarget, discoverRecipes, savedRecipesForLibrary, setMealPlan],
+  );
+
+  const templateSourceMealCount = useMemo(() => {
+    if (!planWebParity) return 0;
+    return (mealPlan ?? []).reduce(
+      (n, d) =>
+        n +
+        d.meals.filter(
+          (m) =>
+            !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
+            !(m as { leftoverOf?: string }).leftoverOf,
+        ).length,
+      0,
+    );
+  }, [planWebParity, mealPlan]);
+
+  const moveDayLabels = useMemo(
+    () =>
+      (mealPlan ?? []).map((_, idx) =>
+        shortWeekdayLabel(planCalendarDateForIndex(idx, startOffset)),
+      ),
+    [mealPlan, startOffset],
+  );
+
+  const portionRecipePool = useMemo(
+    () =>
+      [...discoverRecipes, ...savedRecipesForLibrary].map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories,
+      })),
+    [discoverRecipes, savedRecipesForLibrary],
+  );
+
   const openSwap = (day: number, slot: SwapTarget["slot"], mealIndex: number) => {
     setSwapFor({ day, slot, mealIndex });
   };
@@ -860,6 +1027,12 @@ export const MealPlanner = memo(function MealPlanner({
               <ShoppingCart size={14} strokeWidth={2} />
               Shopping list
             </SupprButton>
+            {planWebParity ? (
+              <SupprButton variant="ghost" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplate size={14} strokeWidth={2} />
+                Templates
+              </SupprButton>
+            ) : null}
           </div>
         </SupprCard>
       ) : null}
@@ -1615,24 +1788,95 @@ export const MealPlanner = memo(function MealPlanner({
                           </span>
                         )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openSwap(dp.day, slot, mealIndex)}
-                      aria-label={`Swap ${slot}`}
-                      title="Swap"
-                      className="absolute grid place-items-center bg-card text-muted-foreground hover:text-foreground"
-                      style={{
-                        top: 8,
-                        right: 8,
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        border: "1px solid var(--border)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <RefreshCw size={11} />
-                    </button>
+                    {planWebParity ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Actions for ${slot}`}
+                            title="Meal actions"
+                            className="absolute grid place-items-center bg-card text-muted-foreground hover:text-foreground"
+                            style={{
+                              top: 8,
+                              right: 8,
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              border: "1px solid var(--border)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <MoreHorizontal size={11} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-card border-border">
+                          {!isPlaceholder ? (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleLogToday(meal)}
+                                className="cursor-pointer"
+                              >
+                                Log today
+                              </DropdownMenuItem>
+                              {recipeId && !recipeMissing ? (
+                                <DropdownMenuItem
+                                  onClick={() => onOpenRecipe?.(recipeId)}
+                                  className="cursor-pointer"
+                                >
+                                  View recipe
+                                </DropdownMenuItem>
+                              ) : null}
+                            </>
+                          ) : null}
+                          <DropdownMenuItem
+                            onClick={() => openSwap(dp.day, slot, mealIndex)}
+                            className="cursor-pointer"
+                          >
+                            <RefreshCw size={14} className="mr-2" />
+                            Swap meal
+                          </DropdownMenuItem>
+                          {!isPlaceholder ? (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setPortionTarget({ day: dp.day, mealIndex })
+                              }
+                              className="cursor-pointer"
+                            >
+                              <Scale size={14} className="mr-2" />
+                              Change portion size…
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setMoveFrom({ day: dp.day, slotIndex: mealIndex })
+                            }
+                            className="cursor-pointer"
+                          >
+                            <ArrowRightLeft size={14} className="mr-2" />
+                            Move to different slot
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openSwap(dp.day, slot, mealIndex)}
+                        aria-label={`Swap ${slot}`}
+                        title="Swap"
+                        className="absolute grid place-items-center bg-card text-muted-foreground hover:text-foreground"
+                        style={{
+                          top: 8,
+                          right: 8,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          border: "1px solid var(--border)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <RefreshCw size={11} />
+                      </button>
+                    )}
                     {/* F2-M (2026-04-28): "Log today" button on each
                         meal row. Mobile parity at
                         `apps/mobile/app/(tabs)/planner.tsx:2406-2447`.
@@ -1645,7 +1889,7 @@ export const MealPlanner = memo(function MealPlanner({
                         affordance without dominating the row. Mirrors
                         the mobile change. Disabled when the slot is a
                         placeholder. */}
-                    {!isPlaceholder ? (
+                    {!isPlaceholder && !planWebParity ? (
                       <button
                         type="button"
                         onClick={() => handleLogToday(meal)}
@@ -1901,6 +2145,105 @@ export const MealPlanner = memo(function MealPlanner({
           }
         }}
       />
+
+      {planWebParity ? (
+        <>
+          <PlanMoveMealDialog
+            open={moveFrom !== null}
+            onOpenChange={(open) => {
+              if (!open) setMoveFrom(null);
+            }}
+            plan={plan}
+            from={moveFrom}
+            dayLabels={moveDayLabels}
+            onMove={(to) => {
+              if (!moveFrom) return;
+              handleMoveMeal(moveFrom, to);
+              setMoveFrom(null);
+            }}
+          />
+          <PlanPortionDialog
+            open={portionTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) setPortionTarget(null);
+            }}
+            plan={plan}
+            target={portionTarget}
+            recipePool={portionRecipePool}
+            onSelect={handlePortionSelect}
+          />
+          <PlanTemplatesDialog
+            open={templatesOpen}
+            onOpenChange={setTemplatesOpen}
+            sourceMealCount={templateSourceMealCount}
+            maxDayCount={plan.length || 1}
+            templates={planTemplates}
+            loading={templatesLoading}
+            onSave={async (name, dayCount) => {
+              if (!authedUserId) {
+                return { ok: false, error: "Sign in to save templates." };
+              }
+              const draft = buildTemplateFromWeek(mealPlan, name, dayCount);
+              if (!draft) {
+                return { ok: false, error: "This plan has no meals to save." };
+              }
+              const { template, error } = await createPlanTemplate(
+                supabase,
+                authedUserId,
+                draft,
+              );
+              if (error || !template) {
+                return { ok: false, error: error ?? "Could not save template." };
+              }
+              track(AnalyticsEvents.plan_template_created, {
+                dayCount: draft.dayCount,
+                slotCount: draft.slots.length,
+              });
+              setPlanTemplates((prev) => [
+                template,
+                ...prev.filter((t) => t.id !== template.id),
+              ]);
+              return { ok: true };
+            }}
+            onApply={(templateId) => {
+              const tmpl = planTemplates.find((t) => t.id === templateId);
+              if (tmpl) setApplyTemplateTarget(tmpl);
+            }}
+            onDelete={async (templateId) => {
+              if (!authedUserId) return { ok: false, error: "Sign in required." };
+              const { error } = await deletePlanTemplate(supabase, authedUserId, templateId);
+              if (error) return { ok: false, error };
+              setPlanTemplates((prev) => prev.filter((t) => t.id !== templateId));
+              return { ok: true };
+            }}
+          />
+          <DestructiveConfirmDialog
+            open={applyTemplateTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) setApplyTemplateTarget(null);
+            }}
+            title={
+              applyTemplateTarget
+                ? `Apply "${applyTemplateTarget.name}"?`
+                : "Apply template?"
+            }
+            description="Replace this week's plan with the template meals. This can't be undone."
+            confirmLabel="Apply"
+            onConfirm={() => {
+              if (!applyTemplateTarget) return;
+              const next = applyTemplateToWeek(applyTemplateTarget);
+              setMealPlan(next);
+              track(AnalyticsEvents.plan_template_applied, {
+                dayCount: applyTemplateTarget.dayCount,
+                slotCount: applyTemplateTarget.slots.length,
+              });
+              setTemplatesOpen(false);
+              setApplyTemplateTarget(null);
+              toast.success("Template applied");
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 });

@@ -321,6 +321,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // tiers, quieted washes, de-chromed meal log). Default-on; OFF → pre-ENG-1099
   // tracker. Rollback = remove from this set / PostHog off. (web twin same flag)
   "today_tracker_tier_v1",
+  // ENG-1131 — web Plan parity (move, templates, portion). Default-on; web-only
+  // surface — mobile already has parity. Keep in sync with track.ts.
+  "plan_web_parity_v1",
+  // ENG-1129 — cook-mode servings-eaten confirm before journal write. Default-on;
+  // off → legacy batch-scale multiply. Keep in sync with track.ts.
+  "cook_log_servings_confirm",
   // ENG-1097 — the Today import onboarding nudge renders as a flat WHITE card
   // (matching every sibling Today card via SupprCard) with a solid aubergine
   // "Try it" CTA, instead of the legacy tinted+bordered slab + outline CTA that

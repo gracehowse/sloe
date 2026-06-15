@@ -91,9 +91,11 @@ describe("MealPlanner prototype rewrite (2026-04-21)", () => {
     expect(SRC).not.toMatch(/from "\.\/suppr\/macro-card"/);
     expect(SRC).not.toMatch(/<DailyRing[\s>]/);
     expect(SRC).not.toMatch(/<MacroCard[\s>]/);
-    // No drag-drop / Move / Cook / Log buttons on the plan surface.
+    // No drag-drop on the plan surface. Move is allowed behind plan_web_parity_v1
+    // (ENG-1131) — shared helper, not legacy drag-drop.
     expect(SRC).not.toMatch(/onDragStart/);
-    expect(SRC).not.toMatch(/handleMoveMeal/);
+    expect(SRC).toMatch(/plan_web_parity_v1/);
+    expect(SRC).toMatch(/handleMoveMeal/);
     expect(SRC).not.toMatch(/logPlannedMeal/);
     // No pre-generation settings accordion.
     expect(SRC).not.toMatch(/Daily targets \(optimizer\)/);

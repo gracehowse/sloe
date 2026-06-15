@@ -19,6 +19,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { subscribeJournalRefresh } from "@/lib/journalRefresh";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
@@ -4229,6 +4230,14 @@ export default function TrackerScreen() {
     if (!userId) return;
     void loadJournal();
   }, [selectedDate, userId, loadJournal]);
+
+  // ENG-879 — Health Sync → Sync Now can insert rows while Today stays mounted.
+  useEffect(() => {
+    if (!userId) return;
+    return subscribeJournalRefresh(() => {
+      void loadJournal();
+    });
+  }, [userId, loadJournal]);
 
   // Reload journal + targets every time this tab comes into focus.
   //

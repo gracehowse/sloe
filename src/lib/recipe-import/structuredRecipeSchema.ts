@@ -127,6 +127,7 @@ CRITICAL RULES:
 - Split compound amounts into quantity + unit + name. "200g chicken breast, diced" → quantity 200, unit "g", name "chicken breast", prep "diced".
 - For a bare count ("2 eggs"), set quantity 2, unit "" (or null), name "eggs".
 - DO NOT include section headings ("For the sauce:", "For the salad:") as ingredients. Treat the list as flat.
+- DO NOT include mid-prep states (e.g. "cornflour mixed with warm water") or serving notes ("to serve (optional)") as ingredients.
 - Ignore hashtags, @mentions, emoji, ads, navigation, page numbers, and other non-recipe text.
 - If the input contains NO recipe, return {"title": null, "servings": null, "ingredients": [], "steps": [], "prepTimeMin": null, "cookTimeMin": null, "sourceName": null, "notes": null}.
 - Return ONLY the JSON object.`;

@@ -31,6 +31,7 @@ import {
 
 export type { ImportedMeal } from "./healthSyncTypes";
 export { formatNutritionImportSummary, type NutritionImportResult } from "./nutritionImportSummary";
+import { evaluateHealthImportSkip } from "./nutritionImportDedup";
 import {
   bucketEnergyShares,
   buildQuantityIdToCorrelationId,
@@ -1781,10 +1782,12 @@ function emptyNutritionImportResult(overrides?: Partial<NutritionImportResult>):
     skippedNoName: 0,
     externalEnergyCount: 0,
     skippedDedup: 0,
+    skippedTombstone: 0,
     skippedNonPositive: 0,
     insertAttempted: 0,
     insertFailed: 0,
     healthKitUnavailable: false,
+    importError: null,
     ...overrides,
   };
 }
@@ -1914,6 +1917,7 @@ async function syncNutritionFromHealthImpl(
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
   let skippedDedup = 0;
+  let skippedTombstone = 0;
   let skippedNonPositive = 0;
   const imported: ImportedMeal[] = [];
 
@@ -1948,16 +1952,14 @@ async function syncNutritionFromHealthImpl(
     existingSet.add(`${row.date_key}|${row.recipe_title}|${row.calories}|${minute}`);
   }
 
-  // F-130 (2026-05-07) — load the user-deleted-tombstone set and OR
-  // it into `existingHkIds` so previously-deleted HK samples stay
-  // suppressed on re-sync. Pre-fix: deleting an apple_health-imported
-  // row removed it from `nutrition_entries`, but the next sync saw
-  // the same HK sample, found no row to dedup against, and re-
-  // imported the meal — duplicates kept reappearing.
+  // F-130 (2026-05-07) — tombstone set kept separate from journal rows so
+  // ENG-879 can count `skippedTombstone` and scope L2 reads to the sync
+  // lookback window. L1 (AsyncStorage) stays unscoped — local deletes are
+  // always recent and must stay honored offline.
+  let tombstoneIds = new Set<string>();
   try {
     const { loadDeletedHealthSampleIds } = await import("./deletedHealthSamples");
-    const tombstone = await loadDeletedHealthSampleIds();
-    for (const id of tombstone) existingHkIds.add(id);
+    tombstoneIds = new Set(await loadDeletedHealthSampleIds({ since: daysAgo(lookbackDays) }));
   } catch (err) {
     console.warn("[healthSync] failed to load delete tombstone:", err);
   }
@@ -1990,11 +1992,6 @@ async function syncNutritionFromHealthImpl(
       continue;
     }
 
-    if (sample.id && existingHkIds.has(sample.id)) {
-      skippedDedup++;
-      continue;
-    }
-
     const dk = dateKey(when);
 
     const rawMeta = sample.metadata as Record<string, unknown> | undefined;
@@ -2016,8 +2013,17 @@ async function syncNutritionFromHealthImpl(
         : `${foodLabel} (via ${sourceApp})`;
     const minuteBucket = Math.floor(when.getTime() / 60000);
     const dedupKey = `${dk}|${recipeTitle}|${cal}|${minuteBucket}`;
-    if (!sample.id && existingSet.has(dedupKey)) {
-      skippedDedup++;
+
+    const skipDecision = evaluateHealthImportSkip({
+      sampleId: sample.id,
+      existingHkIds,
+      tombstoneIds,
+      dedupKey,
+      legacyFingerprintSet: existingSet,
+    });
+    if (skipDecision.skip) {
+      if (skipDecision.reason === "tombstone") skippedTombstone++;
+      else skippedDedup++;
       continue;
     }
     if (!sample.id) existingSet.add(dedupKey);
@@ -2082,19 +2088,37 @@ async function syncNutritionFromHealthImpl(
     });
   }
 
-  // Bulk insert
+  // Bulk insert / upsert (ENG-879 S5 — unique collisions must not fail the batch)
   let insertAttempted = 0;
   let insertFailed = 0;
+  let importError: string | null = null;
   if (toInsert.length > 0) {
-    // Insert in batches of 50 to stay within Supabase limits
     for (let i = 0; i < toInsert.length; i += 50) {
       const batch = toInsert.slice(i, i + 50);
       insertAttempted += batch.length;
-      const { error } = await supabase.from("nutrition_entries").insert(batch);
-      if (error) {
-        insertFailed += batch.length;
-        lastNutritionImportError = error.message;
-        console.warn("[healthSync] nutrition import insert failed:", error.message);
+      const withHkId = batch.filter((row) => row.health_sample_id);
+      const withoutHkId = batch.filter((row) => !row.health_sample_id);
+
+      if (withHkId.length > 0) {
+        const { error } = await supabase.from("nutrition_entries").upsert(withHkId, {
+          onConflict: "user_id,health_sample_id",
+          ignoreDuplicates: true,
+        });
+        if (error) {
+          insertFailed += withHkId.length;
+          importError = error.message;
+          lastNutritionImportError = error.message;
+          console.warn("[healthSync] nutrition import upsert failed:", error.message);
+        }
+      }
+      if (withoutHkId.length > 0) {
+        const { error } = await supabase.from("nutrition_entries").insert(withoutHkId);
+        if (error) {
+          insertFailed += withoutHkId.length;
+          importError = error.message;
+          lastNutritionImportError = error.message;
+          console.warn("[healthSync] nutrition import insert failed:", error.message);
+        }
       }
     }
   }
@@ -2105,10 +2129,12 @@ async function syncNutritionFromHealthImpl(
     skippedNoName,
     externalEnergyCount: extEnergy.length,
     skippedDedup,
+    skippedTombstone,
     skippedNonPositive,
     insertAttempted,
     insertFailed,
     healthKitUnavailable: false,
+    importError,
   };
 }
 

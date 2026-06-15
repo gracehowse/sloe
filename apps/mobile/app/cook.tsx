@@ -23,8 +23,9 @@ import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
@@ -172,6 +173,7 @@ export default function CookModeScreen() {
   const [cookDurationSec, setCookDurationSec] = useState<number | null>(null);
   const [savedRating, setSavedRating] = useState<number | null>(null);
   const [addedToRegulars, setAddedToRegulars] = useState(false);
+  const [logServingsOpen, setLogServingsOpen] = useState(false);
   /** Latest in a small recent-cook history per recipe, hydrated lazily
    *  when the completion card mounts so we can preview "you usually cook
    *  this in N min" once the surface lands. */
@@ -284,6 +286,36 @@ export default function CookModeScreen() {
       );
     });
   }, [watchOriginalUrl, recipeId]);
+
+  /** ENG-1129 — cook-mode auto-log: optional servings-eaten confirm → logServings param. */
+  const navigateAutoLog = useCallback(
+    (servingsEaten?: number) => {
+      if (!recipeId) {
+        router.back();
+        return;
+      }
+      if (
+        isFeatureEnabled("cook_log_servings_confirm") &&
+        servingsEaten != null &&
+        Number.isFinite(servingsEaten) &&
+        servingsEaten > 0
+      ) {
+        track(AnalyticsEvents.cook_mode_log_tapped, {
+          recipeId,
+          batchScale: scale,
+          servingsLogged: servingsEaten,
+        });
+        router.replace(
+          `/recipe/${recipeId}?autoLog=1&logServings=${encodeURIComponent(String(servingsEaten))}` as never,
+        );
+        return;
+      }
+      track(AnalyticsEvents.cook_mode_log_tapped, { recipeId, batchScale: scale });
+      const scaleQuery = scale !== 1 ? `&portion=${scale}` : "";
+      router.replace(`/recipe/${recipeId}?autoLog=1${scaleQuery}` as never);
+    },
+    [recipeId, router, scale],
+  );
 
   /** Hydrate prior cook-history median for the optional "you usually
    *  cook this in N min" surface. Storage-only, no network. Failures
@@ -1601,20 +1633,11 @@ export default function CookModeScreen() {
             variant="primary"
             style={styles.doneBtn}
             onPress={() => {
-              if (recipeId) {
-                track(AnalyticsEvents.cook_mode_log_tapped, { recipeId });
-                // Pass the active cook scale through so the recipe
-                // page's autoLog flow scales the journal entry by the
-                // same factor — matches the "Add to my regulars" path
-                // above. The recipe page already reads `portion` and
-                // multiplies macros by it; passing 1 is a no-op.
-                const scaleQuery = scale !== 1 ? `&portion=${scale}` : "";
-                router.replace(
-                  `/recipe/${recipeId}?autoLog=1${scaleQuery}` as never,
-                );
-              } else {
-                router.back();
+              if (isFeatureEnabled("cook_log_servings_confirm")) {
+                setLogServingsOpen(true);
+                return;
               }
+              navigateAutoLog();
             }}
             label="Log this meal"
           />
@@ -1631,6 +1654,16 @@ export default function CookModeScreen() {
           />
         </ScrollView>
       )}
+      <CookLogServingsSheet
+        visible={logServingsOpen}
+        batchScale={scale}
+        baseServings={baseServings}
+        onClose={() => setLogServingsOpen(false)}
+        onConfirm={(servingsEaten) => {
+          setLogServingsOpen(false);
+          navigateAutoLog(servingsEaten);
+        }}
+      />
     </View>
   );
 }

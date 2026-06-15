@@ -241,7 +241,6 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     eatenKcal: consumedCalories,
     isToday,
     netKcal: net,
-    isDeficit,
   });
 
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days

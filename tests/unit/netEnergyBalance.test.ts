@@ -53,8 +53,64 @@ describe("netEnergyBalance", () => {
         eatenKcal: 0,
         isToday: true,
         netKcal: 492,
-        isDeficit: true,
       }),
     ).toBe("492 kcal burned so far · no food logged yet.");
+  });
+
+  describe("netEnergySubline band coherence", () => {
+    it("maintenance band uses balanced copy, not burned/eaten more", () => {
+      for (const net of [30, -30, 60, -60, 0]) {
+        const subline = netEnergySubline({
+          burnedKcal: 1500,
+          eatenKcal: 1500 - net,
+          isToday: true,
+          netKcal: net,
+        });
+        expect(subline).toContain("within 60 kcal of maintenance");
+        expect(subline).not.toMatch(/burned \d+ more/);
+        expect(subline).not.toMatch(/eaten \d+ more/);
+        expect(netEnergyChipState(net)).toBe("maintenance");
+      }
+    });
+
+    it("deficit and surplus bands use directional copy", () => {
+      expect(
+        netEnergySubline({
+          burnedKcal: 2000,
+          eatenKcal: 1939,
+          isToday: true,
+          netKcal: 61,
+        }),
+      ).toBe("You've burned 61 more than you've eaten today.");
+      expect(
+        netEnergySubline({
+          burnedKcal: 2000,
+          eatenKcal: 2061,
+          isToday: true,
+          netKcal: -61,
+        }),
+      ).toBe("You've eaten 61 more than you've burned today.");
+    });
+
+    it("subline agrees with chip state across the net range", () => {
+      for (const net of [-4000, -1300, -200, -61, -60, -30, 0, 30, 60, 61, 200, 1349, 4000]) {
+        const state = netEnergyChipState(net);
+        const subline = netEnergySubline({
+          burnedKcal: 2000,
+          eatenKcal: 2000 - net,
+          isToday: true,
+          netKcal: net,
+        });
+        if (state === "maintenance") {
+          expect(subline).toContain("within 60 kcal of maintenance");
+        } else if (state === "deficit") {
+          expect(subline).toContain("burned");
+          expect(subline).toContain("more than you've eaten");
+        } else {
+          expect(subline).toContain("eaten");
+          expect(subline).toContain("more than you've burned");
+        }
+      }
+    });
   });
 });

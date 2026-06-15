@@ -168,7 +168,6 @@ export function TodayActivityBonusCard({
     eatenKcal: consumedCalories,
     isToday,
     netKcal: net,
-    isDeficit,
   });
 
   let weekBurn = 0;

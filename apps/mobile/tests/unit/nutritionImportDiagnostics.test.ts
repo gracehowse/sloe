@@ -21,6 +21,7 @@ function baseResult(
     skippedNoName: 0,
     externalEnergyCount: 0,
     skippedDedup: 0,
+    skippedTombstone: 0,
     skippedNonPositive: 0,
     insertAttempted: 0,
     insertFailed: 0,
@@ -76,5 +77,13 @@ describe("formatNutritionImportSummary", () => {
         baseResult({ externalEnergyCount: 3, skippedDedup: 3 }),
       ),
     ).toMatch(/already in your journal/i);
+  });
+
+  it("explains tombstoned samples and points to re-import", () => {
+    expect(
+      formatNutritionImportSummary(
+        baseResult({ externalEnergyCount: 2, skippedTombstone: 2 }),
+      ),
+    ).toMatch(/Re-import from Apple Health/i);
   });
 });

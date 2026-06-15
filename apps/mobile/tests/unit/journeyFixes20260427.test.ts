@@ -69,7 +69,8 @@ describe("Fix 1 — cook mode 'Log this meal' CTA on done state", () => {
     // The CTA must not crash if the cook screen was opened without a
     // recipeId param (defensive — the Discover → recipe → cook chain
     // always provides one, but external deep links might not).
-    expect(SRC.cook).toMatch(/if\s*\(\s*recipeId\s*\)\s*\{[\s\S]*?\}\s*else\s*\{\s*router\.back\(\)/);
+    expect(SRC.cook).toMatch(/navigateAutoLog/);
+    expect(SRC.cook).toMatch(/if\s*\(\s*!recipeId\s*\)\s*\{[\s\S]*?router\.back\(\)/);
   });
 
   it("fires `cook_mode_log_tapped` analytics on the CTA tap", () => {

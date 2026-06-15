@@ -258,4 +258,14 @@ describe("moveMealInPlan", () => {
     const out = moveMealInPlan(plan, { day: 1, slotIndex: 0 }, { day: 1, slotIndex: 0 });
     expect(out).toBe(plan);
   });
+
+  it("includes fiberG in recomputed day totals (ENG-1131)", () => {
+    const plan: DayPlan[] = [
+      day(1, [slot("Breakfast", "Oats", { recipeId: "oats", calories: 300, fiberG: 8 })]),
+      day(2, [slot("Breakfast", "Eggs", { recipeId: "eggs", calories: 400, fiberG: 2 })]),
+    ];
+    const out = moveMealInPlan(plan, { day: 1, slotIndex: 0 }, { day: 2, slotIndex: 0 });
+    expect(out[0].totals.fiberG).toBe(2);
+    expect(out[1].totals.fiberG).toBe(8);
+  });
 });
