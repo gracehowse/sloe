@@ -31,10 +31,12 @@ jobs:
       # which makes verify-production-env exit 1 under VERIFY_STRICT=1 (see scripts/verify-production-env.ts).
       # Run VERIFY_STRICT=1 locally or in deploy pipelines when you want a hard gate.
       VERIFY_STRICT: "0"
-      # Gate the optional food-search smoke step here — the `secrets` context is
-      # NOT allowed in a step-level `if:` (fails workflow validation), but a
-      # job-level env that reads the secret is, and `env.` IS allowed in `if:`.
+      # Gate the optional food-search + Gate-0-live steps here — the `secrets`
+      # context is NOT allowed in a step-level `if:` (fails workflow validation,
+      # which manifests as a 0s job failure), but a job-level env that reads the
+      # secret is, and `env.` IS allowed in `if:`.
       SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
+      GATE0_VERIFY_PASSWORD: ${{ secrets.GATE0_VERIFY_PASSWORD }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -54,7 +56,7 @@ jobs:
       - name: Gate-0 DB security contracts (static, ENG-1102)
         run: npm run verify:gate0:static
       - name: Gate-0 live DB verify (optional — linked Supabase + throwaway creds)
-        if: ${{ secrets.GATE0_VERIFY_PASSWORD != '' }}
+        if: ${{ env.GATE0_VERIFY_PASSWORD != '' }}
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
