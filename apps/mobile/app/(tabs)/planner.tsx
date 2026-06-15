@@ -93,12 +93,24 @@ import {
   generateShoppingListFromRecipeEntriesAsync,
   shoppingListIngredientMultiplier,
 } from "@suppr/shared/planning/generateShoppingList";
+import {
+  filterShoppingItemsByPantry,
+  parsePantryStaples,
+} from "@suppr/shared/planning/pantryStaples";
+import { fingerprintMealPlanForShopping } from "@suppr/shared/planning/mealPlanFingerprint";
+import {
+  SHOPPING_LIST_FINGERPRINT_STORAGE_KEY,
+  SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY,
+  SHOPPING_LIST_PLAN_START_STORAGE_KEY,
+} from "@suppr/shared/planning/shoppingListMeta";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import { planSlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
 import {
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
+  planDayCalendarDate,
+  planDayCalendarDateKey,
   startDateForOffset,
   stripMidnight,
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
@@ -651,6 +663,10 @@ export default function PlannerScreen() {
   // 1-day default as "Today with extra steps".
   const [days, setDays] = useState<1 | 3 | 7>(7);
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
+  /** ENG-1132 — persisted T7 anchor from `meal_plan_days.start_date`. */
+  const [planStartDate, setPlanStartDate] = useState<string | null>(null);
+  /** ENG-1051 — suppress these from generated shopping lists. */
+  const [pantryStaples, setPantryStaples] = useState<readonly string[]>([]);
   // ENG-790 — where generated recipes are drawn from. Default to the
   // broadest pool (library + Suppr's picks) so generation always works,
   // even at 0 saves. Mirrors `DEFAULT_PLAN_SOURCE_MODE` (web parity).
@@ -711,7 +727,7 @@ export default function PlannerScreen() {
       if (cancelled) return;
       const { data } = await supabase
         .from("profiles")
-        .select("user_tier")
+        .select("user_tier, pantry_staples")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
@@ -719,6 +735,7 @@ export default function PlannerScreen() {
       const resolved: "free" | "base" | "pro" =
         tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
       setUserTier(resolved);
+      setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples));
       // F-91 — persist for next mount so the gate doesn't flash Free
       // again on the next Plan-tab open.
       void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
@@ -1028,6 +1045,16 @@ export default function PlannerScreen() {
         // surface as a real save failure that we log.
         if (__DEV__) {
           console.warn("[persistPlan] save_meal_plan failed:", error.message);
+        }
+      } else {
+        setPlanStartDate(startDate);
+        try {
+          const storedFp = await AsyncStorage.getItem(SHOPPING_LIST_FINGERPRINT_STORAGE_KEY);
+          if (storedFp && storedFp !== fingerprintMealPlanForShopping(nextPlan)) {
+            await AsyncStorage.setItem(SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY, "1");
+          }
+        } catch {
+          /* best-effort staleness hint */
         }
       }
     },
@@ -1837,6 +1864,10 @@ export default function PlannerScreen() {
         .order("day", { ascending: true });
 
       if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
+        const anchorRaw = (dayRows[0] as { start_date?: string | null }).start_date;
+        if (typeof anchorRaw === "string" && anchorRaw.length >= 10) {
+          setPlanStartDate(anchorRaw.slice(0, 10));
+        }
         const plans: DayPlan[] = dayRows.map((d: { id: string; day: number; meals?: Array<Record<string, unknown>> | null }) => {
           const dayMeals = (d.meals ?? []).slice().sort((a, b) => (((a.slot_index as number) ?? 0) - ((b.slot_index as number) ?? 0)));
           const meals = stripPlanPlaceholders(
@@ -1947,7 +1978,7 @@ export default function PlannerScreen() {
       for (const dp of planForGeneration) {
         for (const m of dp.meals) {
           const pm = m as PlanMeal;
-          if (pm.leftoverOf) continue; // servings of an already-bought parent
+          // ENG-1134 — include leftover slots; each planned portion scales by ÷servings.
           if (
             !m.recipeTitle ||
             isMealPlanPlaceholderLikeTitle(m.recipeTitle, {
@@ -2023,7 +2054,9 @@ export default function PlannerScreen() {
         fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
       });
 
-      const items = shared.map((it) => ({
+      const filtered = filterShoppingItemsByPantry(shared, pantryStaples);
+
+      const items = filtered.map((it) => ({
         name: it.name,
         amount: it.amount,
         unit: it.unit,
@@ -2071,9 +2104,21 @@ export default function PlannerScreen() {
       }
 
       setShoppingItemCount(inserts.length);
+      try {
+        const anchor =
+          planStartDate?.slice(0, 10) ??
+          startDateForOffset(new Date(), 0).slice(0, 10);
+        await AsyncStorage.multiSet([
+          [SHOPPING_LIST_PLAN_START_STORAGE_KEY, anchor],
+          [SHOPPING_LIST_FINGERPRINT_STORAGE_KEY, fingerprintMealPlanForShopping(planForGeneration)],
+        ]);
+        await AsyncStorage.removeItem(SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY);
+      } catch {
+        /* best-effort subtitle metadata */
+      }
       return { ok: true, count: inserts.length };
     },
-    [userId, savedRecipes, discoverRecipes, shoppingScope],
+    [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
 
   const generatePlan = useCallback(async () => {
@@ -4054,7 +4099,15 @@ export default function PlannerScreen() {
                 Alert.alert("Sign in", "Sign in to log food to your tracker.");
                 return;
               }
-              const dk = dateKeyFromDate(planCalendarDateForIndex(dayIdx, startOffset));
+              const dayPlan = plan?.[dayIdx];
+              const planDayNumber = dayPlan?.day ?? dayIdx + 1;
+              const calInput = {
+                planDayNumber,
+                startDate: planStartDate,
+                legacyDayIdx: dayIdx,
+                legacyStartOffset: startOffset,
+              };
+              const dk = planDayCalendarDateKey(calInput);
               const entryId = newMealId();
               const microsResOv = meal.recipeId
                 ? await fetchPlannedMealMicros(
@@ -4093,7 +4146,7 @@ export default function PlannerScreen() {
                 Alert.alert("Log failed", "Could not save to tracker. " + error.message);
               } else {
                 void snapshotDailyTargetIfMissing(supabase, userId);
-                const dayLabel = shortWeekdayLabel(planCalendarDateForIndex(dayIdx, startOffset));
+                const dayLabel = shortWeekdayLabel(planDayCalendarDate(calInput));
                 Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
               }
             };

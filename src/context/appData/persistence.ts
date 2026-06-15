@@ -45,6 +45,10 @@ export interface PersistedSnapshot {
   shoppingItems: ShoppingItem[];
   /** Fingerprint of meal plan when shopping list was last built from plan (`fingerprintMealPlanForShopping`). */
   shoppingListSourceFingerprint?: string | null;
+  /** ENG-1135 — plan week start date when list was generated. */
+  shoppingListPlanStartDate?: string | null;
+  /** ENG-1051 — pantry suppress-list. */
+  pantryStaples?: readonly string[];
   nutritionByDay: Record<string, LoggedMeal[]>;
   mealPlan: DayPlan[] | null;
   /** Named plan slots (active = `activeMealPlanSlotId`). Cloud still syncs active plan JSON only. */
@@ -229,6 +233,8 @@ export function defaultSnapshot(): PersistedSnapshot {
     activeMealPlanSlotId: DEFAULT_MEAL_PLAN_SLOT_ID,
     nutritionTargets: { ...DEFAULT_MACRO_TARGETS },
     shoppingListSourceFingerprint: null,
+    shoppingListPlanStartDate: null,
+    pantryStaples: [],
     libraryEntryKindByRecipeId: {},
     notificationsInbox: [],
     notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS },
@@ -325,6 +331,13 @@ export function loadSnapshot(): PersistedSnapshot {
         typeof parsed.shoppingListSourceFingerprint === "string" || parsed.shoppingListSourceFingerprint === null
           ? parsed.shoppingListSourceFingerprint
           : undefined,
+      shoppingListPlanStartDate:
+        typeof parsed.shoppingListPlanStartDate === "string" || parsed.shoppingListPlanStartDate === null
+          ? parsed.shoppingListPlanStartDate
+          : undefined,
+      pantryStaples: Array.isArray(parsed.pantryStaples)
+        ? parsed.pantryStaples.filter((s): s is string => typeof s === "string")
+        : undefined,
       nutritionByDay,
       mealPlan,
       mealPlanSlots,

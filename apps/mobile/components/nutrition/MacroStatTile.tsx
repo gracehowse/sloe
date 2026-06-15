@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { Text, View, type StyleProp, type ViewStyle } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useColorScheme } from "react-native";
@@ -142,9 +143,8 @@ export function MacroStatTile({
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
         <Text
           style={{
-            ...Type.title,
-            fontSize: 20,
-            lineHeight: 24,
+            ...(tierV1 ? Type.heroValue : Type.title),
+            ...(tierV1 ? {} : { fontSize: 20, lineHeight: 24 }),
             color: valueColor,
             ...(tierV1 ? { fontWeight: valueWeight } : {}),
             fontVariant: ["tabular-nums"],
@@ -218,15 +218,16 @@ export function MacroStatTile({
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={`${label}: ${value} of ${target} ${unit}. Tap for detail.`}
       testID={testID}
-      style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }, style]}
+      style={style}
     >
       {body}
-    </Pressable>
+    </PressableScale>
   );
 }
 

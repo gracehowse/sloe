@@ -86,6 +86,11 @@ import {
   shoppingListIngredientMultiplier,
   type RecipeIngredientRow,
 } from "../lib/planning/generateShoppingList.ts";
+import {
+  filterShoppingItemsByPantry,
+  parsePantryStaples,
+} from "../lib/planning/pantryStaples.ts";
+import { startDateForOffset } from "../lib/mealPlan/planCalendarAnchor.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
 export type RedeemPromoResult =
@@ -133,6 +138,11 @@ interface AppDataContextValue {
   generateShoppingListFromPlan: () => Promise<void>;
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
   shoppingListOutOfSync: boolean;
+  /** ENG-1135 — calendar date the shopping list was generated from (`YYYY-MM-DD`). */
+  shoppingListPlanStartDate: string | null;
+  /** ENG-1051 — always-on-hand staples suppressed from shopping generation. */
+  pantryStaples: readonly string[];
+  savePantryStaples: (staples: readonly string[]) => Promise<void>;
   discoverRecipes: RecipeCard[];
   /** Recipes published by real users. Catalog picks are excluded. */
   communityFeedCount: number;
@@ -227,6 +237,8 @@ interface AppDataContextValue {
     analyticsSource?: FoodLoggedSource,
   ) => string;
   removeLoggedMeal: (mealId: string) => void;
+  /** ENG-1122 — optimistic update + Supabase persist for edited journal rows. */
+  updateLoggedMeal: (dayKey: string, updated: LoggedMeal) => Promise<boolean>;
   /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day). */
   copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string) => Promise<void>;
   /** Copy one logged meal to every day in the deduped, source-excluded target list. */
@@ -427,12 +439,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [shoppingListSourceFingerprint, setShoppingListSourceFingerprint] = useState<string | null>(
     initial.shoppingListSourceFingerprint ?? null,
   );
+  const [shoppingListPlanStartDate, setShoppingListPlanStartDate] = useState<string | null>(
+    initial.shoppingListPlanStartDate ?? null,
+  );
+  const [pantryStaples, setPantryStaples] = useState<readonly string[]>(
+    initial.pantryStaples ?? [],
+  );
 
   const {
     nutritionByDay,
     addLoggedMealForDate,
     addLoggedMeal,
     removeLoggedMeal,
+    updateLoggedMeal,
     mealsForSelectedDate,
     copyMealToDate,
     copyMealToDateRange,
@@ -540,7 +559,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
+          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -577,6 +596,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // P3-30: lens defaults to false when the column hasn't been
       // populated yet (forward-only safe).
       setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
+      setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples));
       const hasTargets = Boolean(
         data?.target_calories &&
           data?.target_protein &&
@@ -1273,10 +1293,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         (m) =>
           m.recipeTitle &&
           !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
-          // Batch 3.10 — leftover slots represent servings of an already-accounted
-          // parent recipe, so skip them. Counting them would triple-buy ingredients
-          // for a recipe that yields multiple servings.
-          !(m as DayPlan["meals"][number] & { leftoverOf?: string }).leftoverOf &&
+          // ENG-1134 — leftover slots are planned portions of the same recipe;
+          // each contributes portion÷servings (skip only duplicated parent buys).
           titleToId(m.recipeTitle),
       )
       .map((m) => {
@@ -1329,10 +1347,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       recipeTitleToId: titleToId,
       ingredientsByRecipeId,
     });
-    setShoppingItems(list);
+    const filtered = filterShoppingItemsByPantry(list, pantryStaples);
+    setShoppingItems(filtered);
     setShoppingListSourceFingerprint(fingerprintMealPlanForShopping(mealPlan));
+    let planAnchor = startDateForOffset(new Date(), 0);
+    if (authedUserId) {
+      const { data: anchorRow } = await supabase
+        .from("meal_plan_days")
+        .select("start_date")
+        .eq("user_id", authedUserId)
+        .eq("slot_id", DEFAULT_MEAL_PLAN_SLOT_ID)
+        .order("day", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const raw = (anchorRow as { start_date?: string } | null)?.start_date;
+      if (typeof raw === "string" && raw.length >= 10) {
+        planAnchor = raw.slice(0, 10);
+      }
+    }
+    setShoppingListPlanStartDate(planAnchor);
     toast.success("Shopping list generated");
-    track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
+    track(AnalyticsEvents.shopping_list_generated, { itemCount: filtered.length });
 
     // G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19): on
     // regenerate, purge the old `shopping_items` rows *before*
@@ -1353,9 +1388,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           toast.error(syncFailedRetryMessage("shopping list", delErr.message ?? ""));
           return;
         }
-        if (list.length === 0) return;
+        if (filtered.length === 0) return;
         const stamp = shoppingScopeInsertStamp(shoppingScope);
-        const inserts = list.map((item) => ({
+        const inserts = filtered.map((item) => ({
           user_id: stamp.user_id,
           household_id: stamp.household_id,
           name: item.name,
@@ -1376,7 +1411,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       })();
     }
-  }, [mealPlan, savedRecipeIds, myLibraryRecipes, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems]);
+  }, [mealPlan, savedRecipeIds, myLibraryRecipes, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems, pantryStaples]);
+
+  const savePantryStaples = useCallback(
+    async (staples: readonly string[]) => {
+      const normalized = parsePantryStaples(staples);
+      setPantryStaples(normalized);
+      if (!authedUserId) return;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ pantry_staples: normalized })
+        .eq("id", authedUserId);
+      if (error) {
+        toast.error(syncFailedRetryMessage("pantry staples", error.message ?? ""));
+      }
+    },
+    [authedUserId],
+  );
 
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
   useEffect(() => {
@@ -1801,6 +1852,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     libraryEntryKindByRecipeId,
     shoppingItems,
     shoppingListSourceFingerprint,
+    shoppingListPlanStartDate,
+    pantryStaples,
     nutritionByDay,
     mealPlan,
     mealPlanSlots,
@@ -2069,6 +2122,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       generateMealPlan,
       generateShoppingListFromPlan,
       shoppingListOutOfSync,
+      shoppingListPlanStartDate,
+      pantryStaples,
+      savePantryStaples,
       discoverRecipes,
       communityFeedCount,
       refreshDiscoverRecipes,
@@ -2119,6 +2175,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addLoggedMeal,
       addLoggedMealForDate,
       removeLoggedMeal,
+      updateLoggedMeal,
       copyMealToDate,
       copyMealToDateRange,
       duplicateDay,
@@ -2156,6 +2213,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       generateMealPlan,
       generateShoppingListFromPlan,
       shoppingListOutOfSync,
+      shoppingListPlanStartDate,
+      pantryStaples,
+      savePantryStaples,
       discoverRecipes,
       communityFeedCount,
       refreshDiscoverRecipes,
@@ -2206,6 +2266,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addLoggedMeal,
       addLoggedMealForDate,
       removeLoggedMeal,
+      updateLoggedMeal,
       copyMealToDate,
       copyMealToDateRange,
       duplicateDay,

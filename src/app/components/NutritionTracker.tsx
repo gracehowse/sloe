@@ -119,6 +119,7 @@ import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientP
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
+import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
@@ -523,6 +524,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     addLoggedMeal,
     addLoggedMealForDate,
     removeLoggedMeal,
+    updateLoggedMeal,
     copyMealToDate,
     copyMealToDateRange,
     duplicateDay,
@@ -587,6 +589,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
   // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
   const [mealNutritionTargetId, setMealNutritionTargetId] = useState<string | null>(null);
+  const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
@@ -2948,6 +2951,11 @@ export const NutritionTracker = memo(function NutritionTracker({
             ? setMealNutritionTargetId
             : undefined
         }
+        onEditMeal={
+          isFeatureEnabled("web_logged_meal_edit")
+            ? setEditMealTargetId
+            : undefined
+        }
         // 2026-05-02 parity sweep — empty-state collage (Add custom /
         // Photo / Voice / "Log from today's plan" rows) replaced by a
         // single primary CTA that routes into the unified `<LogSheet>`.
@@ -3580,11 +3588,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
           apps/mobile/app/meal-nutrition.tsx). Gated behind
           `web_meal_nutrition_detail`; resolves the full LoggedMeal (with micros)
-          from `mealsForSelectedDate` by id — no Supabase fetch (the data is
-          already in memory; mobile only fetches because it's a deep-linkable
-          route). Read-only on web: there is no web per-meal edit modal to route
-          to (mobile's header Edit is a platform-native deviation), so `onEdit`
-          is intentionally omitted. */}
+          from `mealsForSelectedDate` by id — no Supabase fetch. */}
       {isFeatureEnabled("web_meal_nutrition_detail") && (
         <MealNutritionDialog
           meal={
@@ -3594,6 +3598,32 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
           open={mealNutritionTargetId != null}
           onClose={() => setMealNutritionTargetId(null)}
+          onEdit={
+            isFeatureEnabled("web_logged_meal_edit")
+              ? (mealId) => {
+                  setMealNutritionTargetId(null);
+                  setEditMealTargetId(mealId);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {isFeatureEnabled("web_logged_meal_edit") && (
+        <EditMealDialog
+          meal={
+            editMealTargetId
+              ? mealsForSelectedDate.find((m) => m.id === editMealTargetId) ?? null
+              : null
+          }
+          anchorDayKey={selectedDateKey}
+          open={editMealTargetId != null}
+          slotLabels={enabledMealSlots}
+          onClose={() => setEditMealTargetId(null)}
+          onSave={async (updated) => {
+            const ok = await updateLoggedMeal(selectedDateKey, updated);
+            if (ok) toast.success("Meal updated");
+          }}
         />
       )}
 

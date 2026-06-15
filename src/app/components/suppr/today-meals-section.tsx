@@ -94,6 +94,12 @@ export interface TodayMealsSectionProps {
    */
   onOpenMealNutrition?: (mealId: string) => void;
   /**
+   * ENG-1122 — open the logged-meal edit dialog. When set (flag
+   * `web_logged_meal_edit` on), an "Edit" item renders in each meal row's
+   * kebab menu. Undefined (flag off) → no item.
+   */
+  onEditMeal?: (mealId: string) => void;
+  /**
    * Empty-state primary CTA — opens the unified `<LogSheet>`.
    *
    * 2026-05-02 parity sweep: the prior empty state collage (3 buttons —
@@ -285,6 +291,7 @@ export function TodayMealsSection({
   onRequestCopyMeal,
   onDeleteMeal,
   onOpenMealNutrition,
+  onEditMeal,
   onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
@@ -546,6 +553,14 @@ export function TodayMealsSection({
                               onSelect={() => onOpenMealNutrition(meal.id)}
                             >
                               View nutrition
+                            </DropdownMenuItem>
+                          ) : null}
+                          {onEditMeal ? (
+                            <DropdownMenuItem
+                              data-testid={`today-meal-edit-${meal.id}`}
+                              onSelect={() => onEditMeal(meal.id)}
+                            >
+                              Edit
                             </DropdownMenuItem>
                           ) : null}
                           <DropdownMenuItem
@@ -961,6 +976,16 @@ export function TodayMealsSection({
                               >
                                 <Icons.pieChart className="w-3.5 h-3.5" aria-hidden />
                                 View nutrition
+                              </DropdownMenuItem>
+                            )}
+                            {onEditMeal && (
+                              <DropdownMenuItem
+                                data-testid={`today-meal-edit-${meal.id}`}
+                                className={brandedSheets ? "mx-1" : undefined}
+                                onSelect={() => onEditMeal(meal.id)}
+                              >
+                                <Icons.edit className="w-3.5 h-3.5" aria-hidden />
+                                Edit
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem

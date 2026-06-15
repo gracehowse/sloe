@@ -1091,6 +1091,7 @@ export type Database = {
           last_weekly_recap_push_sent_at: string | null
           measurement_system: string | null
           meal_slot_config: Json | null
+          pantry_staples: Json | null
           milestone_30_shown_at: string | null
           net_carbs_lens_enabled: boolean
           notification_prefs: Json
@@ -1165,6 +1166,7 @@ export type Database = {
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
           meal_slot_config?: Json | null
+          pantry_staples?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1239,6 +1241,7 @@ export type Database = {
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
           meal_slot_config?: Json | null
+          pantry_staples?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json

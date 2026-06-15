@@ -595,6 +595,14 @@ export const Type = {
     fontWeight: '500' as const,
     letterSpacing: -0.35,
   },
+  /** ENG-1099 M4 — serif stat row under the ring (18/22). Converges mobile 19 + web 18. */
+  statValue: {
+    fontFamily: FontFamily.serifRegular,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '400' as const,
+    letterSpacing: -0.2,
+  },
   /** Numeric specials — the big hero numbers read in Newsreader (serif) to
    *  match the approved Figma frames. Pair with `fontVariant: ['tabular-nums']`
    *  per usage (already set at call sites).

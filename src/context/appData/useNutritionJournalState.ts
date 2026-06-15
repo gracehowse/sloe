@@ -12,6 +12,7 @@ import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/cop
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
+import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -364,6 +365,49 @@ export function useNutritionJournalState(opts: {
     [selectedDateKey, authedUserId, dbNutritionEnabled, nutritionByDay],
   );
 
+  const updateLoggedMeal = useCallback(
+    async (dayKey: string, updated: LoggedMeal): Promise<boolean> => {
+      const prevDay = nutritionByDay[dayKey] ?? [];
+      const existing = prevDay.find((m) => m.id === updated.id);
+      if (!existing) return false;
+
+      const resolvedDateKey = nutritionEntryDateKeyAndEatenAt(updated, dayKey).dateKey;
+      const prevSnapshot = nutritionByDay;
+
+      setNutritionByDay((prev) => {
+        const without = (prev[dayKey] ?? []).filter((m) => m.id !== updated.id);
+        if (resolvedDateKey === dayKey) {
+          return { ...prev, [dayKey]: [...without, updated] };
+        }
+        return {
+          ...prev,
+          [dayKey]: without,
+          [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), updated],
+        };
+      });
+
+      if (!authedUserId || !dbNutritionEnabled) return true;
+
+      const payload = buildNutritionEntryUpdatePayload(dayKey, updated);
+      const { error } = await supabase
+        .from("nutrition_entries")
+        .update(payload)
+        .eq("id", updated.id)
+        .eq("user_id", authedUserId);
+
+      if (error) {
+        if (!looksLikeMissingTableError(error.message ?? "")) {
+          setNutritionByDay(prevSnapshot);
+          toast.error(syncFailedRetryMessage("meal update", error.message ?? ""));
+        }
+        return false;
+      }
+      void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+      return true;
+    },
+    [authedUserId, dbNutritionEnabled, nutritionByDay],
+  );
+
   const mealsForSelectedDate = useMemo(() => {
     return nutritionByDay[selectedDateKey] ?? [];
   }, [nutritionByDay, selectedDateKey]);
@@ -523,6 +567,7 @@ export function useNutritionJournalState(opts: {
     addLoggedMealsForDate,
     addLoggedMeal,
     removeLoggedMeal,
+    updateLoggedMeal,
     mealsForSelectedDate,
     copyMealToDate,
     copyMealToDateRange,

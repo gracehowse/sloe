@@ -141,6 +141,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     setTargetAlcoholGWeekly,
     profileWeightSurfaceMode,
     setProfileWeightSurfaceMode,
+    pantryStaples,
+    savePantryStaples,
   } = useAppData();
   const { theme, setTheme } = useTheme();
   // Macro display style — `tiles` (default) vs `bars` (Cronometer/Lose
@@ -152,6 +154,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // per-slot "Aim ~X kcal" numbers (Today + Plan). Client-side, shared key with
   // mobile (`apps/mobile/lib/calmMode.ts`).
   const [calmMode, setCalmMode] = useCalmMode();
+  const [pantryInput, setPantryInput] = useState("");
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
@@ -1046,6 +1049,59 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 testId: `meal-slot-preset-${opt.id}`,
               }))}
             />
+          </div>
+          <div>
+            <label className="block mb-2 text-sm font-medium text-foreground">Pantry staples</label>
+            <p className="text-xs text-muted-foreground mb-3 max-w-xl">
+              Ingredients you always keep on hand — we skip them when generating your shopping list (not an inventory tracker).
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {pantryStaples.map((name) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground"
+                >
+                  {name}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${name}`}
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => void savePantryStaples(pantryStaples.filter((s) => s !== name))}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <form
+              className="flex gap-2 max-w-md"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const next = pantryInput.trim();
+                if (!next) return;
+                if (pantryStaples.some((s) => s.toLowerCase() === next.toLowerCase())) {
+                  setPantryInput("");
+                  return;
+                }
+                void savePantryStaples([...pantryStaples, next]);
+                setPantryInput("");
+              }}
+            >
+              <input
+                type="text"
+                value={pantryInput}
+                onChange={(e) => setPantryInput(e.target.value)}
+                placeholder="e.g. olive oil, salt, rice"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                data-testid="pantry-staple-input"
+              />
+              <button
+                type="submit"
+                className="rounded-lg border border-primary-solid px-4 py-2 text-sm font-semibold text-primary-solid"
+              >
+                Add
+              </button>
+            </form>
           </div>
           {/*
             T13 (2026-04-24) — Digest + Progress + weight-chart opt-out.
