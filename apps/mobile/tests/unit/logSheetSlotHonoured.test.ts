@@ -41,9 +41,19 @@ describe("build-47 — LogSheet pick-handlers honour activeMealSlot", () => {
     // call and that the callback honours the active slot, so a revert to
     // time-of-day on either side still fails.
     expect(SRC).toMatch(/logHistoryItemFromSheet\(\s*found\s*\)/);
+    // Tempered-greedy: anchor on the FIRST `name:` inside the callback and
+    // require it to be activeMealSlot. A plain `[\s\S]*?` slides past a reverted
+    // `name: currentSlotFromTime` to a later `name: activeMealSlot` elsewhere in
+    // this 3,400-line file, so the build-47 revert would false-pass;
+    // `(?:(?!name:)[\s\S])*?` cannot cross a `name:`, so the assertion fails if
+    // the callback's first `name:` isn't activeMealSlot.
     expect(SRC).toMatch(
-      /const logHistoryItemFromSheet = useCallback\([\s\S]*?name:\s*activeMealSlot/,
+      /const logHistoryItemFromSheet = useCallback\((?:(?!name:)[\s\S])*?name:\s*activeMealSlot/,
     );
+    // Negative belt-and-braces: the build-47 time-of-day helpers must not
+    // appear as a slot source anywhere in the file.
+    expect(SRC).not.toMatch(/name:\s*currentSlotFromTime/);
+    expect(SRC).not.toMatch(/name:\s*slotForHour\(/);
   });
 
   it("saved.onPick passes activeMealSlot to logSavedMealFromPanel", () => {

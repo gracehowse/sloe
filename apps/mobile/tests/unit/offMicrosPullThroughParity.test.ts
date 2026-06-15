@@ -120,12 +120,13 @@ describe("F-79 — ingest layer pulls full micro set", () => {
 
   it("web FoodSearchPanel passes through microsPer100g from proxied OFF hits (ENG-1059)", () => {
     expect(SRC.webSearch).toMatch(/\/api\/off\/search/);
-    // ENG-1077 — the row now passes the OFF hit's micros through the
-    // per-micronutrient plausibility clamp before reaching the preview, so the
-    // bare `h.microsPer100g` became `optionalSanitizedMicrosPer100g(h.microsPer100g)`.
-    // Still requires `h.microsPer100g` so a genuine drop of the pull-through fails.
+    // ENG-1077 — the row passes the OFF hit's micros through the per-
+    // micronutrient plausibility clamp. OFF-SPECIFIC: the OFF row is the only
+    // one followed by `, primaryServing` (the Edamam row uses a conditional
+    // spread `{ ... }` with no trailing comma), so this still fails if the OFF
+    // pull-through is dropped even when the Edamam row keeps its own micros line.
     expect(SRC.webSearch).toMatch(
-      /microsPer100g:\s*optionalSanitizedMicrosPer100g\(h\.microsPer100g\)/,
+      /microsPer100g:\s*optionalSanitizedMicrosPer100g\(h\.microsPer100g\),\s*primaryServing/,
     );
   });
 
