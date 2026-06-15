@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import type { IngredientRow, RecipeCard } from "../../types/recipe.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { CookLogServingsDialog } from "./suppr/cook-log-servings-dialog.tsx";
 import {
   parseTimersInStep,
   formatTimer,
@@ -141,6 +142,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   const [rating, setRating] = useState<number | null>(null);
   const [savingHistory, setSavingHistory] = useState(false);
   const [historySaved, setHistorySaved] = useState(false);
+  const [servingsDialogOpen, setServingsDialogOpen] = useState(false);
 
   const totalSteps = instructionSteps.length;
   const isLastStep = currentStep >= totalSteps - 1;
@@ -439,7 +441,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     });
   }, []);
 
-  const handleLogMeal = useCallback(() => {
+  const commitLogMeal = useCallback(
+    (servingsToLog: number) => {
     // Build 41 (TestFlight `AB1PYpfPjbd9li7jtnlAsIE`, 2026-05-01) —
     // route through the shared `journalSlotFromMealTypes` helper so
     // mobile and web pick the same slot for the same recipe + clock.
@@ -449,13 +452,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       ? journalSlotFromMealTypes(recipe.mealSlots as string[])
       : fallbackSlotFromTimeOfDay();
 
-    // Use the same `scaleFactor` that drove step-text scaling so the
-    // calories logged match what the user actually cooked. A 4-serving
-    // recipe at servings=8 → scaleFactor=2 → calories x 2. The Paprika
-    // segmented control (0.5/1/1.5/2/4) is already composed into
-    // `scaleFactor` above.
-    const portionMultiplier = scaleFactor;
-    const scaleVal = (v: number) => Math.round(v * portionMultiplier);
+    const scaleVal = (v: number) => Math.round(v * servingsToLog);
 
     addLoggedMeal({
       name: mealName,
@@ -466,16 +463,26 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       carbs: scaleVal(recipe.carbs),
       fat: scaleVal(recipe.fat),
       fiberG: recipe.fiberG != null ? scaleVal(recipe.fiberG) : undefined,
-      portionMultiplier: portionMultiplier !== 1 ? portionMultiplier : undefined,
+      portionMultiplier: servingsToLog !== 1 ? servingsToLog : undefined,
     });
     setLogged(true);
     track(AnalyticsEvents.cook_mode_meal_logged, {
       recipeTitle: recipe.title,
       calories: scaleVal(recipe.calories),
-      portionMultiplier,
+      portionMultiplier: servingsToLog,
+      batchScale: scaleFactor,
+      servingsLogged: servingsToLog,
     });
     toast.success(`Logged ${mealName} to your tracker!`);
   }, [addLoggedMeal, recipe, scaleFactor]);
+
+  const handleLogMeal = useCallback(() => {
+    if (isFeatureEnabled("cook_log_servings_confirm")) {
+      setServingsDialogOpen(true);
+      return;
+    }
+    commitLogMeal(scaleFactor);
+  }, [commitLogMeal, scaleFactor]);
 
   /** Save the per-cook history row (Paprika parity, 2026-04-30).
    *  Writes to `recipe_cook_history` with duration / scale / rating /
@@ -1077,6 +1084,16 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
           </div>
         )}
       </div>
+      <CookLogServingsDialog
+        open={servingsDialogOpen}
+        onOpenChange={setServingsDialogOpen}
+        batchScale={scaleFactor}
+        baseServings={effectiveBaseServings}
+        onConfirm={(servingsEaten) => {
+          setServingsDialogOpen(false);
+          commitLogMeal(servingsEaten);
+        }}
+      />
     </div>
   );
 }

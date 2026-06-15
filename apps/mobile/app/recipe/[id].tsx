@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import {
@@ -210,7 +211,12 @@ type Ingredient = {
 };
 
 export default function RecipeDetailScreen() {
-  const { id, portion, autoLog } = useLocalSearchParams<{ id: string; portion?: string; autoLog?: string }>();
+  const { id, portion, autoLog, logServings } = useLocalSearchParams<{
+    id: string;
+    portion?: string;
+    autoLog?: string;
+    logServings?: string;
+  }>();
   // PR1 (Paprika parity, 2026-05-02): the deep-link `?portion=N` value
   // is now consumed by the viewing-servings stepper seed (effect
   // below) — there is no separate `portionMultiplier` const here.
@@ -331,10 +337,20 @@ export default function RecipeDetailScreen() {
   const stepperPendingDelta = useRef(0);
   const lastSeededRecipeId = useRef<string | null>(null);
 
+  const parsedLogServings = useMemo(() => {
+    if (logServings == null || logServings === "") return null;
+    const p = parseFloat(String(logServings));
+    return Number.isFinite(p) && p > 0 ? p : null;
+  }, [logServings]);
+
   useEffect(() => {
+    if (parsedLogServings != null) {
+      setLogPortion(parsedLogServings);
+      return;
+    }
     const p = portion ? parseFloat(String(portion)) : NaN;
     if (Number.isFinite(p) && p > 0) setLogPortion(p);
-  }, [portion]);
+  }, [portion, parsedLogServings]);
 
   // PR1 (Paprika parity, 2026-05-02): seed the viewing-servings stepper
   // once the recipe loads. If the screen was deep-linked with
@@ -411,8 +427,10 @@ export default function RecipeDetailScreen() {
   // cook).
   useEffect(() => {
     if (!viewServingsInitialized) return;
+    // ENG-1129 — eaten servings from cook-mode must not be overwritten by the view stepper.
+    if (parsedLogServings != null) return;
     setLogPortion(viewMultiplier);
-  }, [viewServingsInitialized, viewMultiplier]);
+  }, [viewServingsInitialized, viewMultiplier, parsedLogServings]);
 
   const loadProfileMacroPrefs = useCallback(async () => {
     if (!userId) {
@@ -1233,7 +1251,9 @@ export default function RecipeDetailScreen() {
         // DC12 (2026-05-14, premium-bar audit) — specific log
         // confirmation; mobile parity sweep across the barcode +
         // planner + Today food-search Alert sites.
-        Alert.alert(`${recipe.title} logged`, `Added to today at ${mult}× portion.`, [
+        const servingCopy =
+          mult === 1 ? "1 serving" : `${formatMultiplier(mult)} servings`;
+        Alert.alert(`${recipe.title} logged`, `Logged ${servingCopy} to today.`, [
           { text: "Stay", style: "cancel" },
           { text: "View Today", onPress: () => router.push("/(tabs)" as any) },
         ]);

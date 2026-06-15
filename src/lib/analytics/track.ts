@@ -218,6 +218,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1131 — web Plan parity: move-meal picker, templates dialog, portion
   // stepper (mobile already ships). Default-on; off → swap-only affordance.
   "plan_web_parity_v1",
+  // ENG-1129 — cook-mode "Log this meal" confirms servings eaten (default 1)
+  // instead of silently logging the whole batch scale. Default-on; off → legacy
+  // multiply-by-batch-scale path.
+  "cook_log_servings_confirm",
   // ENG-771 (Gate 1) — MFP-refugee logging loop (mirror mobile).
   "today_log_again",
   "log-sheet-slot-selector",
