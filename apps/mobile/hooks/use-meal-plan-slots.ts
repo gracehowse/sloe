@@ -17,6 +17,8 @@ import {
   mergeCloudMetadataIntoSlots,
   metadataFromSlots,
   parseMealPlanSlotsMetadata,
+  ACTIVE_MEAL_PLAN_SLOT_STORAGE_KEY,
+  MEAL_PLAN_SLOTS_STORAGE_KEY,
 } from "@suppr/shared/mealPlan/slotCloudSync";
 import { supabase } from "@/lib/supabase";
 import type { DayPlan } from "../../../src/types/recipe";
@@ -36,8 +38,8 @@ import type { DayPlan } from "../../../src/types/recipe";
  * runs.
  */
 
-const SLOTS_STORAGE_KEY = "suppr-meal-plan-slots-v1";
-const ACTIVE_SLOT_STORAGE_KEY = "suppr-active-meal-plan-slot-v1";
+const SLOTS_STORAGE_KEY = MEAL_PLAN_SLOTS_STORAGE_KEY;
+const ACTIVE_SLOT_STORAGE_KEY = ACTIVE_MEAL_PLAN_SLOT_STORAGE_KEY;
 
 export interface UseMealPlanSlotsResult {
   slots: MealPlanNamedSlot[];

@@ -58,6 +58,7 @@ import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { Layout } from "@/constants/layout";
 
@@ -205,13 +206,14 @@ export default function ShoppingListScreen() {
     // household list is shared and it's NOT one user's job to prune
     // entries that fell off another user's plan.
     if (s.kind === "solo" && rows.length > 0) {
+      const activePlanSlotId = await readActiveCloudMealPlanSlotId();
       const dayPack = await raceShoppingQuery(
         (async () =>
           await supabase
             .from("meal_plan_days")
             .select("id")
             .eq("user_id", s.userId)
-            .eq("slot_id", "default"))(),
+            .eq("slot_id", activePlanSlotId))(),
         SHOPPING_PLAN_AUX_TIMEOUT_MS,
         "meal_plan_days (shopping reconcile)",
       );

@@ -13,6 +13,12 @@ import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutr
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
+import { flushJournalWriteQueue } from "../../lib/nutrition/flushJournalWriteQueue.ts";
+import { enqueueJournalUpserts } from "../../lib/nutrition/journalWriteQueue.ts";
+import {
+  loadJournalWriteQueue,
+  saveJournalWriteQueue,
+} from "../../lib/nutrition/journalWriteQueueStorage.web.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -96,6 +102,40 @@ export function useNutritionJournalState(opts: {
   }, [authedUserId]);
 
   useRetryEnableDbTable(authedUserId, dbNutritionEnabled, tryEnableDbNutrition);
+
+  const enqueueFailedUpsert = useCallback(
+    async (dayKey: string, rows: ReadonlyArray<NutritionEntryRow>) => {
+      const queue = await loadJournalWriteQueue();
+      const next = enqueueJournalUpserts(
+        queue,
+        dayKey,
+        rows as ReadonlyArray<Record<string, unknown>>,
+      );
+      await saveJournalWriteQueue(next);
+    },
+    [],
+  );
+
+  const flushQueuedJournalWrites = useCallback(async () => {
+    if (!authedUserId || !dbNutritionEnabled) return;
+    const queue = await loadJournalWriteQueue();
+    if (queue.entries.length === 0) return;
+    const result = await flushJournalWriteQueue(supabase, queue);
+    await saveJournalWriteQueue(result.remaining);
+    if (result.flushedIds.length > 0) {
+      void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+    }
+  }, [authedUserId, dbNutritionEnabled]);
+
+  useEffect(() => {
+    void flushQueuedJournalWrites();
+    if (typeof window === "undefined") return;
+    const onOnline = () => {
+      void flushQueuedJournalWrites();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flushQueuedJournalWrites]);
 
   // Load from DB on mount
   useEffect(() => {
@@ -212,12 +252,11 @@ export function useNutritionJournalState(opts: {
               setDbNutritionEnabled(false);
               return;
             }
-            // ENG-1048 — roll back the optimistic add on persist failure.
-            setNutritionByDay((prev) => ({
-              ...prev,
-              [resolvedDateKey]: (prev[resolvedDateKey] ?? []).filter((m) => m.id !== id),
-            }));
-            toast.error(syncFailedRetryMessage("nutrition log", msg));
+            // ENG-1125 — keep optimistic UI; queue for retry instead of rollback.
+            void enqueueFailedUpsert(resolvedDateKey, [row]);
+            toast.warning(
+              "Saved on this device — we'll sync when you're back online.",
+            );
             return;
           }
           void refreshAdaptiveTdeeForUser(supabase, authedUserId);
@@ -249,7 +288,7 @@ export function useNutritionJournalState(opts: {
       fromPlanner: meal.time === "Planned",
     });
     return id;
-  }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow]);
+  }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, enqueueFailedUpsert]);
 
   /**
    * Bulk insert variant used by `duplicateDay` / `duplicateDayToDateRange`
@@ -288,13 +327,15 @@ export function useNutritionJournalState(opts: {
           setDbNutritionEnabled(false);
           return withIds;
         }
-        // Roll back the optimistic add so the UI matches persisted state.
-        setNutritionByDay((prev) => ({
-          ...prev,
-          [dayKey]: (prev[dayKey] ?? []).filter((m) => !withIds.some((w) => w.id === m.id)),
-        }));
-        toast.error(syncFailedRetryMessage("nutrition log", msg));
-        return [];
+        // ENG-1125 — queue failed bulk inserts; keep optimistic rows visible.
+        void enqueueFailedUpsert(
+          dayKey,
+          rows as ReadonlyArray<NutritionEntryRow>,
+        );
+        toast.warning(
+          "Saved on this device — we'll sync when you're back online.",
+        );
+        return withIds;
       }
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
       // F-2 — snapshot today's target even when the user's first
@@ -310,7 +351,7 @@ export function useNutritionJournalState(opts: {
       // at render. No ledger bump.
       return withIds;
     },
-    [authedUserId, dbNutritionEnabled, buildNutritionEntryRow],
+    [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, enqueueFailedUpsert],
   );
 
   const addLoggedMeal = useCallback(

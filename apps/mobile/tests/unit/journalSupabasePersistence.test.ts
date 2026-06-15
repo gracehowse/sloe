@@ -40,9 +40,9 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     // Rows come from the single shared builder (no inline column literal that
     // could drift from the backstop).
     expect(slice).toMatch(/meals\.map\(\(m\)\s*=>\s*buildNutritionEntryRow\(m,\s*targetDayKey,\s*userId\)\)/);
-    // Must roll back optimistic UI on error.
-    expect(slice).toMatch(/setByDay/);
-    expect(slice).toMatch(/Couldn't save/);
+    // ENG-1125 — failed upserts queue for retry instead of rolling back UI.
+    expect(slice).toMatch(/enqueueJournalUpserts/);
+    expect(slice).toMatch(/Saved on this device/);
   });
 
   it("the shared row-builder is the source of the canonical source, recipe_id and eaten_at columns", () => {

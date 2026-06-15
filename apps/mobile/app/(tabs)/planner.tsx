@@ -2382,7 +2382,7 @@ export default function PlannerScreen() {
             })),
           }));
           const { error } = await supabase.rpc("save_meal_plan", {
-            p_slot_id: "default",
+            p_slot_id: cloudSlotIdFromLocal(activePlanSlotId),
             p_start_date: startDate,
             p_plan: planPayload,
           } as never);

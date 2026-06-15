@@ -178,6 +178,11 @@ export async function fetchMealPlanForLocalSlot(
   return { plans, startDate };
 }
 
+export const ACTIVE_MEAL_PLAN_SLOT_STORAGE_KEY = "suppr-active-meal-plan-slot-v1";
+
+/** AsyncStorage / localStorage key for the slot array (mobile hook). */
+export const MEAL_PLAN_SLOTS_STORAGE_KEY = "suppr-meal-plan-slots-v1";
+
 /** Default metadata JSON for new profiles. */
 export function emptyMealPlanSlotsMetadata(): MealPlanSlotsMetadata {
   return { ...EMPTY_METADATA, slots: [] };

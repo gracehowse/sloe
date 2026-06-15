@@ -125,6 +125,7 @@ import {
 } from "@suppr/shared/nutrition/mealEatenAt";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
+import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import { fetchPlannedMealMicros, type SupabaseLike } from "@suppr/shared/planning/plannedMealMicros";
 import {
@@ -134,6 +135,12 @@ import {
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
+import { flushJournalWriteQueue } from "@suppr/shared/nutrition/flushJournalWriteQueue";
+import { enqueueJournalUpserts } from "@suppr/shared/nutrition/journalWriteQueue";
+import {
+  loadJournalWriteQueue,
+  saveJournalWriteQueue,
+} from "@/lib/journalWriteQueueStorage";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
@@ -523,18 +530,18 @@ export default function TrackerScreen() {
         .upsert(dbRows, { onConflict: "id" });
       if (error) {
         console.error("[tracker] persistMealsImmediate failed:", error.message);
-        // Roll back the optimistic add(s) so the user sees the failure
-        // instead of a phantom entry that disappears on next reload.
-        setByDay((prev) => ({
-          ...prev,
-          [targetDayKey]: (prev[targetDayKey] ?? []).filter(
-            (m) => !meals.some((nm) => nm.id === m.id),
+        // ENG-1125 — queue for retry; keep optimistic rows visible.
+        const queue = await loadJournalWriteQueue();
+        await saveJournalWriteQueue(
+          enqueueJournalUpserts(
+            queue,
+            targetDayKey,
+            dbRows as ReadonlyArray<Record<string, unknown>>,
           ),
-        }));
+        );
         Alert.alert(
-          "Couldn't save",
-          error.message ||
-            "Logged locally but couldn't sync to your account. Try again.",
+          "Saved on this device",
+          "We'll sync this log when you're back online.",
         );
         return false;
       }
@@ -550,6 +557,17 @@ export default function TrackerScreen() {
     },
     [userId],
   );
+
+  const flushQueuedJournalWrites = useCallback(async () => {
+    if (!userId) return;
+    const queue = await loadJournalWriteQueue();
+    if (queue.entries.length === 0) return;
+    const result = await flushJournalWriteQueue(supabase, queue);
+    await saveJournalWriteQueue(result.remaining);
+    if (result.flushedIds.length > 0) {
+      scheduleAdaptiveTdeeRefresh(supabase, userId);
+    }
+  }, [userId]);
 
   /**
    * 2026-05-08 data-loss hotfix — sister primitive for `saveEditMeal`.
@@ -897,7 +915,13 @@ export default function TrackerScreen() {
   // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
   // inline there. Today no longer owns the sheet.
 
-  useEffect(() => subscribeOffline(setIsOffline), []);
+  useEffect(() => {
+    void flushQueuedJournalWrites();
+    return subscribeOffline((offline) => {
+      setIsOffline(offline);
+      if (!offline) void flushQueuedJournalWrites();
+    });
+  }, [flushQueuedJournalWrites]);
 
   // P3-30 (2026-04-25): one-shot fetch of the net-carbs lens flag.
   // Re-fires when the user changes; stays in local state until next
@@ -4025,6 +4049,7 @@ export default function TrackerScreen() {
     windowStart.setUTCHours(0, 0, 0, 0);
     windowStart.setUTCDate(windowStart.getUTCDate() - WINDOW_DAYS);
     const windowStartKey = windowStart.toISOString().slice(0, 10);
+    const activePlanSlotId = await readActiveCloudMealPlanSlotId();
     const entriesPromise = (async () =>
       await supabase
         .from("nutrition_entries")
@@ -4044,7 +4069,7 @@ export default function TrackerScreen() {
         // persisted anchor instead of iterating [0,1,7] offsets.
         .select("id, day, start_date")
         .eq("user_id", userId)
-        .eq("slot_id", "default")
+        .eq("slot_id", activePlanSlotId)
         .order("day", { ascending: true }))();
 
     const [entriesPack, planDaysPack] = await Promise.all([
