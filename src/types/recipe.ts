@@ -238,6 +238,7 @@ export interface DayPlan {
     protein: number;
     carbs: number;
     fat: number;
+    fiberG?: number;
   };
   /**
    * F-15 — grams of protein below the day target after the joint-fit

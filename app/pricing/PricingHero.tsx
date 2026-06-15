@@ -29,7 +29,7 @@ export function PricingHero() {
       {/* Full-bleed food photograph — the frame's hero image. Fades
           softly into the page background at the bottom so the eyebrow +
           headline read as overlaid on the fade, matching `284:2`. */}
-      <div className="relative h-[260px] sm:h-[320px] w-full">
+      <div className="relative h-[200px] sm:h-[320px] w-full">
         <Image
           src="/paywall/paywall-hero.jpg"
           alt=""

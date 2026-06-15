@@ -195,7 +195,7 @@ export default async function PricingPage({
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-16">
+      <main className="max-w-5xl mx-auto px-6 py-8 sm:py-16">
         {/* Photo hero — Sloe Pro paywall (Figma `284:2`, 2026-06-08).
             Full-bleed finished-dish photograph + soft fade + "SLOE PRO"
             eyebrow + "Cook what you love. / *Still* reach your goals."

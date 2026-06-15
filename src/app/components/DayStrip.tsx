@@ -158,9 +158,10 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
             ref={scrollRef}
             className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
-            {weekStarts.map((weekStart) => (
+            {weekStarts.map((weekStart, weekIndex) => (
               <div
                 key={dateKeyFromDate(weekStart)}
+                aria-hidden={weekIndex !== weekIdx}
                 className="min-w-full shrink-0 snap-center flex flex-row justify-between px-0.5 gap-0.5"
               >
                 {dowLabels.map((label, i) => {

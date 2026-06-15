@@ -21,6 +21,7 @@ import {
   toIngredientLines,
   type StructuredIngredient,
 } from "./structuredRecipeSchema";
+import { isPrepStateOrServingLine } from "./isPrepStateLine";
 
 export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
 
@@ -786,7 +787,8 @@ ${caption.slice(0, 4000)}
   // of the schema's instruction to omit headings.
   const ingredients = toIngredientLines(recipe)
     .map((s) => stripSectionPrefix(s.trim()))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((s) => !isPrepStateOrServingLine(s));
   const flaggedIngredients: FlaggedIngredient[] = recipe.ingredients
     .filter((ing: StructuredIngredient) => ing.flagged)
     .map((ing: StructuredIngredient) => ({

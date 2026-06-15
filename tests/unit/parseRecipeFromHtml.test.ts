@@ -304,6 +304,20 @@ describe("parseRecipeFromHtml", () => {
     expect(result).not.toBeNull();
     expect(result!.title).toBe("Found It");
   });
+
+  it("drops prep-state ingredient lines (ENG-1136)", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "R",
+      recipeIngredient: [
+        "2 tbsp cornflour",
+        "1/2 tsp cornflour mixed with warm water",
+        "cooked rice to serve (optional)",
+      ],
+    });
+    const result = parseRecipeFromHtml(html);
+    expect(result!.ingredients).toEqual(["2 tbsp cornflour"]);
+  });
 });
 
 describe("siteNameFromUrl", () => {

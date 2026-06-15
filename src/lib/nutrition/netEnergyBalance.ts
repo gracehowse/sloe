@@ -2,6 +2,8 @@
  * Net energy headline + state chip (Bevel-style) for Sloe TD1 energy balance.
  * SSOT: `docs/prototypes/stitch-sloe/energy-balance.html`,
  * `docs/prototypes/stitch-sloe/_buildenergy.mjs`.
+ *
+ * Subline copy reads the same ±60 kcal band as `netEnergyChipState`, not binary net sign.
  */
 
 export type NetEnergyChipState = "deficit" | "surplus" | "maintenance";
@@ -89,14 +91,17 @@ export function netEnergySubline(args: {
   eatenKcal: number;
   isToday: boolean;
   netKcal: number;
-  isDeficit: boolean;
 }): string {
-  const { burnedKcal, eatenKcal, isToday, netKcal, isDeficit } = args;
+  const { burnedKcal, eatenKcal, isToday, netKcal } = args;
   if (eatenKcal === 0) {
     const tail = isToday ? "yet" : "for this day";
     return `${burnedKcal.toLocaleString()} kcal burned so far · no food logged ${tail}.`;
   }
-  if (isDeficit) {
+  const state = netEnergyChipState(netKcal);
+  if (state === "maintenance") {
+    return `You're within ${CHIP_THRESHOLD_KCAL} kcal of maintenance — burn and intake are balanced${isToday ? " today" : ""}.`;
+  }
+  if (state === "deficit") {
     return `You've burned ${Math.abs(netKcal).toLocaleString()} more than you've eaten${isToday ? " today" : ""}.`;
   }
   return `You've eaten ${Math.abs(netKcal).toLocaleString()} more than you've burned${isToday ? " today" : ""}.`;
