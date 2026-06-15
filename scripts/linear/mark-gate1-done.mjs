@@ -58,17 +58,16 @@ if (!apiKey) {
 }
 
 const ISSUE_BY_NUMBER = `
-  query($n: Float!) {
-    issue(id: null) { id }
-    issues(filter: { number: { eq: $n } }, first: 1) {
+  query IssueByNumber($n: Float!) {
+    issues(filter: { number: { eq: $n }, team: { key: { eq: "ENG" } } }, first: 1) {
       nodes { id identifier title state { id name } }
     }
   }
 `;
 
 const ISSUE_UPDATE = `
-  mutation($id: String!, $stateId: String!) {
-    issueUpdate(id: $id, input: { stateId: $stateId }) {
+  mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
+    issueUpdate(id: $id, input: $input) {
       success
       issue { identifier state { name } }
     }
@@ -76,8 +75,8 @@ const ISSUE_UPDATE = `
 `;
 
 const COMMENT_CREATE = `
-  mutation($issueId: String!, $body: String!) {
-    commentCreate(input: { issueId: $issueId, body: $body }) {
+  mutation CommentCreate($input: CommentCreateInput!) {
+    commentCreate(input: $input) {
       success
     }
   }
@@ -110,12 +109,14 @@ for (const { n, note } of ISSUES) {
   ].join("\n");
 
   if (issue.state.name !== "Done") {
-    await linearRequest(apiKey, ISSUE_UPDATE, { id: issue.id, stateId: doneState.id });
+    await linearRequest(apiKey, ISSUE_UPDATE, { id: issue.id, input: { stateId: doneState.id } });
     console.log(`${issue.identifier} → Done`);
   } else {
     console.log(`${issue.identifier} already Done`);
   }
-  await linearRequest(apiKey, COMMENT_CREATE, { issueId: issue.id, body });
+  await linearRequest(apiKey, COMMENT_CREATE, {
+    input: { issueId: issue.id, body },
+  });
 }
 
 console.log("Linear Gate 1 sync complete.");
