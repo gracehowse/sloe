@@ -33,10 +33,16 @@ const SRC = readFileSync(
 );
 
 describe("build-47 — LogSheet pick-handlers honour activeMealSlot", () => {
-  it("recents.onPick passes activeMealSlot to logHistoryItemToSlot", () => {
-    // The recents path used `currentSlotFromTime` pre-fix.
+  it("recents.onPick logs via logHistoryItemFromSheet, which honours activeMealSlot", () => {
+    // The recents path used `currentSlotFromTime` pre-fix (build-47). The ENG-1099
+    // Today rebuild routes recents through `logHistoryItemFromSheet(found)`, a
+    // useCallback that stamps the user-chosen slot (`name: activeMealSlot`, with
+    // activeMealSlot in its dep array) — NOT time-of-day. Pin both the recents
+    // call and that the callback honours the active slot, so a revert to
+    // time-of-day on either side still fails.
+    expect(SRC).toMatch(/logHistoryItemFromSheet\(\s*found\s*\)/);
     expect(SRC).toMatch(
-      /logHistoryItemToSlot\(\s*found,\s*activeMealSlot\s*\)/,
+      /const logHistoryItemFromSheet = useCallback\([\s\S]*?name:\s*activeMealSlot/,
     );
   });
 

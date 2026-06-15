@@ -16,16 +16,32 @@ export function getConsentChoice(): ConsentChoice {
   return null;
 }
 
-/** ENG-633 — FAB + bottom nav sit above the consent strip on Today. */
-function isProductFabRoute(pathname: string): boolean {
+/** ENG-633 — FAB + bottom nav sit above the consent strip on authed app routes. */
+function isProductAppRoute(pathname: string): boolean {
   const seg = pathname.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
-  return seg === "today" || seg === "plan" || seg === "shopping";
+  return (
+    seg === "today" ||
+    seg === "plan" ||
+    seg === "shopping" ||
+    seg === "library" ||
+    seg === "recipes" ||
+    seg === "progress" ||
+    seg === "settings" ||
+    seg === "profile" ||
+    seg === "recipe"
+  );
+}
+
+/** Marketing / legal surfaces — top-anchored so hero CTAs stay tappable (ENG-802). */
+function isMarketingRoute(pathname: string): boolean {
+  return !isProductAppRoute(pathname);
 }
 
 export function CookieConsent() {
   const pathname = usePathname() ?? "";
   const [visible, setVisible] = useState(false);
-  const liftAboveFab = visible && isProductFabRoute(pathname);
+  const liftAboveMobileChrome = visible && isProductAppRoute(pathname);
+  const topAnchored = visible && isMarketingRoute(pathname);
 
   useEffect(() => {
     if (!getConsentChoice()) setVisible(true);
@@ -74,8 +90,12 @@ export function CookieConsent() {
   // design_system_brandmark flag).
   return (
     <div
-      className={`fixed inset-x-0 z-50 bg-card/95 backdrop-blur border-t border-border shadow-[var(--elev-sheet)] pb-[env(safe-area-inset-bottom)] ${
-        liftAboveFab ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0"
+      className={`fixed inset-x-0 z-50 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
+        topAnchored
+          ? "top-0 border-b pt-[env(safe-area-inset-top)]"
+          : liftAboveMobileChrome
+            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))] border-t pb-[env(safe-area-inset-bottom)]"
+            : "bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">

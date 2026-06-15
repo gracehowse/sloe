@@ -29,7 +29,6 @@
 import { SupprCard } from "../ui/suppr-card";
 import { formatMacroAdherenceBar } from "../../../lib/nutrition/progressWeekReport";
 import { formatAdherenceHeadline } from "../../../lib/nutrition/adherenceDisplay";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 export interface AdherenceMacroRow {
   name: "Protein" | "Carbs" | "Fat" | "Fibre";
@@ -97,10 +96,7 @@ export function ProgressAverageAdherence({
   // ≤110% (on/under) path is identical to today's raw `{pct}%`, so a flag
   // flicker can't change a healthy user's number. Mirror: mobile.
   const overDisplay =
-    isFeatureEnabled("adherence_over_display") &&
-    adherencePct > 110
-      ? formatAdherenceHeadline(adherencePct)
-      : null;
+    adherencePct > 110 ? formatAdherenceHeadline(adherencePct) : null;
   return (
     <SupprCard
       data-testid="progress-average-adherence-card"

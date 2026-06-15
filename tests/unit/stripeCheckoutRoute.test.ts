@@ -139,16 +139,21 @@ describe("POST /api/stripe/checkout — Stripe Tax wiring", () => {
     const payload = sessionsCreateMock.mock.calls[0][0];
     expect(payload.mode).toBe("subscription");
     expect(payload.client_reference_id).toBe("user-1");
+    // ENG-667 (EUR checkout): the resolved checkout currency is now stamped into
+    // metadata so the webhook can record it. Defaults to GBP (no EUR SKU / no geo
+    // header in this test). Exact-equality still guards against unexpected fields.
     expect(payload.metadata).toEqual({
       supabase_user_id: "user-1",
       tier: "pro",
       period: "monthly",
+      currency: "GBP",
     });
     expect(payload.subscription_data).toEqual({
       metadata: {
         supabase_user_id: "user-1",
         tier: "pro",
         period: "monthly",
+        currency: "GBP",
       },
     });
     // Audit 2026-04-30 (user-sentiment pain #1): success URL now

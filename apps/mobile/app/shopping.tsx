@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Alert,
   View,
@@ -13,13 +14,18 @@ import { Check, ChevronRight, Share2, ShoppingCart, Trash2, Users } from "lucide
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import {
   fetchShoppingListJsonItems,
   upsertShoppingListJsonItems,
 } from "@suppr/shared/supabase/shoppingJsonFallback";
+import {
+  formatShoppingListSubtitle,
+  SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY,
+  SHOPPING_LIST_PLAN_START_STORAGE_KEY,
+} from "@suppr/shared/planning/shoppingListMeta";
 import {
   dedupeShoppingLabel,
   shoppingItemsTiedToCurrentPlan,
@@ -107,6 +113,8 @@ export default function ShoppingListScreen() {
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [planStartDate, setPlanStartDate] = useState<string | null>(null);
+  const [shoppingListOutOfSync, setShoppingListOutOfSync] = useState(false);
   const [household, setHousehold] = useState<HouseholdData | null>(null);
   const householdRef = useRef<HouseholdData | null>(null);
   householdRef.current = household;
@@ -118,6 +126,24 @@ export default function ShoppingListScreen() {
       householdId: household?.household?.id ?? null,
     });
   }, [userId, household?.household?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void (async () => {
+        try {
+          const [[, start], [, stale]] = await AsyncStorage.multiGet([
+            SHOPPING_LIST_PLAN_START_STORAGE_KEY,
+            SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY,
+          ]);
+          setPlanStartDate(start && start.length >= 10 ? start.slice(0, 10) : null);
+          setShoppingListOutOfSync(stale === "1");
+        } catch {
+          setPlanStartDate(null);
+          setShoppingListOutOfSync(false);
+        }
+      })();
+    }, []),
+  );
 
   // Step 1 — resolve household once on mount so we know the scope before
   // we read (avoids a flicker where solo items load and then the
@@ -658,6 +684,16 @@ export default function ShoppingListScreen() {
     return `Shared with ${others.slice(0, -1).join(", ")} & ${others[others.length - 1]}`;
   }, [household, userId]);
 
+  const listSubtitle = useMemo(
+    () =>
+      formatShoppingListSubtitle({
+        itemCount: items.length,
+        planStartDate,
+        outOfSync: shoppingListOutOfSync,
+      }),
+    [items.length, planStartDate, shoppingListOutOfSync],
+  );
+
   return (
     <View
       testID="screen-shopping"
@@ -674,6 +710,19 @@ export default function ShoppingListScreen() {
         }}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {items.length > 0 ? (
+          <Text
+            testID="shopping-list-subtitle"
+            style={{
+              fontSize: 13,
+              color: colors.textSecondary,
+              marginBottom: Spacing.sm,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            {listSubtitle}
+          </Text>
+        ) : null}
         <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (
             // Gap 7: use lucide Share2 + Trash2 to match the body icon set

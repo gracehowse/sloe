@@ -25,11 +25,11 @@ import { SearchResultConfidenceChip } from "../../components/ui/SearchResultConf
 void React;
 
 describe("SearchResultConfidenceChip", () => {
-  it("renders the Verified label for the verified tier", () => {
+  it("renders the Structured label for the verified tier", () => {
     const { getByText, getByTestId } = render(
       <SearchResultConfidenceChip tier="verified" />,
     );
-    expect(getByText("Verified")).toBeTruthy();
+    expect(getByText("Structured")).toBeTruthy();
     expect(getByTestId("confidence-chip")).toBeTruthy();
   });
 
@@ -42,7 +42,7 @@ describe("SearchResultConfidenceChip", () => {
     const { getByLabelText } = render(
       <SearchResultConfidenceChip tier="verified" />,
     );
-    expect(getByLabelText("Verified nutrition data")).toBeTruthy();
+    expect(getByLabelText("Structured nutrition data")).toBeTruthy();
   });
 
   it("honours a custom testID for per-surface addressing", () => {

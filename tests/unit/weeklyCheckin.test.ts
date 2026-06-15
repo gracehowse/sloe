@@ -728,4 +728,20 @@ describe("buildWeeklyCheckinContent (modal ritual)", () => {
       /great|amazing|crushing|killing it|nailed it/,
     );
   });
+
+  it("ENG-1111 — Grace case: measured maintenance ~1900 beats collapsed adaptive ~1329", () => {
+    // Resolved maintenance (measured) is higher than formula — check-in
+    // nudges target up instead of anchoring to under-logged adaptive.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1900,
+      priorTdee: 1750,
+      currentTargetKcal: 1329,
+      avgCaloriesThisWeek: 1300,
+      weightDeltaKg: null,
+      sex: "female",
+    });
+    expect(content.tdeeDeltaKcal).toBe(150);
+    expect(content.suggestedTargetKcal).toBeGreaterThan(1329);
+    expect(content.suggestedTargetKcal).toBe(1479);
+  });
 });

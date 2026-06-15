@@ -1,8 +1,9 @@
 # Launch queue — 2026-07-01 free founding cohort
 
-**Updated:** 2026-06-12  
+**Updated:** 2026-06-15  
 **Canonical Linear filters:** `docs/planning/linear-views-launch-2026-07-01.md`  
-**Monetisation gates:** `docs/ux/research/2026-06-11-launch-monetisation-sequencing.md`
+**Monetisation gates:** `docs/ux/research/2026-06-11-launch-monetisation-sequencing.md`  
+**Full backlog order:** `docs/planning/2026-06-14-backlog-priority-order.md`
 
 ## Two gates (do not conflate)
 
@@ -32,25 +33,31 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | ENG-858 | Import source disclaimer |
 | ENG-1038–1041, ENG-1044 | Vendor cache, goal timeline, shopping parity, fiber, nav parity |
 | ENG-1042 | Duplicate of ENG-858 — Done |
+| ENG-1103, ENG-1106, ENG-1108 | Gate 0 migrations + RPC — **`6f2eebe1`** · **applied on prod** (2026-06-15) |
+| ENG-771, 932, 973, 931 | MFP logging loop — loud barcode + paywall chip + quick-log (branch) |
+| ENG-1109, 1111, 1177, 1179, 1112, 670 | Gate 1 code: contrast, measured TDEE, meal slots, StoreKit harness, VOC refresh, reel audit scripts (branch) |
 
-**Live verify:** `node --import tsx scripts/verify-gate0-db.mts` → **5/5** (needs `GATE0_VERIFY_PASSWORD` in `.env.local` for throwaway account).
+**Live verify:** `npm run verify:gate0:live` → **8/8** (needs `GATE0_VERIFY_PASSWORD` in `.env.local` for throwaway account). Last prod pass: 2026-06-15.
 
 ## Gate A — Todo queue (order)
 
 | # | Issue / task | Owner |
 |---|----------------|-------|
-| 1 | Gate0 live **5/5** | G + E |
-| 2 | **ENG-859** DMCA designated agent | G |
-| 3 | TestFlight **1.0.7 (57)** smoke — feedback **submitted**; Grace reviews screenshots in ASC / `npm run testflight:feedback` | G |
+| 1 | Gate0 live **8/8** on prod | Done (2026-06-15) |
+| 2 | **ENG-859** DMCA designated agent | G — `docs/operations/eng-859-dmca-filing-checklist.md` |
+| 3 | TestFlight **1.0.7 (57)** smoke — checklist `docs/testing/testflight-build-57-smoke-checklist.md` | G |
 | 4 | **ENG-874** Apple Health device matrix (In Progress) | G + E |
-| 5 | **ENG-670** Reel parse-rate gate | G |
-| 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
-| 7 | ~~**ENG-772** Editable `eaten_at`~~ — **SHIPPED** (flag `editable_eaten_at`) | E |
-| 8 | Deep-link dismisses Log sheet | E — **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389) tab-blur + [PR #391](https://github.com/gracehowse/Suppr/pull/391) in-tab params |
+| 5 | **ENG-1099** Today tracker tier (In Progress — M1–M3 on branch) | E |
+| 6 | ~~Gate 0 remainder — 1104, 1105, 1107, 1110, 1102~~ | Done |
+| 7 | ~~Logging loop tail — **ENG-931, 932, 973**~~ | Done on branch (ENG-771) |
+| 8 | **ENG-670** Reel parse-rate gate — harness done; **Grace:** 100 URLs + 3 green days | G |
+
+*Previously shipped (still on list for traceability): ENG-1059 (`94c90fcc`), ENG-772 (`editable_eaten_at`), deep-link Log sheet dismiss (PR #389 + #391).*
 
 ## Gate A — In Progress (keep)
 
 - **ENG-874** — Health sync device proof
+- **ENG-1099** — Today tracker tier (M1–M3 on branch; finish + close in Linear)
 - ~~**ENG-877**~~ — Search golden battery — **SHIPPED** [PR #392](https://github.com/gracehowse/Suppr/pull/392); UK retailer provider-recall gaps tracked in issue comment
 - ~~**ENG-840**~~ — Flag-force in bundled apps — **SHIPPED** (runtime `?__force_flags` web + DevFlagOverrides mobile)
 
@@ -62,9 +69,9 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | ENG-33 | Stripe Tax — Blocked, Grace |
 | ENG-101 | RevenueCat IAP — Blocked, Grace |
 | ENG-198 | RC offerings — Todo, Grace |
-| ENG-667 | VAT inclusive + EUR SKU — Backlog, Grace |
-| ENG-123 | Base→Free collapse only — Backlog |
-| ENG-49 | Creator lifetime comps only — Backlog |
+| ~~ENG-667~~ | **Done** — EUR SKU + region-aware checkout (`26933dda`) |
+| ~~ENG-123~~ | **Done** — Base→Free migration script (`26933dda`; run on prod when ready) |
+| ~~ENG-49~~ | **Done** (webhook floor half) — `lifetime_pro` never downgraded by Stripe (`26933dda`); creator lifetime comps still future |
 
 Founding cohort comp: `lifetime_pro` via `redeem_promo_code` (ENG-1043) — **not** RC offer codes.
 

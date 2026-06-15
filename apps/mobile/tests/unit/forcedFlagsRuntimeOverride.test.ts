@@ -13,8 +13,10 @@
  * (tests/shims/async-storage.ts), so we write through the real
  * persistence and assert without mocking it.
  *
- * `today_log_again` is a non-redesign flag (default-OFF, PostHog-resolved)
- * so a forced value is unambiguously distinguishable from the live client.
+ * `qa_neutral_test_flag` is a QA-only flag that is NOT in REDESIGN_DEFAULT_ON
+ * (default-OFF, PostHog-resolved), so a forced value is unambiguously
+ * distinguishable from the live client. (today_log_again — the previous example
+ * — became default-ON via ENG-771, so it can no longer serve this role.)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -57,7 +59,7 @@ import {
   setForcedFlag,
 } from "../../lib/analytics";
 
-const FLAG = "today_log_again";
+const FLAG = "qa_neutral_test_flag";
 const STORAGE_KEY = "__SUPPR_FORCE_FLAGS__";
 
 describe("mobile runtime flag-force override (ENG-840)", () => {
@@ -121,7 +123,7 @@ describe("mobile runtime flag-force override (ENG-840)", () => {
 
   it("the runtime map takes precedence over the (dead) env path", async () => {
     // env says OFF, runtime map says ON → runtime wins.
-    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_AGAIN", "false");
+    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_QA_NEUTRAL_TEST_FLAG", "false");
     await setForcedFlag(FLAG, true);
     expect(isFeatureEnabled(FLAG)).toBe(true);
   });

@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  BARCODE_FREE_FOREVER_DETAIL,
+  BARCODE_FREE_FOREVER_HEADLINE,
+  BARCODE_LOUD_CTA_LABEL,
+} from "../../../lib/nutrition/barcodeFreePromise.ts";
+
 /**
  * LogSheet — canonical log-entry sheet (web), search-first.
  *
@@ -148,6 +154,22 @@ export interface LogSheetRecentEntry {
   bucket: "today" | "week";
 }
 
+/** ENG-928 — go-to row in the empty Log sheet. */
+export interface LogSheetGoToEntry {
+  id: string;
+  title: string;
+  kcal: number;
+  source: SourceDotSource;
+  count: number;
+}
+
+/** ENG-929 — staged basket row (host-owned id). */
+export interface LogSheetBasketItem {
+  id: string;
+  title: string;
+  kcal: number;
+}
+
 export interface LogSheetBarcodeManualEntry {
   productName: string;
   brand?: string;
@@ -228,6 +250,8 @@ export interface LogSheetProps {
     }) => void;
     /** Keys of favourite toggles in flight (no double-submit). */
     favoritePendingKeys?: Set<string>;
+    /** Multi-add basket (ENG-929) — stage into host basket instead of instant log. */
+    onAddToBasket?: (result: LogSheetInlineSelectedFood) => void;
     /** Legacy mode — tap-to-open the host's separate FoodSearch dialog. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -264,6 +288,8 @@ export interface LogSheetProps {
   saved?: {
     meals: LogSheetSavedMeal[];
     onPick: (meal: LogSheetSavedMeal) => void;
+    /** ENG-776 — open the host's save-usual-meal flow. */
+    onCreateSavedMeal?: () => void;
     state?: LogSheetTabState;
   };
   /** Library tab -- user's saved recipes, surfaced inline so one-tap
@@ -317,6 +343,21 @@ export interface LogSheetProps {
    *  a row appears above the browse tabs. `onTap` fires when the user
    *  clicks it; host shows confirmation dialog + performs the copy. */
   copyYesterday?: { count: number; onTap: () => void } | null;
+  /** ENG-928 — slot-aware go-to foods above browse tabs (empty query). */
+  goTos?: {
+    entries: LogSheetGoToEntry[];
+    onPick: (entry: LogSheetGoToEntry) => void;
+  };
+  /** ENG-929 — staged multi-add basket bar (host owns items + commit). */
+  basket?: {
+    items: LogSheetBasketItem[];
+    totalKcal: number;
+    onRemove: (id: string) => void;
+    onCommit: () => void;
+    onClear: () => void;
+  };
+  /** ENG-973 — show "Barcode scan is free — always" under the search row. */
+  showBarcodeFreePromise?: boolean;
   /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
    *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
    *  the user can see AND choose which meal the item lands in, instead
@@ -354,7 +395,7 @@ export interface LogSheetProps {
   } | null;
 }
 
-type BrowseTab = "recent" | "library" | "saved";
+type BrowseTab = "gotos" | "recent" | "library" | "saved";
 
 export function LogSheet({
   open,
@@ -371,11 +412,15 @@ export function LogSheet({
   copyYesterday,
   slot,
   confirmation,
+  goTos,
+  basket,
+  showBarcodeFreePromise = false,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
     if (!open) setBrowseTab("recent");
-  }, [open]);
+    else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
+  }, [open, goTos]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
@@ -519,7 +564,7 @@ export function LogSheet({
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
                       active
                         ? "border-primary-soft bg-primary-soft text-foreground"
-                        : "border-border text-muted-foreground hover:border-primary/30",
+                        : "border-border text-foreground-secondary hover:border-primary/30",
                     )}
                   >
                     {s}
@@ -550,6 +595,9 @@ export function LogSheet({
               onBrowseTabChange={setBrowseTab}
               onAddManually={onAddManually}
               copyYesterday={copyYesterday}
+              goTos={goTos}
+              basket={basket}
+              showBarcodeFreePromise={showBarcodeFreePromise}
             />
           )}
         </DrawerPrimitive.Content>
@@ -649,6 +697,9 @@ function DefaultComposition({
   onBrowseTabChange,
   onAddManually,
   copyYesterday,
+  goTos,
+  basket,
+  showBarcodeFreePromise,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -662,25 +713,37 @@ function DefaultComposition({
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
   copyYesterday?: LogSheetProps["copyYesterday"];
+  goTos?: LogSheetProps["goTos"];
+  basket?: LogSheetProps["basket"];
+  showBarcodeFreePromise?: boolean;
 }) {
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
+  const showGoTos = !!(goTos && goTos.entries.length > 0);
   // Show the multi-tab toggle whenever 2+ browse sources are wired.
-  // With Library added (2026-05-01), order is Recent / Library / Saved.
+  // ENG-905 (Figma K2): Go-tos is a first-class browse tab when the host
+  // threads slot-frequency entries.
   const visibleTabs = React.useMemo<BrowseTab[]>(() => {
     const tabs: BrowseTab[] = [];
+    if (showGoTos) tabs.push("gotos");
     if (showRecent) tabs.push("recent");
     if (showLibrary) tabs.push("library");
     if (showSaved) tabs.push("saved");
     return tabs;
-  }, [showRecent, showLibrary, showSaved]);
+  }, [showGoTos, showRecent, showLibrary, showSaved]);
   const showBrowseToggle = visibleTabs.length >= 2;
   const activeTab: BrowseTab = visibleTabs.includes(browseTab)
     ? browseTab
     : (visibleTabs[0] ?? "recent");
   const labelFor = (id: BrowseTab) =>
-    id === "recent" ? "Recent" : id === "library" ? "Library" : "Saved meals";
+    id === "gotos"
+      ? "Go-tos"
+      : id === "recent"
+        ? "Recent"
+        : id === "library"
+          ? "Library"
+          : "Saved meals";
 
   // Inline-search mode is active when the host wired `search.onSelect`.
   // In that case the search row is a real `<Input>` and results render
@@ -767,6 +830,26 @@ function DefaultComposition({
         )}
       </div>
 
+      {showBarcodeFreePromise && barcode?.onOpen ? (
+        <div className="mx-3 mt-2 flex w-[calc(100%-1.5rem)] flex-col gap-1.5">
+          <button
+            type="button"
+            data-testid="log-sheet-loud-barcode-cta"
+            onClick={() => barcode.onOpen?.()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary hover:bg-primary/15 transition-colors"
+          >
+            <ScanBarcode width={18} height={18} className="shrink-0" aria-hidden />
+            <span>{BARCODE_LOUD_CTA_LABEL}</span>
+          </button>
+          <p
+            data-testid="log-sheet-barcode-free-promise"
+            className="text-center text-[11px] text-foreground-secondary leading-snug"
+          >
+            {BARCODE_FREE_FOREVER_HEADLINE} {BARCODE_FREE_FOREVER_DETAIL}
+          </p>
+        </div>
+      ) : null}
+
       {/* Inline search results — only mounted when the user has actually
           started typing. Empty query keeps the existing Recent / Saved
           browse content visible so the sheet doesn't look "blank" on
@@ -784,20 +867,16 @@ function DefaultComposition({
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}
             favoritePendingKeys={search?.favoritePendingKeys}
+            onAddToBasket={search?.onAddToBasket}
             mode="compact"
             onSelect={(result) => {
               search?.onSelect?.(result);
-              // After a successful pick the user has logged something —
-              // clear the input so the sheet returns to Recent / Saved
-              // view (the host typically also closes the sheet via its
-              // own `onSelect` handler).
               setQuery("");
             }}
           />
         </div>
       ) : (
         <>
-          {/* Copy yesterday shortcut (ENG-709) — above the browse tabs. */}
           {copyYesterday && copyYesterday.count > 0 && (
             <button
               type="button"
@@ -845,7 +924,8 @@ function DefaultComposition({
               </svg>
             </button>
           )}
-          {/* Browse pill toggle — Recent / Library / Saved. Hidden
+
+          {/* Browse pill toggle — Go-tos / Recent / Library / Saved. Hidden
               when only one source is available; the available one
               renders directly.
               2026-05-01 (journey-architect P1): all pills carry equal
@@ -875,11 +955,13 @@ function DefaultComposition({
                       showSavedDot ? `${baseLabel} — ${savedCount} saved` : baseLabel
                     }
                     data-testid={
-                      id === "recent"
-                        ? "log-sheet-tab-recent"
-                        : id === "library"
-                          ? "log-sheet-tab-library"
-                          : "log-sheet-tab-saved"
+                      id === "gotos"
+                        ? "log-sheet-tab-gotos"
+                        : id === "recent"
+                          ? "log-sheet-tab-recent"
+                          : id === "library"
+                            ? "log-sheet-tab-library"
+                            : "log-sheet-tab-saved"
                     }
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
@@ -915,6 +997,9 @@ function DefaultComposition({
 
           {/* Browse content */}
           <div className="flex-1 overflow-y-auto px-3 pb-2 pt-3">
+            {showGoTos && activeTab === "gotos" ? (
+              <GoToList goTos={goTos!} embedded />
+            ) : null}
             {showRecent && activeTab === "recent" ? (
               <RecentList recent={recent!} />
             ) : null}
@@ -924,7 +1009,7 @@ function DefaultComposition({
             {showSaved && activeTab === "saved" ? (
               <SavedList saved={saved!} />
             ) : null}
-            {!showRecent && !showSaved && !showLibrary ? (
+            {!showGoTos && !showRecent && !showSaved && !showLibrary ? (
               <p className="py-12 text-center text-[11px] text-muted-foreground">
                 Search above for foods, or scan / speak / snap a photo.
               </p>
@@ -956,9 +1041,75 @@ function DefaultComposition({
               <ChevronRight width={16} height={16} aria-hidden />
             </button>
           ) : null}
+
+          {basket && basket.items.length > 0 ? (
+            <LogSheetBasketBar basket={basket} />
+          ) : null}
         </>
       )}
     </>
+  );
+}
+
+/* -------------------------- Go-to foods (ENG-928) -------------------------- */
+
+function GoToList({
+  goTos,
+  embedded = false,
+}: {
+  goTos: NonNullable<LogSheetProps["goTos"]>;
+  embedded?: boolean;
+}) {
+  return (
+    <div className={embedded ? undefined : "px-3 pt-3"} data-testid="log-sheet-go-tos">
+      {embedded ? null : (
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Go-tos for this meal
+        </p>
+      )}
+      {goTos.entries.map((entry) => (
+        <BrowseRow
+          key={entry.id}
+          title={entry.title}
+          kcal={entry.kcal}
+          source={entry.source}
+          onPick={() => goTos.onPick(entry)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------- Multi-add basket bar (ENG-929) -------------------------- */
+
+function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["basket"]> }) {
+  const count = basket.items.length;
+  return (
+    <div
+      data-testid="log-sheet-basket-bar"
+      className="mx-3 mb-3 mt-2 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary-soft/40 px-3 py-2"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-foreground">
+          {count === 1 ? "1 item staged" : `${count} items staged`}
+        </p>
+        <p className="text-[11px] tabular-nums text-muted-foreground">
+          {Math.round(basket.totalKcal)} kcal total
+        </p>
+      </div>
+      <SupprButton
+        variant="ghost"
+        label="Clear"
+        onClick={basket.onClear}
+        className="shrink-0"
+      />
+      <SupprButton
+        variant="primary"
+        label={count === 1 ? "Log item" : `Log ${count} items`}
+        onClick={basket.onCommit}
+        className="shrink-0"
+      />
+    </div>
   );
 }
 
@@ -1117,7 +1268,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 /* -------------------------- Saved list -------------------------- */
 
 function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
-  const { meals, onPick, state } = saved;
+  const { meals, onPick, onCreateSavedMeal, state } = saved;
 
   if (state?.loading) return <SkeletonList />;
 
@@ -1129,6 +1280,15 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
         <p className="mt-1 text-[11px] text-muted-foreground">
           Save a meal you eat often to log it in one tap.
         </p>
+        {onCreateSavedMeal ? (
+          <SupprButton
+            variant="ghost"
+            onClick={onCreateSavedMeal}
+            aria-label="Save a usual meal"
+            label="Save a usual meal"
+            className="mt-3"
+          />
+        ) : null}
       </div>
     );
   }
@@ -1144,6 +1304,15 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           onPick={() => onPick(m)}
         />
       ))}
+      {onCreateSavedMeal ? (
+        <SupprButton
+          variant="ghost"
+          onClick={onCreateSavedMeal}
+          aria-label="Save another usual meal"
+          label="Save another usual meal"
+          className="mt-2"
+        />
+      ) : null}
     </div>
   );
 }

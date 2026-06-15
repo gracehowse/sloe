@@ -152,7 +152,7 @@ export function NorthStarBlock({
     return (
       <SupprCard
         // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        lift="soft"
+        lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
         testID={testID ?? "north-star-new-user"}
         tone="primary"
         padding="md"
@@ -203,7 +203,7 @@ export function NorthStarBlock({
     return (
       <SupprCard
         // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        lift="soft"
+        lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
         testID={testID ?? "north-star-no-fit"}
         tone="neutral"
         padding="md"
@@ -476,7 +476,7 @@ function NorthStarDefault({
       style={fadeStyle}
     >
       {/* Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
-      <SupprCard lift="soft" tone="primary" padding="md" innerStyle={styles.defaultCard}>
+      <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} tone="primary" padding="md" innerStyle={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"

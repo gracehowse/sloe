@@ -23,6 +23,14 @@ const PROMO = readFileSync(
   resolve(MIGRATIONS_DIR, "20260611120200_redeem_promo_lifetime_pro_eng1043.sql"),
   "utf8",
 );
+const ENG1103 = readFileSync(
+  resolve(MIGRATIONS_DIR, "20260614120000_eng1103_deactivate_test_promo_throttle_redeem.sql"),
+  "utf8",
+);
+const ENG1106 = readFileSync(
+  resolve(MIGRATIONS_DIR, "20260614120100_eng1106_saved_meal_items_nutrition_micros.sql"),
+  "utf8",
+);
 
 describe("ENG-1035 — profiles BEFORE INSERT tier lockdown", () => {
   it("attaches a BEFORE INSERT trigger on public.profiles", () => {
@@ -101,5 +109,27 @@ describe("ENG-1043 — promo comp path survives the lockdown + grants lifetime_p
     expect(PROMO).toMatch(
       /create\s+or\s+replace\s+function\s+public\.redeem_promo_code[\s\S]*?security\s+definer[\s\S]*?set\s+search_path\s*=\s*public,\s*pg_temp/i,
     );
+  });
+});
+
+describe("ENG-1103 — deactivate SUPPR_TEST_PREMIUM + throttle redeem_promo_code", () => {
+  it("deactivates the guessable test promo code", () => {
+    expect(ENG1103).toMatch(/update\s+public\.promo_codes[\s\S]*?active\s*=\s*false[\s\S]*?SUPPR_TEST_PREMIUM/i);
+  });
+
+  it("creates promo_redeem_throttle with RLS enabled", () => {
+    expect(ENG1103).toMatch(/create\s+table\s+if\s+not\s+exists\s+public\.promo_redeem_throttle/i);
+    expect(ENG1103).toMatch(/enable\s+row\s+level\s+security/i);
+  });
+
+  it("returns rate_limited after 10 failed attempts per 60s window", () => {
+    expect(ENG1103).toMatch(/coalesce\(v_failed,\s*0\)\s*>=\s*10/i);
+    expect(ENG1103).toMatch(/'rate_limited'/);
+  });
+});
+
+describe("ENG-1106 — saved-meal items persist nutrition_micros", () => {
+  it("adds nutrition_micros jsonb to user_saved_meal_items", () => {
+    expect(ENG1106).toMatch(/alter\s+table\s+public\.user_saved_meal_items[\s\S]*nutrition_micros\s+jsonb/i);
   });
 });

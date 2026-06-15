@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 import {
   reconcileOffPer100g,
+  extractOffMacrosPerServing,
   OFF_BASIS_DISAGREEMENT_TOLERANCE,
 } from "@/lib/openFoodFacts/reconcilePer100g";
 
@@ -106,6 +107,7 @@ describe("reconcileOffPer100g — per-serving-basis hardening", () => {
     };
     const recon = reconcileOffPer100g(nutriments, { nutrition_data_per: "serving" }); // no serving_quantity
     expect(recon.servingBasis).toBe(true);
+    expect(recon.servingNoMass).toBe(true);
     expect(recon.corrected).toBe(true); // was silently false before ENG-774
     expect(recon.calories).toBe(480); // unchanged — nothing better to use
     expect(recon.per100gFactor).toBe(1); // no scaling on an unverifiable row
@@ -249,5 +251,15 @@ describe("reconcileOffPer100g — per100gFactor (ENG-738 micro/fiber/sugar/sodiu
     );
     expect(Number.isFinite(recon.per100gFactor)).toBe(true);
     expect(recon.per100gFactor).toBeGreaterThan(0);
+  });
+
+  it("ENG-774 — extractOffMacrosPerServing reads per-serving fields", () => {
+    const macros = extractOffMacrosPerServing({
+      "energy-kcal_serving": 480,
+      proteins_serving: 5,
+      carbohydrates_serving: 68,
+      fat_serving: 22,
+    });
+    expect(macros).toEqual({ calories: 480, protein: 5, carbs: 68, fat: 22 });
   });
 });

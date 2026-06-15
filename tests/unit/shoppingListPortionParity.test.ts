@@ -21,6 +21,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateShoppingListFromRecipeEntries,
   generateShoppingListFromRecipeEntriesAsync,
+  shoppingListIngredientMultiplier,
 } from "@/lib/planning/generateShoppingList";
 import { effectivePortionMultiplier } from "@/lib/nutrition/portionMultiplier";
 
@@ -112,5 +113,38 @@ describe("ENG-1040 — shopping list portion-multiplier parity", () => {
     // Shared `guessGroceryCategory` maps egg → "Protein" (not the old mobile
     // "Dairy & Eggs"). Same aisle on web + mobile by construction.
     expect(egg?.category).toBe("Protein");
+  });
+
+  it("ENG-1134 — scales ingredient amounts by planned portion ÷ recipe servings", () => {
+    const ingredientsByRecipeId = new Map([
+      ["r1", [{ name: "chicken breast", amount: "400", unit: "g" }]],
+    ]);
+
+    const atOnePortionOfFour = generateShoppingListFromRecipeEntries({
+      entries: [{ title: "Family Tray", multiplier: shoppingListIngredientMultiplier(1, 4) }],
+      recipeTitleToId: (title) => (title === "Family Tray" ? "r1" : null),
+      ingredientsByRecipeId,
+    });
+    const chicken = atOnePortionOfFour.find((i) => i.name === "chicken breast");
+    expect(chicken?.amount).toBe("100");
+  });
+
+  it("ENG-1134 — parent + leftover slots sum to full recipe yield (4 portions of 4-serving recipe)", () => {
+    const ingredientsByRecipeId = new Map([
+      ["r1", [{ name: "chicken breast", amount: "400", unit: "g" }]],
+    ]);
+    const portion = shoppingListIngredientMultiplier(1, 4);
+    const list = generateShoppingListFromRecipeEntries({
+      entries: [
+        { title: "Family Tray", multiplier: portion },
+        { title: "Family Tray", multiplier: portion },
+        { title: "Family Tray", multiplier: portion },
+        { title: "Family Tray", multiplier: portion },
+      ],
+      recipeTitleToId: (title) => (title === "Family Tray" ? "r1" : null),
+      ingredientsByRecipeId,
+    });
+    const chicken = list.find((i) => i.name === "chicken breast");
+    expect(chicken?.amount).toBe("400");
   });
 });

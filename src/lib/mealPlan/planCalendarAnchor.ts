@@ -56,10 +56,52 @@ function parseStartDate(raw: string | null | undefined): Date | null {
 export function startDateForOffset(today: Date, offset: number): string {
   const d = stripMidnight(today);
   d.setDate(d.getDate() + offset);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  return formatPlanDateKey(d);
+}
+
+/** Local-midnight `YYYY-MM-DD` (journal `date_key` format). */
+export function formatPlanDateKey(d: Date): string {
+  const x = stripMidnight(d);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const day = String(x.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+export type PlanDayCalendarInput = {
+  /** 1-based plan column (`meal_plan_days.day`). */
+  planDayNumber: number;
+  /** Persisted T7 anchor (`meal_plan_days.start_date`). */
+  startDate?: string | null;
+  /** Legacy fallback when anchor is missing — 0-based plan array index. */
+  legacyDayIdx?: number;
+  /** Legacy fallback — live UI chip offset (resets on load; do not use when anchor exists). */
+  legacyStartOffset?: number;
+};
+
+/**
+ * ENG-1132 — calendar `date_key` for a plan column from persisted `start_date`.
+ * Never use `planCalendarDateForIndex(idx, startOffset)` for log-as-planned when
+ * the plan was saved with a future anchor — `startOffset` resets to 0 on load.
+ */
+export function planDayCalendarDateKey(input: PlanDayCalendarInput): string {
+  const anchor = parseStartDate(input.startDate ?? null);
+  if (anchor) {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() + (input.planDayNumber - 1));
+    return formatPlanDateKey(d);
+  }
+  const idx = input.legacyDayIdx ?? Math.max(0, input.planDayNumber - 1);
+  const offset = input.legacyStartOffset ?? 0;
+  return formatPlanDateKey(planCalendarDateForIndex(idx, offset));
+}
+
+/** Calendar `Date` for a plan column (local midnight). */
+export function planDayCalendarDate(input: PlanDayCalendarInput): Date {
+  const key = planDayCalendarDateKey(input);
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(key);
+  if (!m) return stripMidnight(new Date());
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
 }
 
 export type PlanDayRow = {

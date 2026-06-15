@@ -1,5 +1,9 @@
 import { ShieldCheck } from "lucide-react";
 import { getPaywallTrustChips } from "../../src/lib/landing/paywallTrust.ts";
+import {
+  BARCODE_FREE_PAYWALL_CHIP,
+  BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
+} from "../../src/lib/nutrition/barcodeFreePromise.ts";
 
 /**
  * Three-chip trust strip rendered above the pricing tier grid.
@@ -32,6 +36,19 @@ export function PaywallTrustStrip() {
       data-testid="paywall-trust-strip"
       className="mb-2 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
     >
+      <div
+        data-testid={BARCODE_FREE_PAYWALL_CHIP_TEST_ID}
+        aria-label={BARCODE_FREE_PAYWALL_CHIP.a11yLabel}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/25 text-xs font-medium text-foreground"
+        style={{ background: "color-mix(in oklab, var(--primary) 8%, var(--background-secondary))" }}
+      >
+        <ShieldCheck
+          className="h-3.5 w-3.5 shrink-0"
+          style={{ color: "var(--accent-success-solid)" }}
+          aria-hidden="true"
+        />
+        {BARCODE_FREE_PAYWALL_CHIP.label}
+      </div>
       {chips.map((chip) => (
         // 2026-05-13 (premium-bar audit DC4 polish — dark-mode contrast
         // audit on the green check glyph): emerald-500 was the same

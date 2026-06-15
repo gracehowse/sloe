@@ -93,6 +93,12 @@ export type FoodHistoryItem = {
    */
   caffeineMg?: number;
   alcoholG?: number;
+  /**
+   * ENG-1105 — averaged per-serving micronutrient panel from journal rows
+   * (`nutrition_micros` / `micros`). Re-log paths attach this to the new
+   * entry so sugar/sodium and the full panel survive Recents / Frequent taps.
+   */
+  micros?: Record<string, number>;
 };
 
 const UNNAMED = "Unnamed food";
@@ -170,6 +176,22 @@ function alcoholOf(m: FoodHistoryMealLike): number | undefined {
   return undefined;
 }
 
+/**
+ * ENG-1105 — full micronutrient panel from a journal row, excluding
+ * caffeine/alcohol (those stay on the dedicated stimulant paths).
+ */
+function microsOf(m: FoodHistoryMealLike): Record<string, number> | undefined {
+  const raw = m.micros;
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (k === "caffeineMg" || k === "alcoholG") continue;
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+    out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /** Canonical dedupe key matching the DB unique index. */
 export function foodHistoryKey(title: string, calories: number): string {
   return `${title.trim().toLowerCase()}|${Math.round(safeNumber(calories))}`;
@@ -198,6 +220,9 @@ type Bucket = {
   caffeineCount: number;
   alcoholGSum: number;
   alcoholCount: number;
+  /** ENG-1105 — running sums per micro key for averaging at finalise. */
+  microsSum: Record<string, number>;
+  microsCount: number;
   /** Most recent provenance seen for this bucket. */
   source?: string;
   /** Latest occurrence with a `recipeId` (for title refresh on re-log). */
@@ -231,6 +256,8 @@ function emptyBucket(title: string, calories: number, key: string): Bucket {
     caffeineCount: 0,
     alcoholGSum: 0,
     alcoholCount: 0,
+    microsSum: {},
+    microsCount: 0,
     count: 0,
     lastSortKey: "",
   };
@@ -259,6 +286,13 @@ function addToBucket(b: Bucket, m: FoodHistoryMealLike, dayKey: string, indexInD
   if (alc != null) {
     b.alcoholGSum += alc;
     b.alcoholCount += 1;
+  }
+  const microPanel = microsOf(m);
+  if (microPanel) {
+    b.microsCount += 1;
+    for (const [k, v] of Object.entries(microPanel)) {
+      b.microsSum[k] = (b.microsSum[k] ?? 0) + v;
+    }
   }
   if (m.source) b.source = String(m.source);
   // Pad the index so "day#10" sorts after "day#2".
@@ -307,6 +341,16 @@ function finaliseBucket(b: Bucket): FoodHistoryItem {
   }
   if (b.alcoholCount > 0) {
     item.alcoholG = Math.round((b.alcoholGSum / b.alcoholCount) * 10) / 10;
+  }
+  if (b.microsCount > 0) {
+    const avgMicros: Record<string, number> = {};
+    for (const [k, sum] of Object.entries(b.microsSum)) {
+      const scaled = sum / b.microsCount;
+      const rounded =
+        k.endsWith("G") ? Math.round(scaled * 10) / 10 : Math.round(scaled);
+      if (rounded > 0) avgMicros[k] = rounded;
+    }
+    if (Object.keys(avgMicros).length > 0) item.micros = avgMicros;
   }
   if (b.source) item.source = b.source;
   if (b.lastLoggedAt) item.lastLoggedAt = b.lastLoggedAt;

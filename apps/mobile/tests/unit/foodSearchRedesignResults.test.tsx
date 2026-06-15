@@ -189,7 +189,7 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
     // Legible confidence chips — the canonical shared
     // <SearchResultConfidenceChip> (testID `confidence-chip`), one Verified
     // (strong USDA) and one Estimated.
-    await findByText("Verified");
+    await findByText("Structured");
     await findByText("Estimated");
   });
 

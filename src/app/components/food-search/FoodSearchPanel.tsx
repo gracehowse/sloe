@@ -49,7 +49,7 @@
  * Prop names + signatures kept identical for sync-enforcer cross-check.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Barcode, Loader2 } from "lucide-react";
+import { Barcode, Loader2, Plus } from "lucide-react";
 import { Icons } from "../ui/icons";
 import { Badge } from "../suppr/badge";
 import {
@@ -63,6 +63,7 @@ import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
 import { matchGenericFood } from "@/lib/nutrition/genericFoods";
 import { genericFoodMicrosPer100g } from "@/lib/nutrition/genericFoodMicros";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
+import { sanitizeMicrosPer100g, optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
@@ -324,6 +325,8 @@ export type FoodSearchPanelProps = {
   }) => void;
   /** Keys of favourite toggles in flight (disabled + dimmed star). */
   favoritePendingKeys?: Set<string>;
+  /** Multi-add basket (ENG-929) — stage preview into host basket; sheet stays open. */
+  onAddToBasket?: (selection: FoodSearchSelection) => void;
 };
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
@@ -492,7 +495,7 @@ async function searchOff(
           name: displayName,
           calsPer100g: cals,
           macrosPer100g: macros,
-          microsPer100g: h.microsPer100g,
+          microsPer100g: optionalSanitizedMicrosPer100g(h.microsPer100g),
           primaryServing,
           _source: "OFF" as const,
           _offCode: h.code,
@@ -567,7 +570,9 @@ async function searchEdamam(
         // kept three. The select path merges the `/nutrients` superset
         // OVER this on tap. Conditional spread keeps the key absent (not
         // null) when the route shipped no micros.
-        ...(h.microsPer100g ? { microsPer100g: h.microsPer100g } : {}),
+        ...(optionalSanitizedMicrosPer100g(h.microsPer100g)
+          ? { microsPer100g: optionalSanitizedMicrosPer100g(h.microsPer100g) }
+          : {}),
         imageUrl: h.imageUrl,
         primaryServing,
         _source: "Edamam" as const,
@@ -911,6 +916,7 @@ export function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
+  onAddToBasket,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
   // single commit-action colour. The "Use this" log commit CTA below used
@@ -1477,7 +1483,7 @@ export function FoodSearchPanel({
         ? await fetchEdamamMicros(item._edamamFoodId)
         : {};
       setLoadingKey(null);
-      const mergedMicros = { ...(item.microsPer100g ?? {}), ...fetchedMicros };
+      const mergedMicros = sanitizeMicrosPer100g({ ...(item.microsPer100g ?? {}), ...fetchedMicros });
       const portions = buildPortions([], item.primaryServing);
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
@@ -1516,7 +1522,9 @@ export function FoodSearchPanel({
         source: "FatSecret",
         macrosPer100g: detail.macrosPer100g,
         ...(detail.macrosPerServing ? { macrosPerServing: detail.macrosPerServing } : {}),
-        ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}),
+        ...(optionalSanitizedMicrosPer100g(detail.microsPer100g)
+          ? { microsPer100g: optionalSanitizedMicrosPer100g(detail.microsPer100g) }
+          : {}),
         ...(detail.microsPerServing ? { microsPerServing: detail.microsPerServing } : {}),
         portions,
         chosenPortion: portion,
@@ -1526,6 +1534,85 @@ export function FoodSearchPanel({
       setLoadingKey(null);
     }
   }, [initialAmount, initialUnit, openCustomFoodPreview]);
+
+  /** ENG-931 — log default serving without opening preview (row body still opens preview). */
+  const onQuickLogResult = useCallback(
+    async (item: SearchResult) => {
+      if (item._source === "CUSTOM") {
+        await onPickResult(item);
+        return;
+      }
+      setLoadingKey(item.key);
+      try {
+        const commit = (selection: FoodSearchSelection) => {
+          onSelect(selection);
+        };
+
+        if (
+          (item._source === "GenericBeverage" || item._source === "GenericFood") &&
+          item.macrosPer100g
+        ) {
+          const portions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: portions[0], quantity: 1 }
+            : resolveInitialPortion(portions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "USDA",
+            macrosPer100g: item.macrosPer100g,
+            ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
+            portions,
+            chosenPortion: portion,
+            quantity,
+          });
+          return;
+        }
+
+        if (item._source === "OFF" && item.macrosPer100g) {
+          const portions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: portions[0], quantity: 1 }
+            : resolveInitialPortion(portions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "OFF",
+            macrosPer100g: item.macrosPer100g,
+            microsPer100g: item.microsPer100g,
+            portions,
+            chosenPortion: portion,
+            quantity,
+            ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+          });
+          return;
+        }
+
+        if (item._source === "USDA" && item._fdcId) {
+          const detail = await fetchUsdaDetail(item._fdcId);
+          if (!detail) return;
+          const effectivePrimary = item.primaryServing ?? detail.primaryPortion ?? null;
+          const portions = buildPortions(detail.portions, effectivePrimary);
+          const { portion, quantity } = effectivePrimary
+            ? { portion: portions[0], quantity: 1 }
+            : resolveInitialPortion(portions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "USDA",
+            macrosPer100g: detail.macrosPer100g,
+            ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}),
+            portions,
+            chosenPortion: portion,
+            quantity,
+          });
+          return;
+        }
+
+        await onPickResult(item);
+      } finally {
+        setLoadingKey(null);
+      }
+    },
+    [initialAmount, initialUnit, onPickResult, onSelect],
+  );
 
   // Custom-food CRUD ───────────────────────────────────────────────────
   const handleCreateCustomFood = useCallback(
@@ -1651,6 +1738,33 @@ export function FoodSearchPanel({
     onSelect(selection);
     setPreview(null);
   }, [preview, onSelect, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
+
+  const onAddPreviewToBasket = useCallback(() => {
+    if (!onAddToBasket || !preview) return;
+    const selection: FoodSearchSelection = {
+      name: preview.name,
+      source: preview.source,
+      macrosPer100g: preview.macrosPer100g,
+      ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
+      ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+      ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
+      portions: preview.portions,
+      chosenPortion: preview.chosenPortion,
+      quantity: preview.quantity,
+      ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+      ...(previewEatenAtEnabled && logDateKey
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        : {}),
+    };
+    if (preview.source === "CUSTOM") {
+      selection.customFoodId = preview.customFoodId;
+      if (preview.chosenPortion.label !== "g") {
+        selection.servingLabel = preview.chosenPortion.label;
+      }
+    }
+    onAddToBasket(selection);
+    setPreview(null);
+  }, [onAddToBasket, preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
 
   const scaled = useMemo(() => {
     if (!preview) return null;
@@ -1954,7 +2068,7 @@ export function FoodSearchPanel({
                   ) : (
                     <Icons.info className="h-2.5 w-2.5" aria-hidden />
                   )}
-                  {tier === "verified" ? "Verified" : "Estimated"}
+                  {tier === "verified" ? "Structured" : "Estimated"}
                 </span>
               )}
             </div>
@@ -1997,10 +2111,21 @@ export function FoodSearchPanel({
           ) : null}
           {loadingKey === item.key ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-          ) : (
+          ) : isCustom ? (
             <Icons.forward className="h-4 w-4 text-muted-foreground shrink-0" />
-          )}
+          ) : null}
         </button>
+        {!isCustom && loadingKey !== item.key ? (
+          <button
+            type="button"
+            onClick={() => void onQuickLogResult(item)}
+            aria-label={`Quick log ${item.name} at default serving`}
+            data-testid={`food-search-quick-log-${item.key}`}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary hover:bg-muted/60"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          </button>
+        ) : null}
         {isCustom && customFood && (
           <div className="relative shrink-0">
             <button
@@ -2220,10 +2345,21 @@ export function FoodSearchPanel({
         {/* Sticky "Use this" CTA — kept on a border-t footer (visual-qa
             P0 fix from 2026-04-30) so on short viewports the button is
             always reachable without scrolling. */}
-        <div className="border-t border-border bg-card -mx-3 px-3 py-3 shrink-0">
+        <div className="border-t border-border bg-card -mx-3 px-3 py-3 shrink-0 flex gap-2">
+          {onAddToBasket ? (
+            <button
+              type="button"
+              data-testid="food-search-preview-add-to-basket"
+              onClick={onAddPreviewToBasket}
+              className="flex-1 py-3 rounded-xl border border-border bg-transparent text-primary font-semibold transition-colors hover:bg-muted/60"
+            >
+              Add
+            </button>
+          ) : null}
           <button
+            type="button"
             onClick={onConfirm}
-            className={`w-full py-3 rounded-xl ${commitCtaClass} font-semibold transition-colors flex items-center justify-center gap-2`}
+            className={`${onAddToBasket ? "flex-[2]" : "w-full"} py-3 rounded-xl ${commitCtaClass} font-semibold transition-colors flex items-center justify-center gap-2`}
           >
             <Icons.check className="h-4 w-4" />
             Use this
@@ -2560,10 +2696,21 @@ export function FoodSearchPanel({
                     ) : null}
                     {loadingKey === item.key ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    ) : (
+                    ) : isCustom ? (
                       <Icons.forward className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    ) : null}
                   </button>
+                  {!isCustom && loadingKey !== item.key ? (
+                    <button
+                      type="button"
+                      onClick={() => void onQuickLogResult(item)}
+                      aria-label={`Quick log ${item.name} at default serving`}
+                      data-testid={`food-search-quick-log-${item.key}`}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary hover:bg-muted/60"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                    </button>
+                  ) : null}
                   {isCustom && customFood && (
                     <div className="relative shrink-0">
                       <button

@@ -308,4 +308,77 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
     expect(insertCalls).toHaveLength(0);
     expect(analyticsCalls.filter((c) => c.event === "food_logged")).toHaveLength(0);
   });
+
+  it("duplicateDay re-anchors eaten_at to target date_key (ENG-1107)", async () => {
+    const sourceMeal = meal({
+      id: "m1",
+      eatenAt: "2026-06-14T12:30:00.000Z",
+    });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-06-14": [sourceMeal] },
+        selectedDateKey: "2026-06-14",
+      }),
+    );
+
+    await act(async () => {
+      await result.current.duplicateDay("2026-06-14", "2026-06-16");
+    });
+
+    expect(insertCalls).toHaveLength(1);
+    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    expect(rows[0]!.date_key).toBe("2026-06-16");
+    expect(String(rows[0]!.eaten_at)).toMatch(/^2026-06-16T/);
+  });
+
+  it("duplicateDay preserves nutrition_micros on insert payload (ENG-1105)", async () => {
+    const stimulantMicros = {
+      caffeineMg: 95,
+      theobromineMg: 12,
+    };
+    const sourceMeal = meal({
+      id: "m1",
+      micros: stimulantMicros,
+    });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-06-14": [sourceMeal] },
+        selectedDateKey: "2026-06-14",
+      }),
+    );
+
+    await act(async () => {
+      await result.current.duplicateDay("2026-06-14", "2026-06-15");
+    });
+
+    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    expect(rows[0]!.nutrition_micros).toEqual(stimulantMicros);
+  });
+
+  it("copyMealToDateRange re-anchors eaten_at and preserves micros (ENG-1105, ENG-1107)", async () => {
+    const stimulantMicros = { caffeineMg: 40 };
+    const sourceMeal = meal({
+      id: "m1",
+      eatenAt: "2026-06-10T15:00:00.000Z",
+      micros: stimulantMicros,
+    });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-06-10": [sourceMeal] },
+        selectedDateKey: "2026-06-10",
+      }),
+    );
+
+    await act(async () => {
+      await result.current.copyMealToDateRange("2026-06-10", "m1", ["2026-06-11"]);
+    });
+
+    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    expect(rows[0]!.date_key).toBe("2026-06-11");
+    expect(String(rows[0]!.eaten_at)).toMatch(/^2026-06-11T/);
+    expect(rows[0]!.nutrition_micros).toEqual(stimulantMicros);
+  });
 });

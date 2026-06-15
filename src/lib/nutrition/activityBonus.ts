@@ -19,9 +19,13 @@
  * double-counting incidental movement already baked into the user's
  * maintenance estimate).
  */
+import type { MaintenanceSource } from "./resolveMaintenance";
+
 export interface ActivityBonusInput {
   /** User has enabled `prefer_activity_adjusted_calories`. */
   prefer: boolean;
+  /** When maintenance came from measured HealthKit TDEE, bonus is suppressed (ENG-1111). */
+  maintenanceSource?: MaintenanceSource | null;
   /** Date key being computed (YYYY-MM-DD). */
   dateKey: string;
   /** Today's date key, in the same format. */
@@ -86,6 +90,8 @@ export function computeActivityBonusKcal(input: ActivityBonusInput): number {
     workoutKcal = 0,
     now = new Date(),
   } = input;
+  // Measured TDEE already includes active energy — do not double-count (ENG-1111).
+  if (input.maintenanceSource === "measured") return 0;
   if (!prefer) return 0;
   const active = Math.round(activeKcal);
   if (active <= 0) return 0;

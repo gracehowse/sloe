@@ -790,6 +790,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_images: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          image_url: string | null
+          name_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          image_url?: string | null
+          name_key: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          image_url?: string | null
+          name_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           barcode: string | null
@@ -1029,6 +1059,9 @@ export type Database = {
           adaptive_tdee: number | null
           adaptive_tdee_confidence: string | null
           adaptive_tdee_updated_at: string | null
+          measured_tdee: number | null
+          measured_tdee_confidence: string | null
+          measured_tdee_updated_at: string | null
           age: number | null
           avatar_url: string | null
           basal_burn_by_day: Json | null
@@ -1057,6 +1090,8 @@ export type Database = {
           last_weekly_checkin_shown_at: string | null
           last_weekly_recap_push_sent_at: string | null
           measurement_system: string | null
+          meal_slot_config: Json | null
+          pantry_staples: Json | null
           milestone_30_shown_at: string | null
           net_carbs_lens_enabled: boolean
           notification_prefs: Json
@@ -1099,6 +1134,9 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1127,6 +1165,8 @@ export type Database = {
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          meal_slot_config?: Json | null
+          pantry_staples?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1169,6 +1209,9 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1197,6 +1240,8 @@ export type Database = {
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          meal_slot_config?: Json | null
+          pantry_staples?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1273,6 +1318,24 @@ export type Database = {
           max_uses?: number | null
           tier?: string
           uses_count?: number
+        }
+        Relationships: []
+      }
+      promo_redeem_throttle: {
+        Row: {
+          failed_count: number
+          user_id: string
+          window_started: string
+        }
+        Insert: {
+          failed_count?: number
+          user_id: string
+          window_started?: string
+        }
+        Update: {
+          failed_count?: number
+          user_id?: string
+          window_started?: string
         }
         Relationships: []
       }
@@ -2173,6 +2236,7 @@ export type Database = {
           fat: number
           fiber: number | null
           id: string
+          nutrition_micros: Json
           portion_multiplier: number
           position: number
           protein: number
@@ -2188,6 +2252,7 @@ export type Database = {
           fat?: number
           fiber?: number | null
           id?: string
+          nutrition_micros?: Json
           portion_multiplier?: number
           position?: number
           protein?: number
@@ -2203,6 +2268,7 @@ export type Database = {
           fat?: number
           fiber?: number | null
           id?: string
+          nutrition_micros?: Json
           portion_multiplier?: number
           position?: number
           protein?: number
@@ -2552,6 +2618,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      tier_rank: { Args: { p_tier: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never

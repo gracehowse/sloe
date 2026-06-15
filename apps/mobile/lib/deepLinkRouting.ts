@@ -30,7 +30,7 @@ export type DeepLinkAction =
   | { kind: "ignore" }
   | { kind: "siri" }
   | { kind: "forward-to-import"; url: string }
-  | { kind: "navigate"; pathname: string };
+  | { kind: "navigate"; pathname: string; params?: Record<string, string> };
 
 /**
  * ENG-800 (2026-05-30) — well-known navigation aliases.
@@ -55,6 +55,12 @@ export type DeepLinkAction =
  */
 const NAV_PATH_ALIASES: Readonly<Record<string, string>> = {
   plan: "/(tabs)/planner",
+  // ENG-1162 — Recipes sub-tabs must follow the deep-link path. Expo Router
+  // can land on the Recipes tab while the last-visited sub-tab (Discover)
+  // stays selected; explicit `router.replace` makes `/library` and
+  // `/discover` the source of truth for the sub-tab chrome.
+  library: "/(tabs)/library",
+  discover: "/(tabs)/discover",
 };
 
 /**
@@ -113,7 +119,12 @@ export function decideDeepLinkAction(href: string): DeepLinkAction {
     // `+not-found.tsx` (ENG-800).
     const seg = navPathSegment(t);
     if (seg && seg in NAV_PATH_ALIASES) {
-      return { kind: "navigate", pathname: NAV_PATH_ALIASES[seg]! };
+      const pathname = NAV_PATH_ALIASES[seg]!;
+      // ENG-1162 — skip ENG-100 empty-library redirect when deep-linking to Library.
+      if (seg === "library") {
+        return { kind: "navigate", pathname, params: { keep: "1" } };
+      }
+      return { kind: "navigate", pathname };
     }
     // Otherwise this is a navigation deep link whose path already
     // matches a registered route (suppr:///settings, suppr:///more,

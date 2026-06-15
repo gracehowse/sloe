@@ -16,6 +16,8 @@ import { Layout } from "@/constants/layout";
 import { Colors, Spacing, Type } from "@/constants/theme";
 import { MacroStatTile } from "@/components/nutrition/MacroStatTile";
 import { macroColorFor } from "@/lib/macroColors";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { useCalmMode } from "@/lib/calmMode";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 
@@ -104,6 +106,10 @@ export function TodayDashboardMacroTiles({
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
   const isDark = useColorScheme() === "dark";
+  // ENG-1099 — recipe-tier macro tiles (bar+caption stripped, value-colour
+  // over-signal). ENG-1098 Calm mode neutralises the over-signal.
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
+  const [calmMode] = useCalmMode();
   // Progress-bar track tone. Light: Sloe `line` (#E8E2EC) per Figma `654:2`.
   // Dark: theme hairline so the light track hex doesn't glare.
   const barTrackColor = isDark ? cardBorderColor : Colors.light.border;
@@ -198,6 +204,8 @@ export function TodayDashboardMacroTiles({
             textSecondaryColor={textSecondaryColor}
             textTertiaryColor={textTertiaryColor}
             barTrackColor={barTrackColor}
+            tierV1={tierV1}
+            calmMode={calmMode}
             onPress={() => onPressMacro(macro)}
             testID={`today-macro-tile-${macro}`}
             style={{

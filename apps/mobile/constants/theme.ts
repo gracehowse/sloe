@@ -236,10 +236,14 @@ export const StimulantColors = {
  *  web `--macro-*` in `src/styles/theme.css`. */
 export const MacroColors = {
   calories: '#3B2A4D',         // Plum — the calorie ring (Sloe chrome hue)
-  protein:  '#7C8466',         // Olive-sage
+  protein:  '#7C8466',         // Olive-sage (graphics)
+  proteinSolid: '#5F6650',     // ENG-1109 — small text on light backgrounds
   carbs:    Accent.carbs,      // Clay (#C8794E)
+  carbsSolid: '#9A5A32',
   fat:      '#C9892C',         // Amber
+  fatSolid: '#956619',
   fiber:    '#4A7878',         // Teal
+  fiberSolid: '#3A5F5F',
   sugar:    Accent.carbs,      // Sugar follows carbs (clay)
   sodium:   '#C9892C',         // Amber (mirrors web --macro-sodium)
   water:    '#4A7878',         // Teal
@@ -590,6 +594,14 @@ export const Type = {
     lineHeight: 24,
     fontWeight: '500' as const,
     letterSpacing: -0.35,
+  },
+  /** ENG-1099 M4 — serif stat row under the ring (18/22). Converges mobile 19 + web 18. */
+  statValue: {
+    fontFamily: FontFamily.serifRegular,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '400' as const,
+    letterSpacing: -0.2,
   },
   /** Numeric specials — the big hero numbers read in Newsreader (serif) to
    *  match the approved Figma frames. Pair with `fontVariant: ['tabular-nums']`

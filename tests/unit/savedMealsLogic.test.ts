@@ -313,6 +313,19 @@ describe("buildMealEntriesFromSavedMeal", () => {
         ],
       });
 
+    it("propagates nutritionMicros scaled by portion multiplier", () => {
+      const meal = mkMeal({
+        items: [
+          mkItem({
+            nutritionMicros: { sodiumMg: 100, sugarG: 5 },
+            portionMultiplier: 2,
+          }),
+        ],
+      });
+      const [entry] = buildMealEntriesFromSavedMeal(meal, "Lunch", "12:00", makeCounterId());
+      expect(entry.micros).toEqual({ sodiumMg: 200, sugarG: 10 });
+    });
+
     it("defaults to 1x — omitting the param is byte-identical to the 4-arg call (one-tap hot path)", () => {
       const fourArg = buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId());
       const explicitOne = buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId(), 1);

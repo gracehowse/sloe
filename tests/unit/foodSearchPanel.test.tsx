@@ -323,9 +323,14 @@ describe("FoodSearchPanel — onSelect callback shape", () => {
     // Click the result. The click triggers an async USDA detail fetch
     // before the preview renders, so we wait for the "Use this" CTA to
     // appear before continuing.
-    const row = await screen.findByRole("button", {
+    const rows = await screen.findAllByRole("button", {
       name: new RegExp(TILAPIA_DISPLAY, "i"),
     });
+    // Logging-loop added a sibling "Quick log …" button per row; pick the main row.
+    const row =
+      rows.find(
+        (b) => !b.getAttribute("data-testid")?.startsWith("food-search-quick-log"),
+      ) ?? rows[0];
     fireEvent.click(row);
 
     // Drain the detail-fetch microtasks.

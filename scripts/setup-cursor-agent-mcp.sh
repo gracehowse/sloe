@@ -28,6 +28,12 @@ export SUPPR_ROOT="$ROOT"
 export SUPPR_IDB_PATH="$IDB_PATH"
 export SUPPR_AGENT_SCREENSHOTS="$AGENT_SCREENSHOTS"
 
+ENV_LOCAL="${ROOT}/.env.local"
+if [[ -f "$ENV_LOCAL" ]]; then
+  LINEAR_API_KEY="$(grep -E '^LINEAR_API_KEY=' "$ENV_LOCAL" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+  export LINEAR_API_KEY
+fi
+
 node <<'NODE'
 const fs = require("fs");
 const path = require("path");
@@ -72,11 +78,24 @@ cfg.mcpServers.Mobbin = {
   headers: {},
 };
 
+const linearKey = process.env.LINEAR_API_KEY?.trim();
+if (linearKey) {
+  cfg.mcpServers.linear = {
+    url: "https://mcp.linear.app/mcp",
+    headers: { Authorization: `Bearer ${linearKey}` },
+  };
+}
+
 fs.mkdirSync(path.dirname(cursorPath), { recursive: true });
 fs.writeFileSync(cursorPath, JSON.stringify(cfg, null, 2) + "\n");
 console.log("Updated", cursorPath);
 console.log("  + ios-simulator (idb:", idbPath + ")");
 console.log("  + playwright");
 console.log("  + Mobbin (https://api.mobbin.com/mcp — Connect in Cursor MCP settings)");
+if (linearKey) {
+  console.log("  + linear (https://mcp.linear.app/mcp — API key from .env.local)");
+} else {
+  console.log("  (skip linear — add LINEAR_API_KEY to .env.local to enable)");
+}
 console.log("Restart Cursor, then enable servers in MCP settings; click Connect on Mobbin to sign in.");
 NODE

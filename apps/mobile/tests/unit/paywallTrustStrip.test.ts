@@ -55,22 +55,18 @@ describe("mobile paywall — trust strip render", () => {
     expect(src).toMatch(/trustChips\.map\(/);
   });
 
-  it("trust strip + plan selector sit above the CTA (Figma 284:2)", () => {
-    // Figma `284:2` rebuild (2026-06-08): the segmented billing toggle
-    // + the big Pro TierCard were replaced by a two-row plan selector
-    // (`PaywallPlanSelector`) and a standalone CTA (`PaywallCta`). The
-    // trust chips moved to a compact centred row directly ABOVE the CTA
-    // (the frame's trust-row position). Source order to pin:
-    //   plan selector → trust strip → CTA.
+  it("plan selector → trust strip render in order; CTA is a sticky footer (Figma 284:2 / ENG-1161)", () => {
+    // ENG-1161 moved the primary CTA from an inline render after the trust strip
+    // to an absolutely-positioned sticky footer (testID "paywall-sticky-primary-cta"),
+    // so source order no longer reflects on-screen order for the CTA. Pin what
+    // still holds: plan selector then trust strip in the scroll, and the sticky
+    // CTA footer is present.
     const planSelectorIdx = src.indexOf("<PaywallPlanSelector");
     const stripIdx = src.indexOf('testID="paywall-trust-strip"');
-    const ctaIdx = src.indexOf("<PaywallCta");
     expect(planSelectorIdx).toBeGreaterThan(0);
     expect(stripIdx).toBeGreaterThan(0);
-    expect(ctaIdx).toBeGreaterThan(0);
-    // Plan selector first, then the trust strip, then the CTA.
     expect(planSelectorIdx).toBeLessThan(stripIdx);
-    expect(stripIdx).toBeLessThan(ctaIdx);
+    expect(src).toContain('testID="paywall-sticky-primary-cta"');
   });
 });
 

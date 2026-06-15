@@ -36,14 +36,14 @@ export type SearchResultConfidenceTier = "verified" | "estimated";
 
 export interface SearchResultConfidenceChipProps {
   tier: SearchResultConfidenceTier;
-  /** Optional label override. Defaults to "Verified" / "Estimated". */
+  /** Optional label override. Defaults to "Structured" / "Estimated". */
   label?: string;
   style?: ViewStyle;
   testID?: string;
 }
 
 const defaultLabel: Record<SearchResultConfidenceTier, string> = {
-  verified: "Verified",
+  verified: "Structured",
   estimated: "Estimated",
 };
 

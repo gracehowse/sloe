@@ -9,6 +9,7 @@ import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
 
 /**
@@ -230,7 +231,10 @@ export function TodayHeroRing({
     // separates from the page like every other resting card. Mirrors web
     // `elevation="card"` on `today-hero-ring.tsx`.
     <SupprCard
-      lift="soft"
+      // ENG-1099 M2: flat-on-cream (recipe-screen grammar) when the tier flag is
+      // on — the ring is the hero by scale, not shadow; the unified 24 rhythm (M1)
+      // carries the separation. Flag-off keeps the 2026-06-09 soft lift.
+      lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
       padding="lg"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >

@@ -127,8 +127,8 @@ function ukRegion(): RegionInfo {
 }
 
 function euRegion(): RegionInfo {
-  // v1 — EUR SKUs not yet live. Show GBP amounts with a soft-landing
-  // note and an inclusive-VAT disclosure (memo-compliant).
+  // v1 — EUR SKUs optional (`STRIPE_PRICE_PRO_*_EUR`). Checkout picks
+  // them when configured; until then show GBP amounts + soft-landing note.
   return {
     currency: "EUR",
     locale: "en-EU",

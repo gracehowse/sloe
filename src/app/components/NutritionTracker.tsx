@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
@@ -24,6 +25,12 @@ import {
   type WeeklyCheckinContent,
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
+import { WeeklyCheckinBanner } from "./suppr/weekly-checkin-banner";
+import { weekKeyFor } from "../../lib/nutrition/weeklyRecap.ts";
+import {
+  isCheckinBannerDismissed,
+  markCheckinBannerDismissed,
+} from "../../lib/today/weeklyCheckinBannerDismissal.ts";
 import type { LoggedMeal, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
@@ -62,6 +69,7 @@ import {
 import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
 import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
+import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import {
   buildDayNutrientDetailRows,
@@ -111,6 +119,7 @@ import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientP
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
+import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
@@ -133,6 +142,9 @@ import {
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "../../lib/nutrition/foodHistory";
+import { computeSlotGoToFoods } from "../../lib/nutrition/slotGoToFoods";
+import { normaliseMealSlot } from "../../lib/nutrition/mealSlots";
+import { newId } from "../../context/appData/persistence";
 import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
@@ -151,7 +163,13 @@ import {
   type FavoriteFood,
 } from "../../lib/nutrition/favoriteFoods";
 import { orderRecentWithFavoritesFirst } from "../../lib/nutrition/favoriteFoodsSearch";
-import { isMealSlot, MEAL_SLOTS, type MealSlot } from "../../lib/nutrition/mealSlots";
+import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import {
+  enabledMealSlotLabels,
+  mealSectionSortOrder,
+  parseUserMealSlotConfig,
+  type UserMealSlotConfig,
+} from "../../lib/nutrition/userMealSlotConfig";
 import {
   journalSlotFromMealTypes,
   slotForHour,
@@ -214,8 +232,6 @@ const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 // shared ladder. Net behaviour change: a 10:30am open now seeds
 // Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
 
-const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks", "Planned"];
-
 /** Must match Settings “Dashboard widgets” keys (`WIDGET_MACRO_OPTIONS`). */
 const TRACKED_DASHBOARD_MACRO_KEYS = new Set([
   "protein",
@@ -262,10 +278,12 @@ function dayActivityBudgetAddonWeb(
   activityByDay: Record<string, number>,
   basalByDay: Record<string, number>,
   workoutsByDay: Record<string, Array<{ calories?: number }>>,
+  maintenanceSource: "measured" | "adaptive" | "formula" | null,
 ): number {
   const workouts = workoutsByDay[dk] ?? [];
   return computeActivityBonusKcal({
     prefer,
+    maintenanceSource,
     dateKey: dk,
     todayDateKey: todayKey(),
     restingKcal: basalByDay[dk] ?? 0,
@@ -506,6 +524,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     addLoggedMeal,
     addLoggedMealForDate,
     removeLoggedMeal,
+    updateLoggedMeal,
     copyMealToDate,
     copyMealToDateRange,
     duplicateDay,
@@ -570,9 +589,21 @@ export const NutritionTracker = memo(function NutritionTracker({
   // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
   // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
   const [mealNutritionTargetId, setMealNutritionTargetId] = useState<string | null>(null);
+  const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
+  const [userMealSlotConfig, setUserMealSlotConfig] = useState<UserMealSlotConfig | null>(
+    null,
+  );
+  const enabledMealSlots = useMemo(
+    () => enabledMealSlotLabels(userMealSlotConfig),
+    [userMealSlotConfig],
+  );
+  const mealSectionOrder = useMemo(
+    () => mealSectionSortOrder(userMealSlotConfig),
+    [userMealSlotConfig],
+  );
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
 
@@ -605,6 +636,18 @@ export const NutritionTracker = memo(function NutritionTracker({
   // re-implementing them. Opening the sheet replaces the Phase 2
   // "Coming in Phase 3" alert path.
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  const [logSheetConfirmation, setLogSheetConfirmation] = useState<
+    NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
+  >(null);
+  const [logBasket, setLogBasket] = useState<
+    Array<{ basketId: string; selection: FoodSearchSelection }>
+  >([]);
+  useEffect(() => {
+    if (!logSheetOpen) {
+      setLogSheetConfirmation(null);
+      setLogBasket([]);
+    }
+  }, [logSheetOpen]);
   // 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
   // consume the `?openLog=1` URL param dispatched by the centered
   // raised Plus button in the App.tsx mobile-web `<nav>` (mirrors the
@@ -712,7 +755,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // richer BMR × multiplier breakdown" (for users on the narrow
   // fallback profile select where adaptive columns aren't available).
   const [profileMaintenanceSource, setProfileMaintenanceSource] = useState<
-    "adaptive" | "formula" | null
+    "measured" | "adaptive" | "formula" | null
   >(null);
   const [profileMaintenanceConfidence, setProfileMaintenanceConfidence] = useState<
     "low" | "medium" | "high" | null
@@ -817,6 +860,25 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
   const { authedUserId, authUserCreatedAt, authUserMetadata } = useAuthSession();
+  // ENG-805 — in-feed banner dismissal (web parity with mobile AsyncStorage gate).
+  const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<boolean | null>(
+    null,
+  );
+  const checkinWeekKey = useMemo(
+    () => weekKeyFor(new Date(), weekStartDay),
+    [weekStartDay],
+  );
+  const isCheckinBannerDay = useMemo(() => {
+    const dow = new Date().getDay();
+    return weekStartDay === "sunday" ? dow === 0 : dow === 1;
+  }, [weekStartDay]);
+  useEffect(() => {
+    if (!authedUserId) {
+      setCheckinBannerDismissed(true);
+      return;
+    }
+    setCheckinBannerDismissed(isCheckinBannerDismissed(authedUserId, checkinWeekKey));
+  }, [authedUserId, checkinWeekKey]);
 
   // Audit M4 (2026-04-18) — Today progressive disclosure on web.
   // Matches mobile. Persists the Quick Add collapsed pref via localStorage
@@ -934,7 +996,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       // average per-occurrence stimulant contribution into
       // `item.caffeineMg` / `item.alcoholG`. Missing → no key in
       // `micros` (and `addLoggedMeal` skips the bump).
-      const micros: Record<string, number> = {};
+      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
       if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
       if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
       addLoggedMeal(
@@ -1307,6 +1369,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         if (m.fiberG != null) item.fiber = m.fiberG;
         if (m.waterMl != null) item.waterMl = m.waterMl;
         if (m.source) item.source = m.source;
+        if (m.micros && Object.keys(m.micros).length > 0) {
+          const scaled = scaleMicrosPerServing(m.micros, pm);
+          if (Object.keys(scaled).length > 0) item.nutritionMicros = scaled;
+        }
         return item;
       });
       handleOpenSaveCombo(slotName, items);
@@ -1426,7 +1492,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, meal_slot_config, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1451,6 +1517,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         );
         setTrackedDashboardMacros(
           normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros),
+        );
+        setUserMealSlotConfig(
+          parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config),
         );
         setStepsByDay(parseStepsDayMap((data as { steps_by_day?: unknown }).steps_by_day));
         const sg = (data as { daily_steps_goal?: number }).daily_steps_goal;
@@ -1500,19 +1569,22 @@ export const NutritionTracker = memo(function NutritionTracker({
         // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
         // `resolveMaintenance` is the shared gate: adaptive wins at
         // medium/high confidence AND not stale, else formula.
-        const resolved = resolveMaintenance({
-          adaptive_tdee: (data as any).adaptive_tdee,
-          adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
-          adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
-          sex: (data.sex ?? "unspecified") as any,
-          weight_kg: Number(data.weight_kg),
-          height_cm: Number(data.height_cm),
-          age: Number(data.age),
-          // Default to "sedentary" (1.2) when missing — "moderate" (1.55)
-          // silently over-inflated TDEE by ~14% for users who never picked a
-          // level (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
-          activity_level: (data.activity_level ?? "sedentary") as any,
-        });
+        const resolved = resolveMaintenance(
+          {
+            adaptive_tdee: (data as any).adaptive_tdee,
+            adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
+            adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
+            measured_tdee: (data as any).measured_tdee,
+            measured_tdee_confidence: (data as any).measured_tdee_confidence,
+            measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
+            sex: (data.sex ?? "unspecified") as any,
+            weight_kg: Number(data.weight_kg),
+            height_cm: Number(data.height_cm),
+            age: Number(data.age),
+            activity_level: (data.activity_level ?? "sedentary") as any,
+          },
+          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+        );
         if (resolved) {
           setProfileMaintenanceTdee(resolved.kcal);
           setProfileMaintenanceSource(resolved.source);
@@ -1654,7 +1726,7 @@ export const NutritionTracker = memo(function NutritionTracker({
    * mobile Today FoodSearchModal commit flow byte-for-byte.
    */
   const commitFoodSearchSelection = useCallback(
-    (selection: FoodSearchSelection) => {
+    (selection: FoodSearchSelection): { id: string; title: string; kcal: number } => {
       const sourceLabel = foodSelectionSourceLabel(selection.source);
 
       // ENG-1046 — shared scaling core (instant-log + basket-add, mobile parity).
@@ -1667,7 +1739,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         micros,
       } = foodSelectionToMealMacros(selection);
 
-      addLoggedMeal(
+      const id = addLoggedMealForDate(
+        selectedDateKey,
         {
           name: mealSlot,
           recipeTitle: selection.name,
@@ -1684,14 +1757,102 @@ export const NutritionTracker = memo(function NutritionTracker({
             ? { eatenAt: selection.eatenAt }
             : eatenAtForCurrentLog()),
         },
-        // Mirror mobile's `food_logged.source` mapping: custom food
-        // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
-        // with `"manual"` (the canonical shared-food source).
         foodSelectionAnalyticsSource(selection.source),
       );
+      return { id, title: selection.name, kcal: mealCalories };
     },
-    [addLoggedMeal, mealSlot, timeLabel, eatenAtForCurrentLog],
+    [addLoggedMealForDate, mealSlot, timeLabel, eatenAtForCurrentLog, selectedDateKey],
   );
+
+  const presentLogSheetConfirmation = useCallback(
+    (payload: { title: string; kcal: number; mealIds: string[] }) => {
+      setLogSheetConfirmation({
+        title: payload.title,
+        kcal: Math.round(payload.kcal),
+        slot: mealSlot,
+        onDone: () => {
+          setLogSheetConfirmation(null);
+          setLogSheetOpen(false);
+        },
+        onUndo: () => {
+          for (const mealId of payload.mealIds) removeLoggedMeal(mealId);
+          setLogSheetConfirmation(null);
+        },
+      });
+    },
+    [mealSlot, removeLoggedMeal],
+  );
+
+  const logHistoryItemFromSheet = useCallback(
+    (item: FoodHistoryItem, slot: string) => {
+      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
+      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
+      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
+      const id = addLoggedMealForDate(
+        selectedDateKey,
+        {
+          name: slot,
+          recipeTitle: item.recipeTitle,
+          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          ...(item.fiber != null ? { fiberG: item.fiber } : {}),
+          ...(item.source ? { source: item.source } : {}),
+          ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        },
+        "quick_add",
+      );
+      presentLogSheetConfirmation({
+        title: item.recipeTitle,
+        kcal: item.calories,
+        mealIds: [id],
+      });
+    },
+    [addLoggedMealForDate, presentLogSheetConfirmation, selectedDateKey],
+  );
+
+  const logSheetGoTos = useMemo(() => {
+    const slot = normaliseMealSlot(mealSlot);
+    if (!slot) return [];
+    return computeSlotGoToFoods(nutritionByDay, slot).map((item) => ({
+      id: foodHistoryKey(item.recipeTitle, item.calories),
+      title: item.recipeTitle,
+      kcal: Math.round(item.calories),
+      source: mapMealSourceToDot(item.source),
+      count: item.count,
+    }));
+  }, [nutritionByDay, mealSlot]);
+
+  const logBasketSummary = useMemo(() => {
+    let totalKcal = 0;
+    const items = logBasket.map(({ basketId, selection }) => {
+      const kcal = foodSelectionToMealMacros(selection).calories;
+      totalKcal += kcal;
+      return { id: basketId, title: selection.name, kcal: Math.round(kcal) };
+    });
+    return { items, totalKcal };
+  }, [logBasket]);
+
+  const commitLogBasket = useCallback(() => {
+    if (logBasket.length === 0) return;
+    const mealIds: string[] = [];
+    let totalKcal = 0;
+    let firstTitle = "";
+    for (const { selection } of logBasket) {
+      const result = commitFoodSearchSelection(selection);
+      mealIds.push(result.id);
+      totalKcal += result.kcal;
+      if (!firstTitle) firstTitle = result.title;
+    }
+    setLogBasket([]);
+    presentLogSheetConfirmation({
+      title: logBasket.length === 1 ? firstTitle : `${logBasket.length} items`,
+      kcal: totalKcal,
+      mealIds,
+    });
+  }, [logBasket, commitFoodSearchSelection, presentLogSheetConfirmation]);
 
   const recipeOptions = useMemo((): RecipeCard[] => {
     return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
@@ -1788,8 +1949,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       else map.set(k, [m]);
     }
     const keys = [...map.keys()].sort((a, b) => {
-      const ia = MEAL_SECTION_ORDER.indexOf(a);
-      const ib = MEAL_SECTION_ORDER.indexOf(b);
+      const ia = mealSectionOrder.indexOf(a);
+      const ib = mealSectionOrder.indexOf(b);
       if (ia === -1 && ib === -1) return a.localeCompare(b);
       if (ia === -1) return 1;
       if (ib === -1) return -1;
@@ -1799,7 +1960,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       name,
       meals: [...map.get(name)!].sort(compareMealsByChronology),
     }));
-  }, [mealsForSelectedDate]);
+  }, [mealsForSelectedDate, mealSectionOrder]);
 
   // ENG-786 — "Log this/these again". Re-inserts the viewed day's
   // current entries for `slot` as fresh entries on the same day,
@@ -1916,8 +2077,8 @@ export const NutritionTracker = memo(function NutritionTracker({
     if (weeklyCheckinHandledRef.current) return;
     if (!authedUserId) return;
     const eligible = shouldShowWeeklyCheckin({
-      adaptiveTdeeConfidence: profileAdaptiveTdeeConfidenceRaw,
-      adaptiveTdee: profileAdaptiveTdeeRaw,
+      adaptiveTdeeConfidence: profileMaintenanceConfidence,
+      adaptiveTdee: profileMaintenanceTdee,
       daysLoggedThisWeek: weekData.loggedDaysInWeek,
       lastShownAt: weeklyCheckinShownAt,
     });
@@ -1926,7 +2087,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     weeklyCheckinHandledRef.current = true;
 
     const content = buildWeeklyCheckinContent({
-      adaptiveTdee: profileAdaptiveTdeeRaw as number,
+      adaptiveTdee: profileMaintenanceTdee as number,
       // `formulaKcal` is the prior baseline. Honest null when the
       // user's profile is incomplete — content builder suppresses
       // the delta line.
@@ -1940,7 +2101,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       sex: profileSex,
     });
     setWeeklyCheckinContent(content);
-    setWeeklyCheckinOpen(true);
+    // ENG-805 — never cold-open; the in-feed banner opens the dialog on tap.
 
     const nowIso = new Date().toISOString();
     setWeeklyCheckinShownAt(nowIso);
@@ -2023,6 +2184,62 @@ export const NutritionTracker = memo(function NutritionTracker({
       .eq("id", authedUserId);
   }, [authedUserId]);
 
+  const openWeeklyCheckinFromBanner = useCallback(() => {
+    try {
+      track(AnalyticsEvents.weekly_checkin_banner_tapped, {
+        weekKey: checkinWeekKey,
+        platform: "web",
+      });
+    } catch {
+      /* noop */
+    }
+    if (weeklyCheckinContent) {
+      setWeeklyCheckinOpen(true);
+      return;
+    }
+    if (!Number.isFinite(targets.calories) || targets.calories <= 0) return;
+    if (
+      profileMaintenanceConfidence !== "medium" &&
+      profileMaintenanceConfidence !== "high"
+    ) {
+      return;
+    }
+    if (profileMaintenanceTdee == null || profileMaintenanceTdee <= 0) return;
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: profileMaintenanceTdee as number,
+      priorTdee: profileFormulaTdee,
+      currentTargetKcal: targets.calories,
+      avgCaloriesThisWeek: weekData.weekAvg.calories,
+      weightDeltaKg: null,
+      sex: profileSex,
+    });
+    setWeeklyCheckinContent(content);
+    setWeeklyCheckinOpen(true);
+  }, [
+    checkinWeekKey,
+    weeklyCheckinContent,
+    targets.calories,
+    profileAdaptiveTdeeConfidenceRaw,
+    profileAdaptiveTdeeRaw,
+    profileFormulaTdee,
+    profileSex,
+    weekData.weekAvg.calories,
+  ]);
+
+  const dismissCheckinBannerWeb = useCallback(() => {
+    if (!authedUserId) return;
+    setCheckinBannerDismissed(true);
+    try {
+      track(AnalyticsEvents.weekly_checkin_banner_dismissed, {
+        weekKey: checkinWeekKey,
+        platform: "web",
+      });
+    } catch {
+      /* noop */
+    }
+    markCheckinBannerDismissed(authedUserId, checkinWeekKey);
+  }, [authedUserId, checkinWeekKey]);
+
   const maintenanceForWeek = profileMaintenanceTdee ?? baseCalorieTarget;
 
   const weekEffectiveCalorieBudget = useMemo(() => {
@@ -2038,6 +2255,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           activityBurnByDay,
           basalBurnByDay,
           workoutsByDay,
+          profileMaintenanceSource,
         ),
       0,
     );
@@ -2062,6 +2280,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // and `src/lib/nutrition/activityBonus.ts`.
   const activityAdjustment = computeActivityBonusKcal({
     prefer: preferActivityAdjustedCalories,
+    maintenanceSource: profileMaintenanceSource,
     dateKey: selectedDateKey,
     todayDateKey: todayKey(),
     restingKcal: basalBurnKcal,
@@ -2130,9 +2349,22 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({
+      checkin:
+        selectedDateKey === todayKey() &&
+        isCheckinBannerDay &&
+        checkinBannerDismissed === false,
       snap: selectedDateKey === todayKey() && mealsForSelectedDate.length === 0,
     }),
-    [selectedDateKey, mealsForSelectedDate.length],
+    [
+      selectedDateKey,
+      isCheckinBannerDay,
+      checkinBannerDismissed,
+      mealsForSelectedDate.length,
+    ],
+  );
+  const showBelowMealsCheckinWeb = isBelowMealsPromptVisible(
+    "checkin",
+    belowMealsPromptEligibleWeb,
   );
   const showBelowMealsSnapWeb = isBelowMealsPromptVisible(
     "snap",
@@ -2453,6 +2685,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               activityBurnByDay,
               basalBurnByDay,
               workoutsByDay,
+              profileMaintenanceSource,
             ),
           )}
           onSelectDayKey={(key) => {
@@ -2695,6 +2928,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       <div className="mt-10">
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
+        slotLabels={enabledMealSlots}
         mealsForSelectedDate={mealsForSelectedDate}
         effectiveCalorieTarget={effectiveCalorieTarget}
         fiberTarget={targets.fiber}
@@ -2715,6 +2949,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenMealNutrition={
           isFeatureEnabled("web_meal_nutrition_detail")
             ? setMealNutritionTargetId
+            : undefined
+        }
+        onEditMeal={
+          isFeatureEnabled("web_logged_meal_edit")
+            ? setEditMealTargetId
             : undefined
         }
         // 2026-05-02 parity sweep — empty-state collage (Add custom /
@@ -2764,6 +3003,12 @@ export const NutritionTracker = memo(function NutritionTracker({
       />
 
       {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
+      {showBelowMealsCheckinWeb && (
+        <WeeklyCheckinBanner
+          onOpen={openWeeklyCheckinFromBanner}
+          onDismiss={dismissCheckinBannerWeb}
+        />
+      )}
       {showBelowMealsSnapWeb && (
         <TodaySnapShortcut
           onPress={() => {
@@ -3343,11 +3588,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
           apps/mobile/app/meal-nutrition.tsx). Gated behind
           `web_meal_nutrition_detail`; resolves the full LoggedMeal (with micros)
-          from `mealsForSelectedDate` by id — no Supabase fetch (the data is
-          already in memory; mobile only fetches because it's a deep-linkable
-          route). Read-only on web: there is no web per-meal edit modal to route
-          to (mobile's header Edit is a platform-native deviation), so `onEdit`
-          is intentionally omitted. */}
+          from `mealsForSelectedDate` by id — no Supabase fetch. */}
       {isFeatureEnabled("web_meal_nutrition_detail") && (
         <MealNutritionDialog
           meal={
@@ -3357,6 +3598,32 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
           open={mealNutritionTargetId != null}
           onClose={() => setMealNutritionTargetId(null)}
+          onEdit={
+            isFeatureEnabled("web_logged_meal_edit")
+              ? (mealId) => {
+                  setMealNutritionTargetId(null);
+                  setEditMealTargetId(mealId);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {isFeatureEnabled("web_logged_meal_edit") && (
+        <EditMealDialog
+          meal={
+            editMealTargetId
+              ? mealsForSelectedDate.find((m) => m.id === editMealTargetId) ?? null
+              : null
+          }
+          anchorDayKey={selectedDateKey}
+          open={editMealTargetId != null}
+          slotLabels={enabledMealSlots}
+          onClose={() => setEditMealTargetId(null)}
+          onSave={async (updated) => {
+            const ok = await updateLoggedMeal(selectedDateKey, updated);
+            if (ok) toast.success("Meal updated");
+          }}
         />
       )}
 
@@ -3421,6 +3688,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       <LogSheet
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
+        confirmation={logSheetConfirmation ?? undefined}
+        showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with mobile
         // `apps/mobile/app/(tabs)/index.tsx`). Flag-gated visual element
         // (CLAUDE.md): the picker row is new structure so it ships behind
@@ -3431,7 +3700,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           isFeatureEnabled("log-sheet-slot-selector")
             ? {
                 current: mealSlot,
-                options: MEAL_SLOTS,
+                options: enabledMealSlots,
                 onChange: setMealSlot,
               }
             : undefined
@@ -3503,10 +3772,47 @@ export const NutritionTracker = memo(function NutritionTracker({
           onToggleFavorite: toggleFoodFavorite,
           favoritePendingKeys,
           onSelect: (selection) => {
-            commitFoodSearchSelection(selection);
-            setLogSheetOpen(false);
+            const result = commitFoodSearchSelection(selection);
+            presentLogSheetConfirmation({
+              title: result.title,
+              kcal: result.kcal,
+              mealIds: [result.id],
+            });
+          },
+          onAddToBasket: (selection) => {
+            setLogBasket((prev) => [
+              ...prev,
+              { basketId: newId("basket"), selection },
+            ]);
           },
         }}
+        goTos={
+          logSheetGoTos.length > 0
+            ? {
+                entries: logSheetGoTos,
+                onPick: (entry) => {
+                  const item = computeSlotGoToFoods(
+                    nutritionByDay,
+                    normaliseMealSlot(mealSlot) ?? "Snacks",
+                  ).find((i) => foodHistoryKey(i.recipeTitle, i.calories) === entry.id);
+                  if (!item) return;
+                  logHistoryItemFromSheet(item, mealSlot);
+                },
+              }
+            : undefined
+        }
+        basket={
+          logBasketSummary.items.length > 0
+            ? {
+                items: logBasketSummary.items,
+                totalKcal: logBasketSummary.totalKcal,
+                onRemove: (id) =>
+                  setLogBasket((prev) => prev.filter((row) => row.basketId !== id)),
+                onCommit: commitLogBasket,
+                onClear: () => setLogBasket([]),
+              }
+            : undefined
+        }
         barcode={{
           // Click the scan icon → close LogSheet, open the barcode
           // scanner. Web uses the existing BarcodeScannerDialog
@@ -3553,19 +3859,12 @@ export const NutritionTracker = memo(function NutritionTracker({
             }));
           })(),
           onPick: (picked) => {
-            setLogSheetOpen(false);
             const recent = computeRecentMeals(nutritionByDay, 12);
             const found = recent.find(
               (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
             );
             if (!found) return;
-            // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
-            // in the afternoon was logging picks as Snacks because this
-            // path used the time-of-day slot instead of the user's choice
-            // (mealSlot). Mobile parity: apps/mobile/app/(tabs)/index.tsx
-            // recents.onPick. Generic LogSheet-open paths reset mealSlot
-            // to time-of-day so the default is fresh.
-            logHistoryItem(found, mealSlot);
+            logHistoryItemFromSheet(found, mealSlot);
           },
         }}
         saved={{
@@ -3593,6 +3892,11 @@ export const NutritionTracker = memo(function NutritionTracker({
             // saved-meal's defaultMealSlot was its preference at save
             // time; the user has now explicitly picked a slot to log into.
             logSavedMeal(meal, mealSlot);
+          },
+          // ENG-776 — SaveMealDialog entry from the Saved tab.
+          onCreateSavedMeal: () => {
+            setLogSheetOpen(false);
+            openSaveMealDialog(mealSlot);
           },
         }}
         library={{

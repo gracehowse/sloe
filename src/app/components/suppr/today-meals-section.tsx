@@ -94,6 +94,12 @@ export interface TodayMealsSectionProps {
    */
   onOpenMealNutrition?: (mealId: string) => void;
   /**
+   * ENG-1122 — open the logged-meal edit dialog. When set (flag
+   * `web_logged_meal_edit` on), an "Edit" item renders in each meal row's
+   * kebab menu. Undefined (flag off) → no item.
+   */
+  onEditMeal?: (mealId: string) => void;
+  /**
    * Empty-state primary CTA — opens the unified `<LogSheet>`.
    *
    * 2026-05-02 parity sweep: the prior empty state collage (3 buttons —
@@ -135,6 +141,8 @@ export interface TodayMealsSectionProps {
   quickAddCollapsed?: boolean;
   onToggleQuickAddCollapsed?: () => void;
   quickAddPanel?: React.ReactNode;
+  /** ENG-1177 — enabled slot labels; defaults to classic four when omitted. */
+  slotLabels?: readonly string[];
 }
 
 /**
@@ -161,17 +169,20 @@ function getMealIcon(name: string): {
 /** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
 function slotPillClassName(sectionName: string): string {
   const { tone } = getMealIcon(sectionName);
+  // ENG-1109 — 11px slot pills use secondary foreground on soft tints
+  // (slot hue alone fails WCAG AA at caption size).
+  const label = "text-foreground-secondary";
   switch (tone) {
     case "slot-breakfast":
-      return "border-slot-breakfast/30 bg-slot-breakfast-soft text-slot-breakfast hover:opacity-90";
+      return `border-slot-breakfast/30 bg-slot-breakfast-soft ${label} hover:opacity-90`;
     case "slot-lunch":
-      return "border-slot-lunch/30 bg-slot-lunch-soft text-slot-lunch hover:opacity-90";
+      return `border-slot-lunch/30 bg-slot-lunch-soft ${label} hover:opacity-90`;
     case "slot-dinner":
-      return "border-slot-dinner/30 bg-slot-dinner-soft text-slot-dinner hover:opacity-90";
+      return `border-slot-dinner/30 bg-slot-dinner-soft ${label} hover:opacity-90`;
     case "slot-snack":
-      return "border-slot-snack/30 bg-slot-snack-soft text-slot-snack hover:opacity-90";
+      return `border-slot-snack/30 bg-slot-snack-soft ${label} hover:opacity-90`;
     default:
-      return "border-border bg-muted text-muted-foreground";
+      return "border-border bg-muted text-foreground-secondary";
   }
 }
 
@@ -224,11 +235,19 @@ function SlotMacroChips({
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-[11px] tabular-nums">
       <span className="text-muted-foreground">{kcal} kcal</span>
-      <span className="text-[var(--macro-protein)]">{Math.round(protein)}g</span>
-      <span className="text-[var(--macro-carbs)]">{Math.round(carbs)}g</span>
-      <span className="text-[var(--macro-fat)]">{Math.round(fat)}g</span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-protein-solid)]">
+        {Math.round(protein)}g
+      </span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-carbs-solid)]">
+        {Math.round(carbs)}g
+      </span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-fat-solid)]">
+        {Math.round(fat)}g
+      </span>
       {Number.isFinite(fiber) && fiber > 0 ? (
-        <span className="text-[var(--macro-fiber)]">{Math.round(fiber * 10) / 10}g</span>
+        <span data-testid="today-macro-chip-label" className="text-[var(--macro-fiber-solid)]">
+          {Math.round(fiber * 10) / 10}g
+        </span>
       ) : null}
     </div>
   );
@@ -272,6 +291,7 @@ export function TodayMealsSection({
   onRequestCopyMeal,
   onDeleteMeal,
   onOpenMealNutrition,
+  onEditMeal,
   onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
@@ -282,6 +302,7 @@ export function TodayMealsSection({
   quickAddCollapsed,
   onToggleQuickAddCollapsed,
   quickAddPanel,
+  slotLabels,
 }: TodayMealsSectionProps) {
   const showQuickAdd =
     mealsForSelectedDate.length > 0 &&
@@ -341,17 +362,18 @@ export function TodayMealsSection({
   // off → the legacy populated-only list + the "Log a meal" empty card (kept in
   // the else as the kill switch). Web-only: mobile already renders all four.
   const allSlotsOn = isFeatureEnabled("today_meals_all_slots_v1");
+  const enabledSlotLabels = slotLabels ?? MEAL_SLOTS;
   const slotsToRender = React.useMemo(() => {
     if (!allSlotsOn) return mealsGrouped;
     const byName = new Map(mealsGrouped.map((g) => [g.name, g]));
-    const standard = MEAL_SLOTS.map(
+    const standard = enabledSlotLabels.map(
       (name) => byName.get(name) ?? { name, meals: [] },
     );
     const extras = mealsGrouped.filter(
-      (g) => !(MEAL_SLOTS as readonly string[]).includes(g.name),
+      (g) => !(enabledSlotLabels as readonly string[]).includes(g.name),
     );
     return [...standard, ...extras];
-  }, [allSlotsOn, mealsGrouped]);
+  }, [allSlotsOn, mealsGrouped, enabledSlotLabels]);
 
   // ENG-1092 "Purposeful empties" — empty slots show "Aim ~X kcal" (redistributed
   // budget) where the macro chips sit on a populated slot. `consumedBySlot` feeds
@@ -370,7 +392,7 @@ export function TodayMealsSection({
   }, [mealsGrouped]);
 
   return (
-    <div className="mb-6">
+    <div className="mb-6" data-testid="today-meals-section">
       {!mealsFigmaLayout ? (
         <div className="flex items-start justify-between gap-3">
           <TodayScrollSectionHeader
@@ -531,6 +553,14 @@ export function TodayMealsSection({
                               onSelect={() => onOpenMealNutrition(meal.id)}
                             >
                               View nutrition
+                            </DropdownMenuItem>
+                          ) : null}
+                          {onEditMeal ? (
+                            <DropdownMenuItem
+                              data-testid={`today-meal-edit-${meal.id}`}
+                              onSelect={() => onEditMeal(meal.id)}
+                            >
+                              Edit
                             </DropdownMenuItem>
                           ) : null}
                           <DropdownMenuItem
@@ -704,7 +734,7 @@ export function TodayMealsSection({
                       return aim == null ? null : (
                         <p
                           data-testid={`today-slot-aim-${sectionName}`}
-                          className="text-[11px] text-muted-foreground tabular-nums mt-0.5"
+                          className="text-[11px] text-foreground-secondary tabular-nums mt-0.5"
                         >
                           {aimKcalLabel(aim)}
                         </p>
@@ -946,6 +976,16 @@ export function TodayMealsSection({
                               >
                                 <Icons.pieChart className="w-3.5 h-3.5" aria-hidden />
                                 View nutrition
+                              </DropdownMenuItem>
+                            )}
+                            {onEditMeal && (
+                              <DropdownMenuItem
+                                data-testid={`today-meal-edit-${meal.id}`}
+                                className={brandedSheets ? "mx-1" : undefined}
+                                onSelect={() => onEditMeal(meal.id)}
+                              >
+                                <Icons.edit className="w-3.5 h-3.5" aria-hidden />
+                                Edit
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem

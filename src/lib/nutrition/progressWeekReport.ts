@@ -52,6 +52,8 @@ export type WeekDayTotals = {
 export type WeekActivityAdjustment = {
   /** Profile flag `prefer_activity_adjusted_calories`. */
   prefer: boolean;
+  /** When maintenance came from measured HealthKit TDEE, bonus is suppressed (ENG-1111). */
+  maintenanceSource?: "measured" | "adaptive" | "formula" | null;
   /** Resting (basal) kcal burned, per day key. */
   restingByDay: Record<string, number | undefined>;
   /** Active kcal burned, per day key. */
@@ -176,6 +178,7 @@ export function buildWeekStats<M extends MealMacros>(
     const activityBonus = activity
       ? computeActivityBonusKcal({
           prefer: activity.prefer,
+          maintenanceSource: activity.maintenanceSource,
           dateKey: key,
           todayDateKey,
           restingKcal: activity.restingByDay[key] ?? 0,

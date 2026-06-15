@@ -29,9 +29,12 @@ describe("ENG-1092 inc 3 — web Plan config collapse", () => {
     expect(WEB).toMatch(/planner-start-date-row/);
   });
 
-  it("is default-OFF — not in REDESIGN_DEFAULT_ON (Grace ramps after red-line)", () => {
+  it("is default-ON — in REDESIGN_DEFAULT_ON (Grace red-lined it, f5c0349a)", () => {
+    // 2026-06-14 (f5c0349a): "flips plan_adjust_collapsed_v1 default-on per Grace"
+    // — the red-line happened, so the flag now ships ON like the rest of the
+    // ENG-1099 redesign wave. Legacy inline rows stay alive in the `else` (above).
     const start = FLAGS.indexOf("REDESIGN_DEFAULT_ON");
     const setBlock = FLAGS.slice(start, FLAGS.indexOf("]);", start));
-    expect(setBlock).not.toMatch(/plan_adjust_collapsed_v1/);
+    expect(setBlock).toMatch(/plan_adjust_collapsed_v1/);
   });
 });

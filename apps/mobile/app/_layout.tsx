@@ -159,11 +159,14 @@ function ForwardSocialSharesToImport() {
       if (action.kind === "forward-to-import") {
         router.replace({ pathname: "/import-shared", params: { url: action.url } });
       } else if (action.kind === "navigate") {
-        // ENG-800: well-known path aliases (e.g. suppr:///plan → the
-        // Plan tab, route file planner.tsx). Without this, the alias
-        // path has no registered route and Expo Router falls through
-        // to +not-found.tsx (the "recipe may have been deleted" 404).
-        router.replace(action.pathname as Parameters<typeof router.replace>[0]);
+        router.replace(
+          action.params
+            ? ({
+                pathname: action.pathname,
+                params: action.params,
+              } as Parameters<typeof router.replace>[0])
+            : (action.pathname as Parameters<typeof router.replace>[0]),
+        );
       }
       // "ignore" / "siri" → no-op (Siri owned by HandleSiriDeepLinks).
     },

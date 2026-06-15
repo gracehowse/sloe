@@ -144,7 +144,12 @@ describe("P0 OFF per-100g basis reconcile — every OFF ingest point", () => {
   });
 
   it("mobile lookupBarcode reconciles; searchOpenFoodFacts proxies OFF via API (ENG-1059)", () => {
-    expect(VERIFY_SRC).toMatch(/import\s*\{\s*reconcileOffPer100g\s*\}/);
+    // Mobile consolidates search + barcode in verifyRecipe.ts, so reconcileOffPer100g
+    // is imported alongside extractOffMacrosPerServing (a multi-symbol destructure) —
+    // tolerate other named imports while anchoring on the canonical reconcile module.
+    expect(VERIFY_SRC).toMatch(
+      /import\s*\{[^}]*\breconcileOffPer100g\b[^}]*\}\s*from\s*["'][^"']*reconcilePer100g["']/,
+    );
     expect(VERIFY_SRC).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
     expect(VERIFY_SRC).toMatch(/\/api\/off\/search/);
     expect(VERIFY_SRC).not.toMatch(
@@ -211,10 +216,15 @@ describe("ENG-702 portion picker — inline plausibility after scale", () => {
   });
 
   it("barcode hosts pass per-100g panel + basisCorrected into the pickers", () => {
-    expect(SCANNER_MODAL_SRC).toMatch(/macrosPer100g=\{\{/);
-    expect(SCANNER_MODAL_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
-    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/macrosPer100g=\{\{/);
-    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+    // ENG-702 refinement: both props are now wrapped in a `product.servingNoMass`
+    // ternary (pass the real per-100g panel + basisCorrected for mass-based
+    // products; null/false for serving-no-mass items where a gram-scale check is
+    // meaningless). Assert the wiring without over-pinning the literal `={{` JSX,
+    // so removal of either prop still fails loudly.
+    expect(SCANNER_MODAL_SRC).toMatch(/macrosPer100g=\{[\s\S]*?calories:\s*product\.calories/);
+    expect(SCANNER_MODAL_SRC).toMatch(/basisCorrected=\{[^}]*product\.basisCorrected\}/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/macrosPer100g=\{[\s\S]*?calories:\s*product\.calories/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/basisCorrected=\{[^}]*product\.basisCorrected\}/);
   });
 
   it("food-search preview hosts surface inline plausibility warnings", () => {

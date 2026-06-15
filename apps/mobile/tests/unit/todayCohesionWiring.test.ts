@@ -17,8 +17,11 @@ describe("Today cohesion — index.tsx host wiring", () => {
 
   it("F-159: every page-ground section break uses Layout.todaySectionBreak (one rhythm)", () => {
     // Meals, Weekly insight, Planned, Activity, Hydration all introduce on the
-    // same 32pt cadence. No section uses a bare Spacing.* margin for its break.
-    const breaks = src.match(/marginTop:\s*Layout\.todaySectionBreak/g) ?? [];
+    // same cadence. ENG-1099 M1 flag-gated the break — `tierV1 ? 0 :
+    // Layout.todaySectionBreak` (the 24 scroll gap is the rhythm when the tier
+    // flag is on; the 32 break stays in the else) — so the token is still the
+    // single rhythm source at every section.
+    const breaks = src.match(/marginTop:\s*tierV1\s*\?\s*0\s*:\s*Layout\.todaySectionBreak/g) ?? [];
     // 5 page-ground sections (Meals / Weekly insight / Planned / Activity /
     // Hydration). The Complete-Day section break lives in its extracted
     // component (TodayCompleteDayButton), not here.

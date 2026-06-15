@@ -49,6 +49,10 @@ import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
 import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landing/paywallTrust";
+import {
+  BARCODE_FREE_PAYWALL_CHIP,
+  BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
+} from "@suppr/shared/nutrition/barcodeFreePromise";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -256,7 +260,7 @@ export default function PaywallScreen() {
   // clear of the notch.
   const heroHeight = useMemo(() => {
     const h = Dimensions.get("window").height;
-    return Math.max(280, Math.min(Math.round(h * 0.44), 380)) + insets.top;
+    return Math.max(260, Math.min(Math.round(h * 0.38), 340)) + insets.top;
   }, [insets.top]);
 
   // PR-01 (audit 2026-04-28): `purchasing` was `"base" | "pro" | null`
@@ -816,7 +820,7 @@ export default function PaywallScreen() {
     // the bottom) never overlaps the scroll content. ~Spacing.xxxl is
     // the footer height + safe-area; insets.bottom is the home-indicator
     // padding on top of that.
-    scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl + 40 },
+    scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + 160 },
 
     // Frame `284:2` (2026-06-08): trust chips as a compact, centred row
     // directly above the CTA (the frame's trust-row position). Chip copy
@@ -844,6 +848,10 @@ export default function PaywallScreen() {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       backgroundColor: colors.backgroundSecondary,
+    },
+    barcodeTrustChip: {
+      borderColor: accent.primary,
+      backgroundColor: accent.primarySoft,
     },
     trustChipText: {
       fontSize: 11,
@@ -991,6 +999,42 @@ export default function PaywallScreen() {
 
   if (earlyRedirected) return <View style={styles.container} />;
 
+  // ENG-1161 — shared primary purchase CTA for in-scroll + sticky first-viewport bar.
+  const primaryPurchaseCta = !offeringsReady ? (
+    <PaywallCta
+      label="Loading plans…"
+      color={accent.primary}
+      disabled
+      loading={false}
+      onPress={() => undefined}
+    />
+  ) : subscriptionsUnavailable ? (
+    <PaywallCta
+      label="Open App Store to subscribe"
+      color={accent.primary}
+      disabled={false}
+      loading={false}
+      onPress={() => {
+        void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
+      }}
+    />
+  ) : hasPro ? (
+    <PaywallCta
+      label={
+        !currentProPkg
+          ? "Loading plans…"
+          : trialApplies
+            ? "Start free 7-day trial"
+            : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
+      }
+      color={trialApplies ? Accent.success : accent.primary}
+      disabled={!currentProPkg || purchasing !== null}
+      loading={purchasing === "pro"}
+      arrow={trialApplies && Boolean(currentProPkg)}
+      onPress={() => void onSelectTier("pro")}
+    />
+  ) : null;
+
   // ─── Render ─────────────────────────────────────────────────────
 
   return (
@@ -1094,6 +1138,14 @@ export default function PaywallScreen() {
             accessibilityRole="summary"
             accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
           >
+            <View
+              testID={BARCODE_FREE_PAYWALL_CHIP_TEST_ID}
+              style={[styles.trustChip, styles.barcodeTrustChip]}
+              accessibilityLabel={BARCODE_FREE_PAYWALL_CHIP.a11yLabel}
+            >
+              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
+              <Text style={styles.trustChipText}>{BARCODE_FREE_PAYWALL_CHIP.label}</Text>
+            </View>
             {trustChips.map((chip) => (
               <View key={chip.label} style={styles.trustChip} accessibilityLabel={chip.a11yLabel}>
                 <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
@@ -1101,54 +1153,6 @@ export default function PaywallScreen() {
               </View>
             ))}
           </View>
-        ) : null}
-
-        {/* Primary CTA (Figma `284:2`) — "Start free 7-day trial →" clay
-            pill. ALL state logic preserved verbatim from the prior
-            in-card CTA:
-              - Loading  → disabled, clay, "Loading plans…"
-              - Empty    → enabled, clay, "Open App Store to subscribe"
-                           → `itms-apps://…/subscriptions` (StoreKit
-                           failure escape hatch, ENG-528)
-              - Trial    → success-green, "Start free 7-day trial →",
-                           fires `onSelectTier("pro")`
-              - Subscribe→ clay, "Subscribe — {priceString}{suffix}",
-                           fires `onSelectTier("pro")`
-            CTA colour semantics (success-green for trial, clay
-            otherwise) + disabled/loading wiring unchanged. */}
-        {!offeringsReady ? (
-          <PaywallCta
-            label="Loading plans…"
-            color={accent.primary}
-            disabled
-            loading={false}
-            onPress={() => undefined}
-          />
-        ) : subscriptionsUnavailable ? (
-          <PaywallCta
-            label="Open App Store to subscribe"
-            color={accent.primary}
-            disabled={false}
-            loading={false}
-            onPress={() => {
-              void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
-            }}
-          />
-        ) : hasPro ? (
-          <PaywallCta
-            label={
-              !currentProPkg
-                ? "Loading plans…"
-                : trialApplies
-                  ? "Start free 7-day trial"
-                  : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
-            }
-            color={trialApplies ? Accent.success : accent.primary}
-            disabled={!currentProPkg || purchasing !== null}
-            loading={purchasing === "pro"}
-            arrow={trialApplies && Boolean(currentProPkg)}
-            onPress={() => void onSelectTier("pro")}
-          />
         ) : null}
 
         {offeringsReady && !subscriptionsUnavailable ? (
@@ -1294,17 +1298,10 @@ export default function PaywallScreen() {
         <Text style={styles.secondaryNote}>Payments handled by the App Store.</Text>
       </ScrollView>
 
-      {/* 2026-05-14 (premium-bar audit Group I #7): persistent
-          "Restore purchases" link pinned to the bottom of the
-          paywall, always visible regardless of scroll position. The
-          in-scroll restore link in the secondary rail above stays
-          (returning users land there as part of the secondary rail
-          + terms / privacy cluster), but testers below the fold
-          previously had to scroll back up to find restore when the
-          purchase flow stalled. Footer sits above the safe-area
-          inset so it doesn't ride into the home-indicator. */}
+      {/* ENG-1161 — sticky first-viewport primary purchase CTA + restore. */}
       <View
         pointerEvents="box-none"
+        testID="paywall-sticky-primary-cta"
         style={{
           position: "absolute",
           left: 0,
@@ -1312,12 +1309,14 @@ export default function PaywallScreen() {
           bottom: 0,
           paddingBottom: insets.bottom + Spacing.sm,
           paddingTop: Spacing.sm,
-          alignItems: "center",
+          paddingHorizontal: Spacing.xl,
+          gap: Spacing.sm,
           backgroundColor: colors.background,
           borderTopWidth: 1,
           borderTopColor: colors.border,
         }}
       >
+        {primaryPurchaseCta}
         <Pressable
           testID="paywall-restore-footer"
           onPress={() => void onRestore()}
@@ -1325,6 +1324,7 @@ export default function PaywallScreen() {
           accessibilityRole="button"
           accessibilityLabel="Restore previous purchases"
           hitSlop={8}
+          style={{ alignItems: "center" }}
         >
           {restoring ? (
             <ActivityIndicator size="small" color={colors.textSecondary} />

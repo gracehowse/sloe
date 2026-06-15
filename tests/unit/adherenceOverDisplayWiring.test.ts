@@ -3,10 +3,8 @@
  *
  * NOT a behavioural test. It guards that all four headline render sites
  * (web + mobile × hero ring + adherence card) actually consume the shared
- * `formatAdherenceHeadline` helper behind the `adherence_over_display`
- * feature flag — so the band-inverted display can't silently drift back to
- * a raw uncapped `{pct}%` on any one surface, and the flag gate can't be
- * dropped from one site. Behaviour is pinned by `adherenceDisplay.test.ts`;
+ * ENG-1073 — all four headline render sites consume `formatAdherenceHeadline`
+ * when adherence exceeds 110% (no feature-flag gate).
  * this only pins the wiring (a refactor deleting the import/flag fails here).
  */
 import { readFileSync } from "node:fs";
@@ -20,7 +18,7 @@ const SITES = {
   mobileCard: resolve(__dirname, "../../apps/mobile/components/progress/ProgressAverageAdherence.tsx"),
 } as const;
 
-describe("adherence_over_display wiring (source pin)", () => {
+describe("adherence over-display wiring (source pin, ENG-1073)", () => {
   for (const [name, path] of Object.entries(SITES)) {
     it(`${name} imports formatAdherenceHeadline from the shared module`, () => {
       const src = readFileSync(path, "utf8");
@@ -28,21 +26,20 @@ describe("adherence_over_display wiring (source pin)", () => {
       expect(src).toMatch(/nutrition\/adherenceDisplay/);
     });
 
-    it(`${name} gates the over branch behind isFeatureEnabled("adherence_over_display")`, () => {
+    it(`${name} uses formatAdherenceHeadline when adherencePct > 110 (no flag gate)`, () => {
       const src = readFileSync(path, "utf8");
-      expect(src).toMatch(/isFeatureEnabled\("adherence_over_display"\)/);
-      // The flag must gate ONLY the over branch — the >110 guard sits beside
-      // the flag check so the ≤110 (healthy) path is never flag-touched.
       expect(src).toMatch(/adherencePct > 110/);
+      expect(src).toMatch(/formatAdherenceHeadline\(adherencePct\)/);
+      expect(src).not.toMatch(/isFeatureEnabled\("adherence_over_display"\)/);
     });
   }
 
-  it("DevFlagOverrides lists the flag in the curated set", () => {
+  it("DevFlagOverrides no longer lists adherence_over_display (ENG-1073 shipped)", () => {
     const src = readFileSync(
       resolve(__dirname, "../../apps/mobile/components/settings/DevFlagOverrides.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/"adherence_over_display"/);
+    expect(src).not.toMatch(/"adherence_over_display"/);
   });
 
   it("progressRangeStats leaves adherencePct raw/uncapped (presentation owns the fix)", () => {

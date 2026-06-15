@@ -193,6 +193,61 @@ describe("resolveMaintenance", () => {
     expect(resolved!.source).toBe("formula");
     expect(resolved!.confidence).toBeNull();
   });
+
+  it("ENG-1111 — prefers measured TDEE when flag on and confidence is medium+", () => {
+    const now = new Date("2026-06-14T12:00:00Z");
+    const resolved = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: 1329,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: "2026-06-13T12:00:00Z",
+        measured_tdee: 1900,
+        measured_tdee_confidence: "medium",
+        measured_tdee_updated_at: "2026-06-13T12:00:00Z",
+      },
+      { now, enableMeasured: true },
+    );
+    expect(resolved!.source).toBe("measured");
+    expect(resolved!.kcal).toBe(1900);
+    expect(resolved!.confidence).toBe("medium");
+  });
+
+  it("ENG-1111 — measured off → adaptive wins over measured columns", () => {
+    const now = new Date("2026-06-14T12:00:00Z");
+    const resolved = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: 2500,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: "2026-06-13T12:00:00Z",
+        measured_tdee: 1900,
+        measured_tdee_confidence: "high",
+        measured_tdee_updated_at: "2026-06-13T12:00:00Z",
+      },
+      { now, enableMeasured: false },
+    );
+    expect(resolved!.source).toBe("adaptive");
+    expect(resolved!.kcal).toBe(2500);
+  });
+
+  it("ENG-1111 — stale measured falls through to adaptive", () => {
+    const now = new Date("2026-06-14T12:00:00Z");
+    const stale = new Date(now.getTime() - (ADAPTIVE_STALE_DAYS + 2) * 86_400_000).toISOString();
+    const resolved = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: 2500,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: "2026-06-13T12:00:00Z",
+        measured_tdee: 1900,
+        measured_tdee_confidence: "high",
+        measured_tdee_updated_at: stale,
+      },
+      { now, enableMeasured: true },
+    );
+    expect(resolved!.source).toBe("adaptive");
+  });
 });
 
 /**
@@ -292,5 +347,18 @@ describe("buildMaintenancePopoverCopy", () => {
     // Shouldn't contain "null confidence" — should pick a sensible default.
     expect(copy).not.toContain("null");
     expect(copy).toMatch(/(low|medium|high) confidence/);
+  });
+
+  it("ENG-1111 — measured source mentions Apple Health", () => {
+    const copy = buildMaintenancePopoverCopy({
+      kcal: 1900,
+      source: "measured",
+      confidence: "medium",
+      formulaKcal: 2100,
+      adaptiveRejectedAsStale: false,
+      adaptiveRejectedBelowFormula: false,
+      rejectedAdaptiveKcal: null,
+    });
+    expect(copy).toMatch(/Apple Health/);
   });
 });

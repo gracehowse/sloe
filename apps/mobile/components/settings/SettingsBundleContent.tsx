@@ -45,6 +45,7 @@ import {
   LayoutGrid,
   Mail,
   Moon,
+  Package,
   Palette,
   PlusCircle,
   RefreshCw,
@@ -84,6 +85,12 @@ import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/shared/nutrition/weekStartDayClient";
+import {
+  MEAL_SLOT_PRESET_OPTIONS,
+  parseUserMealSlotConfig,
+  type MealSlotPreset,
+} from "@suppr/shared/nutrition/userMealSlotConfig";
+import { parsePantryStaples } from "@suppr/shared/planning/pantryStaples";
 import {
   normalizeWeekSummaryMode,
   type WeekSummaryMode,
@@ -837,6 +844,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [eraseConfirmInput, setEraseConfirmInput] = useState("");
   const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
   const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
+  const [mealSlotPreset, setMealSlotPreset] = useState<MealSlotPreset>("classic");
+  const [mealSlotPickerOpen, setMealSlotPickerOpen] = useState(false);
+  const [pantryStaples, setPantryStaples] = useState<readonly string[]>([]);
+  const [pantryPickerOpen, setPantryPickerOpen] = useState(false);
+  const [pantryInput, setPantryInput] = useState("");
   // Audit 2026-05-22 subtractive: Promo code block was always-expanded
   // (input field + Apply button + caption visible for every user even
   // when most never use a code). Collapsed by default behind a chevron
@@ -1349,6 +1361,27 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     [userId, weekSummaryMode],
   );
 
+  const savePantryStaples = useCallback(
+    async (next: readonly string[]) => {
+      const normalized = parsePantryStaples(next);
+      const previous = pantryStaples;
+      setPantryStaples(normalized);
+      if (!userId) return;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ pantry_staples: normalized })
+        .eq("id", userId);
+      if (error) {
+        setPantryStaples(previous);
+        Alert.alert(
+          "Could not save",
+          "We couldn't save your pantry staples. Please try again.",
+        );
+      }
+    },
+    [userId, pantryStaples],
+  );
+
   useEffect(() => {
     if (!userId) return;
     void (async () => {
@@ -1356,7 +1389,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       let resp = await supabase
         .from("profiles")
         .select(
-          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window, notification_prefs",
+          "tracked_macros, week_start_day, meal_slot_config, pantry_staples, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window, notification_prefs",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -1378,6 +1411,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       ) {
         setWeekStartDay(data.week_start_day);
       }
+      setMealSlotPreset(parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config).preset);
+      setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown }).pantry_staples));
       const tc = (data as any).target_caffeine_mg;
       if (typeof tc === "number" && Number.isFinite(tc) && tc >= 0) {
         setTargetCaffeineMg(Math.round(tc));
@@ -2050,6 +2085,29 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           label="Week starts on"
           sub={weekStartDay === "monday" ? "Monday" : "Sunday"}
           onPress={() => setWeekStartPickerOpen(true)}
+        />
+        <SettingsRow
+          testID="settings-bundle-meal-slots-row"
+          icon={AlignLeft}
+          iconColor={t.accent}
+          label="Meal slots"
+          sub={
+            MEAL_SLOT_PRESET_OPTIONS.find((o) => o.id === mealSlotPreset)?.label ??
+            "Breakfast, lunch, dinner & snacks"
+          }
+          onPress={() => setMealSlotPickerOpen(true)}
+        />
+        <SettingsRow
+          testID="settings-bundle-pantry-row"
+          icon={Package}
+          iconColor={t.accent}
+          label="Pantry staples"
+          sub={
+            pantryStaples.length > 0
+              ? `${pantryStaples.length} always on hand`
+              : "Skip when generating shopping list"
+          }
+          onPress={() => setPantryPickerOpen(true)}
         />
         {/* Deficit summary window — controls whether the Today
             burn/deficit averages cover the last 7 days ending on the
@@ -3677,6 +3735,196 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 )}
               </Pressable>
             ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ENG-1177 — meal slot preset (classic / 4 / 6 meals). */}
+      <Modal
+        visible={mealSlotPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMealSlotPickerOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+            onPress={() => setMealSlotPickerOpen(false)}
+          />
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
+              paddingTop: Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: Spacing.lg,
+              }}
+            >
+              Meal slots
+            </Text>
+            {MEAL_SLOT_PRESET_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.id}
+                testID={`meal-slot-preset-${opt.id}`}
+                onPress={() => {
+                  const previous = mealSlotPreset;
+                  if (previous === opt.id) {
+                    setMealSlotPickerOpen(false);
+                    return;
+                  }
+                  setMealSlotPreset(opt.id);
+                  setMealSlotPickerOpen(false);
+                  if (!userId) return;
+                  void (async () => {
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({ meal_slot_config: { preset: opt.id } })
+                      .eq("id", userId);
+                    if (error) {
+                      setMealSlotPreset(previous);
+                      Alert.alert(
+                        "Could not save",
+                        "We couldn't save your meal-slot preference. Please try again.",
+                      );
+                    }
+                  })();
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 14,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.cardBorder,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "500", color: colors.text }}>
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                    {opt.description}
+                  </Text>
+                </View>
+                {mealSlotPreset === opt.id ? (
+                  <CheckCircle2 size={22} color={accent.primary} strokeWidth={1.75} />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={pantryPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPantryPickerOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.35)" }}>
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
+              paddingTop: Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 8 }}>
+              Pantry staples
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.lg }}>
+              Ingredients you always keep on hand — we skip them when generating your shopping list.
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.lg }}>
+              {pantryStaples.map((name) => (
+                <Pressable
+                  key={name}
+                  testID={`pantry-staple-chip-${name}`}
+                  onPress={() => void savePantryStaples(pantryStaples.filter((s) => s !== name))}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: colors.fillQuiet,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.text }}>{name}</Text>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>×</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                testID="pantry-staple-input"
+                value={pantryInput}
+                onChangeText={setPantryInput}
+                placeholder="e.g. olive oil, salt"
+                placeholderTextColor={colors.textTertiary}
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  borderRadius: Radius.lg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  color: colors.text,
+                  fontSize: 15,
+                }}
+                onSubmitEditing={() => {
+                  const next = pantryInput.trim();
+                  if (!next) return;
+                  if (pantryStaples.some((s) => s.toLowerCase() === next.toLowerCase())) {
+                    setPantryInput("");
+                    return;
+                  }
+                  void savePantryStaples([...pantryStaples, next]);
+                  setPantryInput("");
+                }}
+              />
+              <SupprButton
+                label="Add"
+                variant="primary"
+                onPress={() => {
+                  const next = pantryInput.trim();
+                  if (!next) return;
+                  if (pantryStaples.some((s) => s.toLowerCase() === next.toLowerCase())) {
+                    setPantryInput("");
+                    return;
+                  }
+                  void savePantryStaples([...pantryStaples, next]);
+                  setPantryInput("");
+                }}
+              />
+            </View>
+            <Pressable
+              onPress={() => setPantryPickerOpen(false)}
+              style={{ marginTop: Spacing.lg, alignSelf: "center" }}
+            >
+              <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primary }}>Done</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

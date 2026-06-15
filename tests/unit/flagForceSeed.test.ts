@@ -18,8 +18,10 @@
  *  - Query param overlays (and wins over) any persisted localStorage value.
  *  - Inert in production.
  *
- * `today_log_again` is a non-redesign flag (default-OFF, PostHog-resolved),
- * so a forced value is unambiguously distinguishable from the live client.
+ * `qa_test_flag_snake` / `qa-test-flag-hyphen` are QA-only flags NOT in
+ * REDESIGN_DEFAULT_ON (default-OFF, PostHog-resolved), so a forced value is
+ * unambiguously distinguishable from the live client. (today_log_again and
+ * log-sheet-slot-selector — the previous examples — became default-ON via ENG-771.)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -39,8 +41,8 @@ import {
   __resetForcedFlagSeedForTests,
 } from "@/lib/analytics/track";
 
-const FLAG = "today_log_again";
-const HYPHEN_FLAG = "log-sheet-slot-selector";
+const FLAG = "qa_test_flag_snake";
+const HYPHEN_FLAG = "qa-test-flag-hyphen";
 const STORAGE_KEY = "__suppr_force_flags__";
 
 type ForceGlobal = { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };

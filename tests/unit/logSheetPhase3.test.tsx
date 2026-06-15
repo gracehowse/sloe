@@ -338,6 +338,17 @@ describe("LogSheet (web) — Recent / Saved browse pills (Phase 4 / Next-10 #12)
     expect(screen.getByText("No saved meals yet")).toBeDefined();
   });
 
+  it("ENG-776 — saved empty state fires onCreateSavedMeal", () => {
+    const onCreateSavedMeal = vi.fn();
+    open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: [], onPick: () => {}, onCreateSavedMeal },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Saved meals" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save a usual meal" }));
+    expect(onCreateSavedMeal).toHaveBeenCalledTimes(1);
+  });
+
   it("saved row click fires onPick with the meal", () => {
     const onPick = vi.fn();
     // Explicitly clear `recent` so the Recent / Saved 2-pill toggle

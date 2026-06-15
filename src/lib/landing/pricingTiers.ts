@@ -91,7 +91,7 @@ export const PRICING_TIERS: PricingTier[] = [
       // empirical TDEE. Strongest single Free-tier reason to switch.
       "Adaptive TDEE — your target re-tunes as we learn your real maintenance",
       "Recipe import from URL, Instagram, TikTok, YouTube",
-      "Barcode scanning",
+      "Barcode scanning — free forever",
       "Cook mode with inline timers",
       "Fiber & water tracking",
       "Single-day meal plan",

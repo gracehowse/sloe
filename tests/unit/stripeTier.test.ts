@@ -5,6 +5,11 @@ import { updateProfileTierServiceRole } from "../../src/lib/stripe/updateProfile
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
     from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: { user_tier: "free" }, error: null }),
+        }),
+      }),
       update: () => ({
         eq: async () => ({ error: null }),
       }),
@@ -117,6 +122,11 @@ describe("updateProfileTierServiceRole", () => {
     const { createClient } = await import("@supabase/supabase-js");
     vi.mocked(createClient).mockReturnValueOnce({
       from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: { user_tier: "free" }, error: null }),
+          }),
+        }),
         update: () => ({
           eq: async () => ({ error: { message: "fail" } }),
         }),

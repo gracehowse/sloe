@@ -4,7 +4,7 @@ import {
   type OffServingOption,
 } from "./offServingPortions.ts";
 import { parseOffMicrosPer100g } from "./parseOffMicros.ts";
-import { reconcileOffPer100g } from "./reconcilePer100g.ts";
+import { reconcileOffPer100g, extractOffMacrosPerServing } from "./reconcilePer100g.ts";
 
 export type { OffServingOption };
 
@@ -40,6 +40,9 @@ export interface OffProductMacros {
    * "double-check these numbers" warning when set.
    */
   basisCorrected?: boolean;
+  /** ENG-774 — per-serving label with no gram mass; scale by serving count. */
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number };
+  servingNoMass?: boolean;
 }
 
 export async function fetchProductByBarcode(code: string): Promise<
@@ -95,6 +98,8 @@ export async function fetchProductByBarcode(code: string): Promise<
     // basis disagreement. fiber/sugar/sodium stay on their `_100g` fields
     // only (no per-serving fallback) for the same reason.
     const recon = reconcileOffPer100g(n, p);
+    const macrosPerServing =
+      recon.servingNoMass ? extractOffMacrosPerServing(n) : null;
     // ENG-738 (2026-05-26) — fiber/sugar/sodium + micros below still read the
     // raw `*_100g` fields, which secretly hold per-serving values on a
     // `nutrition_data_per:"serving"` row. Rescale them onto the same
@@ -127,7 +132,10 @@ export async function fetchProductByBarcode(code: string): Promise<
     // ENG-738 — scale micros by the per-100g factor to match the macro basis.
     const microsPer100g = parseOffMicrosPer100g(n, f);
     const servingOptions = buildOffServingOptionsFromProduct(p);
-    const servingSizeG = pickDefaultServingGrams(servingOptions);
+    const servingSizeG =
+      recon.servingNoMass && macrosPerServing
+        ? 1
+        : pickDefaultServingGrams(servingOptions);
     const rawServing = (p.serving_size ?? "").trim();
     return {
       ok: true,
@@ -147,6 +155,8 @@ export async function fetchProductByBarcode(code: string): Promise<
         servingSizeG,
         servingOptions,
         basisCorrected: recon.corrected,
+        ...(macrosPerServing ? { macrosPerServing } : {}),
+        ...(recon.servingNoMass ? { servingNoMass: true } : {}),
       },
     };
   } catch (e) {

@@ -45,6 +45,7 @@ import {
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/shared/nutrition/resolveMaintenance";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/shared/nutrition/measuredTdee";
 import { buildMaintenanceChain } from "@suppr/shared/nutrition/maintenanceChain";
 import type { PlanPace } from "@suppr/shared/nutrition/tdee";
 import {
@@ -246,6 +247,9 @@ export default function ProgressScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
   const [adaptiveUpdatedAt, setAdaptiveUpdatedAt] = useState<string | null>(null);
+  const [measuredTdee, setMeasuredTdee] = useState<number | null>(null);
+  const [measuredTdeeConfidence, setMeasuredTdeeConfidence] = useState<string | null>(null);
+  const [measuredTdeeUpdatedAt, setMeasuredTdeeUpdatedAt] = useState<string | null>(null);
   const [isAdaptiveTdee, setIsAdaptiveTdee] = useState(false);
   // Profile basics cached for the shared `resolveMaintenance` resolver —
   // lets us fall back to the Mifflin formula when adaptive TDEE is
@@ -453,7 +457,7 @@ export default function ProgressScreen() {
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
         .eq("id", userId)
         .maybeSingle())();
     const [entriesResult, profileResult] = await Promise.all([
@@ -569,6 +573,10 @@ export default function ProgressScreen() {
       const aConf = ((profile as any).adaptive_tdee_confidence as string) ?? null;
       setAdaptiveConfidence(aConf);
       setAdaptiveUpdatedAt(((profile as any).adaptive_tdee_updated_at as string | null) ?? null);
+      const mTdee = (profile as any).measured_tdee != null ? Number((profile as any).measured_tdee) : null;
+      setMeasuredTdee(Number.isFinite(mTdee) ? mTdee : null);
+      setMeasuredTdeeConfidence(((profile as any).measured_tdee_confidence as string) ?? null);
+      setMeasuredTdeeUpdatedAt(((profile as any).measured_tdee_updated_at as string | null) ?? null);
       setProfileSexState(sex);
       setProfileHeightCmState(heightCm);
       setProfileAgeState(ageVal);
@@ -702,20 +710,29 @@ export default function ProgressScreen() {
   // bundle can reuse its resolved kcal as the maintenance fallback.
   const recapMaintenance = useMemo(
     () =>
-      resolveMaintenance({
-        adaptive_tdee: adaptiveTdee,
-        adaptive_tdee_confidence: adaptiveConfidence,
-        adaptive_tdee_updated_at: adaptiveUpdatedAt,
-        sex: profileSexState as any,
-        weight_kg: latestWeightKg ?? 70,
-        height_cm: profileHeightCmState,
-        age: profileAgeState,
-        activity_level: profileActivityLevelState as any,
-      }),
+      resolveMaintenance(
+        {
+          adaptive_tdee: adaptiveTdee,
+          adaptive_tdee_confidence: adaptiveConfidence,
+          adaptive_tdee_updated_at: adaptiveUpdatedAt,
+          measured_tdee: measuredTdee,
+          measured_tdee_confidence: measuredTdeeConfidence,
+          measured_tdee_updated_at: measuredTdeeUpdatedAt,
+          sex: profileSexState as any,
+          weight_kg: latestWeightKg ?? 70,
+          height_cm: profileHeightCmState,
+          age: profileAgeState,
+          activity_level: profileActivityLevelState as any,
+        },
+        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+      ),
     [
       adaptiveTdee,
       adaptiveConfidence,
       adaptiveUpdatedAt,
+      measuredTdee,
+      measuredTdeeConfidence,
+      measuredTdeeUpdatedAt,
       profileSexState,
       latestWeightKg,
       profileHeightCmState,
@@ -742,6 +759,7 @@ export default function ProgressScreen() {
     }
     return {
       prefer: true,
+      maintenanceSource: recapMaintenance?.source ?? null,
       restingByDay: basalBurnByDay,
       activeByDay: activityBurnByDay,
       workoutKcalByDay,
@@ -1625,18 +1643,25 @@ export default function ProgressScreen() {
 
         {/* MAINTENANCE card */}
         {staticTdee != null && (() => {
-          const resolved = resolveMaintenance({
-            adaptive_tdee: adaptiveTdee,
-            adaptive_tdee_confidence: adaptiveConfidence,
-            adaptive_tdee_updated_at: adaptiveUpdatedAt,
-            sex: profileSexState as any,
-            weight_kg: latestWeightKg ?? 70,
-            height_cm: profileHeightCmState,
-            age: profileAgeState,
-            activity_level: profileActivityLevelState as any,
-          });
+          const resolved = resolveMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee,
+              adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt,
+              measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence,
+              measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSexState as any,
+              weight_kg: latestWeightKg ?? 70,
+              height_cm: profileHeightCmState,
+              age: profileAgeState,
+              activity_level: profileActivityLevelState as any,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          );
           if (!resolved) return null;
           const showAdaptiveExtras = resolved.source === "adaptive";
+          const showMeasuredExtras = resolved.source === "measured";
           return (
           <View
             testID="progress-maintenance-card"
@@ -1649,7 +1674,15 @@ export default function ProgressScreen() {
                 </IconBox>
                 <Text style={{ ...Type.headline, color: t.plum }}>Maintenance</Text>
               </View>
-              {showAdaptiveExtras ? (
+              {showMeasuredExtras ? (
+                <View
+                  testID="maintenance-source-pill"
+                  accessibilityLabel="Maintenance source: Apple Health"
+                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
+                >
+                  <Text style={{ ...Type.label, color: t.green }}>Apple Health</Text>
+                </View>
+              ) : showAdaptiveExtras ? (
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: adaptive"
@@ -1671,7 +1704,7 @@ export default function ProgressScreen() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.sm, marginBottom: Spacing.sm }}>
-              <Text style={{ ...Type.display, color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...Type.display, color: showAdaptiveExtras || showMeasuredExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
                 {resolved.kcal.toLocaleString()}
               </Text>
               <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>

@@ -2,7 +2,6 @@ import { Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Spacing } from "@/constants/theme";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
 
 /**
@@ -93,9 +92,7 @@ export function ProgressHeroMetric({
   // are unchanged, and the ≤110% path is untouched. Else = today's raw red
   // `{pct}%` centre. Mirror: web.
   const overDisplay =
-    isFeatureEnabled("adherence_over_display") && adherencePct > 110
-      ? formatAdherenceHeadline(adherencePct)
-      : null;
+    adherencePct > 110 ? formatAdherenceHeadline(adherencePct) : null;
 
   const statLine: string[] = [];
   if (avgCaloriesPerDay != null) {

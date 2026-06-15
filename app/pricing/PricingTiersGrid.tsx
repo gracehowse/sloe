@@ -83,7 +83,7 @@ export function PricingTiersGrid({
   stripeTaxEnabled = false,
   paywallFrom,
   regionVatNote = "",
-  regionCurrency: _regionCurrency = "GBP",
+  regionCurrency = "GBP",
   regionNote = "",
 }: {
   tiers: Tier[];
@@ -345,6 +345,7 @@ export function PricingTiersGrid({
               <CheckoutButton
                 tier={tier.checkoutTier}
                 period={billing}
+                currency={regionCurrency}
                 label={tier.cta}
                 highlighted={tier.highlighted}
               />

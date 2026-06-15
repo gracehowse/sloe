@@ -123,7 +123,7 @@ for replay/debug.
 
 **Action:** in RC dashboard → Project Settings → Integrations →
 Webhook, add `https://suppr.app/api/revenuecat-webhook` and paste
-the shared-secret matching `REVENUECAT_WEBHOOK_SECRET` in Vercel
+the shared-secret matching `REVENUECAT_WEBHOOK_AUTH` in Vercel
 env. Send a test event from the RC UI and confirm a 200.
 
 ---

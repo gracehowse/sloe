@@ -85,6 +85,25 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     expect(SRC.mobileVerifyLib).toMatch(/supabase\.rpc\("save_verified_ingredients"/);
   });
 
+  it("web RecipeDetail auto-verify uses saveVerifiedIngredientsRpc (ENG-1108)", () => {
+    expect(SRC.webRecipe).toMatch(/saveVerifiedIngredientsRpc/);
+    expect(SRC.webRecipe).not.toMatch(/from\("recipe_ingredients"\)\.update\(scrubbed\)/);
+    expect(SRC.webRecipe).not.toMatch(/verified_source: "auto_verify"[\s\S]{0,400}?\.from\("recipes"\)\.update/);
+    expect(SRC.webRecipe).toMatch(/inferAllergensFromIngredients/);
+    expect(SRC.webRecipe).toMatch(/allRowsVerified/);
+    expect(SRC.webRecipe).toMatch(/verified_at: new Date\(\)\.toISOString\(\)/);
+  });
+
+  it("ENG-1108 save_verified_ingredients migration persists verify metadata atomically", () => {
+    const migration = readFileSync(
+      resolve(__dirname, "../../supabase/migrations/20260614120200_eng1108_save_verified_metadata.sql"),
+      "utf8",
+    );
+    expect(migration).toMatch(/verified_at/);
+    expect(migration).toMatch(/verified_confidence/);
+    expect(migration).toMatch(/verified_source/);
+  });
+
   it("save_verified_ingredients migration exists for atomic verify writes (ENG-662)", () => {
     const migration = readFileSync(
       resolve(__dirname, "../../supabase/migrations/20260527100000_save_verified_ingredients_rpc.sql"),

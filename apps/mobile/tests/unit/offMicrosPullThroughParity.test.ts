@@ -120,7 +120,13 @@ describe("F-79 — ingest layer pulls full micro set", () => {
 
   it("web FoodSearchPanel passes through microsPer100g from proxied OFF hits (ENG-1059)", () => {
     expect(SRC.webSearch).toMatch(/\/api\/off\/search/);
-    expect(SRC.webSearch).toMatch(/microsPer100g:\s*h\.microsPer100g/);
+    // ENG-1077 — the row now passes the OFF hit's micros through the
+    // per-micronutrient plausibility clamp before reaching the preview, so the
+    // bare `h.microsPer100g` became `optionalSanitizedMicrosPer100g(h.microsPer100g)`.
+    // Still requires `h.microsPer100g` so a genuine drop of the pull-through fails.
+    expect(SRC.webSearch).toMatch(
+      /microsPer100g:\s*optionalSanitizedMicrosPer100g\(h\.microsPer100g\)/,
+    );
   });
 
   it("ENG-1062 — preview surfaces scaled vendor micros beyond fibre/sugar/sodium", () => {

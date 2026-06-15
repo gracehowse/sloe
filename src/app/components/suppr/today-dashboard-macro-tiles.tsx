@@ -14,6 +14,8 @@ import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -284,6 +286,10 @@ function buildMacroTile(
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
   const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
+  // ENG-1099 — recipe-tier macro tiles (strip bar+caption, value-colour
+  // over-signal). ENG-1098 Calm mode neutralises the over-signal.
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
+  const [calmMode] = useCalmMode();
 
   return (
     <div className="mb-3">
@@ -292,10 +298,21 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
         const { Icon } = tile;
+        // ENG-1099 value-colour signal: empty → tertiary; on/under → macro hue;
+        // over a flagged macro → amber + semibold (the second channel so Fat,
+        // whose hue is already amber, still reads "over"). Calm mode neutralises.
+        const overSignal = tierV1 && tile.captionTone === "over" && !calmMode;
+        const tierValueStyle: React.CSSProperties = !tierV1
+          ? {}
+          : !tile.hasValue
+            ? { color: "var(--foreground-tertiary)" }
+            : overSignal
+              ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
+              : { color: tile.fillVar };
         return (
           <div
             key={macroKey}
-            className="rounded-card bg-card card-slab p-4 flex flex-col justify-between min-h-24"
+            className={`rounded-card bg-card card-slab p-4 flex flex-col ${tierV1 ? "gap-2" : "justify-between min-h-24"}`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-foreground-secondary">
@@ -324,6 +341,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 className={`font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums tracking-tight shrink-0 ${
                   tile.hasValue ? "text-foreground" : "text-foreground-tertiary"
                 }`}
+                style={tierValueStyle}
               >
                 {tile.valueText}
               </span>
@@ -331,40 +349,47 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            <div
-              className="mt-2 h-1 rounded-full overflow-hidden bg-border"
-            >
-              <div
-                className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
-                style={{
-                  width: `${tile.pct}%`,
-                  background: tile.fillVar,
-                  opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
-                }}
-              />
-            </div>
-            {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
-                (sage) / "N g over" (amber) / muted "ref N" for reference-only
-                macros. The at-a-glance "how much left" read today.md §3.3/§4
-                calls the warm-coaching payoff. Reserve the row height even when
-                suppressed (unlogged tile) so the grid stays even. */}
-            <span
-              data-testid={`today-macro-tile-caption-${macroKey}`}
-              className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
-                tile.captionTone === "under"
-                  ? "text-success"
-                  : tile.captionTone === "over"
-                    ? ""
-                    : "text-foreground-tertiary"
-              }`}
-              style={
-                tile.captionTone === "over"
-                  ? { color: "var(--accent-warning-solid)" }
-                  : undefined
-              }
-            >
-              {tile.caption}
-            </span>
+            {/* ENG-1099: tier tile drops the bar + caption — the value colour
+                carries the over/under signal (recipe-strip pattern). Flag-off
+                keeps the pre-ENG-1099 bar + caption. */}
+            {tierV1 ? null : (
+              <>
+                <div
+                  className="mt-2 h-1 rounded-full overflow-hidden bg-border"
+                >
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
+                    style={{
+                      width: `${tile.pct}%`,
+                      background: tile.fillVar,
+                      opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
+                    }}
+                  />
+                </div>
+                {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
+                    (sage) / "N g over" (amber) / muted "ref N" for reference-only
+                    macros. The at-a-glance "how much left" read today.md §3.3/§4
+                    calls the warm-coaching payoff. Reserve the row height even when
+                    suppressed (unlogged tile) so the grid stays even. */}
+                <span
+                  data-testid={`today-macro-tile-caption-${macroKey}`}
+                  className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
+                    tile.captionTone === "under"
+                      ? "text-success"
+                      : tile.captionTone === "over"
+                        ? ""
+                        : "text-foreground-tertiary"
+                  }`}
+                  style={
+                    tile.captionTone === "over"
+                      ? { color: "var(--accent-warning-solid)" }
+                      : undefined
+                  }
+                >
+                  {tile.caption}
+                </span>
+              </>
+            )}
           </div>
         );
       })}

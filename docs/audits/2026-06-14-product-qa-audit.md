@@ -737,3 +737,165 @@ The launch-critical path should start with five concrete fixes:
 After those, run the dedicated destructive passes: fresh signup/onboarding,
 StoreKit subscription lifecycle, import failure matrix, and network-failure
 journeys.
+
+## Destructive Pass Addendum - 2026-06-14
+
+Scope: targeted destructive passes requested after the main audit:
+
+- Fresh signup/onboarding
+- StoreKit / subscription lifecycle
+- Import failure matrix
+- Network-failure journeys
+
+This addendum combines automated tests, live simulator attempts, and explicit
+environment blockers. No production data or Grace's signed-in simulator state
+was altered.
+
+### Fresh Signup / Onboarding
+
+Automated coverage:
+
+- Web onboarding/auth destructive batch: 17 files passed on the first run; one
+  `tests/unit/onboardingSteps.test.tsx` welcome-step smoke test timed out under
+  batch load, then passed when rerun in isolation.
+- Isolated rerun:
+  `npx vitest run --config vitest.unit.config.ts tests/unit/onboardingSteps.test.tsx --reporter=verbose`
+  passed 28/28 tests.
+- Mobile onboarding/auth destructive batch passed 54/54 tests.
+
+Live iOS attempt:
+
+- Created disposable simulator:
+  `Sloe-Destructive-QA-2026-06-14`
+  (`A1EDCDF2-149D-4C2A-A5A8-ED30C8F37785`).
+- Installed the current Sloe development build onto the disposable simulator.
+- Captured:
+  `apps/mobile/screenshots/agent/2026-06-14-destructive/sim-fresh-device-state.png`
+- Opening `suppr:///onboarding` landed in the Expo development launcher and
+  showed an `Open in "Sloe"?` prompt rather than immediately entering the
+  product:
+  `apps/mobile/screenshots/agent/2026-06-14-destructive/sim-after-onboarding-openurl-delayed.png`
+
+Result:
+
+- Automated onboarding state coverage is green.
+- A true tapped-through first-user iOS onboarding pass remains blocked in this
+  session because Maestro required access to `~/.maestro/deps` and the
+  escalation request was rejected by the usage gate.
+- The development build also adds a dev-launcher confirmation step, so a
+  production/TestFlight-style fresh onboarding pass should be rerun with a
+  standalone build or with Maestro access restored.
+
+### StoreKit / Subscription Lifecycle
+
+Automated coverage:
+
+- Web/RevenueCat route and paywall unit/integration batch passed 104/104 tests.
+- Mobile paywall/RevenueCat entitlement batch passed 102/102 tests.
+
+Blocked live coverage:
+
+- `REVENUECAT_WEBHOOK_AUTH`, `REVENUECAT_WEBHOOK_URL`, and
+  `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` were not present in the local
+  environment.
+- No `.storekit` configuration file was present under `apps/mobile`.
+- Therefore purchase, failed purchase, restore, downgrade/cancellation and
+  entitlement-refresh lifecycle could not be truthfully executed live in this
+  session.
+
+Result:
+
+- Existing entitlement and paywall logic tests are green.
+- Live StoreKit lifecycle remains unverified and should stay in the automated
+  test backlog until a StoreKit config or sandbox purchase harness exists.
+
+### Import Failure Matrix
+
+Automated coverage:
+
+- Mobile import failure/degraded-state batch passed 65/65 tests.
+- Web import matrix passed 8/9 files and 116/119 tests.
+
+Confirmed failure:
+
+- `tests/integration/recipeImportDescriptionNull.test.ts` failed all three
+  cases in isolation and in the full matrix.
+- Expected: HTTP 200 import shape with `description: null`.
+- Observed: HTTP 400, consistent with `Redirect target is not allowed.`
+
+Root cause:
+
+- The current route goes through `followWithSsrfGuard(...)`.
+- The destructive integration test stubs `global.fetch`, auth, rate limiting,
+  env and feature flags, but it does not provide a DNS/SSRF validation seam.
+- DNS validation can now reject the test fixture URL before the mocked page is
+  fetched.
+
+Interpretation:
+
+- This is a confirmed coverage regression, not yet a confirmed user-facing
+  import outage.
+- The legal/import posture matrix is currently unable to prove that
+  null-description imports still behave correctly after SSRF hardening.
+
+Proposed fix:
+
+- Add an explicit test seam for SSRF lookup/follow validation, or inject a safe
+  resolver/redirect chain into this integration test.
+- Keep SSRF protection active in production code.
+- Rerun the full import failure matrix after the seam is fixed.
+
+Pending Linear action:
+
+- Linear issue creation for this finding was attempted but rejected by the
+  usage gate.
+- Proposed issue:
+  `Destructive import test no longer exercises recipe-import route after SSRF guard`
+  in `Import posture & legal`, priority High, labels `Bug`, `platform/web`,
+  `risk/legal`, `launch-blocker`.
+- Post an initiative status update to `Recipe import, AI imagery & creators`
+  after the issue is created.
+
+### Network-Failure Journeys
+
+Automated coverage:
+
+- Web network/degraded import and digest batch passed 86/86 tests.
+- Mobile network/error-boundary/HealthKit degraded-state batch passed 45/45
+  tests.
+
+Non-blocking test hygiene:
+
+- `tests/unit/healthSyncErrorRecovery.test.tsx` emits a React `act(...)`
+  warning while still passing.
+- This is test-noise risk, not a confirmed product failure.
+
+Live web blocker:
+
+- Local Next dev server started successfully on `http://localhost:3001` because
+  port 3000 was already occupied.
+- Browser-driven Playwright execution failed under sandbox permissions with a
+  Chromium MachPort permission error.
+- The escalated rerun was rejected by the usage gate, so mobile-web destructive
+  clicking and screenshots could not continue in this session.
+
+Result:
+
+- Automated network-failure handling is green across the targeted suites.
+- Live browser-driven destructive journeys remain unverified in this session.
+
+### Updated Launch Risk
+
+No new Critical product crash, payment-integrity break, or data-loss bug was
+confirmed by the destructive pass.
+
+New High item:
+
+- The import null-description legal/destructive coverage is stale after SSRF
+  hardening and must be restored before treating recipe import as launch-ready.
+
+Remaining live-verification gaps:
+
+- Fresh iOS signup/onboarding on a standalone or TestFlight-style build.
+- StoreKit sandbox purchase, failed purchase, restore and entitlement refresh.
+- Browser-driven web network/interruption journeys.

@@ -566,13 +566,16 @@ export function foodSearchRankScore(input: {
   return Math.max(0, boosted);
 }
 
-// ── Honest confidence tier (ENG-807) ────────────────────────────────────
+// ── Honest confidence tier (ENG-807, ENG-1110) ───────────────────────────
 //
-// A row is "Verified" ONLY when it has trustworthy provenance AND its name
-// actually matches what the user typed. Source alone is never enough — a USDA
-// Branded "EGGS" row or a weak-match Foundation row must read "Estimated", not
-// flash a soft-blue Verified chip the data doesn't earn (CLAUDE.md trust
-// posture: never show a confidence label not backed by the real signal).
+// Internal tier id `verified` means "structured, authoritative source + strong
+// name match" — the UI renders **"Structured"**, NOT crowd-verified consensus.
+// That is distinct from `verified_food_canonical` (barcode/user-food store),
+// which may be empty until verified submissions exist (ENG-1110).
+//
+// Source alone is never enough — a USDA Branded "EGGS" row or a weak-match
+// Foundation row must read "Estimated", not flash a soft-blue chip the data
+// doesn't earn (CLAUDE.md trust posture).
 
 export type SearchRowConfidenceTier = "verified" | "estimated";
 
@@ -580,7 +583,7 @@ export type SearchRowConfidenceTier = "verified" | "estimated";
  * Provenance is verifiable when the row comes from a curated/authoritative
  * corpus: verified USDA (Foundation / SR Legacy / Survey) or Suppr's own
  * seeded generic foods/beverages. Branded rows (USDA Branded, OFF, Edamam,
- * FatSecret) are community/commercial product data — never auto-"Verified".
+ * FatSecret) are community/commercial product data — never auto-"Structured".
  */
 function hasVerifiableProvenance(source: FoodSearchTrustSource, verified: boolean): boolean {
   if (source === "USDA") return verified === true;
@@ -590,16 +593,16 @@ function hasVerifiableProvenance(source: FoodSearchTrustSource, verified: boolea
 
 /**
  * Minimum match score a verifiable-provenance row must clear to earn the
- * "Verified" chip. Below this the name match is too weak to honestly claim the
- * row IS what the user typed — it renders "Estimated" instead.
+ * structured tier chip. Below this the name match is too weak to honestly claim
+ * the row IS what the user typed — it renders "Estimated" instead.
  */
 export const VERIFIED_TIER_MIN_SCORE = 0.55;
 
 /**
  * Derive the honest confidence tier for a search row from BOTH provenance and
- * the computed relevance/match score. Returns "verified" only when the source
- * is authoritative AND the name match is strong; everything else is
- * "estimated" (the UI renders the amber chip — see ENG-798 prototype).
+ * the computed relevance/match score. Returns "verified" (UI: **Structured**)
+ * only when the source is authoritative AND the name match is strong;
+ * everything else is "estimated" (the UI renders the amber chip).
  */
 export function searchRowConfidenceTier(input: {
   source: FoodSearchTrustSource;

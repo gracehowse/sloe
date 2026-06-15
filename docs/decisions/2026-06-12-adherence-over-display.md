@@ -1,7 +1,7 @@
 # Adherence headline: band-inverted over-target display
 
 **Date:** 2026-06-12
-**Status:** Resolved (shipped behind flag `adherence_over_display`, 0% rollout)
+**Status:** Shipped (flag removed in code, ENG-1073 — 2026-06-14)
 **Area:** Progress (web + mobile)
 **Source:** Launch-readiness audit P1-3 (carried from 2026-06-11 audit P1-8); product-lead decision 2026-06-12.
 

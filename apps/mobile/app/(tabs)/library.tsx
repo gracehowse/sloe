@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Bookmark,
   ArrowUpDown,
@@ -48,6 +48,7 @@ import {
   planImportPillId,
 } from "@suppr/shared/planning/planImport/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
+import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
@@ -106,6 +107,8 @@ function formatTotalTime(card: RecipeCard): string | null {
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { keep } = useLocalSearchParams<{ keep?: string }>();
+  const keepLibraryTab = keep === "1";
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
@@ -159,10 +162,11 @@ export default function LibraryScreen() {
   // is not dead code. intentionally fallback-only per ENG-100 decision.
   useFocusEffect(
     useCallback(() => {
+      if (keepLibraryTab) return;
       if (!loading && savedRecipes.length === 0) {
         router.replace("/(tabs)/discover");
       }
-    }, [loading, savedRecipes.length]),
+    }, [loading, savedRecipes.length, keepLibraryTab, router]),
   );
 
   // Shared with Discover via `useLibrarySearchStore` so the query
@@ -239,8 +243,16 @@ export default function LibraryScreen() {
   const filtered = useMemo(() => {
     let list = savedRecipes;
     if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((r) => r.title.toLowerCase().includes(q));
+      list = list.filter((r) =>
+        recipeSearchMatch(
+          {
+            title: r.title,
+            creatorName: r.creatorName,
+            tags: r.mealSlots ?? null,
+          },
+          search,
+        ),
+      );
     }
     // Primary: category (Figma `527:2`). Shared predicate → web parity.
     if (category !== "all") {

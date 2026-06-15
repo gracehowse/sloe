@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ingredientVerifyNeedsReview,
@@ -21,6 +23,17 @@ describe("verifyConfidencePolicy", () => {
 
   it("does not flag high-confidence batches", () => {
     expect(ingredientVerifyNeedsReview(0.82, 0.35)).toBe(false);
+  });
+});
+
+describe("verifyConfidencePolicy — accept-floor documentation", () => {
+  it("documents the shipped 0.55 accept floor (not the proposed 0.70)", () => {
+    const src = readFileSync(
+      resolve(__dirname, "../../src/lib/nutrition/verifyConfidencePolicy.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/MIN_ACCEPT_CONFIDENCE = 0\.55/);
+    expect(src).not.toMatch(/MIN_ACCEPT_CONFIDENCE = 0\.70/);
   });
 });
 

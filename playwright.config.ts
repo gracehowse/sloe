@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { authFileForBaseUrl } from "./tests/e2e/utils/authHosts";
 
 /** Load `.env.local` for E2E_EMAIL / E2E_PASSWORD (preflight runs in a separate process). */
 function loadEnvLocal(): void {
@@ -25,7 +26,8 @@ function loadEnvLocal(): void {
 
 loadEnvLocal();
 
-const authFile = resolve(process.cwd(), "tests/e2e/.auth/user.json");
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const authFile = authFileForBaseUrl(baseURL);
 const hasE2ECredentials = Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
 
 /** Specs that require a signed-in session (storage state from auth.setup.ts). */
@@ -46,7 +48,6 @@ const authedTestMatch = [
 ];
 
 const useMidsceneReporter = Boolean(process.env.MIDSCENE_MODEL_API_KEY?.trim());
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const isCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 /** GitHub Actions starts `next start` on PLAYWRIGHT_BASE_URL (see ci.yml); do not spawn a second server. */
 const startWebServerLocally =
