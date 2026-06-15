@@ -215,6 +215,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // tiers, quieted washes, de-chromed meal log). Default-on; OFF → the
   // pre-ENG-1099 tracker. Rollback = remove from this set / PostHog off.
   "today_tracker_tier_v1",
+  // ENG-1131 — web Plan parity: move-meal picker, templates dialog, portion
+  // stepper (mobile already ships). Default-on; off → swap-only affordance.
+  "plan_web_parity_v1",
   // ENG-771 (Gate 1) — MFP-refugee logging loop (mirror mobile).
   "today_log_again",
   "log-sheet-slot-selector",
