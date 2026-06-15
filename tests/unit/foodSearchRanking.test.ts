@@ -150,8 +150,8 @@ describe("searchMatchScore — stronger relevance (ENG-807)", () => {
   });
 });
 
-describe("searchRowConfidenceTier — honest confidence (ENG-807)", () => {
-  it("marks a strong-match verified USDA row as verified", () => {
+describe("searchRowConfidenceTier — honest confidence (ENG-807, ENG-1110)", () => {
+  it("marks a strong-match verified USDA row as verified (UI label: Structured)", () => {
     expect(
       searchRowConfidenceTier({
         source: "USDA",

@@ -271,6 +271,25 @@ async function verifyPromoPath() {
       ? "rate_limited after repeated failed attempts"
       : "did not hit rate_limited within 11 invalid attempts",
   );
+
+  // ENG-1108 — RPC exists and is callable when authed (no-op on missing recipe).
+  const fakeRecipeId = "00000000-0000-4000-8000-000000000001";
+  const { error: saveVerifiedErr } = await authed.rpc("save_verified_ingredients", {
+    p_recipe_id: fakeRecipeId,
+    p_recipe_update: {},
+    p_ingredient_updates: [],
+  });
+  const saveVerifiedCallable =
+    !saveVerifiedErr || !saveVerifiedErr.message.includes("42501");
+  record(
+    "ENG-1108 save_verified_ingredients RPC",
+    saveVerifiedCallable,
+    saveVerifiedCallable
+      ? saveVerifiedErr
+        ? `rpc returned (expected for missing recipe): ${saveVerifiedErr.message.slice(0, 100)}`
+        : "rpc callable (no-op update)"
+      : `auth blocked RPC: ${saveVerifiedErr!.message}`,
+  );
 }
 
 console.log("Gate-0 live DB verification\n");

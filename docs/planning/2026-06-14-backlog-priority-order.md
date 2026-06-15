@@ -1,6 +1,6 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **299 open** ENG issues (was 320; **21 Done** 2026-06-14 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-14 (rev 3 — post-ship reconciliation).
+**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 4 — Gate 0 closed except ENG-859).
 **Branch:** `claude/eng-1099-tracker-tier` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
@@ -14,7 +14,7 @@
 
 | Gate | Meaning | Open | Done (2026-06-14) |
 |------|---------|------|-------------------|
-| **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 6 | 3 |
+| **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
 | **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 17 | 0 |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
 | **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 64 | 6 |
@@ -29,7 +29,7 @@
 
 ## Shipped 2026-06-14 (`claude/eng-1099-tracker-tier`)
 
-Linear → **Done** (comment + commit SHA on each). **Apply Gate 0 migrations to prod** before counting Gate 0 closed operationally.
+Linear → **Done** (comment + commit SHA on each). Gate 0 migrations **applied on prod** (2026-06-15: `supabase db push` up to date; `verify:gate0:live` **8/8 PASS**).
 
 | Commit | Issues | Notes |
 |--------|--------|-------|
@@ -43,24 +43,25 @@ Linear → **Done** (comment + commit SHA on each). **Apply Gate 0 migrations to
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
-**Gate 0 still open:** ENG-1102, 859, 1110, 1107, 1105, 1104.
+**Gate 0 still open:** ENG-859 only (DMCA filing — Grace ops; checklist `docs/operations/eng-859-dmca-filing-checklist.md`).
+
+**Gate 0 closed this session:** ENG-1102, 1104, 1105, 1107, 1110 (tests + docs + prod verify).
 
 ---
 
-## GATE 0 — pre-any-user (6 open)
+## GATE 0 — pre-any-user (1 open)
 
-Only things that can corrupt data, leak entitlements, or create legal exposure on the first user. Full WHAT/WHY/HOW in each ticket. *(Shipped: 1103, 1106, 1108 — see Shipped section.)*
+Only things that can corrupt data, leak entitlements, or create legal exposure on the first user. Full WHAT/WHY/HOW in each ticket. *(Shipped: 1102–1108, 1110 — see Shipped section; prod migrations applied 2026-06-15.)*
 
 | # | Pri | Project | Title |
 |---|---|---|---|
-| ENG-1102 | Urgent | Gate 0 — launch hardening | Gate-0 live 5/5 re-proof against production + CI automation |
-| ENG-859 | Urgent | Import posture & legal | Register DMCA designated agent (depends on incorporation) |
-| ENG-1110 | High | Gate 0 — launch hardening | verified_food_canonical is empty — the "Verified" search badge is a vendor-source label, n |
-| ENG-1107 | High | Gate 0 — launch hardening | Web copy/duplicate/copy-yesterday must re-anchor eaten_at to the target day (parity with m |
-| ENG-1105 | High | Gate 0 — launch hardening | Recents / Eat-again re-log must carry nutrition_micros (drops sugar/sodium/all micros toda |
-| ENG-1104 | High | Gate 0 — launch hardening | Re-bake genericFoodMicros from correct fdcIds (grapes/apple) + audit all 50 rows |
+| ENG-859 | Urgent | Import posture & legal | Register DMCA designated agent (depends on incorporation) — ops checklist: `docs/operations/eng-859-dmca-filing-checklist.md` |
 
-**Order:** ENG-1102 (prove lockdowns hold in prod) + ENG-859 (DMCA, start the ops chain) first; then the data-integrity cluster (1104/1105/1107/1110). ~~1103/1106/1108~~ shipped — **apply migrations + re-run verify-gate0-db**.
+~~ENG-1102~~ Done — Gate-0 live 8/8 re-proof on prod + verify script (ENG-1108 RPC check).  
+~~ENG-1110~~ Done — search chip reads **"Structured"** (vendor-source tier); distinct from empty `verified_food_canonical` crowd store.  
+~~ENG-1107~~ Done — copy/duplicate re-anchors `eaten_at` via `reanchorMealEatenAt`.  
+~~ENG-1105~~ Done — re-log / duplicate carries `nutrition_micros`.  
+~~ENG-1104~~ Done — genericFoodMicros fdc pins + kcal plausibility audit.
 
 ---
 

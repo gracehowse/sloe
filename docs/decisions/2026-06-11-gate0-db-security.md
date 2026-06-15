@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-11
 - **Area:** Security · Data integrity · Entitlement integrity · Monetisation
-- **Status:** **Applied + live-verified (2026-06-11).** Migrations `20260611120000`–`120200` pushed to production; `scripts/verify-gate0-db.mts` — 5/5 checks pass (exploit dead, view locked, promo RPC callable).
+- **Status:** **Applied + live-verified.** Migrations `20260611120000`–`20260614120200` pushed to production; `scripts/verify-gate0-db.mts` — **8/8 checks pass** (2026-06-15 prod re-proof: exploit dead, view locked, promo path + ENG-1103 rate limit + ENG-1108 RPC).
 - **Severity:** P0 (ENG-1035) + P1 (ENG-1036, ENG-1043) — Gate-0 launch blockers per `docs/ux/reviews/2026-06-11-launch-readiness-audit.md` §10/§11/§16.
 - **Branch:** `claude/skia-ring-2026-06-10`
 - **Owner of apply step:** Grace (the migration-apply rule forbids MCP `apply_migration` and Claude running `supabase db push`).

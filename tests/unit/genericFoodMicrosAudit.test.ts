@@ -50,4 +50,14 @@ describe("ENG-1104 — genericFoodMicros coverage + fdc pins", () => {
     expect(MICROS_SRC).not.toMatch(/fdc 170051/); // canned tomato (dict subtitle is Raw)
     expect(MICROS_SRC).not.toMatch(/fdc 169305/); // canned sweet potato mash (dict subtitle is Raw)
   });
+
+  it("every generic food has plausible kcal vs macro anchors (ENG-1104)", () => {
+    for (const food of GENERIC_FOODS) {
+      const { calories, protein, carbs, fat } = food.per100g;
+      const kcalFromMacros = protein * 4 + carbs * 4 + fat * 9;
+      if (calories <= 0) continue;
+      const diff = Math.abs(kcalFromMacros - calories);
+      expect(diff).toBeLessThanOrEqual(Math.max(15, calories * 0.25));
+    }
+  });
 });

@@ -36,7 +36,7 @@ export type SearchResultConfidenceTier = "verified" | "estimated";
 
 export interface SearchResultConfidenceChipProps {
   tier: SearchResultConfidenceTier;
-  /** Optional label override. Defaults to "Verified" / "Estimated". */
+  /** Optional label override. Defaults to "Structured" / "Estimated". */
   label?: string;
   style?: ViewStyle;
   testID?: string;
