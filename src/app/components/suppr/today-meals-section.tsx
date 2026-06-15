@@ -167,7 +167,10 @@ function getMealIcon(name: string): {
 }
 
 /** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
-function slotPillClassName(sectionName: string): string {
+function slotPillClassName(sectionName: string, tierV1 = false): string {
+  if (tierV1) {
+    return "border-border bg-background-secondary text-foreground-secondary hover:bg-muted/60";
+  }
   const { tone } = getMealIcon(sectionName);
   // ENG-1109 — 11px slot pills use secondary foreground on soft tints
   // (slot hue alone fails WCAG AA at caption size).
@@ -183,6 +186,26 @@ function slotPillClassName(sectionName: string): string {
       return `border-slot-snack/30 bg-slot-snack-soft ${label} hover:opacity-90`;
     default:
       return "border-border bg-muted text-foreground-secondary";
+  }
+}
+
+/** ENG-1099 M5 — lighter slot glyph chip (18% → 12% tint). */
+function slotIconTierClass(
+  tone: ReturnType<typeof getMealIcon>["tone"],
+  tierV1: boolean,
+): string | undefined {
+  if (!tierV1) return undefined;
+  switch (tone) {
+    case "slot-breakfast":
+      return "!bg-slot-breakfast/12";
+    case "slot-lunch":
+      return "!bg-slot-lunch/12";
+    case "slot-dinner":
+      return "!bg-slot-dinner/12";
+    case "slot-snack":
+      return "!bg-slot-snack/12";
+    default:
+      return undefined;
   }
 }
 
@@ -326,6 +349,7 @@ export function TodayMealsSection({
   // Mirrors the mobile change. See
   // `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
   const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
 
   // ENG-797 / P5 parity (#6, #7, #27) — branded meal-management chrome.
   // When ON, the kebab dropdown gains a quiet SupprMark + thumbnail/title/
@@ -704,7 +728,11 @@ export function TodayMealsSection({
                     : `${sectionName} — add food`
                 }
               >
-                <IconBox size="sm" tone={mealIconInfo.tone}>
+                <IconBox
+                  size="sm"
+                  tone={mealIconInfo.tone}
+                  className={slotIconTierClass(mealIconInfo.tone, tierV1)}
+                >
                   <mealIconInfo.icon />
                 </IconBox>
                 <div className="flex-1 min-w-0">
@@ -762,7 +790,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName)}`}
+                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName, tierV1)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -821,7 +849,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName)}`}
+                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName, tierV1)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`

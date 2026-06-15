@@ -5,6 +5,7 @@ import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
@@ -34,22 +35,27 @@ export interface TodayHeroRingProps {
 type ChipState = "empty" | "under" | "over";
 
 function HeroStatusChip({ state }: { state: ChipState }) {
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const config =
     state === "over"
       ? {
           label: todayStatusChip("over"),
-          className: "bg-destructive/10 text-destructive-solid",
+          className: tierV1
+            ? "bg-warning-soft text-warning"
+            : "bg-destructive/10 text-destructive-solid",
           Icon: CircleAlert,
         }
       : state === "empty"
         ? {
             label: todayStatusChip("empty"),
-            className: "bg-ring-bg text-foreground-brand",
+            className: tierV1
+              ? "text-foreground-brand"
+              : "bg-ring-bg text-foreground-brand",
             Icon: Sparkles,
           }
         : {
             label: todayStatusChip("under"),
-            className: "bg-success/15 text-success",
+            className: tierV1 ? "text-success" : "bg-success/15 text-success",
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
