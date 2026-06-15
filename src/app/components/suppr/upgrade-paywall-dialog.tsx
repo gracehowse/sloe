@@ -62,6 +62,10 @@ import { projectId, publicAnonKey } from "../../../../utils/supabase/info.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/events.ts";
 import { track } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
+import {
+  BARCODE_FREE_PAYWALL_CHIP,
+  BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
+} from "../../../lib/nutrition/barcodeFreePromise.ts";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 const supabase = createClient(supabaseUrl, publicAnonKey);
@@ -553,6 +557,14 @@ export function UpgradePaywallDialog({
             item 4. The scrollable body above absorbs overflow; the
             footer stays fixed. */}
         <div className="border-t border-border px-5 pt-3 pb-5 flex flex-col gap-1.5">
+          <div
+            data-testid={BARCODE_FREE_PAYWALL_CHIP_TEST_ID}
+            className="mb-1 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-medium text-foreground"
+            aria-label={BARCODE_FREE_PAYWALL_CHIP.a11yLabel}
+          >
+            <span aria-hidden>✓</span>
+            <span>{BARCODE_FREE_PAYWALL_CHIP.label}</span>
+          </div>
           <p
             data-testid="upsell-renewal-note"
             className="text-[11px] text-muted-foreground text-center leading-snug mb-1"

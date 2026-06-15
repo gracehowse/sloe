@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
@@ -161,7 +162,13 @@ import {
   type FavoriteFood,
 } from "../../lib/nutrition/favoriteFoods";
 import { orderRecentWithFavoritesFirst } from "../../lib/nutrition/favoriteFoodsSearch";
-import { isMealSlot, MEAL_SLOTS, type MealSlot } from "../../lib/nutrition/mealSlots";
+import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import {
+  enabledMealSlotLabels,
+  mealSectionSortOrder,
+  parseUserMealSlotConfig,
+  type UserMealSlotConfig,
+} from "../../lib/nutrition/userMealSlotConfig";
 import {
   journalSlotFromMealTypes,
   slotForHour,
@@ -224,8 +231,6 @@ const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 // shared ladder. Net behaviour change: a 10:30am open now seeds
 // Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
 
-const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks", "Planned"];
-
 /** Must match Settings “Dashboard widgets” keys (`WIDGET_MACRO_OPTIONS`). */
 const TRACKED_DASHBOARD_MACRO_KEYS = new Set([
   "protein",
@@ -272,10 +277,12 @@ function dayActivityBudgetAddonWeb(
   activityByDay: Record<string, number>,
   basalByDay: Record<string, number>,
   workoutsByDay: Record<string, Array<{ calories?: number }>>,
+  maintenanceSource: "measured" | "adaptive" | "formula" | null,
 ): number {
   const workouts = workoutsByDay[dk] ?? [];
   return computeActivityBonusKcal({
     prefer,
+    maintenanceSource,
     dateKey: dk,
     todayDateKey: todayKey(),
     restingKcal: basalByDay[dk] ?? 0,
@@ -583,6 +590,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
+  const [userMealSlotConfig, setUserMealSlotConfig] = useState<UserMealSlotConfig | null>(
+    null,
+  );
+  const enabledMealSlots = useMemo(
+    () => enabledMealSlotLabels(userMealSlotConfig),
+    [userMealSlotConfig],
+  );
+  const mealSectionOrder = useMemo(
+    () => mealSectionSortOrder(userMealSlotConfig),
+    [userMealSlotConfig],
+  );
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
 
@@ -734,7 +752,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // richer BMR × multiplier breakdown" (for users on the narrow
   // fallback profile select where adaptive columns aren't available).
   const [profileMaintenanceSource, setProfileMaintenanceSource] = useState<
-    "adaptive" | "formula" | null
+    "measured" | "adaptive" | "formula" | null
   >(null);
   const [profileMaintenanceConfidence, setProfileMaintenanceConfidence] = useState<
     "low" | "medium" | "high" | null
@@ -1471,7 +1489,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, meal_slot_config, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1496,6 +1514,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         );
         setTrackedDashboardMacros(
           normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros),
+        );
+        setUserMealSlotConfig(
+          parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config),
         );
         setStepsByDay(parseStepsDayMap((data as { steps_by_day?: unknown }).steps_by_day));
         const sg = (data as { daily_steps_goal?: number }).daily_steps_goal;
@@ -1545,19 +1566,22 @@ export const NutritionTracker = memo(function NutritionTracker({
         // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
         // `resolveMaintenance` is the shared gate: adaptive wins at
         // medium/high confidence AND not stale, else formula.
-        const resolved = resolveMaintenance({
-          adaptive_tdee: (data as any).adaptive_tdee,
-          adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
-          adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
-          sex: (data.sex ?? "unspecified") as any,
-          weight_kg: Number(data.weight_kg),
-          height_cm: Number(data.height_cm),
-          age: Number(data.age),
-          // Default to "sedentary" (1.2) when missing — "moderate" (1.55)
-          // silently over-inflated TDEE by ~14% for users who never picked a
-          // level (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
-          activity_level: (data.activity_level ?? "sedentary") as any,
-        });
+        const resolved = resolveMaintenance(
+          {
+            adaptive_tdee: (data as any).adaptive_tdee,
+            adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
+            adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
+            measured_tdee: (data as any).measured_tdee,
+            measured_tdee_confidence: (data as any).measured_tdee_confidence,
+            measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
+            sex: (data.sex ?? "unspecified") as any,
+            weight_kg: Number(data.weight_kg),
+            height_cm: Number(data.height_cm),
+            age: Number(data.age),
+            activity_level: (data.activity_level ?? "sedentary") as any,
+          },
+          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+        );
         if (resolved) {
           setProfileMaintenanceTdee(resolved.kcal);
           setProfileMaintenanceSource(resolved.source);
@@ -1922,8 +1946,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       else map.set(k, [m]);
     }
     const keys = [...map.keys()].sort((a, b) => {
-      const ia = MEAL_SECTION_ORDER.indexOf(a);
-      const ib = MEAL_SECTION_ORDER.indexOf(b);
+      const ia = mealSectionOrder.indexOf(a);
+      const ib = mealSectionOrder.indexOf(b);
       if (ia === -1 && ib === -1) return a.localeCompare(b);
       if (ia === -1) return 1;
       if (ib === -1) return -1;
@@ -1933,7 +1957,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       name,
       meals: [...map.get(name)!].sort(compareMealsByChronology),
     }));
-  }, [mealsForSelectedDate]);
+  }, [mealsForSelectedDate, mealSectionOrder]);
 
   // ENG-786 — "Log this/these again". Re-inserts the viewed day's
   // current entries for `slot` as fresh entries on the same day,
@@ -2050,8 +2074,8 @@ export const NutritionTracker = memo(function NutritionTracker({
     if (weeklyCheckinHandledRef.current) return;
     if (!authedUserId) return;
     const eligible = shouldShowWeeklyCheckin({
-      adaptiveTdeeConfidence: profileAdaptiveTdeeConfidenceRaw,
-      adaptiveTdee: profileAdaptiveTdeeRaw,
+      adaptiveTdeeConfidence: profileMaintenanceConfidence,
+      adaptiveTdee: profileMaintenanceTdee,
       daysLoggedThisWeek: weekData.loggedDaysInWeek,
       lastShownAt: weeklyCheckinShownAt,
     });
@@ -2060,7 +2084,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     weeklyCheckinHandledRef.current = true;
 
     const content = buildWeeklyCheckinContent({
-      adaptiveTdee: profileAdaptiveTdeeRaw as number,
+      adaptiveTdee: profileMaintenanceTdee as number,
       // `formulaKcal` is the prior baseline. Honest null when the
       // user's profile is incomplete — content builder suppresses
       // the delta line.
@@ -2172,13 +2196,14 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
     if (!Number.isFinite(targets.calories) || targets.calories <= 0) return;
     if (
-      profileAdaptiveTdeeConfidenceRaw !== "medium" &&
-      profileAdaptiveTdeeConfidenceRaw !== "high"
+      profileMaintenanceConfidence !== "medium" &&
+      profileMaintenanceConfidence !== "high"
     ) {
       return;
     }
+    if (profileMaintenanceTdee == null || profileMaintenanceTdee <= 0) return;
     const content = buildWeeklyCheckinContent({
-      adaptiveTdee: profileAdaptiveTdeeRaw as number,
+      adaptiveTdee: profileMaintenanceTdee as number,
       priorTdee: profileFormulaTdee,
       currentTargetKcal: targets.calories,
       avgCaloriesThisWeek: weekData.weekAvg.calories,
@@ -2227,6 +2252,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           activityBurnByDay,
           basalBurnByDay,
           workoutsByDay,
+          profileMaintenanceSource,
         ),
       0,
     );
@@ -2251,6 +2277,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // and `src/lib/nutrition/activityBonus.ts`.
   const activityAdjustment = computeActivityBonusKcal({
     prefer: preferActivityAdjustedCalories,
+    maintenanceSource: profileMaintenanceSource,
     dateKey: selectedDateKey,
     todayDateKey: todayKey(),
     restingKcal: basalBurnKcal,
@@ -2655,6 +2682,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               activityBurnByDay,
               basalBurnByDay,
               workoutsByDay,
+              profileMaintenanceSource,
             ),
           )}
           onSelectDayKey={(key) => {
@@ -2897,6 +2925,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       <div className="mt-10">
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
+        slotLabels={enabledMealSlots}
         mealsForSelectedDate={mealsForSelectedDate}
         effectiveCalorieTarget={effectiveCalorieTarget}
         fiberTarget={targets.fiber}
@@ -3641,7 +3670,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           isFeatureEnabled("log-sheet-slot-selector")
             ? {
                 current: mealSlot,
-                options: MEAL_SLOTS,
+                options: enabledMealSlots,
                 onChange: setMealSlot,
               }
             : undefined

@@ -135,6 +135,8 @@ export interface TodayMealsSectionProps {
   quickAddCollapsed?: boolean;
   onToggleQuickAddCollapsed?: () => void;
   quickAddPanel?: React.ReactNode;
+  /** ENG-1177 — enabled slot labels; defaults to classic four when omitted. */
+  slotLabels?: readonly string[];
 }
 
 /**
@@ -227,11 +229,19 @@ function SlotMacroChips({
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-[11px] tabular-nums">
       <span className="text-muted-foreground">{kcal} kcal</span>
-      <span className="text-[var(--macro-protein-solid)]">{Math.round(protein)}g</span>
-      <span className="text-[var(--macro-carbs-solid)]">{Math.round(carbs)}g</span>
-      <span className="text-[var(--macro-fat-solid)]">{Math.round(fat)}g</span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-protein-solid)]">
+        {Math.round(protein)}g
+      </span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-carbs-solid)]">
+        {Math.round(carbs)}g
+      </span>
+      <span data-testid="today-macro-chip-label" className="text-[var(--macro-fat-solid)]">
+        {Math.round(fat)}g
+      </span>
       {Number.isFinite(fiber) && fiber > 0 ? (
-        <span className="text-[var(--macro-fiber-solid)]">{Math.round(fiber * 10) / 10}g</span>
+        <span data-testid="today-macro-chip-label" className="text-[var(--macro-fiber-solid)]">
+          {Math.round(fiber * 10) / 10}g
+        </span>
       ) : null}
     </div>
   );
@@ -285,6 +295,7 @@ export function TodayMealsSection({
   quickAddCollapsed,
   onToggleQuickAddCollapsed,
   quickAddPanel,
+  slotLabels,
 }: TodayMealsSectionProps) {
   const showQuickAdd =
     mealsForSelectedDate.length > 0 &&
@@ -344,17 +355,18 @@ export function TodayMealsSection({
   // off → the legacy populated-only list + the "Log a meal" empty card (kept in
   // the else as the kill switch). Web-only: mobile already renders all four.
   const allSlotsOn = isFeatureEnabled("today_meals_all_slots_v1");
+  const enabledSlotLabels = slotLabels ?? MEAL_SLOTS;
   const slotsToRender = React.useMemo(() => {
     if (!allSlotsOn) return mealsGrouped;
     const byName = new Map(mealsGrouped.map((g) => [g.name, g]));
-    const standard = MEAL_SLOTS.map(
+    const standard = enabledSlotLabels.map(
       (name) => byName.get(name) ?? { name, meals: [] },
     );
     const extras = mealsGrouped.filter(
-      (g) => !(MEAL_SLOTS as readonly string[]).includes(g.name),
+      (g) => !(enabledSlotLabels as readonly string[]).includes(g.name),
     );
     return [...standard, ...extras];
-  }, [allSlotsOn, mealsGrouped]);
+  }, [allSlotsOn, mealsGrouped, enabledSlotLabels]);
 
   // ENG-1092 "Purposeful empties" — empty slots show "Aim ~X kcal" (redistributed
   // budget) where the macro chips sit on a populated slot. `consumedBySlot` feeds
@@ -373,7 +385,7 @@ export function TodayMealsSection({
   }, [mealsGrouped]);
 
   return (
-    <div className="mb-6">
+    <div className="mb-6" data-testid="today-meals-section">
       {!mealsFigmaLayout ? (
         <div className="flex items-start justify-between gap-3">
           <TodayScrollSectionHeader

@@ -49,6 +49,10 @@ import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
 import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landing/paywallTrust";
+import {
+  BARCODE_FREE_PAYWALL_CHIP,
+  BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
+} from "@suppr/shared/nutrition/barcodeFreePromise";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -845,6 +849,10 @@ export default function PaywallScreen() {
       borderColor: colors.border,
       backgroundColor: colors.backgroundSecondary,
     },
+    barcodeTrustChip: {
+      borderColor: accent.primary,
+      backgroundColor: accent.primarySoft,
+    },
     trustChipText: {
       fontSize: 11,
       fontWeight: "600",
@@ -1130,6 +1138,14 @@ export default function PaywallScreen() {
             accessibilityRole="summary"
             accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
           >
+            <View
+              testID={BARCODE_FREE_PAYWALL_CHIP_TEST_ID}
+              style={[styles.trustChip, styles.barcodeTrustChip]}
+              accessibilityLabel={BARCODE_FREE_PAYWALL_CHIP.a11yLabel}
+            >
+              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
+              <Text style={styles.trustChipText}>{BARCODE_FREE_PAYWALL_CHIP.label}</Text>
+            </View>
             {trustChips.map((chip) => (
               <View key={chip.label} style={styles.trustChip} accessibilityLabel={chip.a11yLabel}>
                 <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />

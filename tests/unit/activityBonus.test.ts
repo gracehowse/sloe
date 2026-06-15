@@ -103,6 +103,20 @@ describe("computeActivityBonusKcal — Lose It! projected-EOD model", () => {
     expect(result).toBe(0);
   });
 
+  it("ENG-1111 — returns 0 when maintenance source is measured (no double-count)", () => {
+    const result = computeActivityBonusKcal({
+      prefer: true,
+      maintenanceSource: "measured",
+      dateKey: "2026-05-13",
+      todayDateKey: "2026-05-13",
+      restingKcal: 1131,
+      activeKcal: 495,
+      maintenanceKcal: 1900,
+      now: new Date("2026-05-13T19:49:00"),
+    });
+    expect(result).toBe(0);
+  });
+
   it("falls back to workout calories when no resting data", () => {
     const result = computeActivityBonusKcal({
       prefer: true,

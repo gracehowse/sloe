@@ -46,7 +46,11 @@ import FoodSearchPanel, {
 } from "@/components/food-search/FoodSearchPanel";
 import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/shared/nutrition/favoriteFoodsSearch";
 import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
-import { BARCODE_FREE_FOREVER_HEADLINE } from "@suppr/shared/nutrition/barcodeFreePromise";
+import {
+  BARCODE_FREE_FOREVER_DETAIL,
+  BARCODE_FREE_FOREVER_HEADLINE,
+  BARCODE_LOUD_CTA_LABEL,
+} from "@suppr/shared/nutrition/barcodeFreePromise";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -830,29 +834,50 @@ function DefaultComposition({
       </View>
 
       {showBarcodeFreePromise && barcode?.onOpen ? (
-        <Pressable
-          testID="log-sheet-barcode-free-promise"
-          accessibilityRole="button"
-          accessibilityLabel={BARCODE_FREE_FOREVER_HEADLINE}
-          onPress={() => barcode.onOpen?.()}
-          style={({ pressed }) => ({
-            marginHorizontal: Spacing.md,
-            marginTop: Spacing.sm,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: Spacing.sm,
-            paddingHorizontal: Spacing.md,
-            paddingVertical: Spacing.sm,
-            borderRadius: Radius.lg,
-            backgroundColor: accent.primarySoft,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <ScanBarcode size={14} color={accent.primary} />
-          <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>
-            {BARCODE_FREE_FOREVER_HEADLINE}
+        <View style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm, gap: Spacing.sm }}>
+          <Pressable
+            testID="log-sheet-loud-barcode-cta"
+            accessibilityRole="button"
+            accessibilityLabel={BARCODE_LOUD_CTA_LABEL}
+            onPress={() => barcode.onOpen?.()}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: Spacing.sm,
+              paddingHorizontal: Spacing.md,
+              paddingVertical: Spacing.md,
+              borderRadius: Radius.xl,
+              borderWidth: 2,
+              borderColor: accent.primary,
+              backgroundColor: accent.primarySoft,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <ScanBarcode size={18} color={accent.primary} />
+            <Text
+              style={{
+                fontFamily: Type.button.fontFamily,
+                fontSize: 15,
+                fontWeight: "600",
+                color: accent.primary,
+              }}
+            >
+              {BARCODE_LOUD_CTA_LABEL}
+            </Text>
+          </Pressable>
+          <Text
+            testID="log-sheet-barcode-free-promise"
+            style={{
+              fontSize: 11,
+              color: colors.textSecondary,
+              textAlign: "center",
+              lineHeight: 16,
+            }}
+          >
+            {BARCODE_FREE_FOREVER_HEADLINE} {BARCODE_FREE_FOREVER_DETAIL}
           </Text>
-        </Pressable>
+        </View>
       ) : null}
 
       {/* Inline search results — only mounted when the user has

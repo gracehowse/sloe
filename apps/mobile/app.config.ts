@@ -21,6 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   plugins.push("./plugins/withIosMetroBundleUrlFallback.js");
   plugins.push("./plugins/withIosXcodeAutomaticSigning.js");
   plugins.push("./plugins/withSentryDisableUploadLocalXcode");
+  plugins.push("./plugins/withStoreKitConfiguration.js");
 
   const apiOverride = process.env.SUPPR_API_URL_OVERRIDE?.trim();
   const extra = apiOverride

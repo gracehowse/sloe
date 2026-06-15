@@ -11,6 +11,11 @@ import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
+  MEAL_SLOT_PRESET_OPTIONS,
+  parseUserMealSlotConfig,
+  type MealSlotPreset,
+} from "../../lib/nutrition/userMealSlotConfig.ts";
+import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
 } from "../../constants/dietaryPreferences.ts";
@@ -194,6 +199,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
 
   const [dietary, setDietary] = useState<string[]>([]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");
+  const [mealSlotPreset, setMealSlotPreset] = useState<MealSlotPreset>("classic");
   const [trackedMacros, setTrackedMacros] = useState<string[]>(["protein", "carbs", "fat"]);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [caffeineInput, setCaffeineInput] = useState<string>(String(targetCaffeineMg));
@@ -443,7 +449,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       let resp = await supabase
         .from("profiles")
         .select(
-          "dietary, measurement_system, tracked_macros, week_start_day, weekly_recap_push_enabled",
+          "dietary, measurement_system, meal_slot_config, tracked_macros, week_start_day, weekly_recap_push_enabled",
         )
         .eq("id", uid)
         .maybeSingle();
@@ -468,6 +474,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       if (profile.measurement_system === "metric" || profile.measurement_system === "imperial") {
         setMeasurementSystem(profile.measurement_system);
       }
+      setMealSlotPreset(parseUserMealSlotConfig(profile.meal_slot_config).preset);
       if (profile.tracked_macros && Array.isArray(profile.tracked_macros) && profile.tracked_macros.length > 0) {
         setTrackedMacros(profile.tracked_macros as string[]);
       }
@@ -1016,6 +1023,28 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 { value: "metric", label: "Metric (g, kg, ml)" },
                 { value: "imperial", label: "Imperial (oz, lb, cups)" },
               ]}
+            />
+          </div>
+          <div>
+            <label className="block mb-2 text-sm font-medium text-foreground">Meal slots</label>
+            <p className="text-xs text-muted-foreground mb-3 max-w-xl">
+              How Today groups your day — classic breakfast/lunch/dinner, or numbered smaller meals for grazers.
+            </p>
+            <SettingsSegmented<MealSlotPreset>
+              ariaLabel="Meal slot layout"
+              layout="grid-3"
+              testId="meal-slot-preset-picker"
+              value={mealSlotPreset}
+              onChange={(next) => {
+                setMealSlotPreset(next);
+                void savePref({ meal_slot_config: { preset: next } });
+              }}
+              options={MEAL_SLOT_PRESET_OPTIONS.map((opt) => ({
+                value: opt.id,
+                label: opt.id === "classic" ? "Classic 4" : opt.id === "four_meals" ? "4 meals" : "6 meals",
+                hint: opt.description,
+                testId: `meal-slot-preset-${opt.id}`,
+              }))}
             />
           </div>
           {/*

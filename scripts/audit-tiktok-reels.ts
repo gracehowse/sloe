@@ -42,6 +42,9 @@ import {
   aggregateAttempts,
   classifyResponse,
   renderReport,
+  runMeetsGateThreshold,
+  GATE_TARGET_SAMPLE_SIZE,
+  GATE_SUCCESS_THRESHOLD_PCT,
   type ReelAttempt,
 } from "./_lib/reelAuditReport";
 import { loadRepoEnvLocal } from "./load-repo-env-local.mjs";
@@ -229,6 +232,20 @@ async function main(): Promise<void> {
   }
   console.log(`\nWrote ${mdPath}`);
   console.log(`Wrote ${jsonPath}`);
+
+  if (!sampleFixture && urls.length < GATE_TARGET_SAMPLE_SIZE) {
+    console.error(
+      `\nGate read requires ${GATE_TARGET_SAMPLE_SIZE} URLs; got ${urls.length}. ` +
+        "Replace the fixture with Grace's curated battery.",
+    );
+    process.exit(1);
+  }
+  if (!sampleFixture && !runMeetsGateThreshold(summary)) {
+    console.error(
+      `\nGate FAILED: ${summary.successRatePct}% < ${GATE_SUCCESS_THRESHOLD_PCT}% threshold.`,
+    );
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {

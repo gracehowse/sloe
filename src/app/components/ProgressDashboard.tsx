@@ -21,6 +21,7 @@ import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
@@ -202,6 +203,9 @@ function ProgressDashboardContent() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
   const [adaptiveUpdatedAt, setAdaptiveUpdatedAt] = useState<string | null>(null);
+  const [measuredTdee, setMeasuredTdee] = useState<number | null>(null);
+  const [measuredTdeeConfidence, setMeasuredTdeeConfidence] = useState<string | null>(null);
+  const [measuredTdeeUpdatedAt, setMeasuredTdeeUpdatedAt] = useState<string | null>(null);
   const [isAdaptive, setIsAdaptive] = useState(false);
   // Weekly Check-in (MacroFactor parity, 2026-04-30) — TDEE recorded
   // at the start of the previous week. Sourced from `daily_targets`
@@ -290,7 +294,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -351,6 +355,10 @@ function ProgressDashboardContent() {
       const aConf = ((data as any).adaptive_tdee_confidence as string) ?? null;
       setAdaptiveConfidence(aConf);
       setAdaptiveUpdatedAt(((data as any).adaptive_tdee_updated_at as string | null) ?? null);
+      const mTdee = (data as any).measured_tdee != null ? Number((data as any).measured_tdee) : null;
+      setMeasuredTdee(Number.isFinite(mTdee) ? mTdee : null);
+      setMeasuredTdeeConfidence(((data as any).measured_tdee_confidence as string) ?? null);
+      setMeasuredTdeeUpdatedAt(((data as any).measured_tdee_updated_at as string | null) ?? null);
       setProfileSexCached(sex);
       setProfileHeightCmCached(heightCm);
       setProfileAgeCached(age);
@@ -710,20 +718,29 @@ function ProgressDashboardContent() {
   // activity bundle can reuse its resolved kcal as the maintenance fallback.
   const recapMaintenance = useMemo(
     () =>
-      resolveMaintenance({
-        adaptive_tdee: adaptiveTdee,
-        adaptive_tdee_confidence: adaptiveConfidence,
-        adaptive_tdee_updated_at: adaptiveUpdatedAt,
-        sex: profileSexCached,
-        weight_kg: weightKg ?? 70,
-        height_cm: profileHeightCmCached,
-        age: profileAgeCached,
-        activity_level: profileActivityLevelCached,
-      }),
+      resolveMaintenance(
+        {
+          adaptive_tdee: adaptiveTdee,
+          adaptive_tdee_confidence: adaptiveConfidence,
+          adaptive_tdee_updated_at: adaptiveUpdatedAt,
+          measured_tdee: measuredTdee,
+          measured_tdee_confidence: measuredTdeeConfidence,
+          measured_tdee_updated_at: measuredTdeeUpdatedAt,
+          sex: profileSexCached,
+          weight_kg: weightKg ?? 70,
+          height_cm: profileHeightCmCached,
+          age: profileAgeCached,
+          activity_level: profileActivityLevelCached,
+        },
+        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+      ),
     [
       adaptiveTdee,
       adaptiveConfidence,
       adaptiveUpdatedAt,
+      measuredTdee,
+      measuredTdeeConfidence,
+      measuredTdeeUpdatedAt,
       profileSexCached,
       weightKg,
       profileHeightCmCached,
@@ -750,6 +767,7 @@ function ProgressDashboardContent() {
     }
     return {
       prefer: true,
+      maintenanceSource: recapMaintenance?.source ?? null,
       restingByDay: basalBurnByDay,
       activeByDay: activityBurnByDay,
       workoutKcalByDay,
@@ -1980,24 +1998,39 @@ function ProgressDashboardContent() {
           "+N actual" delta are preserved so power users can still see
           the underlying spread. */}
       {staticTdee != null && (() => {
-        const resolved = resolveMaintenance({
-          adaptive_tdee: adaptiveTdee,
-          adaptive_tdee_confidence: adaptiveConfidence,
-          adaptive_tdee_updated_at: adaptiveUpdatedAt,
-          sex: profileSexCached,
-          weight_kg: weightKg ?? 70,
-          height_cm: profileHeightCmCached,
-          age: profileAgeCached,
-          activity_level: profileActivityLevelCached,
-        });
+        const resolved = resolveMaintenance(
+          {
+            adaptive_tdee: adaptiveTdee,
+            adaptive_tdee_confidence: adaptiveConfidence,
+            adaptive_tdee_updated_at: adaptiveUpdatedAt,
+            measured_tdee: measuredTdee,
+            measured_tdee_confidence: measuredTdeeConfidence,
+            measured_tdee_updated_at: measuredTdeeUpdatedAt,
+            sex: profileSexCached,
+            weight_kg: weightKg ?? 70,
+            height_cm: profileHeightCmCached,
+            age: profileAgeCached,
+            activity_level: profileActivityLevelCached,
+          },
+          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+        );
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
+        const showMeasuredExtras = resolved.source === "measured";
         return (
         <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Maintenance</p>
-            {showAdaptiveExtras ? (
+            {showMeasuredExtras ? (
+              <span
+                data-testid="maintenance-source-pill"
+                data-source="measured"
+                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success text-foreground"
+              >
+                Apple Health
+              </span>
+            ) : showAdaptiveExtras ? (
               <span
                 data-testid="maintenance-source-pill"
                 data-source="adaptive"
@@ -2030,7 +2063,7 @@ function ProgressDashboardContent() {
             {/* SLOE Phase 0: the maintenance hero kcal reads in the Newsreader
                 serif display face (big numerals are a serif moment); the
                 `kcal/day` unit stays sans. Mirrors mobile progress.tsx. */}
-            <p className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
+            <p className={`font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tabular-nums ${showAdaptiveExtras || showMeasuredExtras ? "text-success" : "text-foreground"}`}>
               {resolved.kcal.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">kcal/day</p>

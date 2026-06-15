@@ -107,6 +107,11 @@ import {
   MISSED_YESTERDAY_COPY,
   shouldShowMissedYesterday,
 } from "@suppr/shared/nutrition/missedYesterday";
+import {
+  enabledMealSlotLabels,
+  parseUserMealSlotConfig,
+  type UserMealSlotConfig,
+} from "@suppr/shared/nutrition/userMealSlotConfig";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import {
   compareMealsByChronology,
@@ -131,6 +136,7 @@ import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/shared/nutrition/measuredTdee";
 import { syncHealthDataThrottled } from "@/lib/healthSync";
 import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { clampJournalDate } from "@/lib/journalNavigation";
@@ -364,10 +370,12 @@ function dayActivityBudgetAddon(
   maintenanceKcal: number,
   dk: string,
   workoutsByDay?: Record<string, { type: string; minutes: number; calories: number; source: string }[]>,
+  maintenanceSource?: "measured" | "adaptive" | "formula" | null,
 ): number {
   const workouts = workoutsByDay?.[dk] ?? [];
   return computeActivityBonusKcal({
     prefer,
+    maintenanceSource,
     dateKey: dk,
     todayDateKey: dateKeyFromDate(new Date()),
     restingKcal: basalByDay[dk] ?? 0,
@@ -640,6 +648,11 @@ export default function TrackerScreen() {
   });
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   const [activeMealSlot, setActiveMealSlot] = useState("Breakfast");
+  const [userMealSlotConfig, setUserMealSlotConfig] = useState<UserMealSlotConfig | null>(null);
+  const MEAL_SLOTS = useMemo(
+    () => enabledMealSlotLabels(userMealSlotConfig),
+    [userMealSlotConfig],
+  );
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   /**
    * F-156 PR-2 (2026-05-10) — barcode-not-found → "Add as custom food"
@@ -772,6 +785,9 @@ export default function TrackerScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [adaptiveTdeeUpdatedAt, setAdaptiveTdeeUpdatedAt] = useState<string | null>(null);
+  const [measuredTdee, setMeasuredTdee] = useState<number | null>(null);
+  const [measuredTdeeConfidence, setMeasuredTdeeConfidence] = useState<string | null>(null);
+  const [measuredTdeeUpdatedAt, setMeasuredTdeeUpdatedAt] = useState<string | null>(null);
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). The MacroFactor-style modal that
   // surfaces the adaptive-vs-formula TDEE delta once a week. Gating +
@@ -929,8 +945,6 @@ export default function TrackerScreen() {
     const id = setInterval(() => setFastingTick(Date.now()), 60_000);
     return () => clearInterval(id);
   }, [activeFastStart]);
-
-  const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
   // Quick add panel — state/handlers live in `QuickAddPanel.tsx` (shared
   // render-only wrapper around the nutrition helpers). The host still owns
@@ -1867,7 +1881,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at, net_carbs_lens_enabled",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, meal_slot_config, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at, net_carbs_lens_enabled",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1934,6 +1948,7 @@ export default function TrackerScreen() {
     }
     setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
     setPreferActivityAdjustedCalories(Boolean(d.prefer_activity_adjusted_calories));
+    setUserMealSlotConfig(parseUserMealSlotConfig(d.meal_slot_config));
     const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
     setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
     if (Array.isArray(data.fasting_sessions)) {
@@ -2005,6 +2020,18 @@ export default function TrackerScreen() {
     );
     setAdaptiveTdeeUpdatedAt(
       typeof (d as any).adaptive_tdee_updated_at === "string" ? (d as any).adaptive_tdee_updated_at : null,
+    );
+    const mTdeeRaw = (d as any).measured_tdee;
+    setMeasuredTdee(typeof mTdeeRaw === "number" && Number.isFinite(mTdeeRaw) ? mTdeeRaw : null);
+    setMeasuredTdeeConfidence(
+      typeof (d as any).measured_tdee_confidence === "string"
+        ? (d as any).measured_tdee_confidence
+        : null,
+    );
+    setMeasuredTdeeUpdatedAt(
+      typeof (d as any).measured_tdee_updated_at === "string"
+        ? (d as any).measured_tdee_updated_at
+        : null,
     );
     // Weekly check-in ritual — `last_weekly_checkin_shown_at` drives
     // the 6-day cooldown gate. Missing column ⇒ null ⇒ gate is open.
@@ -2372,20 +2399,29 @@ export default function TrackerScreen() {
   // resolver so the "Maintenance" row matches Progress / Today tile.
   const resolvedMaintenance = useMemo(
     () =>
-      resolveMaintenance({
-        adaptive_tdee: adaptiveTdee,
-        adaptive_tdee_confidence: adaptiveTdeeConfidence,
-        adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt,
-        sex: profileSex as any,
-        weight_kg: profileWeightKg,
-        height_cm: profileHeightCm,
-        age: profileAge,
-        activity_level: profileActivityLevel as any,
-      }),
+      resolveMaintenance(
+        {
+          adaptive_tdee: adaptiveTdee,
+          adaptive_tdee_confidence: adaptiveTdeeConfidence,
+          adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt,
+          measured_tdee: measuredTdee,
+          measured_tdee_confidence: measuredTdeeConfidence,
+          measured_tdee_updated_at: measuredTdeeUpdatedAt,
+          sex: profileSex as any,
+          weight_kg: profileWeightKg,
+          height_cm: profileHeightCm,
+          age: profileAge,
+          activity_level: profileActivityLevel as any,
+        },
+        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+      ),
     [
       adaptiveTdee,
       adaptiveTdeeConfidence,
       adaptiveTdeeUpdatedAt,
+      measuredTdee,
+      measuredTdeeConfidence,
+      measuredTdeeUpdatedAt,
       profileSex,
       profileWeightKg,
       profileHeightCm,
@@ -2451,6 +2487,7 @@ export default function TrackerScreen() {
             maintenanceKcal,
             dayKey,
             workoutsByDay,
+            profileMaintenanceSource,
           ),
       ),
     [
@@ -2502,6 +2539,7 @@ export default function TrackerScreen() {
         maintenanceKcal,
         dayKey,
         workoutsByDay,
+        profileMaintenanceSource,
       ),
     [
       preferActivityAdjustedCalories,
@@ -2511,6 +2549,7 @@ export default function TrackerScreen() {
       maintenanceKcal,
       dayKey,
       workoutsByDay,
+      profileMaintenanceSource,
     ],
   );
 
@@ -2621,6 +2660,7 @@ export default function TrackerScreen() {
           maintenanceKcal,
           d.key,
           workoutsByDay,
+          profileMaintenanceSource,
         ),
       0,
     );
@@ -2633,6 +2673,7 @@ export default function TrackerScreen() {
     workoutsByDay,
     basalBurnByDay,
     maintenanceKcal,
+    profileMaintenanceSource,
   ]);
 
   // F-146 (2026-05-10): the week-view "Net deficit / Net surplus"
@@ -2705,9 +2746,9 @@ export default function TrackerScreen() {
     // unrecognised value (legacy / null / future addition) routes to
     // null which the gate treats as "math hasn't resolved" → no fire.
     const conf: WeeklyCheckinConfidence | null =
-      adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
-        ? adaptiveTdeeConfidence
-        : adaptiveTdeeConfidence === "low"
+      profileMaintenanceConfidence === "medium" || profileMaintenanceConfidence === "high"
+        ? profileMaintenanceConfidence
+        : profileMaintenanceConfidence === "low"
           ? "low"
           : null;
     const daysLoggedThisWeek = weekData.days.filter(
@@ -2715,7 +2756,7 @@ export default function TrackerScreen() {
     ).length;
     const eligible = shouldShowWeeklyCheckin({
       adaptiveTdeeConfidence: conf,
-      adaptiveTdee,
+      adaptiveTdee: profileMaintenanceTdeeKcal,
       daysLoggedThisWeek,
       lastShownAt: weeklyCheckinShownAt,
     });
@@ -2724,7 +2765,7 @@ export default function TrackerScreen() {
     weeklyCheckinHandledRef.current = true;
 
     const content = buildWeeklyCheckinContent({
-      adaptiveTdee: adaptiveTdee as number,
+      adaptiveTdee: profileMaintenanceTdeeKcal as number,
       // Prefer the shared `formulaKcal` resolver output as the prior
       // baseline. When the user's profile is incomplete the resolver
       // returns null; the content builder honestly suppresses the
@@ -2766,8 +2807,8 @@ export default function TrackerScreen() {
   }, [
     isToday,
     userId,
-    adaptiveTdee,
-    adaptiveTdeeConfidence,
+    profileMaintenanceTdeeKcal,
+    profileMaintenanceConfidence,
     weekData,
     targets.calories,
     resolvedMaintenance,
@@ -5280,6 +5321,7 @@ export default function TrackerScreen() {
                 maintenanceKcal,
                 day.key,
                 workoutsByDay,
+                profileMaintenanceSource,
               ),
             )}
             onSelectDay={(d) => { setSelectedDate(d); setViewMode("day"); }}
@@ -6444,7 +6486,8 @@ export default function TrackerScreen() {
       {/* Barcode scanner */}
       <BarcodeScannerModal
         visible={barcodeOpen}
-        initialMealSlot={activeMealSlot as (typeof MEAL_SLOTS)[number]}
+        slotOptions={MEAL_SLOTS}
+        initialMealSlot={activeMealSlot}
         onScan={(_code: string, product, mealSlot) => {
           setBarcodeOpen(false);
           // F-13 (2026-04-19) — auto-track caffeine + alcohol from the

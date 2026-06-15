@@ -48,7 +48,7 @@ import {
  */
 export const ADAPTIVE_STALE_DAYS = 14;
 
-export type MaintenanceSource = "adaptive" | "formula";
+export type MaintenanceSource = "measured" | "adaptive" | "formula";
 
 export type MaintenanceConfidence = "low" | "medium" | "high" | null;
 
@@ -59,6 +59,10 @@ export interface MaintenanceProfile {
   adaptive_tdee_confidence?: string | null;
   /** ISO timestamp of the last adaptive recompute, or null. */
   adaptive_tdee_updated_at?: string | null;
+  /** ENG-1111 — median HealthKit daily burn when wear gate passes. */
+  measured_tdee?: number | null;
+  measured_tdee_confidence?: string | null;
+  measured_tdee_updated_at?: string | null;
   /** Formula inputs. All must be finite + positive for a formula fallback. */
   sex?: Sex | null;
   weight_kg?: number | null;
@@ -153,11 +157,39 @@ function computeFormulaKcal(profile: MaintenanceProfile): number | null {
  */
 export function resolveMaintenance(
   profile: MaintenanceProfile,
-  opts: { now?: Date } = {},
+  opts: { now?: Date; enableMeasured?: boolean } = {},
 ): ResolvedMaintenance | null {
   const now = opts.now ?? new Date();
   const confidence = normaliseConfidence(profile.adaptive_tdee_confidence);
   const formulaKcal = computeFormulaKcal(profile);
+
+  const measuredConfidence = normaliseConfidence(profile.measured_tdee_confidence);
+  const measuredCandidate = isFinitePositive(profile.measured_tdee)
+    ? profile.measured_tdee
+    : null;
+  const measuredConfident =
+    measuredConfidence === "medium" || measuredConfidence === "high";
+
+  if (opts.enableMeasured && measuredCandidate != null && measuredConfident) {
+    const measuredUpdatedAt = profile.measured_tdee_updated_at
+      ? new Date(profile.measured_tdee_updated_at)
+      : null;
+    const measuredStale =
+      measuredUpdatedAt != null &&
+      Number.isFinite(measuredUpdatedAt.getTime()) &&
+      now.getTime() - measuredUpdatedAt.getTime() > ADAPTIVE_STALE_DAYS * 86_400_000;
+    if (!measuredStale) {
+      return {
+        kcal: Math.round(measuredCandidate),
+        source: "measured",
+        confidence: measuredConfidence,
+        formulaKcal,
+        adaptiveRejectedAsStale: false,
+        adaptiveRejectedBelowFormula: false,
+        rejectedAdaptiveKcal: null,
+      };
+    }
+  }
 
   const adaptiveCandidate = isFinitePositive(profile.adaptive_tdee)
     ? profile.adaptive_tdee
@@ -220,6 +252,10 @@ export function resolveMaintenance(
  * web + mobile. Stable contract for the info popover (task F-3 §5).
  */
 export function buildMaintenancePopoverCopy(resolved: ResolvedMaintenance): string {
+  if (resolved.source === "measured") {
+    const label = resolved.confidence ?? "medium";
+    return `Maintenance is the calories you'd burn in a normal day. Based on your Apple Health burn (${label} confidence).`;
+  }
   if (resolved.source === "adaptive") {
     const label = resolved.confidence ?? "medium";
     return `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${label} confidence).`;

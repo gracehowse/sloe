@@ -1059,6 +1059,9 @@ export type Database = {
           adaptive_tdee: number | null
           adaptive_tdee_confidence: string | null
           adaptive_tdee_updated_at: string | null
+          measured_tdee: number | null
+          measured_tdee_confidence: string | null
+          measured_tdee_updated_at: string | null
           age: number | null
           avatar_url: string | null
           basal_burn_by_day: Json | null
@@ -1087,6 +1090,7 @@ export type Database = {
           last_weekly_checkin_shown_at: string | null
           last_weekly_recap_push_sent_at: string | null
           measurement_system: string | null
+          meal_slot_config: Json | null
           milestone_30_shown_at: string | null
           net_carbs_lens_enabled: boolean
           notification_prefs: Json
@@ -1129,6 +1133,9 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1157,6 +1164,7 @@ export type Database = {
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          meal_slot_config?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1199,6 +1207,9 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1227,6 +1238,7 @@ export type Database = {
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          meal_slot_config?: Json | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json

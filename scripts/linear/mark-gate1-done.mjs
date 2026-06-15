@@ -46,6 +46,13 @@ const ISSUES = [
   { n: 1171, note: "Check-in + consent overlay sequencing (web/mobile)" },
   { n: 1073, note: "adherence_over_display flag removed from render paths" },
   { n: 931, note: "Search row + quick-log (web + mobile)" },
+  { n: 1111, note: "Measured TDEE check-in (measured_tdee_check_in flag)" },
+  { n: 1109, note: "WCAG contrast census + Playwright sweep" },
+  { n: 771, note: "MFP logging loop: ENG-932 loud barcode + ENG-973 paywall chip" },
+  { n: 1177, note: "Configurable meal slots (meal_slot_config preset)" },
+  { n: 1179, note: "StoreKit config + sandbox harness doc" },
+  { n: 1112, note: "MFP × Cal AI Mar 2026 competitor intel refresh" },
+  { n: 670, note: "Reel audit harness + npm scripts (live 100-Reel run = Grace ops)" },
 ];
 
 const sha = process.argv[2] ?? "97983c0a";

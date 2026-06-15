@@ -85,6 +85,11 @@ import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/shared/nutrition/weekStartDayClient";
 import {
+  MEAL_SLOT_PRESET_OPTIONS,
+  parseUserMealSlotConfig,
+  type MealSlotPreset,
+} from "@suppr/shared/nutrition/userMealSlotConfig";
+import {
   normalizeWeekSummaryMode,
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
@@ -837,6 +842,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [eraseConfirmInput, setEraseConfirmInput] = useState("");
   const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
   const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
+  const [mealSlotPreset, setMealSlotPreset] = useState<MealSlotPreset>("classic");
+  const [mealSlotPickerOpen, setMealSlotPickerOpen] = useState(false);
   // Audit 2026-05-22 subtractive: Promo code block was always-expanded
   // (input field + Apply button + caption visible for every user even
   // when most never use a code). Collapsed by default behind a chevron
@@ -1356,7 +1363,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       let resp = await supabase
         .from("profiles")
         .select(
-          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window, notification_prefs",
+          "tracked_macros, week_start_day, meal_slot_config, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window, notification_prefs",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -1378,6 +1385,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       ) {
         setWeekStartDay(data.week_start_day);
       }
+      setMealSlotPreset(parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config).preset);
       const tc = (data as any).target_caffeine_mg;
       if (typeof tc === "number" && Number.isFinite(tc) && tc >= 0) {
         setTargetCaffeineMg(Math.round(tc));
@@ -2050,6 +2058,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           label="Week starts on"
           sub={weekStartDay === "monday" ? "Monday" : "Sunday"}
           onPress={() => setWeekStartPickerOpen(true)}
+        />
+        <SettingsRow
+          testID="settings-bundle-meal-slots-row"
+          icon={AlignLeft}
+          iconColor={t.accent}
+          label="Meal slots"
+          sub={
+            MEAL_SLOT_PRESET_OPTIONS.find((o) => o.id === mealSlotPreset)?.label ??
+            "Breakfast, lunch, dinner & snacks"
+          }
+          onPress={() => setMealSlotPickerOpen(true)}
         />
         {/* Deficit summary window — controls whether the Today
             burn/deficit averages cover the last 7 days ending on the
@@ -3675,6 +3694,99 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     strokeWidth={1.75}
                   />
                 )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ENG-1177 — meal slot preset (classic / 4 / 6 meals). */}
+      <Modal
+        visible={mealSlotPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMealSlotPickerOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+            onPress={() => setMealSlotPickerOpen(false)}
+          />
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: SHEET_RADIUS,
+              borderTopRightRadius: SHEET_RADIUS,
+              paddingTop: Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: Spacing.lg,
+              }}
+            >
+              Meal slots
+            </Text>
+            {MEAL_SLOT_PRESET_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.id}
+                testID={`meal-slot-preset-${opt.id}`}
+                onPress={() => {
+                  const previous = mealSlotPreset;
+                  if (previous === opt.id) {
+                    setMealSlotPickerOpen(false);
+                    return;
+                  }
+                  setMealSlotPreset(opt.id);
+                  setMealSlotPickerOpen(false);
+                  if (!userId) return;
+                  void (async () => {
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({ meal_slot_config: { preset: opt.id } })
+                      .eq("id", userId);
+                    if (error) {
+                      setMealSlotPreset(previous);
+                      Alert.alert(
+                        "Could not save",
+                        "We couldn't save your meal-slot preference. Please try again.",
+                      );
+                    }
+                  })();
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 14,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.cardBorder,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "500", color: colors.text }}>
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                    {opt.description}
+                  </Text>
+                </View>
+                {mealSlotPreset === opt.id ? (
+                  <CheckCircle2 size={22} color={accent.primary} strokeWidth={1.75} />
+                ) : null}
               </Pressable>
             ))}
           </View>

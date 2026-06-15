@@ -1,8 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeAdaptiveTDEE } from "./adaptiveTdee";
+import { computeMeasuredTDEE } from "./measuredTdee";
 import { calculateBMR, ACTIVITY_MULTIPLIERS, type Sex } from "./tdee";
 
 const THROTTLE_MS = 6 * 60 * 60 * 1000;
+
+function parseBurnByDay(json: unknown): Record<string, number> {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(json as Record<string, unknown>)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n) && n > 0) out[k] = n;
+  }
+  return out;
+}
 
 function parseWeightKgByDay(json: unknown): Record<string, number> {
   if (!json || typeof json !== "object" || Array.isArray(json)) return {};
@@ -75,7 +86,7 @@ export async function refreshAdaptiveTdeeForUser(
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "adaptive_tdee_updated_at, weight_kg_by_day, sex, weight_kg, height_cm, age, basal_burn_by_day",
+      "adaptive_tdee_updated_at, weight_kg_by_day, sex, weight_kg, height_cm, age, basal_burn_by_day, activity_burn_by_day",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -138,13 +149,32 @@ export async function refreshAdaptiveTdeeForUser(
 
   if (computed.confidence !== "medium" && computed.confidence !== "high") return;
 
+  const restingByDay = parseBurnByDay(profile.basal_burn_by_day);
+  const activeByDay = parseBurnByDay(profile.activity_burn_by_day);
+  const measuredComputed = computeMeasuredTDEE({
+    restingByDay,
+    activeByDay,
+    bmrKcal,
+  });
+
+  const updatePayload: Record<string, unknown> = {
+    adaptive_tdee: computed.tdee,
+    adaptive_tdee_confidence: computed.confidence,
+    adaptive_tdee_updated_at: new Date().toISOString(),
+  };
+  if (
+    measuredComputed &&
+    (measuredComputed.confidence === "medium" ||
+      measuredComputed.confidence === "high")
+  ) {
+    updatePayload.measured_tdee = measuredComputed.tdee;
+    updatePayload.measured_tdee_confidence = measuredComputed.confidence;
+    updatePayload.measured_tdee_updated_at = new Date().toISOString();
+  }
+
   const { error: updateError } = await supabase
     .from("profiles")
-    .update({
-      adaptive_tdee: computed.tdee,
-      adaptive_tdee_confidence: computed.confidence,
-      adaptive_tdee_updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", userId);
 
   if (updateError && process.env.NODE_ENV === "development") {

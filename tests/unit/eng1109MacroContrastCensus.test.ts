@@ -19,6 +19,10 @@ const TODAY_MEALS = readFileSync(
   resolve(ROOT, "src/app/components/suppr/today-meals-section.tsx"),
   "utf8",
 );
+const MOBILE_TODAY_MEALS = readFileSync(
+  resolve(ROOT, "apps/mobile/components/today/TodayMealsSection.tsx"),
+  "utf8",
+);
 
 const AA_NORMAL = 4.5;
 
@@ -150,6 +154,13 @@ describe("ENG-1109 — Today call sites use AA-safe tokens", () => {
     expect(TODAY_MEALS).toContain("var(--macro-carbs-solid)");
     expect(TODAY_MEALS).toContain("var(--macro-fat-solid)");
     expect(TODAY_MEALS).toContain("var(--macro-fiber-solid)");
+  });
+
+  it("mobile SlotMacroChips use MacroColors *Solid tokens", () => {
+    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.proteinSolid");
+    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.carbsSolid");
+    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fatSolid");
+    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fiberSolid");
   });
 
   it("web slot pills use foreground-secondary, not slot hue as text", () => {

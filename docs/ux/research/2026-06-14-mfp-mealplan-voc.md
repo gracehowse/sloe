@@ -10,6 +10,24 @@
 
 > **One methodology flag worth holding:** MFP's App Store average is ~4.7★ (2.3M ratings, post-action prompt-skewed) while Trustpilot is ~1.5★ and BBB is billing-complaint-heavy. **Do not cite the store average as "they're fine."** Unprompted-channel sentiment (Trustpilot/BBB/forums) is where the exodus actually lives.
 
+### 0.1 MFP × Cal AI acquisition — Mar 2026 re-test (ENG-1112)
+
+**What changed:** MyFitnessPal acquired Cal AI (Intent Technologies) and folded its photo/voice logging into **Premium** — not as a free wedge fix. The 2026 Winter Release adds AI Photo Upload, a Recipes tab, and Instacart offers, but **still no own-recipes-in-planner** and barcode remains paywalled.
+
+**Refugee thesis — still valid, sharper:**
+
+| MFP pain (unchanged) | Suppr counter (2026-06-15) |
+|---|---|
+| Barcode behind Premium | **Free forever** — loud LogSheet CTA + paywall trust chip (ENG-932/973) |
+| Meal planner can't use your recipes | Import + make-it-fit on **free** |
+| Fixed B/L/D/Snacks only | **Configurable 4/6 meals** — Settings preset (ENG-1177) |
+| Set-once targets | Adaptive + measured TDEE check-in (ENG-1111) |
+| Cal AI speed without trust | Honest confidence + no fake precision |
+
+**What MFP+Cal AI still doesn't solve:** slot/date bugs, over-shopping, pantry, plan→log atomicity — the audit P1 cluster Suppr must still close (ENG-1132, 1134, 1051).
+
+**Marketing implication:** Name **Premium+ ($99.99/yr)** as the comparator Suppr undercuts; don't anchor to MFP's inflated App Store rating. Lead with *"MFP bought Cal AI — still no free barcode, still no your-recipes planner."*
+
 ---
 
 ## 0. The one-line thesis
@@ -114,7 +132,7 @@ From r/Myfitnesspal "Premium+ (Meal Plan)" threads, screenshots captured 2026-06
 | No pantry / "what's in my fridge" | Wide-open gap (spawned its own app category) | ⚠️ ENG-1051 |
 | Plan ↔ shopping-list disconnect; list resets on edit | Keep Plan→list coupled + persistent | ✅ (ENG-1040) / verify no destructive reset |
 | Generic ingredients, can't verify calories; barcode no micros | Suppr's empty Verified store + recents/saved drop micros | ⚠️ ENG-1110, ENG-1105, ENG-1106 |
-| Configurable meal count ("4–6 meals / Meal 1,2,3") | Suppr fixed at B/L/D/Snacks | ⚠️ ENG-1177 |
+| Configurable meal count ("4–6 meals / Meal 1,2,3") | Settings preset: classic / 4 / 6 meals (ENG-1177) | ✅ shipped 2026-06-15 |
 | Web Plan thin / no move-meal / no templates | Web Plan ~40% subset | ⚠️ ENG-1131 |
 | No collections/organisation | No collections yet | ⚠️ ENG-1126 |
 | Import quality (hallucinated steps/descriptions) | "Never guess" + confidence flags | ✅ verify import parse-rate (ENG-670) |

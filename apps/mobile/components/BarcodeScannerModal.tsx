@@ -59,23 +59,20 @@ import {
 } from "@/lib/contributorStats";
 import { fallbackSlotFromTimeOfDay } from "@suppr/shared/nutrition/recipeJournalSlot";
 
-const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-type MealSlot = (typeof MEAL_SLOTS)[number];
-
-// Resolve the API origin once. Suppr's mobile app talks to the same
-// Vercel-hosted Next.js routes the web client uses.
-const API_BASE: string =
-  (Constants.expoConfig?.extra?.supprApiUrl as string | undefined) ?? "https://suppr-club.com";
+const DEFAULT_MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
+type MealSlot = string;
 
 type Props = {
   visible: boolean;
+  /** Enabled slot labels (ENG-1177). Defaults to classic four. */
+  slotOptions?: readonly string[];
   /**
    * Meal slot seeded when the modal opens (e.g. Today LogSheet's
    * `activeMealSlot`). The user can override via the in-modal picker
    * before logging. Defaults to the time-of-day ladder when omitted.
    */
-  initialMealSlot?: MealSlot;
-  onScan: (barcode: string, product: BarcodeProduct, mealSlot: MealSlot) => void;
+  initialMealSlot?: string;
+  onScan: (barcode: string, product: BarcodeProduct, mealSlot: string) => void;
   onClose: () => void;
   /**
    * Audit 2026-04-30 (Lose It "Closer" parity, Fix 2). When a barcode
@@ -100,8 +97,14 @@ type Props = {
   onAddAsCustomFood?: (barcode: string) => void;
 };
 
+// Resolve the API origin once. Suppr's mobile app talks to the same
+// Vercel-hosted Next.js routes the web client uses.
+const API_BASE: string =
+  (Constants.expoConfig?.extra?.supprApiUrl as string | undefined) ?? "https://suppr-club.com";
+
 export default function BarcodeScannerModal({
   visible,
+  slotOptions = DEFAULT_MEAL_SLOTS,
   initialMealSlot,
   onScan,
   onClose,
@@ -162,12 +165,12 @@ export default function BarcodeScannerModal({
   // card. Seeded from the host's active slot when the modal opens; user
   // can override before logging (same ladder as barcode.tsx + LogSheet).
   const [mealSlot, setMealSlot] = useState<MealSlot>(
-    () => (initialMealSlot ?? fallbackSlotFromTimeOfDay()) as MealSlot,
+    () => initialMealSlot ?? fallbackSlotFromTimeOfDay(),
   );
   const prevVisibleRef = useRef(false);
   useEffect(() => {
     if (visible && !prevVisibleRef.current) {
-      setMealSlot((initialMealSlot ?? fallbackSlotFromTimeOfDay()) as MealSlot);
+      setMealSlot(initialMealSlot ?? fallbackSlotFromTimeOfDay());
     }
     prevVisibleRef.current = visible;
   }, [visible, initialMealSlot]);
@@ -1418,7 +1421,7 @@ export default function BarcodeScannerModal({
                         accessibilityLabel="Meal to log to"
                         testID="barcode-modal-manual-slot-row"
                       >
-                        {MEAL_SLOTS.map((s) => {
+                        {slotOptions.map((s) => {
                           const active = mealSlot === s;
                           return (
                             <Pressable
@@ -1498,7 +1501,7 @@ export default function BarcodeScannerModal({
                       accessibilityLabel="Meal to log to"
                       testID="barcode-modal-slot-row"
                     >
-                      {MEAL_SLOTS.map((s) => {
+                      {slotOptions.map((s) => {
                         const active = mealSlot === s;
                         return (
                           <Pressable
