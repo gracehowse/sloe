@@ -623,6 +623,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // redistributing helper, so a partial day's aims shrink honestly. Gated on
   // `plan_today_aim_empty_v1`; off → the bare-name empty + the 0.55 dim.
   const aimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-1099 M5 — quieter slot washes when the recipe-tier flag is on.
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (the empty slot still
   // renders at full opacity; only the "Aim ~X kcal" line is hidden). Shared key
   // with web.
@@ -1014,7 +1016,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       width: 32,
                       height: 32,
                       borderRadius: Radius.lg,
-                      backgroundColor: col + "18",
+                      backgroundColor: tierV1 ? col + "12" : col + "18",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1119,9 +1121,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           paddingHorizontal: Spacing.dense,
                           paddingVertical: 4,
                           borderRadius: Radius.full,
-                          backgroundColor: col + "18",
-                          borderWidth: 1,
-                          borderColor: col + "30",
+                          backgroundColor: tierV1 ? colors.fillQuiet : col + "18",
+                          borderWidth: tierV1 ? 0 : 1,
+                          borderColor: tierV1 ? undefined : col + "30",
                           maxWidth: 180,
                           flexShrink: 1,
                         }}
@@ -1210,9 +1212,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       paddingHorizontal: Spacing.dense,
                       paddingVertical: Spacing.sm,
                       borderRadius: Radius.full,
-                      backgroundColor: col + "18",
-                      borderWidth: 1,
-                      borderColor: col + "30",
+                      backgroundColor: tierV1 ? colors.fillQuiet : col + "18",
+                      borderWidth: tierV1 ? 0 : 1,
+                      borderColor: tierV1 ? undefined : col + "30",
                       maxWidth: "100%",
                       flexShrink: 1,
                     }}

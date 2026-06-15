@@ -42,6 +42,16 @@ describe("Today cohesion — index.tsx host wiring", () => {
   });
 });
 
+describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
+  const src = read("../../components/today/TodayMealsSection.tsx");
+
+  it("quiets slot icon chip tint and log-usual pill when today_tracker_tier_v1 is on", () => {
+    expect(src).toMatch(/today_tracker_tier_v1/);
+    expect(src).toMatch(/tierV1 \? col \+ "12" : col \+ "18"/);
+    expect(src).toMatch(/tierV1 \? colors\.fillQuiet : col \+ "18"/);
+  });
+});
+
 describe("Today cohesion — TodayCompleteDayButton component", () => {
   const src = read("../../components/today/TodayCompleteDayButton.tsx");
 
