@@ -76,13 +76,13 @@ describe("MealPlanner themed-dialog migration (2026-04-30)", () => {
     const destructive = SRC.indexOf("<DestructiveConfirmDialog");
     expect(renameOpen).toBeGreaterThan(-1);
     expect(destructive).toBeGreaterThan(-1);
-    // Two TextPromptDialog instances (rename + new) and one
-    // DestructiveConfirmDialog (delete) are wired below the swap
-    // dialog at the bottom of the JSX tree.
+    // Two TextPromptDialog instances (rename + new) and two
+    // DestructiveConfirmDialog instances (delete plan + apply template)
+    // are wired below the swap dialog at the bottom of the JSX tree.
     const promptCount = SRC.match(/<TextPromptDialog/g)?.length ?? 0;
     const destructiveCount =
       SRC.match(/<DestructiveConfirmDialog/g)?.length ?? 0;
     expect(promptCount).toBe(2);
-    expect(destructiveCount).toBe(1);
+    expect(destructiveCount).toBe(2);
   });
 });
