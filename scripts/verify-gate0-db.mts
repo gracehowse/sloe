@@ -197,6 +197,8 @@ async function verifyTierEscalationBlocked() {
 async function verifyPromoPath() {
   if (!url || !anonKey || !password) {
     record("ENG-1043 promo RPC", false, "skipped — missing env or password");
+    record("ENG-1103 SUPPR_TEST_PREMIUM deactivated", false, "skipped — missing env or password");
+    record("ENG-1103 promo rate limit", false, "skipped — missing env or password");
     return;
   }
 
@@ -209,6 +211,8 @@ async function verifyPromoPath() {
   });
   if (signInErr || !signIn.session) {
     record("ENG-1043 promo RPC", false, `sign-in failed: ${signInErr?.message ?? "no session"}`);
+    record("ENG-1103 SUPPR_TEST_PREMIUM deactivated", false, "sign-in failed");
+    record("ENG-1103 promo rate limit", false, "sign-in failed");
     return;
   }
 
@@ -227,6 +231,45 @@ async function verifyPromoPath() {
     "ENG-1043 promo RPC callable",
     callable,
     callable ? detail : `lockdown blocked RPC: ${error!.message}`,
+  );
+
+  const { data: testPromo, error: testPromoErr } = await authed.rpc("redeem_promo_code", {
+    p_code: "SUPPR_TEST_PREMIUM",
+  });
+  const testPromoBlocked =
+    !testPromoErr &&
+    testPromo &&
+    typeof testPromo === "object" &&
+    (testPromo as { ok?: boolean }).ok === false &&
+    (testPromo as { error?: string }).error === "invalid_or_expired";
+  record(
+    "ENG-1103 SUPPR_TEST_PREMIUM deactivated",
+    testPromoBlocked,
+    testPromoBlocked
+      ? "redeem returned invalid_or_expired (promo inactive)"
+      : `expected invalid_or_expired, got ${JSON.stringify(testPromo ?? testPromoErr?.message).slice(0, 120)}`,
+  );
+
+  let sawRateLimited = false;
+  for (let i = 0; i < 11; i++) {
+    const { data: attempt } = await authed.rpc("redeem_promo_code", {
+      p_code: `GATE0_VERIFY_THROTTLE_${i}`,
+    });
+    if (
+      attempt &&
+      typeof attempt === "object" &&
+      (attempt as { error?: string }).error === "rate_limited"
+    ) {
+      sawRateLimited = true;
+      break;
+    }
+  }
+  record(
+    "ENG-1103 promo rate limit",
+    sawRateLimited,
+    sawRateLimited
+      ? "rate_limited after repeated failed attempts"
+      : "did not hit rate_limited within 11 invalid attempts",
   );
 }
 
