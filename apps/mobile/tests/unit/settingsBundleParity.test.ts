@@ -104,7 +104,7 @@ describe("SettingsBundleContent — parity contract", () => {
     }
   });
 
-  it("renders the 9 modals (reset, type-confirm-erase, widgets, week-start, meal-slot, caffeine, alcohol, weekly recap, deficit-summary)", () => {
+  it("renders the core settings modals and keeps <Modal>/open-state parity", () => {
     // 2026-05-12 (premium-bar audit DC9): a 7th modal was added for
     // the type-RESET-to-confirm gate on Erase Everything. The Apple
     // pattern for irreversible destruction — friction proportional to
@@ -122,9 +122,17 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain("setAlcoholTargetPickerOpen");
     expect(bundle).toContain("setWeeklyRecapPushPickerOpen");
     expect(bundle).toContain("setDeficitWindowPickerOpen");
-    // 9 <Modal> mounts (ENG-1177 added the meal-slot config picker).
+    // Every modal-open state drives exactly one <Modal> and vice versa — a
+    // self-deriving count, so adding a settings modal (gate-1 meal-slot,
+    // gate-2 pantry, …) doesn't require hand-bumping a magic number. Still
+    // catches real drift: an orphan <Modal> with no open-state, or a
+    // set<X>(Picker|Modal|Confirm)Open with no matching <Modal>.
     const modalCount = (bundle.match(/<Modal\b/g) ?? []).length;
-    expect(modalCount).toBe(9);
+    const modalSetters = new Set(
+      bundle.match(/set[A-Za-z]+(?:Picker|Modal|Confirm)Open\b/g) ?? [],
+    );
+    expect(modalCount).toBe(modalSetters.size);
+    expect(modalCount).toBeGreaterThanOrEqual(9);
   });
 
   it("erase-everything modal enforces type-RESET-to-confirm (DC9, 2026-05-12)", () => {
