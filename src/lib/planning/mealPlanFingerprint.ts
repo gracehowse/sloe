@@ -1,5 +1,5 @@
-import { effectivePortionMultiplier } from "../nutrition/portionMultiplier.ts";
-import type { DayPlan } from "../../types/recipe.ts";
+import { effectivePortionMultiplier } from "../nutrition/portionMultiplier";
+import type { DayPlan } from "../../types/recipe";
 
 /**
  * Stable string for the meal-plan shape that drives shopping list generation

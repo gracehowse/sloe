@@ -3868,7 +3868,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 999,
-                    backgroundColor: colors.muted ?? colors.cardBorder,
+                    backgroundColor: colors.fillQuiet,
                   }}
                 >
                   <Text style={{ fontSize: 13, color: colors.text }}>{name}</Text>
