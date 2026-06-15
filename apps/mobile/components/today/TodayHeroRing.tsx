@@ -102,6 +102,7 @@ function Stat({
   dividerColor,
   testID,
 }: StatProps) {
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   return (
     <View
       testID={testID}
@@ -124,9 +125,7 @@ function Stat({
       </Text>
       <Text
         style={{
-          ...Type.title,
-          fontSize: 19,
-          lineHeight: 23,
+          ...(tierV1 ? Type.statValue : { ...Type.title, fontSize: 19, lineHeight: 23 }),
           color: valueColor,
           fontVariant: ["tabular-nums"],
         }}

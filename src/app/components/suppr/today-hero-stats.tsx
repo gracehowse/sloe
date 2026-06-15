@@ -255,6 +255,7 @@ function StatCell({
   // now just neutral (default) and positive (earned Bonus headroom = sage).
   valueTone?: "neutral" | "positive";
 }) {
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const valueColor =
     valueTone === "positive" ? "text-success" : "text-foreground";
   return (
@@ -263,7 +264,11 @@ function StatCell({
         {label}
       </div>
       <div
-        className={`mt-1 text-[18px] font-extrabold tabular-nums tracking-tight leading-none ${valueColor}`}
+        className={
+          tierV1
+            ? `mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueColor}`
+            : `mt-1 text-[18px] font-extrabold tabular-nums tracking-tight leading-none ${valueColor}`
+        }
       >
         {value}
       </div>
