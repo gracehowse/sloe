@@ -104,7 +104,7 @@ describe("SettingsBundleContent — parity contract", () => {
     }
   });
 
-  it("renders the 8 modals (reset, type-confirm-erase, widgets, week-start, caffeine, alcohol, weekly recap, deficit-summary)", () => {
+  it("renders the 9 modals (reset, type-confirm-erase, widgets, week-start, meal-slot, caffeine, alcohol, weekly recap, deficit-summary)", () => {
     // 2026-05-12 (premium-bar audit DC9): a 7th modal was added for
     // the type-RESET-to-confirm gate on Erase Everything. The Apple
     // pattern for irreversible destruction — friction proportional to
@@ -117,13 +117,14 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain("setEraseConfirmOpen");
     expect(bundle).toContain("setWidgetPickerOpen");
     expect(bundle).toContain("setWeekStartPickerOpen");
+    expect(bundle).toContain("setMealSlotPickerOpen");
     expect(bundle).toContain("setCaffeineTargetPickerOpen");
     expect(bundle).toContain("setAlcoholTargetPickerOpen");
     expect(bundle).toContain("setWeeklyRecapPushPickerOpen");
     expect(bundle).toContain("setDeficitWindowPickerOpen");
-    // 8 <Modal> mounts.
+    // 9 <Modal> mounts (ENG-1177 added the meal-slot config picker).
     const modalCount = (bundle.match(/<Modal\b/g) ?? []).length;
-    expect(modalCount).toBe(8);
+    expect(modalCount).toBe(9);
   });
 
   it("erase-everything modal enforces type-RESET-to-confirm (DC9, 2026-05-12)", () => {

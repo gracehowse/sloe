@@ -64,10 +64,12 @@ describe("fallbackSlotFromTimeOfDay", () => {
 // ── Static-pin: barcode.tsx ──────────────────────────────────────────────────
 
 describe("BarcodeScannerModal — gap #5: meal slot picker on Today scan", () => {
-  it("imports fallbackSlotFromTimeOfDay and exposes MEAL_SLOTS picker UI", () => {
+  it("imports fallbackSlotFromTimeOfDay and exposes the slot picker UI", () => {
     expect(BARCODE_MODAL_SRC).toContain("fallbackSlotFromTimeOfDay");
     expect(BARCODE_MODAL_SRC).toContain('testID="barcode-modal-slot-row"');
-    expect(BARCODE_MODAL_SRC).toContain("MEAL_SLOTS.map");
+    // ENG-1177: the picker maps a configurable `slotOptions` prop (defaults to
+    // DEFAULT_MEAL_SLOTS) rather than the global MEAL_SLOTS list.
+    expect(BARCODE_MODAL_SRC).toContain("slotOptions.map");
   });
 
   it("passes mealSlot through onScan on confirm and manual submit", () => {

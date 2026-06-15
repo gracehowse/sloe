@@ -112,7 +112,11 @@ describe("ENG-773 — web LogSheet slot selector is flag-gated", () => {
     );
   });
 
-  it("passes the canonical MEAL_SLOTS as the selector options (no local list)", () => {
-    expect(SRC).toMatch(/options:\s*MEAL_SLOTS/);
+  it("passes the canonical enabled meal slots as the selector options (no local list)", () => {
+    // ENG-1177: options now come from `enabledMealSlots`, a useMemo derived from
+    // the canonical `enabledMealSlotLabels(userMealSlotConfig)` — still not an
+    // ad-hoc inline list.
+    expect(SRC).toMatch(/options:\s*enabledMealSlots/);
+    expect(SRC).toMatch(/enabledMealSlots\s*=\s*useMemo\(\s*\(\)\s*=>\s*enabledMealSlotLabels/);
   });
 });
