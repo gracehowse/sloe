@@ -134,9 +134,13 @@ function setMode(mode: MockMode) {
 }
 
 function loadFixture5of7() {
-  // Fixture: 5 of 7 days logged in the current Mon–Sun week.
-  // We seed today + 4 days back so any week-start-day works.
+  // Fixture: 5 of 7 days logged in the LAST COMPLETED Mon–Sun week — the recap
+  // window. The screen is retrospective (see weekly-recap.tsx), so anchor 7 days
+  // back; otherwise the seeded days land in the current week the recap no longer
+  // reads, the days-card never renders, and these tests fail. A revert of the
+  // screen to the current-week anchor re-breaks them — which is the guard.
   const now = new Date();
+  now.setDate(now.getDate() - 7);
   const dow = now.getDay(); // 0..6, Sun=0
   // Snap back to most recent Monday so keys are deterministic relative
   // to whichever weekday this test runs on.
@@ -323,6 +327,13 @@ describe("WeeklyRecap screen — render states", () => {
     const daysCard = await findByTestId("weekly-recap-days-card");
     expect(daysCard).toBeTruthy();
     expect(getByText("5 of 7 days")).toBeTruthy();
+
+    // The recap window is the LAST completed week (retrospective), so the
+    // eyebrow reads "Last week", not "This week". This is the behavioural guard
+    // for the current→last-week fix: a revert to the current-week anchor leaves
+    // the seeded last-week data outside the recap window, so the days-card above
+    // never renders and this test fails.
+    expect(getByText("Last week")).toBeTruthy();
 
     // Closest-to-target card is present (Tuesday's macros are the
     // closest to the 2100/150 target). We assert the testID rather

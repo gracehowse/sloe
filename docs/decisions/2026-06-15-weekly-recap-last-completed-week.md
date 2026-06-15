@@ -41,10 +41,19 @@ so this is a mobile **parity** fix, not new behaviour.
 
 ## Guard
 
-`apps/mobile/tests/unit/weeklyRecapLastWeek.test.ts` source-pins that
-`buildWeekStats` is fed a `− 7` anchor (not a bare `new Date()`) and that the
-per-day target window is shifted too. Mutation-checked: reverting the
-`buildWeekStats` anchor to the current date fails the test.
+`apps/mobile/tests/unit/weeklyRecapScreen.test.tsx` mounts the screen with a
+fixture seeded into the **last completed week** and asserts the days-card renders
+("5 of 7 days") under a **"Last week"** eyebrow. A revert to the current-week
+anchor leaves the seeded data outside the recap window, so the days-card never
+renders and the test fails — a behavioural guard, not a source-grep. (An earlier
+source-grep guard was dropped once the existing mount-test was found.)
+
+## Known follow-up (out of scope here)
+
+The empty-state copy (`buildWeeklyRecapEmptyCopy`) still reads "Nothing logged
+this week yet" / "This week's recap builds as you log" — now slightly off for a
+last-week recap. It's shared copy the web Digest also uses, so a wording tweak
+should be made web+mobile together; flagged, not changed here.
 
 ## Parity
 
