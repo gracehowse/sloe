@@ -1,5 +1,24 @@
 import type { Page } from "@playwright/test";
 
+/**
+ * Seed cookie-consent BEFORE navigation so the CookieConsent banner never
+ * mounts. The component checks `getConsentChoice()` (localStorage
+ * `suppr_cookie_consent`) in its mount `useEffect`; pre-seeding "accepted"
+ * keeps `visible` false. This is race-free, unlike clicking "Accept all"
+ * after goto (which loses to the banner's useEffect and leaves the transient,
+ * position-variable banner in the shot — the dominant visual-regression diff +
+ * flake on the public shell). Call BEFORE `page.goto`. See ENG-1191.
+ */
+export async function seedConsent(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("suppr_cookie_consent", "accepted");
+    } catch {
+      /* ignore — storage may be unavailable on some routes */
+    }
+  });
+}
+
 /** Dismiss cookie banner and one-shot checklist overlays before screenshots. */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
   const acceptBtn = page.getByRole("button", { name: /accept all/i });
