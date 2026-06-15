@@ -67,13 +67,15 @@ The app has a real test seam (`apps/mobile/context/auth.tsx`): at boot, if
 runs.
 
 To run a persona on mobile:
-1. Create (or reuse) a test account on the allowlist —
-   `gracehowse+{{persona}}@outlook.com` — with a known password in Supabase Auth.
+1. Create (or reuse) a test account on the allowlist — use the canonical email
+   from `.env.persona` (`PERSONA_*_EMAIL`). **Do not derive the address from the
+   persona slug** (e.g. `instagram-recipe-saver` → `gracehowse+recipesaver@…`, not
+   `gracehowse+instagram-recipe-saver@…`).
 2. **Seed it:** `node --import tsx scripts/seed-persona.mts --persona {{persona}}
-   --email gracehowse+{{persona}}@outlook.com --reset`.
-3. Point the dev client's env at that account:
+   --email <that canonical address> --reset`.
+3. Point the dev client's env at **the same account**:
    `EXPO_PUBLIC_E2E_AUTH_ENABLED=true`,
-   `EXPO_PUBLIC_E2E_EMAIL=gracehowse+{{persona}}@outlook.com`,
+   `EXPO_PUBLIC_E2E_EMAIL=<canonical address>`,
    `EXPO_PUBLIC_E2E_PASSWORD=<that account's password>`, then restart Metro so
    the bundle picks them up.
 4. Cold-launch — the app boots straight into Today as that persona.
@@ -103,17 +105,23 @@ Web *does* have an email/password path. `scripts/web-drive.mjs --auth` loads a
 committed Playwright storage state (`tests/e2e/.auth/user.json`). **Important:**
 that committed state is currently generated from `E2E_EMAIL`/`E2E_PASSWORD`, which
 points at a **real account** (`gracemturner@hotmail.co.uk`) — do NOT use it for
-persona work. Instead, regenerate a persona-scoped state:
+persona work. Instead, regenerate a persona-scoped state **for the same canonical
+email you seed** (from `.env.persona` — never the persona slug):
 
 ```bash
-E2E_EMAIL=gracehowse+{{persona}}@outlook.com E2E_PASSWORD=<pw> \
+E2E_EMAIL=<PERSONA_*_EMAIL from .env.persona> E2E_PASSWORD=<pw> \
   npx playwright test auth.setup.ts --project=setup
 ```
 
-…after seeding that account. Then `node scripts/web-drive.mjs shot /today --auth
+…after seeding **that same account**. Then `node scripts/web-drive.mjs shot /today --auth
 --vp mobile` renders the authed product as the persona. Web is the **reliable
 data-driven surface** for phase 1 because it has a real email-auth path and
 doesn't depend on the Apple sheet.
+
+**Failure mode to avoid:** seeding account A while `--auth` loads storage state for
+account B (or a stale/expired fixture) produces phantom "data missing" findings —
+see `docs/testing/personas/sessions/2026-06-14-instagram-recipe-saver.md`
+resolution (ENG-1181/1182 closed as harness defects).
 
 ### Phase-1 scoping decision (honest)
 
@@ -124,13 +132,12 @@ doesn't depend on the Apple sheet.
 - **Cold-start-newcomer:** best on **Path B / a fresh unonboarded account** for
   the genuine first-impression, since the value is in the empty/onboarding
   surfaces, not seeded data.
-- **Unblock needed to make mobile fully first-class for all personas:** a small,
-  documented set of per-persona test accounts (`gracehowse+<persona>@outlook.com`)
-  each with a known password stored where the runner can read it (e.g. a
-  gitignored `.env.persona`), so Path A can switch personas without Grace in the
-  loop. Until then, mobile persona runs are gated on Grace provisioning those
-  passwords. **State this gap in the session report rather than faking around
-  it.**
+- **Unblock needed to make mobile fully first-class for all personas:** per-persona
+  test accounts and passwords in gitignored `.env.persona` (`PERSONA_*_EMAIL`),
+  documented in each persona file — **not** `gracehowse+<persona-slug>@…`. Path A
+  can switch personas once env + seed use the same canonical address. Until then,
+  mobile persona runs are gated on Grace provisioning those passwords. **State
+  this gap in the session report rather than faking around it.**
 
 ---
 

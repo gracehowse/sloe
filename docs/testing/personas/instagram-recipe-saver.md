@@ -1,6 +1,9 @@
 # Persona — Instagram recipe saver
 
 **Seed name:** `instagram-recipe-saver`
+**Canonical test account:** `gracehowse+recipesaver@outlook.com` — password in
+gitignored `.env.persona` (`PERSONA_INSTAGRAM_RECIPE_SAVER_EMAIL`). The plus-tag
+is **`recipesaver`**, not the persona slug; do not derive the email from the slug.
 **Grounded in:** `docs/growth/tiktok-instagram-viral-plan.md` (Magic moment #1 —
 "recipe import from a Reel/TikTok" — the lead viral bet; the share-loop cohort).
 

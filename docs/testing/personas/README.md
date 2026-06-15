@@ -60,15 +60,18 @@ responsiveness, empty-state).
 
 ```bash
 node --import tsx scripts/seed-persona.mts \
-  --persona <name> --email gracehowse+<tag>@outlook.com [--reset] [--dry-run]
+  --persona <name> --email <from-.env.persona> [--reset] [--dry-run]
 ```
 
 - `--persona` — one of the five roster names.
-- `--email` — a TEST account on the hard allowlist. **The seeder refuses any
-  account not matching `gracehowse+<tag>@outlook.com` or the dedicated test
-  accounts, and explicitly forbids the two real daily-driver accounts**
-  (`gracehowse@outlook.com` bare, `gracemturner@hotmail.co.uk`). It aborts
-  before opening any database connection.
+- `--email` — a TEST account on the hard allowlist. **Use the canonical address
+  from gitignored `.env.persona` (`PERSONA_*_EMAIL`) — do not guess
+  `gracehowse+<persona-slug>@outlook.com`.** Slugs and plus-tags diverge (e.g.
+  persona `instagram-recipe-saver` → account `gracehowse+recipesaver@outlook.com`).
+  The seeder refuses any account not matching `gracehowse+<tag>@outlook.com` or
+  the dedicated test accounts, and explicitly forbids the two real daily-driver
+  accounts (`gracehowse@outlook.com` bare, `gracemturner@hotmail.co.uk`). It
+  aborts before opening any database connection.
 - `--reset` — wipe ONLY this account's persona-tagged rows first (every delete
   is scoped by `user_id`). Idempotent: re-running with `--reset` re-creates a
   clean history.
