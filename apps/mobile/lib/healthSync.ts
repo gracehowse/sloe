@@ -19,6 +19,8 @@ import {
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
 import { stringifyBridgeUnknown } from "./healthSyncBridgeString";
+import { formatCoreDietaryProbeAlignmentHint } from "./healthSyncProbeHints";
+import type { NutritionImportProbeCoreCounts } from "./healthSyncProbeTypes";
 import {
   formatHealthImportFallbackTitle,
   isHealthImportFallbackTitle,
@@ -1793,10 +1795,16 @@ function emptyNutritionImportResult(overrides?: Partial<NutritionImportResult>):
 }
 
 /**
- * Read-only diagnostic: count external dietary-energy samples HealthKit
+ * Read-only diagnostic: count external dietary samples HealthKit
  * would see (last N days). Mirrors export-side `probeNutritionWrite`.
+ * ENG-1023 — probes every core dietary permission key (same set as
+ * `requestDietaryHealthPermissions`) so the Health Sync screen can spot
+ * misaligned toggles (e.g. Protein on, Energy off).
  */
-export async function probeNutritionImport(
+export { formatCoreDietaryProbeAlignmentHint } from "./healthSyncProbeHints";
+export type { NutritionImportProbeCoreCounts } from "./healthSyncProbeTypes";
+
+/**
   lookbackDays = 7,
 ): Promise<
   | {
@@ -1806,6 +1814,7 @@ export async function probeNutritionImport(
       externalEnergyCount: number;
       sourceApps: string[];
       ownSamplesSkipped: number;
+      coreSampleCounts: NutritionImportProbeCoreCounts;
     }
   | { ok: false; reason: string }
 > {
@@ -1813,34 +1822,47 @@ export async function probeNutritionImport(
   if (!hk) {
     return { ok: false, reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null)." };
   }
-  // The single native read routes through the global HK mutex inside
+  // Each native read routes through the global HK mutex inside
   // `getDietaryImportSamplesSafe` → … → `withHealthCallbackTimeout` → `enqueueHk`;
   // no outer lock is needed (and one here would deadlock the leaf — ENG-1019).
   try {
     const startDate = daysAgo(lookbackDays).toISOString();
     const endDate = new Date().toISOString();
-    const energy = await getDietaryImportSamplesSafe(hk, "EnergyConsumed", { startDate, endDate });
-    const extEnergy = energy.filter((s) => !isOwnAppSample(s));
+    const opts = { startDate, endDate };
+    const coreSampleCounts: NutritionImportProbeCoreCounts = {};
+    let extEnergyForSources: DietarySample[] = [];
+    for (const permissionKey of HEALTH_DIETARY_CORE_PERMISSION_KEYS) {
+      const samples = await getDietaryImportSamplesSafe(hk, permissionKey, opts);
+      const external = samples.filter((s) => !isOwnAppSample(s));
+      coreSampleCounts[permissionKey] = { total: samples.length, external: external.length };
+      if (permissionKey === "EnergyConsumed") {
+        extEnergyForSources = external;
+      }
+    }
+    const energy = coreSampleCounts.EnergyConsumed;
+    const totalEnergyCount = energy?.total ?? 0;
+    const externalEnergyCount = energy?.external ?? 0;
     const sourceApps = [
       ...new Set(
-        extEnergy
+        extEnergyForSources
           .map((s) => s.sourceName?.trim() || sourceBundleIdOf(s) || "Unknown app")
           .filter(Boolean),
       ),
     ].slice(0, 8);
     return {
       ok: true,
-      totalEnergyCount: energy.length,
-      externalEnergyCount: extEnergy.length,
+      totalEnergyCount,
+      externalEnergyCount,
       sourceApps,
-      ownSamplesSkipped: energy.length - extEnergy.length,
+      ownSamplesSkipped: totalEnergyCount - externalEnergyCount,
+      coreSampleCounts,
     };
   } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+    return { ok: false, reason: stringifyBridgeUnknown(e) };
   }
 }
 
-/**
+export async function probeNutritionImport(
  * Read individual dietary samples from HealthKit, correlate energy with macros,
  * and insert identifiable meal items into `nutrition_entries`.
  *
@@ -1854,7 +1876,7 @@ export async function syncNutritionFromHealth(
   try {
     return await syncNutritionFromHealthImpl(userId, lookbackDays);
   } catch (e) {
-    lastNutritionImportError = e instanceof Error ? e.message : String(e);
+    lastNutritionImportError = stringifyBridgeUnknown(e);
     return emptyNutritionImportResult();
   }
 }
@@ -2230,7 +2252,7 @@ export async function writeNutritionToHealth(
       if (ok) written++;
       else if (!lastWriteError) lastWriteError = "saveFood returned false without an error code.";
     } catch (e) {
-      lastWriteError = e instanceof Error ? e.message : String(e);
+      lastWriteError = stringifyBridgeUnknown(e);
     }
   }
   return written;
@@ -2273,7 +2295,7 @@ export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false;
       reason: "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Sloe.",
     };
   } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+    return { ok: false, reason: stringifyBridgeUnknown(e) };
   }
 }
 

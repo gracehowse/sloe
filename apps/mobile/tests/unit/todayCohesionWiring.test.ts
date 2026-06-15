@@ -50,6 +50,11 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
     expect(src).toMatch(/tierV1 \? col \+ "12" : col \+ "18"/);
     expect(src).toMatch(/tierV1 \? colors\.fillQuiet : col \+ "18"/);
   });
+
+  it("ENG-1099 M6: meal rows use PressableScale when tierV1 is on", () => {
+    expect(src).toMatch(/TodayMealRowPressable/);
+    expect(src).toMatch(/PressableScale haptic="selection"/);
+  });
 });
 
 describe("Today cohesion — TodayCompleteDayButton component", () => {

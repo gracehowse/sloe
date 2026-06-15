@@ -32,6 +32,7 @@ import {
   probeHealthAccess,
   probeNutritionImport,
   probeNutritionWrite,
+  formatCoreDietaryProbeAlignmentHint,
   requestDietaryHealthPermissions,
   requestHealthPermissions,
   syncHealthData,
@@ -630,11 +631,12 @@ export default function HealthSyncScreen() {
                 : result.ownSamplesSkipped > 0 && result.externalEnergyCount === 0
                   ? `\n\nHealth has ${result.totalEnergyCount} sample${result.totalEnergyCount === 1 ? "" : "s"}, but all are from Sloe (nothing from MFP/other apps yet).`
                   : "";
+            const alignmentHint = formatCoreDietaryProbeAlignmentHint(result.coreSampleCounts) ?? "";
             Alert.alert(
               result.externalEnergyCount > 0 ? "Meals found in Health ✓" : "No meals found in Health",
               result.externalEnergyCount > 0
                 ? `Found ${result.externalEnergyCount} dietary energy sample${result.externalEnergyCount === 1 ? "" : "s"} from other apps in the last 7 days (sources: ${sources}). Tap Sync Now to import new items into Sloe.`
-                : `No dietary energy from other apps in the last 7 days. Log food in MyFitnessPal with Health sharing on, then open Health → Browse → Nutrition → Dietary Energy — you should see individual foods with times, not only one daily total.${permissionHint}`,
+                : `No dietary energy from other apps in the last 7 days. Log food in MyFitnessPal with Health sharing on, then open Health → Browse → Nutrition → Dietary Energy — you should see individual foods with times, not only one daily total.${permissionHint}${alignmentHint}`,
             );
           },
         },

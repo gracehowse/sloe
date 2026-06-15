@@ -137,8 +137,10 @@ vi.mock("@/lib/healthSync", () => ({
       externalEnergyCount: 0,
       sourceApps: [],
       ownSamplesSkipped: 0,
+      coreSampleCounts: {},
     }),
   ),
+  formatCoreDietaryProbeAlignmentHint: () => null,
   probeNutritionWrite: vi.fn(() => Promise.resolve({ ok: true })),
   formatNutritionImportSummary: (n: { imported: unknown[] }) =>
     n.imported.length > 0 ? `Imported ${n.imported.length} meals from Health.` : "No new meals to import from Health.",

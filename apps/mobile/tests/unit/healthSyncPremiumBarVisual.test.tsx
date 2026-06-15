@@ -138,8 +138,10 @@ vi.mock("@/lib/healthSync", () => ({
       externalEnergyCount: 0,
       sourceApps: [],
       ownSamplesSkipped: 0,
+      coreSampleCounts: {},
     }),
   ),
+  formatCoreDietaryProbeAlignmentHint: () => null,
   probeNutritionWrite: vi.fn(() => Promise.resolve({ ok: true })),
   formatNutritionImportSummary: () => "",
   requestDietaryHealthPermissions: vi.fn(() =>

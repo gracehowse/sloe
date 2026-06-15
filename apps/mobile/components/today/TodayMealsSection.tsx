@@ -54,6 +54,23 @@ import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import { emptySlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
 import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
 import { MealRowSwipeable } from "./MealRowSwipeable";
+import { PressableScale } from "@/components/ui/PressableScale";
+
+/** ENG-1099 M6 — recipe-tier meal rows use PressableScale; legacy keeps Pressable. */
+function TodayMealRowPressable({
+  tierV1,
+  children,
+  ...props
+}: { tierV1: boolean; children: React.ReactNode } & React.ComponentProps<typeof Pressable>) {
+  if (tierV1) {
+    return (
+      <PressableScale haptic="selection" {...props}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return <Pressable {...props}>{children}</Pressable>;
+}
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -841,7 +858,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 ? null
                 : meals.map((m) => (
                 <MealRowSwipeable key={m.id} mealId={m.id} onDeleteMeal={onDeleteMeal}>
-                  <Pressable
+                  <TodayMealRowPressable
+                    tierV1={tierV1}
                     onPress={() => onPressMeal(m.id)}
                     onLongPress={() => handleMealLongPress(m)}
                     style={{
@@ -867,7 +885,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       </Text>
                       <ChevronRight size={16} color={textTertiaryColor} />
                     </View>
-                  </Pressable>
+                  </TodayMealRowPressable>
                 </MealRowSwipeable>
               ))}
               {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
@@ -1272,7 +1290,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 meals.map((m) => (
                   <React.Fragment key={m.id}>
                   <MealRowSwipeable mealId={m.id} onDeleteMeal={onDeleteMeal}>
-                    <Pressable
+                    <TodayMealRowPressable
+                      tierV1={tierV1}
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
                         if (brandedSheets) {
@@ -1381,7 +1400,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         <Text style={{ fontSize: 10, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
-                    </Pressable>
+                    </TodayMealRowPressable>
                   </MealRowSwipeable>
                   {/* Phase 5 (2026-04-30) — one-time AI-first-log
                       tooltip. Anchored below the row whose id matches

@@ -22,6 +22,7 @@ import {
   householdMemberInitials,
 } from "../../lib/household/memberAccents.ts";
 import type { UserTier } from "../../types/recipe.ts";
+import { formatShoppingListSubtitle } from "../../lib/planning/shoppingListMeta.ts";
 
 interface ShoppingListProps {
   userTier: UserTier;
@@ -158,16 +159,15 @@ export const ShoppingList = memo(function ShoppingList({
     [categorySections],
   );
 
-  const subtitle = useMemo(() => {
-    const countPart = `${totalItemCount} item${totalItemCount === 1 ? "" : "s"}`;
-    if (shoppingListPlanStartDate) {
-      const d = new Date(shoppingListPlanStartDate + "T12:00:00");
-      const label = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-      const stale = shoppingListOutOfSync ? " · plan changed since" : "";
-      return `${countPart} · from plan of ${label}${stale}`;
-    }
-    return `${countPart} · from this week's plan`;
-  }, [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync]);
+  const subtitle = useMemo(
+    () =>
+      formatShoppingListSubtitle({
+        itemCount: totalItemCount,
+        planStartDate: shoppingListPlanStartDate,
+        outOfSync: shoppingListOutOfSync,
+      }),
+    [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync],
+  );
 
   const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
     const allChecked = isShoppingGroupFullyChecked(group);
