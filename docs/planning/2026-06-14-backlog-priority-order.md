@@ -1,6 +1,6 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 4 — Gate 0 closed except ENG-859).
+**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 5 — Gate 1: 9 shipped, 8 open).
 **Branch:** `claude/eng-1099-tracker-tier` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
@@ -15,7 +15,7 @@
 | Gate | Meaning | Open | Done (2026-06-14) |
 |------|---------|------|-------------------|
 | **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
-| **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 17 | 0 |
+| **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 8 | 9 |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
 | **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 64 | 6 |
 | **Wave 3** | Category-leading growth + audit P3s (post-launch) | 153 | 4 |
@@ -37,9 +37,9 @@ Linear → **Done** (comment + commit SHA on each). Gate 0 migrations **applied 
 | `26933dda` | ENG-49, 667, 123 | `lifetime_pro` webhook floor; EUR Pro checkout; Base→Free migration **script** (not run on prod) |
 | `13952d62` | ENG-774, 776, 1123, 1127, 1132, 1134, 928, 929, 930, 973, 802, 880, 1077, 905 | Logging loop, gate-2 fixes, cookie consent, micro clamp, go-tos tab |
 | *(dup)* | ENG-904 | Closed as duplicate of ENG-930 (S13 confirmation) |
-| *(in progress)* | ENG-1099 | M1–M3 on branch (`f5c0349a`…`f2f53c66`); not Done in Linear yet |
+| `97983c0a` | ENG-1162, 1161, 1163, 1167, 1178, 805, 1171, 1073, 931 (mobile) | Gate 1 polish: library deep-link, paywall CTA, log sheet scroll, dual-host auth, import test, check-in suppression, mobile search quick-log |
 
-**Still open — next in logging loop:** ENG-931 (instant log from search row), ENG-932 (loud barcode affordance).
+**Still open — next in logging loop:** ENG-932 (loud barcode affordance). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
@@ -65,29 +65,32 @@ Only things that can corrupt data, leak entitlements, or create legal exposure o
 
 ---
 
-## GATE 1 — pre-viral-launch (17)
+## GATE 1 — pre-viral-launch (8 open, 9 done)
 
 What refugees hit, screenshot, and churn on in the first session. Full WHAT/WHY/HOW in each ticket.
+
+**Done (`97983c0a` + follow-up):** ENG-1162, 1161, 1163, 1167, 1178, 805, 1171, 1073, 931, 1109 (contrast census tests).
 
 | # | Pri | Project | Title |
 |---|---|---|---|
 | ENG-771 | Urgent | MFP-refugee capture | Nutrition-logging loop — MFP-refugee parity (2026-05-30 deep dive) |
 | ENG-670 | Urgent | Audit sweep remediation | Establish measured Reel parse-rate gate before viral push |
-| ENG-1162 | High | Recipes tab | `suppr:///library` opens Recipes with Discover selected |
-| ENG-1161 | High | Pre-launch monetisation +  | Mobile paywall first viewport has no primary purchase CTA |
 | ENG-1111 | High | Gate 0 — launch hardening | Weekly check-in must consume measured Apple Health TDEE (double-count avoidance + wear-com |
-| ENG-1109 | High | Design system cleanup | Macro-chip / slot-pill / aim text fail WCAG AA contrast at 11px — use the existing -solid  |
+| ENG-1109 | High | Design system cleanup | Macro-chip / slot-pill / aim text fail WCAG AA contrast at 11px — contrast census tests added; Playwright sweep still open |
 | ENG-1060 | High | (none) | TestFlight build-57 smoke — 2026-06-12 (22 ASC threads) |
 | ENG-874 | High | Today tab | Apple Health: verify MFP meal import on device (HS-01–HS-09) |
-| ENG-805 | High | Redesign P1 — Today & the  | [Today] Weekly check-in modal is the cold-open blocker on Today (web + mobile) — demote to |
 | ENG-1179 | Medium | Pre-launch monetisation +  | Add a .storekit config + StoreKit sandbox harness so subscription lifecycle can be tested  |
-| ENG-1178 | Medium | Operations | recipeImportDescriptionNull integration test is non-hermetic — relies on live DNS via the  |
 | ENG-1177 | Medium | Category-leading growth ba | Configurable meal slots — set N meals / 'Meal 1, Meal 2…' / rename (eats 4-6 small meals) |
-| ENG-1171 | Medium | Today tab | Mobile-web Today can stack the weekly check-in modal + cookie consent banner on cold open |
-| ENG-1167 | Medium | Gate 0 — launch hardening | Web QA auth fixture only works on localhost, not 127.0.0.1 |
-| ENG-1163 | Medium | Today tab | Log sheet sticky footer overlaps Featured this week content |
 | ENG-1112 | Medium | MFP-refugee capture | Refresh competitor intel: MyFitnessPal acquired Cal AI (Mar 2026) — re-test the MFP-refuge |
-| ENG-1073 | Medium | Progress tab | Ramp adherence_over_display after eyeball, then flag-removal cleanup |
+
+~~ENG-1162~~ Done — `suppr:///library?keep=1` lands Recipes tab without empty-library redirect.  
+~~ENG-1161~~ Done — paywall sticky footer CTA only (in-scroll duplicate removed).  
+~~ENG-1163~~ Done — LogSheet Go-tos tab scroll inset above sticky footer.  
+~~ENG-1167~~ Done — E2E auth fixtures for localhost + 127.0.0.1.  
+~~ENG-1178~~ Done — recipeImportDescriptionNull mocks SSRF guard.  
+~~ENG-805 / ENG-1171~~ Done — weekly check-in never cold-opens (web + mobile); source pin tests.  
+~~ENG-1073~~ Done — adherence_over_display flag removed from render paths.  
+~~ENG-931~~ Done — search row + quick-log (web + mobile).
 
 **Order:** ENG-670 (measure Reel parse-rate) + ENG-771 (MFP-refugee logging-loop parity) are headline; ENG-1073 (ramp the adherence fix — kills the live "108% · over" bug) + ENG-1109 (WCAG contrast) are cheap high-visibility wins; ENG-1161/1162/1111 follow; ENG-1060/874 are Grace-owned.
 
