@@ -46,10 +46,28 @@ else
   bad "npx missing — install Node.js"
 fi
 
-if [[ -f "${ROOT}/.cursor/mcp.json" ]]; then
-  ok "Project MCP config: .cursor/mcp.json"
+CURSOR_MCP="${HOME}/.cursor/mcp.json"
+if [[ -f "$CURSOR_MCP" ]]; then
+  ok "Cursor MCP config: ~/.cursor/mcp.json"
 else
-  bad "Missing .cursor/mcp.json"
+  bad "Missing ~/.cursor/mcp.json — run: npm run agent:setup-mcp"
+fi
+
+ENV_LOCAL="${ROOT}/.env.local"
+if [[ -f "$ENV_LOCAL" ]] && grep -qE '^LINEAR_API_KEY=' "$ENV_LOCAL"; then
+  LINEAR_API_KEY="$(grep -E '^LINEAR_API_KEY=' "$ENV_LOCAL" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+  linear_code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST https://mcp.linear.app/mcp \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -H "Authorization: Bearer ${LINEAR_API_KEY}" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1.0.0"}}}' 2>/dev/null || echo 000)"
+  if [[ "$linear_code" == "200" ]]; then
+    ok "Linear MCP reachable (API key auth)"
+  else
+    bad "Linear MCP HTTP ${linear_code} — check LINEAR_API_KEY in .env.local"
+  fi
+else
+  echo "  (LINEAR_API_KEY not in .env.local — Linear MCP skipped)"
 fi
 
 if [[ -f "${ROOT}/sitemap.md" ]]; then

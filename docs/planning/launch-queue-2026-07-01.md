@@ -1,8 +1,9 @@
 # Launch queue — 2026-07-01 free founding cohort
 
-**Updated:** 2026-06-12  
+**Updated:** 2026-06-14  
 **Canonical Linear filters:** `docs/planning/linear-views-launch-2026-07-01.md`  
-**Monetisation gates:** `docs/ux/research/2026-06-11-launch-monetisation-sequencing.md`
+**Monetisation gates:** `docs/ux/research/2026-06-11-launch-monetisation-sequencing.md`  
+**Full backlog order:** `docs/planning/2026-06-14-backlog-priority-order.md`
 
 ## Two gates (do not conflate)
 
@@ -32,8 +33,9 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | ENG-858 | Import source disclaimer |
 | ENG-1038–1041, ENG-1044 | Vendor cache, goal timeline, shopping parity, fiber, nav parity |
 | ENG-1042 | Duplicate of ENG-858 — Done |
+| ENG-1103, ENG-1106, ENG-1108 | Gate 0 migrations + RPC — **`6f2eebe1`** on `claude/eng-1099-tracker-tier` (**apply to prod** before counting closed) |
 
-**Live verify:** `node --import tsx scripts/verify-gate0-db.mts` → **5/5** (needs `GATE0_VERIFY_PASSWORD` in `.env.local` for throwaway account).
+**Live verify:** `node --import tsx scripts/verify-gate0-db.mts` → **5/5** (needs `GATE0_VERIFY_PASSWORD` in `.env.local` for throwaway account). Re-run after applying 1103/1106/1108 migrations.
 
 ## Gate A — Todo queue (order)
 
@@ -43,14 +45,17 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 2 | **ENG-859** DMCA designated agent | G |
 | 3 | TestFlight **1.0.7 (57)** smoke — feedback **submitted**; Grace reviews screenshots in ASC / `npm run testflight:feedback` | G |
 | 4 | **ENG-874** Apple Health device matrix (In Progress) | G + E |
-| 5 | **ENG-670** Reel parse-rate gate | G |
-| 6 | ~~**ENG-1059** OFF search proxy~~ — **SHIPPED** `main` @ `94c90fcc` (PR #387) | E |
-| 7 | ~~**ENG-772** Editable `eaten_at`~~ — **SHIPPED** (flag `editable_eaten_at`) | E |
-| 8 | Deep-link dismisses Log sheet | E — **PASS** [PR #389](https://github.com/gracehowse/Suppr/pull/389) tab-blur + [PR #391](https://github.com/gracehowse/Suppr/pull/391) in-tab params |
+| 5 | **ENG-1099** Today tracker tier (In Progress — M1–M3 on branch) | E |
+| 6 | Gate 0 remainder — **1104, 1105, 1107, 1110** (1103/1106/1108 shipped, migrations pending prod) | E |
+| 7 | Logging loop tail — **ENG-931, 932** (928–930, 973 shipped `13952d62`) | E |
+| 8 | **ENG-670** Reel parse-rate gate | G |
+
+*Previously shipped (still on list for traceability): ENG-1059 (`94c90fcc`), ENG-772 (`editable_eaten_at`), deep-link Log sheet dismiss (PR #389 + #391).*
 
 ## Gate A — In Progress (keep)
 
 - **ENG-874** — Health sync device proof
+- **ENG-1099** — Today tracker tier (M1–M3 on branch; finish + close in Linear)
 - ~~**ENG-877**~~ — Search golden battery — **SHIPPED** [PR #392](https://github.com/gracehowse/Suppr/pull/392); UK retailer provider-recall gaps tracked in issue comment
 - ~~**ENG-840**~~ — Flag-force in bundled apps — **SHIPPED** (runtime `?__force_flags` web + DevFlagOverrides mobile)
 
@@ -62,9 +67,9 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | ENG-33 | Stripe Tax — Blocked, Grace |
 | ENG-101 | RevenueCat IAP — Blocked, Grace |
 | ENG-198 | RC offerings — Todo, Grace |
-| ENG-667 | VAT inclusive + EUR SKU — Backlog, Grace |
-| ENG-123 | Base→Free collapse only — Backlog |
-| ENG-49 | Creator lifetime comps only — Backlog |
+| ~~ENG-667~~ | **Done** — EUR SKU + region-aware checkout (`26933dda`) |
+| ~~ENG-123~~ | **Done** — Base→Free migration script (`26933dda`; run on prod when ready) |
+| ~~ENG-49~~ | **Done** (webhook floor half) — `lifetime_pro` never downgraded by Stripe (`26933dda`); creator lifetime comps still future |
 
 Founding cohort comp: `lifetime_pro` via `redeem_promo_code` (ENG-1043) — **not** RC offer codes.
 

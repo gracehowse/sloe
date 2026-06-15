@@ -49,10 +49,23 @@ Committed in **`.cursor/mcp.json`** (project):
 | `ios-simulator` | `ios-simulator-mcp` | Tap, swipe, describe UI, screenshot, `launch_app` |
 | `playwright` | `@playwright/mcp@latest` | Browse localhost, click, snapshot DOM |
 | `Mobbin` | Official HTTP MCP | Search curated app screens/flows for benchmarks |
+| `linear` | Official HTTP MCP | Issues, comments, projects (API key from `.env.local`) |
 
-**Also merge into `~/.cursor/mcp.json`** if you use global MCP (Sentry, Supabase, etc.): copy blocks from `.cursor/mcp.json` into your user file, then **restart Cursor**.
+**Also merge into `~/.cursor/mcp.json`** if you use global MCP (Sentry, Supabase, etc.): run `npm run agent:setup-mcp`, then **restart Cursor**.
 
 In Cursor: open MCP settings (or run the MCP panel) and confirm servers are **enabled** with green status.
+
+### Linear MCP (issues — API key, no OAuth hop)
+
+The Cursor **Linear marketplace plugin** uses OAuth and often shows red/errored. Prefer the **user `linear` server** in `~/.cursor/mcp.json` with your personal API key (same as `scripts/linear/*`):
+
+1. Ensure `LINEAR_API_KEY=lin_api_...` is in **`.env.local`** (Linear → Settings → API).
+2. Run **`npm run agent:setup-mcp`** (merges `linear` into `~/.cursor/mcp.json`).
+3. **Restart Cursor** (`Cmd-Q`, reopen).
+4. In **Settings → Tools & MCP**, enable **`linear`** (user server). You can **disable** the marketplace **Linear plugin** to avoid duplicate/conflicting servers.
+5. Verify: **`npm run agent:verify-tools`** should report `Linear MCP reachable`.
+
+Official endpoint: `https://mcp.linear.app/mcp` with `Authorization: Bearer <LINEAR_API_KEY>`. Docs: [Linear MCP](https://linear.app/docs/mcp).
 
 ### Mobbin MCP (benchmarks — browser OAuth)
 
