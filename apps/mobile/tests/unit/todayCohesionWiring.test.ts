@@ -42,11 +42,36 @@ describe("Today cohesion — index.tsx host wiring", () => {
   });
 });
 
+describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
+  const src = read("../../components/today/TodayMealsSection.tsx");
+
+  it("quiets slot icon chip tint and log-usual pill when today_tracker_tier_v1 is on", () => {
+    expect(src).toMatch(/today_tracker_tier_v1/);
+    expect(src).toMatch(/tierV1 \? col \+ "12" : col \+ "18"/);
+    expect(src).toMatch(/tierV1 \? colors\.fillQuiet : col \+ "18"/);
+  });
+
+  it("ENG-1099 M6: meal rows use PressableScale when tierV1 is on", () => {
+    expect(src).toMatch(/TodayMealRowPressable/);
+    expect(src).toMatch(/PressableScale haptic="selection"/);
+  });
+});
+
+describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
+  const src = read("../../components/today/NorthStarBlock.tsx");
+
+  it("uses on-family sage tokens for the band-tight chip when tierV1 is on", () => {
+    expect(src).toMatch(/Accent\.success \+ "1A"/);
+    expect(src).toMatch(/Accent\.successSolid/);
+  });
+});
+
 describe("Today cohesion — TodayCompleteDayButton component", () => {
   const src = read("../../components/today/TodayCompleteDayButton.tsx");
 
   it("F-158: anchors the CTA in a section wrapper on the standard rhythm", () => {
-    expect(src).toMatch(/marginTop:\s*Layout\.todaySectionBreak/);
+    expect(src).toMatch(/today_tracker_tier_v1/);
+    expect(src).toMatch(/marginTop:\s*tierV1\s*\?\s*0\s*:\s*Layout\.todaySectionBreak/);
   });
 
   it("is a SOLID primary CTA via SupprButton (ENG-1079 — was outline)", () => {

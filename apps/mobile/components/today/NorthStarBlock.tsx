@@ -405,6 +405,7 @@ function NorthStarDefault({
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
   const accent = useAccent();
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   // Pan responder for swipe-to-skip. We use raw PanResponder rather
   // than reanimated here because the block is a single-state gesture
   // (commit on release > threshold) — the simplicity of PanResponder
@@ -572,7 +573,9 @@ function NorthStarDefault({
                 styles.chip,
                 {
                   backgroundColor: suggestion.bandTight
-                    ? "rgba(34,168,96,0.10)"
+                    ? tierV1
+                      ? Accent.success + "1A"
+                      : "rgba(34,168,96,0.10)"
                     : colors.cardBorder,
                 },
               ]}
@@ -581,7 +584,11 @@ function NorthStarDefault({
                 style={{
                   fontSize: 11,
                   fontWeight: "600",
-                  color: suggestion.bandTight ? MacroColors.calories : colors.textSecondary,
+                  color: suggestion.bandTight
+                    ? tierV1
+                      ? Accent.successSolid
+                      : MacroColors.calories
+                    : colors.textSecondary,
                 }}
               >
                 {suggestion.bandLabel}

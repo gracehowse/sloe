@@ -43,6 +43,12 @@ import { TodayScrollSectionHeader } from "./today-scroll-section-header";
 import { TodayMealsFigmaLayout } from "./today-meals-figma-layout";
 import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
+/** ENG-1099 M6 — recipe-tier meal rows get PressableScale-style press feedback. */
+function todayMealRowPressClass(tierV1: boolean, clickable: boolean): string {
+  if (!tierV1 || !clickable) return "";
+  return " transition-transform duration-150 ease-out active:scale-[0.97] origin-left";
+}
+
 /**
  * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
  * Log-usual pill on slot headers, and the first-run "Make this your
@@ -530,7 +536,7 @@ export function TodayMealsSection({
                     }
                     className={`flex items-center justify-between px-3.5 py-2.5 border-b border-border/10${
                       onOpenMealNutrition ? " cursor-pointer hover:bg-muted/20" : ""
-                    }`}
+                    }${todayMealRowPressClass(tierV1, Boolean(onOpenMealNutrition))}`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       {(() => {
@@ -888,8 +894,9 @@ export function TodayMealsSection({
                       // creating a 42px nesting indent without any
                       // visual connector. Align to the slot header so
                       // meals read as flat list items under the header.
-                      className="flex items-center justify-between px-4 py-2.5 border-b border-border/10"
-                      style={{ paddingLeft: 14 }}
+                      className={`flex items-center justify-between py-2.5 pl-3.5 pr-4 border-b border-border/10${
+                        todayMealRowPressClass(tierV1, Boolean(onOpenMealNutrition))
+                      }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         {(() => {
