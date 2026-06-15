@@ -32,11 +32,9 @@
  *
  * IMPORTANT: this is a PRESENTATION-layer helper. The raw uncapped
  * `adherencePct` in `progressRangeStats.ts` is left untouched (it is a
- * data value; display owns presentation). The two over-target render
- * sites gate the NEW (over) branch behind the `adherence_over_display`
- * feature flag and fall back to today's raw-`{pct}%` behaviour in the
- * `else`. The ≤110% path is IDENTICAL in both branches, so a flag
- * flicker can never change a healthy user's number.
+ * data value; display owns presentation). ENG-1073 shipped the >110%
+ * band-inverted headline unconditionally — no feature flag in render
+ * paths. The ≤110% path is unchanged.
  *
  * Shared so web (`@/lib/nutrition/adherenceDisplay`) and mobile
  * (`@suppr/shared/nutrition/adherenceDisplay`) read identical figures.

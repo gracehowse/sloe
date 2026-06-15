@@ -8,7 +8,7 @@
  *
  * Reuses the browser Playwright already ships in this repo (no new MCP /
  * dependency). Points at the dev server you start with `npm run dev`
- * (http://localhost:3000) — or any URL via WEB_DRIVE_BASE_URL.
+ * (http://127.0.0.1:3000) — or any URL via WEB_DRIVE_BASE_URL.
  *
  * Why a script and not the Playwright MCP: the founder's reference
  * (zerotopete.com/.../give-claude-eyes-and-hands) sketches the MCP but
@@ -52,7 +52,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
-const BASE_URL = (process.env.WEB_DRIVE_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const BASE_URL = (process.env.WEB_DRIVE_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 const AUTH_STATE = path.resolve("tests/e2e/.auth/user.json");
 const DEFAULT_OUT_DIR = path.resolve("screenshots/web-drive");
 

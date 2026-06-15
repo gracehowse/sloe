@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { authFileForBaseUrl } from "./tests/e2e/utils/authHosts";
 
 /** Load `.env.local` for E2E_EMAIL / E2E_PASSWORD (preflight runs in a separate process). */
 function loadEnvLocal(): void {
@@ -25,7 +26,7 @@ function loadEnvLocal(): void {
 
 loadEnvLocal();
 
-const authFile = resolve(process.cwd(), "tests/e2e/.auth/user.json");
+const authFile = authFileForBaseUrl(baseURL);
 const hasE2ECredentials = Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
 
 /** Specs that require a signed-in session (storage state from auth.setup.ts). */

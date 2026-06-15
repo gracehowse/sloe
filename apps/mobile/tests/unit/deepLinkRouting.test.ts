@@ -182,6 +182,7 @@ describe("decideDeepLinkAction — well-known path aliases (ENG-800)", () => {
     expect(decideDeepLinkAction("suppr:///library")).toEqual({
       kind: "navigate",
       pathname: "/(tabs)/library",
+      params: { keep: "1" },
     });
   });
 

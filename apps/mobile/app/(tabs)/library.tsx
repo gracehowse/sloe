@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Bookmark,
   ArrowUpDown,
@@ -107,6 +107,8 @@ function formatTotalTime(card: RecipeCard): string | null {
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { keep } = useLocalSearchParams<{ keep?: string }>();
+  const keepLibraryTab = keep === "1";
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
@@ -160,10 +162,11 @@ export default function LibraryScreen() {
   // is not dead code. intentionally fallback-only per ENG-100 decision.
   useFocusEffect(
     useCallback(() => {
+      if (keepLibraryTab) return;
       if (!loading && savedRecipes.length === 0) {
         router.replace("/(tabs)/discover");
       }
-    }, [loading, savedRecipes.length]),
+    }, [loading, savedRecipes.length, keepLibraryTab, router]),
   );
 
   // Shared with Discover via `useLibrarySearchStore` so the query

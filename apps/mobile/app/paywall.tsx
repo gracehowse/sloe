@@ -1139,21 +1139,6 @@ export default function PaywallScreen() {
           </View>
         ) : null}
 
-        {/* Primary CTA (Figma `284:2`) — "Start free 7-day trial →" clay
-            pill. ALL state logic preserved verbatim from the prior
-            in-card CTA:
-              - Loading  → disabled, clay, "Loading plans…"
-              - Empty    → enabled, clay, "Open App Store to subscribe"
-                           → `itms-apps://…/subscriptions` (StoreKit
-                           failure escape hatch, ENG-528)
-              - Trial    → success-green, "Start free 7-day trial →",
-                           fires `onSelectTier("pro")`
-              - Subscribe→ clay, "Subscribe — {priceString}{suffix}",
-                           fires `onSelectTier("pro")`
-            CTA colour semantics (success-green for trial, clay
-            otherwise) + disabled/loading wiring unchanged. */}
-        {primaryPurchaseCta}
-
         {offeringsReady && !subscriptionsUnavailable ? (
           <Text
             testID="paywall-nutrition-estimate-note"

@@ -876,6 +876,87 @@ export default function FoodSearchPanel({
     [initialAmount, initialUnit],
   );
 
+  /** ENG-931 — log default serving without opening preview (row body still opens preview). */
+  const onQuickLogResult = useCallback(
+    async (item: SearchRow) => {
+      if (item._source === "CUSTOM") {
+        await onPickResult(item);
+        return;
+      }
+      setLoadingKey(item.key);
+      try {
+        const commit = (fields: Omit<SelectedFood, never>) => {
+          onSelect(fields as SelectedFood);
+        };
+
+        if (
+          (item._source === "GenericBeverage" || item._source === "GenericFood") &&
+          item.macrosPer100g
+        ) {
+          const allPortions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: allPortions[0], quantity: 1 }
+            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "USDA",
+            macrosPer100g: item.macrosPer100g,
+            ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
+            portions: allPortions,
+            chosenPortion: portion,
+            quantity,
+          });
+          return;
+        }
+
+        if (item._source === "OFF" && item.macrosPer100g) {
+          const allPortions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: allPortions[0], quantity: 1 }
+            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "OFF",
+            macrosPer100g: item.macrosPer100g,
+            microsPer100g: item.microsPer100g,
+            portions: allPortions,
+            chosenPortion: portion,
+            quantity,
+            barcode: item._offCode,
+            imageUrl: item.imageUrl,
+          });
+          return;
+        }
+
+        if (item._source === "USDA" && item._fdcId) {
+          const result = await getFoodMacros(item._fdcId);
+          if (!result) return;
+          const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
+          const allPortions = buildPortions(result.portions, effectivePrimary);
+          const { portion, quantity } = effectivePrimary
+            ? { portion: allPortions[0], quantity: 1 }
+            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "USDA",
+            macrosPer100g: result.macrosPer100g,
+            ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
+            portions: allPortions,
+            chosenPortion: portion,
+            quantity,
+            fdcId: item._fdcId,
+          });
+          return;
+        }
+
+        await onPickResult(item);
+      } finally {
+        setLoadingKey(null);
+      }
+    },
+    [initialAmount, initialUnit, onPickResult, onSelect],
+  );
+
   const handleCreateCustomFood = useCallback(
     async (payload: CreateCustomFoodPayload) => {
       if (!customEnabled || !supabase || !userId) return;
@@ -1303,70 +1384,83 @@ export default function FoodSearchPanel({
       const primary = item.primaryServing ?? null;
 
       return (
-        <Pressable
-          style={styles.resultRow}
-          onPress={() => onPickResult(item)}
-          onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isCustom
-              ? `Custom food: ${item.name}. Long-press for edit or delete.`
-              : primary
-                ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
-                : item.name
-          }
-        >
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
-              {isCustom && <Badge variant="custom">Custom</Badge>}
-              {item.verified && !isCustom && (
-                <CheckCircle2 size={14} color={Accent.success} />
-              )}
-              <Text style={styles.resultName} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </View>
-            {headline.mode === "per-serving" ? (
-              <>
-                <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
-                </View>
-                <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
-                <Text style={styles.per100g}>
-                  {headline.servingLabel}
-                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
+        <View style={styles.resultRow}>
+          <Pressable
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.md }}
+            onPress={() => onPickResult(item)}
+            onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isCustom
+                ? `Custom food: ${item.name}. Long-press for edit or delete.`
+                : primary
+                  ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
+                  : item.name
+            }
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
+                {isCustom && <Badge variant="custom">Custom</Badge>}
+                {item.verified && !isCustom && (
+                  <CheckCircle2 size={14} color={Accent.success} />
+                )}
+                <Text style={styles.resultName} numberOfLines={2}>
+                  {item.name}
                 </Text>
-              </>
-            ) : headline.mode === "per-100g" && headline.macros ? (
-              <>
-                <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
-                </View>
+              </View>
+              {headline.mode === "per-serving" ? (
+                <>
+                  <View style={styles.macroPreview}>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                  </View>
+                  <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
+                  <Text style={styles.per100g}>
+                    {headline.servingLabel}
+                    {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
+                  </Text>
+                </>
+              ) : headline.mode === "per-100g" && headline.macros ? (
+                <>
+                  <View style={styles.macroPreview}>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                  </View>
+                  <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
+                </>
+              ) : headline.mode === "per-100g" ? (
                 <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-              </>
-            ) : headline.mode === "per-100g" ? (
-              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-            ) : (
-              <Text style={styles.per100g}>Tap for nutrition info</Text>
-            )}
-          </View>
-          {headline.mode !== "placeholder" && !isLoading ? (
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
-          ) : null}
+              ) : (
+                <Text style={styles.per100g}>Tap for nutrition info</Text>
+              )}
+            </View>
+            {headline.mode !== "placeholder" && !isLoading ? (
+              <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
+            ) : null}
+          </Pressable>
           {isLoading ? (
             <ActivityIndicator size="small" color={accent.primary} />
+          ) : item._source !== "CUSTOM" ? (
+            <Pressable
+              onPress={() => void onQuickLogResult(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Quick log ${item.name} at default serving`}
+              testID={`food-search-quick-log-${item.key}`}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Plus size={18} color={accent.primarySolid} strokeWidth={2.5} />
+            </Pressable>
           ) : (
             <ChevronRight size={16} color={colors.textTertiary} />
           )}
-        </Pressable>
+        </View>
       );
     },
-    [loadingKey, onPickResult, colors, openCustomFoodActions, styles],
+    [loadingKey, onPickResult, onQuickLogResult, colors, accent, openCustomFoodActions, styles],
   );
 
   // ── History-first search (ENG-1033) ──────────────────────────────────

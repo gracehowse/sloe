@@ -1172,7 +1172,9 @@ function BrowseAndFooter({
       {/* Browse content */}
       <View style={{ flex: 1 }}>
         {showGoTos && activeTab === "gotos" && goTos ? (
-          <GoToList goTos={goTos} embedded />
+          <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xxl + 72 }}>
+            <GoToList goTos={goTos} embedded />
+          </ScrollView>
         ) : null}
         {showRecent && activeTab === "recent" ? (
           <RecentList recent={recent!} />

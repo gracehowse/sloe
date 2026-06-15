@@ -32,6 +32,14 @@ vi.mock("@/lib/server/featureFlags", () => ({
   isServerFeatureEnabled: vi.fn(async (flag: string) => flagState[flag] ?? false),
 }));
 
+vi.mock("@/lib/recipe-import/ssrfGuard", () => ({
+  isAllowedUrl: vi.fn(() => true),
+  followWithSsrfGuard: vi.fn(async (url: string, opts: { headers?: Record<string, string> } = {}) => {
+    const res = await fetch(url, { redirect: "manual", headers: opts.headers });
+    return { res, finalUrl: url };
+  }),
+}));
+
 import { POST } from "../../app/api/recipe-import/route";
 
 /** The creator's verbatim headnote — the prose we must NOT reproduce. */
