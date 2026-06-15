@@ -349,7 +349,11 @@ export default function WeeklyRecapScreen() {
       setDailyTargetsByDay({});
       return;
     }
+    // Last completed week (mirror of weekStats below) — the recap is
+    // retrospective, so the per-day target snapshots must line up with the
+    // week that just ended, not the current week.
     const nowD = new Date();
+    nowD.setDate(nowD.getDate() - 7);
     const dow = nowD.getDay();
     const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
     const weekFirst = new Date(nowD);
@@ -387,13 +391,17 @@ export default function WeeklyRecapScreen() {
     return out;
   }, [dailyTargetsByDay]);
 
-  // Current-week stats. `buildWeekStats` defaults to "now" so we get
-  // Mon–Sun (or Sun–Sat) of the active week — exactly what the user
-  // expects when they tap a live pip.
-  const weekStats = useMemo(
-    () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay),
-    [byDay, targets, weekStartDay, weekTargetsByDay],
-  );
+  // Last-completed-week stats. A weekly recap is retrospective — it summarises
+  // the week that just ended (like the web Digest + the weekly-recap push),
+  // not the current week the user has barely started. Anchor 7 days back.
+  // NOTE: the TDEE check-in below keeps its OWN current-week snapshot anchor
+  // (read at now-7, written at now) — do NOT shift that too, or the
+  // previous-vs-current TDEE comparison double-shifts.
+  const weekStats = useMemo(() => {
+    const lastWeekAnchor = new Date();
+    lastWeekAnchor.setDate(lastWeekAnchor.getDate() - 7);
+    return buildWeekStats(byDay, targets, weekStartDay, lastWeekAnchor, weekTargetsByDay);
+  }, [byDay, targets, weekStartDay, weekTargetsByDay]);
 
   const protectedStreak = useMemo(
     () => computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax, new Date()),
@@ -483,8 +491,8 @@ export default function WeeklyRecapScreen() {
   }, [bodyStats]);
 
   // Weight first/last in the recap window — same logic as
-  // `buildWeeklyRecap` (≥2 entries required), but we look at the
-  // *current* week the user is on, not the previous one.
+  // `buildWeeklyRecap` (≥2 entries required); the window is `weekStats.days`,
+  // which is the last completed week (see weekStats above).
   const weeklyWeightStats = useMemo(() => {
     if (!bodyStats || weekStats.days.length === 0) {
       return {
@@ -746,7 +754,7 @@ export default function WeeklyRecapScreen() {
             marginBottom: Spacing.sm,
           }}
         >
-          This week
+          Last week
         </Text>
         {/* H1: Newsreader serif (Type.title = 24pt, the screen title role per §2.2
             display-title). letterSpacing from the token. */}
@@ -775,7 +783,7 @@ export default function WeeklyRecapScreen() {
       {checkin
         ? card(
             <View testID="weekly-checkin-card">
-              {sectionLabel("Your TDEE this week")}
+              {sectionLabel("Your adaptive TDEE")}
               <Text
                 testID="weekly-checkin-headline"
                 style={{
