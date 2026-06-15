@@ -37,6 +37,8 @@ import {
   syncHealthData,
   syncNutritionFromHealth,
 } from "@/lib/healthSync";
+import { clearDeletedHealthSampleIds } from "@/lib/deletedHealthSamples";
+import { requestJournalRefresh } from "@/lib/journalRefresh";
 import { invalidateHealthExportEnabledCache } from "@/lib/healthKitMealWriter";
 import { supabase } from "@/lib/supabase";
 
@@ -474,8 +476,11 @@ export default function HealthSyncScreen() {
         try {
           const n = dietary.dietaryImportReady
             ? await syncNutritionFromHealth(userId, 120)
-            : { imported: [], skippedOwn: 0, skippedNoName: 0, externalEnergyCount: 0, skippedDedup: 0, skippedNonPositive: 0, insertAttempted: 0, insertFailed: 0, healthKitUnavailable: false };
+            : { imported: [], skippedOwn: 0, skippedNoName: 0, externalEnergyCount: 0, skippedDedup: 0, skippedTombstone: 0, skippedNonPositive: 0, insertAttempted: 0, insertFailed: 0, healthKitUnavailable: false };
           bodyMsg = `${bodyMsg} ${formatNutritionImportSummary(n)}`;
+          if (n.imported.length > 0 || n.insertAttempted > 0) {
+            requestJournalRefresh();
+          }
           if (n.insertFailed > 0) {
             setErrorState({
               kind: "sync",
@@ -505,6 +510,49 @@ export default function HealthSyncScreen() {
     } finally {
       setSyncing(false);
     }
+  }, [userId, importEnabled]);
+
+  const handleReimportMeals = useCallback(async () => {
+    if (!userId || !importEnabled) return;
+    Alert.alert(
+      "Re-import from Apple Health",
+      "Clears your deleted-meal block list and pulls meals from Health again. Items you deleted before may reappear.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Re-import",
+          onPress: () => {
+            void (async () => {
+              setSyncing(true);
+              setErrorState(null);
+              try {
+                await clearDeletedHealthSampleIds();
+                const dietary = await requestDietaryHealthPermissions();
+                if (!dietary.dietaryImportReady) {
+                  setLastResult(
+                    "Meal import needs Dietary Energy read access — open Settings → Health → Sloe and enable Dietary Energy.",
+                  );
+                  return;
+                }
+                const n = await syncNutritionFromHealth(userId, 120);
+                setLastResult(formatNutritionImportSummary(n));
+                if (n.imported.length > 0 || n.insertAttempted > 0) {
+                  requestJournalRefresh();
+                }
+              } catch {
+                setLastResult("Re-import from Apple Health failed.");
+                setErrorState({
+                  kind: "sync",
+                  message: "Re-import from Apple Health failed. Check Health permissions and try again.",
+                });
+              } finally {
+                setSyncing(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
   }, [userId, importEnabled]);
 
   /**
@@ -1118,6 +1166,16 @@ export default function HealthSyncScreen() {
           label="Sync Now"
         />
       )}
+
+      {connected && importEnabled ? (
+        <SupprButton
+          variant="ghost"
+          style={[styles.cta, { marginTop: Spacing.sm }]}
+          onPress={handleReimportMeals}
+          disabled={syncing}
+          label="Re-import from Apple Health"
+        />
+      ) : null}
 
       {lastResult && (
         <Text style={{ textAlign: "center", fontSize: 13, color: colors.textSecondary, marginTop: -Spacing.sm }}>
