@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../utils/a11y";
+import { seedConsent } from "../utils/visual";
 
 /**
  * Core user journeys — these test real browser interaction.
@@ -42,6 +43,7 @@ test.describe("Public pages", () => {
   });
 
   test("unauthenticated root shows landing page with a log-in path", async ({ page }) => {
+    await seedConsent(page);
     await page.goto("/");
     await expectNoSeriousA11yViolations(page);
     // LandingPage renders server-side for unauthenticated users (see app/page.tsx).
