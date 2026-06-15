@@ -4,8 +4,9 @@
  * (`apps/mobile/hooks/use-meal-plan-slots.ts`).
  *
  * Why a shared module: web persists slot metadata to localStorage and
- * mobile to AsyncStorage. The cloud syncs the **active plan only** —
- * slot names + ids stay device-local. Both platforms use the exact
+ * mobile to AsyncStorage. ENG-1130 also syncs slot registry metadata
+ * to `profiles.meal_plan_slots`; plan bodies use `save_meal_plan`.
+ * Both platforms use the exact
  * same in-memory shape and CRUD rules; that's what this module owns.
  *
  * Anything that's React-specific (state, useEffect, storage I/O)

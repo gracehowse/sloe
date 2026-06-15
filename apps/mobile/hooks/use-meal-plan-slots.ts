@@ -12,6 +12,13 @@ import {
   setActiveSlotPlan,
   type MealPlanNamedSlot,
 } from "@suppr/shared/mealPlan/namedSlots";
+import {
+  fetchMealPlanForLocalSlot,
+  mergeCloudMetadataIntoSlots,
+  metadataFromSlots,
+  parseMealPlanSlotsMetadata,
+} from "@suppr/shared/mealPlan/slotCloudSync";
+import { supabase } from "@/lib/supabase";
 import type { DayPlan } from "../../../src/types/recipe";
 
 /**
@@ -20,9 +27,9 @@ import type { DayPlan } from "../../../src/types/recipe";
  *
  * Web uses localStorage; mobile uses AsyncStorage. Both sides share
  * the pure CRUD helpers in `src/lib/mealPlan/namedSlots.ts` so the
- * data shape and rules can never drift. The cloud syncs only the
- * **active plan** via `upsertMealPlanJson` — slot names + ids stay
- * device-local on both platforms.
+ * data shape and rules can never drift. ENG-1130 syncs slot metadata
+ * (ids, names, active selection) to `profiles.meal_plan_slots`; each
+ * slot's plan body is stored via `save_meal_plan(p_slot_id, …)`.
  *
  * Storage keys are versioned (`-v1`) so a future schema change can
  * write to `-v2` and leave old data untouched until the migrator
@@ -57,7 +64,11 @@ export interface UseMealPlanSlotsResult {
   deleteExistingSlot: (slotId: string) => void;
 }
 
-export function useMealPlanSlots(initialPlan: DayPlan[] | null = null): UseMealPlanSlotsResult {
+export function useMealPlanSlots(
+  initialPlan: DayPlan[] | null = null,
+  options?: { userId?: string | null },
+): UseMealPlanSlotsResult {
+  const userId = options?.userId ?? null;
   const [slots, setSlots] = useState<MealPlanNamedSlot[]>(() => [makeDefaultSlot(initialPlan)]);
   const [activeSlotId, setActiveSlotId] = useState<string>(DEFAULT_MEAL_PLAN_SLOT_ID);
   const [hydrating, setHydrating] = useState(true);
@@ -67,6 +78,7 @@ export function useMealPlanSlots(initialPlan: DayPlan[] | null = null): UseMealP
   slotsRef.current = slots;
   const activeRef = useRef(activeSlotId);
   activeRef.current = activeSlotId;
+  const cloudMetadataLoadedRef = useRef(false);
 
   // Hydrate from AsyncStorage on mount.
   useEffect(() => {
@@ -101,6 +113,39 @@ export function useMealPlanSlots(initialPlan: DayPlan[] | null = null): UseMealP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ENG-1130 — merge slot registry from profiles after local hydrate.
+  useEffect(() => {
+    if (!userId || hydrating) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("meal_plan_slots")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const cloudMeta = parseMealPlanSlotsMetadata(
+        (data as { meal_plan_slots?: unknown } | null)?.meal_plan_slots,
+      );
+      if (cloudMeta) {
+        setSlots((prev) => mergeCloudMetadataIntoSlots(prev, cloudMeta).slots);
+        setActiveSlotId((prev) => {
+          const merged = mergeCloudMetadataIntoSlots(slotsRef.current, cloudMeta);
+          return merged.activeSlotId ?? prev;
+        });
+      }
+      cloudMetadataLoadedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, hydrating]);
+
+  // When signed out, allow the next sign-in to re-hydrate cloud metadata.
+  useEffect(() => {
+    if (!userId) cloudMetadataLoadedRef.current = false;
+  }, [userId]);
+
   // Persist slots whenever they change post-hydration.
   useEffect(() => {
     if (hydrating) return;
@@ -112,6 +157,16 @@ export function useMealPlanSlots(initialPlan: DayPlan[] | null = null): UseMealP
     if (hydrating) return;
     void AsyncStorage.setItem(ACTIVE_SLOT_STORAGE_KEY, activeSlotId).catch(() => {});
   }, [activeSlotId, hydrating]);
+
+  // ENG-1130 — sync slot registry metadata to profiles.
+  useEffect(() => {
+    if (!userId || hydrating || !cloudMetadataLoadedRef.current) return;
+    const t = setTimeout(async () => {
+      const payload = metadataFromSlots(slotsRef.current, activeRef.current);
+      await supabase.from("profiles").update({ meal_plan_slots: payload }).eq("id", userId);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [userId, slots, activeSlotId, hydrating]);
 
   const setActivePlan = useCallback<UseMealPlanSlotsResult["setActivePlan"]>((next) => {
     setSlots((prev) => {
@@ -127,7 +182,17 @@ export function useMealPlanSlots(initialPlan: DayPlan[] | null = null): UseMealP
   const switchSlot = useCallback<UseMealPlanSlotsResult["switchSlot"]>((slotId) => {
     if (!slotsRef.current.some((s) => s.id === slotId)) return;
     setActiveSlotId(slotId);
-  }, []);
+    if (!userId) return;
+    const target = slotsRef.current.find((s) => s.id === slotId);
+    if (target?.plan) return;
+    void (async () => {
+      const loaded = await fetchMealPlanForLocalSlot(supabase, userId, slotId);
+      if (!loaded?.plans.length) return;
+      setSlots((prev) =>
+        prev.map((s) => (s.id === slotId ? { ...s, plan: loaded.plans } : s)),
+      );
+    })();
+  }, [userId]);
 
   const createNewSlot = useCallback<UseMealPlanSlotsResult["createNewSlot"]>((name) => {
     const result = createSlot(slotsRef.current, name);

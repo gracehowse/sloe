@@ -115,6 +115,7 @@ import {
   stripMidnight,
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
+import { cloudSlotIdFromLocal } from "@suppr/shared/mealPlan/slotCloudSync";
 import {
   computePlanWeekSummaryScore,
   planWeekHeadlineTone,
@@ -550,7 +551,7 @@ export default function PlannerScreen() {
     createNewSlot: createPlanSlot,
     renameExistingSlot: renamePlanSlot,
     deleteExistingSlot: deletePlanSlot,
-  } = useMealPlanSlots();
+  } = useMealPlanSlots(null, { userId });
   const [generating, setGenerating] = useState(false);
 
   // ENG-742 (2026-05-26) — Plan Import is cut from the 2026-07-01 launch
@@ -1034,7 +1035,7 @@ export default function PlannerScreen() {
         })),
       }));
       const { error } = await supabase.rpc("save_meal_plan", {
-        p_slot_id: "default",
+        p_slot_id: cloudSlotIdFromLocal(activePlanSlotId),
         p_start_date: startDate,
         p_plan: planPayload,
       } as never);
@@ -1058,7 +1059,7 @@ export default function PlannerScreen() {
         }
       }
     },
-    [userId, startOffset],
+    [userId, startOffset, activePlanSlotId],
   );
 
   useFocusEffect(
@@ -1860,7 +1861,7 @@ export default function PlannerScreen() {
           "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, recipe_id, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
         )
         .eq("user_id", userId)
-        .eq("slot_id", "default")
+        .eq("slot_id", cloudSlotIdFromLocal(activePlanSlotId))
         .order("day", { ascending: true });
 
       if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
@@ -1913,7 +1914,7 @@ export default function PlannerScreen() {
       // exclusively from `meal_plan_days` + `meal_plan_meals` above.
     })();
     return () => { cancelled = true; };
-  }, [userId, recipeFiberPool]);
+  }, [userId, recipeFiberPool, activePlanSlotId]);
 
   // When the recipe library hydrates after the plan, backfill fibre on rows
   // (meal_plan_meals does not persist fibre; we derive from linked recipes).
