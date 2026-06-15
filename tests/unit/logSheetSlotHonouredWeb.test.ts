@@ -24,8 +24,10 @@ const SRC = readFileSync(
 );
 
 describe("build-47 — web LogSheet pick-handlers honour mealSlot", () => {
-  it("recents.onPick passes mealSlot to logHistoryItem", () => {
-    expect(SRC).toMatch(/logHistoryItem\(\s*found,\s*mealSlot\s*\)/);
+  it("recents.onPick passes mealSlot to logHistoryItemFromSheet", () => {
+    // ENG-1099 rebuild renamed the recents log call to logHistoryItemFromSheet,
+    // which still takes the chosen slot as an explicit second arg (not time-of-day).
+    expect(SRC).toMatch(/logHistoryItemFromSheet\(\s*found,\s*mealSlot\s*\)/);
   });
 
   it("saved.onPick passes mealSlot to logSavedMeal", () => {

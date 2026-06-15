@@ -33,17 +33,17 @@ vi.mock("posthog-js", () => ({
 
 import { isFeatureEnabled, isFeatureDisabled } from "@/lib/analytics/track";
 
-// A NON-redesign flag. `redesign_branded_sheets` is now in `REDESIGN_DEFAULT_ON`
-// (852c8df1 un-gate), so `isFeatureEnabled` short-circuits it to `true` BEFORE the
-// override / PostHog layer this file exercises — which would mask the mechanism
-// under test. `today_log_again` is a normal flag (default-OFF, PostHog-resolved),
-// so the override precedence + fallthrough stay observable. Redesign flags' new
-// default-ON behaviour is covered by `redesignFlagsUngated.test.ts`. The
-// hyphenated `HYPHEN_FLAG` below still proves the hyphen→underscore env mapping.
-const SNAKE_FLAG = "today_log_again";
-const SNAKE_ENV = "NEXT_PUBLIC_FLAG_FORCE_TODAY_LOG_AGAIN";
-const HYPHEN_FLAG = "log-sheet-slot-selector";
-const HYPHEN_ENV = "NEXT_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR";
+// NON-redesign flags. ENG-771 moved `today_log_again` and `log-sheet-slot-selector`
+// into `REDESIGN_DEFAULT_ON` (default-ON), so `isFeatureEnabled` short-circuits them
+// to `true` BEFORE the override / PostHog layer this file exercises — which would
+// mask the mechanism under test. Use QA-only flags that are NOT in any default-ON
+// set so the override precedence + fallthrough stay observable. Redesign flags'
+// default-ON behaviour is covered by `redesignFlagsUngated.test.ts`. The hyphenated
+// `HYPHEN_FLAG` still proves the hyphen→underscore env mapping.
+const SNAKE_FLAG = "qa_test_flag_snake";
+const SNAKE_ENV = "NEXT_PUBLIC_FLAG_FORCE_QA_TEST_FLAG_SNAKE";
+const HYPHEN_FLAG = "qa-test-flag-hyphen";
+const HYPHEN_ENV = "NEXT_PUBLIC_FLAG_FORCE_QA_TEST_FLAG_HYPHEN";
 
 describe("web flag-force override (NEXT_PUBLIC_FLAG_FORCE_*)", () => {
   beforeEach(() => {

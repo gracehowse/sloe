@@ -131,18 +131,17 @@ describe("isFeatureDisabled (mobile) — PostHog client path", () => {
 // silently dead and the PostHog client decided instead — exactly what broke
 // the Maestro E2E path for every hyphenated flag.
 describe("isFeatureEnabled/Disabled (mobile) — hyphenated flag env-key normalisation", () => {
-  const HYPHEN_FLAG = "log-sheet-slot-selector";
-  const NORMALISED_ENV = "EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR";
+  // ENG-771 made `log-sheet-slot-selector` default-ON (REDESIGN_DEFAULT_ON), so it
+  // is no longer a valid "neutral, PostHog-resolved" example for these override
+  // tests. Use a QA-only hyphenated flag that is NOT in any default-ON set.
+  const HYPHEN_FLAG = "qa-neutral-test-flag";
+  const NORMALISED_ENV = "EXPO_PUBLIC_FLAG_FORCE_QA_NEUTRAL_TEST_FLAG";
 
   beforeEach(() => {
     isEnabledMock.mockReset();
     vi.stubGlobal("__DEV__", true);
-    // Hermetic baseline: a local `.env.local` may force this flag ON for
-    // Maestro/preview (`EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR=true`),
-    // which vitest auto-loads. Clear the (settable, normalised) key so each
-    // test controls the env it asserts on — otherwise the "raw hyphenated key
-    // is ignored" guard reads the ambient value and reports a false failure
-    // locally (it passes in clean CI, which has no `.env.local`).
+    // Hermetic baseline: clear the (settable, normalised) force key so each test
+    // controls the env it asserts on, regardless of any ambient `.env.local`.
     vi.stubEnv(NORMALISED_ENV, undefined as unknown as string);
   });
   afterEach(() => {
@@ -166,7 +165,7 @@ describe("isFeatureEnabled/Disabled (mobile) — hyphenated flag env-key normali
 
   it("ignores a raw hyphenated env key (proves normalisation, not a literal lookup)", () => {
     // The old, un-settable key shape must have no effect post-fix.
-    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_LOG-SHEET-SLOT-SELECTOR", "true");
+    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_QA-NEUTRAL-TEST-FLAG", "true");
     isEnabledMock.mockReturnValue(undefined); // cold client
     expect(isFeatureEnabled(HYPHEN_FLAG)).toBe(false);
   });

@@ -107,7 +107,12 @@ async function pickGenericAndConfirm(
     await vi.advanceTimersByTimeAsync(450);
   });
 
-  const row = await screen.findByRole("button", { name: rowName });
+  const rows = await screen.findAllByRole("button", { name: rowName });
+  // Logging-loop added a sibling "Quick log …" button per row; pick the main row.
+  const row =
+    rows.find(
+      (b) => !b.getAttribute("data-testid")?.startsWith("food-search-quick-log"),
+    ) ?? rows[0];
   fireEvent.click(row);
 
   // Generic-food selection resolves synchronously (no detail fetch) —

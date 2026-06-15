@@ -335,9 +335,14 @@ describe("FoodSearchPanel — FatSecret in merge pipeline (web)", () => {
       await vi.advanceTimersByTimeAsync(450);
     });
 
-    const row = await screen.findByRole("button", {
+    const rows = await screen.findAllByRole("button", {
       name: /McDonald's · Big Mac/i,
     });
+    // Logging-loop added a sibling "Quick log …" button per row; pick the main row.
+    const row =
+      rows.find(
+        (b) => !b.getAttribute("data-testid")?.startsWith("food-search-quick-log"),
+      ) ?? rows[0];
     fireEvent.click(row);
 
     await act(async () => {
@@ -415,9 +420,14 @@ describe("FoodSearchPanel — FatSecret in merge pipeline (web)", () => {
       await vi.advanceTimersByTimeAsync(450);
     });
 
-    const row = await screen.findByRole("button", {
+    const rows = await screen.findAllByRole("button", {
       name: /McDonald's · Big Mac \(no metric\)/i,
     });
+    // Logging-loop added a sibling "Quick log …" button per row; pick the main row.
+    const row =
+      rows.find(
+        (b) => !b.getAttribute("data-testid")?.startsWith("food-search-quick-log"),
+      ) ?? rows[0];
     fireEvent.click(row);
 
     await act(async () => {
