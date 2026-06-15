@@ -6,6 +6,7 @@ import { PageViewTracker, PageDismissTracker } from "../../src/app/components/Pa
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detectRegion.ts";
+import { isEurStripePricingConfigured } from "../../src/lib/stripe/resolveProStripePrice.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
@@ -253,7 +254,7 @@ export default async function PricingPage({
           )}
           regionCurrency={region.currency}
           regionNote={
-            region.currency === "EUR"
+            region.currency === "EUR" && !isEurStripePricingConfigured()
               ? "EU pricing coming soon — current prices in GBP"
               : ""
           }

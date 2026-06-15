@@ -12,11 +12,14 @@ const supabase = createClient(supabaseUrl, publicAnonKey);
 export function CheckoutButton({
   tier,
   period = "monthly",
+  currency = "GBP",
   label,
   highlighted,
 }: {
   tier: "base" | "pro" | null;
   period?: "monthly" | "annual";
+  /** ENG-667 — pass detected region currency so EU visitors hit EUR SKUs. */
+  currency?: "GBP" | "EUR" | "USD";
   label: string;
   highlighted: boolean;
 }) {
@@ -46,7 +49,11 @@ export function CheckoutButton({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier, period }),
+        body: JSON.stringify({
+          tier,
+          period,
+          ...(currency === "EUR" ? { currency: "EUR" } : {}),
+        }),
       });
 
       const data = (await res.json()) as {

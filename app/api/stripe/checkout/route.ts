@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { detectRegion } from "@/lib/region/detectRegion";
+import { resolveProStripePriceId } from "@/lib/stripe/resolveProStripePrice";
 
 export const runtime = "nodejs";
 
@@ -54,9 +56,9 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { tier?: string; period?: string };
+  let body: { tier?: string; period?: string; currency?: string };
   try {
-    body = (await req.json()) as { tier?: string; period?: string };
+    body = (await req.json()) as { tier?: string; period?: string; currency?: string };
   } catch {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
@@ -76,10 +78,14 @@ export async function POST(req: Request) {
   // toggle which passes the period explicitly.
   const period = body.period === "annual" ? "annual" : "monthly";
 
-  const priceEnvVar =
-    period === "annual" ? "STRIPE_PRICE_PRO_ANNUAL" : "STRIPE_PRICE_PRO_MONTHLY";
+  const regionCurrency = detectRegion(req.headers).currency;
+  const requestedCurrency =
+    body.currency === "EUR" || body.currency === "GBP" ? body.currency : regionCurrency;
 
-  const priceId = process.env[priceEnvVar]?.trim();
+  const { priceId, envVar: priceEnvVar, currency: checkoutCurrency } = resolveProStripePriceId({
+    period,
+    currency: requestedCurrency,
+  });
 
   if (!priceId) {
     return NextResponse.json(
@@ -119,9 +125,19 @@ export async function POST(req: Request) {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: userId,
-      metadata: { supabase_user_id: userId, tier, period },
+      metadata: {
+        supabase_user_id: userId,
+        tier,
+        period,
+        currency: checkoutCurrency,
+      },
       subscription_data: {
-        metadata: { supabase_user_id: userId, tier, period },
+        metadata: {
+          supabase_user_id: userId,
+          tier,
+          period,
+          currency: checkoutCurrency,
+        },
       },
       // Audit 2026-04-30 (user-sentiment pain #1): the success page is
       // a dedicated `/checkout/success` route that surfaces an explicit
