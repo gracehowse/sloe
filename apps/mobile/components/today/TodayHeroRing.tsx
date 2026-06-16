@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
@@ -336,6 +337,30 @@ export function TodayHeroRing({
           web `today-hero-ring.tsx`'s `today-macro-rings-toggle` button + shares
           the `MACRO_RING_TOGGLE` copy so the two surfaces can't drift. Fires
           the same `onToggleExpanded` the long-press does. */}
+      {tierV1 ? (
+        <PressableScale
+          testID="today-macro-rings-toggle"
+          haptic="selection"
+          onPress={onToggleExpanded}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+          hitSlop={8}
+          style={{ marginTop: Spacing.xs }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 11,
+              fontWeight: "600",
+              color: isDark ? accent.primarySolidDark : accent.primarySolid,
+              minWidth: 84,
+              textAlign: "center",
+            }}
+          >
+            {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+          </Text>
+        </PressableScale>
+      ) : (
       <Pressable
         testID="today-macro-rings-toggle"
         onPress={onToggleExpanded}
@@ -365,6 +390,7 @@ export function TodayHeroRing({
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         </Text>
       </Pressable>
+      )}
     </SupprCard>
   );
 }

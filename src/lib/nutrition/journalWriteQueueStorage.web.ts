@@ -2,7 +2,7 @@ import {
   JOURNAL_WRITE_QUEUE_STORAGE_KEY,
   parseJournalWriteQueue,
   type JournalWriteQueue,
-} from "@suppr/shared/nutrition/journalWriteQueue";
+} from "./journalWriteQueue";
 
 export async function loadJournalWriteQueue(): Promise<JournalWriteQueue> {
   if (typeof window === "undefined") return parseJournalWriteQueue(null);

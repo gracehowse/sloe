@@ -53,7 +53,19 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
 
   it("ENG-1099 M6: meal rows use PressableScale when tierV1 is on", () => {
     expect(src).toMatch(/TodayMealRowPressable/);
+    expect(src).toMatch(/TodayLogUsualPressable/);
     expect(src).toMatch(/PressableScale haptic="selection"/);
+  });
+});
+
+describe("Today cohesion — TodayHeroRing ENG-1099 RC-3", () => {
+  const src = read("../../components/today/TodayHeroRing.tsx");
+
+  it("uses PressableScale for macro-rings toggle when tierV1 is on", () => {
+    expect(src).toMatch(/today-macro-rings-toggle/);
+    expect(src).toMatch(/tierV1 \?/);
+    expect(src).toMatch(/PressableScale/);
+    expect(src).toMatch(/haptic="selection"/);
   });
 });
 

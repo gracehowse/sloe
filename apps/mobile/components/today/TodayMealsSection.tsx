@@ -108,6 +108,26 @@ function TodayAddFoodPressable({
   );
 }
 
+function TodayLogUsualPressable({
+  tierV1,
+  children,
+  style,
+  ...rest
+}: PressableProps & { tierV1: boolean; children: ReactNode }) {
+  if (tierV1) {
+    return (
+      <PressableScale haptic="selection" style={style} {...rest}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return (
+    <Pressable style={style} {...rest}>
+      {children}
+    </Pressable>
+  );
+}
+
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
  * menu, slot-header `Log usual` pill, full-width Save-as-usual row, and
@@ -1182,7 +1202,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           flexShrink: 1,
                         }}
                       >
-                        <Pressable
+                        <TodayLogUsualPressable
+                          tierV1={tierV1}
                           testID={`today-log-usual-pill-in-header-${slot}`}
                           onPress={(e) => {
                             e.stopPropagation?.();
@@ -1214,7 +1235,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           >
                             {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
                           </Text>
-                        </Pressable>
+                        </TodayLogUsualPressable>
                         {/* Dismiss X — per-session hide. Grace 2026-05-22. */}
                         <Pressable
                           testID={`today-log-usual-dismiss-in-header-${slot}`}
@@ -1273,7 +1294,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       flexShrink: 1,
                     }}
                   >
-                    <Pressable
+                    <TodayLogUsualPressable
+                      tierV1={tierV1}
                       testID={`today-log-usual-pill-${slot}`}
                       onPress={() => {
                         if (slotSaved.length >= 2) {
@@ -1306,7 +1328,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           ? `Log usual ${slot}…`
                           : `Log usual: ${primarySaved.name}`}
                       </Text>
-                    </Pressable>
+                    </TodayLogUsualPressable>
                     {/* Dismiss X — per-session hide. */}
                     <Pressable
                       testID={`today-log-usual-dismiss-${slot}`}
