@@ -1,5 +1,6 @@
 /**
- * ENG-1048 — web single insert/delete rolls back optimistic UI on persist failure.
+ * ENG-1048 / ENG-1125 — web journal optimistic UI on persist failure.
+ * Inserts queue for retry (keep visible); deletes still roll back.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,8 +50,31 @@ vi.mock("../../src/lib/nutrition/refreshAdaptiveTdee.ts", () => ({
   refreshAdaptiveTdeeForUser: vi.fn(() => Promise.resolve()),
 }));
 
+const toastWarning = vi.fn();
+
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn(), info: vi.fn() },
+  toast: {
+    error: vi.fn(),
+    warning: (...args: unknown[]) => toastWarning(...args),
+    success: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
+const enqueueJournalUpserts = vi.fn(() => Promise.resolve());
+
+vi.mock("../../src/lib/nutrition/journalWriteQueue.ts", () => ({
+  enqueueJournalUpserts: (...args: unknown[]) => enqueueJournalUpserts(...args),
+}));
+
+vi.mock("../../src/lib/nutrition/journalWriteQueueStorage.web.ts", () => ({
+  loadJournalWriteQueue: () => Promise.resolve({ entries: [] }),
+  saveJournalWriteQueue: () => Promise.resolve(),
+}));
+
+vi.mock("../../src/lib/nutrition/flushJournalWriteQueue.ts", () => ({
+  flushJournalWriteQueue: () =>
+    Promise.resolve({ remaining: { entries: [] }, flushedIds: [] }),
 }));
 
 vi.mock("../../src/context/appData/useRetryEnableDbTable.ts", () => ({
@@ -59,17 +83,19 @@ vi.mock("../../src/context/appData/useRetryEnableDbTable.ts", () => ({
 
 import { useNutritionJournalState } from "../../src/context/appData/useNutritionJournalState";
 
-describe("ENG-1048 — web journal optimistic rollback", () => {
+describe("ENG-1048 / ENG-1125 — web journal optimistic failure handling", () => {
   beforeEach(() => {
     insertShouldFail = false;
     deleteShouldFail = false;
+    enqueueJournalUpserts.mockClear();
+    toastWarning.mockClear();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("rolls back a single optimistic insert when Supabase insert fails", async () => {
+  it("keeps optimistic insert visible and queues retry when Supabase insert fails", async () => {
     insertShouldFail = true;
     const { result } = renderHook(() =>
       useNutritionJournalState({
@@ -97,7 +123,14 @@ describe("ENG-1048 — web journal optimistic rollback", () => {
       await Promise.resolve();
     });
 
-    expect(result.current.nutritionByDay["2026-06-11"] ?? []).toHaveLength(0);
+    expect(result.current.nutritionByDay["2026-06-11"] ?? []).toHaveLength(1);
+    expect(result.current.nutritionByDay["2026-06-11"]![0]!.name).toBe(
+      "Breakfast",
+    );
+    expect(enqueueJournalUpserts).toHaveBeenCalled();
+    expect(toastWarning).toHaveBeenCalledWith(
+      "Saved on this device — we'll sync when you're back online.",
+    );
   });
 
   it("restores a meal when optimistic delete fails", async () => {
