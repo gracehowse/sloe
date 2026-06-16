@@ -118,6 +118,12 @@ export const AnalyticsEvents = {
   /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).
    *  Payload: `{ surface: "import_success" | "recipe_detail", platform, hasCreatorCredit }`. */
   recipe_share_card_shared: "recipe_share_card_shared",
+  /** ENG-972 — user started inline NL describe parse from LogSheet.
+   *  Payload: `{ platform: "web" | "mobile" }`. */
+  log_sheet_nl_text_started: "log_sheet_nl_text_started",
+  /** ENG-972 — user committed inline NL describe items from LogSheet.
+   *  Payload: `{ platform, itemCount, avgConfidence }`. */
+  log_sheet_nl_text_committed: "log_sheet_nl_text_committed",
   /** Coach engine ("what to eat next") — fires when the Today suggestion
    *  surface shows a coach-ranked suggestion. `source` distinguishes the
    *  AI re-rank from the deterministic fallback so we can watch the AI

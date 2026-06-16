@@ -136,6 +136,7 @@ import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
 import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
+import { parseMealDescriptionTranscript } from "../../lib/nutrition/parseMealDescription.ts";
 import {
   computeRecentMeals,
   foodHistoryKey,
@@ -3978,6 +3979,27 @@ export const NutritionTracker = memo(function NutritionTracker({
             trackerRouter.push("/recipes");
           },
         }}
+        describe={
+          isFeatureEnabled("log_sheet_nl_text_v1")
+            ? {
+                locked: userTier !== "pro",
+                onPaywall: () => setAiPaywallFeature("voice_log"),
+                onParse: (text) => parseMealDescriptionTranscript({ transcript: text }),
+                onCommit: (items) => {
+                  commitAiLoggedItems(items);
+                  const totalKcal = items.reduce((sum, item) => sum + item.calories, 0);
+                  presentLogSheetConfirmation({
+                    title:
+                      items.length === 1
+                        ? items[0]?.name ?? "Logged item"
+                        : `${items.length} items logged`,
+                    kcal: Math.round(totalKcal),
+                    mealIds: [],
+                  });
+                },
+              }
+            : undefined
+        }
         voice={{
           onStart: () => {
             // Close the unified LogSheet and route to the dedicated

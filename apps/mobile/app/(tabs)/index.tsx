@@ -113,6 +113,7 @@ import {
   parseUserMealSlotConfig,
   type UserMealSlotConfig,
 } from "@suppr/shared/nutrition/userMealSlotConfig";
+import { parseMealDescriptionTranscript } from "@suppr/shared/nutrition/parseMealDescription";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import {
   compareMealsByChronology,
@@ -6323,6 +6324,32 @@ export default function TrackerScreen() {
             router.push("/(tabs)/library" as any);
           },
         }}
+        describe={
+          isFeatureEnabled("log_sheet_nl_text_v1")
+            ? {
+                locked: userTier !== "pro",
+                onPaywall: () => setAiPaywall({ open: true, feature: "voice_log" }),
+                onParse: (text) =>
+                  parseMealDescriptionTranscript({
+                    transcript: text,
+                    apiBase,
+                    accessToken: session?.access_token ?? null,
+                  }),
+                onCommit: (items) => {
+                  commitAiLoggedItems(items);
+                  const totalKcal = items.reduce((sum, item) => sum + item.calories, 0);
+                  presentLogSheetConfirmation({
+                    title:
+                      items.length === 1
+                        ? items[0]?.name ?? "Logged item"
+                        : `${items.length} items logged`,
+                    kcal: Math.round(totalKcal),
+                    mealIds: [],
+                  });
+                },
+              }
+            : undefined
+        }
         voice={{
           onStart: () => {
             // Close the unified LogSheet and route to the dedicated

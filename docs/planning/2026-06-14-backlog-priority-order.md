@@ -56,9 +56,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
 | `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
 
-**Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
-
-**Still open — next in logging loop:** ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
+**Still open — next in logging loop:** ~~ENG-972~~ (NL describe in Log sheet — commit pending this session). ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
@@ -213,7 +211,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 |---|---|---|
 | ~~ENG-979~~ | High | ~~[Category-leading] Embed attributed creator credit into the shared card and link it to t~~ — **Done** |
 | ~~ENG-978~~ | High | ~~[Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe~~ — **Done** |
-| ENG-972 | High | [Category-leading] Add natural-language text meal logging to the single Log sheet ("desc |
+| ~~ENG-972~~ | High | ~~[Category-leading] Add natural-language text meal logging to the single Log sheet ("desc~~ — **Done** |
 | ENG-971 | High | [Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac |
 | ENG-966 | High | [Category-leading] Lead the paywall with the personalised plan the user already built, t |
 | ENG-962 | High | [Category-leading] Move signup after the plan reveal — let users see their targets befor |

@@ -51,6 +51,8 @@ import {
   BARCODE_FREE_FOREVER_HEADLINE,
   BARCODE_LOUD_CTA_LABEL,
 } from "@suppr/shared/nutrition/barcodeFreePromise";
+import { looksLikeMealDescription } from "@suppr/shared/nutrition/parseMealDescription";
+import { LogSheetDescribeFlow } from "@/components/today/LogSheetDescribeFlow";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -382,6 +384,13 @@ export interface LogSheetProps {
   };
   /** ENG-973 — show free-barcode promise under search row. */
   showBarcodeFreePromise?: boolean;
+  /** ENG-972 — inline natural-language describe + parse inside the sheet. */
+  describe?: {
+    locked?: boolean;
+    onParse: (text: string) => Promise<import("@suppr/shared/nutrition/parseMealDescription").ParseMealDescriptionResult>;
+    onCommit: (items: import("@suppr/shared/nutrition/aiLogging").AiLoggedItem[]) => void;
+    onPaywall?: () => void;
+  };
   /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
    *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
    *  the user can see AND choose which meal the item lands in, instead
@@ -438,6 +447,7 @@ export function LogSheet({
   goTos,
   basket,
   showBarcodeFreePromise = false,
+  describe,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -594,6 +604,7 @@ export function LogSheet({
                 goTos={goTos}
                 basket={basket}
                 showBarcodeFreePromise={showBarcodeFreePromise}
+                describe={describe}
               />
             )}
           </View>
@@ -717,6 +728,7 @@ function DefaultComposition({
   goTos,
   basket,
   showBarcodeFreePromise,
+  describe,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -733,9 +745,12 @@ function DefaultComposition({
   goTos?: LogSheetProps["goTos"];
   basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
+  describe?: LogSheetProps["describe"];
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
+  const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
@@ -766,11 +781,15 @@ function DefaultComposition({
   React.useEffect(() => {
     if (!visible) {
       setQuery("");
+      setDescribeReviewActive(false);
+      setDescribeSeedText(null);
     }
   }, [visible]);
 
   return (
     <View style={{ flex: 1 }}>
+      {!describeReviewActive ? (
+        <>
       {/* Search row — primary input. Right-edge icons (scan / voice
           / photo) ride along when the host wires the corresponding
           callbacks. In inline mode the row is a real `<TextInput>`
@@ -879,13 +898,57 @@ function DefaultComposition({
           </Text>
         </View>
       ) : null}
+        </>
+      ) : null}
 
+      {describe ? (
+        <LogSheetDescribeFlow
+          sheetOpen={visible}
+          locked={describe.locked}
+          seedText={describeSeedText}
+          onSeedConsumed={() => setDescribeSeedText(null)}
+          onParse={describe.onParse}
+          onCommit={describe.onCommit}
+          onPaywall={describe.onPaywall}
+          onReviewActiveChange={setDescribeReviewActive}
+          inputHidden={!describeReviewActive && query.trim().length > 0}
+        />
+      ) : null}
+
+      {!describeReviewActive ? (
+      <>
       {/* Inline search results — only mounted when the user has
           actually started typing. Empty query keeps the existing
           Recent / Saved browse content visible so the sheet doesn't
           look "blank" on open. */}
       {inlineMode && query.trim().length > 0 ? (
         <View style={{ flex: 1, marginTop: Spacing.sm }}>
+          {describe && looksLikeMealDescription(query) ? (
+            <Pressable
+              testID="log-sheet-describe-from-search"
+              accessibilityRole="button"
+              accessibilityLabel="Parse search text as meal description"
+              onPress={() => {
+                setDescribeSeedText(query.trim());
+                setQuery("");
+              }}
+              style={({ pressed }) => ({
+                marginHorizontal: Spacing.md,
+                marginBottom: Spacing.sm,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.sm,
+                borderRadius: Radius.lg,
+                borderWidth: 1,
+                borderColor: accent.primarySoft,
+                backgroundColor: accent.primarySoft,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
+                Parse as meal description
+              </Text>
+            </Pressable>
+          ) : null}
           <FoodSearchPanel
             query={query}
             macroTargets={search?.macroTargets}
@@ -934,6 +997,8 @@ function DefaultComposition({
           ) : null}
         </>
       )}
+      </>
+      ) : null}
     </View>
   );
 }

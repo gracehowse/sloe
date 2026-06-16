@@ -229,6 +229,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-978/979 — shareable import-success card + creator credit in share text.
   // Default-on; off → legacy title+URL share only.
   "recipe_share_card_v1",
+  // ENG-972 — inline NL text meal logging inside LogSheet (default-on).
+  "log_sheet_nl_text_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

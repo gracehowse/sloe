@@ -24,6 +24,8 @@ function read(p: string): string {
 
 const WEB_LOG_SHEET = "src/app/components/suppr/log-sheet.tsx";
 const MOBILE_LOG_SHEET = "apps/mobile/components/today/LogSheet.tsx";
+const WEB_DESCRIBE_FLOW = "src/app/components/suppr/log-sheet-describe-flow.tsx";
+const MOBILE_DESCRIBE_FLOW = "apps/mobile/components/today/LogSheetDescribeFlow.tsx";
 const WEB_TODAY_MEALS_SECTION =
   "src/app/components/suppr/today-meals-section.tsx";
 const MOBILE_TODAY_MEALS_SECTION =
@@ -90,6 +92,29 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     for (const id of ["log-sheet-search-row", "log-sheet-search-input"]) {
       expect(web).toContain(id);
       expect(mobile).toContain(id);
+    }
+  });
+
+  it("both surfaces ship ENG-972 describe-flow test handles", () => {
+    const webDescribe = read(WEB_DESCRIBE_FLOW);
+    const mobileDescribe = read(MOBILE_DESCRIBE_FLOW);
+    for (const id of [
+      "log-sheet-describe",
+      "log-sheet-describe-input",
+      "log-sheet-describe-parse",
+      "log-sheet-describe-review",
+    ]) {
+      expect(webDescribe).toContain(id);
+      expect(mobileDescribe).toContain(id);
+    }
+    expect(web).toContain("log-sheet-describe-from-search");
+    expect(mobile).toContain("log-sheet-describe-from-search");
+  });
+
+  it("both surfaces declare an optional `describe` prop (ENG-972)", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/describe\?:\s*\{/);
+      expect(src).toMatch(/looksLikeMealDescription/);
     }
   });
 
