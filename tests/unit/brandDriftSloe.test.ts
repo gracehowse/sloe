@@ -30,8 +30,11 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
 
   it("recipe share strings say Sloe", () => {
     const detail = readFileSync(join(ROOT, "src/app/components/RecipeDetail.tsx"), "utf8");
-    expect(detail).toContain('title: "Recipe on Sloe"');
-    expect(detail).toContain('text: "Open this recipe in Sloe"');
+    const shareCard = readFileSync(join(ROOT, "src/lib/share/buildRecipeShareCard.ts"), "utf8");
+    // Rich share (ENG-978) lives in buildRecipeShareCard; legacy fallback stays in detail.
+    expect(detail).toContain('"Open this recipe in Sloe"');
+    expect(shareCard).toContain("made with Sloe");
+    expect(detail).not.toMatch(/Open this recipe in Suppr/);
   });
 
   // ── Visual-surface sweep (TF57 BRAND lane, 2026-06-12) ──────────────

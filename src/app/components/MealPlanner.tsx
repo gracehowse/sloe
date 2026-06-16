@@ -2045,7 +2045,7 @@ export const MealPlanner = memo(function MealPlanner({
             <Sparkles size={16} className="text-primary-solid mt-0.5 shrink-0" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-foreground">Smart suggestions</h2>
-              <p className="text-[12px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Recipes that share ingredients already in your plan — less waste, fewer one-off buys.
               </p>
             </div>
