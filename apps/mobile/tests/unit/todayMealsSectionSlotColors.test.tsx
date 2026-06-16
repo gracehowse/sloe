@@ -33,7 +33,8 @@ import type { JournalMeal } from "../../lib/nutritionJournal";
 // as `todayMealsSectionTd4.test.tsx`.
 vi.mock("../../lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_layout",
+  isFeatureEnabled: (flag: string) =>
+    flag !== "today_meals_figma_layout" && flag !== "today_tracker_tier_v1",
 }));
 
 void React;

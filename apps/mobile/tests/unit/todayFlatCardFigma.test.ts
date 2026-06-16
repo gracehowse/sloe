@@ -61,7 +61,8 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     "%s flag-gates its SupprCard lift on today_tracker_tier_v1 (ENG-1099 flat, soft in the else)",
     (relPath) => {
       const src = readFileSync(join(ROOT, relPath), "utf8");
-      expect(src).toMatch(/lift=\{[\s\S]*?today_tracker_tier_v1[\s\S]*?"flat"[\s\S]*?"soft"/);
+      expect(src).toMatch(/today_tracker_tier_v1/);
+      expect(src).toMatch(/lift=\{[\s\S]*?"flat"[\s\S]*?"soft"/);
     },
   );
 

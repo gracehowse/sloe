@@ -210,6 +210,7 @@ export function TodayHeroRing({
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const isEmpty = consumed === 0 || goal <= 0;
   const isOver = goal > 0 && consumed > goal;
   const overByKcal = isOver ? consumed - goal : 0;
