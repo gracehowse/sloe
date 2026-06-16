@@ -214,7 +214,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 | ~~ENG-979~~ | High | ~~[Category-leading] Embed attributed creator credit into the shared card and link it to t~~ — **Done** |
 | ~~ENG-978~~ | High | ~~[Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe~~ — **Done** |
 | ~~ENG-972~~ | High | ~~[Category-leading] Add natural-language text meal logging to the single Log sheet ("desc~~ — **Done** |
-| ENG-971 | High | [Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac |
+| ~~ENG-971~~ | High | ~~[Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac~~ — **Done** (AI paywall copy; pricing CTA already on Sloe tokens) |
 | ENG-966 | High | [Category-leading] Lead the paywall with the personalised plan the user already built, t |
 | ENG-962 | High | [Category-leading] Move signup after the plan reveal — let users see their targets befor |
 | ENG-957 | High | [Category-leading] Wire 'Add to plan' straight into the shopping list and re-sync on eve |
