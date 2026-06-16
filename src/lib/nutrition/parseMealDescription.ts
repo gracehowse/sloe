@@ -1,4 +1,4 @@
-import { sanitiseAiItems, type AiLoggedItem } from "./aiLogging.ts";
+import { sanitiseAiItems, type AiLoggedItem } from "./aiLogging";
 
 /** Heuristic: search query reads like a meal description, not a brand lookup. */
 export function looksLikeMealDescription(query: string): boolean {

@@ -19,7 +19,7 @@ import {
 import type { ParseMealDescriptionResult } from "../../../lib/nutrition/parseMealDescription";
 import { track } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
-import { cn } from "../../../lib/utils";
+import { cn } from "../ui/utils";
 
 type Stage = "input" | "parsing" | "review" | "error";
 

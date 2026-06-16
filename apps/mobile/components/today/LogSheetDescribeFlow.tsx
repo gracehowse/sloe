@@ -42,6 +42,8 @@ export type LogSheetDescribeFlowProps = {
   onReviewActiveChange?: (active: boolean) => void;
   /** Hide the describe card while the user is typing a food search. */
   inputHidden?: boolean;
+  /** Active meal slot label (Breakfast/Lunch/…) shown on the review summary. */
+  slotLabel?: string;
 };
 
 export function LogSheetDescribeFlow({
@@ -54,6 +56,7 @@ export function LogSheetDescribeFlow({
   onPaywall,
   onReviewActiveChange,
   inputHidden = false,
+  slotLabel,
 }: LogSheetDescribeFlowProps) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -138,7 +141,7 @@ export function LogSheetDescribeFlow({
           Review parsed items — edit or remove before logging.
         </Text>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.lg }}>
-          <AiLogReviewSummary items={items} colors={colors} />
+          <AiLogReviewSummary items={items} slotLabel={slotLabel ?? "Meal"} colors={colors} />
           {items.map((item, index) => (
             <AiLogReviewItem
               key={`${item.name}-${index}`}
@@ -166,7 +169,7 @@ export function LogSheetDescribeFlow({
         ) : null}
         <View style={{ flexDirection: "row", gap: Spacing.sm, paddingBottom: Spacing.sm }}>
           <SupprButton
-            variant="secondary"
+            variant="ghost"
             label="Back"
             onPress={() => {
               setStage("input");
