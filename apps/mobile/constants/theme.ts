@@ -565,6 +565,13 @@ export const Type = {
     textTransform: 'uppercase' as const,
   },
   caption: { fontFamily: FontFamily.sansMedium, fontSize: 11, lineHeight: 14, fontWeight: '500' as const, letterSpacing: 0 },
+  /** Hero stat label — GOAL/EATEN/BONUS under the ring. A calmer sibling of
+   *  `label`: 600 (not 700) and 0.5 tracking (not 0.88) so the tracked caps
+   *  read as a quiet section label, not a shouty warning (design-director
+   *  2026-06-16, grounded in MacroFactor's light hero labels). Colour set at
+   *  the call site — use `textSecondary` (AA), not `textTertiary`. Mirrors web
+   *  `.stat-label`. */
+  statLabel: { fontFamily: FontFamily.sansSemibold, fontSize: 11, lineHeight: 14, fontWeight: '600' as const, letterSpacing: 0.5, textTransform: 'uppercase' as const },
   /** Tab-chrome subtitle — the descriptive line under a primary-tab serif
    *  title (Plan week-range, Progress "Your weight, weekly recap…"). 13/600,
    *  one step above `caption` so it reads as a peer descriptor not a footnote.
@@ -610,11 +617,15 @@ export const Type = {
     fontWeight: '500' as const,
     letterSpacing: -0.35,
   },
-  /** ENG-1099 M4 — serif stat row under the ring (18/22). Converges mobile 19 + web 18. */
+  /** Serif stat row under the ring. ENG-1099 M4 set 18/22; bumped to 22/26
+   *  (2026-06-16, design-director) so the second-most-important data on Today
+   *  (Goal/Eaten/Bonus) reads as a real stat row, not a footnote under the 48px
+   *  ring numeral. 22 = the next on-scale step (`--text-xl`); web mirrors it
+   *  with `text-[22px]` (20 was off the web type ramp — ENG-119 lint). */
   statValue: {
     fontFamily: FontFamily.serifRegular,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: '400' as const,
     letterSpacing: -0.2,
   },

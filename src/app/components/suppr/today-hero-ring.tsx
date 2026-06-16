@@ -55,7 +55,12 @@ function HeroStatusChip({ state }: { state: ChipState }) {
           }
         : {
             label: todayStatusChip("under"),
-            className: tierV1 ? "text-success" : "bg-success/15 text-success",
+            // AA fix (2026-06-16, mirror mobile sageInk): the "Under budget"
+            // cue uses the SOLID sage (#466046, 6.95:1) for text/icon — the
+            // lighter success (#5E7C5A) was only ~4:1 on its own tint.
+            className: tierV1
+              ? "text-success-solid"
+              : "bg-success/20 text-success-solid",
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
@@ -64,7 +69,7 @@ function HeroStatusChip({ state }: { state: ChipState }) {
       data-testid="today-ring-status-chip"
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
     >
-      <Icon size={13} strokeWidth={2} aria-hidden />
+      <Icon size={14} strokeWidth={2} aria-hidden />
       {label}
     </span>
   );
@@ -88,12 +93,16 @@ function RingStatCell({
       className={`flex-1 text-center px-2 ${divider ? "border-l border-border" : ""}`}
     >
       <div
-        className={`text-[10px] font-semibold uppercase tracking-wider ${labelClassName ?? "text-foreground-tertiary"}`}
+        // statLabel parity (2026-06-16): 11px / 600 / wide tracking in SECONDARY
+        // ink (AA), not tertiary — a calm section label, not shouty sub-AA caps.
+        className={`text-[11px] font-semibold uppercase tracking-wider ${labelClassName ?? "text-foreground-secondary"}`}
       >
         {label}
       </div>
       <div
-        className={`mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
+        // statValue 18→22 (2026-06-16): reads as a real stat row, not a footnote.
+        // 22 = on the type ramp (--text-xl); 20 was off-scale (ENG-119 lint).
+        className={`mt-1 font-[family-name:var(--font-headline)] text-[22px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
       >
         {value}
       </div>
@@ -167,7 +176,7 @@ export function TodayHeroRing({
           (no profile target yet → no row), mirroring mobile `TodayHeroRing`. */}
       {target > 0 ? (
         <div
-          className="grid w-full grid-cols-3 border-t border-border pt-3 mt-1"
+          className="grid w-full grid-cols-3 border-t border-border pt-2"
           data-testid="today-ring-stats-row"
         >
           <RingStatCell

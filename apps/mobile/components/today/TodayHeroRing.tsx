@@ -118,9 +118,11 @@ function Stat({
       }}
     >
       <Text
-        // headers census 2026-06-10: hero-ring metric label → Type.label (11px;
-        // census kept the canonical step over a private 10px density size).
-        style={{ ...Type.label, color: labelColor ?? textSecondaryColor }}
+        // 2026-06-16 (design-director): hero-ring metric label → Type.statLabel
+        // (600 / 0.5 tracking, not label's 700 / 0.88) so GOAL/EATEN/BONUS read
+        // as a calm section label, not shouty caps. Colour defaults to secondary
+        // (AA), never tertiary — see call sites.
+        style={{ ...Type.statLabel, color: labelColor ?? textSecondaryColor }}
       >
         {label}
       </Text>
@@ -156,7 +158,13 @@ function StatusChip({
   isDark: boolean;
 }) {
   const accent = useAccent();
-  const sage = isDark ? Accent.successLight : Accent.success;
+  // Split the sage into a FILL hue (tint bg) and an INK hue (text/icon). The
+  // base sage (#5E7C5A) is only 4.0:1 as text on its own tint — borderline; the
+  // solid sage (#466046, 6.95:1) carries the label/icon, the lighter sage tints
+  // the pill (design-director 2026-06-16: the "Under budget" state cue should
+  // read at a glance, not hide).
+  const sageFill = isDark ? Accent.successLight : Accent.success;
+  const sageInk = isDark ? Accent.successLight : Accent.successSolid;
   const red = isDark ? Accent.destructiveLight : Accent.destructive;
   const plum = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
   const config =
@@ -164,7 +172,7 @@ function StatusChip({
       ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
       : state === "empty"
         ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : Colors.light.ringTrack, Icon: Sparkles }
-        : { fg: sage, bg: `${sage}26`, Icon: CircleCheck };
+        : { fg: sageInk, bg: `${sageFill}2E`, Icon: CircleCheck };
   const { fg, bg, Icon } = config;
   return (
     <View
@@ -179,7 +187,7 @@ function StatusChip({
         paddingVertical: 4,
       }}
     >
-      <Icon size={13} color={fg} strokeWidth={2} />
+      <Icon size={14} color={fg} strokeWidth={2} />
       <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>
         {todayStatusChip(state, overByKcal)}
       </Text>
@@ -205,7 +213,10 @@ export function TodayHeroRing({
   fatPct,
   expanded,
   onToggleExpanded,
-  textTertiaryColor,
+  // textTertiaryColor retained in the prop API (call-site stability) but no
+  // longer consumed — GOAL/EATEN/BONUS labels moved off tertiary to secondary
+  // (AA) on 2026-06-16.
+  textTertiaryColor: _textTertiaryColor,
   onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
   const accent = useAccent();
@@ -236,7 +247,10 @@ export function TodayHeroRing({
       // on — the ring is the hero by scale, not shadow; the unified 24 rhythm (M1)
       // carries the separation. Flag-off keeps the 2026-06-09 soft lift.
       lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
-      padding="lg"
+      // padding md (was lg): the ring is centred in a card far wider than it, so
+      // 20pt side padding was wasted air; 16 tightens the hero without touching
+      // the ring (design-director 2026-06-16, "too much background" fix).
+      padding="md"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >
       {/* Chip (state) + Remaining/Consumed toggle — SLOE `01 · Today`
@@ -274,8 +288,10 @@ export function TodayHeroRing({
           style={{
             width: "100%",
             flexDirection: "row",
-            paddingTop: Spacing.md,
-            marginTop: Spacing.xs,
+            // Was paddingTop md (16) + marginTop xs (4) = 20pt of white void
+            // between the ring and the hairline rule — the biggest empty pocket
+            // in the hero. Trimmed to 8 (design-director 2026-06-16).
+            paddingTop: Spacing.sm,
             // Sloe: hairline `border-t border-line` above the stats row.
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: borderColor,
@@ -285,14 +301,14 @@ export function TodayHeroRing({
             label="Goal"
             value={Math.round(goal).toLocaleString()}
             valueColor={textColor}
-            labelColor={textTertiaryColor}
+            labelColor={secondaryColor}
             textSecondaryColor={secondaryColor}
           />
           <Stat
             label="Eaten"
             value={Math.round(consumed).toLocaleString()}
             valueColor={textColor}
-            labelColor={textTertiaryColor}
+            labelColor={secondaryColor}
             textSecondaryColor={secondaryColor}
             dividerColor={borderColor}
           />
