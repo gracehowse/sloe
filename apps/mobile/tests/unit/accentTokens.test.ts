@@ -160,10 +160,10 @@ describe("Type.heroValue (serif big-numeral token)", () => {
   });
 });
 
-describe("Type.statValue (ENG-1099 M4 hero stat row)", () => {
-  it("uses serif 18/22 for Goal/Eaten/Bonus under the ring", () => {
+describe("Type.statValue (hero stat row)", () => {
+  it("uses serif 20/24 for Goal/Eaten/Bonus under the ring (bumped from 18/22, 2026-06-16)", () => {
     expect(Type.statValue.fontFamily).toBe(FontFamily.serifRegular);
-    expect(Type.statValue.fontSize).toBe(18);
-    expect(Type.statValue.lineHeight).toBe(22);
+    expect(Type.statValue.fontSize).toBe(20);
+    expect(Type.statValue.lineHeight).toBe(24);
   });
 });
