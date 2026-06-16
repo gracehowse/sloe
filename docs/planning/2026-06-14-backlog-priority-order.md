@@ -17,7 +17,7 @@
 | **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
 | **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 2 | 15 |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
-| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 58 | 12 |
+| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 56 | 14 |
 | **Wave 3** | Category-leading growth + audit P3s (post-launch) | 152 | 5 |
 | **Wave 4** | Redesign / Figma / platform / AI-imagery / creator (post-launch) | 55 | 5 |
 
@@ -188,14 +188,14 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1164 | Medium | Landing + Marketing site | Web pricing mobile has excessive first-viewport blank space |
 | ENG-1136 | Medium | Recipes tab | Recipe-import parser leaks prep-states ('mixed with warm water', 'to serve') into the shop |
 | ENG-1135 | Medium | Plan tab | Add 'generated from plan of {date}' / staleness hint to the shopping list |
-| ENG-1133 | Medium | Plan tab | Expand grocery categoriser beyond ~12 keywords; shrink the 'Other' bucket |
+| ENG-1133 | Medium | Plan tab | ~~Expand grocery categoriser beyond ~12 keywords~~ — **Done** |
 | ENG-1131 | Medium | Plan tab | Web Plan feature parity: wire move-meal, templates (orphaned dialog), portion stepper, sma |
 | ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
 | ENG-1129 | Medium | Recipes tab | Cook-mode 'Log this meal' conflates cook-scale with servings eaten — add a servings confir |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
 | ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
 | ENG-1122 | Medium | Today tab | ~~Web has NO logged-meal edit~~ — **Done** (`web_logged_meal_edit` flag) |
-| ENG-1051 | Medium | Plan tab | P2: pantry/staples model for the planner |
+| ENG-1051 | Medium | Plan tab | ~~P2: pantry/staples model for the planner~~ — **Done** (Settings + per-row shopping) |
 | ENG-1148 | Low | Today tab | Net-energy subline should read the maintenance band, not binary isDeficit (±60 dead-band c |
 
 ---
