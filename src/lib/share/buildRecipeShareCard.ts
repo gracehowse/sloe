@@ -1,5 +1,5 @@
-import { displayAttribution } from "../recipes/displayAttribution.ts";
-import { webRecipeDeepLink } from "./recipeDeepLink.ts";
+import { displayAttribution } from "../recipes/displayAttribution";
+import { webRecipeDeepLink } from "./recipeDeepLink";
 
 /** Inputs for the "Reel → clean card" share artifact (ENG-978 / ENG-979). */
 export type RecipeShareCardInput = {
@@ -39,7 +39,7 @@ export function formatRecipeCreatorCredit(input: {
   const fromSource = displayAttribution({ source: input.sourceName });
   const credit = fromAuthor || fromSource;
   if (!credit) return "";
-  return credit.startsWith("@") ? `Recipe by ${credit}` : `Recipe by ${credit}`;
+  return `Recipe by ${credit}`;
 }
 
 export function creatorProfileUrl(input: {
