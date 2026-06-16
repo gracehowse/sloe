@@ -617,14 +617,15 @@ export const Type = {
     fontWeight: '500' as const,
     letterSpacing: -0.35,
   },
-  /** Serif stat row under the ring. ENG-1099 M4 set 18/22; bumped to 20/24
+  /** Serif stat row under the ring. ENG-1099 M4 set 18/22; bumped to 22/26
    *  (2026-06-16, design-director) so the second-most-important data on Today
    *  (Goal/Eaten/Bonus) reads as a real stat row, not a footnote under the 48px
-   *  ring numeral. Web `today-hero-ring.tsx` stat row mirrors this in lockstep. */
+   *  ring numeral. 22 = the next on-scale step (`--text-xl`); web mirrors it
+   *  with `text-[22px]` (20 was off the web type ramp — ENG-119 lint). */
   statValue: {
     fontFamily: FontFamily.serifRegular,
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: '400' as const,
     letterSpacing: -0.2,
   },

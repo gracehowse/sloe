@@ -161,9 +161,9 @@ describe("Type.heroValue (serif big-numeral token)", () => {
 });
 
 describe("Type.statValue (hero stat row)", () => {
-  it("uses serif 20/24 for Goal/Eaten/Bonus under the ring (bumped from 18/22, 2026-06-16)", () => {
+  it("uses serif 22/26 for Goal/Eaten/Bonus under the ring (bumped from 18/22, 2026-06-16; 22 = on-scale --text-xl)", () => {
     expect(Type.statValue.fontFamily).toBe(FontFamily.serifRegular);
-    expect(Type.statValue.fontSize).toBe(20);
-    expect(Type.statValue.lineHeight).toBe(24);
+    expect(Type.statValue.fontSize).toBe(22);
+    expect(Type.statValue.lineHeight).toBe(26);
   });
 });

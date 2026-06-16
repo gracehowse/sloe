@@ -100,8 +100,9 @@ function RingStatCell({
         {label}
       </div>
       <div
-        // statValue 18→20 (2026-06-16): reads as a real stat row, not a footnote.
-        className={`mt-1 font-[family-name:var(--font-headline)] text-[20px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
+        // statValue 18→22 (2026-06-16): reads as a real stat row, not a footnote.
+        // 22 = on the type ramp (--text-xl); 20 was off-scale (ENG-119 lint).
+        className={`mt-1 font-[family-name:var(--font-headline)] text-[22px] font-normal tabular-nums leading-tight ${valueClassName ?? "text-foreground"}`}
       >
         {value}
       </div>

@@ -17,7 +17,7 @@ Token-level, mobile + web in lockstep:
 
 1. **Hero card voids** — card padding `lg`(20)→`md`(16); the stats-row top void `md`+`xs` (20pt) → `sm` (8pt). Removes ~24pt of empty white from the cold-open card; the macro tiles now show their **values** above the fold, not just labels. Web: `pt-3 mt-1`→`pt-2`.
 2. **Stat labels** — new `Type.statLabel` token (600 weight / 0.5 tracking / uppercase) replacing `Type.label` (700 / 0.88); colour moved **tertiary→secondary** (`#9B93A3` 2.6:1 → `#6A6072`/`#655C6E` ~5:1, AA). Calm section label, not shouty sub-AA caps. Web: `text-[10px] tertiary` → `text-[11px] secondary`.
-3. **Stat values** — `Type.statValue` 18→20 / lineHeight 22→24, so Goal/Eaten/Bonus reads as a real stat row, not a footnote under the 48px ring numeral. Web: `text-[18px]`→`text-[20px]`.
+3. **Stat values** — `Type.statValue` 18→22 / lineHeight 22→26, so Goal/Eaten/Bonus reads as a real stat row, not a footnote under the 48px ring numeral. Web: `text-[18px]`→`text-[22px]` (22 = on the type ramp `--text-xl`; 20 was off-scale, caught by the ENG-119 type-scale lint).
 4. **"Under budget" chip** — text/icon → solid sage (`#466046`, 6.95:1) on a slightly stronger tint, was the lighter sage (~4:1). Icon 13→14. Web: `text-success`→`text-success-solid`.
 
 ## Why these and not more
