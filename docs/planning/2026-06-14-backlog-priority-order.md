@@ -50,9 +50,9 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `25936a81` | ENG-1125 | Durable journal write queue (web + mobile) |
 | `7b4c3a97` | ENG-1099/1125 | Mobile tier press wiring + queue meal edits |
 | `9183dd04` | ENG-1125 | Web journal queue wiring tests |
-| `87b9917d` | ENG-1125 | Web optimistic-failure test aligned to queue semantics |
-| *(verify)* | ENG-1122 | Web logged-meal edit already shipped behind `web_logged_meal_edit` |
-| `TBD` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3 start) |
+| `61c3ab3d` | ENG-1051 | Pantry staples from shopping rows (web + mobile) |
+| `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
+| `TBD` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
 
 **Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
@@ -191,7 +191,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1133 | Medium | Plan tab | ~~Expand grocery categoriser beyond ~12 keywords~~ — **Done** |
 | ENG-1131 | Medium | Plan tab | Web Plan feature parity: wire move-meal, templates (orphaned dialog), portion stepper, sma |
 | ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
-| ENG-1129 | Medium | Recipes tab | Cook-mode 'Log this meal' conflates cook-scale with servings eaten — add a servings confir |
+| ENG-1129 | Medium | Recipes tab | ~~Cook-mode servings confirm (batch vs eaten)~~ — **Done** |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
 | ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
 | ENG-1122 | Medium | Today tab | ~~Web has NO logged-meal edit~~ — **Done** (`web_logged_meal_edit` flag) |
@@ -202,7 +202,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 
 ## WAVE 3 — category-leading + audit P3s (153 open)
 
-ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973, 1121 — see Shipped section. Next: 979, 978, 972.)*
+ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973, 983, 1121 — see Shipped section. Next: 979, 978, 972.)*
 
 
 **Category-leading growth backlog** (49)
@@ -223,7 +223,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 | ENG-940 | High | [Category-leading] Surface the recipe-fit score as a calm "matches your day" signal on D |
 | ENG-935 | High | [Category-leading] Make 'What to eat next' a permanent, glanceable Today block — the nor |
 | ENG-933 | High | [Category-leading] Lead the Today screen with a single time-aware editorial line, not a  |
-| ENG-983 | Medium | [Category-leading] Deduplicate and aisle-sort the shopping list generated from imported  |
+| ~~ENG-983~~ | Medium | ~~[Category-leading] Deduplicate and aisle-sort shopping list at generation~~ — **Done** |
 | ENG-982 | Medium | [Category-leading] Add editorial Collections (named, cover-image cookbooks) on top of th |
 | ENG-981 | Medium | [Category-leading] Support batch / multi-recipe import in one share action |
 | ENG-980 | Medium | [Category-leading] Save-first, review-later: let an import land in the library instantly |
