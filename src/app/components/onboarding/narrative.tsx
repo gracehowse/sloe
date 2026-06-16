@@ -39,59 +39,59 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     body: "Moving from another tracker? We'll import your meal history so your trends, streak, and patterns carry over — your numbers stay exactly as you logged them.",
   },
   signup: {
-    eyebrow: "Step 02 · Account",
-    head: "One account.\nEvery device.",
-    body: "Sign in on your laptop, keep logging from your phone — same plan, same targets, always in sync.",
+    eyebrow: "Step 12 · Account",
+    head: "Save your plan\nand keep going.",
+    body: "You've seen your targets — create an account so they sync across devices and we can build your first week.",
   },
   goal: {
-    eyebrow: "Step 03 · Goal",
+    eyebrow: "Step 02 · Goal",
     head: "What's the plan?",
-    body: "You can change this anytime. Real goals shift, and Suppr adapts with them — your targets recalculate automatically.",
+    body: "You can change this anytime. Real goals shift, and Sloe adapts with them — your targets recalculate automatically.",
   },
   sex: {
-    eyebrow: "Step 04 · Metabolism",
+    eyebrow: "Step 03 · Metabolism",
     head: "A quick detail\nabout you.",
     body: "Male vs female shifts basal metabolic rate by ~166 kcal/day. Only affects calories.",
   },
   age: {
-    eyebrow: "Step 05 · Metabolism",
+    eyebrow: "Step 04 · Metabolism",
     head: "And your age.",
-    body: "Metabolic rate drops about 1% per decade after 20. We'll factor that in — and keep re-calibrating as Suppr learns from your logs.",
+    body: "Metabolic rate drops about 1% per decade after 20. We'll factor that in — and keep re-calibrating as Sloe learns from your logs.",
   },
   height: {
-    eyebrow: "Step 06 · Metabolism",
+    eyebrow: "Step 05 · Metabolism",
     head: "How tall are you?",
     body: "Height is the last variable we need to estimate your resting burn.",
   },
   weight: {
-    eyebrow: "Step 07 · Metabolism",
+    eyebrow: "Step 06 · Metabolism",
     head: "And your current weight.",
     body: "Stored privately. We'll never prompt you for a daily weigh-in — log it when you want to, skip it when you don't.",
   },
   activity: {
-    eyebrow: "Step 08 · Activity",
+    eyebrow: "Step 07 · Activity",
     head: "How much do you move?",
-    body: "Rough estimate is fine. Suppr will re-calibrate using your active-energy data over the first two weeks.",
+    body: "Rough estimate is fine. Sloe will re-calibrate using your active-energy data over the first two weeks.",
   },
   pace: {
-    eyebrow: "Step 09 · Pace",
+    eyebrow: "Step 08 · Pace",
     head: "How fast\nshould we go?",
     body: "Now that we know your body, we can translate pace into a daily target. We'll flag anything below the safety floor — change pace anytime in Settings.",
   },
   diet: {
-    eyebrow: "Step 10 · Preferences",
+    eyebrow: "Step 09 · Preferences",
     head: "Anything off the table?",
     body: "We use this to filter recipes in Discover and to suggest swaps. Keep it empty if nothing applies — you can tweak any time.",
   },
   strategy: {
-    eyebrow: "Step 11 · Macro style",
+    eyebrow: "Step 10 · Macro style",
     head: "Pick your\nmacro style.",
     body: "We pre-pick the split that fits your goal — you can override if you eat differently. The Reveal step will recompute your numbers either way.",
   },
   reveal: {
-    eyebrow: "Step 12 · Your targets",
+    eyebrow: "Step 11 · Your targets",
     head: "Here's what your\nday looks like.",
-    body: "Calculated from everything you just told us. These numbers will adapt as Suppr learns from your logs.",
+    body: "Calculated from everything you just told us. These numbers will adapt as Sloe learns from your logs.",
     extra: ({ targets }) =>
       targets ? (
         <div className="grid grid-cols-2 gap-3 max-w-[420px]">

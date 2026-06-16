@@ -1436,7 +1436,7 @@ export const MealPlanner = memo(function MealPlanner({
             style={{ fontSize: 13, lineHeight: "1.5", maxWidth: 340, marginBottom: 24 }}
           >
             {planSourceSelector
-              ? `Pick where your recipes come from above, then hit generate — Suppr balances a ${planDays}-day plan to your calorie and macro targets.`
+              ? `Pick where your recipes come from above, then hit generate — Sloe balances a ${planDays}-day plan to your calorie and macro targets.`
               : `Hit generate and we'll build a ${planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.`}
           </p>
           {/* Cohesion wave (2026-06-13, ENG-1080): the empty-state Generate
@@ -1465,7 +1465,7 @@ export const MealPlanner = memo(function MealPlanner({
               style={{ fontSize: 12, lineHeight: "1.4", maxWidth: 320, marginTop: 12 }}
             >
               Save a recipe to plan from your library — or pick{" "}
-              <span className="font-semibold text-foreground">Library &amp; discovery</span> above to use Suppr&apos;s recipes.
+              <span className="font-semibold text-foreground">Library &amp; discovery</span> above to use Sloe&apos;s recipes.
             </p>
           ) : null}
         </SupprCard>

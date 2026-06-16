@@ -78,17 +78,17 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
 export const STEP_IDS = [
   "welcome", // 01
   "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
-  "signup", // 03
-  "goal", // 04
-  "sex", // 05
-  "age", // 06
-  "height", // 07
-  "weight", // 08
-  "activity", // 09
-  "pace", // 10 — auto-skipped when goal = maintain
-  "diet", // 11
-  "strategy", // 12 — macro split (parity with legacy nutrition_strategy)
-  "reveal", // 13 — penultimate aha
+  "goal", // 03
+  "sex", // 04
+  "age", // 05
+  "height", // 06
+  "weight", // 07
+  "activity", // 08
+  "pace", // 09 — auto-skipped when goal = maintain
+  "diet", // 10
+  "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
+  "reveal", // 12 — aha: show targets before account (ENG-962)
+  "signup", // 13 — account after the reveal magic moment (ENG-962)
   "data-bridges", // 14 — terminal: bring your data with you (Build-40)
 ] as const;
 
@@ -382,7 +382,7 @@ export interface ResolveStepOptions {
  *   - `app-choice` when the `onboarding-app-choice` flag is OFF
  *     (ENG-990 — keeps the step out of the live flow until it ramps).
  *  Skips compose: stepping from `welcome` forward with the flag OFF
- *  lands on `signup`, never the hidden `app-choice`. Returns a clamped
+ *  lands on `goal`, never the hidden `app-choice`. Returns a clamped
  *  index inside [0, TOTAL_STEPS - 1]. */
 export function resolveNextStep(
   current: number,
@@ -543,10 +543,8 @@ export function canAdvance(
       // macro split even if they don't tap a card.
       return true;
     case "reveal":
-      // Build-40 (2026-05-01) — `reveal` is now the penultimate step
-      // (was terminal). User taps Continue to land on `data-bridges`,
-      // which is the new terminal step where the `handleComplete`
-      // write path fires.
+      // ENG-962 — user sees targets before account creation. Continue
+      // lands on `signup`; `data-bridges` remains terminal after auth.
       return true;
     case "data-bridges":
       // Build-40 (2026-05-01) — terminal step. Every card is

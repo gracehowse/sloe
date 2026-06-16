@@ -490,7 +490,7 @@ export function shouldShowRecap(
  */
 export function formatRecapForShare(recap: WeeklyRecap): string {
   const lines: string[] = [
-    `My week on Suppr (${recap.weekLabel})`,
+    `My week on Sloe (${recap.weekLabel})`,
     `• ${recap.daysLogged}/7 days logged`,
     `• Avg ${recap.avgCalories} kcal / day`,
     `• Avg ${recap.avgProtein}g protein (${recap.proteinAdherencePct}% of target)`,

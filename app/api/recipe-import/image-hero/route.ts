@@ -36,6 +36,7 @@ import {
   generateDishImage,
   isFalConfigured,
 } from "@/lib/server/falImageGenerator";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -53,6 +54,9 @@ function skipped(reason: string) {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // Shared kill switch with the other import paths.
   if (await isServerFeatureEnabled("kill_recipe_import")) {
     return skipped("import_killed");

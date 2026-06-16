@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
 import { misconfiguredServiceRoleResponse } from "@/lib/server/serverEnv";
 import { scaledMacrosPlausible } from "@/lib/nutrition/verifyIngredients";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 type SubmitFoodRequest = {
   barcode: string;
@@ -73,6 +74,9 @@ export async function GET(req: Request) {
  * Starts as "pending" — becomes searchable after 3+ upvotes or team verification.
  */
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

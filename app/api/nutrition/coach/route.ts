@@ -22,6 +22,7 @@ import type {
   NorthStarRemaining,
   NorthStarSlot,
 } from "@/lib/nutrition/northStarSuggestion";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,9 @@ function deterministicResponse(candidates: CoachCandidate[]) {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // Kill switch — lets us cut the AI ranking instantly without a deploy.
   // The deterministic path keeps working; we just skip the model.
   const killAi = await isServerFeatureEnabled("kill_meal_coach_ai").catch(

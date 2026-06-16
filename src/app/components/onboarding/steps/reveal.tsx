@@ -3,6 +3,7 @@
 import * as React from "react";
 import { BookOpen, ChevronDown, ChevronUp, Sparkles, Target } from "lucide-react";
 import { isFeatureEnabled } from "../../../../lib/analytics/track";
+import { computeOnboardingRevealProjection } from "../../../../lib/onboarding/revealProjection";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 
@@ -91,6 +92,13 @@ export function RevealStep({ compact = false }: RevealProps) {
     gain: `A ~${kcalAdj.toLocaleString()} kcal surplus on your estimated TDEE of ${targets.tdee.toLocaleString()} for ~${paceLabel} kg/week gains. Slow builds hold.`,
     recomp: `A ~${kcalAdj.toLocaleString()} kcal deficit with protein anchored to bodyweight. Body composition changes take time.`,
   }[state.goal ?? "maintain"];
+
+  const revealProjection = computeOnboardingRevealProjection({
+    goal: state.goal,
+    weightKg: state.weightKg,
+    paceKgPerWeek: state.paceKgPerWeek,
+    weightSkipped: state.weightSkipped,
+  });
 
   // Ring geometry
   const R = 88;
@@ -195,6 +203,15 @@ export function RevealStep({ compact = false }: RevealProps) {
         >
           {goalBlurb}
         </p>
+        {revealProjection ? (
+          <p
+            className="text-sm font-medium text-foreground-secondary mx-auto mt-3 leading-relaxed max-w-[340px]"
+            data-testid="onboarding-reveal-projection"
+            style={{ textWrap: "pretty" } as React.CSSProperties}
+          >
+            {revealProjection.sentence}
+          </p>
+        ) : null}
       </div>
 
       {/* Macro breakdown + BMR/TDEE summary */}
@@ -242,7 +259,7 @@ export function RevealStep({ compact = false }: RevealProps) {
         </div>
 
         <MethodologyNote>
-          Values are estimates based on the Mifflin-St Jeor equation. Suppr
+          Values are estimates based on the Mifflin-St Jeor equation. Sloe
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MethodologyNote>
@@ -286,7 +303,7 @@ export function RevealStep({ compact = false }: RevealProps) {
             iconBg="color-mix(in oklab, var(--macro-fat) 12%, transparent)"
             iconColor="var(--macro-fat)"
             title="Adapt over the first ~2 weeks"
-            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+            sub="As you log + weigh in, Sloe re-tunes your TDEE to what your body actually does."
           />
         </div>
       </div>

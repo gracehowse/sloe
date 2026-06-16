@@ -6,6 +6,7 @@ import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { checkMacroPlausibility } from "@/lib/nutrition/macroPlausibility";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -148,6 +149,9 @@ function safeOptional(n: number | null | undefined, decimals: 0 | 1 = 1): number
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // 2026-05-16 (ENG-519) — kill switch for AI label scanning.
   if (await isServerFeatureEnabled("kill_scan_label")) {
     return NextResponse.json(

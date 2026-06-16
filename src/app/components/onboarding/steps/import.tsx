@@ -38,7 +38,7 @@ export function ImportStep() {
       <StepHeader
         overline={overline}
         title="Try importing a recipe"
-        subtitle="Paste a link or pick a source — Suppr parses ingredients and matches each against USDA / Open Food Facts."
+        subtitle="Paste a link or pick a source — Sloe parses ingredients and matches each against USDA / Open Food Facts."
       />
 
       {phase === "idle" && (

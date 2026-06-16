@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredServiceRoleResponse, ServerEnv } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 type Body = {
   barcode: string;
@@ -19,6 +20,9 @@ function serverSupabase() {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   const misconfigured = misconfiguredServiceRoleResponse();
   if (misconfigured) return misconfigured;
 

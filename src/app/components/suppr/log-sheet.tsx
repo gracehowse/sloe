@@ -56,12 +56,11 @@ import {
   BookmarkCheck,
   Camera,
   Check,
-  ChevronRight,
   Clock,
   History,
-  Lock,
   Mic,
   PencilLine,
+  Plus,
   ScanBarcode,
   Search,
   X,
@@ -525,7 +524,7 @@ export function LogSheet({
               grammar as the Today section headers. */}
           <div
             data-slot="log-sheet-header"
-            className="flex items-center justify-between border-b border-border px-4 pb-3 pt-3"
+            className="flex items-center justify-between px-4 pb-3 pt-3"
           >
             <DrawerPrimitive.Title className="font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
               Log a meal
@@ -753,11 +752,11 @@ function DefaultComposition({
     : (visibleTabs[0] ?? "recent");
   const labelFor = (id: BrowseTab) =>
     id === "gotos"
-      ? "Go-tos"
+      ? "Favourites"
       : id === "recent"
         ? "Recent"
         : id === "library"
-          ? "Library"
+          ? "My recipes"
           : "Saved meals";
 
   // Inline-search mode is active when the host wired `search.onSelect`.
@@ -796,22 +795,21 @@ function DefaultComposition({
           <div
             data-testid="log-sheet-search-row"
             className={cn(
-              // Sloe DS — cream search slab, pill-soft 14px corner.
-              "relative flex h-12 w-full items-center gap-2 rounded-xl bg-muted pl-3 pr-1",
+              "relative flex h-12 w-full items-center gap-2.5 rounded-full border border-border bg-card pl-4 pr-3",
               "focus-within:outline-none focus-within:ring-2 focus-within:ring-primary",
             )}
           >
             <Search
               aria-hidden
-              width={16}
-              height={16}
+              width={18}
+              height={18}
               className="text-muted-foreground shrink-0"
             />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search foods, brands, or recipes"
+              placeholder="Search foods or scan"
               aria-label="Search foods"
               data-testid="log-sheet-search-input"
               autoFocus
@@ -825,7 +823,16 @@ function DefaultComposition({
                 "placeholder:text-muted-foreground",
               )}
             />
-            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+            {barcode?.onOpen ? (
+              <button
+                type="button"
+                aria-label="Scan barcode"
+                onClick={() => barcode.onOpen?.()}
+                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <ScanBarcode width={18} height={18} aria-hidden />
+              </button>
+            ) : null}
           </div>
         ) : (
           <button
@@ -833,22 +840,29 @@ function DefaultComposition({
             onClick={() => search?.onOpen?.()}
             aria-label="Search foods"
             className={cn(
-              // Sloe DS — cream search slab, pill-soft 14px corner.
-              "relative flex h-12 w-full items-center gap-2 rounded-xl bg-muted pl-3 pr-1 text-left text-[13px] text-muted-foreground",
-              "hover:bg-muted/80 transition-colors",
+              "relative flex h-12 w-full items-center gap-2.5 rounded-full border border-border bg-card pl-4 pr-3 text-left text-[13px] text-muted-foreground",
+              "hover:bg-card/80 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             )}
           >
             <Search
               aria-hidden
-              width={16}
-              height={16}
+              width={18}
+              height={18}
               className="text-muted-foreground"
             />
-            <span className="flex-1 truncate">Search foods, brands, or recipes</span>
-            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+            <span className="flex-1 truncate">Search foods or scan</span>
+            {barcode?.onOpen ? (
+              <ScanBarcode width={18} height={18} className="shrink-0 text-muted-foreground" aria-hidden />
+            ) : null}
           </button>
         )}
+        <InputModeRow
+          barcode={barcode}
+          voice={voice}
+          photo={photo}
+          onQuickAdd={onAddManually}
+        />
       </div>
 
       {showBarcodeFreePromise && barcode?.onOpen ? (
@@ -990,7 +1004,7 @@ function DefaultComposition({
             <div
               role="tablist"
               aria-label="Browse meals"
-              className="mx-3 mt-3 flex rounded-full bg-muted p-0.5"
+              className="mx-3 mt-5 flex gap-6 border-b border-border"
             >
               {visibleTabs.map((id) => {
                 const active = activeTab === id;
@@ -1017,30 +1031,21 @@ function DefaultComposition({
                     }
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
-                      "flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors",
-                      // §8 segmented grammar (web parity 2026-06-12, ENG-1022):
-                      // fully-round rail + segments (matches the MacroDetail /
-                      // Progress Trend-Scale toggles), active segment = white
-                      // `bg-background` lift + `primary-solid` label + shadow;
-                      // inactive = muted on the warm-grey rail. Was a
-                      // `rounded-xl` rail + `rounded-md` thumb — converged so
-                      // every web §8 control reads identically.
+                      "inline-flex items-center gap-1.5 pb-3 text-sm transition-colors -mb-px border-b-2",
                       active
-                        ? "bg-background text-primary-solid shadow-sm"
-                        : "text-muted-foreground hover:text-foreground",
+                        ? "border-foreground font-semibold text-foreground"
+                        : "border-transparent font-normal text-muted-foreground hover:text-foreground",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     )}
                   >
-                    <span className="inline-flex items-center justify-center gap-1.5">
-                      {baseLabel}
-                      {showSavedDot ? (
-                        <span
-                          data-testid="log-sheet-tab-saved-dot"
-                          aria-hidden="true"
-                          className="h-1.5 w-1.5 rounded-full bg-primary"
-                        />
-                      ) : null}
-                    </span>
+                    {baseLabel}
+                    {showSavedDot ? (
+                      <span
+                        data-testid="log-sheet-tab-saved-dot"
+                        aria-hidden="true"
+                        className="size-1.5 rounded-full bg-primary"
+                      />
+                    ) : null}
                   </button>
                 );
               })}
@@ -1068,30 +1073,11 @@ function DefaultComposition({
             ) : null}
           </div>
 
-          {/* Footer: "Or add manually" — escape hatch for users who want
-              to type macros directly. Host wires this to the manual
-              quick-add form. Hidden in inline-search mode (the panel
-              owns the bottom of the sheet). Flat-card grammar (web
-              parity 2026-06-12, docs/decisions/2026-06-12-flat-card-surfaces.md):
-              a SECONDARY add affordance → quiet fill (`bg-fill-quiet`
-              #F2EFE9, `rounded-xl`, inset margin, NO top divider), not a
-              full-bleed `border-t` row. Muted label stays (#6A6072 on
-              #F2EFE9 = 5.19:1, clears AA). Mirror of mobile `manualFooter`. */}
-          {onAddManually ? (
-            <button
-              type="button"
-              onClick={onAddManually}
-              aria-label="Or add manually"
-              className={cn(
-                "mx-3 mb-3 mt-2 flex items-center gap-2 rounded-xl bg-fill-quiet px-4 py-3 text-left text-[13px] text-muted-foreground",
-                "hover:bg-fill-quiet/80 transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              )}
-            >
-              <PencilLine width={16} height={16} aria-hidden />
-              <span className="flex-1">Or add manually</span>
-              <ChevronRight width={16} height={16} aria-hidden />
-            </button>
+          {search?.macroTargets && search?.macroConsumed ? (
+            <LogSheetDailyProgress
+              macroTargets={search.macroTargets}
+              macroConsumed={search.macroConsumed}
+            />
           ) : null}
 
           {basket && basket.items.length > 0 ? (
@@ -1167,91 +1153,130 @@ function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["bask
   );
 }
 
-/* -------------------------- Right-edge icons -------------------------- */
+/* -------------------------- Input mode row (Figma 336:2) -------------------------- */
 
-function RightEdgeIcons({
+function InputModeRow({
   barcode,
   voice,
   photo,
+  onQuickAdd,
 }: {
   barcode: LogSheetProps["barcode"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  onQuickAdd?: () => void;
 }) {
-  // Render the icons in the documented order: Scan → Voice → Photo
-  // (matches the prior tab order to preserve user muscle memory).
-  // Each icon only renders when the host wires its callback — no
-  // callback, no icon (host opted out).
-  const icons: Array<{
-    key: "scan" | "voice" | "photo";
+  const modes: Array<{
+    key: "scan" | "voice" | "photo" | "quick";
     label: string;
     Icon: LucideIcon;
     onClick?: () => void;
-    locked: boolean;
+    locked?: boolean;
   }> = [
     {
       key: "scan",
-      label: "Scan barcode",
+      label: "Scan",
       Icon: ScanBarcode,
       onClick: barcode?.onOpen,
-      locked: barcode?.locked ?? false,
     },
     {
       key: "voice",
-      label: "Voice log",
+      label: "Voice",
       Icon: Mic,
       onClick: voice?.onStart,
       locked: voice?.locked ?? false,
     },
     {
       key: "photo",
-      label: "Photo log",
+      label: "Photo",
       Icon: Camera,
       onClick: photo?.onCapture,
       locked: photo?.locked ?? false,
     },
+    {
+      key: "quick",
+      label: "Quick add",
+      Icon: PencilLine,
+      onClick: onQuickAdd,
+    },
   ];
   return (
-    <span className="flex items-center gap-0.5">
-      {icons.map(({ key, label, Icon, onClick, locked }) =>
+    <div
+      className="mt-5 flex justify-between px-1"
+      data-testid="log-sheet-input-mode-row"
+    >
+      {modes.map(({ key, label, Icon, onClick, locked }) =>
         onClick ? (
-          <span
-            key={key}
-            role="button"
-            tabIndex={0}
-            aria-label={locked ? `${label} (Pro)` : label}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick();
-              }
-            }}
-            className={cn(
-              "relative grid h-9 w-9 cursor-pointer place-items-center rounded-md",
-              "text-foreground/60 hover:text-foreground hover:bg-foreground/5",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            )}
-          >
-            <Icon width={16} height={16} aria-hidden />
-            {locked ? (
-              // Sloe DS — Pro gate badge in damson (`--accent-win`), the
-              // canonical Pro / achievement accent, distinct from the clay
-              // primary CTA. A small lock on the icon's top-right corner.
-              <span
-                className="absolute right-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded-full text-white shadow-sm"
-                style={{ backgroundColor: "var(--accent-win)" }}
-              >
-                <Lock width={7} height={7} aria-hidden />
-              </span>
-            ) : null}
-          </span>
+          <div key={key} className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              aria-label={locked ? `${label} (Pro)` : label}
+              onClick={onClick}
+              className={cn(
+                "relative grid size-14 place-items-center rounded-full border border-border bg-card text-primary-solid",
+                "hover:bg-card/80 transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              )}
+            >
+              <Icon width={22} height={22} aria-hidden />
+              {locked ? (
+                <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold leading-none text-primary-foreground">
+                  PRO
+                </span>
+              ) : null}
+            </button>
+            <span className="text-[11px] text-muted-foreground">{label}</span>
+          </div>
         ) : null,
       )}
-    </span>
+    </div>
+  );
+}
+
+/* -------------------------- Daily progress footer (Figma 336:2) -------------------------- */
+
+function LogSheetDailyProgress({
+  macroTargets,
+  macroConsumed,
+}: {
+  macroTargets: MacroTargets;
+  macroConsumed: MacroConsumed;
+}) {
+  const kcalTarget = Math.round(macroTargets.calories);
+  const kcalConsumed = Math.round(macroConsumed.calories);
+  return (
+    <div
+      data-testid="log-sheet-daily-progress"
+      className="mx-3 mt-3 flex items-center justify-between border-t border-border pt-4"
+    >
+      <div>
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Daily progress
+        </p>
+        <p className="font-[family-name:var(--font-headline)] text-xl text-foreground">
+          {kcalConsumed}{" "}
+          <span className="text-sm font-[family-name:var(--font-body)] text-muted-foreground">
+            / {kcalTarget} kcal
+          </span>
+        </p>
+      </div>
+      <div className="flex gap-4 text-center">
+        {(
+          [
+            ["P", macroConsumed.protein, "text-macro-protein"],
+            ["C", macroConsumed.carbs, "text-macro-carbs"],
+            ["F", macroConsumed.fat, "text-macro-fat"],
+          ] as const
+        ).map(([letter, grams, colorClass]) => (
+          <div key={letter}>
+            <p className={cn("font-[family-name:var(--font-headline)] text-[15px] tabular-nums", colorClass)}>
+              {Math.round(grams)}g
+            </p>
+            <p className="text-[10px] text-muted-foreground">{letter}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1457,32 +1482,36 @@ function BrowseRow({
   kcal,
   source,
   onPick,
+  subtitle,
 }: {
   title: string;
   kcal: number;
   source: SourceDotSource;
   onPick: () => void;
+  subtitle?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onPick}
-      aria-label={`Log ${title}`}
-      className={cn(
-        "flex w-full items-center rounded-md py-2 px-1 text-left",
-        "hover:bg-muted/50 active:bg-muted transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-      )}
-    >
-      <FoodFallbackThumb title={title} />
-      <div className="ml-2 flex-1 min-w-0">
-        <p className="truncate text-[13px] text-foreground">{title}</p>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <SourceDot source={source} size={6} />
-          <span className="text-[11px] tabular-nums text-muted-foreground">{kcal} kcal</span>
-        </div>
+    <div className="flex items-center gap-3 border-b border-border py-3 last:border-0">
+      <FoodFallbackThumb title={title} className="size-11 shrink-0 rounded-xl border border-border" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] leading-tight text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+          {subtitle ?? `${kcal} kcal`}
+        </p>
       </div>
-    </button>
+      <button
+        type="button"
+        onClick={onPick}
+        aria-label={`Log ${title}`}
+        className={cn(
+          "grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card text-macro-carbs",
+          "hover:bg-card/80 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        )}
+      >
+        <Plus width={16} height={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </div>
   );
 }
 

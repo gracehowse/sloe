@@ -46,7 +46,7 @@ describe("AppleHealthCard (web)", () => {
       />,
     );
     await waitFor(() => screen.getByTestId("apple-health-card-empty"));
-    expect(screen.getByText(/Sync from the Suppr app/)).toBeDefined();
+    expect(screen.getByText(/Sync from the Sloe app/)).toBeDefined();
     expect(screen.getByRole("link", { name: /Get the app/ })).toBeDefined();
     // No rows rendered in empty state.
     expect(screen.queryByTestId("apple-health-card-rows")).toBeNull();

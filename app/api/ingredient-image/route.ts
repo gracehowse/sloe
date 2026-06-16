@@ -41,6 +41,7 @@ import {
   type IngredientImageStatus,
 } from "@/lib/recipe/ingredientImageQueue";
 import { generateIngredientImage, isFalConfigured } from "@/lib/server/falImageGenerator";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -58,6 +59,9 @@ function skipped(reason: string, extra: Record<string, unknown> = {}) {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // Shared kill switch with the recipe-import image paths.
   if (await isServerFeatureEnabled("kill_recipe_import")) {
     return skipped("import_killed");

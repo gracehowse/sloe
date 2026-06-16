@@ -27,7 +27,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Import recipe — Suppr",
+  title: "Import recipe — Sloe",
   description: "Import a recipe from a link or photo.",
 };
 

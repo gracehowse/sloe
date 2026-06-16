@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Settings — Suppr",
+  title: "Settings — Sloe",
   description: "Manage your account, plan, and preferences.",
 };
 

@@ -72,7 +72,7 @@ export interface TodayMealsFigmaLayoutProps {
 
 /**
  * Figma `654:2` Today's Meals — summary cards per logged slot, kcal total
- * header, dashed Log-{nextSlot} CTA. Parity: mobile
+ * header, solid Log-{nextSlot} card CTA (r24). Parity: mobile
  * `TodayMealsFigmaLayout.tsx`.
  */
 export function TodayMealsFigmaLayout({

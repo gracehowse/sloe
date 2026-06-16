@@ -75,7 +75,7 @@ export function SexStep() {
       {helpOpen && (
         <div className="mt-3 p-3.5 bg-primary/5 border border-primary/15 rounded-xl text-xs text-foreground leading-relaxed">
           <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary mb-2">
-            What Suppr does with this
+            What Sloe does with this
           </div>
           <p className="m-0 mb-2.5">
             The Mifflin-St Jeor equation uses different coefficients for male
@@ -92,7 +92,7 @@ export function SexStep() {
           </p>
           <p className="m-0 text-muted-foreground">
             For best results, consult your doctor. You can change this at any
-            time — Suppr also re-calibrates from your actual logs.
+            time — Sloe also re-calibrates from your actual logs.
           </p>
         </div>
       )}
@@ -100,7 +100,7 @@ export function SexStep() {
       <div className="mt-auto pt-5 text-[11px] text-muted-foreground leading-relaxed flex gap-2 items-start">
         <Shield className="size-3 text-muted-foreground mt-px" aria-hidden />
         <span>
-          Stored privately on your device and synced only to your Suppr
+          Stored privately on your device and synced only to your Sloe
           account. Never shared.
         </span>
       </div>

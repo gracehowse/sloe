@@ -16,6 +16,8 @@ export const AnalyticsEvents = {
   food_logged: "food_logged",
   barcode_lookup: "barcode_lookup",
   recipe_imported: "recipe_imported",
+  /** ENG-980 — parsed import persisted to Library before review completes. */
+  recipe_import_saved_first: "recipe_import_saved_first",
   /**
    * Recipe-wave (2026-05-10) — per-stage telemetry for the recipe-import
    * pipeline. Fires at the END of each pipeline stage on every import

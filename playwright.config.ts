@@ -40,6 +40,7 @@ const authedTestMatch = [
   /visual-audit-authed\.spec\.ts/,
   /visual-regression-subpages\.spec\.ts/,
   /visual-regression-deep\.spec\.ts/,
+  /visual-redesign-gate15-authed\.spec\.ts/,
   /screenshots\/web-authed-tour\.spec\.ts/,
   /screenshots\/redesign-flags-capture\.spec\.ts/,
   /screenshots\/redesign-populated\.spec\.ts/,

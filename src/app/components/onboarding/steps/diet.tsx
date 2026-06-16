@@ -89,7 +89,7 @@ export function DietStep() {
         ))}
       </div>
 
-      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-2.5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
         Allergies
       </div>
       <div className="flex flex-wrap gap-2">

@@ -15,7 +15,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Today — Suppr",
+  title: "Today — Sloe",
   description: "Your daily macros, planned meals, and quick-log.",
 };
 

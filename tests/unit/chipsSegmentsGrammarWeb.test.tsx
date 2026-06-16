@@ -36,13 +36,11 @@ const PROGRESS = read("src/app/components/ProgressDashboard.tsx");
 const PERIOD_CONTROL = read("src/app/components/suppr/progress-period-control.tsx");
 
 describe("§8 segmented controls — fully-round rail + segments (web parity)", () => {
-  it("LogSheet browse toggle (Recent/Library/Saved): round rail + round segments", () => {
-    // Rail
-    expect(LOG_SHEET).toMatch(/rounded-full bg-muted p-0\.5[\s\S]{0,120}aria-label="Browse meals"|aria-label="Browse meals"[\s\S]{0,120}rounded-full bg-muted p-0\.5/);
-    // Segment is fully round (NOT the old rounded-md thumb)
-    expect(LOG_SHEET).toMatch(/flex-1 rounded-full py-2 text-\[13px\] font-semibold/);
-    // Active thumb = white lift + primary-solid label
-    expect(LOG_SHEET).toMatch(/"bg-background text-primary-solid shadow-sm"/);
+  it("LogSheet browse tabs (Recent/Favourites/My recipes): Figma underline rail (ENG-900)", () => {
+    expect(LOG_SHEET).toMatch(/border-b border-border/);
+    expect(LOG_SHEET).toMatch(/border-b-2/);
+    expect(LOG_SHEET).toMatch(/border-foreground font-semibold text-foreground/);
+    expect(LOG_SHEET).toMatch(/border-transparent font-normal text-muted-foreground/);
   });
 
   it("MacroDetail breakdown toggle: round rail + round segments + primary-solid label", () => {

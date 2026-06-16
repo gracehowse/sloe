@@ -599,7 +599,7 @@ describe("T3 — per-user data fetch + reshape", () => {
     expect(res.status).toBe(200);
     const sent = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
     expect(sent[0].body).toBe(
-      "Nothing logged this week. Open Suppr to get back on track.",
+      "Nothing logged this week. Open Sloe to get back on track.",
     );
     // Variant tag is on the data payload (T4) so the open-listener can
     // attribute opens to body variants.
@@ -995,7 +995,7 @@ describe("ENG-748 #7 — web-push fan-out for web-only + dual-rail users", () =>
     expect(subs[0].endpoint).toBe("https://push.example/web-1");
     expect(payload.title).toBe("Your week in Sloe");
     expect(payload.body).toBe(
-      "Nothing logged this week. Open Suppr to get back on track.",
+      "Nothing logged this week. Open Sloe to get back on track.",
     );
     expect(payload.url).toBe("/home?view=progress");
     expect(payload.tag).toMatch(/^weekly_recap:\d{4}-W\d{2}$/);

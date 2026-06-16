@@ -24,12 +24,15 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   // another card (inset tiles, rows inside a sheet) stay flat — a card-in-a-card
   // must not double-shadow. This guard pins the page-ground cards to SOFT; the
   // exceptions (macro tiles, hero) are pinned explicitly below.
-  it("light material is the §1 inversion: white cards on the cream brand ground (2026-06-10)", () => {
-    // Fresh-eyes §1+§2: ground #FBF8F3 (the splash/onboarding cream) with
-    // WHITE cards — the old white-ground/cream-card pairing differed by ~3
-    // RGB points and never registered as a system. Supersedes the Figma
-    // 654:2 surface.card cream-fill pin.
-    expect(Colors.light.background).toBe("#FBF8F3");
+  it("light material is the §1 inversion: white cards on a DEEPENED cream ground (2026-06-16)", () => {
+    // Fresh-eyes §1+§2: WHITE cards on a cream ground — the old white-ground/
+    // cream-card pairing differed by ~3 RGB points and never registered.
+    // 2026-06-16 (Natural Cycles / Withings study): the working ground deepened
+    // a gentle step #FBF8F3 → #F3F0E8 (L*≈98 → ≈95, a ~5 L* gap) so the flat-card
+    // grammar separates without reading dark (a first pass to #EFE8DA/L*≈92 was
+    // too dark). Splash/icon ground stays #FBF8F3 (app.json, brandIconSplash.
+    // test.ts). See docs/decisions/2026-06-16-deepen-ground-for-flat-cards.md.
+    expect(Colors.light.background).toBe("#F3F0E8");
     expect(Colors.light.card).toBe("#FFFFFF");
     expect(Colors.light.cardElevated).toBe("#FFFFFF");
   });

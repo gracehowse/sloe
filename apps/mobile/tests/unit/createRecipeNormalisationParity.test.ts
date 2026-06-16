@@ -20,7 +20,7 @@
  *
  * Files pinned:
  *   - Mobile create form: `apps/mobile/app/create-recipe.tsx`
- *   - Mobile import save: `apps/mobile/lib/saveImportedRecipe.ts`
+ *   - Mobile import save: `src/lib/recipes/persistImportedRecipe.ts` (via thin mobile wrapper)
  *   - Web upload form:    `src/app/components/RecipeUpload.tsx`
  *
  * Note: there is no standalone web "create manual recipe" page — the
@@ -33,7 +33,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MOBILE_CREATE_PATH = resolve(__dirname, "../../app/create-recipe.tsx");
-const MOBILE_IMPORT_PATH = resolve(__dirname, "../../lib/saveImportedRecipe.ts");
+const MOBILE_IMPORT_PATH = resolve(
+  __dirname,
+  "../../../../src/lib/recipes/persistImportedRecipe.ts",
+);
 const WEB_UPLOAD_PATH = resolve(
   __dirname,
   "../../../../src/app/components/RecipeUpload.tsx",
@@ -72,10 +75,10 @@ describe("mobile create-recipe — placeholder + write-side normalise (E-1)", ()
   });
 });
 
-describe("mobile import save path — normaliseInstructions wired in (E-1)", () => {
+describe("shared import persist path — normaliseInstructions wired in (E-1)", () => {
   it("imports the shared helper", () => {
     expect(MOBILE_IMPORT_SRC).toMatch(
-      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*@suppr\/shared\/recipes\/normaliseInstructions["']/,
+      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*normaliseInstructions["']/,
     );
   });
 

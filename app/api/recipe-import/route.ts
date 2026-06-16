@@ -33,6 +33,7 @@ import {
   acquireTranscriptCaption,
 } from "@/lib/server/supadata/wireAcquisition";
 import { hasSupadataConfig } from "@/lib/server/supadata/client";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 // Supadata acquisition (ENG-994) — the swappable acquisition adapter runs as
 // stage 0 (BEFORE the existing extraction) when the `supadata-acquisition`
@@ -140,6 +141,9 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
 export const maxDuration = 50;
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // 2026-05-16 (ENG-519) — global kill switch. Flip the PostHog flag
   // `kill_recipe_import` to 100% rollout to disable the whole import
   // family (URL, image, caption) without a deploy. Useful if a provider

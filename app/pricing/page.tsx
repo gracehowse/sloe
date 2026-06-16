@@ -8,6 +8,7 @@ import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib
 import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detectRegion.ts";
 import { isEurStripePricingConfigured } from "../../src/lib/stripe/resolveProStripePrice.ts";
 import { PricingHero } from "./PricingHero.tsx";
+import { PricingPaywallHonesty } from "./PricingPaywallHonesty.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
 import { PaywallValueGrid } from "./PaywallValueGrid.tsx";
@@ -203,6 +204,8 @@ export default async function PricingPage({
             page body stays focused on the value grid + comparison +
             tier + FAQ composition. Same hero copy as the mobile paywall. */}
         <PricingHero />
+
+        <PricingPaywallHonesty paywallFrom={paywallFrom} />
 
         {/* 2×2 value-prop grid (Figma `284:2`) — Unlimited imports /
             Macro fitting / AI coach / Cloud sync. Copy from the shared

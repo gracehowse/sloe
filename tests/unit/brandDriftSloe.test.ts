@@ -116,4 +116,28 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
       expect(src, rel).not.toContain("Suppr is temporarily having issues");
     }
   });
+
+  it("web onboarding narrative copy says Sloe (not Suppr)", () => {
+    const narrative = readFileSync(
+      join(ROOT, "src/app/components/onboarding/narrative.tsx"),
+      "utf8",
+    );
+    expect(narrative).toContain("Sloe adapts");
+    expect(narrative).not.toMatch(/\bSuppr\b/);
+  });
+
+  it("web onboarding goal step uses Figma question copy", () => {
+    const goal = readFileSync(
+      join(ROOT, "src/lib/onboarding/goalOptions.ts"),
+      "utf8",
+    );
+    expect(goal).toContain("What brings you to Sloe?");
+    expect(goal).toContain("We'll tailor everything to you.");
+  });
+
+  it("product page titles use Sloe suffix (not Suppr)", () => {
+    const today = readFileSync(join(ROOT, "app/(product)/today/page.tsx"), "utf8");
+    expect(today).toContain('"Today — Sloe"');
+    expect(today).not.toContain('"Today — Suppr"');
+  });
 });

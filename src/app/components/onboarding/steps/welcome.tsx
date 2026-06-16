@@ -88,7 +88,7 @@ export function WelcomeStep() {
                 });
                 go(1);
               }}
-              className="h-12 md:h-14 px-6 md:px-7 text-base font-bold"
+              className="h-12 md:h-14 px-6 md:px-7 text-base font-bold rounded-full"
             >
               Get started — free
             </Button>

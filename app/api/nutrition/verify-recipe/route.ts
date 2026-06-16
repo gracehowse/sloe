@@ -4,6 +4,7 @@ import { verifyIngredients, type IngredientOverride } from "@/lib/nutrition/veri
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
@@ -13,6 +14,9 @@ type VerifyRequest = {
 };
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // 2026-05-16 (ENG-519) — kill switch for the verify-ingredients
   // pipeline (USDA + OFF + Edamam + FatSecret). Flip if any upstream
   // provider misbehaves badly enough to warrant a calm "back shortly".

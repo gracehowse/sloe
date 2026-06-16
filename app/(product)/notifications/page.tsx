@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Notifications — Suppr",
+  title: "Notifications — Sloe",
   description: "Manage your push notifications.",
 };
 

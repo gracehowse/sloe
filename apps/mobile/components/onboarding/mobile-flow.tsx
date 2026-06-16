@@ -29,6 +29,7 @@ import {
 } from "@/lib/onboarding";
 import { APP_CHOICE_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
+import { OnboardingSegmentedProgress } from "./OnboardingSegmentedProgress";
 
 void mapV2GoalToLegacy;
 
@@ -521,7 +522,7 @@ export function MobileFlow() {
               bar still gives a "I'm partway through" sense without
               naming a hard total — Cal AI / MFP / Lifesum all use
               progress-only on their flows. */}
-          <ProgressBar value={displayIndex} total={displayTotal} />
+          <OnboardingSegmentedProgress value={displayIndex} total={displayTotal} />
 
           {/* Audit 2026-05-12 (Grace cohort): when a signed-in user
               arrived via Settings → "Refresh my plan", surface a calm
@@ -600,7 +601,7 @@ export function MobileFlow() {
             const isDisabled = completing || !canAdvance;
             return {
               height: 56,
-              borderRadius: 14,
+              borderRadius: 999,
               // Disabled uses `inputBg` — a slightly tinted card surface
               // distinct from the page bg. Earlier iterations swung
               // between two failure modes: `opacity: 0.4` on Accent.primary
@@ -637,36 +638,6 @@ export function MobileFlow() {
         </Pressable>
       </View>
       )}
-    </View>
-  );
-}
-
-function ProgressBar({ value, total }: { value: number; total: number }) {
-  const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the filled portion of
-  // the onboarding progress bar; the track stays the neutral `inputBg`.
-  const accent = useAccent();
-  const pct = Math.max(4, (value / Math.max(1, total)) * 100);
-  return (
-    <View
-      accessibilityRole="progressbar"
-      accessibilityValue={{ now: value, min: 0, max: total }}
-      style={{
-        flex: 1,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: colors.inputBg,
-        overflow: "hidden",
-      }}
-    >
-      <View
-        style={{
-          width: `${pct}%`,
-          height: "100%",
-          borderRadius: 2,
-          backgroundColor: accent.primary,
-        }}
-      />
     </View>
   );
 }

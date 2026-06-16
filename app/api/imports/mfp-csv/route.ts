@@ -59,6 +59,7 @@ import {
   MFP_IMPORT_ROW_CAP,
 } from "@/lib/imports/mfpCsvLimits";
 import { canonicalNutritionEntrySource } from "@/lib/nutrition/canonicalNutritionEntrySource";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -124,6 +125,9 @@ function rowToEntry(
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // 1. Auth.
   const userId = await getUserIdFromRequest(req);
   if (!userId) {

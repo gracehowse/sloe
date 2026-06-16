@@ -33,6 +33,15 @@ const REDESIGN_FLAGS = [
   "redesign_search_results",
 ];
 
+/** Gate 1.5 surfaces — must resolve ON without PostHog (see redesignDefaultOnParity.test.ts). */
+const GATE_15_FLAGS = [
+  "today_meals_figma_654",
+  "today_tracker_tier_v1",
+  "card_cohesion_white_v1",
+  "log_sheet_nl_text_v1",
+  "log-sheet-slot-selector",
+] as const;
+
 describe("redesign flags are un-gated (web)", () => {
   beforeEach(() => {
     isEnabledMock.mockReset();
@@ -46,6 +55,13 @@ describe("redesign flags are un-gated (web)", () => {
   it("returns true for every redesign flag, even with no PostHog key", () => {
     // No NEXT_PUBLIC_POSTHOG_KEY → the un-gate returns before the key check.
     for (const flag of REDESIGN_FLAGS) {
+      expect(isFeatureEnabled(flag)).toBe(true);
+    }
+    expect(isEnabledMock).not.toHaveBeenCalled();
+  });
+
+  it("returns true for Gate 1.5 shared flags without consulting PostHog", () => {
+    for (const flag of GATE_15_FLAGS) {
       expect(isFeatureEnabled(flag)).toBe(true);
     }
     expect(isEnabledMock).not.toHaveBeenCalled();

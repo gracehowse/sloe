@@ -442,7 +442,7 @@ function NorthStarDefaultBlock({
                         {Math.round(suggestion.predictedFat)}g F.
                       </p>
                       <p>
-                        Suppr picks the saved recipe that best closes the gap to your remaining macros for
+                        Sloe picks the saved recipe that best closes the gap to your remaining macros for
                         today. Skip (×) to see another candidate.
                       </p>
                     </div>

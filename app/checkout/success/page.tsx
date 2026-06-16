@@ -79,7 +79,7 @@ export default async function CheckoutSuccessPage({
             className="text-lg font-bold bg-clip-text text-transparent"
             style={{ backgroundImage: "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)" }}
           >
-            Suppr
+            Sloe
           </Link>
         </div>
       </header>
@@ -149,7 +149,7 @@ export default async function CheckoutSuccessPage({
             data-testid="checkout-success-continue"
             className="flex-1 text-center px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-violet-500/25 transition-all"
           >
-            Open Suppr
+            Open Sloe
           </Link>
           <Link
             href="/account/billing"

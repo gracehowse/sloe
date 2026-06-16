@@ -229,7 +229,7 @@ function DigestLegacy(props: DigestProps) {
     try {
       const nav = typeof navigator !== "undefined" ? navigator : null;
       if (nav && "share" in nav && typeof nav.share === "function") {
-        await nav.share({ title: "My week on Suppr", text: shareText });
+        await nav.share({ title: "My week on Sloe", text: shareText });
         return;
       }
       if (nav?.clipboard && typeof nav.clipboard.writeText === "function") {

@@ -13,6 +13,7 @@ import {
   type DigestNarrativeResult,
   type MaintenanceMove,
 } from "@/lib/nutrition/digestNarrative";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,9 @@ const VALID_REASONS = new Set<MaintenanceMove["reason"]>([
 ]);
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   const killAi = await isServerFeatureEnabled("kill_digest_narrative_ai").catch(
     () => false,
   );

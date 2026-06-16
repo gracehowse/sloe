@@ -68,9 +68,7 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     expect(mobile).toMatch(/savedCount\s*>=\s*3/);
   });
 
-  it("both surfaces render right-edge icons in Scan / Voice / Photo order", () => {
-    // RightEdgeIcons defines the icon list with `key: "scan"`, `"voice"`, `"photo"`.
-    // The order in the array dictates render order.
+  it("both surfaces render input mode icons in Scan / Voice / Photo order", () => {
     function iconOrder(src: string): string[] {
       const m = src.match(
         /key:\s*"scan"[\s\S]*?key:\s*"voice"[\s\S]*?key:\s*"photo"/,
@@ -81,8 +79,13 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     expect(iconOrder(mobile)).toEqual(["scan", "voice", "photo"]);
   });
 
-  it("both surfaces label the scan / voice / photo icons identically", () => {
-    for (const label of ["Scan barcode", "Voice log", "Photo log"]) {
+  it("both surfaces ship the Figma input-mode row test handle", () => {
+    expect(web).toContain("log-sheet-input-mode-row");
+    expect(mobile).toContain("log-sheet-input-mode-row");
+  });
+
+  it("both surfaces label scan / voice / photo modes for accessibility", () => {
+    for (const label of ["Scan", "Voice", "Photo"]) {
       expect(web).toContain(label);
       expect(mobile).toContain(label);
     }
@@ -118,9 +121,14 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     }
   });
 
-  it("both surfaces ship the `Or add manually` footer string", () => {
-    expect(web).toContain("Or add manually");
-    expect(mobile).toContain("Or add manually");
+  it("both surfaces ship Quick add in the input-mode row", () => {
+    expect(web).toContain("Quick add");
+    expect(mobile).toContain("Quick add");
+  });
+
+  it("both surfaces ship the daily-progress footer test handle", () => {
+    expect(web).toContain("log-sheet-daily-progress");
+    expect(mobile).toContain("log-sheet-daily-progress");
   });
 });
 

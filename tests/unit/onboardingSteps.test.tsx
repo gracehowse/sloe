@@ -86,9 +86,9 @@ describe("GoalStep", () => {
       </>,
     );
     expect(screen.getByTestId("goal-display").textContent).toBe("none");
-    fireEvent.click(screen.getByRole("button", { name: /lose fat/i }));
+    fireEvent.click(screen.getByRole("button", { name: /lose weight while still eating/i }));
     expect(screen.getByTestId("goal-display").textContent).toBe("lose");
-    fireEvent.click(screen.getByRole("button", { name: /maintain/i }));
+    fireEvent.click(screen.getByRole("button", { name: /eat healthier at home/i }));
     expect(screen.getByTestId("goal-display").textContent).toBe("maintain");
   });
 });
@@ -195,7 +195,7 @@ describe("StrategyStep — prototype visual pass (D2)", () => {
     // MethodologyNote copy earns its keep on Strategy.
     expect(
       screen.getByText(
-        /Macro ratios are a starting point\. Suppr recalibrates protein and carbs as you log and weigh in\./i,
+        /Macro ratios are a starting point\. Sloe recalibrates protein and carbs as you log and weigh in\./i,
       ),
     ).toBeInTheDocument();
   });

@@ -230,7 +230,7 @@ describe("LogSheet (web) — inline-search mode (2026-04-30, customer-lens neste
   });
 });
 
-describe("LogSheet (web) — search row + right-edge icons (Phase 4 / Next-10 #12)", () => {
+describe("LogSheet (web) — search row + input mode row (Figma 336:2)", () => {
   it("search row click fires search.onOpen", () => {
     const onOpen = vi.fn();
     open({ search: { onOpen } });
@@ -241,40 +241,40 @@ describe("LogSheet (web) — search row + right-edge icons (Phase 4 / Next-10 #1
   it("scan icon click fires barcode.onOpen", () => {
     const onScanOpen = vi.fn();
     open({ barcode: { onOpen: onScanOpen } });
-    fireEvent.click(screen.getByRole("button", { name: "Scan barcode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scan" }));
     expect(onScanOpen).toHaveBeenCalledTimes(1);
   });
 
   it("voice icon click fires voice.onStart", () => {
     const onStart = vi.fn();
     open({ voice: { onStart } });
-    fireEvent.click(screen.getByRole("button", { name: "Voice log" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voice" }));
     expect(onStart).toHaveBeenCalledTimes(1);
   });
 
   it("photo icon click fires photo.onCapture", () => {
     const onCapture = vi.fn();
     open({ photo: { onCapture } });
-    fireEvent.click(screen.getByRole("button", { name: "Photo log" }));
+    fireEvent.click(screen.getByRole("button", { name: "Photo" }));
     expect(onCapture).toHaveBeenCalledTimes(1);
   });
 
   it("locked: true on voice surfaces a (Pro) accessibility hint", () => {
     open({ voice: { onStart: () => {}, locked: true } });
     // Locked icons get the "(Pro)" suffix on the accessible label.
-    expect(screen.getByRole("button", { name: "Voice log (Pro)" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Voice (Pro)" })).toBeDefined();
   });
 
   it("locked: true on photo surfaces a (Pro) accessibility hint", () => {
     open({ photo: { onCapture: () => {}, locked: true } });
-    expect(screen.getByRole("button", { name: "Photo log (Pro)" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Photo (Pro)" })).toBeDefined();
   });
 
   it("an icon with no callback wired is not rendered (host opted out)", () => {
     open({ barcode: undefined, voice: undefined, photo: undefined });
-    expect(screen.queryByRole("button", { name: "Scan barcode" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Voice log" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Photo log" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Scan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Voice" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Photo" })).toBeNull();
   });
 });
 
@@ -405,18 +405,15 @@ describe("LogSheet (web) — saved-tab discoverability dot (2026-05-01, journey-
     ).toBeDefined();
   });
 
-  it("Recent and Saved tabs share the same flex-1 sizing class (equal weight)", () => {
+  it("Recent and Saved tabs use the Figma underline tab rail", () => {
     open({
       recent: { entries: [], onPick: () => {} },
       saved: { meals: threeMeals, onPick: () => {} },
     });
     const recentTab = screen.getByTestId("log-sheet-tab-recent");
     const savedTab = screen.getByTestId("log-sheet-tab-saved");
-    // Both pills carry the `flex-1` utility — equal width inside the
-    // toggle row regardless of label length. The dot is an additive
-    // child element so its presence does not change the pill layout.
-    expect(recentTab.className).toMatch(/\bflex-1\b/);
-    expect(savedTab.className).toMatch(/\bflex-1\b/);
+    expect(recentTab.className).toMatch(/border-b-2/);
+    expect(savedTab.className).toMatch(/border-b-2/);
   });
 });
 
@@ -471,21 +468,21 @@ describe("LogSheet (web) — Barcode 0-kcal manual entry", () => {
   });
 });
 
-describe("LogSheet (web) — 'Or add manually' footer", () => {
-  it("renders the footer link when onAddManually is provided", () => {
+describe("LogSheet (web) — Quick add input mode (Figma 336:2)", () => {
+  it("renders Quick add when onAddManually is provided", () => {
     open({ onAddManually: () => {} });
-    expect(screen.getByRole("button", { name: "Or add manually" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Quick add" })).toBeDefined();
   });
 
-  it("hides the footer link when onAddManually is undefined", () => {
+  it("hides Quick add when onAddManually is undefined", () => {
     open({ onAddManually: undefined });
-    expect(screen.queryByRole("button", { name: "Or add manually" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Quick add" })).toBeNull();
   });
 
-  it("footer click fires onAddManually", () => {
+  it("Quick add click fires onAddManually", () => {
     const onAddManually = vi.fn();
     open({ onAddManually });
-    fireEvent.click(screen.getByRole("button", { name: "Or add manually" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick add" }));
     expect(onAddManually).toHaveBeenCalledTimes(1);
   });
 });

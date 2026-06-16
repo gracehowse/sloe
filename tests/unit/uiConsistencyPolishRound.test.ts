@@ -102,14 +102,14 @@ describe("Recipes prominence (mobile tab bar) — Phase 2 collapse", () => {
   });
 });
 
-describe("Import idempotency (mobile)", () => {
-  const SRC = read("apps/mobile/lib/saveImportedRecipe.ts");
+describe("Import idempotency (shared persist)", () => {
+  const SRC = read("src/lib/recipes/persistImportedRecipe.ts");
 
   it("guards against duplicate import by source_url before insert", () => {
     // The guard must select existing recipe by (author_id, source_url)
     // and return its id without inserting if a match exists.
     expect(SRC).toMatch(/eq\("author_id",\s*userId\)\s*\.eq\("source_url",\s*sourceUrl\)/);
-    expect(SRC).toMatch(/return \{ recipeId: existingId \}/);
+    expect(SRC).toMatch(/return \{ recipeId:/);
   });
 
   it("guard is gated on sourceUrl !== null (manual creates skip the check)", () => {

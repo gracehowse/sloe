@@ -343,7 +343,7 @@ describe("formatRecapForShare", () => {
       weightFirstKg: 78.4,
       weightLastKg: 78.0,
     });
-    expect(txt).toContain("My week on Suppr");
+    expect(txt).toContain("My week on Sloe");
     expect(txt).toContain("6/7 days logged");
     expect(txt).toContain("1850 kcal");
     expect(txt).toContain("12-day streak");

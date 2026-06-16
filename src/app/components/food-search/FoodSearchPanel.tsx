@@ -813,7 +813,7 @@ function foodSearchSourceLabel(source: SearchResult["_source"]): string {
       return "Custom";
     case "GenericBeverage":
     case "GenericFood":
-      return "Suppr";
+      return "Sloe";
   }
 }
 

@@ -9,7 +9,7 @@
  * new caller can re-introduce the bug without this test failing.
  *
  * Callers audited:
- *   1. `apps/mobile/lib/saveImportedRecipe.ts` — mobile share-sheet + URL import.
+ *   1. `src/lib/recipes/persistImportedRecipe.ts` — mobile + web import save-first.
  *   2. `src/app/components/RecipeUpload.tsx` — web URL-paste import + manual create.
  *   3. `app/api/recipe-import/route.ts` — web API response for all three tiers
  *      (HTML / website-linked social fallback / direct social caption).
@@ -22,6 +22,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+const PERSIST_IMPORT_PATH = resolve(
+  __dirname,
+  "../../src/lib/recipes/persistImportedRecipe.ts",
+);
 const MOBILE_SAVE_PATH = resolve(
   __dirname,
   "../../apps/mobile/lib/saveImportedRecipe.ts",
@@ -49,8 +53,8 @@ describe("persistSourceAttribution adoption", () => {
     expect(src).toMatch(/export function normaliseSource/);
   });
 
-  describe("apps/mobile/lib/saveImportedRecipe.ts", () => {
-    const src = read(MOBILE_SAVE_PATH);
+  describe("src/lib/recipes/persistImportedRecipe.ts", () => {
+    const src = read(PERSIST_IMPORT_PATH);
 
     it("imports normaliseSource from the shared helper", () => {
       expect(src).toMatch(/import\s*\{[^}]*normaliseSource[^}]*\}\s*from\s*["'][^"']*persistSourceAttribution[^"']*["']/);
@@ -66,10 +70,16 @@ describe("persistSourceAttribution adoption", () => {
     });
 
     it("no raw manual-trim shape survives alongside the helper", () => {
-      // Guardrail: the old `((recipe.sourceUrl ?? …) ?? "").trim() || null` shape
-      // should not coexist with the helper call. If someone re-introduces it the
-      // helper's guarantees are bypassed.
       expect(src).not.toMatch(/recipe\.sourceUrl\s*\?\?[^;]+\)\.trim\(\)/);
+    });
+  });
+
+  describe("apps/mobile/lib/saveImportedRecipe.ts (thin wrapper)", () => {
+    const src = read(MOBILE_SAVE_PATH);
+
+    it("delegates to shared persistImportedRecipe", () => {
+      expect(src).toMatch(/persistSaveImportedRecipe\(supabase,\s*userId,\s*recipe\)/);
+      expect(src).toMatch(/persistUpdateImportedRecipe\(supabase,\s*userId,\s*recipeId,\s*recipe\)/);
     });
   });
 
