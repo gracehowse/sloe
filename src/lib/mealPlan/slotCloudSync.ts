@@ -73,19 +73,34 @@ export function parseMealPlanSlotsMetadata(raw: unknown): MealPlanSlotsMetadata 
 /**
  * Merge cloud metadata into local slots. Preserves inline `plan` payloads
  * for slots that already exist locally; adds cloud-only slots with `plan: null`.
+ *
+ * ENG-1130 — local-only slots (created on this device but not yet present in
+ * the cloud registry) are preserved, NOT dropped. Without this a slot created
+ * offline is wiped the moment a stale cloud read merges back, which is silent
+ * data loss. This is the deliberate trade-off: with no per-slot timestamp we
+ * cannot distinguish "never synced" from "deleted elsewhere", so we err toward
+ * preserving creates (recoverable: delete again) over propagating deletes
+ * (unrecoverable: lost plan). Consequence — a slot *deleted* on another device
+ * is re-pushed by this one, so cross-device deletion does not yet propagate.
+ * Closing that gap is a separate enhancement (needs per-slot tombstones or
+ * updatedAt), not pending cleanup of this change.
  */
 export function mergeCloudMetadataIntoSlots(
   localSlots: readonly MealPlanNamedSlot[],
   metadata: MealPlanSlotsMetadata,
 ): { slots: MealPlanNamedSlot[]; activeSlotId: string } {
   const byId = new Map(localSlots.map((s) => [s.id, s]));
-  const merged: MealPlanNamedSlot[] = metadata.slots.map((meta) => {
+  const cloudIds = new Set(metadata.slots.map((m) => m.id));
+  const fromCloud: MealPlanNamedSlot[] = metadata.slots.map((meta) => {
     const existing = byId.get(meta.id);
     if (existing) {
       return existing.name === meta.name ? existing : { ...existing, name: meta.name };
     }
     return { id: meta.id, name: meta.name, plan: null };
   });
+  // Keep local slots the cloud registry hasn't seen yet (un-synced creates).
+  const localOnly = localSlots.filter((s) => !cloudIds.has(s.id));
+  const merged: MealPlanNamedSlot[] = [...fromCloud, ...localOnly];
   const slots = merged.length > 0 ? merged : hydrateSlots(null);
   const activeSlotId =
     metadata.active_slot_id && slots.some((s) => s.id === metadata.active_slot_id)

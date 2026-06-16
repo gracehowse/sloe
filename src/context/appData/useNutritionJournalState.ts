@@ -13,7 +13,7 @@ import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutr
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
-import { flushJournalWriteQueue } from "../../lib/nutrition/flushJournalWriteQueue.ts";
+import { flushJournalWriteQueue, reconcileQueueAfterFlush } from "../../lib/nutrition/flushJournalWriteQueue.ts";
 import { enqueueJournalUpserts } from "../../lib/nutrition/journalWriteQueue.ts";
 import {
   loadJournalWriteQueue,
@@ -121,7 +121,10 @@ export function useNutritionJournalState(opts: {
     const queue = await loadJournalWriteQueue();
     if (queue.entries.length === 0) return;
     const result = await flushJournalWriteQueue(supabase, queue);
-    await saveJournalWriteQueue(result.remaining);
+    // Re-load to capture any row enqueued during the flush round-trip, then
+    // reconcile rather than blind-overwrite (ENG-1125 data-loss fix).
+    const latest = await loadJournalWriteQueue();
+    await saveJournalWriteQueue(reconcileQueueAfterFlush(queue, latest, result));
     if (result.flushedIds.length > 0) {
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
     }

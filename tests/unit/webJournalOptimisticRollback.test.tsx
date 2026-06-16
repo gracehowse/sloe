@@ -74,7 +74,8 @@ vi.mock("../../src/lib/nutrition/journalWriteQueueStorage.web.ts", () => ({
 
 vi.mock("../../src/lib/nutrition/flushJournalWriteQueue.ts", () => ({
   flushJournalWriteQueue: () =>
-    Promise.resolve({ remaining: { entries: [] }, flushedIds: [] }),
+    Promise.resolve({ remaining: { entries: [] }, flushedIds: [], droppedPoisonIds: [], dropQueue: false }),
+  reconcileQueueAfterFlush: () => ({ version: 1, entries: [] }),
 }));
 
 vi.mock("../../src/context/appData/useRetryEnableDbTable.ts", () => ({

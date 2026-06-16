@@ -7,11 +7,20 @@
 
 export const JOURNAL_WRITE_QUEUE_STORAGE_KEY = "suppr-journal-write-queue-v1";
 
+/**
+ * After this many failed flush attempts a queued row is treated as poison
+ * (e.g. an FK to a recipe that no longer exists) and evicted via the row-by-row
+ * isolation pass, so one bad row can't wedge the whole queue forever.
+ */
+export const MAX_JOURNAL_FLUSH_ATTEMPTS = 5;
+
 export type JournalQueuedUpsert = {
   kind: "upsert";
   queuedAt: string;
   dayKey: string;
   row: Record<string, unknown>;
+  /** Failed flush attempts so far. Reset to 0 when the row is (re)enqueued. */
+  attempts: number;
 };
 
 export type JournalWriteQueue = {
@@ -36,11 +45,17 @@ export function parseJournalWriteQueue(raw: unknown): JournalWriteQueue {
       if (!e.row || typeof e.row !== "object") return null;
       const id = (e.row as { id?: unknown }).id;
       if (typeof id !== "string" || !id.trim()) return null;
+      const rawAttempts = (e as { attempts?: unknown }).attempts;
+      const attempts =
+        typeof rawAttempts === "number" && Number.isFinite(rawAttempts) && rawAttempts > 0
+          ? Math.floor(rawAttempts)
+          : 0;
       return {
         kind: "upsert" as const,
         queuedAt: typeof e.queuedAt === "string" ? e.queuedAt : new Date().toISOString(),
         dayKey: e.dayKey.trim(),
         row: e.row as Record<string, unknown>,
+        attempts,
       };
     })
     .filter((e): e is JournalQueuedUpsert => Boolean(e));
@@ -59,9 +74,20 @@ export function enqueueJournalUpserts(
   for (const row of rows) {
     const id = String(row.id ?? "");
     if (!id) continue;
-    byId.set(id, { kind: "upsert", queuedAt: now, dayKey, row });
+    // Re-enqueueing carries fresh row data, so reset the attempt counter —
+    // an edit that fixes a previously-poison row deserves a clean retry budget.
+    byId.set(id, { kind: "upsert", queuedAt: now, dayKey, row, attempts: 0 });
   }
   return { version: 1, entries: [...byId.values()] };
+}
+
+/** Increment the failed-attempt counter on every queued entry. */
+export function bumpJournalQueueAttempts(queue: JournalWriteQueue): JournalWriteQueue {
+  if (queue.entries.length === 0) return queue;
+  return {
+    version: 1,
+    entries: queue.entries.map((e) => ({ ...e, attempts: (e.attempts ?? 0) + 1 })),
+  };
 }
 
 export function removeJournalQueuedIds(

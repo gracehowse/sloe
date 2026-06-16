@@ -135,7 +135,7 @@ import {
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
-import { flushJournalWriteQueue } from "@suppr/shared/nutrition/flushJournalWriteQueue";
+import { flushJournalWriteQueue, reconcileQueueAfterFlush } from "@suppr/shared/nutrition/flushJournalWriteQueue";
 import { enqueueJournalUpserts } from "@suppr/shared/nutrition/journalWriteQueue";
 import {
   loadJournalWriteQueue,
@@ -563,7 +563,10 @@ export default function TrackerScreen() {
     const queue = await loadJournalWriteQueue();
     if (queue.entries.length === 0) return;
     const result = await flushJournalWriteQueue(supabase, queue);
-    await saveJournalWriteQueue(result.remaining);
+    // Re-load to capture any row enqueued during the flush round-trip, then
+    // reconcile rather than blind-overwrite (ENG-1125 data-loss fix).
+    const latest = await loadJournalWriteQueue();
+    await saveJournalWriteQueue(reconcileQueueAfterFlush(queue, latest, result));
     if (result.flushedIds.length > 0) {
       scheduleAdaptiveTdeeRefresh(supabase, userId);
     }

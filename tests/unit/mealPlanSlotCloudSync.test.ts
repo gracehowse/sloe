@@ -76,4 +76,24 @@ describe("mergeCloudMetadataIntoSlots", () => {
     });
     expect(merged.slots[0]?.name).toBe("Family");
   });
+
+  it("preserves a local-only slot the cloud registry hasn't seen yet", () => {
+    // Slot created offline on this device — its metadata hasn't reached the
+    // profile, so a cloud read returns a registry without it. It must NOT be
+    // wiped (ENG-1130 data-loss fix), and its inline plan must survive.
+    const local: MealPlanNamedSlot[] = [
+      { id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week", plan: null },
+      {
+        id: "offline-new",
+        name: "Holiday",
+        plan: [{ day: 1, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } }],
+      },
+    ];
+    const merged = mergeCloudMetadataIntoSlots(local, {
+      slots: [{ id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week" }],
+      active_slot_id: DEFAULT_MEAL_PLAN_SLOT_ID,
+    });
+    expect(merged.slots.map((s) => s.id)).toContain("offline-new");
+    expect(merged.slots.find((s) => s.id === "offline-new")?.plan).not.toBeNull();
+  });
 });
