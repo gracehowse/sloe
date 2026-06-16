@@ -56,6 +56,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
 | `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
 | `3d0353ab` | ENG-972 | NL describe meal logging inside Log sheet (web + mobile) |
+| `TBD` | ENG-971 | AI paywall photo_log copy parity (web matched mobile honest cap wording) |
 
 **Still open — next in logging loop:** ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 

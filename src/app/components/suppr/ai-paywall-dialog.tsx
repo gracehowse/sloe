@@ -64,8 +64,12 @@ const FEATURE_COPY: Record<AiPaywallFeature, { title: string; body: string }> = 
     body: "Describe what you ate, and we'll estimate macros using our verified nutrition database. Voice logging is included with a Pro subscription.",
   },
   photo_log: {
-    title: "Get unlimited photo logs with Pro",
-    body: "You've used all 5 of your free photo logs this week. Pro unlocks unlimited AI photo logging (100/day) — snap any meal and we'll identify foods, estimate portions, and match against our verified nutrition database.",
+    // 2026-05-13 (premium-bar audit Group I #6): "unlimited" + "100/day"
+    // is a contradiction at first read. Cap reads as the qualifier on
+    // AI logging only, framed as the daily allowance ("up to 100").
+    // ENG-971 — keep in lockstep with mobile `AiPaywallSheet.tsx`.
+    title: "Get more photo logs with Pro",
+    body: "You've used all 5 of your free photo logs this week. Pro unlocks AI photo logging up to 100 a day — snap any meal and we'll identify foods, estimate portions, and match against our verified nutrition database.",
   },
 };
 
