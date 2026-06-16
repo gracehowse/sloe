@@ -68,6 +68,16 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     expect(slice).toMatch(/Saved on this device/);
   });
 
+  it("insertClonedRowsIntoDay queues failed bulk copy inserts instead of rolling back", () => {
+    expect(SRC).toMatch(/const\s+insertClonedRowsIntoDay\s*=\s*useCallback/);
+    const idx = SRC.indexOf("const insertClonedRowsIntoDay");
+    const slice = SRC.slice(idx, idx + 3500);
+    expect(slice).toMatch(/from\(["']nutrition_entries["']\)\s*\.insert/);
+    expect(slice).toMatch(/enqueueJournalUpserts/);
+    expect(slice).toMatch(/Saved on this device/);
+    expect(slice).not.toMatch(/Couldn't copy/);
+  });
+
   it("addMeal calls persistMealsImmediate (Quick Entry path)", () => {
     const idx = SRC.indexOf("const addMeal = useCallback");
     expect(idx).toBeGreaterThan(-1);

@@ -4617,13 +4617,20 @@ export default function TrackerScreen() {
       const { error } = await supabase.from("nutrition_entries").insert(dbRows);
       if (error) {
         console.error("[tracker] copy/duplicate insert failed:", error.message);
-        // Roll back optimistic add.
-        setByDay((prev) => ({
-          ...prev,
-          [targetDayKey]: (prev[targetDayKey] ?? []).filter((m) => !withIds.some((w) => w.id === m.id)),
-        }));
-        Alert.alert("Couldn't copy", error.message);
-        return 0;
+        // ENG-1125 — queue for retry; keep optimistic rows visible.
+        const queue = await loadJournalWriteQueue();
+        await saveJournalWriteQueue(
+          enqueueJournalUpserts(
+            queue,
+            targetDayKey,
+            dbRows as ReadonlyArray<Record<string, unknown>>,
+          ),
+        );
+        Alert.alert(
+          "Saved on this device",
+          "We'll sync this log when you're back online.",
+        );
+        return withIds.length;
       }
       void refreshAdaptiveTdeeForUser(supabase, userId);
       // F-2 — snapshot today's target regardless of `targetDayKey`

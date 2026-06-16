@@ -301,8 +301,8 @@ export function useNutritionJournalState(opts: {
    * fire their own batch event (`meal_copied`, `day_duplicated`, or
    * `food_logged { count }`) so the event taxonomy isn't duplicated.
    *
-   * On error the optimistic rows are rolled back, matching the mobile
-   * `insertClonedRowsIntoDay` semantics.
+   * On error the optimistic rows are queued for retry (ENG-1125), matching
+   * the mobile `insertClonedRowsIntoDay` semantics.
    *
    * Returns the array of inserted rows with their fresh ids.
    */
