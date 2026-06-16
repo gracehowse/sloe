@@ -54,7 +54,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
 | `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
 | `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
-| *(pending commit)* | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
+| `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
 
 **Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
