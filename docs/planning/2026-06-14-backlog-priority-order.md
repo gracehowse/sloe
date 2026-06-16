@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 7 — Gate 1 code complete; Grace-owned device/audit runs remain).
-**Branch:** `claude/eng-1099-tracker-tier` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 8 — PR #456 Gate 2 cluster shipped; Wave 3 ENG-1121 started).
+**Branch:** `claude/eng-1130-plan-slots-sync` · **PR:** [#456](https://github.com/gracehowse/Suppr/pull/456) · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -17,8 +17,8 @@
 | **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
 | **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 2 | 15 |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
-| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 64 | 6 |
-| **Wave 3** | Category-leading growth + audit P3s (post-launch) | 153 | 4 |
+| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 58 | 12 |
+| **Wave 3** | Category-leading growth + audit P3s (post-launch) | 152 | 5 |
 | **Wave 4** | Redesign / Figma / platform / AI-imagery / creator (post-launch) | 55 | 5 |
 
 **Sequencing:** Gate 0 → (Gate 1 ∥ Gate B started) → launch → Gate 2 → Wave 3/4. The meal-planning + food-data-trust cluster (pantry, plan→log date, over-buy, micros, Verified-store) jumps the normal P2 queue — it's the competitive wedge and where Suppr is weakest.
@@ -38,6 +38,23 @@ Linear → **Done** (comment + commit SHA on each). Gate 0 migrations **applied 
 | `13952d62` | ENG-774, 776, 1123, 1127, 1132, 1134, 928, 929, 930, 973, 802, 880, 1077, 905 | Logging loop, gate-2 fixes, cookie consent, micro clamp, go-tos tab |
 | *(dup)* | ENG-904 | Closed as duplicate of ENG-930 (S13 confirmation) |
 | `97983c0a` | ENG-1162, 1161, 1163, 1167, 1178, 805, 1171, 1073, 931 (mobile) | Gate 1 polish: library deep-link, paywall CTA, log sheet scroll, dual-host auth, import test, check-in suppression, mobile search quick-log |
+
+## Shipped 2026-06-15 (`claude/eng-1130-plan-slots-sync` · PR #456)
+
+Linear → **Done** (comment + commit SHA on each when merged).
+
+| Commit | Issues | Notes |
+|--------|--------|-------|
+| `ff3be9bc` | ENG-1130 | Plan slot metadata cloud sync (web + mobile) |
+| `73d065bc` | ENG-1099 | Today tier M1–M6: PressableScale, NorthStar sage chip, Complete Day rhythm |
+| `25936a81` | ENG-1125 | Durable journal write queue (web + mobile) |
+| `7b4c3a97` | ENG-1099/1125 | Mobile tier press wiring + queue meal edits |
+| `9183dd04` | ENG-1125 | Web journal queue wiring tests |
+| `87b9917d` | ENG-1125 | Web optimistic-failure test aligned to queue semantics |
+| *(verify)* | ENG-1122 | Web logged-meal edit already shipped behind `web_logged_meal_edit` |
+| `TBD` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3 start) |
+
+**Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
 **Still open — next in logging loop:** ENG-932 (loud barcode affordance). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
@@ -112,7 +129,7 @@ Gate the first *paid* sub only — but long ops lead times (Stripe Tax, RC provi
 
 ## GATE 2 — beta window (64 open)
 
-Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning + food-trust cluster first. *(Shipped: 774, 776, 1123, 1127, 1132, 1134 — see Shipped section. ENG-1099 in progress on branch.)*
+Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning + food-trust cluster first. *(Shipped on PR #456: 1099, 1122, 1125, 1130 — see Shipped section.)*
 
 | # | Pri | Project | Title |
 |---|---|---|---|
@@ -126,7 +143,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-7 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: recipe import ≥90% success on 100 random TikTok food Reels |
 | ENG-4 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: App Store rating ≥4.6 (wider beta required first) |
 | ENG-2 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: plate-loop daily active rate ≥40% on active cohort |
-| ENG-1099 | High | Today tab | Close Today's craft gap — **In Progress** on branch (M1–M3 shipped) |
+| ENG-1099 | High | Today tab | ~~Close Today's craft gap~~ — **Done** PR #456 (visual verify pending) |
 | ENG-1023 | High | Today tab | Health follow-ups: micro-probe permission alignment + error stringify + native-hang invest |
 | ENG-1022 | High | Design system cleanup | Web parity: chips/segments/tags §7-§8 grammar (mobile census shipped 2026-06-10) |
 | ENG-1013 | High | Design system cleanup | Migrate 188 hex literals outside theme.ts to semantic tokens |
@@ -173,11 +190,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1135 | Medium | Plan tab | Add 'generated from plan of {date}' / staleness hint to the shopping list |
 | ENG-1133 | Medium | Plan tab | Expand grocery categoriser beyond ~12 keywords; shrink the 'Other' bucket |
 | ENG-1131 | Medium | Plan tab | Web Plan feature parity: wire move-meal, templates (orphaned dialog), portion stepper, sma |
-| ENG-1130 | Medium | Plan tab | Sync named plan slots (cut/family/vacation) across devices — currently device-local only |
+| ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
 | ENG-1129 | Medium | Recipes tab | Cook-mode 'Log this meal' conflates cook-scale with servings eaten — add a servings confir |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
-| ENG-1125 | Medium | Today tab | No offline/durable write-queue — a failed meal log is rolled back and lost; 35-day window  |
-| ENG-1122 | Medium | Today tab | Web has NO logged-meal edit; mobile has a full edit modal (parity) |
+| ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
+| ENG-1122 | Medium | Today tab | ~~Web has NO logged-meal edit~~ — **Done** (`web_logged_meal_edit` flag) |
 | ENG-1051 | Medium | Plan tab | P2: pantry/staples model for the planner |
 | ENG-1148 | Low | Today tab | Net-energy subline should read the maintenance band, not binary isDeficit (±60 dead-band c |
 
@@ -185,7 +202,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 
 ## WAVE 3 — category-leading + audit P3s (153 open)
 
-ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973 — see Shipped section. Next: 931, 932.)*
+ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973, 1121 — see Shipped section. Next: 979, 978, 972.)*
 
 
 **Category-leading growth backlog** (49)
@@ -247,7 +264,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 | # | Pri | Title |
 |---|---|---|
 | ENG-1140 | Medium | Replace source-grep button/card string-pins with render-level behavioural tests for load |
-| ENG-1121 | Medium | FatSecretBadge missing from the food-search results panel — attribution only in the LogS |
+| ~~ENG-1121~~ | ~~Medium~~ | ~~FatSecretBadge missing from the food-search results panel~~ — **Done** PR #456 |
 | ENG-1119 | Medium | No retry at any vendor call site; USDA search returns 502 (not the degraded envelope) on |
 | ENG-1118 | Medium | FatSecret %DV→absolute micro conversion has no v1/v2 API version guard (latent ~13-18x i |
 | ENG-1117 | Medium | Edamam /nutrients (and USDA detail) routes not counted by the vendor quota guard |
