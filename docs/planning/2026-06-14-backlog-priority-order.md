@@ -52,7 +52,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `9183dd04` | ENG-1125 | Web journal queue wiring tests |
 | `61c3ab3d` | ENG-1051 | Pantry staples from shopping rows (web + mobile) |
 | `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
-| `TBD` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
+| `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
 
 **Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
