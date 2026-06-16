@@ -321,7 +321,7 @@ export const Colors = {
   //    INK + the oat page + the hairlines, not in the fills.
   light: {
     text: '#221B26',                // aubergine ink (the warmth lives here)
-    textSecondary: '#6A6072',
+    textSecondary: '#655C6E',
     textTertiary: '#9B93A3',
     // Material inversion (2026-06-10 fresh-eyes challenge §1+§2): CREAM
     // ground + WHITE cards. The old white-ground/cream-card pairing differed
@@ -360,7 +360,7 @@ export const Colors = {
      *  FAB reads as nav chrome, not a content action. Matches the Figma TD
      *  frames + `_gen.mjs` tabBar (`bg-plum` FAB). Mirrors web --nav-primary. */
     navPrimary: '#3B2A4D',
-    icon: '#6A6072',
+    icon: '#655C6E',
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
     inputBg: '#F6F5F2',
@@ -371,7 +371,7 @@ export const Colors = {
     sourceFatsecret: '#C9892C',     // amber
     sourceManual: '#9B93A3',        // warm grey
     sourceAi: '#6A4B7A',            // damson
-    confidenceNeutral: '#6A6072',
+    confidenceNeutral: '#655C6E',
     /** North-star + over-budget — Sloe palette. plum → clay gradient. */
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',
