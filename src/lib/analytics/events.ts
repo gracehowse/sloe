@@ -115,6 +115,9 @@ export const AnalyticsEvents = {
   meal_plan_generated: "meal_plan_generated",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
+  /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).
+   *  Payload: `{ surface: "import_success" | "recipe_detail", platform, hasCreatorCredit }`. */
+  recipe_share_card_shared: "recipe_share_card_shared",
   /** Coach engine ("what to eat next") — fires when the Today suggestion
    *  surface shows a coach-ranked suggestion. `source` distinguishes the
    *  AI re-rank from the deterministic fallback so we can watch the AI

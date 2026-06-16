@@ -53,6 +53,10 @@ import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
+import {
+  buildRecipeShareCardMessage,
+  formatRecipeCreatorCredit,
+} from "@suppr/shared/share/buildRecipeShareCard";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "@suppr/shared/recipe-import/socialUrlHelpers";
 import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
@@ -1445,9 +1449,37 @@ export default function RecipeDetailScreen() {
     const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
     const url = webRecipeDeepLink(String(recipeId), origin);
     const title = normaliseRecipeDisplayTitle(decodeEntities(recipe.title));
-    void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
-      void Linking.openURL(url);
-    });
+    const richShare = isFeatureEnabled("recipe_share_card_v1");
+    const message = richShare
+      ? buildRecipeShareCardMessage({
+          recipeId: String(recipeId),
+          title,
+          calories: recipe.calories,
+          protein: recipe.protein,
+          estimated: true,
+          sourceName: recipe.source_name,
+          authorDisplayName: recipe.author?.display_name,
+          creatorId: recipe.creator_id,
+          appOrigin: origin,
+        })
+      : `${title}\n${url}`;
+    void Share.share({ message, url: richShare ? undefined : url, title })
+      .then((result) => {
+        if (!richShare || result.action !== Share.sharedAction) return;
+        track(AnalyticsEvents.recipe_share_card_shared, {
+          surface: "recipe_detail",
+          platform: "mobile",
+          hasCreatorCredit: Boolean(
+            formatRecipeCreatorCredit({
+              sourceName: recipe.source_name,
+              authorDisplayName: recipe.author?.display_name,
+            }),
+          ),
+        });
+      })
+      .catch(() => {
+        void Linking.openURL(url);
+      });
   };
 
   const displayTitle = normaliseRecipeDisplayTitle(decodeEntities(recipe.title));

@@ -54,6 +54,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
 | `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
 | `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
+| *(pending commit)* | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
 
 **Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
@@ -203,15 +204,15 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 
 ## WAVE 3 — category-leading + audit P3s (153 open)
 
-ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973, 983, 1121 — see Shipped section. Next: 979, 978, 972.)*
+ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973, 978, 979, 983, 1121 — see Shipped section. Next: 972.)*
 
 
 **Category-leading growth backlog** (49)
 
 | # | Pri | Title |
 |---|---|---|
-| ENG-979 | High | [Category-leading] Embed attributed creator credit into the shared card and link it to t |
-| ENG-978 | High | [Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe |
+| ~~ENG-979~~ | High | ~~[Category-leading] Embed attributed creator credit into the shared card and link it to t~~ — **Done** |
+| ~~ENG-978~~ | High | ~~[Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe~~ — **Done** |
 | ENG-972 | High | [Category-leading] Add natural-language text meal logging to the single Log sheet ("desc |
 | ENG-971 | High | [Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac |
 | ENG-966 | High | [Category-leading] Lead the paywall with the personalised plan the user already built, t |

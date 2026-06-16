@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -42,6 +43,14 @@ import {
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
 import { isFeatureEnabled, track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import {
+  buildRecipeShareCardMessage,
+  creatorProfileUrl,
+  formatRecipeCreatorCredit,
+  formatRecipeShareMacroLine,
+} from "@suppr/shared/share/buildRecipeShareCard";
+import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
 import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
 import { importJobIdForUrl } from "@suppr/shared/recipes/importProgressMachine";
@@ -763,6 +772,42 @@ export default function ImportSharedScreen() {
     return nutritionRescale(pendingRecipe, reviewServingsDraft);
   }, [pendingRecipe, reviewServingsDraft]);
 
+  const appOrigin = useMemo(() => {
+    const extra = Constants.expoConfig?.extra as Extra | undefined;
+    return (extra?.supprApiUrl ?? "https://suppr-club.com").replace(/\/$/, "");
+  }, []);
+
+  const successShareCard = useMemo(() => {
+    if (!isFeatureEnabled("recipe_share_card_v1") || !savedRecipeId || !pendingRecipe || !title) {
+      return null;
+    }
+    const nutrition = nutritionRescale(pendingRecipe, reviewServingsDraft);
+    const estimated =
+      pendingRecipe.primarySource === "Unverified" ||
+      pendingRecipe.primarySource === "Estimated" ||
+      pendingRecipe.primarySource == null;
+    const creditLine = formatRecipeCreatorCredit({ sourceName: pendingRecipe.sourceName });
+    const macroLine = formatRecipeShareMacroLine({
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      estimated,
+    });
+    return {
+      macroLine,
+      creditLine,
+      profileUrl: creatorProfileUrl({ creatorId: null, appOrigin }),
+      message: buildRecipeShareCardMessage({
+        recipeId: savedRecipeId,
+        title: decodeEntities(title),
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        estimated,
+        sourceName: pendingRecipe.sourceName,
+        appOrigin,
+      }),
+    };
+  }, [savedRecipeId, pendingRecipe, title, reviewServingsDraft, appOrigin]);
+
   /** Replace one ingredient's match with a food-search result (tap path). */
   const onIngredientSearchSelected = useCallback(
     (result: SelectedFood) => {
@@ -906,6 +951,26 @@ export default function ImportSharedScreen() {
     setState("success");
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [pendingRecipe, userId, mealTags, reviewServingsDraft]);
+
+  const handleShareSuccessCard = useCallback(async () => {
+    if (!successShareCard?.message) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await Share.share({
+        message: successShareCard.message,
+        title: decodeEntities(title ?? "Recipe"),
+        url: webRecipeDeepLink(savedRecipeId ?? "", appOrigin),
+      });
+      if (result.action !== Share.sharedAction) return;
+      track(AnalyticsEvents.recipe_share_card_shared, {
+        surface: "import_success",
+        platform: "mobile",
+        hasCreatorCredit: Boolean(successShareCard.creditLine),
+      });
+    } catch {
+      /* user dismissed share sheet */
+    }
+  }, [successShareCard, title, savedRecipeId, appOrigin]);
 
   runImportRef.current = runImport;
 
@@ -1197,6 +1262,18 @@ export default function ImportSharedScreen() {
       lineHeight: 30,
       letterSpacing: -0.3,
       paddingHorizontal: Spacing.sm,
+    },
+    successMacroLine: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    successCreditLine: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: accent.primary,
+      textAlign: "center",
     },
     libraryChip: {
       flexDirection: "row",
@@ -2002,6 +2079,12 @@ export default function ImportSharedScreen() {
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
               {decodeEntities(title)}
             </Text>
+            {successShareCard?.macroLine ? (
+              <Text style={styles.successMacroLine}>{successShareCard.macroLine}</Text>
+            ) : null}
+            {successShareCard?.creditLine ? (
+              <Text style={styles.successCreditLine}>{successShareCard.creditLine}</Text>
+            ) : null}
             <View style={styles.libraryChip}>
               <Ionicons name="bookmark" size={18} color={accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
@@ -2013,6 +2096,17 @@ export default function ImportSharedScreen() {
               <Text style={styles.primaryBtnText}>View recipe</Text>
               <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} style={styles.btnIconRight} />
             </Pressable>
+            {successShareCard ? (
+              <Pressable
+                style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
+                onPress={() => void handleShareSuccessCard()}
+                accessibilityRole="button"
+                accessibilityLabel="Share recipe card"
+              >
+                <Share2 size={18} color={accent.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.outlineBtnText}>Share card</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
