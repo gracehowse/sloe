@@ -53,10 +53,11 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `61c3ab3d` | ENG-1051 | Pantry staples from shopping rows (web + mobile) |
 | `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
 | `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
+| `TBD` | ENG-1131 | Web Plan parity: smart suggestions wired behind plan_web_parity_v1 |
 
 **Gate 2 cluster on PR #456:** code complete pending merge + ENG-1099 visual verify (iOS sim + web).
 
-**Still open — next in logging loop:** ENG-932 (loud barcode affordance). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
+**Still open — next in logging loop:** ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
@@ -93,7 +94,7 @@ What refugees hit, screenshot, and churn on in the first session. Full WHAT/WHY/
 | ENG-1060 | High | (none) | TestFlight build-57 smoke — 2026-06-12 (22 ASC threads) — **Grace device**; checklist: `docs/testing/testflight-build-57-smoke-checklist.md` |
 | ENG-874 | High | Today tab | Apple Health: verify MFP meal import on device (HS-01–HS-09) — **Grace device**; runbook: `docs/testing/health-sync-device-runbook.md` |
 
-~~ENG-771~~ Done — MFP-refugee logging loop: ENG-931 quick-log, ENG-932 loud barcode CTA, ENG-973 paywall barcode-free chip (web + mobile).  
+~~ENG-771~~ Done — MFP-refugee logging loop: ENG-931 quick-log, ENG-932 loud barcode CTA, ENG-973 paywall barcode-free chip (web + mobile).
 ~~ENG-670~~ Done (harness) — `npm run audit:reels` + `audit:reels:check-streak`; exit 1 below 90% on gate fixture. **Grace:** curate 100 Reel URLs + three consecutive green days.  
 ~~ENG-1109~~ Done — contrast census (web + mobile) + Playwright sweep `tests/e2e/journeys/today-contrast-eng1109.spec.ts`.  
 ~~ENG-1177~~ Done — `meal_slot_config` preset (classic / 4 / 6 meals); Settings web + mobile; Today hosts.  
@@ -186,17 +187,17 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-62 | High | Recipes tab | Cook ↔ Recipe Detail flow consolidation (P1) |
 | ENG-1165 | Medium | Today tab | Mobile-web Today date strip exposes excessive dates to assistive tech |
 | ENG-1164 | Medium | Landing + Marketing site | Web pricing mobile has excessive first-viewport blank space |
-| ENG-1136 | Medium | Recipes tab | Recipe-import parser leaks prep-states ('mixed with warm water', 'to serve') into the shop |
-| ENG-1135 | Medium | Plan tab | Add 'generated from plan of {date}' / staleness hint to the shopping list |
+| ENG-1136 | Medium | Recipes tab | ~~Recipe-import parser leaks prep-states into shopping~~ — **Done** |
+| ENG-1135 | Medium | Plan tab | ~~Shopping list plan-date subtitle + staleness hint~~ — **Done** |
 | ENG-1133 | Medium | Plan tab | ~~Expand grocery categoriser beyond ~12 keywords~~ — **Done** |
-| ENG-1131 | Medium | Plan tab | Web Plan feature parity: wire move-meal, templates (orphaned dialog), portion stepper, sma |
+| ENG-1131 | Medium | Plan tab | ~~Web Plan feature parity (move, templates, portion, suggestions)~~ — **Done** |
 | ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
 | ENG-1129 | Medium | Recipes tab | ~~Cook-mode servings confirm (batch vs eaten)~~ — **Done** |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
 | ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
 | ENG-1122 | Medium | Today tab | ~~Web has NO logged-meal edit~~ — **Done** (`web_logged_meal_edit` flag) |
 | ENG-1051 | Medium | Plan tab | ~~P2: pantry/staples model for the planner~~ — **Done** (Settings + per-row shopping) |
-| ENG-1148 | Low | Today tab | Net-energy subline should read the maintenance band, not binary isDeficit (±60 dead-band c |
+| ENG-1148 | Low | Today tab | ~~Net-energy subline maintenance band (±60 kcal)~~ — **Done** |
 
 ---
 

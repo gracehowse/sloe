@@ -14,6 +14,7 @@ import {
   Scale,
   ShoppingCart,
   Sliders,
+  Sparkles,
   Sun,
   UtensilsCrossed,
   X,
@@ -67,6 +68,7 @@ import {
 import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
+import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -217,6 +219,7 @@ export const MealPlanner = memo(function MealPlanner({
     createMealPlanSlot,
     renameMealPlanSlot,
     deleteMealPlanSlot,
+    toggleSaveRecipe,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -303,6 +306,9 @@ export const MealPlanner = memo(function MealPlanner({
   const [applyTemplateTarget, setApplyTemplateTarget] = useState<PlanTemplate | null>(
     null,
   );
+  const [suggestionIngredients, setSuggestionIngredients] = useState<
+    Map<string, string[]>
+  >(() => new Map());
 
   const targetCalories = nutritionTargets.calories;
 
@@ -725,6 +731,81 @@ export const MealPlanner = memo(function MealPlanner({
         calories: r.calories,
       })),
     [discoverRecipes, savedRecipesForLibrary],
+  );
+
+  const recipeTitleToId = useCallback(
+    (title: string) => {
+      const pool = [...discoverRecipes, ...savedRecipesForLibrary];
+      return pool.find((r) => r.title === title)?.id ?? null;
+    },
+    [discoverRecipes, savedRecipesForLibrary],
+  );
+
+  const suggestionPoolIds = useMemo(
+    () => savedRecipesForLibrary.map((r) => r.id),
+    [savedRecipesForLibrary],
+  );
+  const suggestionPoolKey = suggestionPoolIds.join(",");
+
+  useEffect(() => {
+    if (!planWebParity || !authedUserId || suggestionPoolIds.length === 0) {
+      setSuggestionIngredients(new Map());
+      return;
+    }
+    let cancelled = false;
+    void supabase
+      .from("recipe_ingredients")
+      .select("recipe_id, name")
+      .in("recipe_id", suggestionPoolIds)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) return;
+        const map = new Map<string, string[]>();
+        for (const row of data ?? []) {
+          const recipeId = String((row as { recipe_id: string }).recipe_id ?? "");
+          const name = String((row as { name: string }).name ?? "");
+          if (!recipeId || !name) continue;
+          const bucket = map.get(recipeId) ?? [];
+          bucket.push(name);
+          map.set(recipeId, bucket);
+        }
+        setSuggestionIngredients(map);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [planWebParity, authedUserId, suggestionPoolKey, suggestionPoolIds]);
+
+  const smartSuggestions = useMemo(() => {
+    if (!planWebParity || !planHasRealMeals) return [];
+    return computeSmartRecipeSuggestions({
+      mealPlan,
+      titleToId: recipeTitleToId,
+      dbIngredientsByRecipeId: suggestionIngredients,
+      extraRecipePool: savedRecipesForLibrary,
+      max: 4,
+    });
+  }, [
+    planWebParity,
+    planHasRealMeals,
+    mealPlan,
+    recipeTitleToId,
+    suggestionIngredients,
+    savedRecipesForLibrary,
+  ]);
+
+  const handleSaveSmartSuggestion = useCallback(
+    (recipeId: string) => {
+      const saved = toggleSaveRecipe(recipeId, userTier);
+      if (saved) {
+        track(AnalyticsEvents.smart_suggestion_saved, {
+          recipeId,
+          platform: "web",
+        });
+        toast.success("Saved to your library");
+      }
+    },
+    [toggleSaveRecipe, userTier],
   );
 
   const openSwap = (day: number, slot: SwapTarget["slot"], mealIndex: number) => {
@@ -1951,6 +2032,73 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
       )}
+
+      {planWebParity && planHasRealMeals && smartSuggestions.length > 0 ? (
+        <SupprCard
+          data-testid="planner-smart-suggestions"
+          elevation="card"
+          padding="lg"
+          radius="xl"
+          className="mt-2"
+        >
+          <div className="flex items-start gap-2 mb-3">
+            <Sparkles size={16} className="text-primary-solid mt-0.5 shrink-0" aria-hidden />
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Smart suggestions</h2>
+              <p className="text-[12px] text-muted-foreground mt-0.5">
+                Recipes that share ingredients already in your plan — less waste, fewer one-off buys.
+              </p>
+            </div>
+          </div>
+          <ul className="space-y-2">
+            {smartSuggestions.map((s) => {
+              const overlap = s.sharedIngredients.slice(0, 3).join(", ");
+              const extra =
+                s.sharedIngredients.length > 3
+                  ? ` +${s.sharedIngredients.length - 3} more`
+                  : "";
+              return (
+                <li
+                  key={s.recipe.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpenRecipe?.(s.recipe.id)}
+                      className="text-left text-[13px] font-semibold text-foreground hover:text-primary-solid transition-colors truncate max-w-full"
+                    >
+                      {s.recipe.title}
+                    </button>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                      Also uses {overlap}
+                      {extra}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {Math.round(s.recipe.calories)} kcal
+                    </span>
+                    {s.recipe.isSaved ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Saved
+                      </span>
+                    ) : (
+                      <SupprButton
+                        variant="ghost"
+                        className="h-8 px-2 text-[11px]"
+                        onClick={() => handleSaveSmartSuggestion(s.recipe.id)}
+                      >
+                        Save
+                      </SupprButton>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </SupprCard>
+      ) : null}
 
       {/* F2-F (2026-04-28): bottom CTA row only renders when the
           summary card isn't taking the lead AND the plan isn't empty —
