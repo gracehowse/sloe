@@ -5,6 +5,7 @@ import {
   isPantryStapleMatch,
   normalizePantryToken,
   parsePantryStaples,
+  appendPantryStaple,
 } from "@/lib/planning/pantryStaples";
 
 describe("ENG-1051 — pantryStaples", () => {
@@ -29,5 +30,11 @@ describe("ENG-1051 — pantryStaples", () => {
 
   it("normalizePantryToken lowercases and collapses whitespace", () => {
     expect(normalizePantryToken("  Olive   Oil ")).toBe("olive oil");
+  });
+
+  it("appendPantryStaple dedupes case-insensitively", () => {
+    expect(appendPantryStaple(["Olive oil"], "olive oil")).toEqual(["Olive oil"]);
+    expect(appendPantryStaple(["Olive oil"], "Salt")).toEqual(["Olive oil", "Salt"]);
+    expect(appendPantryStaple([], "  ")).toEqual([]);
   });
 });
