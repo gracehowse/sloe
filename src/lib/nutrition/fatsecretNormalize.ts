@@ -26,10 +26,102 @@ const DV_VITAMIN_A_MCG = 900; // mcg RAE
 const DV_VITAMIN_C_MG = 90;
 const DV_VITAMIN_D_MCG = 20;
 
-/** Convert a FatSecret %DV field (e.g. calcium="55") to absolute units. */
-function dvToAbsolute(percentRaw: string | undefined, dvReference: number): number {
-  const pct = num(percentRaw);
-  return pct > 0 ? (pct / 100) * dvReference : 0;
+/**
+ * Per-serving ceilings for calcium/iron/vitamins — used to detect when
+ * FatSecret already returns absolute mg/µg (future API) vs legacy %DV.
+ * Applying the %DV multiplier to absolutes inflates values ~13–18×.
+ */
+const MICRO_ABS_MAX_PER_SERVING = {
+  calciumMg: 1500,
+  ironMg: 25,
+  vitaminAMcgRae: 3000,
+  vitaminCMg: 2000,
+  vitaminDMcg: 100,
+} as const;
+
+export type FatSecretMicroUnitMode = "percentDv" | "absolute";
+
+/**
+ * Infer whether a serving's calcium/iron/vitamin fields are legacy %DV
+ * (current `food.get`) or already absolute units (future migrated API).
+ */
+export function inferFatSecretMicroUnitMode(
+  s: Pick<FatSecretServing, "calcium" | "iron" | "vitamin_a" | "vitamin_c" | "vitamin_d">,
+): FatSecretMicroUnitMode {
+  const checks: Array<{ raw: number; dv: number; maxAbs: number }> = [
+    { raw: num(s.calcium), dv: DV_CALCIUM_MG, maxAbs: MICRO_ABS_MAX_PER_SERVING.calciumMg },
+    { raw: num(s.iron), dv: DV_IRON_MG, maxAbs: MICRO_ABS_MAX_PER_SERVING.ironMg },
+    { raw: num(s.vitamin_a), dv: DV_VITAMIN_A_MCG, maxAbs: MICRO_ABS_MAX_PER_SERVING.vitaminAMcgRae },
+    { raw: num(s.vitamin_c), dv: DV_VITAMIN_C_MG, maxAbs: MICRO_ABS_MAX_PER_SERVING.vitaminCMg },
+    { raw: num(s.vitamin_d), dv: DV_VITAMIN_D_MCG, maxAbs: MICRO_ABS_MAX_PER_SERVING.vitaminDMcg },
+  ].filter((c) => c.raw > 0);
+
+  if (checks.length === 0) return "percentDv";
+
+  let absoluteVotes = 0;
+  let percentVotes = 0;
+
+  for (const { raw, dv, maxAbs } of checks) {
+    const fromPercent = (raw / 100) * dv;
+    const percentPlausible = fromPercent > 0 && fromPercent <= maxAbs;
+    const absolutePlausible = raw <= maxAbs;
+
+    if (raw > 100) {
+      if (absolutePlausible) absoluteVotes += 2;
+      continue;
+    }
+
+    if (percentPlausible) percentVotes += 1;
+    if (!percentPlausible && absolutePlausible) absoluteVotes += 2;
+    if (percentPlausible && !absolutePlausible && raw > 100) absoluteVotes += 1;
+  }
+
+  return absoluteVotes > percentVotes ? "absolute" : "percentDv";
+}
+
+/**
+ * Convert a FatSecret calcium/iron/vitamin field to absolute units.
+ * Legacy `food.get` returns %DV (0–100 typical); a migrated API may
+ * return mg/µg directly — guard with per-serving plausibility so we
+ * never apply the %DV multiplier twice (ENG-1118).
+ */
+export function fatSecretMicroFieldToAbsolute(
+  rawValue: string | undefined,
+  dvReference: number,
+  maxPlausibleAbsolute: number,
+  mode: FatSecretMicroUnitMode = "percentDv",
+): number {
+  const raw = num(rawValue);
+  if (raw <= 0) return 0;
+
+  if (mode === "absolute") {
+    return raw <= maxPlausibleAbsolute ? raw : 0;
+  }
+
+  const fromPercent = (raw / 100) * dvReference;
+
+  if (raw > 100) {
+    return raw <= maxPlausibleAbsolute ? raw : 0;
+  }
+
+  if (fromPercent > 0 && fromPercent <= maxPlausibleAbsolute) {
+    return fromPercent;
+  }
+
+  if (raw <= maxPlausibleAbsolute) {
+    return raw;
+  }
+
+  return 0;
+}
+
+function dvToAbsolute(
+  percentRaw: string | undefined,
+  dvReference: number,
+  maxPlausibleAbsolute: number,
+  mode: FatSecretMicroUnitMode,
+): number {
+  return fatSecretMicroFieldToAbsolute(percentRaw, dvReference, maxPlausibleAbsolute, mode);
 }
 
 export function normalizeServingToMacros(s: FatSecretServing): VerifiedMacros {
@@ -73,6 +165,7 @@ export function fatSecretServingMicrosPer100g(
   gramsPerServing: number,
 ): Record<string, number> {
   if (!gramsPerServing || gramsPerServing <= 0) return {};
+  const microMode = inferFatSecretMicroUnitMode(s);
   const factor = 100 / gramsPerServing;
   const out: Record<string, number> = {};
 
@@ -114,11 +207,31 @@ export function fatSecretServingMicrosPer100g(
   // Fe 100%→18mg = exactly the DV). The earlier "inconsistent units" note was
   // a mis-estimate of the Big Mac's real calcium (~115mg, not ~280mg). See
   // docs/decisions/2026-05-26-fatsecret-percent-dv-micros.md.
-  emit("calciumMg", dvToAbsolute(s.calcium, DV_CALCIUM_MG), 0);
-  emit("ironMg", dvToAbsolute(s.iron, DV_IRON_MG), 1);
-  emit("vitaminAMcgRae", dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG), 0);
-  emit("vitaminCMg", dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG), 1);
-  emit("vitaminDMcg", dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG), 1);
+  emit(
+    "calciumMg",
+    dvToAbsolute(s.calcium, DV_CALCIUM_MG, MICRO_ABS_MAX_PER_SERVING.calciumMg, microMode),
+    0,
+  );
+  emit(
+    "ironMg",
+    dvToAbsolute(s.iron, DV_IRON_MG, MICRO_ABS_MAX_PER_SERVING.ironMg, microMode),
+    1,
+  );
+  emit(
+    "vitaminAMcgRae",
+    dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG, MICRO_ABS_MAX_PER_SERVING.vitaminAMcgRae, microMode),
+    0,
+  );
+  emit(
+    "vitaminCMg",
+    dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG, MICRO_ABS_MAX_PER_SERVING.vitaminCMg, microMode),
+    1,
+  );
+  emit(
+    "vitaminDMcg",
+    dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG, MICRO_ABS_MAX_PER_SERVING.vitaminDMcg, microMode),
+    1,
+  );
 
   return out;
 }
@@ -130,15 +243,12 @@ export function fatSecretServingMicrosPer100g(
  * Mac). The values are committed × quantity at log time, no gram
  * scaling.
  *
- * Same unit-safety rules as the per-100g extractor: only emit
- * fields whose units are reliably absolute (g for fat breakdown +
- * fiber + sugar, mg for cholesterol + sodium + potassium). Skip
- * calcium / iron / vitamins for unit ambiguity (see comment in the
- * per-100g extractor above).
+ * Same %DV guard as the per-100g extractor (ENG-1118).
  */
 export function fatSecretServingMicrosAbsolute(
   s: FatSecretServing,
 ): Record<string, number> {
+  const microMode = inferFatSecretMicroUnitMode(s);
   const out: Record<string, number> = {};
   function emit(key: string, raw: number, decimals: number): void {
     if (!Number.isFinite(raw) || raw <= 0) return;
@@ -155,12 +265,31 @@ export function fatSecretServingMicrosAbsolute(
   emit("transFatG", num(s.trans_fat), 1);
   emit("cholesterolMg", num(s.cholesterol), 0);
   emit("potassiumMg", num(s.potassium), 0);
-  // %DV → absolute (no gram scaling here — these are per-serving absolute).
-  emit("calciumMg", dvToAbsolute(s.calcium, DV_CALCIUM_MG), 0);
-  emit("ironMg", dvToAbsolute(s.iron, DV_IRON_MG), 1);
-  emit("vitaminAMcgRae", dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG), 0);
-  emit("vitaminCMg", dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG), 1);
-  emit("vitaminDMcg", dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG), 1);
+  emit(
+    "calciumMg",
+    dvToAbsolute(s.calcium, DV_CALCIUM_MG, MICRO_ABS_MAX_PER_SERVING.calciumMg, microMode),
+    0,
+  );
+  emit(
+    "ironMg",
+    dvToAbsolute(s.iron, DV_IRON_MG, MICRO_ABS_MAX_PER_SERVING.ironMg, microMode),
+    1,
+  );
+  emit(
+    "vitaminAMcgRae",
+    dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG, MICRO_ABS_MAX_PER_SERVING.vitaminAMcgRae, microMode),
+    0,
+  );
+  emit(
+    "vitaminCMg",
+    dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG, MICRO_ABS_MAX_PER_SERVING.vitaminCMg, microMode),
+    1,
+  );
+  emit(
+    "vitaminDMcg",
+    dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG, MICRO_ABS_MAX_PER_SERVING.vitaminDMcg, microMode),
+    1,
+  );
   return out;
 }
 
