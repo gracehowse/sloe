@@ -592,10 +592,18 @@ export default function TrackerScreen() {
           "[tracker] persistMealUpdateImmediate failed:",
           error.message,
         );
+        const row = buildNutritionEntryRow(updated, dateKey, userId);
+        const queue = await loadJournalWriteQueue();
+        await saveJournalWriteQueue(
+          enqueueJournalUpserts(
+            queue,
+            dateKey,
+            [row] as ReadonlyArray<Record<string, unknown>>,
+          ),
+        );
         Alert.alert(
-          "Couldn't save changes",
-          error.message ||
-            "Edit applied locally but couldn't sync. Try again.",
+          "Saved on this device",
+          "We'll sync this log when you're back online.",
         );
         return false;
       }

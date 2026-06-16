@@ -64,6 +64,10 @@ describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
     expect(src).toMatch(/Accent\.success \+ "1A"/);
     expect(src).toMatch(/Accent\.successSolid/);
   });
+
+  it("ENG-1099 RC-3: figma hero card uses PressableScale haptic selection", () => {
+    expect(src).toMatch(/PressableScale[\s\S]{0,200}haptic="selection"[\s\S]{0,200}styles\.figmaHeroCard/);
+  });
 });
 
 describe("Today cohesion — TodayCompleteDayButton component", () => {

@@ -34,6 +34,7 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 /**
@@ -295,9 +296,10 @@ function NorthStarFigmaHero({
       >
         What to eat next
       </Text>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+        haptic="selection"
         onPress={onPrimaryCta}
         style={styles.figmaHeroCard}
       >
@@ -377,7 +379,7 @@ function NorthStarFigmaHero({
             ) : null}
           </View>
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

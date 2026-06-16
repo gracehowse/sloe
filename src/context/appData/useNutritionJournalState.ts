@@ -413,7 +413,6 @@ export function useNutritionJournalState(opts: {
       if (!existing) return false;
 
       const resolvedDateKey = nutritionEntryDateKeyAndEatenAt(updated, dayKey).dateKey;
-      const prevSnapshot = nutritionByDay;
 
       setNutritionByDay((prev) => {
         const without = (prev[dayKey] ?? []).filter((m) => m.id !== updated.id);
@@ -438,15 +437,18 @@ export function useNutritionJournalState(opts: {
 
       if (error) {
         if (!looksLikeMissingTableError(error.message ?? "")) {
-          setNutritionByDay(prevSnapshot);
-          toast.error(syncFailedRetryMessage("meal update", error.message ?? ""));
+          const row = buildNutritionEntryRow(dayKey, updated, authedUserId);
+          void enqueueFailedUpsert(resolvedDateKey, [row]);
+          toast.warning(
+            "Saved on this device — we'll sync when you're back online.",
+          );
         }
         return false;
       }
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
       return true;
     },
-    [authedUserId, dbNutritionEnabled, nutritionByDay],
+    [authedUserId, dbNutritionEnabled, nutritionByDay, buildNutritionEntryRow, enqueueFailedUpsert],
   );
 
   const mealsForSelectedDate = useMemo(() => {

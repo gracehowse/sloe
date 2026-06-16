@@ -59,10 +59,13 @@ describe("Today journal — every meal-add path persists to Supabase immediately
   it("declares persistMealUpdateImmediate helper for edit-meal", () => {
     expect(SRC).toMatch(/const\s+persistMealUpdateImmediate\s*=\s*useCallback/);
     const idx = SRC.indexOf("const persistMealUpdateImmediate");
-    const slice = SRC.slice(idx, idx + 2000);
+    const slice = SRC.slice(idx, idx + 2500);
     expect(slice).toMatch(/from\(["']nutrition_entries["']\)\s*\.update/);
     expect(slice).toMatch(/\.eq\(["']id["']/);
     expect(slice).toMatch(/\.eq\(["']user_id["']/);
+    // ENG-1125 — failed updates queue for retry instead of rolling back UI.
+    expect(slice).toMatch(/enqueueJournalUpserts/);
+    expect(slice).toMatch(/Saved on this device/);
   });
 
   it("addMeal calls persistMealsImmediate (Quick Entry path)", () => {
