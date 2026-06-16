@@ -774,8 +774,10 @@ export default function LibraryScreen() {
     // Discover" (ctaBtnSecondary) sits below it as the quieter secondary,
     // keeping a clear emphasis ladder.
     ctaBtnSecondary: {
-      paddingHorizontal: 24,
-      paddingVertical: Spacing.dense,
+      paddingHorizontal: Spacing.lg,
+      // Match SupprButton's paddingVertical (Spacing.md) so the stacked
+      // primary + outline CTAs are the same height (ENG-1197 follow-up).
+      paddingVertical: Spacing.md,
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: colors.border,
