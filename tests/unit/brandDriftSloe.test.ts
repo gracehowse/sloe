@@ -30,8 +30,11 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
 
   it("recipe share strings say Sloe", () => {
     const detail = readFileSync(join(ROOT, "src/app/components/RecipeDetail.tsx"), "utf8");
-    expect(detail).toContain('title: "Recipe on Sloe"');
-    expect(detail).toContain('text: "Open this recipe in Sloe"');
+    const shareCard = readFileSync(join(ROOT, "src/lib/share/buildRecipeShareCard.ts"), "utf8");
+    // Rich share (ENG-978) lives in buildRecipeShareCard; legacy fallback stays in detail.
+    expect(detail).toContain('"Open this recipe in Sloe"');
+    expect(shareCard).toContain("made with Sloe");
+    expect(detail).not.toMatch(/Open this recipe in Suppr/);
   });
 
   // ── Visual-surface sweep (TF57 BRAND lane, 2026-06-12) ──────────────
@@ -112,5 +115,29 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
       expect(src, rel).toContain("Sloe is temporarily having issues");
       expect(src, rel).not.toContain("Suppr is temporarily having issues");
     }
+  });
+
+  it("web onboarding narrative copy says Sloe (not Suppr)", () => {
+    const narrative = readFileSync(
+      join(ROOT, "src/app/components/onboarding/narrative.tsx"),
+      "utf8",
+    );
+    expect(narrative).toContain("Sloe adapts");
+    expect(narrative).not.toMatch(/\bSuppr\b/);
+  });
+
+  it("web onboarding goal step uses Figma question copy", () => {
+    const goal = readFileSync(
+      join(ROOT, "src/lib/onboarding/goalOptions.ts"),
+      "utf8",
+    );
+    expect(goal).toContain("What brings you to Sloe?");
+    expect(goal).toContain("We'll tailor everything to you.");
+  });
+
+  it("product page titles use Sloe suffix (not Suppr)", () => {
+    const today = readFileSync(join(ROOT, "app/(product)/today/page.tsx"), "utf8");
+    expect(today).toContain('"Today — Sloe"');
+    expect(today).not.toContain('"Today — Suppr"');
   });
 });

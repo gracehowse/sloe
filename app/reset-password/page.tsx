@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
               letterSpacing: "-0.04em",
               lineHeight: 1,
             }}
-            aria-label="Suppr"
+            aria-label="Sloe"
           >
             S
           </div>

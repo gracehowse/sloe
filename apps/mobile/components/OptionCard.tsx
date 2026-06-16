@@ -37,6 +37,8 @@ export interface OptionCardProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Round food thumbnail (Figma onboarding 189:2) — takes precedence over icon. */
+  thumbnail?: React.ReactNode;
   /** Replace the default trailing checkmark. Pass `null` to hide it. */
   trailing?: React.ReactNode | null;
   compact?: boolean;
@@ -51,6 +53,7 @@ export function OptionCard({
   title,
   subtitle,
   icon,
+  thumbnail,
   trailing,
   compact = false,
   disabled = false,
@@ -65,6 +68,7 @@ export function OptionCard({
   const accent = useAccent();
   const primaryTint = accent.primary + "14"; // ~8% alpha
   const showCheckbox = trailing === undefined;
+  const leading = thumbnail ?? icon;
 
   // Wrap onPress so the disabled guard is enforced even if a host
   // component forwards `disabled` without honouring it (e.g. test
@@ -99,20 +103,23 @@ export function OptionCard({
         style,
       ]}
     >
-      {icon ? (
+      {leading ? (
         <View
           style={{
-            width: compact ? 32 : 44,
-            height: compact ? 32 : 44,
-            borderRadius: Radius.md,
+            width: thumbnail ? 56 : compact ? 32 : 44,
+            height: thumbnail ? 56 : compact ? 32 : 44,
+            borderRadius: thumbnail ? 28 : Radius.md,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: selected
-              ? accent.primary + "26"
-              : colors.inputBg,
+            overflow: thumbnail ? "hidden" : "visible",
+            backgroundColor: thumbnail
+              ? colors.inputBg
+              : selected
+                ? accent.primary + "26"
+                : colors.inputBg,
           }}
         >
-          {icon}
+          {leading}
         </View>
       ) : null}
       <View style={{ flex: 1, minWidth: 0 }}>

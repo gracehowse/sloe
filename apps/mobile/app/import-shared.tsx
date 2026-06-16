@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -35,16 +36,30 @@ import { useAuth } from "@/context/auth";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { resolveTargets } from "@/lib/calcTargets";
-import { saveImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
+import { saveImportedRecipe, updateImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
 import {
   IMPORT_ERROR_COPY,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
 import { isFeatureEnabled, track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import {
+  buildRecipeShareCardMessage,
+  creatorProfileUrl,
+  formatRecipeCreatorCredit,
+  formatRecipeShareMacroLine,
+} from "@suppr/shared/share/buildRecipeShareCard";
+import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
 import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
 import { importJobIdForUrl } from "@suppr/shared/recipes/importProgressMachine";
+import {
+  IMPORT_SAVE_FIRST_FLAG,
+  IMPORT_SAVE_FIRST_REVIEW_BANNER,
+  IMPORT_SAVE_FIRST_TEST_ID,
+  IMPORT_SAVE_FIRST_UPDATE_CTA,
+} from "@suppr/shared/recipes/importSaveFirst";
 import { ImportProgressDrawer } from "@/components/import/ImportProgressDrawer";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
@@ -383,13 +398,15 @@ export default function ImportSharedScreen() {
 
   /**
    * Apply a successful `/api/recipe-import` response into the review state
-   * (meal-type classification, normalised recipe, title). Extracted so the
-   * legacy inline path AND the queued `import-progress-v2` path land a
-   * finished import identically — no drift between "imported inline" and
-   * "imported via the queue then reviewed".
+   * (meal-type classification, normalised recipe, title). Returns the parsed
+   * payload so save-first (ENG-980) can persist before review edits land.
    */
   const applyImportedRecipeResult = useCallback(
-    (recipe: ApiImportedRecipe, imageUsedFlag?: boolean) => {
+    (
+      recipe: ApiImportedRecipe,
+      imageUsedFlag?: boolean,
+      options?: { caption?: string },
+    ): { normalized: ApiImportedRecipe; mealTags: string[]; title: string } => {
       setImageUsed(imageUsedFlag);
       const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(String) : [];
       const fromApi = recipe.mealType;
@@ -405,14 +422,48 @@ export default function ImportSharedScreen() {
               title: recipe.title ?? "",
               ingredients,
               caloriesPerServing: recipe.calories ?? null,
+              caption: options?.caption,
             });
       setMealTags(autoTags);
       const normalized = normalizeApiImportedRecipe(recipe as Record<string, unknown>);
+      const decodedTitle = decodeEntities(
+        (normalized.title ?? "Imported recipe").trim() || "Imported recipe",
+      );
       setPendingRecipe(normalized);
-      setTitle(decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"));
+      setTitle(decodedTitle);
       setState("review");
+      return { normalized, mealTags: autoTags, title: decodedTitle };
     },
     [],
+  );
+
+  /** ENG-980 — optional save-first persistence immediately after parse. */
+  const landImportedRecipeInReview = useCallback(
+    async (
+      recipe: ApiImportedRecipe,
+      imageUsedFlag?: boolean,
+      options?: { caption?: string },
+    ) => {
+      const { normalized, mealTags: tags, title: decodedTitle } = applyImportedRecipeResult(
+        recipe,
+        imageUsedFlag,
+        options,
+      );
+      if (!isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG) || !userId) return;
+
+      const saved = await saveImportedRecipe(userId, {
+        ...normalized,
+        title: decodedTitle,
+        mealType: tags,
+      });
+      if ("recipeId" in saved) {
+        setSavedRecipeId(saved.recipeId);
+        track(AnalyticsEvents.recipe_import_saved_first, {
+          platform: Platform.OS === "ios" ? "ios" : "android",
+        });
+      }
+    },
+    [applyImportedRecipeResult, userId],
   );
 
   /**
@@ -507,7 +558,7 @@ export default function ImportSharedScreen() {
             controls.setTitle(recipe.title ?? seedTitle);
             // Last-wins: the most recent finished import populates the review
             // form; all imports remain listed in the drawer.
-            applyImportedRecipeResult(recipe, used);
+            await landImportedRecipeInReview(recipe, used);
             return { title: recipe.title ?? seedTitle };
           },
         });
@@ -524,7 +575,7 @@ export default function ImportSharedScreen() {
         console.log("[import] API response - calories:", recipe.calories,
           "ingredientMacros:", recipe.ingredientMacros?.length,
           "first:", JSON.stringify(recipe.ingredientMacros?.[0])?.substring(0, 100));
-        applyImportedRecipeResult(recipe, used);
+        await landImportedRecipeInReview(recipe, used);
       } catch (e) {
         setState("error");
         if (e instanceof ImportRunnerError) {
@@ -534,7 +585,7 @@ export default function ImportSharedScreen() {
         }
       }
     },
-    [base, userId, importProgressV2, importQueue, fetchImportedRecipe, applyImportedRecipeResult],
+    [base, userId, importProgressV2, importQueue, fetchImportedRecipe, landImportedRecipeInReview],
   );
 
   /**
@@ -596,39 +647,14 @@ export default function ImportSharedScreen() {
           return;
         }
 
-        const ingredients = Array.isArray(data.recipe.ingredients)
-          ? data.recipe.ingredients.map(String)
-          : [];
-        const fromApi = data.recipe.mealType;
-        const allowed = /^(breakfast|lunch|dinner|snack)$/;
-        const fromApiNorm =
-          Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
-            ? fromApi
-                .map((x) => String(x).toLowerCase().trim())
-                .filter((x) => allowed.test(x))
-            : [];
-        const autoTags =
-          fromApiNorm.length > 0
-            ? fromApiNorm
-            : classifyMealType({
-                title: data.recipe.title ?? "",
-                ingredients,
-                caloriesPerServing: data.recipe.calories ?? null,
-                caption: trimmedCaption,
-              });
-        setMealTags(autoTags);
         const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
-        setPendingRecipe(normalized);
-        setTitle(
-          decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"),
-        );
-        setState("review");
+        await landImportedRecipeInReview(normalized, undefined, { caption: trimmedCaption });
       } catch {
         setState("error");
         setError(IMPORT_ERROR_COPY.network_error);
       }
     },
-    [base, userId, runImport],
+    [base, userId, runImport, landImportedRecipeInReview],
   );
 
   const runImageImport = useCallback(async () => {
@@ -711,32 +737,17 @@ export default function ImportSharedScreen() {
         protein: data.nutrition?.perServing?.protein ?? null,
         carbs: data.nutrition?.perServing?.carbs ?? null,
         fat: data.nutrition?.perServing?.fat ?? null,
-        // F-156-recipe-wave — pipe sanitised attribution onto the
-        // recipe shape so `saveImportedRecipe` writes the correct
-        // `source_url` / `source_name` columns. Empty when the user
-        // didn't supply a URL — recipe lands in the library with no
-        // source card (existing behaviour, preserved).
         sourceUrl: data.sourceUrl ?? undefined,
         sourceName: data.sourceName ?? undefined,
       };
-      const captionHint = Array.isArray(data.steps) ? data.steps.map((s) => String(s)).join("\n") : "";
-      const autoTags = classifyMealType({
-        title: recipe.title ?? "",
-        ingredients: data.ingredients,
-        caloriesPerServing: recipe.calories,
-        caption: captionHint.trim() ? captionHint : undefined,
-      });
-      setMealTags(autoTags);
-      setPendingRecipe(recipe);
-      setTitle(decodeEntities(recipe.title ?? "Photo Import"));
-      setState("review");
+      await landImportedRecipeInReview(recipe);
     } catch {
       setState("error");
       setError(IMPORT_ERROR_COPY.network_error);
     }
     // `manualUrl` is read for attribution (ENG-748 #13) — keep it in deps so
     // the handler captures the latest pasted value rather than a stale closure.
-  }, [base, userId, manualUrl]);
+  }, [base, userId, manualUrl, landImportedRecipeInReview]);
 
   /**
    * Photo-import entry point (gap #3, 2026-06-09). Photo OCR is Pro-gated
@@ -762,6 +773,42 @@ export default function ImportSharedScreen() {
     if (!pendingRecipe) return null;
     return nutritionRescale(pendingRecipe, reviewServingsDraft);
   }, [pendingRecipe, reviewServingsDraft]);
+
+  const appOrigin = useMemo(() => {
+    const extra = Constants.expoConfig?.extra as Extra | undefined;
+    return (extra?.supprApiUrl ?? "https://suppr-club.com").replace(/\/$/, "");
+  }, []);
+
+  const successShareCard = useMemo(() => {
+    if (!isFeatureEnabled("recipe_share_card_v1") || !savedRecipeId || !pendingRecipe || !title) {
+      return null;
+    }
+    const nutrition = nutritionRescale(pendingRecipe, reviewServingsDraft);
+    const estimated =
+      pendingRecipe.primarySource === "Unverified" ||
+      pendingRecipe.primarySource === "Estimated" ||
+      pendingRecipe.primarySource == null;
+    const creditLine = formatRecipeCreatorCredit({ sourceName: pendingRecipe.sourceName });
+    const macroLine = formatRecipeShareMacroLine({
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      estimated,
+    });
+    return {
+      macroLine,
+      creditLine,
+      profileUrl: creatorProfileUrl({ creatorId: null, appOrigin }),
+      message: buildRecipeShareCardMessage({
+        recipeId: savedRecipeId,
+        title: decodeEntities(title),
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        estimated,
+        sourceName: pendingRecipe.sourceName,
+        appOrigin,
+      }),
+    };
+  }, [savedRecipeId, pendingRecipe, title, reviewServingsDraft, appOrigin]);
 
   /** Replace one ingredient's match with a food-search result (tap path). */
   const onIngredientSearchSelected = useCallback(
@@ -891,8 +938,15 @@ export default function ImportSharedScreen() {
       1,
       Math.min(99, Math.round(parseFloat(reviewServingsDraft.replace(",", ".")) || pendingRecipe.servings || 1)),
     );
-    const recipeWithTags = { ...pendingRecipe, mealType: mealTags, servings: servingsParsed };
-    const saved = await saveImportedRecipe(userId, recipeWithTags);
+    const recipeWithTags = {
+      ...pendingRecipe,
+      title: title ?? undefined,
+      mealType: mealTags,
+      servings: servingsParsed,
+    };
+    const saved = savedRecipeId
+      ? await updateImportedRecipe(userId, savedRecipeId, recipeWithTags)
+      : await saveImportedRecipe(userId, recipeWithTags);
     if ("error" in saved) {
       setState("error");
       // Audit I01 (2026-05-05) — saveImportedRecipe now returns a
@@ -905,7 +959,27 @@ export default function ImportSharedScreen() {
     setSavedRecipeId(saved.recipeId);
     setState("success");
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [pendingRecipe, userId, mealTags, reviewServingsDraft]);
+  }, [pendingRecipe, userId, mealTags, reviewServingsDraft, savedRecipeId, title]);
+
+  const handleShareSuccessCard = useCallback(async () => {
+    if (!successShareCard?.message) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await Share.share({
+        message: successShareCard.message,
+        title: decodeEntities(title ?? "Recipe"),
+        url: webRecipeDeepLink(savedRecipeId ?? "", appOrigin),
+      });
+      if (result.action !== Share.sharedAction) return;
+      track(AnalyticsEvents.recipe_share_card_shared, {
+        surface: "import_success",
+        platform: "mobile",
+        hasCreatorCredit: Boolean(successShareCard.creditLine),
+      });
+    } catch {
+      /* user dismissed share sheet */
+    }
+  }, [successShareCard, title, savedRecipeId, appOrigin]);
 
   runImportRef.current = runImport;
 
@@ -1197,6 +1271,18 @@ export default function ImportSharedScreen() {
       lineHeight: 30,
       letterSpacing: -0.3,
       paddingHorizontal: Spacing.sm,
+    },
+    successMacroLine: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    successCreditLine: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: accent.primary,
+      textAlign: "center",
     },
     libraryChip: {
       flexDirection: "row",
@@ -1743,6 +1829,34 @@ export default function ImportSharedScreen() {
 
         {(state === "review" || state === "saving") && pendingRecipe && (
           <View style={styles.panelCard}>
+            {savedRecipeId && isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG) ? (
+              <View
+                testID={IMPORT_SAVE_FIRST_TEST_ID}
+                style={{
+                  alignSelf: "stretch",
+                  backgroundColor: `${Accent.success}14`,
+                  borderColor: `${Accent.success}4D`,
+                  borderRadius: Radius.lg,
+                  borderWidth: 1,
+                  marginBottom: Spacing.md,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: Spacing.sm,
+                }}
+                accessibilityRole="text"
+                accessibilityLabel={IMPORT_SAVE_FIRST_REVIEW_BANNER.a11yLabel}
+              >
+                <Text
+                  style={{
+                    color: Accent.successSolid,
+                    fontFamily: FontFamily.sansMedium,
+                    fontSize: 13,
+                    textAlign: "center",
+                  }}
+                >
+                  {IMPORT_SAVE_FIRST_REVIEW_BANNER.label}
+                </Text>
+              </View>
+            ) : null}
             <Ionicons name="restaurant-outline" size={36} color={accent.primary} />
             <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
@@ -1986,7 +2100,11 @@ export default function ImportSharedScreen() {
               ) : (
                 <>
                   <Ionicons name="bookmark" size={18} color={colors.primaryForeground} />
-                  <Text style={styles.primaryBtnText}>Save to Library</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {savedRecipeId && isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG)
+                      ? IMPORT_SAVE_FIRST_UPDATE_CTA
+                      : "Save to Library"}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -2002,6 +2120,12 @@ export default function ImportSharedScreen() {
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
               {decodeEntities(title)}
             </Text>
+            {successShareCard?.macroLine ? (
+              <Text style={styles.successMacroLine}>{successShareCard.macroLine}</Text>
+            ) : null}
+            {successShareCard?.creditLine ? (
+              <Text style={styles.successCreditLine}>{successShareCard.creditLine}</Text>
+            ) : null}
             <View style={styles.libraryChip}>
               <Ionicons name="bookmark" size={18} color={accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
@@ -2013,6 +2137,17 @@ export default function ImportSharedScreen() {
               <Text style={styles.primaryBtnText}>View recipe</Text>
               <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} style={styles.btnIconRight} />
             </Pressable>
+            {successShareCard ? (
+              <Pressable
+                style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
+                onPress={() => void handleShareSuccessCard()}
+                accessibilityRole="button"
+                accessibilityLabel="Share recipe card"
+              >
+                <Share2 size={18} color={accent.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.outlineBtnText}>Share card</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}

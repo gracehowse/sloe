@@ -14,6 +14,7 @@ import { Layout } from "@/constants/layout";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { computeOnboardingRevealProjection } from "@suppr/shared/onboarding/revealProjection";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 
@@ -147,6 +148,13 @@ export function MobileRevealStep() {
     gain: `A ~${kcalAdj.toLocaleString()} kcal surplus on your estimated TDEE of ${targets.tdee.toLocaleString()} for ~${paceLabel} kg/week gains. Slow builds hold.`,
     recomp: `A ~${kcalAdj.toLocaleString()} kcal deficit with protein anchored to bodyweight. Body composition changes take time.`,
   }[state.goal ?? "maintain"];
+
+  const revealProjection = computeOnboardingRevealProjection({
+    goal: state.goal,
+    weightKg: state.weightKg,
+    paceKgPerWeek: state.paceKgPerWeek,
+    weightSkipped: state.weightSkipped,
+  });
 
   const SIZE = 220;
   const R = 88;
@@ -295,6 +303,22 @@ export function MobileRevealStep() {
         >
           {goalBlurb}
         </Text>
+        {revealProjection ? (
+          <Text
+            testID="onboarding-reveal-projection"
+            style={{
+              fontSize: 13,
+              fontWeight: "500",
+              color: colors.textSecondary,
+              textAlign: "center",
+              marginTop: 12,
+              lineHeight: 19,
+              maxWidth: 340,
+            }}
+          >
+            {revealProjection.sentence}
+          </Text>
+        ) : null}
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>

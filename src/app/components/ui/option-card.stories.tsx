@@ -94,3 +94,24 @@ export const CompactWithIcon: Story = {
     ),
   },
 };
+
+export const WithThumbnail: Story = {
+  args: {
+    selected: true,
+    title: "Mediterranean",
+    subtitle: "Fresh, balanced, olive-oil forward",
+    thumbnail: (
+      <img
+        src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=112&h=112&fit=crop"
+        alt=""
+        className="size-full object-cover"
+      />
+    ),
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: /mediterranean/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  },
+};

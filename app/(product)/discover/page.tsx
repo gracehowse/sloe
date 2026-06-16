@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Discover — Suppr",
+  title: "Discover — Sloe",
   description: "Discover community recipes tailored to your targets.",
 };
 

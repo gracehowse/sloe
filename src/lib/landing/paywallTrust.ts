@@ -40,6 +40,14 @@ export type PaywallTrustChip = {
   a11yLabel: string;
 };
 
+/** ENG-970 — trial-state honesty chip above the purchase CTA (mobile IAP). */
+export const PAYWALL_NO_PAYMENT_DUE_CHIP = {
+  testId: "paywall-no-payment-due-chip",
+  label: "No payment due now — first charge on Day 7",
+  a11yLabel:
+    "No payment due now. Your first charge happens on day seven after you start the free trial.",
+} as const;
+
 /**
  * Three trust chips, displayed in a horizontal strip above the
  * pricing tiers on every paid surface. Order is fixed:

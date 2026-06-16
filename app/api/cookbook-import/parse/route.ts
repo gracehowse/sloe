@@ -5,10 +5,14 @@ import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { parseCookbookFromText } from "@/lib/planning/planImport/parseCookbookFromText";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   if (await isServerFeatureEnabled("kill_plan_import")) {
     return NextResponse.json(
       {

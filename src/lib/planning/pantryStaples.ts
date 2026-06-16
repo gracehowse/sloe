@@ -60,3 +60,16 @@ export function filterShoppingItemsByPantry<T extends { name: string }>(
   if (staples.length === 0) return [...items];
   return items.filter((item) => !isPantryStapleMatch(item.name, staples));
 }
+
+/** Append a staple if not already present (case-insensitive). */
+export function appendPantryStaple(
+  staples: readonly string[],
+  name: string,
+): readonly string[] {
+  const trimmed = name.trim();
+  if (!trimmed) return staples;
+  if (staples.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+    return staples;
+  }
+  return [...staples, trimmed];
+}

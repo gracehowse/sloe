@@ -85,12 +85,14 @@ describe("MealPlanner prototype rewrite (2026-04-21)", () => {
     expect(SRC).not.toMatch(/>Named plans</);
     expect(SRC).not.toMatch(/>Logging your day</);
     expect(SRC).not.toMatch(/data-testid=[`"]day-macro-pills-/);
-    expect(SRC).not.toMatch(/>Smart suggestions</);
     expect(SRC).not.toMatch(/>Plan Duration</);
     expect(SRC).not.toMatch(/from "\.\/suppr\/daily-ring"/);
     expect(SRC).not.toMatch(/from "\.\/suppr\/macro-card"/);
     expect(SRC).not.toMatch(/<DailyRing[\s>]/);
     expect(SRC).not.toMatch(/<MacroCard[\s>]/);
+    // ENG-1131 — smart suggestions ship behind plan_web_parity_v1 (not legacy drag-drop).
+    expect(SRC).toMatch(/computeSmartRecipeSuggestions/);
+    expect(SRC).toMatch(/planner-smart-suggestions/);
     // No drag-drop on the plan surface. Move is allowed behind plan_web_parity_v1
     // (ENG-1131) — shared helper, not legacy drag-drop.
     expect(SRC).not.toMatch(/onDragStart/);

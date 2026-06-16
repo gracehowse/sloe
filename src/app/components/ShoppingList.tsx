@@ -1,5 +1,6 @@
-import { memo, useEffect, useMemo, useState } from "react";
-import { Check, Users, X } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Package, Users, X } from "lucide-react";
+import { toast } from "sonner";
 import { Icons } from "./ui/icons";
 import { SupprCard } from "./ui/suppr-card";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -12,6 +13,8 @@ import {
 } from "../../lib/planning/shoppingDisplayGroups.ts";
 import { sortShoppingCategories } from "../../lib/planning/shoppingAisleOrder.ts";
 import { withNormalizedShoppingFields } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
+import { formatShoppingListSubtitle } from "../../lib/planning/shoppingListMeta.ts";
+import { appendPantryStaple } from "../../lib/planning/pantryStaples.ts";
 import {
   getMyHousehold,
   type HouseholdData,
@@ -77,6 +80,8 @@ export const ShoppingList = memo(function ShoppingList({
     activeHouseholdId,
     shoppingListPlanStartDate,
     shoppingListOutOfSync,
+    pantryStaples,
+    savePantryStaples,
   } = useAppData();
 
   // Resolve member metadata once, only when in a household. Used for
@@ -158,16 +163,15 @@ export const ShoppingList = memo(function ShoppingList({
     [categorySections],
   );
 
-  const subtitle = useMemo(() => {
-    const countPart = `${totalItemCount} item${totalItemCount === 1 ? "" : "s"}`;
-    if (shoppingListPlanStartDate) {
-      const d = new Date(shoppingListPlanStartDate + "T12:00:00");
-      const label = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-      const stale = shoppingListOutOfSync ? " · plan changed since" : "";
-      return `${countPart} · from plan of ${label}${stale}`;
-    }
-    return `${countPart} · from this week's plan`;
-  }, [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync]);
+  const subtitle = useMemo(
+    () =>
+      formatShoppingListSubtitle({
+        itemCount: totalItemCount,
+        planStartDate: shoppingListPlanStartDate,
+        outOfSync: shoppingListOutOfSync,
+      }),
+    [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync],
+  );
 
   const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
     const allChecked = isShoppingGroupFullyChecked(group);
@@ -183,6 +187,18 @@ export const ShoppingList = memo(function ShoppingList({
   const removeGroup = (group: ShoppingDisplayGroup) => {
     for (const item of group.items) removeShoppingItem(item.id);
   };
+
+  const markGroupAsStaple = useCallback(
+    async (group: ShoppingDisplayGroup) => {
+      const name = group.displayName.trim();
+      if (!name) return;
+      const next = appendPantryStaple(pantryStaples, name);
+      await savePantryStaples(next);
+      for (const item of group.items) removeShoppingItem(item.id);
+      toast.success(`"${name}" added to pantry staples — hidden from future lists`);
+    },
+    [pantryStaples, removeShoppingItem, savePantryStaples],
+  );
 
   const handleClearChecked = () => {
     if (checkedCount === 0) return;
@@ -420,6 +436,15 @@ export const ShoppingList = memo(function ShoppingList({
                           </span>
                         </span>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void markGroupAsStaple(group)}
+                        aria-label={`Always have ${rowLabel} — hide from future shopping lists`}
+                        data-testid={`shopping-row-staple-${group.key}`}
+                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <Package width={14} height={14} aria-hidden />
+                      </button>
                       <button
                         type="button"
                         onClick={() => removeGroup(group)}

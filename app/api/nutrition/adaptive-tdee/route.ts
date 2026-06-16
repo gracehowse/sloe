@@ -8,6 +8,7 @@ import {
   type Sex,
   type ActivityLevel,
 } from "@/lib/nutrition/tdee";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 /**
  * GET /api/nutrition/adaptive-tdee
@@ -94,6 +95,9 @@ export async function GET(req: Request) {
  * Force a recalculation of the adaptive TDEE.
  */
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

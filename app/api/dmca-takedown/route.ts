@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 type Payload = {
   reporterEmail?: unknown;
@@ -50,6 +51,9 @@ function isHttpUrl(value: string): boolean {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // Read network metadata directly off the Request object so this route
   // works in vitest (where `next/headers` requires a request scope) and
   // matches how `rateLimit` extracts IP from headers internally.

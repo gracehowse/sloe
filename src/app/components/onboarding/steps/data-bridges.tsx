@@ -234,12 +234,12 @@ function RecipeUrlCard() {
       icon={<Link2 className="size-4" />}
       iconClassName="text-emerald-500 bg-emerald-500/15"
       title="Recipe import"
-      body="Suppr parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
+      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
       grantedBadge={null}
     >
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         Try it after setup — open the Library tab and tap the Import button to
-        paste a link, or share any recipe to Suppr from inside Instagram /
+        paste a link, or share any recipe to Sloe from inside Instagram /
         TikTok / your browser.
       </p>
     </BridgeCard>

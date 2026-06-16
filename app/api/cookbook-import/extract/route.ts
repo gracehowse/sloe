@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { extractPdfText } from "@/lib/planning/planImport/extractPdfText";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,9 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 /** PDF text extraction for cookbook import (shared pipeline with plan-import). */
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   if (await isServerFeatureEnabled("kill_plan_import")) {
     return NextResponse.json(
       {

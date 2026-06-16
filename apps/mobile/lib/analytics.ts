@@ -357,6 +357,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_log_again",
   "log-sheet-slot-selector",
   "today_log_usual_row_v2",
+  // ENG-978/979 — shareable import-success card + creator credit (keep in sync w/ track.ts).
+  "recipe_share_card_v1",
+  "log_sheet_nl_text_v1",
+  // ENG-980 — save-first import (keep in sync w/ track.ts).
+  "import-save-first-v1",
+  // ENG-965 / ENG-990 — refugee app-choice step default-on.
+  "onboarding-app-choice",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

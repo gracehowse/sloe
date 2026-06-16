@@ -57,6 +57,7 @@ import {
   type CreateCustomFoodPayload,
 } from "../suppr/create-custom-food-dialog";
 import { DestructiveConfirmDialog } from "../suppr/destructive-confirm-dialog";
+import { FatSecretBadge } from "../ui/FatSecretBadge";
 
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
 import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
@@ -812,7 +813,7 @@ function foodSearchSourceLabel(source: SearchResult["_source"]): string {
       return "Custom";
     case "GenericBeverage":
     case "GenericFood":
-      return "Suppr";
+      return "Sloe";
   }
 }
 
@@ -2008,6 +2009,20 @@ export function FoodSearchPanel({
     [query, filteredResults],
   );
 
+  /** ENG-1121 — FatSecret attribution when branded rows or premier autocomplete show. */
+  const showFatSecretAttribution = useMemo(() => {
+    if (preview?.source === "FatSecret") return true;
+    if (results.some((r) => r._source === "FatSecret")) return true;
+    if (
+      autocomplete.tier === "premier" &&
+      autocomplete.suggestions.length > 0 &&
+      query.trim()
+    ) {
+      return true;
+    }
+    return false;
+  }, [preview, results, autocomplete, query]);
+
   // ENG-815 — render one redesigned (elevated, chip-bearing) result row.
   // Shares all behaviour with the legacy row (same `onPickResult`, same
   // custom-food edit/delete menu, same headline data) — only the chrome
@@ -2340,6 +2355,14 @@ export function FoodSearchPanel({
               </div>
             </div>
           )}
+
+          {preview.source === "FatSecret" ? (
+            <FatSecretBadge
+              variant="text"
+              className="mt-2"
+              data-testid="food-search-fatsecret-badge"
+            />
+          ) : null}
         </div>
 
         {/* Sticky "Use this" CTA — kept on a border-t footer (visual-qa
@@ -2880,6 +2903,14 @@ export function FoodSearchPanel({
             Create custom food
           </button>
         )}
+
+        {showFatSecretAttribution ? (
+          <FatSecretBadge
+            variant="text"
+            className="mt-3 mx-1"
+            data-testid="food-search-fatsecret-badge"
+          />
+        ) : null}
       </div>
 
       {/* Custom-food create / edit dialog — rendered outside the

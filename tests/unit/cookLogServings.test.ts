@@ -19,9 +19,13 @@ describe("ENG-1129 cook-log servings confirm", () => {
     expect(RECIPE).toMatch(/parsedLogServings/);
   });
 
-  it("web CookMode does not multiply journal write by batch scaleFactor when flag is on", () => {
+  it("web CookMode gates confirm behind cook_log_servings_confirm and tracks servingsLogged", () => {
     expect(COOK_MODE).toMatch(/cook_log_servings_confirm/);
     expect(COOK_MODE).toMatch(/commitLogMeal/);
     expect(COOK_MODE).toMatch(/servingsLogged/);
+  });
+
+  it("web CookMode legacy flag-off path logs 1 serving, not batch scaleFactor", () => {
+    expect(COOK_MODE).toMatch(/commitLogMeal\(1\)/);
   });
 });

@@ -127,7 +127,7 @@ export function MobileWelcomeStep() {
           accessibilityLabel="Get started"
           style={({ pressed }) => ({
             height: 56,
-            borderRadius: 14,
+            borderRadius: 999,
             backgroundColor: colors.tint,
             alignItems: "center",
             justifyContent: "center",

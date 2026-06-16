@@ -54,6 +54,15 @@ const REDESIGN_FLAGS = [
   "redesign_search_results",
 ];
 
+const GATE_15_FLAGS = [
+  "today_meals_figma_654",
+  "today_tracker_tier_v1",
+  "card_cohesion_white_v1",
+  "log_sheet_nl_text_v1",
+  "log-sheet-slot-selector",
+  "ring_skia_v1",
+] as const;
+
 describe("redesign flags are un-gated (mobile)", () => {
   beforeEach(() => {
     isEnabledMock.mockReset();
@@ -70,6 +79,14 @@ describe("redesign flags are un-gated (mobile)", () => {
       expect(isFeatureEnabled(flag)).toBe(true);
     }
     // The SDK is never consulted for un-gated flags.
+    expect(isEnabledMock).not.toHaveBeenCalled();
+  });
+
+  it("returns true for Gate 1.5 flags even when PostHog resolves OFF", () => {
+    isEnabledMock.mockReturnValue(false);
+    for (const flag of GATE_15_FLAGS) {
+      expect(isFeatureEnabled(flag)).toBe(true);
+    }
     expect(isEnabledMock).not.toHaveBeenCalled();
   });
 

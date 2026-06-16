@@ -55,7 +55,7 @@ export function AgeStep() {
       {helpOpen && (
         <div className="mt-3 p-3.5 bg-primary/5 border border-primary/15 rounded-xl text-xs text-foreground leading-relaxed">
           <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary mb-2">
-            What Suppr does with this
+            What Sloe does with this
           </div>
           <p className="m-0 mb-2.5">
             The Mifflin-St Jeor equation subtracts about 5 kcal/year from
@@ -63,7 +63,7 @@ export function AgeStep() {
             same weight + height get targets ~100 kcal apart.
           </p>
           <p className="m-0 mb-2.5">
-            This is an estimate, not a verdict on your metabolism. Suppr
+            This is an estimate, not a verdict on your metabolism. Sloe
             adaptive-TDEE will re-calibrate from your actual logged intake
             + weight changes after ~2 weeks, replacing the formula with
             your real maintenance.

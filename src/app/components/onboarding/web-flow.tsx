@@ -17,6 +17,7 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
 import { STEP_IDS, canAdvance as canAdvanceStep } from "@/lib/onboarding/state";
+import { OnboardingSegmentedProgress } from "./onboarding-segmented-progress";
 import {
   effectiveTargetsForPersist,
   mapV2GoalToLegacy,
@@ -401,7 +402,7 @@ export function WebFlow() {
         <div className="justify-self-start">
           <SupprWordmark size={24} />
         </div>
-        <ProgressBar
+        <OnboardingSegmentedProgress
           value={displayIndex}
           total={displayTotal}
           className="w-full max-w-[260px] md:max-w-[360px] justify-self-center"
@@ -522,7 +523,7 @@ export function WebFlow() {
                     size="lg"
                     onClick={isTerminal ? handleComplete : handleContinue}
                     disabled={!canAdvance || completing}
-                    className="h-12 px-6 font-bold"
+                    className="h-12 px-6 font-bold rounded-full"
                   >
                     {isTerminal ? terminalLabel : "Continue"}
                     <ArrowRight className="size-4" strokeWidth={2.2} />
@@ -555,35 +556,6 @@ function BodyContainer({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex-1 mx-auto w-full md:max-w-[1280px] overflow-hidden flex flex-col">
       {children}
-    </div>
-  );
-}
-
-function ProgressBar({
-  value,
-  total,
-  className,
-}: {
-  value: number;
-  total: number;
-  className?: string;
-}) {
-  const pct = Math.max(4, (value / Math.max(1, total)) * 100);
-  return (
-    <div
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={total}
-      aria-valuenow={value}
-      className={`h-1 rounded-sm bg-input-background overflow-hidden ${className ?? ""}`}
-    >
-      <div
-        className="h-full rounded-sm bg-primary transition-[width] duration-300"
-        style={{
-          width: `${pct}%`,
-          boxShadow: "0 0 8px color-mix(in oklab, var(--primary) 40%, transparent)",
-        }}
-      />
     </div>
   );
 }

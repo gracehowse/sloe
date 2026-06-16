@@ -71,9 +71,9 @@ describe("AiPaywallDialog (Ship M2)", () => {
     // (PhotoLogDialog calls onUpgradeRequired on 403). See
     // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
     render(<Harness feature="photo_log" />);
-    expect(screen.getByText("Get unlimited photo logs with Pro")).toBeInTheDocument();
+    expect(screen.getByText("Get more photo logs with Pro")).toBeInTheDocument();
     expect(
-      screen.getByText(/You've used all 5 of your free photo logs this week/i),
+      screen.getByText(/Pro unlocks AI photo logging up to 100 a day/i),
     ).toBeInTheDocument();
     const cta = screen.getByRole("link", { name: /See Pro plans/i });
     expect(cta).toHaveAttribute("href", "/pricing?from=photo_log");
@@ -106,7 +106,7 @@ describe("AiPaywallDialog (Ship M2)", () => {
   it("fires ai_paywall_sheet_dismissed with reason=backdrop on Escape key (Radix collapses overlay click / Escape / programmatic close)", async () => {
     render(<Harness feature="photo_log" />);
     // Sanity — the dialog mounted (2026-05-02 copy).
-    expect(screen.getByText("Get unlimited photo logs with Pro")).toBeInTheDocument();
+    expect(screen.getByText("Get more photo logs with Pro")).toBeInTheDocument();
     // Escape on Radix dialog triggers onOpenChange(false) with no explicit reason.
     fireEvent.keyDown(document.activeElement ?? document.body, {
       key: "Escape",

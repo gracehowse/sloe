@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type PressableProps,
 } from "react-native";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { figmaSlotSummaryTitle } from "@suppr/shared/copy/today";
@@ -54,6 +55,78 @@ import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import { emptySlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
 import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
 import { MealRowSwipeable } from "./MealRowSwipeable";
+import { PressableScale } from "@/components/ui/PressableScale";
+
+type TodayMealRowPressableProps = PressableProps & {
+  tierV1: boolean;
+  children: ReactNode;
+};
+
+/** ENG-1099 M6 — meal rows use PressableScale when the tracker tier flag is on. */
+function TodayMealRowPressable({
+  tierV1,
+  children,
+  style,
+  ...rest
+}: TodayMealRowPressableProps) {
+  if (tierV1) {
+    return (
+      <PressableScale haptic="selection" style={style} {...rest}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return (
+    <Pressable style={style} {...rest}>
+      {children}
+    </Pressable>
+  );
+}
+
+type TodayAddFoodPressableProps = PressableProps & {
+  tierV1: boolean;
+  children: ReactNode;
+};
+
+function TodayAddFoodPressable({
+  tierV1,
+  children,
+  style,
+  ...rest
+}: TodayAddFoodPressableProps) {
+  if (tierV1) {
+    return (
+      <PressableScale haptic="selection" style={style} {...rest}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return (
+    <Pressable style={style} {...rest}>
+      {children}
+    </Pressable>
+  );
+}
+
+function TodayLogUsualPressable({
+  tierV1,
+  children,
+  style,
+  ...rest
+}: PressableProps & { tierV1: boolean; children: ReactNode }) {
+  if (tierV1) {
+    return (
+      <PressableScale haptic="selection" style={style} {...rest}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return (
+    <Pressable style={style} {...rest}>
+      {children}
+    </Pressable>
+  );
+}
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -627,6 +700,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // renders at full opacity; only the "Aim ~X kcal" line is hidden). Shared key
   // with web.
   const [calmMode] = useCalmMode();
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const consumedBySlot = useMemo(() => {
     const map: Record<string, number> = {};
     for (const s of slots) {
@@ -736,7 +810,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
         // this wrapper can never re-introduce it). Gated OFF on Today's main
         // scroll today (props kept wired for a future "logging section"). Sits on
         // the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} padding="none" style={{ marginBottom: Spacing.xs }}>
+        <SupprCard lift={tierV1 ? "flat" : "soft"} padding="none" style={{ marginBottom: Spacing.xs }}>
           {showQuickAdd && (
             <View
               style={{
@@ -839,7 +913,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 ? null
                 : meals.map((m) => (
                 <MealRowSwipeable key={m.id} mealId={m.id} onDeleteMeal={onDeleteMeal}>
-                  <Pressable
+                  <TodayMealRowPressable
+                    tierV1={tierV1}
                     onPress={() => onPressMeal(m.id)}
                     onLongPress={() => handleMealLongPress(m)}
                     style={{
@@ -865,7 +940,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       </Text>
                       <ChevronRight size={16} color={textTertiaryColor} />
                     </View>
-                  </Pressable>
+                  </TodayMealRowPressable>
                 </MealRowSwipeable>
               ))}
               {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
@@ -879,7 +954,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   paddingBottom: Spacing.dense,
                 }}
               >
-                <Pressable
+                <TodayAddFoodPressable
+                  tierV1={tierV1}
                   onPress={() => onOpenFabForSlot(slot)}
                   style={{
                     flexDirection: "row",
@@ -899,7 +975,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
                     Add food
                   </Text>
-                </Pressable>
+                </TodayAddFoodPressable>
               </View>
             </View>
             );
@@ -955,7 +1031,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               }}
             >
               {/* Per-slot card sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
-              <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} padding="none">
+              <SupprCard lift={tierV1 ? "flat" : "soft"} padding="none">
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{
@@ -1014,7 +1090,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       width: 32,
                       height: 32,
                       borderRadius: Radius.lg,
-                      backgroundColor: col + "18",
+                      backgroundColor: tierV1 ? col + "12" : col + "18",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1119,14 +1195,15 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           paddingHorizontal: Spacing.dense,
                           paddingVertical: 4,
                           borderRadius: Radius.full,
-                          backgroundColor: col + "18",
-                          borderWidth: 1,
-                          borderColor: col + "30",
+                          backgroundColor: tierV1 ? colors.fillQuiet : col + "18",
+                          borderWidth: tierV1 ? 0 : 1,
+                          borderColor: tierV1 ? undefined : col + "30",
                           maxWidth: 180,
                           flexShrink: 1,
                         }}
                       >
-                        <Pressable
+                        <TodayLogUsualPressable
+                          tierV1={tierV1}
                           testID={`today-log-usual-pill-in-header-${slot}`}
                           onPress={(e) => {
                             e.stopPropagation?.();
@@ -1158,7 +1235,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           >
                             {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
                           </Text>
-                        </Pressable>
+                        </TodayLogUsualPressable>
                         {/* Dismiss X — per-session hide. Grace 2026-05-22. */}
                         <Pressable
                           testID={`today-log-usual-dismiss-in-header-${slot}`}
@@ -1210,14 +1287,15 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       paddingHorizontal: Spacing.dense,
                       paddingVertical: Spacing.sm,
                       borderRadius: Radius.full,
-                      backgroundColor: col + "18",
-                      borderWidth: 1,
-                      borderColor: col + "30",
+                      backgroundColor: tierV1 ? colors.fillQuiet : col + "18",
+                      borderWidth: tierV1 ? 0 : 1,
+                      borderColor: tierV1 ? undefined : col + "30",
                       maxWidth: "100%",
                       flexShrink: 1,
                     }}
                   >
-                    <Pressable
+                    <TodayLogUsualPressable
+                      tierV1={tierV1}
                       testID={`today-log-usual-pill-${slot}`}
                       onPress={() => {
                         if (slotSaved.length >= 2) {
@@ -1250,7 +1328,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           ? `Log usual ${slot}…`
                           : `Log usual: ${primarySaved.name}`}
                       </Text>
-                    </Pressable>
+                    </TodayLogUsualPressable>
                     {/* Dismiss X — per-session hide. */}
                     <Pressable
                       testID={`today-log-usual-dismiss-${slot}`}
@@ -1270,7 +1348,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 meals.map((m) => (
                   <React.Fragment key={m.id}>
                   <MealRowSwipeable mealId={m.id} onDeleteMeal={onDeleteMeal}>
-                    <Pressable
+                    <TodayMealRowPressable
+                      tierV1={tierV1}
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
                         if (brandedSheets) {
@@ -1379,7 +1458,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         <Text style={{ fontSize: 10, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
-                    </Pressable>
+                    </TodayMealRowPressable>
                   </MealRowSwipeable>
                   {/* Phase 5 (2026-04-30) — one-time AI-first-log
                       tooltip. Anchored below the row whose id matches
@@ -1538,7 +1617,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     paddingBottom: Spacing.dense,
                   }}
                 >
-                  <Pressable
+                  <TodayAddFoodPressable
+                    tierV1={tierV1}
                     testID={`today-add-food-${slot}`}
                     onPress={() => onOpenFabForSlot(slot)}
                     accessibilityRole="button"
@@ -1559,7 +1639,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     <Text style={{ ...Type.body, color: accent.primarySolid }}>
                       Add food
                     </Text>
-                  </Pressable>
+                  </TodayAddFoodPressable>
                 </View>
               )}
               </SupprCard>

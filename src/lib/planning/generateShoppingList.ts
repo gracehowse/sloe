@@ -5,10 +5,13 @@
 import type { ShoppingItem } from "../../types/recipe";
 import { effectivePortionMultiplier } from "../nutrition/portionMultiplier";
 import { guessGroceryCategory } from "./category";
+import { normalizeIngredientNameKey } from "./ingredientNameKey";
 import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow";
+import { sortShoppingCategories } from "./shoppingAisleOrder";
 
-function normalizeKey(name: string, unit: string): string {
-  return `${name.trim().toLowerCase()}|${unit.trim().toLowerCase()}`;
+/** ENG-983 — merge key uses normalized ingredient identity, not raw label text. */
+function shoppingMergeKey(name: string, unit: string): string {
+  return `${normalizeIngredientNameKey(name)}|${unit.trim().toLowerCase()}`;
 }
 
 /** @deprecated Catalog removed — always returns false. Kept for API compat. */
@@ -44,7 +47,7 @@ function mergeRows(
   for (const ing of rows) {
     const normalized = normalizeShoppingIngredientRow(ing);
     const category = guessGroceryCategory(normalized.name);
-    const key = normalizeKey(normalized.name, normalized.unit);
+    const key = shoppingMergeKey(normalized.name, normalized.unit);
     const existing = itemsByKey.get(key);
     const parsed = Number.parseFloat(normalized.amount);
     const scaled = Number.isFinite(parsed) ? parsed * mult : null;
@@ -74,8 +77,12 @@ function mergeRows(
 }
 
 function sortItems(items: ShoppingItem[]): ShoppingItem[] {
+  const categories = sortShoppingCategories(items.map((i) => i.category));
+  const aisleRank = new Map(categories.map((c, i) => [c, i]));
   return [...items].sort((a, b) => {
-    if (a.category !== b.category) return a.category.localeCompare(b.category);
+    const ar = aisleRank.get(a.category) ?? Number.MAX_SAFE_INTEGER;
+    const br = aisleRank.get(b.category) ?? Number.MAX_SAFE_INTEGER;
+    if (ar !== br) return ar - br;
     return a.name.localeCompare(b.name);
   });
 }

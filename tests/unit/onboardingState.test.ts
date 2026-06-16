@@ -50,7 +50,6 @@ describe("onboarding v2 — step ordering", () => {
     expect(STEP_IDS).toEqual([
       "welcome",
       "app-choice",
-      "signup",
       "goal",
       "sex",
       "age",
@@ -61,6 +60,7 @@ describe("onboarding v2 — step ordering", () => {
       "diet",
       "strategy",
       "reveal",
+      "signup",
       "data-bridges",
     ]);
   });
@@ -129,17 +129,17 @@ describe("onboarding v2 — resolveNextStep auto-skip", () => {
 describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () => {
   const WELCOME = STEP_IDS.indexOf("welcome");
 
-  it("skips app-choice when the flag is OFF (default) — welcome jumps to signup", () => {
+  it("skips app-choice when the flag is OFF (default) — welcome jumps to goal", () => {
     // No options arg → appChoiceEnabled defaults to false → skip.
     const next = resolveNextStep(WELCOME, +1, baseState());
-    expect(STEP_IDS[next]).toBe("signup");
+    expect(STEP_IDS[next]).toBe("goal");
   });
 
   it("skips app-choice when the flag is explicitly OFF", () => {
     const next = resolveNextStep(WELCOME, +1, baseState(), {
       appChoiceEnabled: false,
     });
-    expect(STEP_IDS[next]).toBe("signup");
+    expect(STEP_IDS[next]).toBe("goal");
   });
 
   it("lands on app-choice when the flag is ON", () => {
@@ -149,12 +149,34 @@ describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () 
     expect(STEP_IDS[next]).toBe("app-choice");
   });
 
-  it("skips app-choice on backward navigation too (signup → welcome with flag OFF)", () => {
-    const signup = STEP_IDS.indexOf("signup");
-    const prev = resolveNextStep(signup, -1, baseState(), {
+  it("skips app-choice on backward navigation too (goal → welcome with flag OFF)", () => {
+    const goal = STEP_IDS.indexOf("goal");
+    const prev = resolveNextStep(goal, -1, baseState(), {
       appChoiceEnabled: false,
     });
     expect(STEP_IDS[prev]).toBe("welcome");
+  });
+});
+
+describe("onboarding v2 — signup after reveal (ENG-962)", () => {
+  it("places signup immediately after reveal and before data-bridges", () => {
+    const reveal = STEP_IDS.indexOf("reveal");
+    const signup = STEP_IDS.indexOf("signup");
+    const bridges = STEP_IDS.indexOf("data-bridges");
+    expect(signup).toBe(reveal + 1);
+    expect(bridges).toBe(signup + 1);
+  });
+
+  it("lets users reach reveal without a session (targets-first path)", () => {
+    expect(canAdvance("goal", baseState({ goal: "lose" }))).toBe(true);
+    expect(canAdvance("reveal", baseState())).toBe(true);
+    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(false);
+  });
+
+  it("reveal Continue lands on signup", () => {
+    const reveal = STEP_IDS.indexOf("reveal");
+    const next = resolveNextStep(reveal, +1, baseState());
+    expect(STEP_IDS[next]).toBe("signup");
   });
 });
 
@@ -170,14 +192,21 @@ describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)"
   });
 
   it("does not inflate the display index for steps after the hidden app-choice (flag OFF)", () => {
-    // signup is raw index 2, but with app-choice hidden it's the 2nd
+    // goal is raw index 2, but with app-choice hidden it's the 2nd
     // visible step → display index 2 (welcome is 1).
+    const goal = STEP_IDS.indexOf("goal");
+    const off = displayPosition(goal, { appChoiceEnabled: false });
+    expect(off.index).toBe(2);
+    // With the flag ON, goal is the 3rd visible step → index 3.
+    const on = displayPosition(goal, { appChoiceEnabled: true });
+    expect(on.index).toBe(3);
+  });
+
+  it("signup display index reflects post-reveal position (ENG-962)", () => {
     const signup = STEP_IDS.indexOf("signup");
     const off = displayPosition(signup, { appChoiceEnabled: false });
-    expect(off.index).toBe(2);
-    // With the flag ON, signup is the 3rd visible step → index 3.
-    const on = displayPosition(signup, { appChoiceEnabled: true });
-    expect(on.index).toBe(3);
+    // welcome + 11 body/reveal steps before signup (app-choice hidden).
+    expect(off.index).toBe(12);
   });
 
   it("welcome is always 'Step 1' in both flag states", () => {

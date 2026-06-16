@@ -91,6 +91,13 @@ import {
   parsePantryStaples,
 } from "../lib/planning/pantryStaples.ts";
 import { startDateForOffset } from "../lib/mealPlan/planCalendarAnchor.ts";
+import {
+  cloudSlotIdFromLocal,
+  fetchMealPlanForLocalSlot,
+  mergeCloudMetadataIntoSlots,
+  metadataFromSlots,
+  parseMealPlanSlotsMetadata,
+} from "../lib/mealPlan/slotCloudSync.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
 export type RedeemPromoResult =
@@ -299,6 +306,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
   const activeMealPlanSlotIdRef = useRef(activeMealPlanSlotId);
   activeMealPlanSlotIdRef.current = activeMealPlanSlotId;
+  /** ENG-1130: skip metadata write-back until profile meal_plan_slots hydrates. */
+  const mealPlanSlotsCloudLoadedRef = useRef(false);
   const mealPlanSlotsRef = useRef(mealPlanSlots);
   mealPlanSlotsRef.current = mealPlanSlots;
 
@@ -334,11 +343,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
-
-  const switchMealPlanSlot = useCallback((slotId: string) => {
-    if (!mealPlanSlotsRef.current.some((s) => s.id === slotId)) return;
-    setActiveMealPlanSlotId(slotId);
-  }, []);
 
   const createMealPlanSlot = useCallback((name: string) => {
     const id = newId("planslot");
@@ -393,6 +397,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [, setIsGeneratingPlan] = useState(false);
   const [dbMealPlanEnabled, setDbMealPlanEnabled] = useState(true);
   const [dbMealPlanWarned, setDbMealPlanWarned] = useState(false);
+
+  const switchMealPlanSlot = useCallback(
+    (slotId: string) => {
+      if (!mealPlanSlotsRef.current.some((s) => s.id === slotId)) return;
+      setActiveMealPlanSlotId(slotId);
+      if (!authedUserId || !dbMealPlanEnabled) return;
+      const target = mealPlanSlotsRef.current.find((s) => s.id === slotId);
+      if (target?.plan) return;
+      void (async () => {
+        const loaded = await fetchMealPlanForLocalSlot(supabase, authedUserId, slotId);
+        if (!loaded?.plans.length) return;
+        setMealPlanSlots((prev) =>
+          prev.map((s) => (s.id === slotId ? { ...s, plan: loaded.plans } : s)),
+        );
+      })();
+    },
+    [authedUserId, dbMealPlanEnabled],
+  );
+
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
 
   // Honeydew parity (2026-04-30) — resolve the user's active household
@@ -559,7 +582,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples",
+          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples, meal_plan_slots",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -583,6 +606,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         );
         }
         setPreferActivityAdjustedCalories(local?.preferActivityAdjustedCalories ?? false);
+        mealPlanSlotsCloudLoadedRef.current = true;
         return;
       }
       // `lifetime_pro` (ENG-1043 founding comp) is normalised to `pro` so every
@@ -597,6 +621,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // populated yet (forward-only safe).
       setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
       setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples));
+      const cloudSlotMeta = parseMealPlanSlotsMetadata(
+        (data as { meal_plan_slots?: unknown } | null)?.meal_plan_slots,
+      );
+      if (cloudSlotMeta) {
+        setMealPlanSlots((prev) => mergeCloudMetadataIntoSlots(prev, cloudSlotMeta).slots);
+        setActiveMealPlanSlotId((prev) => {
+          const merged = mergeCloudMetadataIntoSlots(mealPlanSlotsRef.current, cloudSlotMeta);
+          return merged.activeSlotId ?? prev;
+        });
+      }
+      mealPlanSlotsCloudLoadedRef.current = true;
       const hasTargets = Boolean(
         data?.target_calories &&
           data?.target_protein &&
@@ -776,80 +811,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, tier, alreadyRedeemed: Boolean(payload!.already_redeemed) };
   }, [authedUserId]);
 
-  // Load persisted meal plan from Supabase (tries relational table, falls back to legacy JSONB).
+  // Load persisted meal plan for the active named slot from Supabase.
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
     (async () => {
       if (!dbMealPlanEnabled) return;
-
-      // Try relational tables first. T7 (2026-04-24): SELECT start_date
-      // so downstream resolvers (Today's planned meals, "which day is
-      // today?" lookups) read the persisted anchor.
-      const { data: dayRows, error: dayErr } = await supabase
-        .from("meal_plan_days")
-        .select("id, day, slot_id, start_date")
-        .eq("user_id", authedUserId)
-        .eq("slot_id", "default")
-        .order("day", { ascending: true });
-
-      if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
-        const dayIds = dayRows.map((d: { id: string }) => d.id);
-        const { data: mealRows } = await supabase
-          .from("meal_plan_meals")
-          .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
-          .in("plan_day_id", dayIds)
-          .order("slot_index", { ascending: true });
-
-        if (!cancelled && mealRows) {
-          const mealsByDay = new Map<string, typeof mealRows>();
-          for (const m of mealRows) {
-            const arr = mealsByDay.get(m.plan_day_id) ?? [];
-            arr.push(m);
-            mealsByDay.set(m.plan_day_id, arr);
-          }
-          const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
-            const meals = (mealsByDay.get(d.id) ?? [])
-              .map((m): import("../types/recipe.ts").DayPlanMeal => ({
-                name: m.name,
-                recipeTitle: m.recipe_title,
-                calories: m.calories,
-                protein: m.protein,
-                carbs: m.carbs,
-                fat: m.fat,
-                portionMultiplier: m.portion_multiplier,
-                isPlaceholder: m.is_placeholder || undefined,
-              }))
-              .filter(
-                (m) =>
-                  typeof m.recipeTitle === "string" &&
-                  !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-              );
-            const totals = meals.reduce(
-              (acc, m) => ({
-                calories: acc.calories + m.calories,
-                protein: acc.protein + m.protein,
-                carbs: acc.carbs + m.carbs,
-                fat: acc.fat + m.fat,
-              }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
-            );
-            return { day: d.day, meals, totals };
-          });
-          const slotId = activeMealPlanSlotIdRef.current;
-          setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: plans } : s)));
-          return;
-        }
-      }
-
-      // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans`
-      // JSONB fallback removed (table dropped 2026-04-21). Plans now
-      // come exclusively from `meal_plan_days` + `meal_plan_meals`.
+      const slotId = activeMealPlanSlotIdRef.current;
+      const loaded = await fetchMealPlanForLocalSlot(supabase, authedUserId, slotId);
+      if (cancelled || !loaded?.plans.length) return;
+      setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: loaded.plans } : s)));
     })();
     return () => {
       cancelled = true;
     };
-  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned]);
+  }, [authedUserId, dbMealPlanEnabled, activeMealPlanSlotId]);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
@@ -1356,7 +1332,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         .from("meal_plan_days")
         .select("start_date")
         .eq("user_id", authedUserId)
-        .eq("slot_id", DEFAULT_MEAL_PLAN_SLOT_ID)
+        .eq("slot_id", cloudSlotIdFromLocal(activeMealPlanSlotIdRef.current))
         .order("day", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -1541,7 +1517,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         })),
       }));
       const { error } = await supabase.rpc("save_meal_plan", {
-        p_slot_id: "default",
+        p_slot_id: cloudSlotIdFromLocal(activeMealPlanSlotIdRef.current),
         p_start_date: webStartDate,
         p_plan: planPayload,
       } as never);
@@ -1568,6 +1544,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }, 600);
     return () => clearTimeout(t);
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
+
+  // ENG-1130 — sync named slot registry (ids, names, active) to profiles.
+  useEffect(() => {
+    if (!authedUserId || !mealPlanSlotsCloudLoadedRef.current) return;
+    const t = setTimeout(async () => {
+      const payload = metadataFromSlots(
+        mealPlanSlotsRef.current,
+        activeMealPlanSlotIdRef.current,
+      );
+      const { error } = await supabase
+        .from("profiles")
+        .update({ meal_plan_slots: payload })
+        .eq("id", authedUserId);
+      if (error) {
+        const msg = error.message ?? "";
+        if (!looksLikeMissingTableError(msg)) {
+          console.error("[mealPlanSlots] profile metadata sync failed:", msg);
+        }
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [authedUserId, mealPlanSlots, activeMealPlanSlotId]);
 
   const extraWaterMlForSelectedDay = extraWaterByDay[selectedDateKey] ?? 0;
   const extraCaffeineMgForSelectedDay = extraCaffeineByDay[selectedDateKey] ?? 0;

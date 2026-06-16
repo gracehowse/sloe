@@ -57,7 +57,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
       />,
     );
     expect(screen.getByRole("tab", { name: "Recent" })).toBeDefined();
-    expect(screen.getByRole("tab", { name: "Library" })).toBeDefined();
+    expect(screen.getByRole("tab", { name: "My recipes" })).toBeDefined();
     expect(screen.getByRole("tab", { name: "Saved meals" })).toBeDefined();
   });
 
@@ -70,7 +70,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    expect(screen.queryByRole("tab", { name: "Library" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "My recipes" })).toBeNull();
   });
 
   it("renders Library content (title + kcal + tag) after switching to the Library tab", () => {
@@ -83,7 +83,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Library" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My recipes" }));
     expect(screen.getByText("Greek salad")).toBeDefined();
     expect(screen.getByText("320 kcal")).toBeDefined();
     expect(screen.getByText("Lunch")).toBeDefined();
@@ -102,7 +102,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Library" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My recipes" }));
     fireEvent.click(screen.getByRole("button", { name: "Log Greek salad" }));
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onPick).toHaveBeenCalledWith(greekSalad);
@@ -118,7 +118,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Library" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My recipes" }));
     expect(screen.getByText("No saved recipes yet")).toBeDefined();
     expect(
       screen.getByText(
@@ -138,7 +138,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Library" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My recipes" }));
     fireEvent.click(screen.getByRole("button", { name: "Browse recipes" }));
     expect(onBrowseRecipes).toHaveBeenCalledTimes(1);
   });
@@ -153,7 +153,7 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Library" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My recipes" }));
     expect(screen.queryByRole("button", { name: "Browse recipes" })).toBeNull();
   });
 
@@ -181,6 +181,6 @@ describe("LogSheet (web) -- Library tab (TestFlight Build 40)", () => {
       />,
     );
     const tabs = screen.getAllByRole("tab").map((el) => el.getAttribute("aria-label"));
-    expect(tabs).toEqual(["Recent", "Library", "Saved meals"]);
+    expect(tabs).toEqual(["Recent", "My recipes", "Saved meals"]);
   });
 });

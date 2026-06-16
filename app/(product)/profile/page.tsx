@@ -4,8 +4,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Profile — Suppr",
-  description: "Your Suppr profile and preferences.",
+  title: "Profile — Sloe",
+  description: "Your Sloe profile and preferences.",
 };
 
 export default function ProfilePage() {

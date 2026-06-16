@@ -18,8 +18,10 @@
 import { describe, it, expect } from "vitest";
 import type { FatSecretServing } from "@/lib/fatsecret/client";
 import {
+  fatSecretMicroFieldToAbsolute,
   fatSecretServingMicrosAbsolute,
   fatSecretServingMicrosPer100g,
+  inferFatSecretMicroUnitMode,
 } from "@/lib/nutrition/fatsecretNormalize";
 
 describe("fatSecretServingMicrosPer100g", () => {
@@ -162,5 +164,56 @@ describe("fatSecretServingMicrosAbsolute", () => {
   it("drops zero / missing values", () => {
     const serving: FatSecretServing = { cholesterol: "0", sodium: "", sugar: "0.0", calcium: "0" };
     expect(fatSecretServingMicrosAbsolute(serving)).toEqual({});
+  });
+});
+
+describe("ENG-1118 — FatSecret %DV vs absolute unit guard", () => {
+  it("infers percentDv for legacy v1 serving fields", () => {
+    const serving: FatSecretServing = {
+      calcium: "55",
+      iron: "4",
+      vitamin_a: "29",
+    };
+    expect(inferFatSecretMicroUnitMode(serving)).toBe("percentDv");
+  });
+
+  it("infers absolute when migrated API returns physical mg/µg", () => {
+    const serving: FatSecretServing = {
+      calcium: "715",
+      iron: "0.72",
+      vitamin_a: "261",
+    };
+    expect(inferFatSecretMicroUnitMode(serving)).toBe("absolute");
+  });
+
+  it("does not inflate v2 absolute calcium by applying %DV multiplier", () => {
+    const serving: FatSecretServing = {
+      metric_serving_amount: "100",
+      metric_serving_unit: "g",
+      calcium: "715",
+      iron: "0.7",
+      vitamin_a: "261",
+    };
+    const micros = fatSecretServingMicrosPer100g(serving, 100);
+    expect(micros.calciumMg).toBeCloseTo(715, 0);
+    expect(micros.ironMg).toBeCloseTo(0.7, 1);
+    expect(micros.vitaminAMcgRae).toBeCloseTo(261, 0);
+    // Wrong path would be ~9295 mg calcium (715% × 1300).
+    expect(micros.calciumMg).toBeLessThan(2000);
+  });
+
+  it("fatSecretMicroFieldToAbsolute keeps legacy %DV conversion", () => {
+    expect(fatSecretMicroFieldToAbsolute("9", 1300, 1500, "percentDv")).toBeCloseTo(117, 0);
+    expect(fatSecretMicroFieldToAbsolute("55", 1300, 1500, "percentDv")).toBeCloseTo(715, 0);
+  });
+
+  it("fatSecretMicroFieldToAbsolute passes through plausible absolutes", () => {
+    expect(fatSecretMicroFieldToAbsolute("715", 1300, 1500, "absolute")).toBe(715);
+    expect(fatSecretMicroFieldToAbsolute("117", 1300, 1500, "absolute")).toBe(117);
+  });
+
+  it("drops values that are implausible under either interpretation", () => {
+    expect(fatSecretMicroFieldToAbsolute("50000", 1300, 1500, "percentDv")).toBe(0);
+    expect(fatSecretMicroFieldToAbsolute("50000", 1300, 1500, "absolute")).toBe(0);
   });
 });

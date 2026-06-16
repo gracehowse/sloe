@@ -10,7 +10,7 @@
  * Honest-claims rules (these are non-negotiable — Suppr's voice):
  *
  *   - If `daysLogged === 0`:
- *       "Nothing logged this week. Open Suppr to get back on track."
+ *       "Nothing logged this week. Open Sloe to get back on track."
  *     This is the only acceptable generic fallback. We never invent a
  *     more flattering line when there is no data.
  *
@@ -141,7 +141,7 @@ export function formatWeeklyRecapPushBody(
   // and the comment on `PushBodyVariant`).
   if (recap.daysLogged === 0) {
     return {
-      body: "Nothing logged this week. Open Suppr to get back on track.",
+      body: "Nothing logged this week. Open Sloe to get back on track.",
       variant: "zero_days",
     };
   }

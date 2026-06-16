@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Progress — Suppr",
+  title: "Progress — Sloe",
   description: "Your weight, weekly recap, and adaptive TDEE.",
 };
 

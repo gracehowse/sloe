@@ -39,7 +39,7 @@ describe("RecipeUpload import CTAs — solid primary / ghost (button system 2026
 
   it("'Save to my library' (import mode) is a SOLID primary", () => {
     expect(UPLOAD).toMatch(
-      /<SupprButton\s+variant="primary"[\s\S]{0,300}Save to my library/,
+      /<SupprButton\s+variant="primary"[\s\S]{0,500}IMPORT_SAVE_FIRST_UPDATE_CTA[\s\S]{0,120}Save to my library/,
     );
   });
 

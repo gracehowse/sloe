@@ -37,6 +37,7 @@ import {
   traceNutritionLookup,
   traceCaptionNutrition,
 } from "@/lib/analytics/recipeImportPipelineTrace";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const maxDuration = 30;
 
@@ -58,6 +59,9 @@ function flagOff() {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   if (!isIgTtImportEnabled()) {
     return flagOff();
   }

@@ -80,7 +80,7 @@ export function HomePageClient() {
   }, []);
 
   if (!ready) {
-    return <AppLoadingSkeleton label="Starting Suppr\u2026" />;
+    return <AppLoadingSkeleton label="Starting Sloe\u2026" />;
   }
 
   return <AuthedHome />;

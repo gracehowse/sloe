@@ -10,7 +10,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { Check, ChevronRight, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
+import { Check, ChevronRight, Package, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +26,10 @@ import {
   SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY,
   SHOPPING_LIST_PLAN_START_STORAGE_KEY,
 } from "@suppr/shared/planning/shoppingListMeta";
+import {
+  appendPantryStaple,
+  parsePantryStaples,
+} from "@suppr/shared/planning/pantryStaples";
 import {
   dedupeShoppingLabel,
   shoppingItemsTiedToCurrentPlan,
@@ -58,6 +62,7 @@ import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { Layout } from "@/constants/layout";
 
@@ -116,6 +121,7 @@ export default function ShoppingListScreen() {
   const [planStartDate, setPlanStartDate] = useState<string | null>(null);
   const [shoppingListOutOfSync, setShoppingListOutOfSync] = useState(false);
   const [household, setHousehold] = useState<HouseholdData | null>(null);
+  const [pantryStaples, setPantryStaples] = useState<readonly string[]>([]);
   const householdRef = useRef<HouseholdData | null>(null);
   householdRef.current = household;
 
@@ -167,6 +173,29 @@ export default function ShoppingListScreen() {
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) {
+      setPantryStaples([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("pantry_staples")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!cancelled) {
+        setPantryStaples(
+          parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   // Map a household member's userId → MemberSummary for attribution chips.
   const memberById = useMemo(() => {
     const m = new Map<string, { displayName: string; index: number }>();
@@ -205,13 +234,14 @@ export default function ShoppingListScreen() {
     // household list is shared and it's NOT one user's job to prune
     // entries that fell off another user's plan.
     if (s.kind === "solo" && rows.length > 0) {
+      const activePlanSlotId = await readActiveCloudMealPlanSlotId();
       const dayPack = await raceShoppingQuery(
         (async () =>
           await supabase
             .from("meal_plan_days")
             .select("id")
             .eq("user_id", s.userId)
-            .eq("slot_id", "default"))(),
+            .eq("slot_id", activePlanSlotId))(),
         SHOPPING_PLAN_AUX_TIMEOUT_MS,
         "meal_plan_days (shopping reconcile)",
       );
@@ -398,6 +428,38 @@ export default function ShoppingListScreen() {
       return next;
     });
   }, [userId]);
+
+  const savePantryStaples = useCallback(
+    async (next: readonly string[]) => {
+      const normalized = parsePantryStaples(next);
+      const previous = pantryStaples;
+      setPantryStaples(normalized);
+      if (!userId) return;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ pantry_staples: normalized })
+        .eq("id", userId);
+      if (error) {
+        setPantryStaples(previous);
+        Alert.alert(
+          "Couldn't save pantry staples",
+          "Please try again in Settings.",
+        );
+      }
+    },
+    [pantryStaples, userId],
+  );
+
+  const markGroupAsStaple = useCallback(
+    async (group: ShoppingDisplayGroup) => {
+      const name = group.displayName.trim();
+      if (!name) return;
+      await savePantryStaples(appendPantryStaple(pantryStaples, name));
+      for (const item of group.items) removeItem(item.id);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [pantryStaples, removeItem, savePantryStaples],
+  );
 
   const clearAll = useCallback(() => {
     Alert.alert(
@@ -943,7 +1005,32 @@ export default function ShoppingListScreen() {
                       <Swipeable
                         key={group.key}
                         overshootRight={false}
+                        overshootLeft={false}
                         friction={2}
+                        renderLeftActions={() => (
+                          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+                            <Pressable
+                              onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                void markGroupAsStaple(group);
+                              }}
+                              style={{
+                                width: 88,
+                                backgroundColor: accent.primarySoft,
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Always have ${rowLabel} — hide from future shopping lists`}
+                              testID={`shopping-swipe-staple-${group.key}`}
+                            >
+                              <Package size={22} color={accent.primarySolid} />
+                              <Text style={{ color: accent.primarySolid, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
+                                Staple
+                              </Text>
+                            </Pressable>
+                          </View>
+                        )}
                         renderRightActions={() => (
                           <View style={{ flexDirection: "row", alignItems: "stretch" }}>
                             <Pressable
@@ -982,12 +1069,18 @@ export default function ShoppingListScreen() {
                         }}
                         onLongPress={() => {
                           Alert.alert(
-                            group.items.length > 1 ? "Remove items" : "Remove item",
+                            group.items.length > 1 ? "Shopping item" : rowLabel,
                             group.items.length > 1
-                              ? `Delete ${group.items.length} rows for "${rowLabel}"?`
-                              : `Delete "${rowLabel}"?`,
+                              ? `"${rowLabel}" (${group.items.length} rows)`
+                              : undefined,
                             [
                               { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Always on hand",
+                                onPress: () => {
+                                  void markGroupAsStaple(group);
+                                },
+                              },
                               {
                                 text: "Remove",
                                 style: "destructive",

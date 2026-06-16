@@ -8,6 +8,7 @@ import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics
 import { track } from "../../src/lib/analytics/track.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
+import { PricingNoPaymentChip } from "./PricingNoPaymentChip.tsx";
 
 type Tier = PricingTier & {
   /** CTA label computed by the server from `checkoutTier`. */
@@ -341,6 +342,10 @@ export function PricingTiersGrid({
               >
                 {tier.nutritionNote}
               </div>
+
+              {tier.checkoutTier === "pro" && billing === "annual" ? (
+                <PricingNoPaymentChip />
+              ) : null}
 
               <CheckoutButton
                 tier={tier.checkoutTier}

@@ -50,9 +50,16 @@ function readMobileColor(mode: "light" | "dark", key: string): string {
   const marker = mode === "light" ? "light: {" : "dark: {";
   const start = MOBILE_THEME.indexOf(marker);
   expect(start).toBeGreaterThanOrEqual(0);
-  // 4000: the light block grew a §1 material-inversion provenance comment
-  // (2026-06-10); the old 2500 window cut tokens mid-block.
-  const slice = MOBILE_THEME.slice(start, start + 4000);
+  const open = MOBILE_THEME.indexOf("{", start);
+  let depth = 1;
+  let i = open + 1;
+  while (i < MOBILE_THEME.length && depth > 0) {
+    const ch = MOBILE_THEME[i];
+    if (ch === "{") depth += 1;
+    else if (ch === "}") depth -= 1;
+    i += 1;
+  }
+  const slice = MOBILE_THEME.slice(open + 1, i - 1);
   const m = slice.match(new RegExp(`${key}:\\s*'([^']+)'`));
   expect(m, `${mode}.${key}`).not.toBeNull();
   return m![1].trim().toLowerCase();

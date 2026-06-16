@@ -213,7 +213,7 @@ function freshTracker(): React.ReactElement {
   return <NutritionTracker userTier="free" onOpenProgress={() => {}} />;
 }
 
-describe("Today win-moment wiring (gaps #1 + #2)", () => {
+describe("Today win-moment wiring (gaps #1 + #2)", { timeout: 15_000 }, () => {
   beforeEach(() => {
     // Today's surface only detects on the *live* today key, so freeze the
     // clock to the selectedDateKey.

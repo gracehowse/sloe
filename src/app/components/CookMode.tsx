@@ -481,8 +481,9 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       setServingsDialogOpen(true);
       return;
     }
-    commitLogMeal(scaleFactor);
-  }, [commitLogMeal, scaleFactor]);
+    // Legacy flag-off path: default 1 serving eaten (never batch scale).
+    commitLogMeal(1);
+  }, [commitLogMeal]);
 
   /** Save the per-cook history row (Paprika parity, 2026-04-30).
    *  Writes to `recipe_cook_history` with duration / scale / rating /

@@ -125,6 +125,7 @@ import CreateCustomFoodSheet, {
 import Badge from "../Badge";
 import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAutocompleteClient";
@@ -1614,6 +1615,20 @@ export default function FoodSearchPanel({
     [redesignSearch, query, filteredResults],
   );
 
+  /** ENG-1121 — FatSecret attribution when branded rows or premier autocomplete show. */
+  const showFatSecretAttribution = useMemo(() => {
+    if (preview?.source === "FatSecret") return true;
+    if (results.some((r) => r._source === "FatSecret")) return true;
+    if (
+      autocomplete.tier === "premier" &&
+      autocomplete.suggestions.length > 0 &&
+      query.trim()
+    ) {
+      return true;
+    }
+    return false;
+  }, [preview, results, autocomplete, query]);
+
   // Flatten the best/more sections into an ordered FlatList feed of
   // discriminated render-rows so pagination (`onEndReached`), the empty
   // state and the footer all stay on the SAME FlatList as the flat path.
@@ -2072,6 +2087,9 @@ export default function FoodSearchPanel({
               />
             </>
           ) : null}
+          {preview.source === "FatSecret" ? (
+            <FatSecretBadge variant="text" testID="food-search-fatsecret-badge" />
+          ) : null}
         </View>
       </ScrollView>
       {/* ENG-1054 — pin commit CTAs above the keyboard / fold so "Use this"
@@ -2321,6 +2339,13 @@ export default function FoodSearchPanel({
             Create custom food
           </Text>
         </Pressable>
+      ) : null}
+      {showFatSecretAttribution ? (
+        <FatSecretBadge
+          variant="text"
+          testID="food-search-fatsecret-badge"
+          style={{ marginTop: Spacing.md }}
+        />
       ) : null}
     </View>
   );

@@ -185,8 +185,8 @@ describe("Today lane (web) — filter pills + segmented controls use the SOFT ti
     expect(ADD_MEAL).toMatch(/"bg-card shadow text-primary-solid"/);
   });
 
-  it("Log sheet browse segmented control: active label = text-primary-solid", () => {
-    expect(LOG_SHEET).toMatch(/"bg-background text-primary-solid shadow-sm"/);
+  it("Log sheet browse tabs: Figma underline active state (ENG-900)", () => {
+    expect(LOG_SHEET).toMatch(/border-foreground font-semibold text-foreground/);
   });
 
   it("Snap shortcut Pro chip = bg-primary/10 + text-primary-solid; shutter glyph = primary-solid", () => {

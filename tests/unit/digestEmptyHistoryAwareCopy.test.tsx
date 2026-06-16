@@ -39,7 +39,7 @@ const emptyProps: DigestProps = {
     weightLastKg: null,
   },
   narrative: { closestToTarget: null, maintenanceLine: null, usualMeal: null },
-  shareText: "My week on Suppr",
+  shareText: "My week on Sloe",
   state: "empty",
   onShare: () => {},
   onDismiss: () => {},

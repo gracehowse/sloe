@@ -51,7 +51,7 @@ describe("formatWeeklyRecapPushBody — variant selection", () => {
     const out = formatWeeklyRecapPushBody(makeRecap({ daysLogged: 0 }));
     expect(out.variant).toBe<PushBodyVariant>("zero_days");
     expect(out.body).toBe(
-      "Nothing logged this week. Open Suppr to get back on track.",
+      "Nothing logged this week. Open Sloe to get back on track.",
     );
   });
 
@@ -202,7 +202,7 @@ describe("formatWeeklyRecapPushBody — with_suggestion variant", () => {
     );
     expect(out.variant).toBe<PushBodyVariant>("zero_days");
     expect(out.body).toBe(
-      "Nothing logged this week. Open Suppr to get back on track.",
+      "Nothing logged this week. Open Sloe to get back on track.",
     );
   });
 

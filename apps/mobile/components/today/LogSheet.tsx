@@ -20,9 +20,9 @@ import {
   Clock,
   Copy,
   History,
-  Lock,
   Mic,
   PencilLine,
+  Plus,
   ScanBarcode,
   Search,
   X,
@@ -33,7 +33,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import * as Haptics from "expo-haptics";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -51,6 +51,8 @@ import {
   BARCODE_FREE_FOREVER_HEADLINE,
   BARCODE_LOUD_CTA_LABEL,
 } from "@suppr/shared/nutrition/barcodeFreePromise";
+import { looksLikeMealDescription } from "@suppr/shared/nutrition/parseMealDescription";
+import { LogSheetDescribeFlow } from "@/components/today/LogSheetDescribeFlow";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -382,6 +384,13 @@ export interface LogSheetProps {
   };
   /** ENG-973 — show free-barcode promise under search row. */
   showBarcodeFreePromise?: boolean;
+  /** ENG-972 — inline natural-language describe + parse inside the sheet. */
+  describe?: {
+    locked?: boolean;
+    onParse: (text: string) => Promise<import("@suppr/shared/nutrition/parseMealDescription").ParseMealDescriptionResult>;
+    onCommit: (items: import("@suppr/shared/nutrition/aiLogging").AiLoggedItem[]) => void;
+    onPaywall?: () => void;
+  };
   /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
    *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
    *  the user can see AND choose which meal the item lands in, instead
@@ -438,6 +447,7 @@ export function LogSheet({
   goTos,
   basket,
   showBarcodeFreePromise = false,
+  describe,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -499,7 +509,7 @@ export function LogSheet({
             {/* Header — Sloe DS: Newsreader serif title in brand plum
                 (`navPrimary`), the editorial-heading grammar shared with
                 the Today section headers. */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <View style={styles.header}>
               <Text style={[Type.title, { color: colors.navPrimary }]}>Log a meal</Text>
               <Pressable
                 onPress={onClose}
@@ -594,6 +604,7 @@ export function LogSheet({
                 goTos={goTos}
                 basket={basket}
                 showBarcodeFreePromise={showBarcodeFreePromise}
+                describe={describe}
               />
             )}
           </View>
@@ -717,6 +728,7 @@ function DefaultComposition({
   goTos,
   basket,
   showBarcodeFreePromise,
+  describe,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -733,9 +745,12 @@ function DefaultComposition({
   goTos?: LogSheetProps["goTos"];
   basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
+  describe?: LogSheetProps["describe"];
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
+  const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
@@ -766,11 +781,15 @@ function DefaultComposition({
   React.useEffect(() => {
     if (!visible) {
       setQuery("");
+      setDescribeReviewActive(false);
+      setDescribeSeedText(null);
     }
   }, [visible]);
 
   return (
     <View style={{ flex: 1 }}>
+      {!describeReviewActive ? (
+        <>
       {/* Search row — primary input. Right-edge icons (scan / voice
           / photo) ride along when the host wires the corresponding
           callbacks. In inline mode the row is a real `<TextInput>`
@@ -782,14 +801,17 @@ function DefaultComposition({
             testID="log-sheet-search-row"
             style={[
               styles.searchInputWrap,
-              { backgroundColor: colors.inputBg },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
             ]}
           >
             <Search size={IconSize.base} color={colors.textSecondary} />
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search foods, brands, or recipes"
+              placeholder="Search foods or scan"
               placeholderTextColor={colors.textSecondary}
               accessibilityLabel="Search foods"
               testID="log-sheet-search-input"
@@ -804,7 +826,17 @@ function DefaultComposition({
                 paddingVertical: 0,
               }}
             />
-            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+            {barcode?.onOpen ? (
+              <Pressable
+                onPress={() => barcode.onOpen?.()}
+                accessibilityRole="button"
+                accessibilityLabel="Scan barcode"
+                hitSlop={6}
+                style={({ pressed }) => ({ opacity: pressed ? 0.55 : 1 })}
+              >
+                <ScanBarcode size={18} color={colors.textTertiary} strokeWidth={2} />
+              </Pressable>
+            ) : null}
           </View>
         ) : (
           <Pressable
@@ -816,7 +848,8 @@ function DefaultComposition({
             style={({ pressed }) => [
               styles.searchInputWrap,
               {
-                backgroundColor: colors.inputBg,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
                 opacity: pressed ? 0.85 : 1,
               },
             ]}
@@ -826,11 +859,19 @@ function DefaultComposition({
               style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}
               numberOfLines={1}
             >
-              Search foods, brands, or recipes
+              Search foods or scan
             </Text>
-            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+            {barcode?.onOpen ? (
+              <ScanBarcode size={18} color={colors.textTertiary} strokeWidth={2} />
+            ) : null}
           </Pressable>
         )}
+        <InputModeRow
+          barcode={barcode}
+          voice={voice}
+          photo={photo}
+          onQuickAdd={onAddManually}
+        />
       </View>
 
       {showBarcodeFreePromise && barcode?.onOpen ? (
@@ -879,13 +920,57 @@ function DefaultComposition({
           </Text>
         </View>
       ) : null}
+        </>
+      ) : null}
 
+      {describe ? (
+        <LogSheetDescribeFlow
+          sheetOpen={visible}
+          locked={describe.locked}
+          seedText={describeSeedText}
+          onSeedConsumed={() => setDescribeSeedText(null)}
+          onParse={describe.onParse}
+          onCommit={describe.onCommit}
+          onPaywall={describe.onPaywall}
+          onReviewActiveChange={setDescribeReviewActive}
+          inputHidden={!describeReviewActive && query.trim().length > 0}
+        />
+      ) : null}
+
+      {!describeReviewActive ? (
+      <>
       {/* Inline search results — only mounted when the user has
           actually started typing. Empty query keeps the existing
           Recent / Saved browse content visible so the sheet doesn't
           look "blank" on open. */}
       {inlineMode && query.trim().length > 0 ? (
         <View style={{ flex: 1, marginTop: Spacing.sm }}>
+          {describe && looksLikeMealDescription(query) ? (
+            <Pressable
+              testID="log-sheet-describe-from-search"
+              accessibilityRole="button"
+              accessibilityLabel="Parse search text as meal description"
+              onPress={() => {
+                setDescribeSeedText(query.trim());
+                setQuery("");
+              }}
+              style={({ pressed }) => ({
+                marginHorizontal: Spacing.md,
+                marginBottom: Spacing.sm,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.sm,
+                borderRadius: Radius.lg,
+                borderWidth: 1,
+                borderColor: accent.primarySoft,
+                backgroundColor: accent.primarySoft,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
+                Parse as meal description
+              </Text>
+            </Pressable>
+          ) : null}
           <FoodSearchPanel
             query={query}
             macroTargets={search?.macroTargets}
@@ -927,13 +1012,16 @@ function DefaultComposition({
             library={library}
             browseTab={browseTab}
             onBrowseTabChange={onBrowseTabChange}
-            onAddManually={onAddManually}
+            macroTargets={search?.macroTargets}
+            macroConsumed={search?.macroConsumed}
           />
           {basket && basket.items.length > 0 ? (
             <LogSheetBasketBar basket={basket} />
           ) : null}
         </>
       )}
+      </>
+      ) : null}
     </View>
   );
 }
@@ -1071,7 +1159,8 @@ function BrowseAndFooter({
   library,
   browseTab,
   onBrowseTabChange,
-  onAddManually,
+  macroTargets,
+  macroConsumed,
 }: {
   showBrowseToggle: boolean;
   visibleTabs: BrowseTab[];
@@ -1085,7 +1174,8 @@ function BrowseAndFooter({
   library: LogSheetProps["library"];
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
-  onAddManually?: () => void;
+  macroTargets?: MacroTargets;
+  macroConsumed?: MacroConsumed;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -1100,26 +1190,19 @@ function BrowseAndFooter({
 
   const labelFor = (id: BrowseTab) =>
     id === "gotos"
-      ? "Go-tos"
+      ? "Favourites"
       : id === "recent"
         ? "Recent"
         : id === "library"
-          ? "Library"
+          ? "My recipes"
           : "Saved meals";
 
   return (
     <>
-      {/* Browse pill toggle — Recent / Library / Saved. Hidden when
-          only one source is available; the available one renders
-          directly.
-          2026-05-01 (journey-architect P1): all pills carry equal
-          weight (font / active-state / touch target) and the Saved
-          pill carries a small dot indicator when the user has 3+
-          saved meals to nudge first-time users to the tab they don't
-          know exists yet. */}
+      {/* Browse tabs — Figma 336:2 underline rail. */}
       {showBrowseToggle ? (
         <View
-          style={[styles.browsePillRow, { backgroundColor: colors.inputBg }]}
+          style={[styles.browseTabRow, { borderBottomColor: colors.border }]}
           accessibilityRole="tablist"
         >
           {visibleTabs.map((id) => {
@@ -1152,42 +1235,30 @@ function BrowseAndFooter({
                         : "log-sheet-tab-saved"
                 }
                 style={[
-                  styles.browsePill,
-                  { backgroundColor: active ? colors.background : "transparent" },
+                  styles.browseTab,
+                  {
+                    borderBottomColor: active ? colors.text : "transparent",
+                    borderBottomWidth: 2,
+                  },
                 ]}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
-                  }}
+                <Text
+                  style={[
+                    styles.browseTabLabel,
+                    {
+                      color: active ? colors.text : colors.textTertiary,
+                      fontWeight: active ? "600" : "400",
+                    },
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.browsePillLabel,
-                      // Sloe treatment system (2026-06-08): segmented
-                      // control active segment = white lift (the pill
-                      // bg above) + primarySolid label; inactive =
-                      // textSecondary on the warm-grey rail.
-                      { color: active ? accent.primarySolid : colors.textSecondary },
-                    ]}
-                  >
-                    {baseLabel}
-                  </Text>
-                  {showSavedDot ? (
-                    <View
-                      testID="log-sheet-tab-saved-dot"
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: accent.primary,
-                      }}
-                    />
-                  ) : null}
-                </View>
+                  {baseLabel}
+                </Text>
+                {showSavedDot ? (
+                  <View
+                    testID="log-sheet-tab-saved-dot"
+                    style={[styles.savedDot, { backgroundColor: accent.primary }]}
+                  />
+                ) : null}
               </Pressable>
             );
           })}
@@ -1219,113 +1290,154 @@ function BrowseAndFooter({
         ) : null}
       </View>
 
-      {/* Footer: "Or add manually" — escape hatch for users who want
-          to type macros directly. Host wires this to the manual
-          quick-add form. Flat-card grammar (2026-06-12): a SECONDARY
-          add affordance → quiet fill (`colors.fillQuiet` #F2EFE9,
-          radius 12, NO border), not a top-hairline divider. Muted
-          label stays `textSecondary` (#6A6072 on #F2EFE9 = 5.19:1,
-          clears AA). The trailing chevron stays `textTertiary` — a
-          decorative directional glyph whose role is carried by the
-          labelled Pressable, matching the CopyYesterday / Library
-          row chevrons. */}
-      {onAddManually ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Or add manually"
-          onPress={onAddManually}
-          style={({ pressed }) => [
-            styles.manualFooter,
-            { backgroundColor: colors.fillQuiet, opacity: pressed ? 0.6 : 1 },
-          ]}
-        >
-          <PencilLine size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
-            Or add manually
-          </Text>
-          <ChevronRight size={IconSize.base} color={colors.textTertiary} />
-        </Pressable>
+      {macroTargets && macroConsumed ? (
+        <LogSheetDailyProgress
+          macroTargets={macroTargets}
+          macroConsumed={macroConsumed}
+        />
       ) : null}
     </>
   );
 }
 
-/* -------------------------- Right-edge icons -------------------------- */
+/* -------------------------- Input mode row (Figma 336:2) -------------------------- */
 
-function RightEdgeIcons({
+function InputModeRow({
   barcode,
   voice,
   photo,
+  onQuickAdd,
 }: {
   barcode: LogSheetProps["barcode"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  onQuickAdd?: () => void;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
-  // Render the icons in the documented order: Scan → Voice → Photo
-  // (matches the prior tab order to preserve user muscle memory from
-  // the 6-tab era). Each icon only renders when the host wires its
-  // open/start/capture callback — no callback, no icon (host has
-  // opted out of that input mode).
-  const icons: {
-    key: "scan" | "voice" | "photo";
+  const modes: {
+    key: "scan" | "voice" | "photo" | "quick";
     label: string;
     Icon: typeof Search;
     onPress?: () => void;
-    locked: boolean;
+    locked?: boolean;
   }[] = [
     {
       key: "scan",
-      label: "Scan barcode",
+      label: "Scan",
       Icon: ScanBarcode,
       onPress: barcode?.onOpen,
-      locked: barcode?.locked ?? false,
     },
     {
       key: "voice",
-      label: "Voice log",
+      label: "Voice",
       Icon: Mic,
       onPress: voice?.onStart,
       locked: voice?.locked ?? false,
     },
     {
       key: "photo",
-      label: "Photo log",
+      label: "Photo",
       Icon: Camera,
       onPress: photo?.onCapture,
       locked: photo?.locked ?? false,
     },
+    {
+      key: "quick",
+      label: "Quick add",
+      Icon: PencilLine,
+      onPress: onQuickAdd,
+    },
   ];
   return (
-    <View style={styles.rightEdgeIcons}>
-      {icons.map(({ key, label, Icon, onPress, locked }) =>
+    <View style={styles.inputModeRow} testID="log-sheet-input-mode-row">
+      {modes.map(({ key, label, Icon, onPress, locked }) =>
         onPress ? (
-          <Pressable
-            key={key}
-            onPress={() => {
-              if (process.env.EXPO_OS === "ios") {
-                void Haptics.selectionAsync();
-              }
-              onPress();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={locked ? `${label} (Pro)` : label}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.rightEdgeIcon,
-              { opacity: pressed ? 0.55 : 1 },
-            ]}
-          >
-            <Icon size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
-            {locked ? (
-              <View style={styles.lockBadge}>
-                <Lock size={8} color={colors.primaryForeground} strokeWidth={2.5} />
-              </View>
-            ) : null}
-          </Pressable>
+          <View key={key} style={styles.inputModeCell}>
+            <Pressable
+              onPress={() => {
+                if (process.env.EXPO_OS === "ios") {
+                  void Haptics.selectionAsync();
+                }
+                onPress();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={locked ? `${label} (Pro)` : label}
+              style={({ pressed }) => [
+                styles.inputModeButton,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Icon size={22} color={accent.primary} strokeWidth={2} />
+              {locked ? (
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Text style={[styles.inputModeLabel, { color: colors.textSecondary }]}>{label}</Text>
+          </View>
         ) : null,
       )}
+    </View>
+  );
+}
+
+/* -------------------------- Daily progress footer (Figma 336:2) -------------------------- */
+
+function LogSheetDailyProgress({
+  macroTargets,
+  macroConsumed,
+}: {
+  macroTargets: MacroTargets;
+  macroConsumed: MacroConsumed;
+}) {
+  const colors = useThemeColors();
+  const kcalTarget = Math.round(macroTargets.calories);
+  const kcalConsumed = Math.round(macroConsumed.calories);
+  return (
+    <View
+      testID="log-sheet-daily-progress"
+      style={[styles.dailyProgressRow, { borderTopColor: colors.border }]}
+    >
+      <View>
+        <Text style={[Type.label, { color: colors.textTertiary, fontSize: 10 }]}>
+          Daily progress
+        </Text>
+        <Text style={[Type.title, { color: colors.text, fontSize: 20, marginTop: 2 }]}>
+          {kcalConsumed}{" "}
+          <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: Type.body.fontFamily }}>
+            / {kcalTarget} kcal
+          </Text>
+        </Text>
+      </View>
+      <View style={styles.dailyMacroRow}>
+        {(
+          [
+            ["P", macroConsumed.protein, MacroColors.protein],
+            ["C", macroConsumed.carbs, MacroColors.carbs],
+            ["F", macroConsumed.fat, MacroColors.fat],
+          ] as const
+        ).map(([letter, grams, color]) => (
+          <View key={letter} style={{ alignItems: "center" }}>
+            <Text
+              style={{
+                fontFamily: Type.title.fontFamily,
+                fontSize: 15,
+                color,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {Math.round(grams)}g
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{letter}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -1565,6 +1677,7 @@ function BrowseRow({
   source,
   onPick,
   accessibilityLabel,
+  subtitle,
 }: {
   title: string;
   kcal: number;
@@ -1573,38 +1686,50 @@ function BrowseRow({
   /** ENG-783 — optional override (e.g. "Edit portion for X" when the
    *  tap opens the portion editor rather than logging instantly). */
   accessibilityLabel?: string;
+  /** Optional portion line (e.g. "100 g · 57 kcal") — Figma 336:2. */
+  subtitle?: string;
 }) {
   const colors = useThemeColors();
-  const accent = useAccent();
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
-      haptic="confirm"
-      onPress={onPick}
-      style={styles.resultRow}
+    <View
+      style={[styles.resultRow, { borderBottomColor: colors.border }]}
+      accessibilityRole="none"
     >
       <FoodFallbackThumb
         title={title}
-        style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
+        style={[styles.resultThumb, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}
       />
-      <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-        <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
+      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
+        <Text style={[Type.body, { color: colors.text, fontSize: 15 }]} numberOfLines={1}>
           {title}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-          <SourceDot source={source} size={6} />
-          <Text
-            style={[
-              Type.caption,
-              { color: colors.textSecondary, marginLeft: Spacing.sm, fontVariant: ["tabular-nums"] },
-            ]}
-          >
-            {kcal} kcal
-          </Text>
-        </View>
+        <Text
+          style={[
+            Type.caption,
+            {
+              color: colors.textTertiary,
+              marginTop: 2,
+              fontVariant: ["tabular-nums"],
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {subtitle ?? `${kcal} kcal`}
+        </Text>
       </View>
-    </PressableScale>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
+        haptic="confirm"
+        onPress={onPick}
+        style={[
+          styles.addCircleBtn,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Plus size={16} color={Accent.carbs} strokeWidth={2.5} />
+      </PressableScale>
+    </View>
   );
 }
 
@@ -1825,7 +1950,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   closeBtn: {
     width: 28,
@@ -1855,56 +1979,92 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    paddingLeft: Spacing.md,
-    paddingRight: Spacing.xs,
+    paddingHorizontal: Spacing.md,
     height: 48,
-    // Sloe DS — pill-soft search slab (mirrors web `rounded-xl`).
-    borderRadius: Radius.xl,
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  rightEdgeIcons: {
+  inputModeRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
+    justifyContent: "space-between",
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.xs,
   },
-  rightEdgeIcon: {
-    width: 36,
-    height: 36,
+  inputModeCell: {
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  inputModeButton: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: Radius.sm,
     position: "relative",
   },
-  lockBadge: {
+  inputModeLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  proBadge: {
     position: "absolute",
-    top: 4,
-    right: 4,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    // Sloe DS — Pro gate badge in damson (`Accent.purple`), the canonical
-    // Pro / achievement accent, distinct from the clay primary CTA.
-    // Mirrors web's `var(--accent-win)` lock badge.
-    backgroundColor: Accent.purple,
+    top: -2,
+    right: -2,
+    backgroundColor: Accent.primary,
+    borderRadius: Radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proBadgeText: {
+    color: "#fff",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  browseTabRow: {
+    flexDirection: "row",
+    gap: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  browseTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingBottom: Spacing.sm,
+    marginBottom: -StyleSheet.hairlineWidth,
+  },
+  browseTabLabel: {
+    fontSize: 14,
+  },
+  savedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dailyProgressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  dailyMacroRow: {
+    flexDirection: "row",
+    gap: Spacing.lg,
+  },
+  addCircleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
-  },
-  browsePillRow: {
-    flexDirection: "row",
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-    padding: Spacing.xs,
-    // Sloe DS — pill-soft browse toggle (mirrors web `rounded-xl`).
-    borderRadius: Radius.xl,
-  },
-  browsePill: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-    borderRadius: Radius.lg,
-  },
-  browsePillLabel: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   copyYesterdayRow: {
     flexDirection: "row",
@@ -1970,14 +2130,13 @@ const styles = StyleSheet.create({
   resultRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: Radius.sm,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   resultThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: Radius.xl,
   },
   inputRow: {
     flexDirection: "row",

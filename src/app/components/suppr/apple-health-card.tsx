@@ -125,7 +125,7 @@ export function AppleHealthCard({
         data-testid="apple-health-card-empty"
         className="py-2 text-[13px] text-muted-foreground leading-relaxed"
       >
-        Sync from the Suppr app to see your health data here.{" "}
+        Sync from the Sloe app to see your health data here.{" "}
         <a href={getTheAppHref} className="underline text-foreground/80 hover:text-foreground">
           Get the app
         </a>

@@ -321,17 +321,32 @@ export const Colors = {
   //    INK + the oat page + the hairlines, not in the fills.
   light: {
     text: '#221B26',                // aubergine ink (the warmth lives here)
-    textSecondary: '#6A6072',
+    textSecondary: '#655C6E',
     textTertiary: '#9B93A3',
     // Material inversion (2026-06-10 fresh-eyes challenge §1+§2): CREAM
     // ground + WHITE cards. The old white-ground/cream-card pairing differed
     // by ~3 RGB points — the material system never registered, so real
-    // variation read as chaos. Cream = the splash/onboarding brand ground
-    // (#FBF8F3, app.json); white cards become the gallery surface for food
-    // imagery. Recipe detail pioneered this grammar — the app converges TO
-    // it. Dark mode unchanged.
-    background: '#FBF8F3',
-    backgroundSecondary: '#F6F5F2',
+    // variation read as chaos. White cards are the gallery surface for food
+    // imagery. Recipe detail pioneered this grammar — the app converges TO it.
+    //
+    // 2026-06-16 (Grace, Natural Cycles / Withings study): deepen the ground a
+    // GENTLE step. The 2026-06-12 flat-card decision (docs/decisions/2026-06-12-
+    // flat-card-surfaces.md) bet separation on ground↔card contrast ALONE but
+    // kept the near-white splash cream #FBF8F3 (L*≈98) — only ~2 L* below the
+    // white card, so the flat cards barely registered. A first pass to a deep,
+    // more-saturated oat (#EFE8DA, L*≈92, R-B=21) read TOO DARK/heavy — a warm
+    // tan at L*92 carries far more visual weight than NC's neutral greige at the
+    // same lightness. The fix is a gentle lightness step that keeps the cream's
+    // ORIGINAL low warmth (R-B≈11, not 21): #F3F0E8 (L*≈95) gives a ~5 L* gap
+    // (≈2.2× the old 2 L*) — enough for the flat white card to lift, while the
+    // page stays a light, airy cream. Separation = the tonal step + the neutral-
+    // white-card-on-warm-ground temperature contrast. Still warm cream, NOT
+    // Withings' cooler grey (brand equity, per 2026-06-12). SPLASH/icon ground
+    // stays #FBF8F3 in app.json (a launch frame, not card-bearing —
+    // brandIconSplash.test.ts pins it). Dark mode unchanged — the dark card
+    // (#232126) already lifts off the dark ground (#19181C).
+    background: '#F3F0E8',          // light warm cream — flat cards lift by a gentle tonal step (2026-06-16)
+    backgroundSecondary: '#EFEBE1', // recessed secondary ground (recipe-detail cards lift off it too)
     card: '#FFFFFF',                // white card on cream ground (inversion §1) — real tonal presence
     cardElevated: '#FFFFFF',        // same fill in light; dark uses a stepped lift (fill IS the separation post flat-cards 2026-06-12)
     fillQuiet: '#F2EFE9',           // quiet fill — nested affordances inside flat cards (Withings grammar, 2026-06-12 decision); ↔ web --fill-quiet
@@ -345,7 +360,7 @@ export const Colors = {
      *  FAB reads as nav chrome, not a content action. Matches the Figma TD
      *  frames + `_gen.mjs` tabBar (`bg-plum` FAB). Mirrors web --nav-primary. */
     navPrimary: '#3B2A4D',
-    icon: '#6A6072',
+    icon: '#655C6E',
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
     inputBg: '#F6F5F2',
@@ -356,7 +371,7 @@ export const Colors = {
     sourceFatsecret: '#C9892C',     // amber
     sourceManual: '#9B93A3',        // warm grey
     sourceAi: '#6A4B7A',            // damson
-    confidenceNeutral: '#6A6072',
+    confidenceNeutral: '#655C6E',
     /** North-star + over-budget — Sloe palette. plum → clay gradient. */
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',

@@ -95,11 +95,13 @@ describe("web CookMode — servings handoff", () => {
 
   it("auto-log routes through commitLogMeal with servings eaten (ENG-1129)", () => {
     // ENG-1129: confirm sheet passes servings eaten to commitLogMeal;
-    // legacy path (flag off) still calls commitLogMeal(scaleFactor).
+    // legacy path (flag off) logs 1 serving — batch scale stays in step
+    // text only, not the journal multiplier.
     expect(WEB_COOK).toMatch(/commitLogMeal/);
     expect(WEB_COOK).toMatch(/servingsToLog/);
     expect(WEB_COOK).toMatch(/portionMultiplier:\s*servingsToLog/);
-    expect(WEB_COOK).toMatch(/commitLogMeal\(scaleFactor\)/);
+    expect(WEB_COOK).toMatch(/commitLogMeal\(servingsEaten\)/);
+    expect(WEB_COOK).toMatch(/commitLogMeal\(1\)/);
   });
 });
 

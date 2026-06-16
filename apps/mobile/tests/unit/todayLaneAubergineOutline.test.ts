@@ -220,8 +220,9 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
     expect(DATE_HEADER).toMatch(/color=\{viewMode === "day"\s*\?\s*(?:Accent|accent)\.primarySolid/);
   });
 
-  it("Log sheet browse segmented control: active label = primarySolid", () => {
-    expect(LOG_SHEET).toMatch(/color:\s*active\s*\?\s*accent\.primarySolid\s*:\s*colors\.textSecondary/);
+  it("Log sheet browse tabs: Figma underline active state (ENG-900)", () => {
+    expect(LOG_SHEET).toMatch(/fontWeight:\s*active\s*\?\s*"600"\s*:\s*"400"/);
+    expect(LOG_SHEET).toMatch(/color:\s*active\s*\?\s*colors\.text\s*:\s*colors\.textTertiary/);
   });
 
   it("Snap shortcut Pro chip = primarySoft + primarySolid; shutter is a soft-tint container", () => {

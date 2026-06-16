@@ -212,7 +212,7 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("right-edge icons still tap-to-open in inline mode (preserved behaviour)", () => {
+  it("input-mode Scan still tap-to-open in inline mode (preserved behaviour)", () => {
     const onScanOpen = vi.fn();
     const { getByLabelText } = render(
       <LogSheet
@@ -222,7 +222,7 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
         barcode={{ onOpen: onScanOpen }}
       />,
     );
-    fireEvent.press(getByLabelText("Scan barcode"));
+    fireEvent.press(getByLabelText("Scan"));
     expect(onScanOpen).toHaveBeenCalledTimes(1);
   });
 
@@ -277,7 +277,7 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
   });
 });
 
-describe("LogSheet (mobile) — search row + right-edge icons (Phase 4 / Next-10 #12)", () => {
+describe("LogSheet (mobile) — search row + input mode row (Figma 336:2)", () => {
   it("search row tap fires search.onOpen", () => {
     const onOpen = vi.fn();
     const { getByLabelText } = open({ search: { onOpen } });
@@ -288,21 +288,21 @@ describe("LogSheet (mobile) — search row + right-edge icons (Phase 4 / Next-10
   it("scan icon tap fires barcode.onOpen", () => {
     const onScanOpen = vi.fn();
     const { getByLabelText } = open({ barcode: { onOpen: onScanOpen } });
-    fireEvent.press(getByLabelText("Scan barcode"));
+    fireEvent.press(getByLabelText("Scan"));
     expect(onScanOpen).toHaveBeenCalledTimes(1);
   });
 
   it("voice icon tap fires voice.onStart", () => {
     const onStart = vi.fn();
     const { getByLabelText } = open({ voice: { onStart } });
-    fireEvent.press(getByLabelText("Voice log"));
+    fireEvent.press(getByLabelText("Voice"));
     expect(onStart).toHaveBeenCalledTimes(1);
   });
 
   it("photo icon tap fires photo.onCapture", () => {
     const onCapture = vi.fn();
     const { getByLabelText } = open({ photo: { onCapture } });
-    fireEvent.press(getByLabelText("Photo log"));
+    fireEvent.press(getByLabelText("Photo"));
     expect(onCapture).toHaveBeenCalledTimes(1);
   });
 
@@ -314,14 +314,14 @@ describe("LogSheet (mobile) — search row + right-edge icons (Phase 4 / Next-10
     // label so screen readers announce the gate. The icon's own
     // tap callback still fires regardless — host decides whether
     // to open the AI paywall sheet or the real flow.
-    expect(getByLabelText("Voice log (Pro)")).toBeTruthy();
+    expect(getByLabelText("Voice (Pro)")).toBeTruthy();
   });
 
   it("locked: true on photo surfaces a (Pro) accessibility hint", () => {
     const { getByLabelText } = open({
       photo: { onCapture: () => {}, locked: true },
     });
-    expect(getByLabelText("Photo log (Pro)")).toBeTruthy();
+    expect(getByLabelText("Photo (Pro)")).toBeTruthy();
   });
 
   it("an icon with no callback wired is not rendered (host opted out)", () => {
@@ -330,9 +330,9 @@ describe("LogSheet (mobile) — search row + right-edge icons (Phase 4 / Next-10
       voice: undefined,
       photo: undefined,
     });
-    expect(queryByLabelText("Scan barcode")).toBeNull();
-    expect(queryByLabelText("Voice log")).toBeNull();
-    expect(queryByLabelText("Photo log")).toBeNull();
+    expect(queryByLabelText("Scan")).toBeNull();
+    expect(queryByLabelText("Voice")).toBeNull();
+    expect(queryByLabelText("Photo")).toBeNull();
   });
 });
 
@@ -623,21 +623,21 @@ describe("LogSheet (mobile) — S13 logged-confirmation (Figma 202:2)", () => {
   });
 });
 
-describe("LogSheet (mobile) — 'Or add manually' footer", () => {
-  it("renders the footer link when onAddManually is provided", () => {
+describe("LogSheet (mobile) — Quick add input mode (Figma 336:2)", () => {
+  it("renders Quick add when onAddManually is provided", () => {
     const { getByLabelText } = open({ onAddManually: () => {} });
-    expect(getByLabelText("Or add manually")).toBeTruthy();
+    expect(getByLabelText("Quick add")).toBeTruthy();
   });
 
-  it("hides the footer link when onAddManually is undefined", () => {
+  it("hides Quick add when onAddManually is undefined", () => {
     const { queryByLabelText } = open({ onAddManually: undefined });
-    expect(queryByLabelText("Or add manually")).toBeNull();
+    expect(queryByLabelText("Quick add")).toBeNull();
   });
 
-  it("footer tap fires onAddManually", () => {
+  it("Quick add tap fires onAddManually", () => {
     const onAddManually = vi.fn();
     const { getByLabelText } = open({ onAddManually });
-    fireEvent.press(getByLabelText("Or add manually"));
+    fireEvent.press(getByLabelText("Quick add"));
     expect(onAddManually).toHaveBeenCalledTimes(1);
   });
 });

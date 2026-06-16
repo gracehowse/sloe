@@ -774,8 +774,10 @@ export default function LibraryScreen() {
     // Discover" (ctaBtnSecondary) sits below it as the quieter secondary,
     // keeping a clear emphasis ladder.
     ctaBtnSecondary: {
-      paddingHorizontal: 24,
-      paddingVertical: Spacing.dense,
+      paddingHorizontal: Spacing.lg,
+      // Match SupprButton's paddingVertical (Spacing.md) so the stacked
+      // primary + outline CTAs are the same height (ENG-1197 follow-up).
+      paddingVertical: Spacing.md,
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: colors.border,
@@ -966,9 +968,9 @@ export default function LibraryScreen() {
           ListHeaderComponent={
             <>
               {/* Search row — Figma `527:2` order: search sits above the
-                  category pills. Create moved off this strip (the global
-                  `+` FAB in the tab bar owns creation) so the header reads
-                  as a calm search + filter, not a heavy actions strip. */}
+                  category pills. Create lives on the count row (the `+`) and
+                  in the empty-state CTA (ENG-1197); the tab-bar FAB opens the
+                  food Log sheet, NOT recipe creation. */}
               <View style={styles.searchRow}>
                 <View style={styles.searchInputWrap}>
                   <SearchIcon size={16} color={colors.textTertiary} />
@@ -1119,7 +1121,7 @@ export default function LibraryScreen() {
                 </View>
                 <Text style={styles.emptyTitle}>No saved recipes yet</Text>
                 <Text style={styles.emptySubtext}>
-                  Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
+                  Import from a Reel or TikTok, create your own, or browse Discover to start your collection.
                 </Text>
                 <View style={styles.emptyActions}>
                   {/* Button system (2026-06-12): the empty-library slab's ONE
@@ -1133,6 +1135,14 @@ export default function LibraryScreen() {
                     label="Import a recipe"
                     onPress={() => router.push("/import-shared")}
                   />
+                  {/* ENG-1197 — restore the orphaned "create your own" entry:
+                      the empty state must offer manual/photo create, not only
+                      import. Routes straight to the /create-recipe form (text +
+                      photo + barcode inline) — the same destination the count-
+                      row + sheet reaches, one tap shorter. */}
+                  <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/create-recipe")}>
+                    <Text style={styles.ctaBtnSecondaryText}>Create your own</Text>
+                  </Pressable>
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/(tabs)/discover")}>
                     <Text style={styles.ctaBtnSecondaryText}>Explore Discover</Text>
                   </Pressable>

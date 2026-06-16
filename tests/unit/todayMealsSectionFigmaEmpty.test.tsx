@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** Figma `654:2` empty day — dashed Log {slot} only, no legacy empty card. */
+/** Figma `654:2` empty day — solid Log {slot} card only, no legacy empty card. */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -46,14 +46,14 @@ function baseProps(
 }
 
 describe("TodayMealsSection — Figma 654 empty day", () => {
-  it("renders dashed Log Breakfast CTA without legacy empty-state card", () => {
+  it("renders solid Log Breakfast CTA without legacy empty-state card", () => {
     render(<TodayMealsSection {...baseProps()} />);
     expect(screen.getByTestId("today-log-slot-cta-Breakfast")).toBeTruthy();
     expect(screen.queryByTestId("today-meals-empty-state")).toBeNull();
     expect(screen.queryByTestId("today-meals-empty-cta")).toBeNull();
   });
 
-  it("routes dashed CTA through onOpenAddForSlot", () => {
+  it("routes Log-slot CTA through onOpenAddForSlot", () => {
     const onOpenAddForSlot = vi.fn();
     render(<TodayMealsSection {...baseProps({ onOpenAddForSlot })} />);
     fireEvent.click(screen.getByTestId("today-log-slot-cta-Breakfast"));

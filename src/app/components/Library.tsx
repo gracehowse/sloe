@@ -220,19 +220,36 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           mobile-web pill row is preserved so narrow-width parity with
           the mobile tab stays intact. */}
       <div className="mb-4">
-        <div className="hidden md:block mb-6">
-          <h1
-            className="text-[24px] font-bold text-foreground -tracking-[0.02em]"
-            data-testid="library-desktop-title"
+        <div className="hidden md:flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h1
+              className="text-[24px] font-bold text-foreground -tracking-[0.02em]"
+              data-testid="library-desktop-title"
+            >
+              Library
+            </h1>
+            <p
+              className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
+              data-testid="library-desktop-subtitle"
+            >
+              {`${filteredRecipes.length} recipe${filteredRecipes.length === 1 ? "" : "s"} · sorted by ${sortLabel.toLowerCase()}`}
+            </p>
+          </div>
+          {/* ENG-1197 — desktop create entry (the redesign left web with none). */}
+          <button
+            type="button"
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("view", "create");
+              window.history.pushState({}, "", url.toString());
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
+            className="shrink-0 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"
+            aria-label="Create a new recipe"
           >
-            Library
-          </h1>
-          <p
-            className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
-            data-testid="library-desktop-subtitle"
-          >
-            {`${filteredRecipes.length} recipe${filteredRecipes.length === 1 ? "" : "s"} · sorted by ${sortLabel.toLowerCase()}`}
-          </p>
+            <Icons.create className="w-4 h-4" aria-hidden />
+            Create recipe
+          </button>
         </div>
 
         {/* Search and Filter */}
@@ -341,6 +358,22 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 <Icons.adjust className="w-3 h-3" aria-hidden />
                 {sortLabel}
               </button>
+              {/* ENG-1197 — persistent create entry on the count row (parity
+                  with the mobile "+" glyph). The redesign left web with no
+                  create affordance once the library is non-empty. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("view", "create");
+                  window.history.pushState({}, "", url.toString());
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                }}
+                className="inline-flex items-center justify-center rounded-full border border-border w-7 h-7 text-muted-foreground hover:bg-muted/60 transition-colors"
+                aria-label="Create a new recipe"
+              >
+                <Icons.add className="w-3.5 h-3.5" aria-hidden />
+              </button>
             </div>
           </div>
         </div>
@@ -363,7 +396,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             No saved recipes yet
           </h2>
           <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed max-w-[260px] mx-auto">
-            Save a recipe from a Reel or TikTok, or browse Discover to start your collection.
+            Import from a Reel or TikTok, create your own, or browse Discover to start your collection.
           </p>
           <div className="flex flex-col gap-2.5 mt-6 max-w-[280px] mx-auto">
             {/* Button system (2026-06-12): the empty-library card's ONE primary
@@ -385,6 +418,23 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               <Icons.import className="w-4 h-4" aria-hidden />
               Import a recipe
             </SupprButton>
+            {/* ENG-1197 — restore the orphaned "create your own" entry on web
+                (parity with mobile). The redesign left web with NO create entry
+                at all; `view=create` → RecipeUpload mode="create" (text + photo). */}
+            <button
+              type="button"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("view", "create");
+                window.history.pushState({}, "", url.toString());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="w-full bg-background border border-border text-foreground font-semibold text-sm rounded-full py-3 inline-flex items-center justify-center gap-2 hover:bg-muted/60 transition-colors"
+              aria-label="Create your own recipe"
+            >
+              <Icons.create className="w-4 h-4" aria-hidden />
+              Create your own
+            </button>
             {onGoDiscover ? (
               <button
                 type="button"

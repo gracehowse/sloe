@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **294 open** ENG issues (was 320; **26 Done** 2026-06-14/15 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-15 (rev 7 — Gate 1 code complete; Grace-owned device/audit runs remain).
-**Branch:** `claude/eng-1099-tracker-tier` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~37 Done 2026-06-14/16 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-16 (rev 9 — **re-sequence**: redesign cohesion + Wave-3 wedge pulled forward into new **Gate 1.5**; mis-filed launch-hardening security corrected. See "Re-sequencing 2026-06-16" below).
+**Branch:** `claude/eng-1130-plan-slots-sync` · **PR:** [#456](https://github.com/gracehowse/Suppr/pull/456) · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -12,18 +12,42 @@
 
 ## The gate model
 
-| Gate | Meaning | Open | Done (2026-06-14) |
+| Gate | Meaning | Open | Done |
 |------|---------|------|-------------------|
 | **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
 | **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 2 | 15 |
+| **Gate 1.5** | **NEW (2026-06-16)** — launch *cohesion & wedge*: what makes the viral push LAND (not just be safe). Redesign core-5 + Wave-3 wedge + mis-filed launch-hardening security. | ~28 | — |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
-| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | 64 | 6 |
-| **Wave 3** | Category-leading growth + audit P3s (post-launch) | 153 | 4 |
-| **Wave 4** | Redesign / Figma / platform / AI-imagery / creator (post-launch) | 55 | 5 |
+| **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | ~56 | 14 |
+| **Wave 3** | Category-leading *residual* + audit P3s (wedge items promoted to 1.5; rest beta/post-launch) | ~120 | 8 |
+| **Wave 4** | Redesign *residual* (Layer-3 pixel close-out) + platform / AI-imagery / creator (post-launch) | ~45 | 5 |
 
-**Sequencing:** Gate 0 → (Gate 1 ∥ Gate B started) → launch → Gate 2 → Wave 3/4. The meal-planning + food-data-trust cluster (pantry, plan→log date, over-buy, micros, Verified-store) jumps the normal P2 queue — it's the competitive wedge and where Suppr is weakest.
+**Sequencing:** Gate 0 → Gate 1 → **Gate 1.5** → launch (Gate B ∥, NOT a blocker) → Gate 2 → Wave 3/4.
 
-**Linear filters:** `label:launch-blocker` = the 19 Gate-0/Gate-1 must-ship items (authoritative "blocking July" view). `label:paid-ga-blocker` = Gate B.
+**Two distinct launch bars (don't conflate):**
+- **Gate A = "safe to onboard"** (Gate 0 + Gate 1, `launch-blocker` label) — nearly clear: 1 DMCA + 2 Grace-device tests, no code left.
+- **Gate 1.5 = "launch lands its promise"** — the viral push sells a *differentiated, cohesive* product. A refugee who lands on a half-conformed app, or never hits the "what to eat next" North Star / import magic-moment, churns even though the app is technically "safe." This is the real pre-July engineering tier.
+
+The meal-planning + food-data-trust cluster (pantry, plan→log date, over-buy, micros, Verified-store) and the redesign-cohesion core-5 both jump the normal P2 queue — competitive wedge + first-impression integrity.
+
+**Linear filters:** `label:launch-blocker` = the 19 Gate-0/Gate-1 must-ship items (authoritative "blocking July" view). `label:paid-ga-blocker` = Gate B. **New:** `label:launch-cohesion` = Gate 1.5 (proposed — apply to the pulled-forward set below).
+
+---
+
+## Re-sequencing 2026-06-16 (rev 9)
+
+Two framing errors in rev 8 are corrected here:
+
+**1. "Redesign = post-launch" was wrong — it's a launch-cohesion requirement, AND it's mostly already shipped.** The Sloe redesign ships in 3 layers (`docs/ux/redesign/migration-coverage.md`):
+- **Layer 1 — tokens + fonts:** SHIPPED, un-gated. Every screen renders the Sloe palette + Newsreader. The app is *not* half-old-blue / half-new at the colour/type level.
+- **Layer 2 — per-screen layout craft:** LARGELY SHIPPED via `REDESIGN_DEFAULT_ON` flags that default **true** in every build (`apps/mobile/lib/analytics.ts` / `src/lib/analytics/track.ts`), legacy kept only as a kill-switch `else`. Today tier, Discover import-hero, fit-verdict banner, empty-ring gradient, card cohesion — all live, both platforms.
+- **Layer 3 — Figma-exact pixel conformance:** the Wave-4 ENG-889→918 tickets. Polish on a coherent surface, *not* the difference between coherent and broken.
+
+So the redesign-cohesion work for July is narrow, not 55 tickets: **(a) Onboarding (ENG-895)** — the cold-open and the *least*-conformed core surface (0/12); **(b) Log-a-meal layout (ENG-900)**; **(c) a Suppr→Sloe brand-string sweep** ("SUPPR PRO", "Suppr's servers", suppr-club.com — screenshots badly); **(d) verify every `REDESIGN_DEFAULT_ON` flag is default-on in prod on a populated account** (no legacy-leak mid-viral). Foundations decisions ENG-919–925 were **ratified 2026-06-11** (`docs/decisions/2026-06-11-redesign-deferred-decisions-ratified.md`) — no open blocker. *(The `figma-migration-tracker.md` still lists them as "decisions needed" — stale; reconcile.)* Cohesion confidence by 2026-07-01: **7/10**, gated mainly on Onboarding.
+
+**2. "All of Wave 3 = post-launch" was wrong.** The ENG-928→983 "category-leading" cluster contains the wedge-defining first-session experience (North Star "what to eat next", import magic-moment, refugee-activation paywall honesty) the viral push actually sells. And several **security/launch-hardening** items (ENG-1137, 1124, 558, 541, 1158) were mis-filed as Wave 3. Both are pulled into **Gate 1.5** below.
+
+⚠️ **Pixel caveat:** the redesign scoping is code-grounded; on-disk captures predate HEAD. Before declaring cohesion done, run `npm run test:screens:tour` + `npm run test:e2e:visual` against HEAD on a populated account and assemble a fresh wall.
 
 ---
 
@@ -39,7 +63,26 @@ Linear → **Done** (comment + commit SHA on each). Gate 0 migrations **applied 
 | *(dup)* | ENG-904 | Closed as duplicate of ENG-930 (S13 confirmation) |
 | `97983c0a` | ENG-1162, 1161, 1163, 1167, 1178, 805, 1171, 1073, 931 (mobile) | Gate 1 polish: library deep-link, paywall CTA, log sheet scroll, dual-host auth, import test, check-in suppression, mobile search quick-log |
 
-**Still open — next in logging loop:** ENG-932 (loud barcode affordance). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
+## Shipped 2026-06-15 (`claude/eng-1130-plan-slots-sync` · PR #456)
+
+Linear → **Done** (comment + commit SHA on each when merged).
+
+| Commit | Issues | Notes |
+|--------|--------|-------|
+| `ff3be9bc` | ENG-1130 | Plan slot metadata cloud sync (web + mobile) |
+| `73d065bc` | ENG-1099 | Today tier M1–M6: PressableScale, NorthStar sage chip, Complete Day rhythm |
+| `25936a81` | ENG-1125 | Durable journal write queue (web + mobile) |
+| `7b4c3a97` | ENG-1099/1125 | Mobile tier press wiring + queue meal edits |
+| `9183dd04` | ENG-1125 | Web journal queue wiring tests |
+| `61c3ab3d` | ENG-1051 | Pantry staples from shopping rows (web + mobile) |
+| `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
+| `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
+| `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
+| `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
+| `3d0353ab` | ENG-972 | NL describe meal logging inside Log sheet (web + mobile) |
+| `b1496047` | ENG-971 | AI paywall photo_log copy parity (web matched mobile honest cap wording) |
+
+**Still open — next in logging loop:** ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
@@ -76,7 +119,7 @@ What refugees hit, screenshot, and churn on in the first session. Full WHAT/WHY/
 | ENG-1060 | High | (none) | TestFlight build-57 smoke — 2026-06-12 (22 ASC threads) — **Grace device**; checklist: `docs/testing/testflight-build-57-smoke-checklist.md` |
 | ENG-874 | High | Today tab | Apple Health: verify MFP meal import on device (HS-01–HS-09) — **Grace device**; runbook: `docs/testing/health-sync-device-runbook.md` |
 
-~~ENG-771~~ Done — MFP-refugee logging loop: ENG-931 quick-log, ENG-932 loud barcode CTA, ENG-973 paywall barcode-free chip (web + mobile).  
+~~ENG-771~~ Done — MFP-refugee logging loop: ENG-931 quick-log, ENG-932 loud barcode CTA, ENG-973 paywall barcode-free chip (web + mobile).
 ~~ENG-670~~ Done (harness) — `npm run audit:reels` + `audit:reels:check-streak`; exit 1 below 90% on gate fixture. **Grace:** curate 100 Reel URLs + three consecutive green days.  
 ~~ENG-1109~~ Done — contrast census (web + mobile) + Playwright sweep `tests/e2e/journeys/today-contrast-eng1109.spec.ts`.  
 ~~ENG-1177~~ Done — `meal_slot_config` preset (classic / 4 / 6 meals); Settings web + mobile; Today hosts.  
@@ -110,9 +153,63 @@ Gate the first *paid* sub only — but long ops lead times (Stripe Tax, RC provi
 
 ---
 
-## GATE 2 — beta window (64 open)
+## GATE 1.5 — launch cohesion & wedge (pull-forward for 2026-07-01)
 
-Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning + food-trust cluster first. *(Shipped: 774, 776, 1123, 1127, 1132, 1134 — see Shipped section. ENG-1099 in progress on branch.)*
+Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands its promise**." A refugee who lands on a half-conformed app, or never hits the North Star / import magic-moment, churns even though the app is technically safe. Pulled forward from Wave 3 (wedge) and Wave 4 (redesign), plus mis-filed launch-hardening security. Target: as much as fits before July; the **core-5 redesign + brand-sweep + North Star + refugee-activation** are the non-negotiables.
+
+### A. Redesign cohesion — core-5 cold-open loop (Layer-2 close-out)
+*Mostly shipped via `REDESIGN_DEFAULT_ON`; this is closing layout drift on the screens a refugee screenshots in session one. Foundations ratified 2026-06-11.*
+
+| # | Pri | Surface | Note |
+|---|---|---|---|
+| ENG-895 | Urgent | Conform Onboarding to Figma | **TOP RISK** — cold-open, least-conformed core surface (0/12); web+mobile |
+| ENG-889 | High | Conform Today to Figma | default-ON already; close residual pixel-deltas + populated-account verify |
+| ENG-900 | High | Conform Log-a-meal to Figma | most-repeated action; frame predates search-first refactor |
+| ENG-901 | High | Conform Paywall & win-moments | conversion surface; M5 streak / M6 import-success |
+| ENG-896 | High | Conform Recipes & Cookbook | viral-hook landing; import-hero already live |
+| *(new)* | Urgent | **Suppr→Sloe brand-string sweep** — "SUPPR PRO", "Suppr's servers", suppr-club.com (cheap, screenshots badly) |
+| *(new)* | High | **Verify `REDESIGN_DEFAULT_ON` flags default-on in prod** on a populated account (no legacy-path leak mid-viral) |
+| ENG-827 | High | Golden visual-regression + parity suite — lock the redesign ramp |
+
+*Conform-if-Onboarding-lands (else accept Layer-1 re-skin):* ENG-898 (Import), ENG-890 (Recipe detail), ENG-893 (Global/Nav/skeletons), ENG-897 (Auth — near-done), ENG-899 (Plan week-view).
+
+### B. Wedge experience — the differentiated first session (from Wave 3)
+*The features the viral push actually sells. Confidence wedge set is launch-defining: 8/10.*
+
+| # | Pri | Title | Why launch |
+|---|---|---|---|
+| ENG-935 | High | "What to eat next" — permanent glanceable Today block | **the North Star moment** |
+| ENG-933 | High | Single time-aware editorial Today line (not a stat wall) | cold-open Today craft |
+| ENG-939 | High | Warm food-forward Today empty/cold-open state | first-impression on a zeroed account |
+| ENG-938 | High | Protein-remaining as priority macro on Today | refugee scannable value |
+| ENG-962 | High | Move signup after the plan reveal (see targets first) | **magic-moment #4 — refugee activation** |
+| ENG-964 | High | Date projection on the Reveal step (tangible goal) | refugee activation |
+| ENG-965 | High | Surface data-import path earlier for MFP/MacroFactor refugees | refugee onboarding |
+| ENG-980 | High | Save-first import lands in library instantly | **import magic-moment** (lead bet) |
+| ENG-966 | High | Lead the paywall with the plan the user already built | conversion honesty |
+| ENG-970 | Medium | "No payment due now" chip above CTA in trial | conversion honesty (cheap) |
+| ENG-932 | Medium | Loud, free, first-class barcode affordance | logging loop (verify shipped) |
+| ENG-1065 | Medium | TF57 Today cohesion — Complete Day, Planned card, meal-section | Today first-impression |
+
+*Strong-but-can-slip-to-early-beta:* ENG-968 (Duolingo trial), ENG-969 (projected-trajectory paywall), ENG-951 (forecast line), ENG-957/943 (plan→shopping), ENG-977 (post-log what-to-eat-next), ENG-854 (make-anything-fit Today).
+
+### C. Mis-filed launch-hardening (was in Wave 3 / Phase-0 — these are pre-push)
+
+| # | Pri | Title | Why launch |
+|---|---|---|---|
+| ENG-1137 | High | assertOrigin CSRF guard on ALL cookie-auth mutating routes | security — pre-any-user really Gate 0 |
+| ENG-1124 | High | Web nutrition_entries write-payload untested + 2nd buildNutritionEntryRow that can drift | data-integrity (confirmed in review) |
+| ENG-1118 | High | FatSecret %DV→absolute micro conversion has no version guard (latent ~13-18× error) | **food-data-trust** — the wedge |
+| ENG-558 | Medium | Enable Leaked Password Protection in Supabase Auth | pre-push security |
+| ENG-541 | Medium | Lock down Sentry Allowed Domains (suppr-web) | pre-push security |
+| ENG-1158 | High | Decide AI_BUDGET_ENFORCEMENT before the viral push (cost breaker) | cost-runaway at viral scale |
+| ENG-1128 | Medium | Web/blog import paraphrases instruction steps (legal posture) | legal exposure on the lead-bet flow |
+
+---
+
+## GATE 2 — beta window (~56 open)
+
+Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning + food-trust cluster first. *(Shipped on PR #456: 1099, 1122, 1125, 1130 — see Shipped section.)*
 
 | # | Pri | Project | Title |
 |---|---|---|---|
@@ -126,7 +223,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-7 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: recipe import ≥90% success on 100 random TikTok food Reels |
 | ENG-4 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: App Store rating ≥4.6 (wider beta required first) |
 | ENG-2 | Urgent | Phase 0 — Viral push prep | Phase 0 polish: plate-loop daily active rate ≥40% on active cohort |
-| ENG-1099 | High | Today tab | Close Today's craft gap — **In Progress** on branch (M1–M3 shipped) |
+| ENG-1099 | High | Today tab | ~~Close Today's craft gap~~ — **Done** PR #456 (visual verify pending) |
 | ENG-1023 | High | Today tab | Health follow-ups: micro-probe permission alignment + error stringify + native-hang invest |
 | ENG-1022 | High | Design system cleanup | Web parity: chips/segments/tags §7-§8 grammar (mobile census shipped 2026-06-10) |
 | ENG-1013 | High | Design system cleanup | Migrate 188 hex literals outside theme.ts to semantic tokens |
@@ -169,33 +266,33 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-62 | High | Recipes tab | Cook ↔ Recipe Detail flow consolidation (P1) |
 | ENG-1165 | Medium | Today tab | Mobile-web Today date strip exposes excessive dates to assistive tech |
 | ENG-1164 | Medium | Landing + Marketing site | Web pricing mobile has excessive first-viewport blank space |
-| ENG-1136 | Medium | Recipes tab | Recipe-import parser leaks prep-states ('mixed with warm water', 'to serve') into the shop |
-| ENG-1135 | Medium | Plan tab | Add 'generated from plan of {date}' / staleness hint to the shopping list |
-| ENG-1133 | Medium | Plan tab | Expand grocery categoriser beyond ~12 keywords; shrink the 'Other' bucket |
-| ENG-1131 | Medium | Plan tab | Web Plan feature parity: wire move-meal, templates (orphaned dialog), portion stepper, sma |
-| ENG-1130 | Medium | Plan tab | Sync named plan slots (cut/family/vacation) across devices — currently device-local only |
-| ENG-1129 | Medium | Recipes tab | Cook-mode 'Log this meal' conflates cook-scale with servings eaten — add a servings confir |
+| ENG-1136 | Medium | Recipes tab | ~~Recipe-import parser leaks prep-states into shopping~~ — **Done** |
+| ENG-1135 | Medium | Plan tab | ~~Shopping list plan-date subtitle + staleness hint~~ — **Done** |
+| ENG-1133 | Medium | Plan tab | ~~Expand grocery categoriser beyond ~12 keywords~~ — **Done** |
+| ENG-1131 | Medium | Plan tab | ~~Web Plan feature parity (move, templates, portion, suggestions)~~ — **Done** |
+| ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
+| ENG-1129 | Medium | Recipes tab | ~~Cook-mode servings confirm (batch vs eaten)~~ — **Done** |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
-| ENG-1125 | Medium | Today tab | No offline/durable write-queue — a failed meal log is rolled back and lost; 35-day window  |
-| ENG-1122 | Medium | Today tab | Web has NO logged-meal edit; mobile has a full edit modal (parity) |
-| ENG-1051 | Medium | Plan tab | P2: pantry/staples model for the planner |
-| ENG-1148 | Low | Today tab | Net-energy subline should read the maintenance band, not binary isDeficit (±60 dead-band c |
+| ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
+| ENG-1122 | Medium | Today tab | ~~Web has NO logged-meal edit~~ — **Done** (`web_logged_meal_edit` flag) |
+| ENG-1051 | Medium | Plan tab | ~~P2: pantry/staples model for the planner~~ — **Done** (Settings + per-row shopping) |
+| ENG-1148 | Low | Today tab | ~~Net-energy subline maintenance band (±60 kcal)~~ — **Done** |
 
 ---
 
-## WAVE 3 — category-leading + audit P3s (153 open)
+## WAVE 3 — category-leading *residual* + audit P3s (~120 open)
 
-ENG-928→983 category-leading + audit P3 polish. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 973 — see Shipped section. Next: 931, 932.)*
+**Re-sequenced 2026-06-16:** the wedge-defining items (North Star ENG-935/933/939/938, refugee-activation ENG-962/964/965, import-moment ENG-980, paywall-honesty ENG-966/970, ENG-932, ENG-1065) are **promoted to Gate 1.5** — see that section. The mis-filed launch-hardening security (ENG-1137, 1124, 1118, 558, 541, 1158, 1128) is **also in Gate 1.5**. What remains below is genuine beta-window value + post-launch polish: deeper cook-mode/plan/discover features, design-token sweeps, schema refactors, ops, long-tail. Grouped by project; within each Urgent→Low. *(Shipped: 928, 929, 930, 971, 972, 973, 978, 979, 983, 1121 — see Shipped section.)*
 
 
 **Category-leading growth backlog** (49)
 
 | # | Pri | Title |
 |---|---|---|
-| ENG-979 | High | [Category-leading] Embed attributed creator credit into the shared card and link it to t |
-| ENG-978 | High | [Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe |
-| ENG-972 | High | [Category-leading] Add natural-language text meal logging to the single Log sheet ("desc |
-| ENG-971 | High | [Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac |
+| ~~ENG-979~~ | High | ~~[Category-leading] Embed attributed creator credit into the shared card and link it to t~~ — **Done** |
+| ~~ENG-978~~ | High | ~~[Category-leading] Generate a shareable 'Reel → clean card' artifact at the import succe~~ — **Done** |
+| ~~ENG-972~~ | High | ~~[Category-leading] Add natural-language text meal logging to the single Log sheet ("desc~~ — **Done** |
+| ~~ENG-971~~ | High | ~~[Category-leading] Fix the web/mobile parity bug and palette drift on web paywall surfac~~ — **Done** (AI paywall copy; pricing CTA already on Sloe tokens) |
 | ENG-966 | High | [Category-leading] Lead the paywall with the personalised plan the user already built, t |
 | ENG-962 | High | [Category-leading] Move signup after the plan reveal — let users see their targets befor |
 | ENG-957 | High | [Category-leading] Wire 'Add to plan' straight into the shopping list and re-sync on eve |
@@ -206,7 +303,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 | ENG-940 | High | [Category-leading] Surface the recipe-fit score as a calm "matches your day" signal on D |
 | ENG-935 | High | [Category-leading] Make 'What to eat next' a permanent, glanceable Today block — the nor |
 | ENG-933 | High | [Category-leading] Lead the Today screen with a single time-aware editorial line, not a  |
-| ENG-983 | Medium | [Category-leading] Deduplicate and aisle-sort the shopping list generated from imported  |
+| ~~ENG-983~~ | Medium | ~~[Category-leading] Deduplicate and aisle-sort shopping list at generation~~ — **Done** |
 | ENG-982 | Medium | [Category-leading] Add editorial Collections (named, cover-image cookbooks) on top of th |
 | ENG-981 | Medium | [Category-leading] Support batch / multi-recipe import in one share action |
 | ENG-980 | Medium | [Category-leading] Save-first, review-later: let an import land in the library instantly |
@@ -247,7 +344,7 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 | # | Pri | Title |
 |---|---|---|
 | ENG-1140 | Medium | Replace source-grep button/card string-pins with render-level behavioural tests for load |
-| ENG-1121 | Medium | FatSecretBadge missing from the food-search results panel — attribution only in the LogS |
+| ~~ENG-1121~~ | ~~Medium~~ | ~~FatSecretBadge missing from the food-search results panel~~ — **Done** PR #456 |
 | ENG-1119 | Medium | No retry at any vendor call site; USDA search returns 502 (not the degraded envelope) on |
 | ENG-1118 | Medium | FatSecret %DV→absolute micro conversion has no v1/v2 API version guard (latent ~13-18x i |
 | ENG-1117 | Medium | Edamam /nutrients (and USDA detail) routes not counted by the vendor quota guard |
@@ -448,9 +545,9 @@ ENG-928→983 category-leading + audit P3 polish. Grouped by project; within eac
 
 ---
 
-## WAVE 4 — redesign / Figma / platform / AI-imagery / creator (55 open)
+## WAVE 4 — redesign *residual* / platform / AI-imagery / creator (~45 open)
 
-*(Shipped: 802, 880, 1077, 905; ENG-904 dup of 930 — see Shipped section.)*
+**Re-sequenced 2026-06-16:** the redesign is NOT a post-launch block — Layers 1+2 are live (`REDESIGN_DEFAULT_ON`), and the launch-cohesion close-out (core-5 + Onboarding + brand-sweep) is **promoted to Gate 1.5**. What remains in Wave 4 is genuinely post-launch: **Layer-3 pixel-exactness on edge surfaces** (Account deep sub-screens ENG-892, Fasting ENG-894/918, Landing ENG-902), **net-new Figma-only feature builds** (ENG-906/907/908/910–917 — additive, not conformance; ENG-913 Ask-coach already deferred per ENG-923), the **App-Only→Figma backfill EPIC** (ENG-903/888 — APP-FIRST policy keeps deprioritised; documents reality, zero user pixels), **dark mode** (no dark frames exist — ship light-only at launch), **Redesign P5 residual** (ENG-829/831/832/834/836/837/838/804), **AI image generation** (ENG-861→999 — separate program), **creator platform** (ENG-868/869/870 — claim/merge post-launch), and **architecture enablers** (ENG-619→665 — user-invisible tech debt). *(Shipped: 802, 880, 1077, 905; ENG-904 dup of 930 — see Shipped section.)*
 
 
 **Figma conformance migration** (29)

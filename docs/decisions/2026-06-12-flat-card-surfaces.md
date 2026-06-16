@@ -15,6 +15,8 @@ Grace (from Withings screenshots + Mobbin study): *"they use flat white cards no
 2. **Nested affordances: quiet fill.** Interactive rows inside cards (add-food rows, "show all" affordances, toggles, sub-tiles) sit on a new quiet-fill token — light `#F2EFE9` — not on a second white card and not behind borders. Dark-mode value derived from the background-secondary family (designed, not inherited).
 3. **Unchanged:** cream ground (brand equity — deliberately NOT Withings' cooler grey), CARD_RADIUS/TILE_RADIUS=24 carve-outs, one-filled-CTA rule, calorie-ring colour mapping.
 
+> **Follow-up (2026-06-16):** this decision bet separation on ground↔card contrast alone but left the ground at the near-white splash cream (~2 L\* below the white card), so the flat cards barely registered. `docs/decisions/2026-06-16-deepen-ground-for-flat-cards.md` deepens the working ground a gentle step to `#F3F0E8` (~5 L\* gap) — still light warm cream, not grey — to give this grammar the contrast it relies on. The *cream-not-grey* equity above is preserved; only a small lightness step changed.
+
 ## Why
 
 - TF57 founder feedback converges on it: F-160 ("whole section very ugly… go back to pre-redesign with updated colours/fonts") is the white-slab-with-lift meal sections; F-166 "dull", F-176/177 "inconsistent treatment" — the lift halo is the styles-fighting residue.

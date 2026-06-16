@@ -53,7 +53,7 @@ export function ActivityStep() {
       <StepHeader
         overline={overline}
         title="How active are you?"
-        subtitle="Rough estimate — Suppr will refine this using your activity data over ~2 weeks."
+        subtitle="Rough estimate — Sloe will refine this using your activity data over ~2 weeks."
       />
       <div className="flex flex-col gap-2">
         {ACTIVITIES.map((a) => (

@@ -94,6 +94,10 @@ import {
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
+import {
+  buildRecipeShareCardMessage,
+  formatRecipeCreatorCredit,
+} from "../../lib/share/buildRecipeShareCard.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
 import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
@@ -126,12 +130,53 @@ import {
   stepViewServings,
 } from "../../lib/nutrition/recipeViewScale.ts";
 
-async function shareRecipeDeepLink(recipeId: string) {
+async function shareRecipeDeepLink(recipe: {
+  id: string;
+  title: string;
+  calories?: number;
+  protein?: number;
+  isVerified?: boolean;
+  sourceName?: string | null;
+  creatorName?: string;
+  creatorId?: string | null;
+}) {
   if (typeof window === "undefined") return;
-  const url = webRecipeDeepLink(recipeId, window.location.origin);
+  const origin = window.location.origin;
+  const url = webRecipeDeepLink(recipe.id, origin);
+  const richShare = isFeatureEnabled("recipe_share_card_v1");
+  const shareText = richShare
+    ? buildRecipeShareCardMessage({
+        recipeId: recipe.id,
+        title: normaliseRecipeDisplayTitle(recipe.title),
+        calories: recipe.calories,
+        protein: recipe.protein,
+        estimated: !recipe.isVerified,
+        sourceName: recipe.sourceName,
+        authorDisplayName: recipe.creatorName,
+        creatorId: recipe.creatorId,
+        appOrigin: origin,
+      })
+    : null;
+  const clipboardPayload = shareText ?? url;
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
-      await navigator.share({ title: "Recipe on Sloe", text: "Open this recipe in Sloe", url });
+      await navigator.share({
+        title: normaliseRecipeDisplayTitle(recipe.title),
+        text: shareText ?? "Open this recipe in Sloe",
+        url: shareText ? undefined : url,
+      });
+      if (richShare) {
+        track(AnalyticsEvents.recipe_share_card_shared, {
+          surface: "recipe_detail",
+          platform: "web",
+          hasCreatorCredit: Boolean(
+            formatRecipeCreatorCredit({
+              sourceName: recipe.sourceName,
+              authorDisplayName: recipe.creatorName,
+            }),
+          ),
+        });
+      }
       toast.success("Shared");
       return;
     } catch (e: unknown) {
@@ -139,15 +184,15 @@ async function shareRecipeDeepLink(recipeId: string) {
     }
   }
   try {
-    await navigator.clipboard.writeText(url);
-    toast.success("Share link copied");
+    await navigator.clipboard.writeText(clipboardPayload);
+    toast.success(shareText ? "Share card copied" : "Share link copied");
   } catch {
     // Audit M7 (2026-04-18) — the prior `window.prompt("Copy this link:", url)`
     // fallback was an unthemed native dialog. Surface the link via a
     // persistent toast instead so the user can long-press / select the URL
     // and copy it themselves without the browser prompt.
     toast.message("Copy this link", {
-      description: url,
+      description: clipboardPayload,
       duration: 15000,
     });
   }
@@ -1528,7 +1573,18 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 </button>
                 <button
                   type="button"
-                  onClick={() => void shareRecipeDeepLink(recipe.id)}
+                  onClick={() =>
+                    void shareRecipeDeepLink({
+                      id: recipe.id,
+                      title: recipe.title,
+                      calories: recipe.calories,
+                      protein: recipe.protein,
+                      isVerified: recipe.isVerified,
+                      sourceName: recipe.sourceName,
+                      creatorName: recipe.creatorName,
+                      creatorId: recipe.creatorId,
+                    })
+                  }
                   className={`${heroCircle} text-white`}
                   aria-label="Share recipe link"
                 >

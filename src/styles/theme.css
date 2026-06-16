@@ -69,11 +69,21 @@
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
   /* Material inversion (2026-06-10 fresh-eyes §1+§2, mirror of mobile
-     theme.ts): cream brand ground + white cards. */
-  --background: #FBF8F3;
-  --background-secondary: #F6F5F2;
+     theme.ts): cream brand ground + white cards.
+     2026-06-16 (Grace, Natural Cycles / Withings study): the working ground
+     deepens a GENTLE step from the near-white splash cream #FBF8F3 (L*≈98) to a
+     light warm cream #F3F0E8 (L*≈95). The 2026-06-12 flat-card grammar bets
+     separation on ground↔card contrast ALONE; at ~2 L* the flat cards barely
+     registered. A first pass to #EFE8DA (L*≈92, R-B=21) read too dark — a
+     saturated tan carries more weight than NC's neutral greige at equal
+     lightness — so this keeps the cream's original low warmth (R-B≈11) at a
+     ~5 L* gap: cards lift, page stays light. Still warm cream, NOT cooler grey
+     (brand equity). Splash/icon ground stays #FBF8F3 (app.json, not a
+     card-bearing surface). Mirrors mobile Colors.light. */
+  --background: #F3F0E8;
+  --background-secondary: #EFEBE1;
   --foreground: #221B26;
-  --foreground-secondary: #6A6072;
+  --foreground-secondary: #655C6E;
   --foreground-tertiary: #9B93A3;
   /** Brand-tinted heading ink — Sloe plum (#3B2A4D, the chrome hue). The
    *  Newsreader card titles (prototype `text-plum` in

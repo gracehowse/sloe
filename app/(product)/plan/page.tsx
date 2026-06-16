@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Plan — Suppr",
+  title: "Plan — Sloe",
   description: "Your meal plan and shopping list.",
 };
 

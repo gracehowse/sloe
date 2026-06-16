@@ -102,7 +102,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
       />,
     );
     expect(getByLabelText("Recent")).toBeTruthy();
-    expect(getByLabelText("Library")).toBeTruthy();
+    expect(getByLabelText("My recipes")).toBeTruthy();
     expect(getByLabelText("Saved meals")).toBeTruthy();
   });
 
@@ -115,7 +115,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    expect(queryByLabelText("Library")).toBeNull();
+    expect(queryByLabelText("My recipes")).toBeNull();
   });
 
   it("renders Library content (title + kcal + tag) after switching to the Library tab", () => {
@@ -128,7 +128,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("My recipes"));
     expect(getByText("Greek salad")).toBeTruthy();
     expect(getByText("320 kcal")).toBeTruthy();
     expect(getByText("Lunch")).toBeTruthy();
@@ -147,7 +147,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("My recipes"));
     fireEvent.press(getByLabelText("Log Greek salad"));
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onPick).toHaveBeenCalledWith(greekSalad);
@@ -163,7 +163,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("My recipes"));
     expect(getByText("No saved recipes yet")).toBeTruthy();
     expect(
       getByText(
@@ -183,7 +183,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("My recipes"));
     fireEvent.press(getByLabelText("Browse recipes"));
     expect(onBrowseRecipes).toHaveBeenCalledTimes(1);
   });
@@ -198,7 +198,7 @@ describe("LogSheet (mobile) -- Library tab (TestFlight Build 40)", () => {
         saved={{ meals: [], onPick: () => {} }}
       />,
     );
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("My recipes"));
     expect(queryByLabelText("Browse recipes")).toBeNull();
   });
 

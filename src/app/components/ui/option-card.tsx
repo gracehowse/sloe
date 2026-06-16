@@ -27,6 +27,8 @@ interface OptionCardProps
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Round food thumbnail (Figma onboarding 189:2) — takes precedence over icon. */
+  thumbnail?: React.ReactNode;
   trailing?: React.ReactNode;
   compact?: boolean;
 }
@@ -36,11 +38,13 @@ function OptionCard({
   title,
   subtitle,
   icon,
+  thumbnail,
   trailing,
   compact = false,
   className,
   ...props
 }: OptionCardProps) {
+  const leading = thumbnail ?? icon;
   return (
     <button
       type="button"
@@ -61,18 +65,23 @@ function OptionCard({
       )}
       {...props}
     >
-      {icon && (
+      {leading && (
         <span
           className={cn(
-            "shrink-0 inline-flex items-center justify-center rounded-md transition-pm",
-            compact ? "size-9" : "size-11",
-            selected
-              ? "bg-primary/15 text-primary"
-              : "bg-muted text-muted-foreground",
+            "shrink-0 inline-flex items-center justify-center transition-pm overflow-hidden",
+            thumbnail
+              ? "size-14 rounded-full"
+              : cn(
+                  "rounded-md",
+                  compact ? "size-9" : "size-11",
+                  selected
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground",
+                ),
           )}
           aria-hidden
         >
-          {icon}
+          {leading}
         </span>
       )}
       <span className="flex-1 min-w-0">

@@ -17,6 +17,7 @@ import type {
   PlanImportParsedRecipe,
   PlanImportVerifiedRecipe,
 } from "@/lib/planning/planImport/types";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -87,6 +88,9 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   if (await isServerFeatureEnabled("kill_plan_import")) {
     return NextResponse.json(
       {

@@ -7,6 +7,7 @@ import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { serverTrack } from "@/lib/analytics/serverTrack";
 import { AnalyticsEvents } from "@/lib/analytics/events";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,9 @@ export type VoiceLogResponse = {
 };
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   const routeStart = Date.now();
 
   // 2026-05-16 (ENG-519) — kill switch for AI voice-log.

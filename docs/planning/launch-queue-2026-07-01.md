@@ -36,6 +36,8 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | ENG-1103, ENG-1106, ENG-1108 | Gate 0 migrations + RPC — **`6f2eebe1`** · **applied on prod** (2026-06-15) |
 | ENG-771, 932, 973, 931 | MFP logging loop — loud barcode + paywall chip + quick-log (branch) |
 | ENG-1109, 1111, 1177, 1179, 1112, 670 | Gate 1 code: contrast, measured TDEE, meal slots, StoreKit harness, VOC refresh, reel audit scripts (branch) |
+| ENG-1099, 1122, 1125, 1130 | Gate 2 cluster — Today tier, web meal edit, journal queue, plan slot sync ([PR #456](https://github.com/gracehowse/Suppr/pull/456)) |
+| ENG-1121 | Wave 3 — FatSecret attribution on food-search panel ([PR #456](https://github.com/gracehowse/Suppr/pull/456)) |
 
 **Live verify:** `npm run verify:gate0:live` → **8/8** (needs `GATE0_VERIFY_PASSWORD` in `.env.local` for throwaway account). Last prod pass: 2026-06-15.
 
@@ -47,17 +49,19 @@ July 2026 viral push is gated by **Gate A only**. Billing (Stripe Tax, IAP, VAT)
 | 2 | **ENG-859** DMCA designated agent | G — `docs/operations/eng-859-dmca-filing-checklist.md` |
 | 3 | TestFlight **1.0.7 (57)** smoke — checklist `docs/testing/testflight-build-57-smoke-checklist.md` | G |
 | 4 | **ENG-874** Apple Health device matrix (In Progress) | G + E |
-| 5 | **ENG-1099** Today tracker tier (In Progress — M1–M3 on branch) | E |
+| 5 | ~~**ENG-1099** Today tracker tier~~ | Done PR #456 — visual verify pending |
 | 6 | ~~Gate 0 remainder — 1104, 1105, 1107, 1110, 1102~~ | Done |
 | 7 | ~~Logging loop tail — **ENG-931, 932, 973**~~ | Done on branch (ENG-771) |
 | 8 | **ENG-670** Reel parse-rate gate — harness done; **Grace:** 100 URLs + 3 green days | G |
+| 9 | **ENG-1051** pantry/staples suppress-list — wedge cluster | E |
+| 10 | **ENG-1133** grocery categoriser expansion | E |
 
 *Previously shipped (still on list for traceability): ENG-1059 (`94c90fcc`), ENG-772 (`editable_eaten_at`), deep-link Log sheet dismiss (PR #389 + #391).*
 
 ## Gate A — In Progress (keep)
 
 - **ENG-874** — Health sync device proof
-- **ENG-1099** — Today tracker tier (M1–M3 on branch; finish + close in Linear)
+- ~~**ENG-1099**~~ — Today tracker tier — **Done** PR #456 (visual verify pending)
 - ~~**ENG-877**~~ — Search golden battery — **SHIPPED** [PR #392](https://github.com/gracehowse/Suppr/pull/392); UK retailer provider-recall gaps tracked in issue comment
 - ~~**ENG-840**~~ — Flag-force in bundled apps — **SHIPPED** (runtime `?__force_flags` web + DevFlagOverrides mobile)
 

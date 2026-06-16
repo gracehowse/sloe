@@ -34,6 +34,7 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 /**
@@ -133,6 +134,7 @@ export function NorthStarBlock({
   // returns so the hook is always called. The band-fit green chip + plum keep
   // their own tokens.
   const accent = useAccent();
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
 
   if (kind === "over-budget") {
     return (
@@ -174,7 +176,27 @@ export function NorthStarBlock({
     // chevron. Same grammar as the Discover "Import from TikTok" row
     // and the Today section dividers — much quieter, doesn't compete
     // with the meal slots above. The whole row is the tap target.
-    return (
+    return tierV1 ? (
+      <PressableScale
+        testID={testID ?? "north-star-library-empty"}
+        haptic="selection"
+        accessibilityRole="button"
+        accessibilityLabel="Pick recipes for your library"
+        onPress={onOpenLibrary}
+        style={styles.libraryEmptyRow}
+      >
+        <Sparkles size={18} color={colors.textTertiary} />
+        <Text
+          style={[
+            Type.body,
+            { color: colors.textSecondary, flex: 1, fontSize: 14 },
+          ]}
+        >
+          {"Pick a few recipes — we'll suggest from there."}
+        </Text>
+        <ChevronRight size={18} color={colors.textTertiary} />
+      </PressableScale>
+    ) : (
       <Pressable
         testID={testID ?? "north-star-library-empty"}
         accessibilityRole="button"
@@ -212,6 +234,24 @@ export function NorthStarBlock({
         <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
           Library has nothing under your remaining macros today.
         </Text>
+        {tierV1 ? (
+          <PressableScale
+            haptic="selection"
+            accessibilityRole="button"
+            accessibilityLabel="Browse"
+            onPress={onBrowse}
+            hitSlop={6}
+          >
+            <Text
+              style={[
+                Type.caption,
+                { color: accent.primary, fontWeight: "700" },
+              ]}
+            >
+              Browse →
+            </Text>
+          </PressableScale>
+        ) : (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Browse"
@@ -227,6 +267,7 @@ export function NorthStarBlock({
             Browse →
           </Text>
         </Pressable>
+        )}
       </SupprCard>
     );
   }
@@ -295,9 +336,10 @@ function NorthStarFigmaHero({
       >
         What to eat next
       </Text>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+        haptic="selection"
         onPress={onPrimaryCta}
         style={styles.figmaHeroCard}
       >
@@ -377,7 +419,7 @@ function NorthStarFigmaHero({
             ) : null}
           </View>
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -405,6 +447,7 @@ function NorthStarDefault({
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
   const accent = useAccent();
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   // Pan responder for swipe-to-skip. We use raw PanResponder rather
   // than reanimated here because the block is a single-state gesture
   // (commit on release > threshold) — the simplicity of PanResponder
@@ -572,7 +615,9 @@ function NorthStarDefault({
                 styles.chip,
                 {
                   backgroundColor: suggestion.bandTight
-                    ? "rgba(34,168,96,0.10)"
+                    ? tierV1
+                      ? Accent.success + "1A"
+                      : "rgba(34,168,96,0.10)"
                     : colors.cardBorder,
                 },
               ]}
@@ -581,7 +626,11 @@ function NorthStarDefault({
                 style={{
                   fontSize: 11,
                   fontWeight: "600",
-                  color: suggestion.bandTight ? MacroColors.calories : colors.textSecondary,
+                  color: suggestion.bandTight
+                    ? tierV1
+                      ? Accent.successSolid
+                      : MacroColors.calories
+                    : colors.textSecondary,
                 }}
               >
                 {suggestion.bandLabel}

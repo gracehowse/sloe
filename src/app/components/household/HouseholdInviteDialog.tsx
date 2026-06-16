@@ -148,7 +148,7 @@ export function HouseholdInviteDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              They'll see an Accept / Decline prompt the next time they open Suppr.
+              They'll see an Accept / Decline prompt the next time they open Sloe.
             </p>
             {error && (
               <p className="text-xs text-destructive" data-testid="household-invite-error">

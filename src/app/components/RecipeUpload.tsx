@@ -43,6 +43,16 @@ import {
   userFacingImportError,
 } from "../../lib/recipes/importErrorCopy.ts";
 import {
+  IMPORT_SAVE_FIRST_FLAG,
+  IMPORT_SAVE_FIRST_REVIEW_BANNER,
+  IMPORT_SAVE_FIRST_TEST_ID,
+  IMPORT_SAVE_FIRST_UPDATE_CTA,
+} from "../../lib/recipes/importSaveFirst.ts";
+import {
+  saveImportedRecipe as persistImportedRecipeDraft,
+  type ApiImportedRecipe,
+} from "../../lib/recipes/persistImportedRecipe.ts";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -205,6 +215,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [importHint, setImportHint] = useState<string | null>(null);
+  /** ENG-980 — true when save-first already landed this import in Library. */
+  const [importSaveFirstActive, setImportSaveFirstActive] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -403,6 +415,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     setCoverImageFile(null);
     setImportUrl("");
     setImportHint(null);
+    setImportSaveFirstActive(false);
     setImportedSourceUrl(null);
     setImportedSourceName(null);
     setVerifiedLines(null);
@@ -558,6 +571,34 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
   }, []);
 
+  /** ENG-980 — persist parsed import to Library before the user finishes review. */
+  const landImportedRecipeSaveFirst = useCallback(
+    async (recipe: ApiImportedRecipe, sourceUrl: string): Promise<boolean> => {
+      if (!isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG)) return false;
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("[RecipeUpload] save-first getSession failed:", sessionError.message);
+        return false;
+      }
+      const uid = sessionData.session?.user.id ?? null;
+      if (!uid) return false;
+
+      const saved = await persistImportedRecipeDraft(supabase, uid, {
+        ...recipe,
+        sourceUrl: recipe.sourceUrl ?? sourceUrl,
+      });
+      if ("recipeId" in saved) {
+        setRecipeId(saved.recipeId);
+        setImportSaveFirstActive(true);
+        void refreshMyLibraryRecipes();
+        track(AnalyticsEvents.recipe_import_saved_first, { platform: "web" as const });
+        return true;
+      }
+      return false;
+    },
+    [refreshMyLibraryRecipes],
+  );
+
   /**
    * Fetch + parse one URL import. Shared by inline + queued paths. Accepts an
    * optional AbortSignal so the queue can cancel an in-flight import. Throws
@@ -565,7 +606,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
    * to retry-eligible copy via `importErrorCopy`.
    */
   const fetchImportedRecipe = useCallback(
-    async (u: string, signal?: AbortSignal): Promise<ImportedUrlRecipe> => {
+    async (u: string, signal?: AbortSignal): Promise<ApiImportedRecipe> => {
       let res: Response;
       try {
         res = await fetch("/api/recipe-import", {
@@ -580,7 +621,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       }
       const data = (await res.json()) as {
         ok?: boolean;
-        recipe?: ImportedUrlRecipe;
+        recipe?: ApiImportedRecipe;
         message?: string;
         error?: string;
       };
@@ -592,6 +633,30 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       return data.recipe;
     },
     [],
+  );
+
+  const applyAndMaybeSaveFirst = useCallback(
+    async (recipe: ApiImportedRecipe, sourceUrl: string): Promise<boolean> => {
+      const formRecipe: ImportedUrlRecipe = {
+        title: recipe.title ?? "Imported recipe",
+        description: recipe.description ?? null,
+        ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.map(String) : [],
+        instructions: Array.isArray(recipe.instructions)
+          ? recipe.instructions.map(String)
+          : typeof recipe.instructions === "string"
+            ? [recipe.instructions]
+            : [],
+        servings: recipe.servings ?? null,
+        prepTimeMin: recipe.prepTimeMin ?? null,
+        cookTimeMin: recipe.cookTimeMin ?? null,
+        imageUrl: recipe.imageUrl ?? null,
+        sourceUrl: recipe.sourceUrl ?? sourceUrl,
+        sourceName: recipe.sourceName ?? null,
+      };
+      applyImportedRecipeToForm(formRecipe, sourceUrl);
+      return landImportedRecipeSaveFirst(recipe, sourceUrl);
+    },
+    [applyImportedRecipeToForm, landImportedRecipeSaveFirst],
   );
 
   const runImportFromUrl = async () => {
@@ -624,11 +689,11 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           const recipe = await fetchImportedRecipe(u, controls.signal);
           if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
           controls.setStage("organizing");
-          controls.setTitle(recipe.title);
+          controls.setTitle(recipe.title ?? "Imported recipe");
           // The most-recently-finished import populates the editor form for
           // review; all imports are listed in the drawer regardless.
-          applyImportedRecipeToForm(recipe, u);
-          return { title: recipe.title };
+          await applyAndMaybeSaveFirst(recipe, u);
+          return { title: recipe.title ?? "Imported recipe" };
         },
       });
       if (enqueued) {
@@ -642,8 +707,12 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     setImportHint(null);
     try {
       const r = await fetchImportedRecipe(u);
-      applyImportedRecipeToForm(r, u);
-      toast.success("Imported — review amounts and nutrition before publishing");
+      const savedFirst = await applyAndMaybeSaveFirst(r, u);
+      toast.success(
+        savedFirst
+          ? "Saved to your library — review amounts and nutrition below"
+          : "Imported — review amounts and nutrition before publishing",
+      );
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       // Prefer the server's specific message (carried on the thrown
@@ -1489,6 +1558,17 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         </div>
       ) : null}
 
+      {mode === "import" && importSaveFirstActive && isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG) ? (
+        <div
+          data-testid={IMPORT_SAVE_FIRST_TEST_ID}
+          className="backdrop-blur-xl bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-6 text-sm text-foreground"
+          role="status"
+          aria-label={IMPORT_SAVE_FIRST_REVIEW_BANNER.a11yLabel}
+        >
+          {IMPORT_SAVE_FIRST_REVIEW_BANNER.label}
+        </div>
+      ) : null}
+
       {/* Image Upload — screenshot → cover + optional text extraction */}
       {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
           sits flat — `shadow-lg` lift retired, fill on the cream ground is the
@@ -2279,7 +2359,11 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             onClick={() => void saveRecipe(false)}
             className="w-full"
           >
-            {saving === "draft" ? "Saving…" : "Save to my library"}
+            {saving === "draft"
+              ? "Saving…"
+              : importSaveFirstActive && isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG)
+                ? IMPORT_SAVE_FIRST_UPDATE_CTA
+                : "Save to my library"}
           </SupprButton>
         </div>
       ) : (

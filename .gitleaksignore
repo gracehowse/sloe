@@ -1,0 +1,2 @@
+# AsyncStorage/localStorage key constant — not a credential (ENG-1130 false positive).
+25936a810a5be6b32ae1b14811c60331c916a6e4:src/lib/mealPlan/slotCloudSync.ts:generic-api-key:184

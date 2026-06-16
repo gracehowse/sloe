@@ -29,6 +29,15 @@ describe("Today cohesion — NutritionTracker web host wiring", () => {
   });
 });
 
+describe("Today cohesion — web TodayMealsSection ENG-1099 M6", () => {
+  const src = read("../../src/app/components/suppr/today-meals-section.tsx");
+
+  it("applies PressableScale-style press feedback on meal rows when tierV1 is on", () => {
+    expect(src).toMatch(/todayMealRowPressClass/);
+    expect(src).toMatch(/active:scale-\[0\.97\]/);
+  });
+});
+
 describe("Today cohesion — web TodayPlannedMealsCard empty branch", () => {
   const src = read("../../src/app/components/suppr/today-planned-meals-card.tsx");
 

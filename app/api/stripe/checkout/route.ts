@@ -5,6 +5,7 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { detectRegion } from "@/lib/region/detectRegion";
 import { resolveProStripePriceId } from "@/lib/stripe/resolveProStripePrice";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,9 @@ function appOrigin(): string {
 }
 
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // P0-6 (2026-04-25): authenticate first so the rate-limit bucket can be
   // scoped per-user. Pre-fix the bucket was IP-only with the auth check
   // running after — a shared NAT could starve all paying users on it,

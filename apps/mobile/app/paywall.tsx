@@ -45,10 +45,17 @@ import { PaywallValueGrid } from "@/components/paywall/PaywallValueGrid";
 import { PaywallComparison } from "@/components/paywall/PaywallComparison";
 import { PaywallPlanSelector } from "@/components/paywall/PaywallPlanSelector";
 import { PaywallCta } from "@/components/paywall/PaywallCta";
+import { PaywallNoPaymentChip } from "@/components/paywall/PaywallNoPaymentChip";
+import { PaywallPersonalisedPlanCard } from "@/components/paywall/PaywallPersonalisedPlanCard";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
 import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landing/paywallTrust";
+import {
+  buildPersonalisedPlanPaywallSummary,
+  shouldLeadPaywallWithPersonalisedPlan,
+  type PersonalisedPlanPaywallSummary,
+} from "@suppr/shared/paywall/personalisedPlanSummary";
 import {
   BARCODE_FREE_PAYWALL_CHIP,
   BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
@@ -298,6 +305,8 @@ export default function PaywallScreen() {
   // tap "Have a promo code?" to reveal TextInput + Apply. On success,
   // Alert → onClose (user now has access, paywall is irrelevant).
   const [promoExpanded, setPromoExpanded] = useState(false);
+  const [personalisedPlan, setPersonalisedPlan] =
+    useState<PersonalisedPlanPaywallSummary | null>(null);
   const {
     code: promoCode,
     setCode: setPromoCode,
@@ -310,6 +319,52 @@ export default function PaywallScreen() {
     () => normalisePaywallFrom(params.from),
     [params.from],
   );
+
+  // ENG-966 — when onboarding just wrote targets, lead with the user's plan.
+  useEffect(() => {
+    if (!userId) {
+      setPersonalisedPlan(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("target_calories, target_protein, goal, target_calories_source")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled || error || !data) {
+        if (!cancelled) setPersonalisedPlan(null);
+        return;
+      }
+      const row = data as {
+        target_calories?: number | null;
+        target_protein?: number | null;
+        goal?: string | null;
+        target_calories_source?: string | null;
+      };
+      if (
+        !shouldLeadPaywallWithPersonalisedPlan({
+          targetCalories: row.target_calories,
+          targetCaloriesSource: row.target_calories_source,
+          paywallFrom,
+        })
+      ) {
+        setPersonalisedPlan(null);
+        return;
+      }
+      setPersonalisedPlan(
+        buildPersonalisedPlanPaywallSummary({
+          targetCalories: row.target_calories as number,
+          targetProtein: row.target_protein,
+          goal: row.goal,
+        }),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, paywallFrom]);
 
   // Load offerings. If the user is already Pro-entitled, redirect off
   // this screen before firing any analytics or showing a sell. This is
@@ -721,6 +776,7 @@ export default function PaywallScreen() {
   // plain — only the generic "Pick the plan that fits" fallback is
   // replaced by the editorial positioning headline.
   const headerTitle = (() => {
+    if (personalisedPlan) return personalisedPlan.heroTitle;
     if (paywallFrom === "trial_end") return "Your trial ended — pick a plan";
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
     // 2026-05-12 (premium-bar audit #1 — Calm/Cal AI parity): lead
@@ -735,20 +791,25 @@ export default function PaywallScreen() {
   // True only in the generic fallback — drives the frame's positioning
   // headline + "SLOE PRO" eyebrow. Pro-flavoured entries keep their
   // existing kicker ("SLOE PRO") and adaptive title.
-  const showPositioningHeadline = headerTitle === "Pick the plan that fits";
+  const showPositioningHeadline =
+    headerTitle === "Pick the plan that fits" && !personalisedPlan;
   const headerKicker =
-    proFlavoured || showPositioningHeadline ? "SLOE PRO" : "CHOOSE YOUR PLAN";
+    proFlavoured || showPositioningHeadline || personalisedPlan
+      ? "SLOE PRO"
+      : "CHOOSE YOUR PLAN";
   // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
   // referenced "Base" — a tier removed in PR-01. Now references the
   // current product structure (Free + Pro).
   // 2026-05-12 (premium-bar audit #1.3): when the trial applies,
   // surface the trial → first-charge story directly in the subtitle
   // so the header reads as a complete pitch (Calm/Cal AI parity).
-  const headerSubtitle = trialApplies
-    ? "Full Pro free for a week. Cancel anytime in iOS Settings."
-    : proFlavoured
-      ? "Includes all Free features, plus AI photo and voice logging."
-      : "Cancel anytime. Price in your currency, taxes included.";
+  const headerSubtitle = personalisedPlan
+    ? personalisedPlan.heroSubtitle
+    : trialApplies
+      ? "Full Pro free for a week. Cancel anytime in iOS Settings."
+      : proFlavoured
+        ? "Includes all Free features, plus AI photo and voice logging."
+        : "Cancel anytime. Price in your currency, taxes included.";
 
   // ─── Disclosure copy ────────────────────────────────────────────
 
@@ -1071,6 +1132,8 @@ export default function PaywallScreen() {
           />
         </View>
 
+        {personalisedPlan ? <PaywallPersonalisedPlanCard summary={personalisedPlan} /> : null}
+
         {/* 2×2 value-prop grid + FREE/PRO comparison matrix (Figma
             `284:2`). Copy from the shared SSOT (web == mobile). Sit
             between the hero and the plan selector, matching the frame
@@ -1316,6 +1379,7 @@ export default function PaywallScreen() {
           borderTopColor: colors.border,
         }}
       >
+        {trialApplies && currentProPkg && hasPro ? <PaywallNoPaymentChip /> : null}
         {primaryPurchaseCta}
         <Pressable
           testID="paywall-restore-footer"

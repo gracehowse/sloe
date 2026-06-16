@@ -20,6 +20,7 @@ import {
   traceParsing,
   traceNutritionLookup,
 } from "@/lib/analytics/recipeImportPipelineTrace";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,9 @@ const MAX_BYTES = 6 * 1024 * 1024;
  * `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`.
  */
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // 2026-05-16 (ENG-519) — shared kill switch with the URL + caption
   // import paths (`kill_recipe_import`).
   if (await isServerFeatureEnabled("kill_recipe_import")) {

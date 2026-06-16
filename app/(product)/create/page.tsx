@@ -4,8 +4,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Create recipe — Suppr",
-  description: "Add your own recipe to Suppr.",
+  title: "Create recipe — Sloe",
+  description: "Add your own recipe to Sloe.",
 };
 
 export default function CreateRecipePage() {
