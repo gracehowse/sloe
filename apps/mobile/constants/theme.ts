@@ -393,6 +393,14 @@ export const Colors = {
     brandMarkRing: '#3B2A4D',
     /** Calorie ring empty track — Sloe frost-mist (readable on white hero). */
     ringTrack: '#EDEAF1',
+    /** Bold ring track — a 14% tint of the plum ring hue (#3B2A4D), used as the
+     *  empty-arc track in every LOGGED state (design-director 2026-06-16, Apple
+     *  Fitness grammar). The old frost-mist #EDEAF1 measured ~10/255 off the
+     *  white card — invisible, so a partly-logged ring read as empty. 14% plum
+     *  lands ~30/255 off white: a confident "unfilled ring", still subordinate
+     *  to the 100%-opacity fill arc. Macro tracks use a tint of their OWN hue
+     *  (in CalorieRing/SkiaRingArcs), not this. ↔ web --ring-track-bold. */
+    ringTrackBold: 'rgba(59, 42, 77, 0.24)',
   },
   dark: {
     // SLOE Phase 0 dark — warm aubergine graphite, not cool-slate.
@@ -435,6 +443,9 @@ export const Colors = {
     primaryForeground: '#ffffff',
     brandMarkRing: '#ffffff',
     ringTrack: '#372F44',
+    /** Bold ring track (dark) — lifted plum #815E91 at 22% so the unfilled ring
+     *  reads on the dark card. ↔ web .dark --ring-track-bold. */
+    ringTrackBold: 'rgba(129, 94, 145, 0.34)',
   },
 };
 

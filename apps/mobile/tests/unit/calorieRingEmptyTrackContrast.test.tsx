@@ -7,14 +7,16 @@
  * card — the ring's defining shape was nearly invisible and read as an
  * unfinished placeholder. Fix: on the EMPTY state the outer track lifts to
  * `borderStrong` (#C9C2D6 light) and a 1px inner hairline ring is drawn so the
- * circle reads as intentional geometry. The FILLED state keeps the soft
- * frost-mist track so the plum arc holds maximum contrast against it.
+ * circle reads as intentional geometry. The FILLED/logged state now uses a
+ * saturated plum-tint track (`ringTrackBold`) for the same reason — the old
+ * frost-mist was ~10/255 off the card, so a partly-logged ring read as empty
+ * (design-director 2026-06-16, Apple "greyed-full" grammar).
  *
  * This pins both halves as observable behaviour:
  *   - empty ring → outer track stroke is the stronger borderStrong colour, and
  *     a thin (1px) inner hairline ring is present;
- *   - logged ring → outer track stays the soft frost-mist `trackColor`, and the
- *     hairline is gone.
+ *   - logged ring → outer track is the saturated `ringTrackBold` plum tint, and
+ *     the hairline is gone.
  *
  * Mirror: web `tests/unit/dailyRingEmptyTrackContrast.test.tsx`.
  */
@@ -35,6 +37,10 @@ const TRACK = "#EDEAF1"; // colors.ringTrack (frost-mist) — passed as trackCol
 // component renders the DARK token here (#47424F). Read the SAME token the
 // component reads — never a hardcoded hex — so this can't drift from the theme.
 const STRONG = Colors.dark.borderStrong; // #47424F — dark-branch lifted empty track
+// Logged state: the outer track is now a saturated tint of the plum ring hue
+// (`ringTrackBold`), not the frost-mist — Apple "greyed-full" grammar (design-
+// director 2026-06-16). Dark branch here, matching the shim's "dark" scheme.
+const BOLD = Colors.dark.ringTrackBold; // rgba(129, 94, 145, 0.34)
 
 const baseProps = {
   textColor: "#221B26",
@@ -66,12 +72,14 @@ describe("CalorieRing — empty-state track contrast (gap 1)", () => {
     expect(strokes.some((s) => s.stroke === STRONG && s.strokeWidth === 1)).toBe(true);
   });
 
-  it("keeps the soft frost-mist track once a value is logged (no over-darkening)", () => {
+  it("uses the bold plum-tint track once a value is logged (Apple greyed-full grammar, 2026-06-16)", () => {
     const r = render(<CalorieRing {...baseProps} consumed={900} goal={2000} />);
     const strokes = circleStrokes(r);
-    // Filled state: the outer track stays the soft frost-mist trackColor so the
-    // plum arc holds contrast against it.
-    expect(strokes.some((s) => s.stroke === TRACK)).toBe(true);
+    // Logged state: the outer track is now the saturated plum-tint `ringTrackBold`
+    // so the UNFILLED arc reads as a confident "greyed-full" ring — not the
+    // near-invisible frost-mist it used to be.
+    expect(strokes.some((s) => s.stroke === BOLD)).toBe(true);
+    expect(strokes.some((s) => s.stroke === TRACK)).toBe(false);
     // The 1px empty hairline is gone once logged.
     expect(strokes.some((s) => s.stroke === STRONG && s.strokeWidth === 1)).toBe(false);
   });

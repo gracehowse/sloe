@@ -69,7 +69,6 @@ export type SkiaRingArcsProps = {
   /** Macro fills 0..1 — [protein, carbs, fat]. */
   macroPcts: [number, number, number];
   macroColors: [string, string, string];
-  macroTrackColor: string;
   trackColor: string;
   emptyInnerColor: string;
   ringColor: string;
@@ -118,7 +117,6 @@ export function SkiaRingArcs({
   bonusFrac,
   macroPcts,
   macroColors,
-  macroTrackColor,
   trackColor,
   emptyInnerColor,
   ringColor,
@@ -313,8 +311,11 @@ export function SkiaRingArcs({
                 path={macroPaths[i]!}
                 style="stroke"
                 strokeWidth={MACRO_STROKE}
-                color={macroTrackColor}
-                opacity={0.4}
+                // Macro track = a tint of its OWN hue (Apple Fitness grammar,
+                // design-director 2026-06-16), not 0.4-opacity frost-mist —
+                // each unfilled macro arc reads as its own faint ring.
+                color={macroColors[i]!}
+                opacity={0.28}
               />
               <Path
                 path={macroPaths[i]!}

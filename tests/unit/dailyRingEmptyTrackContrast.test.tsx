@@ -6,8 +6,10 @@
  * the card — the ring's defining shape was nearly invisible and read as an
  * unfinished placeholder. Fix: on the EMPTY state the outer track lifts to
  * `--border-strong` (#C9C2D6 light) and a 1px inner hairline ring is drawn so
- * the circle reads as intentional geometry. The FILLED state keeps the soft
- * `--ring-bg` frost-mist so the plum arc holds maximum contrast against it.
+ * the circle reads as intentional geometry. The FILLED/logged state now uses a
+ * saturated 24% plum tint (`--ring-track-bold`) for the same reason — the old
+ * frost-mist `--ring-bg` was ~10/255 off the white card, so a partly-logged
+ * ring read as empty (design-director 2026-06-16, Apple "greyed-full" grammar).
  *
  * Mirror of mobile `apps/mobile/tests/unit/calorieRingEmptyTrackContrast.test.tsx`.
  */
@@ -40,12 +42,14 @@ describe("DailyRing — empty-state track contrast (gap 1)", () => {
     ).toBe(false);
   });
 
-  it("keeps the soft --ring-bg track once a value is logged (no over-darkening)", () => {
+  it("uses the bold plum-tint track once a value is logged (Apple greyed-full grammar, 2026-06-16)", () => {
     const { container } = render(<DailyRing consumed={900} target={2000} />);
     const s = strokes(container);
-    // Filled state: the outer track stays the soft frost-mist so the plum arc
-    // holds contrast against it.
-    expect(s.some((c) => c.stroke === "var(--ring-bg)")).toBe(true);
+    // Filled/logged state: the outer track is now a saturated 24% plum tint
+    // (--ring-track-bold) so the UNFILLED arc reads as a confident "greyed-full"
+    // ring, not the near-invisible frost-mist --ring-bg it used to be.
+    expect(s.some((c) => c.stroke === "var(--ring-track-bold)")).toBe(true);
+    expect(s.some((c) => c.stroke === "var(--ring-bg)")).toBe(false);
     // Neither the empty hairline nor the empty gradient loop renders once logged.
     expect(
       s.some((c) => c.stroke === "var(--border-strong)" && c.strokeWidth === "1"),

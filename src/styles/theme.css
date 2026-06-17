@@ -356,6 +356,12 @@
      docs/decisions/2026-06-12-flat-card-surfaces.md). NOT a card fill. */
   --fill-quiet: #F2EFE9;
   --ring-bg: #EDEAF1;
+  /** Bold ring track — 14%→24% tint of the plum ring hue (#3B2A4D), the
+   *  empty-arc track in every LOGGED state (Apple Fitness grammar, design-
+   *  director 2026-06-16). The old frost-mist #EDEAF1 was ~10/255 off white —
+   *  invisible, so a partly-logged ring read as empty. Macro tracks use a tint
+   *  of their OWN hue (in daily-ring.tsx), not this. ↔ mobile ringTrackBold. */
+  --ring-track-bold: rgba(59, 42, 77, 0.24);
   /** Opacity of the empty cold-open ring's brand-gradient loop (ENG-1086).
    *  Mirrors mobile `RING_EMPTY_GRADIENT_OPACITY`. Tunable without a deploy. */
   --ring-empty-gradient-opacity: 0.36;
@@ -593,6 +599,9 @@
 
   /** Ring empty track — Sloe dark plum-mist. */
   --ring-bg: #372F44;
+  /** Bold ring track (dark) — lifted plum #815E91 at 34% so the unfilled ring
+   *  reads on the dark card. ↔ mobile dark ringTrackBold. */
+  --ring-track-bold: rgba(129, 94, 145, 0.34);
   /* Quiet fill (dark) — one step above the dark card fill. */
   --fill-quiet: #2C2A30;
   --ring-track: #372F44;
