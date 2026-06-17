@@ -188,7 +188,7 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | # | Pri | Title | Why launch |
 |---|---|---|---|
 | ENG-935 | High | "What to eat next" — permanent glanceable Today block | **the North Star moment** |
-| ENG-933 | High | Single time-aware editorial Today line (not a stat wall) | cold-open Today craft |
+| ~~ENG-933~~ | — | ~~Single time-aware editorial Today line~~ — **Won't-do (2026-06-17, founder-ratified):** reverses the settled ENG-1032 call (ring numeral = display moment); kernel folded into the under-ring coach line + ENG-939 | not launch-blocking |
 | ENG-939 | High | Warm food-forward Today empty/cold-open state | first-impression on a zeroed account |
 | ENG-938 | High | Protein-remaining as priority macro on Today | refugee scannable value |
 | ~~ENG-962~~ | High | ~~Move signup after the plan reveal~~ | **Done** `95a83070` |
@@ -311,7 +311,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-944 | High | [Category-leading] Show the ingredients needed for each step, inline beneath the instruc |
 | ENG-940 | High | [Category-leading] Surface the recipe-fit score as a calm "matches your day" signal on D |
 | ENG-935 | High | [Category-leading] Make 'What to eat next' a permanent, glanceable Today block — the nor |
-| ENG-933 | High | [Category-leading] Lead the Today screen with a single time-aware editorial line, not a  |
+| ~~ENG-933~~ | — | ~~Lead the Today screen with a single time-aware editorial line~~ — **Canceled (won't-do, 2026-06-17):** keep ENG-1032 |
 | ~~ENG-983~~ | Medium | ~~[Category-leading] Deduplicate and aisle-sort shopping list at generation~~ — **Done** |
 | ENG-982 | Medium | [Category-leading] Add editorial Collections (named, cover-image cookbooks) on top of th |
 | ENG-981 | Medium | [Category-leading] Support batch / multi-recipe import in one share action |

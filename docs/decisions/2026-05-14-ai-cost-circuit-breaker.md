@@ -213,3 +213,17 @@ No changes. All AI calls are server-side. Mobile clients see the 503
 response and surface "AI is temporarily at capacity. Try again in a
 few hours or log manually." through the existing `ai_capacity_reached`
 error-copy entry.
+
+## Decision: enforcement enabled in production (2026-06-17, ENG-1158)
+
+Founder-approved. `AI_BUDGET_ENFORCEMENT_ENABLED=true` set in Vercel
+production + redeployed — the breaker now **enforces** (was monitoring-only).
+
+- **Caps at flip:** 50 calls/user/day (`AI_BUDGET_PER_USER_DAILY_CALLS`),
+  £50/day global (`AI_BUDGET_GLOBAL_DAILY_GBP`). Both widenable via env in ~90s.
+- **Safe-to-enable checks:** `UPSTASH_REDIS_REST_*` confirmed present in prod;
+  the breaker fails open for 5 min before closing on a sustained Redis outage,
+  so a brief Upstash blip can't cause a full AI outage.
+- **Deferred (post-launch):** right-sizing the caps against real shadow-mode
+  spend needs live traffic (pre-launch is effectively N=1). Revisit the cap
+  values once the acquisition wave produces a real spend curve.
