@@ -99,6 +99,7 @@ const appDataState = {
     workoutsByDay: {},
     basalBurnByDay: {},
     profileMeasurementSystem: "metric" as const,
+    nutritionJournalHydrated: true,
     nutritionByDay: {} as Record<string, unknown[]>,
     extraWaterByDay: {},
     notificationPrefs: { mealReminders: false, weeklyCheckin: false },

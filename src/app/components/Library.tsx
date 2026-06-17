@@ -19,7 +19,6 @@ import {
   planImportPillId,
 } from "../../lib/planning/planImport/libraryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
-import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 
 /**
@@ -535,256 +534,15 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         </div>
       )}
 
-      {/* Recipe Grid
-          2026-04-20 desktop prototype port
-          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
-          `WebLibrary`). Two variants:
-
-          - Desktop (`md+`): prototype-flat grid. 4:3 hero, title
-            + source + kcal/P/time meta row with lucide icons, kind
-            pill + Draft chip + kcal pill overlay preserved from
-            live (Grace's mix-and-match rule: keep the stronger
-            live affordances, adopt prototype structure). Saved-kind
-            cards also render a bookmark dot top-right for quick
-            visual scan. Fit-% pill renders primary-tinted in the
-            top-right of the card body, parity with Discover's
-            2026-04-20 port.
-          - Mobile-web (`< md`): retains the live card layout
-            (author row + P/C/F chips + large image). Mobile users
-            on the native app get a fully-styled prototype card;
-            this mobile-WEB path is an intermediate state until the
-            narrow-viewport port lands. The sort/filter behaviours
-            are identical across both. */}
+      {/* Recipe grid — Sloe Figma `527:2` unified card layout (ENG-896).
+          One responsive grid at all breakpoints (2-col mobile-web,
+          3-col desktop). Square hero, bookmark overlay, macro row,
+          saves/time meta — parity with native mobile Library. */}
       {filteredRecipes.length > 0 && (
         <>
-          {/* Desktop (≥ md) — prototype-flat grid */}
           <div
-            data-testid="library-desktop-grid"
-            className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5"
-          >
-            {filteredRecipes.map((recipe) => {
-              const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
-              const kcal = Math.round(recipe.calories ?? 0);
-              const protein = Math.round(recipe.protein ?? 0);
-              const carbs = Math.round(recipe.carbs ?? 0);
-              const fat = Math.round(recipe.fat ?? 0);
-              const totalTime =
-                (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
-                (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
-              const fitPct = computeRecipeFitPercent(
-                {
-                  calories: recipe.calories,
-                  protein: recipe.protein,
-                  carbs: recipe.carbs,
-                  fat: recipe.fat,
-                },
-                nutritionTargets
-                  ? {
-                      calories: nutritionTargets.calories,
-                      protein: nutritionTargets.protein,
-                      carbs: nutritionTargets.carbs,
-                      fat: nutritionTargets.fat,
-                    }
-                  : null,
-              ).percent;
-              // Design Direction 2026: flat bg-card border card → SupprCard (flag-gated internally).
-              return (
-                <SupprCard
-                  key={`desktop-${recipe.id}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedRecipe(recipe)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
-                  }}
-                  padding="none"
-                  radius="lg"
-                  elevation="card"
-                  className="group text-left overflow-hidden cursor-pointer w-full transition-all"
-                >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
-                    {/* Phase 5 / B5 (2026-04-27) — view-transition-name
-                        on the card image so the recipe-card → detail
-                        morph (spec §1.1) has a continuous geometry
-                        anchor. Browsers without the View Transitions
-                        API (Firefox today) ignore the property — no
-                        regression. The matching name lives on the
-                        detail hero (RecipeDetail.tsx). */}
-                    {recipe.image ? (
-                      <RecipeCardImage
-                        src={recipe.image}
-                        recipeId={recipe.id}
-                        recipeTitle={recipe.title}
-                        iconSize={32}
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full"
-                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                      >
-                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={32} />
-                      </div>
-                    )}
-                    <div
-                      className={`absolute top-3 left-3 px-2 py-0.5 rounded-md text-[11px] font-semibold shadow-sm ${kindBadgeClasses(kind)}`}
-                    >
-                      {kindLabel(kind)}
-                    </div>
-                    {kind !== "saved" && recipe.isPublished === false ? (
-                      <div className="absolute top-3 left-[5.5rem] px-2 py-0.5 rounded-md text-[11px] font-semibold shadow-sm bg-foreground/80 text-background">
-                        Draft
-                      </div>
-                    ) : null}
-                    {kind === "saved" ? (
-                      <div
-                        data-testid={`library-saved-dot-${recipe.id}`}
-                        className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/95 backdrop-blur-sm grid place-items-center shadow-sm"
-                        aria-label="Saved"
-                      >
-                        <Icons.saved className="w-[14px] h-[14px] text-primary" />
-                      </div>
-                    ) : (
-                      <div className="absolute top-3 right-3 px-2.5 py-1 bg-card/95 backdrop-blur-sm rounded-md text-[11px] font-semibold shadow-sm text-foreground tabular-nums">
-                        {kcal} kcal
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3.5 relative">
-                    <span
-                      data-testid={`library-fit-${recipe.id}`}
-                      className="absolute top-3 right-3 inline-flex items-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold px-2 py-0.5 tabular-nums"
-                    >
-                      {fitPct}%
-                    </span>
-                    <p
-                      className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em] pr-12"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {recipe.title}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                      {recipe.creatorName}
-                    </p>
-                    {/* Macro row (recipes.md §3.1) — kcal · protein ·
-                        carbs · fat in the immutable macro colours, protein
-                        emphasised (heavier + ink) so the card reads as a
-                        tracker. kcal suppressed at ≤0 so an un-computed
-                        recipe never shows a confident "0 kcal" (trust
-                        posture). Mobile parity:
-                        `apps/mobile/app/(tabs)/library.tsx` MacroIconRow.
-                        text-[11px] = DS §2.2 caption ramp. Was text-[11px]
-                        which is below the 12pt caption floor on the scale. */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
-                      {kcal > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.calories
-                            className="w-[11px] h-[11px]"
-                            style={{ color: "var(--macro-calories)" }}
-                          />
-                          {kcal} kcal
-                        </span>
-                      ) : null}
-                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                        <Icons.protein
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-protein)" }}
-                        />
-                        {protein}g
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.carbs
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-carbs)" }}
-                        />
-                        {carbs}g
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.fat
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-fat)" }}
-                        />
-                        {fat}g
-                      </span>
-                      {totalTime > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
-                          {totalTime} min
-                        </span>
-                      ) : null}
-                    </div>
-                    {/* GW-08 (audit 2026-04-28): TrustChip removed —
-                        the chip's source was fabricated from
-                        `recipe.isVerified`, which the importer writes
-                        unconditionally on any LLM extract that produced
-                        non-zero calories. Restore once real per-recipe
-                        match-source data is plumbed (P1/P2 GW-08 work). */}
-                    {/* Preserved secondary actions — Go public / Create
-                        your own version. Kept reachable on desktop
-                        per the parity requirement; rendered as small
-                        inline chips beneath the meta row. */}
-                    {kind === "created" && recipe.isPublished === false ? (
-                      // Button system (2026-06-12): "Go public" is a secondary
-                      // per-card action → `SupprButton` variant="ghost"
-                      // (transparent, no border, plum label). Supersedes the old
-                      // aubergine-OUTLINE chip. Mirror of mobile `goPublicBtn`.
-                      // Sized down (h-auto + caption type) to read as an inline
-                      // card chip, not a full-width CTA.
-                      <SupprButton
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
-                          router.replace(`/home?${q}`, { scroll: false });
-                        }}
-                        className="mt-3 h-auto px-2.5 py-1 text-[11px]"
-                      >
-                        Go public
-                      </SupprButton>
-                    ) : null}
-                    {kind === "imported" ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void (async () => {
-                            const newId = await duplicateRecipeToCreatedDraft(recipe.id);
-                            if (!newId) return;
-                            const q = new URLSearchParams({ view: "create", editRecipe: newId }).toString();
-                            router.replace(`/home?${q}`, { scroll: false });
-                          })();
-                        }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-warning text-foreground text-[11px] font-semibold hover:opacity-90"
-                      >
-                        Create your own version
-                      </button>
-                    ) : null}
-                  </div>
-                </SupprCard>
-              );
-            })}
-          </div>
-
-          {/* Mobile-web (< md) — Sloe Figma `527:2` 2-column photo grid.
-              Each card: full-bleed photo (rounded, ~172px), bookmark
-              overlay top-right, then title (serif) + `★ saves · time`
-              meta row. NO macro numbers, NO "..." overflow, NO kind badge
-              chrome on the card — those live in the detail screen now. The
-              saved-vs-imported distinction is expressed by the bookmark
-              overlay (saved → filled clay) + the quiet entry-kind control
-              on the count line above. Mobile parity:
-              `apps/mobile/app/(tabs)/library.tsx`. */}
-          <div
-            data-testid="library-mobile-grid"
-            className="grid grid-cols-2 gap-4 md:hidden"
+            data-testid="library-recipe-grid"
+            className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {filteredRecipes.map((recipe) => {
               const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
@@ -919,6 +677,38 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         <span>{recipe.servings} {recipe.servings === 1 ? "serving" : "servings"}</span>
                       ) : null}
                     </div>
+                    {kind === "created" && recipe.isPublished === false ? (
+                      <SupprButton
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
+                          router.replace(`/home?${q}`, { scroll: false });
+                        }}
+                        className="mt-3 h-auto px-2.5 py-1 text-[11px]"
+                      >
+                        Go public
+                      </SupprButton>
+                    ) : null}
+                    {kind === "imported" ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void (async () => {
+                            const newId = await duplicateRecipeToCreatedDraft(recipe.id);
+                            if (!newId) return;
+                            const q = new URLSearchParams({ view: "create", editRecipe: newId }).toString();
+                            router.replace(`/home?${q}`, { scroll: false });
+                          })();
+                        }}
+                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-warning text-foreground text-[11px] font-semibold hover:opacity-90"
+                      >
+                        Create your own version
+                      </button>
+                    ) : null}
                   </div>
                 </SupprCard>
               );

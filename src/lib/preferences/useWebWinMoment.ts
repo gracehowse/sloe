@@ -68,6 +68,8 @@ export interface UseWebWinMomentArgs {
 export interface UseWebWinMoment {
   /** Celebration to play now, or `null`. */
   activeCelebration: WinMomentCelebration | null;
+  /** Streak milestone (3/7/30/100) when `activeCelebration === "streak"`. */
+  activeMilestone: number | null;
   /** Call from `WinMomentPlayer` `onComplete` to dismiss the overlay. */
   onCelebrationComplete: () => void;
   /** `true` for ~200ms after a landmark fires — drives the ring colour pulse. */
@@ -84,6 +86,7 @@ export function useWebWinMoment({
 
   const [activeCelebration, setActiveCelebration] =
     useState<WinMomentCelebration | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
   const [pulse, setPulse] = useState(false);
 
   const prevRef = useRef<WinMomentSnapshot | null>(null);
@@ -114,6 +117,7 @@ export function useWebWinMoment({
     writeLastFired(dayKey);
 
     setActiveCelebration(result.celebration);
+    setActiveMilestone(result.milestone ?? null);
     if (!prefersReducedMotion()) {
       setPulse(true);
       window.setTimeout(() => setPulse(false), WEB_WIN_PULSE_MS);
@@ -132,7 +136,8 @@ export function useWebWinMoment({
 
   const onCelebrationComplete = useCallback(() => {
     setActiveCelebration(null);
+    setActiveMilestone(null);
   }, []);
 
-  return { activeCelebration, onCelebrationComplete, pulse };
+  return { activeCelebration, activeMilestone, onCelebrationComplete, pulse };
 }

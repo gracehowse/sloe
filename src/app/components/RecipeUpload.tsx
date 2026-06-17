@@ -1573,32 +1573,6 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           Presentation only — paste-link / URL-parse logic unchanged. */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
-          {/* Source tiles — 3-method input grid (the app's canonical input
-              methods, reskinned to the Sloe language; NOT restructured to
-              the old Figma source-platform layout). */}
-          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Import from</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { icon: Icons.star, label: "TikTok" },
-                { icon: Icons.instagram, label: "Instagram" },
-                { icon: Icons.youtube, label: "YouTube" },
-                { icon: Icons.web, label: "Website" },
-              ].map((source) => (
-                <button
-                  key={source.label}
-                  type="button"
-                  className="flex flex-col items-center gap-2 p-3 rounded-[var(--radius-card)] hover:bg-muted/40 transition-colors"
-                >
-                  <IconBox tone="primary" size="md">
-                    <source.icon className="w-4 h-4" />
-                  </IconBox>
-                  <span className="text-[10px] font-medium text-muted-foreground">{source.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Paste-link pill — the import CTA panel. */}
           <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
             {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
@@ -1636,6 +1610,30 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             {importBusy && !importProgressV2 ? (
               <ImportLoadingSkeleton phase="importing" className="mt-4" />
             ) : null}
+          </div>
+
+          {/* WORKS WITH — non-tappable trust chips (ENG-898, mobile parity).
+              Honest sources we parse; NOT a four-way router. */}
+          <div className="space-y-2" data-testid="import-works-with">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Works with
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { mono: "TT", label: "TikTok" },
+                { mono: "IG", label: "Instagram" },
+                { mono: "YT", label: "YouTube" },
+                { mono: "W", label: "Website" },
+              ].map((source) => (
+                <div
+                  key={source.label}
+                  aria-label={`Works with ${source.label}`}
+                  className="inline-flex h-6 items-center rounded-lg border border-border bg-card px-2 text-xs font-semibold text-foreground"
+                >
+                  {source.mono}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Recent Imports placeholder */}

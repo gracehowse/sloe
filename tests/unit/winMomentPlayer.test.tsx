@@ -25,4 +25,11 @@ describe("ENG-901 — web WinMomentPlayer renders a real celebration", () => {
     rerender(<WinMomentPlayer celebration="log-confirm" />);
     expect(screen.getByText("Logged")).toBeTruthy();
   });
+
+  it("ENG-901 M5 — streak milestone shows numeral + days consistent copy", () => {
+    render(<WinMomentPlayer celebration="streak" milestone={7} />);
+    expect(screen.getByTestId("win-moment-milestone")).toHaveTextContent("7");
+    expect(screen.getByText("days consistent.")).toBeTruthy();
+    expect(screen.queryByTestId("win-moment-pct")).toBeNull();
+  });
 });

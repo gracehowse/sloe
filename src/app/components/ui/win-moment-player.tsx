@@ -41,12 +41,18 @@
  *     completes on the same ~700ms beat.
  */
 import * as React from "react";
+import {
+  STREAK_WIN_SUBHEAD,
+  showStreakMilestoneDisplay,
+} from "../../../lib/nutrition/winMomentStreakCopy.ts";
 
 export type WinMomentCelebration = "goal-hit" | "streak" | "log-confirm";
 
 export interface WinMomentPlayerProps {
   /** Which landmark celebration to play. Drives the centre label. */
   celebration: WinMomentCelebration;
+  /** ENG-901 M5 — streak milestone numeral (3/7/30/100). */
+  milestone?: number;
   /** Fired once the (single, non-looping) celebration finishes. Use this to
    *  unmount the player. */
   onComplete?: () => void;
@@ -103,6 +109,7 @@ function useReduceMotion(): boolean {
 
 export function WinMomentPlayer({
   celebration,
+  milestone,
   onComplete,
   size = 220,
   fullBleed = false,
@@ -110,6 +117,7 @@ export function WinMomentPlayer({
 }: WinMomentPlayerProps) {
   const reduceMotion = useReduceMotion();
   const gradientStops = useWinGradientStops();
+  const streakMilestone = showStreakMilestoneDisplay(celebration, milestone);
 
   // Ring geometry — a single gold arc inside the player box (mirrors mobile).
   const stroke = Math.max(8, Math.round(size * 0.045));
@@ -123,9 +131,15 @@ export function WinMomentPlayer({
   const gradId = `winGold-${uid}`;
 
   // Centre odometer — count 0→100% over the sweep (RAF; mirrors mobile).
-  const [displayPct, setDisplayPct] = React.useState(reduceMotion ? 100 : 0);
+  const [displayPct, setDisplayPct] = React.useState(
+    reduceMotion || streakMilestone ? 100 : 0,
+  );
 
   React.useEffect(() => {
+    if (streakMilestone) {
+      const done = window.setTimeout(() => onComplete?.(), CELEBRATION_MS);
+      return () => window.clearTimeout(done);
+    }
     if (reduceMotion) {
       setDisplayPct(100);
       const done = window.setTimeout(() => onComplete?.(), CELEBRATION_MS);
@@ -304,29 +318,26 @@ export function WinMomentPlayer({
           }}
         >
           <span
-            data-testid="win-moment-pct"
+            data-testid={streakMilestone ? "win-moment-milestone" : "win-moment-pct"}
             style={{
-              // Mirrors mobile: 36px serif win pct (a deliberate one-off — the
-              // Today ring centre is larger; the win overlay keeps 36 so the
-              // ring size can't silently resize this).
               fontFamily: "var(--font-headline)",
-              fontSize: 36,
-              lineHeight: "36px",
+              fontSize: streakMilestone ? 56 : 36,
+              lineHeight: streakMilestone ? "56px" : "36px",
               color: "var(--accent-win)",
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {displayPct}%
+            {streakMilestone ? milestone : `${displayPct}%`}
           </span>
           <span
             style={{
               fontSize: 13,
               fontWeight: 600,
-              letterSpacing: "0.04em",
+              letterSpacing: streakMilestone ? "0.02em" : "0.04em",
               color: "var(--accent-win)",
             }}
           >
-            {CELEBRATION_LABEL[celebration]}
+            {streakMilestone ? STREAK_WIN_SUBHEAD : CELEBRATION_LABEL[celebration]}
           </span>
         </div>
       </div>

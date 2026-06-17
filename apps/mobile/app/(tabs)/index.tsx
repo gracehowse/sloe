@@ -3230,6 +3230,7 @@ export default function TrackerScreen() {
   );
   const {
     activeCelebration: winCelebration,
+    activeMilestone: winMilestone,
     onCelebrationComplete: onWinComplete,
     confirmLog: confirmLogHaptic,
   } = useWinMoment({
@@ -5905,6 +5906,7 @@ export default function TrackerScreen() {
       {winCelebration ? (
         <WinMomentPlayer
           celebration={winCelebration}
+          milestone={winMilestone ?? undefined}
           onComplete={onWinComplete}
           fullBleed
           testID="today-win-moment"

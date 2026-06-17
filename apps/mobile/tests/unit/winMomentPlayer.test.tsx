@@ -84,6 +84,16 @@ describe("WinMomentPlayer (mobile code celebration)", () => {
     expect(confirm.getByText("Logged")).toBeTruthy();
   });
 
+  it("ENG-901 M5 — streak milestone shows numeral + days consistent copy", () => {
+    const { getByTestId, getByText, queryByTestId } = render(
+      <WinMomentPlayer celebration="streak" milestone={7} />,
+    );
+    expect(getByTestId("win-moment-milestone")).toBeTruthy();
+    expect(getByTestId("win-moment-milestone").props.children).toBe("7");
+    expect(getByText("days consistent.")).toBeTruthy();
+    expect(queryByTestId("win-moment-pct")).toBeNull();
+  });
+
   it("clears its completion timer on unmount (no fire after unmount)", () => {
     const onComplete = vi.fn();
     const { unmount } = render(

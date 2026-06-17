@@ -2342,6 +2342,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   );
   const {
     activeCelebration: winCelebration,
+    activeMilestone: winMilestone,
     onCelebrationComplete: onWinComplete,
     pulse: winPulse,
   } = useWebWinMoment({
@@ -2570,6 +2571,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       {winCelebration ? (
         <WinMomentPlayer
           celebration={winCelebration}
+          milestone={winMilestone ?? undefined}
           onComplete={onWinComplete}
           fullBleed
           testID="today-win-moment"
