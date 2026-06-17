@@ -258,17 +258,21 @@ describe("Fix 4 — Profile target editor matches web parity", () => {
 // dropped it first (2026-05-22 "v4"), and web followed in the Sloe
 // Figma-654:2 parity sweep (commit 664df1cb, 2026-06-04) so the two
 // surfaces match — Today shows at most the north-star / deficit prompt,
-// never a separate eat-again banner. This pins that BOTH composition
-// roots stop rendering the banner (parity), so it can't silently return
-// on one platform. (Web NutritionTracker's dead eat-again logic —
-// `eatAgainSuggestion`, the dismiss-state hooks, and the
-// `eatAgainDismiss` imports — was removed in the follow-up cleanup;
-// mobile index.tsx still computes it for analytics/tests.)
+// never a separate eat-again banner. ENG-984 (2026-06-17) then deleted
+// the dead banner/scroller components on BOTH platforms and stripped
+// the orphaned candidate/dismiss plumbing from the mobile host. This
+// pins that neither composition root renders OR imports the banner, so
+// it can't silently return on one platform.
 
 describe("Fix 5 — Eat-again removed from Today host (web + mobile)", () => {
   it("mobile composition root no longer renders TodayEatAgainBanner", () => {
     expect(SRC.today).not.toContain("<TodayEatAgainBanner");
     expect(SRC.today).not.toContain("<TodayEatAgainScroller");
+  });
+
+  it("mobile host no longer imports the retired eat-again plumbing (ENG-984)", () => {
+    expect(SRC.today).not.toContain('from "@suppr/shared/nutrition/eatAgainDismiss"');
+    expect(SRC.today).not.toContain("computeEatAgainCandidatesForSlot,");
   });
 
   it("web NutritionTracker no longer renders the eat-again banner (parity)", () => {

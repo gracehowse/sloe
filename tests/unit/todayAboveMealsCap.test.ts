@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const REPO = resolve(__dirname, "..", "..");
@@ -109,22 +109,27 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
   });
 });
 
-describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
-  it("TodayEatAgainBanner uses aubergine soft-tint nudge chrome (Sloe treatment 2026-06-08)", () => {
-    // Sloe treatment 2026-06-08: eat-again card moved from neutral `bg-card
-    // card-slab-flat` to a soft aubergine wash (`bg-primary/10`) to signal
-    // "actionable" inline re-log. The old `border-primary/30 bg-primary/5`
-    // bordered-card variant (from an interim pass) is also absent — only the
-    // clean `/10` wash is used.
-    const bannerSrc = readFileSync(
-      resolve(REPO, "src/app/components/suppr/today-eat-again-banner.tsx"),
+describe("Eat-again banner retired (ENG-984, web)", () => {
+  it("the TodayEatAgainBanner component file no longer exists", () => {
+    // ENG-984 (2026-06-17): the Eat-again banner was suppressed from
+    // Today on 2026-05-22 (v4) and rendered nowhere thereafter. The
+    // dead component is deleted; this pin fires if it is resurrected.
+    expect(
+      existsSync(resolve(REPO, "src/app/components/suppr/today-eat-again-banner.tsx")),
+    ).toBe(false);
+  });
+
+  it("the suppr barrel no longer exports TodayEatAgainBanner", () => {
+    const barrel = readFileSync(
+      resolve(REPO, "src/app/components/suppr/index.ts"),
       "utf-8",
     );
-    expect(bannerSrc).toMatch(/bg-primary\/10/);
-    expect(bannerSrc).not.toMatch(/bg-card card-slab-flat/);
-    expect(bannerSrc).not.toMatch(/border-primary\/30 bg-primary\/5/);
-    expect(bannerSrc).toMatch(/text-muted-foreground">Eat again</);
-    expect(bannerSrc).not.toMatch(/tracking-widest text-primary">Eat again/);
+    expect(barrel).not.toMatch(/export\s*\{[^}]*TodayEatAgainBanner/);
+  });
+
+  it("NutritionTracker does not import the eat-again banner", () => {
+    expect(HOST_SRC).not.toMatch(/today-eat-again-banner/);
+    expect(HOST_SRC).not.toMatch(/import[\s\S]*TodayEatAgainBanner/);
   });
 });
 

@@ -32,7 +32,7 @@ const INDEX = read("app/(tabs)/index.tsx");
 const NORTH_STAR = read("components/today/NorthStarBlock.tsx");
 const LOG_SHEET = read("components/today/LogSheet.tsx");
 const QUICK_ADD = read("components/QuickAddPanel.tsx");
-const EAT_AGAIN = read("components/today/TodayEatAgainBanner.tsx");
+// EAT_AGAIN banner retired (ENG-984, 2026-06-17) — component deleted.
 const FIRST_MEAL = read("components/today/TodayFirstMealEmptyState.tsx");
 const ADD_FORM = read("components/today/TodayAddFoodForm.tsx");
 const COMPLETE_DAY = read("components/today/TodayCompleteDayModal.tsx");
@@ -232,20 +232,8 @@ describe("Today lane — filter pills + segmented controls use the SOFT tint", (
     expect(SNAP).not.toMatch(/borderRadius:\s*22,\s*\n\s*backgroundColor:\s*accent\.primary,/);
   });
 
-  it("Eat-again nudge is a soft-tint card with a GHOST 'Log it' CTA", () => {
-    // Button system (2026-06-12): the eat-again prompt is a NUDGE banner (same
-    // category as the activity-bonus discover nudge) — the north-star hero owns
-    // the primary "Log it" moment, so this secondary nudge CTA is a ghost
-    // SupprButton (transparent, plum label). The soft-tint card wash stays.
-    expect(EAT_AGAIN).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
-    expect(EAT_AGAIN).toMatch(/accent\.primarySoft/); // card wash
-    // Ghost CTA wrapping the "Log it" caption label (an inline comment + attrs
-    // sit between the tag and the label, so assert tag + label as two pins).
-    expect(EAT_AGAIN).toMatch(/<SupprButton\s+variant="ghost"/);
-    expect(EAT_AGAIN).toMatch(/>Log it<\/Text>\s*<\/SupprButton>/);
-    // Must NOT regress to the retired aubergine-outline.
-    expect(EAT_AGAIN).not.toMatch(/borderColor:\s*accent\.primarySolid/);
-  });
+  // Eat-again nudge CTA pin removed — the banner is retired (ENG-984,
+  // 2026-06-17). Retirement is locked in `todayAboveMealsCap.test.ts`.
 });
 
 describe("CTA weight map — Spec 2 outline/pill conversions (2026-06-09)", () => {

@@ -77,7 +77,9 @@ export {
 // is the composition root; every new piece of Today behaviour lands in
 // one of these files rather than inside the root.
 export { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
-export { TodayEatAgainBanner, type TodayEatAgainBannerProps } from "./today-eat-again-banner";
+// TodayEatAgainBanner removed (ENG-984, 2026-06-17) — the Eat-again banner
+// was suppressed from Today on 2026-05-22 (v4) and rendered nowhere on web
+// or mobile thereafter. The dead component + its barrel export are retired.
 export {
   TodayStreakInsightCard,
   type TodayStreakInsightCardProps,

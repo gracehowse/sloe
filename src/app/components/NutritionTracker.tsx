@@ -2701,19 +2701,18 @@ export const NutritionTracker = memo(function NutritionTracker({
       {/* Phase 4 / Top-5 #2 (2026-04-28) — Fasting pill moved into the
           unified context block below the hero; no standalone render
           here. See `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5
-          #2 for the priority rule (fasting > eat-again > north-star).
-          Mobile parity in `apps/mobile/app/(tabs)/index.tsx`. */}
+          #2 for the priority rule (fasting > deficit; eat-again retired
+          ENG-984). Mobile parity in `apps/mobile/app/(tabs)/index.tsx`. */}
 
       {viewMode === "day" && (
       <>
       {/* Phase 4 / Top-5 #2 (2026-04-28) — Today's above-meals composition
           is capped at FOUR blocks (date header / hero / one context block /
-          macro tiles). Pre-Phase-4 the eat-again banner / hero / AI pill /
-          north-star block / macro tiles / nutrients grid all stacked
-          unconditionally; the cap rule moves the eat-again banner into a
-          mutually exclusive context-block dispatch below the hero. The
-          AI-estimated count chip moved INSIDE the hero (TodayHeroStats's
-          new `aiSourcedCount` prop). Reference:
+          macro tiles). Pre-Phase-4 the hero / AI pill / north-star block /
+          macro tiles / nutrients grid all stacked unconditionally; the cap
+          rule moves the prompts into a mutually exclusive context-block
+          dispatch below the hero. The AI-estimated count chip moved INSIDE
+          the hero (TodayHeroStats's new `aiSourcedCount` prop). Reference:
           `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5 #2. */}
 
       {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
@@ -2749,7 +2748,8 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {/* Single context block — priority order: fasting > deficit.
           Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
-          from Today scroll (2026-05-22 v4); shortcuts live in Log sheet. */}
+          from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
+          2026-06-17); logging shortcuts live in the Log sheet. */}
       {(() => {
         if (activeFast) {
           return (
@@ -2885,10 +2885,9 @@ export const NutritionTracker = memo(function NutritionTracker({
           present on Today via the Net tile (`TodayHeroStats`) and the
           Activity Bonus card. */}
 
-      {/* B4 Phase 3a (2026-04-27): eat-again block moved to top-of-feed,
-          above the hero. The previous position (right above Quick add)
-          dates from a 2026-04-18 audit M4 where it was matched to mobile.
-          Mobile reposition ships in the same change set. */}
+      {/* Eat-again block retired (ENG-984, 2026-06-17) — removed from
+          Today on 2026-05-22 (v4) and never re-surfaced; the dead
+          component is gone. Mobile parity: apps/mobile/app/(tabs)/index.tsx. */}
 
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
