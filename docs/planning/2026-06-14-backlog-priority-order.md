@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~49 Done 2026-06-14/16 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-16 (rev 10 — Gate 1.5 #456 merge recorded; ~12 Gate 1.5 tickets closed, ~16 remain).
-**Branch:** `main` · **PR:** [#456](https://github.com/gracehowse/Suppr/pull/456) merged `47c4fa06` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~49 Done 2026-06-14/16 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-14 (rev 11 — #468 merged; #469 wave-3 cohesion in flight).
+**Branch:** `main` · **PR:** [#468](https://github.com/gracehowse/Suppr/pull/468) merged `c839efbf` · [#469](https://github.com/gracehowse/Suppr/pull/469) open (`claude/wave-3-cohesion-integration`) · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -187,10 +187,10 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 
 | # | Pri | Title | Why launch |
 |---|---|---|---|
-| ENG-935 | High | "What to eat next" — permanent glanceable Today block | **the North Star moment** |
+| ENG-935 | High | "What to eat next" — permanent glanceable Today block | **in PR #469** — North Star no longer gated on `remaining > 0` |
 | ~~ENG-933~~ | — | ~~Single time-aware editorial Today line~~ — **Won't-do (2026-06-17, founder-ratified):** reverses the settled ENG-1032 call (ring numeral = display moment); kernel folded into the under-ring coach line + ENG-939 | not launch-blocking |
-| ENG-939 | High | Warm food-forward Today empty/cold-open state | first-impression on a zeroed account |
-| ENG-938 | High | Protein-remaining as priority macro on Today | refugee scannable value |
+| ENG-939 | High | Warm food-forward Today empty/cold-open state | **in PR #469** — time-aware cold-open coach line (no kcal scoreboard) |
+| ENG-938 | High | Protein-remaining as priority macro on Today | **in PR #469** — `macroStatCaption` shows full remaining at 0g logged |
 | ~~ENG-962~~ | High | ~~Move signup after the plan reveal~~ | **Done** `95a83070` |
 | ENG-964 | High | Date projection on the Reveal step (tangible goal) | partial — `revealProjection.ts` shipped; web reveal UI verify open |
 | ENG-965 | High | Surface data-import path earlier for MFP/MacroFactor refugees | partial — app-choice in `REDESIGN_DEFAULT_ON`; full refugee path open |
