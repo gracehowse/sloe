@@ -77,10 +77,10 @@ export type FoodHistoryItem = {
   /**
    * Premium-bar audit DC3 polish (2026-05-14) — optional recipe hero image
    * URL carried forward from the original journal row when present.
-   * Surface: `TodayEatAgainBanner` renders a 48×48 thumbnail when set;
-   * otherwise the banner falls back to its text-only layout. The
-   * field is opt-in: the bucket builder only populates it when the
-   * journal meal carries a real image URL — never invented.
+   * Consumed by Quick-add / Recents rows that render a thumbnail when set.
+   * (The Eat-again banner that originally used it was retired in ENG-984,
+   * 2026-06-17.) The field is opt-in: the bucket builder only populates it
+   * when the journal meal carries a real image URL — never invented.
    */
   imageUrl?: string;
   /**
