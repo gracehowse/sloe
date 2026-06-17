@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { parseRecipeFromHtml, siteNameFromUrl } from "@/lib/recipe-import/parseRecipeFromHtml";
+import { paraphraseInstructionsArray } from "@/lib/recipes/normaliseRecipeSteps";
 import {
   CaptionExtractionError,
   detectSocialPlatform,
@@ -348,7 +349,7 @@ export async function POST(req: Request) {
               // nulled. See docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md.
               description: null,
               ingredients: ingList,
-              instructions: websiteRecipe.instructions ?? [],
+              instructions: paraphraseInstructionsArray(websiteRecipe.instructions ?? []),
               servings: srv,
               prepTimeMin: websiteRecipe.prepTimeMin,
               cookTimeMin: websiteRecipe.cookTimeMin,
@@ -492,7 +493,7 @@ export async function POST(req: Request) {
           title: safeTitle,
           description: null,
           ingredients: filteredIngredients,
-          instructions: filteredSteps,
+          instructions: paraphraseInstructionsArray(filteredSteps),
           servings,
           prepTimeMin: recipe.prepTimeMin ?? null,
           cookTimeMin: recipe.cookTimeMin ?? null,
@@ -795,6 +796,12 @@ export async function POST(req: Request) {
           // that input is unchanged; only the stored/rendered field is nulled.
           // See docs/decisions/2026-06-03-recipe-import-posture-part1-part2.md.
           description: null,
+          // ENG-1128 (legal): the spread also carries `parsed.instructions` —
+          // verbatim JSON-LD HowToStep prose, which is protected creative
+          // expression. Override with sentence-split imperative steps so the
+          // creator's narrative step prose is never persisted/rendered (same
+          // posture as the `description: null` override directly above).
+          instructions: paraphraseInstructionsArray(parsed.instructions ?? []),
           mealType,
           sourceUrl: attribution.source_url,
           sourceName: attribution.source_name,

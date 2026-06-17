@@ -114,6 +114,36 @@ describe("POST /api/recipe-import — ENG-857 web/blog description is nulled", (
     expect(body.recipe.sourceName.length).toBeGreaterThan(0);
   });
 
+  it("paraphrases verbatim narrative JSON-LD steps to imperative (ENG-1128)", async () => {
+    // The route must not return a creator's narrative step prose verbatim.
+    const NARRATIVE_STEP =
+      "First, you'll want to gently cream the butter and sugar together until pale.";
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      name: "Butter Cake",
+      recipeIngredient: ["200g butter", "200g sugar"],
+      recipeInstructions: [NARRATIVE_STEP, "Then bake at 180C for 25 minutes."],
+      recipeYield: "8",
+    })}</script></head><body>Cake</body></html>`;
+    vi.stubGlobal("fetch", htmlFetch(html) as unknown as typeof fetch);
+
+    const res = await POST(makeReq("https://example.com/butter-cake"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    const steps: string[] = body.recipe.instructions;
+    expect(Array.isArray(steps)).toBe(true);
+    // The creator's narrative framing is gone — not returned verbatim.
+    const joined = JSON.stringify(steps);
+    expect(joined).not.toContain("you'll");
+    expect(joined).not.toContain("First,");
+    expect(joined).not.toContain("Then bake");
+    // What remains is neutral imperative function.
+    expect(steps).toContain("Gently cream the butter and sugar together until pale.");
+    expect(steps).toContain("Bake at 180C for 25 minutes.");
+  });
+
   it("keeps the description as macro-sanity input (captionNutrition still computed)", async () => {
     // A headnote that states a per-serving calorie claim must still be read for
     // the macro-sanity comparison — proving the description prose is consumed
