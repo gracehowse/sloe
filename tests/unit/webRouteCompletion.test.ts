@@ -48,6 +48,24 @@ describe("ENG-608 web route completion", () => {
     expect(appSrc).toMatch(/mode="create"/);
   });
 
+  // ENG-696 — the web Plan-Import surface must be reachable at /plan-import.
+  // Same two-part wiring as /import: (1) the path→view map carries the
+  // `plan-import` segment so the URL switches `currentView`; (2)
+  // `renderView()` has a `case "plan-import"` that renders <PlanImport />.
+  // The rendered UI is pinned in `tests/unit/planImportSurface.test.tsx`.
+  it("renders PlanImport for the /plan-import view (ENG-696)", () => {
+    const pagePath = resolve(REPO, "app/(product)/plan-import/page.tsx");
+    expect(existsSync(pagePath), "plan-import page missing").toBe(true);
+    const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
+    // (1) path → view is reachable.
+    expect(appSrc).toMatch(/"plan-import":\s*"plan-import"/);
+    // (2) the view renders the PlanImport surface.
+    expect(appSrc).toMatch(/case\s+"plan-import":/);
+    expect(appSrc).toMatch(/<PlanImport /);
+    // Gated on the same flag the mobile entry points use.
+    expect(appSrc).toContain("plan_import_enabled");
+  });
+
   it("navigates log sheet and checkout success to /today", () => {
     const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
     expect(appSrc).toMatch(/\/today\?openLog=1/);

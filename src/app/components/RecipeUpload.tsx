@@ -23,7 +23,13 @@ import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useImportQueue } from "../../lib/recipes/useImportQueue.ts";
 import { ImportRunnerError } from "../../lib/recipes/recipeImportScheduler.ts";
-import { importJobIdForUrl } from "../../lib/recipes/importProgressMachine.ts";
+import { importJobIdForUrl, importJobIdForImage } from "../../lib/recipes/importProgressMachine.ts";
+import {
+  mapImageImportResponseToRecipe,
+  photoSeedTitle,
+  BULK_PHOTO_IMPORT_MAX,
+  type ImageImportApiResponse,
+} from "../../lib/recipes/photoImport.ts";
 import { RecipeImportQueueDrawer } from "./suppr/recipe-import-queue-drawer.tsx";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
@@ -518,6 +524,41 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     }
   };
 
+  /**
+   * ENG-735 — fetch + parse ONE photo through `/api/recipe-import/image`.
+   * Shared shape with mobile via `mapImageImportResponseToRecipe`. Accepts an
+   * AbortSignal so the queue can cancel an in-flight photo; throws
+   * `ImportRunnerError` (stable code) so the drawer maps it to retry-eligible
+   * copy. Source attribution is forwarded from the URL field the same way the
+   * single-image OCR path does (ENG-748 #13).
+   */
+  const fetchPhotoImport = useCallback(
+    async (file: File, signal?: AbortSignal): Promise<ApiImportedRecipe> => {
+      const fd = new FormData();
+      fd.append("image", file);
+      const rawSource = importUrl.trim();
+      if (rawSource) {
+        const classified = normaliseSource({ url: rawSource });
+        if (classified.source_url) fd.append("sourceUrl", classified.source_url);
+        else fd.append("sourceName", rawSource);
+      }
+      let res: Response;
+      try {
+        res = await fetch("/api/recipe-import/image", { method: "POST", body: fd, signal });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+        throw new ImportRunnerError("network_error");
+      }
+      const data = (await res.json()) as ImageImportApiResponse;
+      if (!res.ok || !data.ok || !data.ingredients?.length) {
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return mapImageImportResponseToRecipe(data);
+    },
+    [importUrl],
+  );
+
   /** Shape returned by the URL importer + applied to the editor form. */
   type ImportedUrlRecipe = {
     title: string;
@@ -657,6 +698,53 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       return landImportedRecipeSaveFirst(recipe, sourceUrl);
     },
     [applyImportedRecipeToForm, landImportedRecipeSaveFirst],
+  );
+
+  /**
+   * ENG-735 — bulk photo import (the primary import path). Each selected photo
+   * becomes ONE `image` job in the shared scheduler, so the user sees a
+   * row-per-photo in the queue drawer with live progress / cancel / retry,
+   * photos import concurrently across the scheduler's slots, and the
+   * most-recently-finished populates the editor form for review (last-wins,
+   * identical to the URL queue path). Only available when the queue UX is on
+   * (`import-progress-v2`); the single-image "Extract from image" OCR path
+   * stays the create-mode default.
+   */
+  const runBulkPhotoImport = useCallback(
+    (files: FileList | File[]) => {
+      const all = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (all.length === 0) {
+        toast.error("Choose image files (JPEG, PNG, HEIC).");
+        return;
+      }
+      const picked = all.slice(0, BULK_PHOTO_IMPORT_MAX);
+      if (all.length > BULK_PHOTO_IMPORT_MAX) {
+        toast.info(
+          `Importing the first ${BULK_PHOTO_IMPORT_MAX} of ${all.length} photos — import the rest in another batch.`,
+        );
+      }
+      const total = picked.length;
+      picked.forEach((file, i) => {
+        importQueue.enqueue({
+          // Dedupe a double-enqueue of the same picked file (name+size handle).
+          id: importJobIdForImage(`${file.name}:${file.size}:${file.lastModified}`),
+          kind: "image",
+          title: photoSeedTitle(i + 1, total),
+          run: async (controls) => {
+            controls.setStage("extracting");
+            const recipe = await fetchPhotoImport(file, controls.signal);
+            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+            controls.setStage("organizing");
+            controls.setTitle(recipe.title ?? photoSeedTitle(i + 1, total));
+            // Last-wins: the most recent finished photo populates the editor
+            // form; every photo remains listed in the drawer regardless.
+            await applyAndMaybeSaveFirst(recipe, recipe.sourceUrl ?? "");
+            return { title: recipe.title ?? photoSeedTitle(i + 1, total) };
+          },
+        });
+      });
+    },
+    [importQueue, fetchPhotoImport, applyAndMaybeSaveFirst],
   );
 
   const runImportFromUrl = async () => {
@@ -1605,23 +1693,52 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               <p className="text-muted-foreground mb-2">Paste screenshot, or choose a file</p>
             </>
           )}
-          <input
-            type="file"
-            accept="image/*"
-            className="block mx-auto text-sm text-muted-foreground"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) applyImageFile(f);
-            }}
-          />
-          <button
-            type="button"
-            disabled={ocrBusy}
-            onClick={() => void runOcrFromImage()}
-            className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
-          >
-            {ocrBusy ? "Extracting…" : "Extract from image"}
-          </button>
+          {importProgressV2 && mode === "import" ? (
+            // ENG-735 — bulk photo import (primary path). Multi-file picker:
+            // each photo becomes its own queue job; the drawer at the page
+            // foot carries live per-photo progress. No `Extract from image`
+            // button here — selecting files starts the imports immediately,
+            // mirroring the mobile multi-select picker.
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                aria-label="Choose recipe photos to import"
+                className="block mx-auto text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files && files.length > 0) runBulkPhotoImport(files);
+                  // Reset so re-picking the same files re-triggers onChange.
+                  e.target.value = "";
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-3">
+                Pick up to {BULK_PHOTO_IMPORT_MAX} photos — each imports as its own
+                recipe. Track progress in the import tray below.
+              </p>
+            </>
+          ) : (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                className="block mx-auto text-sm text-muted-foreground"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) applyImageFile(f);
+                }}
+              />
+              <button
+                type="button"
+                disabled={ocrBusy}
+                onClick={() => void runOcrFromImage()}
+                className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
+              >
+                {ocrBusy ? "Extracting…" : "Extract from image"}
+              </button>
+            </>
+          )}
         </div>
         {/* F-156-recipe-wave (2026-05-10) — gentle nudge so users with
             an original URL keep the source link on the saved row.

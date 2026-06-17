@@ -1,5 +1,5 @@
-import type { PlanTemplateDraft, PlanTemplateSlot } from "../../nutrition/planTemplates.ts";
-import type { PlanImportCompiledSlot, PlanImportNutritionMode } from "./types.ts";
+import type { PlanTemplateDraft, PlanTemplateSlot } from "../../nutrition/planTemplates";
+import type { PlanImportCompiledSlot, PlanImportNutritionMode } from "./types";
 
 function nutritionForSlot(
   slot: PlanImportCompiledSlot,

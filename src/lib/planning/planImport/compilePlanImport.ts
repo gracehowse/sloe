@@ -1,4 +1,4 @@
-import { parseRawIngredients } from "../../recipe-ingredients/parseRawIngredients.ts";
+import { parseRawIngredients } from "../../recipe-ingredients/parseRawIngredients";
 import type {
   PlanImportAuthorNutrition,
   PlanImportCompiledSlot,
@@ -7,7 +7,7 @@ import type {
   PlanImportParsedRecipe,
   PlanImportScheduleDay,
   PlanImportVerifiedRecipe,
-} from "./types.ts";
+} from "./types";
 
 function normalizeTitle(s: string): string {
   return s

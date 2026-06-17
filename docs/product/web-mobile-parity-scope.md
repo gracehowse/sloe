@@ -2,7 +2,7 @@
 
 **Status:** Active product decisions (engineering follows; do not “fix” as unscoped parity bugs).
 
-**Last confirmed:** 2026-05-27
+**Last confirmed:** 2026-06-17
 
 **D-P1-7 maintenance (2026-04-25):** No new **intentional** divergences were recorded this cycle. Optional product follow-up (tickets, copy spec) for visual / voice-photo parity lives in [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md), not as “open” audit rows. Re-open **exceptions** in this document (or `docs/decisions/`) only when product signs a new intentional divergence.
 
@@ -58,6 +58,21 @@ The full-product sweep RETIRED five previously-documented divergences — engine
 | Discover IA (may diverge visually) | Converge mobile to web cuisine-carousel | ENG-695 |
 
 **Still intentional (KEEP):** onboarding step count web N/13 vs mobile N/12; iOS-only; calorie-ring colour map; Stripe vs IAP rails; Apple Health mobile-first; Today dark tone. Fourth-tab canonical label = **"Progress"** (testID `tab-you` kept for Maestro). Full rationale: [`../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`](../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md).
+
+### 2026-06-17 — Plan Import web gap CLOSED (ENG-696)
+
+Plan Import shipped mobile-first; the web app had no equivalent surface. ENG-696
+built the web Plan-Import flow to parity at `/plan-import` (paste → parse →
+review → assessment → commit), reusing the **same** `/api/plan-import/parse`
+route and a **shared** `commitPlanImport` pipeline (mobile's commit is now a
+thin wrapper around it). Gated on the shared `plan_import_enabled` flag.
+
+**One intentional remaining difference (not drift):** the mobile flow offers
+Paste / PDF / Photo source tabs; the web spine ships **paste only**. Web PDF +
+photo source tabs are tracked under the Plan Import **Sprint 2 (PDF + image)**
+project (same extract route + review UI). See
+[`../planning/plan-import-linear-program.md`](../planning/plan-import-linear-program.md)
+"Web parity (ENG-696)".
 
 ---
 

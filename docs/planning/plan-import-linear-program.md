@@ -106,6 +106,45 @@ Source (paste / PDF)
 
 One parse pipeline for all inputs — adaptors at the input layer only.
 
+## Web parity (ENG-696) — shipped
+
+Mobile shipped the full flow first (iOS is the primary surface). The web app
+caught up to parity under [ENG-696](https://linear.app/suppr/issue/ENG-696)
+(umbrella for the web halves of ENG-647/648/650/651/653). **No fork** — web
+reuses the same server route and the same commit pipeline.
+
+| Surface | Web | Mobile |
+|---------|-----|--------|
+| Route | `/plan-import` → `app/(product)/plan-import/page.tsx` → `App.tsx` `case "plan-import"` → `src/app/components/PlanImport.tsx` | `apps/mobile/app/plan-import.tsx` |
+| Entry point (ENG-647) | `MealPlanner.tsx` — "Import plan" ghost button on the summary-card CTA row + the empty-state CTA row (next to Generate/Shopping list/Templates) | Plan tab header Upload icon + "Generate ▾" action sheet → "Import existing plan" |
+| Parse route (ENG-648) | `POST /api/plan-import/parse` (same route), same `{ text, planName }` body, cookie auth + same-origin | `authedFetch` → same route |
+| Review + dual-kcal (ENG-650) | editable plan name + per-slot rows; trust line shows the non-active figure (author vs Sloe calc) | same |
+| Assessment + modes (ENG-651) | avg vs target panel; author/match segmented; import-to-library + auto-rebalance toggles; activate dialog | same |
+| Commit pipeline | `src/lib/planning/planImport/commitPlanImport.ts` (shared, takes a Supabase client) | `apps/mobile/lib/planImportCommit.ts` is now a thin wrapper around the shared module |
+| Library chip (ENG-653) | `Library.tsx` — contextual plan-import source pills reveal under the category row when the Imported entry-kind is active | `apps/mobile/app/(tabs)/library.tsx` — same contextual pills |
+
+**Feature flag:** the web surface gates on the SAME `plan_import_enabled`
+PostHog flag the mobile entry points use. Flag-off → `/plan-import` falls back
+to the Plan surface (mirrors mobile's deep-link guard) and the Import
+affordance is hidden in `MealPlanner`. Ramp both platforms together.
+
+**Intentional web-vs-mobile difference (not drift):**
+- **PDF / photo source** — the mobile flow has source tabs (Paste / PDF /
+  Photo) wired to `/api/plan-import/extract`. The web spine ships **paste
+  only** for ENG-696; the web PDF/photo source tabs are tracked under the
+  Plan Import **Sprint 2 (PDF + image)** project, reusing the same extract
+  route + review UI. Web paste reaches full parity with the mobile paste path.
+- **Rebalance target** — web seeds the joint fitter from the user's real
+  `nutritionTargets` (calories/protein/carbs/fat/fibre); the mobile screen
+  used a 2000-kcal placeholder. Web is the more correct of the two; the mobile
+  placeholder should converge (tracked under Plan Import Sprint 1 polish).
+
+**Tests:** `tests/unit/planImportSurface.test.tsx` (web surface spine +
+states), `tests/unit/libraryPlanImportChip.test.tsx` (ENG-653 chip),
+`tests/unit/planImportCommit.test.ts` (shared pipeline + no-fork pin),
+`tests/unit/webRouteCompletion.test.ts` (route wiring). Visual capture of the
+web surface is owed to `visual-qa` before the flag ramps past internal.
+
 ## HTML prototype (approve before build)
 
 Interactive mobile flow mockup — step tabs walk ENG-647 → ENG-652.

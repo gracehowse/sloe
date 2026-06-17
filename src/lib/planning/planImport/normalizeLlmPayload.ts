@@ -3,7 +3,7 @@ import type {
   PlanImportParsedRecipe,
   PlanImportScheduleDay,
   PlanImportScheduleSlot,
-} from "./types.ts";
+} from "./types";
 
 function slugKey(title: string, index: number): string {
   const base = title
