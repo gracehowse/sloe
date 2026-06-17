@@ -12,7 +12,6 @@ import {
   type PressableProps,
 } from "react-native";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
-import { figmaSlotSummaryTitle } from "@suppr/shared/copy/today";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -53,7 +52,6 @@ import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 import { emptySlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
-import { TodayMealsFigmaLayout } from "./TodayMealsFigmaLayout";
 import { MealRowSwipeable } from "./MealRowSwipeable";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -724,14 +722,6 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
   // verbatim. State holds the meal whose row was long-pressed.
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
-  // ENG-1091 (Grace 2026-06-13): the MEALS layout is back on its own flag, split
-  // out of `today_meals_figma_654` (which still gates the North Star + Weekly
-  // Insight Figma-654 designs — those are unchanged). `today_meals_figma_layout`
-  // is deliberately NOT in REDESIGN_DEFAULT_ON, so it defaults OFF → the legacy
-  // per-slot meal list (Breakfast/Lunch/Dinner/Snacks rows), reskinned in the
-  // Sloe palette. The Figma summary-card layout stays behind this flag (off) for
-  // reversibility; remove it in a follow-up cleanup once the revert is settled.
-  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
   // Shared "Share meal" handler used by BOTH the native Alert path and
@@ -883,106 +873,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           )}
         </SupprCard>
       )}
-      {mealsFigmaLayout ? (
-        <TodayMealsFigmaLayout
-          mealGroups={mealGroups}
-          collapsedSlots={collapsedSlots}
-          onToggleSlotCollapse={onToggleSlotCollapse}
-          onOpenFabForSlot={onOpenFabForSlot}
-          onPressMeal={onPressMeal}
-          onPressSlotSummary={onPressSlotSummary}
-          onLongPressMeal={handleMealLongPress}
-          onDeleteMeal={onDeleteMeal}
-          renderSlotExpanded={(slot, meals) => {
-            // e2e walk 2026-06-10: the Figma card header already shows the
-            // single (primary) meal's title + "{slotCals} kcal · {P}g P". When
-            // a slot has exactly one entry AND that entry's title equals the
-            // header title, the expanded row repeats it verbatim ("MyFitnessPal
-            // entry · 318 kcal" twice). Suppress just that redundant row — keep
-            // "+ Add food" so the slot stays editable. Mirrors the macro-detail
-            // "true duplicate" rule (single entry literally named after the
-            // header) from `apps/mobile/app/macro-detail.tsx` (2026-06-10).
-            const headerTitle = figmaSlotSummaryTitle(meals);
-            const redundantSingleRow =
-              meals.length === 1 &&
-              (meals[0]?.recipeTitle ?? "").trim() === headerTitle &&
-              headerTitle !== "";
-            return (
-            <View>
-              {redundantSingleRow
-                ? null
-                : meals.map((m) => (
-                <MealRowSwipeable key={m.id} mealId={m.id} onDeleteMeal={onDeleteMeal}>
-                  <TodayMealRowPressable
-                    tierV1={tierV1}
-                    onPress={() => onPressMeal(m.id)}
-                    onLongPress={() => handleMealLongPress(m)}
-                    style={{
-                      paddingVertical: Spacing.sm,
-                      paddingHorizontal: Spacing.md,
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      borderTopWidth: StyleSheet.hairlineWidth,
-                      borderTopColor: cardBorderColor + "20",
-                      backgroundColor: cardColor,
-                    }}
-                  >
-                    <Text
-                      style={{ ...Type.body, color: textColor, flex: 1, minWidth: 0 }}
-                      numberOfLines={1}
-                    >
-                      {m.recipeTitle}
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-                        {Math.round(m.calories)} kcal
-                      </Text>
-                      <ChevronRight size={16} color={textTertiaryColor} />
-                    </View>
-                  </TodayMealRowPressable>
-                </MealRowSwipeable>
-              ))}
-              {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
-                  affordance — same element, same treatment as the legacy-branch
-                  Add-food pill. Contained `colors.fillQuiet` pill inside a
-                  card-edge inset (no border, no second white card). */}
-              <View
-                style={{
-                  paddingHorizontal: Spacing.dense,
-                  paddingTop: Spacing.sm,
-                  paddingBottom: Spacing.dense,
-                }}
-              >
-                <TodayAddFoodPressable
-                  tierV1={tierV1}
-                  onPress={() => onOpenFabForSlot(slot)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
-                    paddingVertical: Spacing.sm,
-                    paddingHorizontal: Spacing.dense,
-                    borderRadius: Radius.lg,
-                    backgroundColor: colors.fillQuiet,
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add food to ${slot}`}
-                  testID={`today-add-food-${slot}`}
-                >
-                  <Plus size={16} color={accent.primarySolid} strokeWidth={2} />
-                  <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
-                    Add food
-                  </Text>
-                </TodayAddFoodPressable>
-              </View>
-            </View>
-            );
-          }}
-        />
-      ) : (
-        slots.map((slot, slotIndex) => {
+      {slots.map((slot, slotIndex) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
           // 2026-05-22 — slot-total macro icon row (Grace ask: "macro
@@ -1645,8 +1536,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               </SupprCard>
             </ReAnimated.View>
           );
-        })
-      )}
+      })}
 
       {/* Ship M1 — usual-meal picker for slots with 2+ matches.
           Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"

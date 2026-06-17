@@ -30,13 +30,12 @@ import {
   type TodayMealsSectionProps,
 } from "../../src/app/components/suppr/today-meals-section";
 
-// Default mock: every redesign flag on EXCEPT the figma layout (so the legacy
-// per-slot list renders). `today_meals_all_slots_v1` is therefore ON.
+// Default mock: every redesign flag on. `today_meals_all_slots_v1` toggles per
+// test to exercise both the all-slots list and the single-CTA kill switch.
 const flagState: { allSlots: boolean } = { allSlots: true };
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
   isFeatureEnabled: (flag: string) => {
-    if (flag === "today_meals_figma_layout") return false;
     if (flag === "today_meals_all_slots_v1") return flagState.allSlots;
     return true;
   },

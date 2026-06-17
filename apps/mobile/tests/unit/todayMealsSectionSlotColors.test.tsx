@@ -26,15 +26,13 @@ import { MacroColors, SlotColors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 // Per-slot icon TINTS, the micros-fibre chip, and the collapse/add affordances
-// pinned here live in the LEGACY TD4 slot layout, which renders when
-// `today_meals_figma_layout` is OFF. The Figma 654:2 layout (default-on) replaced
-// them with neutral utensil tiles + a consolidated CTA. Force the legacy branch
-// so these still-live (flag-gated fallback) invariants stay covered — same mock
-// as `todayMealsSectionTd4.test.tsx`.
+// pinned here live in the per-slot TD4 meal layout — now the sole layout after
+// ENG-1096 deleted the dead `today_meals_figma_layout` summary path. This suite
+// keeps `today_tracker_tier_v1` OFF (the slot icon tints differ in tier-v1), so
+// the mock forces just that flag off and leaves every other flag on.
 vi.mock("../../lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) =>
-    flag !== "today_meals_figma_layout" && flag !== "today_tracker_tier_v1",
+  isFeatureEnabled: (flag: string) => flag !== "today_tracker_tier_v1",
 }));
 
 void React;

@@ -1,17 +1,19 @@
 /**
  * ENG-1020 polish fixes — source-regex guard pins (web side).
  *
- * The 2026-06-10 e2e walk surfaced four small Plan/Today polish regressions.
+ * The 2026-06-10 e2e walk surfaced small Plan/Today polish regressions.
  * These pins lock the fixes against silent reversion (mirror the existing
  * `planAddSlotChips` / `todayCardElevationSweep` source-regex pin style).
  * Mobile parity pins live in `apps/mobile/tests/unit/eng1020Polish.test.tsx`.
  *
- *   #4 — single-item Figma meal dedup guard exists in TodayMealsSection.
  *   #5 — no "Bfast" abbreviation; add-slot chips read the full "Breakfast".
  *   #6 — the Plan week-date is rendered once (card eyebrow), the duplicate
  *        page subtitle/subheader was removed.
  *   #7 — the "% of kcal" caption uses a neutral text token, NOT the macro
  *        (amber/clay/warning) hue.
+ *
+ * (#4 — the single-item meal dedup guard — was scoped to the Figma summary
+ * layout, deleted in ENG-1096; its pin is removed with the layout.)
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -22,7 +24,6 @@ const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 const MEAL_PLANNER = read("src/app/components/MealPlanner.tsx");
 const MEAL_NUTRITION_DIALOG = read("src/app/components/suppr/meal-nutrition-dialog.tsx");
-const TODAY_MEALS = read("src/app/components/suppr/today-meals-section.tsx");
 
 describe("ENG-1020 #5 — no 'Bfast' abbreviation; add-slot chips read 'Breakfast' (web)", () => {
   it("web add-slot chip label resolves breakfast → full 'Breakfast'", () => {
@@ -64,12 +65,3 @@ describe("ENG-1020 #7 — '% of kcal' caption uses a neutral text token (web)", 
   });
 });
 
-describe("ENG-1020 #4 — single-item meal dedup guard exists in TodayMealsSection (web)", () => {
-  it("guards the redundant single row by header-title equality", () => {
-    expect(TODAY_MEALS).toMatch(/redundantSingleRow\s*=/);
-    expect(TODAY_MEALS).toMatch(/sectionMeals\.length === 1/);
-    expect(TODAY_MEALS).toMatch(/figmaSlotSummaryTitle\(sectionMeals\)/);
-    // Suppresses the duplicate row by mapping an empty list when redundant.
-    expect(TODAY_MEALS).toMatch(/\(redundantSingleRow \? \[\] : sectionMeals\)\.map/);
-  });
-});

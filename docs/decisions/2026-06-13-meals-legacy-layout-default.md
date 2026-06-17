@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-13
 **Area:** Today tab / meals (web + mobile)
-**Status:** Resolved (mobile = confirmed). Web empty-state parity = follow-up (see below).
-**Flag:** new `today_meals_figma_layout` (NOT in `REDESIGN_DEFAULT_ON` → defaults **off** → legacy per-slot list). The Figma summary-card layout stays behind it (off) for reversibility.
+**Status:** Resolved. The dead Figma summary layout + its `today_meals_figma_layout` flag were deleted on 2026-06-17 (ENG-1096 — see "Cleanup" below); the legacy per-slot list is now the sole layout. Web empty-state parity landed via ENG-1095 (`today_meals_all_slots_v1`).
+**Flag:** ~~new `today_meals_figma_layout` (NOT in `REDESIGN_DEFAULT_ON` → defaults **off** → legacy per-slot list)~~ removed 2026-06-17 (ENG-1096); the flag no longer exists and the legacy per-slot list renders unconditionally.
 
 ## Context
 
@@ -47,3 +47,22 @@ web↔mobile legacy divergence the flag flip exposes. Flagged to Grace; align th
 web empty meals to the per-slot rows (or confirm the simpler web empty is
 intentional) in a follow-up. The Figma summary-card layout (now dead behind the
 off flag) should also be removed in a cleanup once the revert is settled.
+
+## Cleanup — ENG-1096 (2026-06-17): dead Figma summary layout removed
+
+The revert settled; the off-by-default Figma summary layout had no live consumer
+and was removed in full (no behaviour change to the live per-slot meals path):
+
+- Deleted `src/app/components/suppr/today-meals-figma-layout.tsx` and
+  `apps/mobile/components/today/TodayMealsFigmaLayout.tsx`.
+- Removed the `mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout")`
+  read and the figma branch from both `today-meals-section.tsx` (web) and
+  `TodayMealsSection.tsx` (mobile); the legacy per-slot list now renders
+  unconditionally. Dropped the now-unused `figmaSlotSummaryTitle` /
+  `TodayMealsFigmaLayout` imports (the `figmaSlotSummaryTitle` copy helper in
+  `src/lib/copy/today.ts` is retained — it has its own tests and is independent).
+- The web empty-state condition simplified from
+  `!mealsFigmaLayout && !allSlotsOn && …` to `!allSlotsOn && …`.
+- Figma-only tests deleted; the per-slot swipe-delete test re-pointed to the live
+  layout; a source-pin in `tests/unit/todayMealsSectionTd4.test.tsx` now locks the
+  deletion (flag gone, component imports gone, component files gone).

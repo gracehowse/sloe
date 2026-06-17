@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 /**
  * TodayMealsSection (web) — Sloe TD4 per-slot cards parity with mobile.
+ *
+ * After ENG-1096 (2026-06-17) the off-by-default `today_meals_figma_layout`
+ * summary layout was deleted; the per-slot card list pinned here is the SOLE
+ * Today meals layout. The source-pin block at the bottom locks the deletion.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -12,9 +18,10 @@ import {
   type TodayMealsSectionProps,
 } from "../../src/app/components/suppr/today-meals-section";
 
+// All flags on = the live production posture (the figma flag no longer exists).
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_layout",
+  isFeatureEnabled: () => true,
 }));
 
 void React;
@@ -111,5 +118,41 @@ describe("TodayMealsSection — TD4 per-slot cards (web)", () => {
     expect(addFood.className).toContain("rounded-lg");
     // No surface border class — separation is the quiet fill, not an edge.
     expect(addFood.className).not.toMatch(/\bborder\b/);
+  });
+});
+
+describe("ENG-1096 — dead Figma summary layout is fully removed (web + mobile)", () => {
+  const ROOT = resolve(__dirname, "../..");
+  const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
+  const WEB_SECTION = read("src/app/components/suppr/today-meals-section.tsx");
+  const MOBILE_SECTION = read(
+    "apps/mobile/components/today/TodayMealsSection.tsx",
+  );
+
+  it("neither section reads the today_meals_figma_layout flag", () => {
+    expect(WEB_SECTION).not.toMatch(/today_meals_figma_layout/);
+    expect(MOBILE_SECTION).not.toMatch(/today_meals_figma_layout/);
+  });
+
+  it("neither section imports the deleted TodayMealsFigmaLayout component", () => {
+    expect(WEB_SECTION).not.toMatch(/TodayMealsFigmaLayout/);
+    expect(MOBILE_SECTION).not.toMatch(/TodayMealsFigmaLayout/);
+  });
+
+  it("the dead figma layout component files no longer exist", () => {
+    const exists = (rel: string) => {
+      try {
+        readFileSync(resolve(ROOT, rel), "utf8");
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    expect(exists("src/app/components/suppr/today-meals-figma-layout.tsx")).toBe(
+      false,
+    );
+    expect(
+      exists("apps/mobile/components/today/TodayMealsFigmaLayout.tsx"),
+    ).toBe(false);
   });
 });
