@@ -46,8 +46,13 @@ describe("Sloe contrast — call sites use the AA-safe tokens", () => {
     expect(hero).toMatch(/text-primary-solid/);
 
     const northStar = read("src/app/components/suppr/north-star-block.tsx");
-    expect(northStar).toMatch(/text-primary-solid/); // overline / CTA / Browse
-    expect(northStar).toMatch(/bg-primary-solid/); // Open Library button
+    expect(northStar).toMatch(/text-primary-solid/); // overline / CTA / Browse / library-empty sparkle
+    // ENG-1198: the white-on-clay "Open Library →" button was removed when the
+    // library-empty branch was brought into parity with mobile's flattened
+    // quiet-fill chevron-row (no solid-fill CTA on that branch anymore). The clay
+    // affordance there is now the text-primary-solid sparkle, covered above.
+    // No remaining white-on-clay surface in this file → no bg-primary-solid to
+    // guard. The -solid link/toggle invariant still holds via the assertion above.
 
     const planned = read(
       "src/app/components/suppr/today-planned-meals-card.tsx",

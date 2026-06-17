@@ -114,7 +114,11 @@ export function MacroStatTile({
       size="tile"
       padding="md"
       innerStyle={{
-        minHeight: tierV1 ? 64 : 96,
+        // ENG-1198: tier-V1 content is ~48pt (label row + value row) but the
+        // tile reserved 64pt with flex-start, leaving ~16pt of dead white under
+        // the value. Dropped 64 → 56 so the tile hugs its content. The
+        // non-tierV1 96 keeps the bar + caption rows and is unchanged.
+        minHeight: tierV1 ? 56 : 96,
         justifyContent: tierV1 ? "flex-start" : "space-between",
         gap: tierV1 ? Spacing.sm : 0,
       }}
