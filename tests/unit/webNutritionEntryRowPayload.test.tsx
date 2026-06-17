@@ -187,4 +187,23 @@ describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
     expect(row.recipe_id).toBe("rec-123");
     expect(row.nutrition_micros).toEqual(micros);
   });
+
+  it("derives date_key from eaten_at, not the selected anchor day (data-loss guard)", async () => {
+    // The ~25-day journal-data-loss class this ticket guards is a write path
+    // that hard-codes date_key to the selected day and ignores eaten_at. Log
+    // onto the 2026-06-16 anchor a meal eaten at noon UTC on 2026-06-14.
+    const { result } = setup();
+    await act(async () => {
+      result.current.addLoggedMealForDate("2026-06-16", {
+        ...baseMeal,
+        eatenAt: "2026-06-14T12:00:00.000Z",
+      });
+    });
+
+    const row = insertCalls[0]!.rows as Record<string, unknown>;
+    // date_key follows eaten_at's day, NOT the selected anchor (2026-06-16).
+    expect(row.date_key).not.toBe("2026-06-16");
+    expect(row.date_key).toBe("2026-06-14");
+    expect(String(row.eaten_at)).toContain("2026-06-14");
+  });
 });
