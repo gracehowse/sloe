@@ -68,6 +68,7 @@ export type SidebarView =
   | "notifications"
   | "create"
   | "import"
+  | "plan-import"
   | "household-settings"
   | "targets";
 
@@ -136,11 +137,12 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
     leaves: ["library", "discover", "create", "import"],
   },
   {
+    // `plan-import` highlights the Plan primary group (ENG-696).
     view: "plan",
     label: "Plan",
     icon: "navPlan",
     defaultLeaf: "plan",
-    leaves: ["plan", "shopping"],
+    leaves: ["plan", "shopping", "plan-import"],
   },
   {
     view: "you",

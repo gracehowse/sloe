@@ -60,6 +60,10 @@ const RecipeUpload = dynamic(
   () => import("./components/RecipeUpload.tsx").then((m) => ({ default: m.RecipeUpload })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading recipe editor..." /> },
 );
+const PlanImport = dynamic(
+  () => import("./components/PlanImport.tsx").then((m) => ({ default: m.PlanImport })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading plan import..." /> },
+);
 const UpgradePaywallDialog = dynamic(
   () =>
     import("./components/suppr/upgrade-paywall-dialog.tsx").then((m) => ({
@@ -83,6 +87,7 @@ type View =
   | "notifications"
   | "create"
   | "import"
+  | "plan-import"
   | "targets";
 
 /**
@@ -152,6 +157,7 @@ export default function App() {
       discover: "discover",
       plan: "plan",
       planner: "plan",
+      "plan-import": "plan-import",
       progress: "progress",
       shopping: "shopping",
       settings: "settings",
@@ -172,6 +178,11 @@ export default function App() {
   const navPlanFirst = canonicalNavOrderEnabled(
     useFeatureFlagEnabled("nav-tab-order-plan-first"),
   );
+  // ENG-696 — web Plan-Import surface. Gated on the SAME flag the mobile
+  // entry points use (`plan_import_enabled`). When off, the `/plan-import`
+  // view falls back to the Plan surface (mirrors mobile's deep-link guard
+  // that `router.replace`s back to the planner tab).
+  const planImportEnabled = useFeatureFlagEnabled("plan_import_enabled");
   // Upgrade-paywall dialog (2026-04-20 Claude Design port). When
   // `upgradePaywallFrom` is non-null the `<UpgradePaywallDialog>`
   // renders with that attribution. Opened via `openUpgradeDialog()`,
@@ -260,6 +271,7 @@ export default function App() {
       profile: "/profile",
       create: "/create",
       import: "/import",
+      "plan-import": "/plan-import",
       targets: "/targets",
     }),
     [],
@@ -577,6 +589,34 @@ export default function App() {
               mode="import"
               onSwitchToCreate={() => navigateToView("create")}
             />
+          </FeatureErrorBoundary>
+        );
+      case "plan-import":
+        // ENG-696 — flag-off falls back to the Plan surface so the route
+        // never dead-ends (parity with mobile's deep-link guard).
+        if (!planImportEnabled) {
+          return (
+            <>
+              <PlanTabChrome
+                activeId="plan"
+                title="Meal plan"
+                shoppingUncheckedCount={shoppingUncheckedCount}
+                onSelect={() => navigateToView("plan")}
+              />
+              <FeatureErrorBoundary feature="Meal Planner">
+                <MealPlanner
+                  userTier={userTier}
+                  onUpgrade={() => openUpgradePromo("meal_planner")}
+                  onNavigate={(view) => navigateToView(view)}
+                  onOpenRecipe={openRecipeById}
+                />
+              </FeatureErrorBoundary>
+            </>
+          );
+        }
+        return (
+          <FeatureErrorBoundary feature="Plan Import">
+            <PlanImport onClose={() => navigateToView("plan")} />
           </FeatureErrorBoundary>
         );
       case "targets":

@@ -16,6 +16,7 @@ import {
   Sliders,
   Sparkles,
   Sun,
+  Upload,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -95,7 +96,7 @@ import type { DayPlan } from "../../types/recipe.ts";
 interface MealPlannerProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
-  onNavigate?: (view: "discover" | "library" | "shopping") => void;
+  onNavigate?: (view: "discover" | "library" | "shopping" | "plan-import") => void;
   /** Opens recipe detail. */
   onOpenRecipe?: (recipeId: string) => void;
   /** Opens recipe detail in cook mode directly. */
@@ -246,6 +247,11 @@ export const MealPlanner = memo(function MealPlanner({
   // already ships these; web catches up behind one flag). Default-on; off → swap-
   // only slot affordance and no templates entry point.
   const planWebParity = isFeatureEnabled("plan_web_parity_v1");
+  // ENG-696 / ENG-647 — "Import existing plan" entry point. Same flag the
+  // mobile Plan tab + deep link gate on (`plan_import_enabled`). Off → the
+  // Import affordance is hidden and the Plan surface keeps the
+  // Generate-from-library-only flow.
+  const planImportEnabled = isFeatureEnabled("plan_import_enabled");
   const { authedUserId } = useAuthSession();
   // ENG-1098 "Calm mode" — when on, quiet the per-slot "Aim ~X kcal" numbers
   // (the empty-slot rows still render; only the number is hidden). Client-side
@@ -1125,6 +1131,16 @@ export const MealPlanner = memo(function MealPlanner({
               <SupprButton variant="ghost" onClick={() => setTemplatesOpen(true)}>
                 <LayoutTemplate size={14} strokeWidth={2} />
                 Templates
+              </SupprButton>
+            ) : null}
+            {planImportEnabled ? (
+              <SupprButton
+                variant="ghost"
+                onClick={() => onNavigate?.("plan-import")}
+                data-testid="plan-import-entry"
+              >
+                <Upload size={14} strokeWidth={2} />
+                Import plan
               </SupprButton>
             ) : null}
           </div>
@@ -2157,6 +2173,16 @@ export const MealPlanner = memo(function MealPlanner({
           <ShoppingCart size={14} strokeWidth={2} />
           Shopping list
         </SupprButton>
+        {planImportEnabled ? (
+          <SupprButton
+            variant="ghost"
+            onClick={() => onNavigate?.("plan-import")}
+            data-testid="plan-import-entry-empty"
+          >
+            <Upload size={14} strokeWidth={2} />
+            Import plan
+          </SupprButton>
+        ) : null}
       </div>
 
       {/* Modal-dismissibility audit (2026-04-30) — migrated from a

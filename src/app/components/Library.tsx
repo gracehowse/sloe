@@ -13,6 +13,11 @@ import {
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
+import {
+  matchesPlanImportPill,
+  planImportFilterLabels,
+  planImportPillId,
+} from "../../lib/planning/planImport/libraryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
@@ -147,6 +152,11 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const [category, setCategory] = useState<RecipeCategoryId>("all");
   // Secondary entry-kind filter — null = no entry-kind narrowing.
   const [entryKind, setEntryKind] = useState<"saved" | "imported" | null>(null);
+  // ENG-653 — contextual "Imported plans" source pill. A refinement of the
+  // Imported entry-kind, mirroring the mobile Library's plan-import pills
+  // (`apps/mobile/app/(tabs)/library.tsx`). Holds a `plan-import:<source>`
+  // id or null. Only meaningful when `entryKind === "imported"`.
+  const [planImportPill, setPlanImportPill] = useState<string | null>(null);
   // Mobile parity: a cycle button switches the sort key between
   // Recent (default) / Calories / Protein. See
   // `apps/mobile/app/(tabs)/library.tsx` 24-57.
@@ -157,6 +167,12 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     );
   };
   const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
+
+  // ENG-653 — unique plan-import source labels for the contextual pill row.
+  const importPlanPills = useMemo(
+    () => planImportFilterLabels(savedRecipesForLibrary.map((r) => r.sourceName)),
+    [savedRecipesForLibrary],
+  );
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -184,6 +200,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === entryKind,
       );
     }
+    // ENG-653: contextual plan-import source refinement (only under Imported).
+    if (entryKind === "imported" && planImportPill) {
+      list = list.filter((r) => matchesPlanImportPill(planImportPill, r.sourceName));
+    }
     // Apply sort. Higher-is-better for Calories / Protein; Recent uses
     // `savedAt` if present (some entries don't carry it — those go to
     // the bottom). Stable ordering for ties via slice() before sort.
@@ -197,7 +217,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       // so no-op (just preserve existing order).
     }
     return sorted;
-  }, [savedRecipesForLibrary, searchQuery, category, entryKind, libraryEntryKindByRecipeId, uid, sortKey]);
+  }, [savedRecipesForLibrary, searchQuery, category, entryKind, planImportPill, libraryEntryKindByRecipeId, uid, sortKey]);
 
   if (selectedRecipe) {
     return (
@@ -315,6 +335,44 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               );
             })}
           </div>
+          {/* ENG-653 — contextual "Imported plans" source pills. A
+              refinement of the Imported entry-kind, so they only reveal when
+              Imported is active AND the user actually has plan imports. This
+              keeps the default Library at a single filter row (categories)
+              while preserving plan-import filtering. Mobile parity:
+              `apps/mobile/app/(tabs)/library.tsx` (contextual plan-import
+              pills under the category row). */}
+          {entryKind === "imported" && importPlanPills.length > 0 ? (
+            <div
+              data-testid="library-plan-import-pills"
+              className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {importPlanPills.map((label) => {
+                const id = planImportPillId(label);
+                const active = planImportPill === id;
+                const short = label.replace(/^Imported · /, "");
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    data-testid={`library-plan-import-${id}`}
+                    onClick={() => setPlanImportPill(active ? null : id)}
+                    aria-pressed={active}
+                    aria-label={`Filter imported plan: ${short}`}
+                    className={[
+                      "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                      active
+                        ? "bg-primary-soft text-primary-solid font-semibold"
+                        : "bg-card text-muted-foreground font-medium hover:bg-muted/60",
+                    ].join(" ")}
+                  >
+                    {short}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {/* Count line + quiet controls — Figma `527:2` ("24 saved
               recipes"). Mobile-web only (desktop shows a subtitle in its
               header). The calm count sits left; the entry-kind narrowing
@@ -336,11 +394,13 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               <button
                 type="button"
                 data-testid="library-entrykind-cycle"
-                onClick={() =>
+                onClick={() => {
+                  // ENG-653: leaving Imported drops any plan-import refinement.
+                  setPlanImportPill(null);
                   setEntryKind((prev) =>
                     prev === null ? "saved" : prev === "saved" ? "imported" : null,
-                  )
-                }
+                  );
+                }}
                 className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
                 aria-label={`Showing ${entryKind ?? "all"} recipes, tap to change`}
               >
