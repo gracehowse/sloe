@@ -2346,9 +2346,14 @@ export const NutritionTracker = memo(function NutritionTracker({
     ready: winReady,
   });
 
-  const showAboveMealsNorthStarWeb =
-    selectedDateKey === todayKey() &&
-    Math.max(0, effectiveCalorieTarget - totals.calories) > 0;
+  // ENG-935: "What to eat next" is a PERMANENT glanceable Today block —
+  // it renders for today regardless of remaining calories, including the
+  // over-budget / on-target case. The previous `> 0` gate hid the block
+  // at exactly the moments the user still needs guidance. The over-budget
+  // case is handled gracefully inside `NorthStarBlockHost` (it renders the
+  // calm `over-budget` caption when remainingCalories <= 0). Mirror of the
+  // mobile `showAboveMealsNorthStar` gate.
+  const showAboveMealsNorthStarWeb = selectedDateKey === todayKey();
 
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({

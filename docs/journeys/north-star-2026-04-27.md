@@ -1,6 +1,7 @@
 # North-star block — "What to eat next"
 
-**Status:** Phase 3 / B2.2 — shipped 2026-04-27
+**Status:** Phase 3 / B2.2 — shipped 2026-04-27; permanent-block screen
+gate fixed 2026-06-17 (ENG-935)
 **Authority:** D-2026-04-27-04 (north-star moment, permanent block)
 **Spec:** `docs/specs/2026-04-27-production-design-spec.md` §A-northstar
 
@@ -35,12 +36,36 @@ fits the calories + macros they have left for the slot they're in.
   wired into `apps/mobile/app/(tabs)/index.tsx`; threads
   `dailyCalorieTarget` (`effectiveCalorieGoal`).
 
+## Screen gate (ENG-935, 2026-06-17)
+
+The block renders whenever the user is on **today, in day view** — full
+stop. There is no longer a `remaining > 0` condition on the screen gate:
+
+- **Mobile** `apps/mobile/app/(tabs)/index.tsx`:
+  `showAboveMealsNorthStar = viewMode === "day" && isToday`
+- **Web** `NutritionTracker.tsx`:
+  `showAboveMealsNorthStarWeb = selectedDateKey === todayKey()`
+  (the host's own `viewMode !== "day"` guard handles week view)
+
+Before ENG-935 the gate also required `remaining > 0`, which made the
+whole block vanish the moment the user was over-budget or dead-on
+target — exactly the moments they still want to know what to eat (or be
+told they're done). The over-budget / on-target state is owned by the
+**host** (the calm `over-budget` caption below), not suppressed at the
+screen. The host receives `remainingCalories = Math.max(0, remaining)`,
+so the on-target day arrives as exactly `0` and resolves to the
+`over-budget` branch — the user always sees the block, never a gap.
+
 ## Branch logic
+
+The host (`NorthStarBlockHost`) picks the `kind` once the screen gate has
+decided to render it:
 
 | Condition                          | Render kind          |
 |-----------------------------------|----------------------|
-| `remainingCalories <= 0`          | `over-budget` (calm caption) |
-| `library.size < NORTH_STAR_LIBRARY_MIN` (5) | `library-empty` (invitation card) |
+| `remainingCalories <= 0` (incl. on-target `=== 0`) | `over-budget` (calm caption) |
+| `hasEverLoggedAnyMeal === false`  | `new-user` (calm first-meal card) |
+| `library.size < NORTH_STAR_LIBRARY_MIN` (5; relaxed to 2 in the 30-day activation window) | `library-empty` (invitation row) |
 | Picker returns null               | `no-fit` (browse caption)    |
 | Picker returns a suggestion       | `default` (gradient card + CTA) |
 
@@ -205,7 +230,14 @@ render the same `X` whenever an `onSkip` handler is supplied
   primitive incl. reduce-motion `X` button fallback.
 - `apps/mobile/tests/unit/northStarBlockHostPhase5.test.tsx` — mobile
   host branching; each render now supplies the required
-  `dailyCalorieTarget` prop.
+  `dailyCalorieTarget` prop. ENG-935 adds the on-target boundary pin
+  (`remainingCalories === 0` → `over-budget`, no suggestion chrome).
+- `tests/unit/todayAboveMealsCap.test.ts` (web + mobile) — pins the
+  ENG-935 permanent-block screen gate: the gate is day-view + today
+  only and must NOT re-acquire a `remaining > 0` / `Math.max(0, …) > 0`
+  suppression. `northStarBlockPhase3.test.tsx` (web + mobile) adds an
+  ENG-935 over-budget render pin (caption replaces the suggestion —
+  no header, no title, no CTA).
 
 ## Open visual-qa flags carried forward
 

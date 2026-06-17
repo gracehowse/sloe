@@ -143,6 +143,26 @@ describe("NorthStarBlock (mobile) — non-default kinds", () => {
     ).toBeTruthy();
   });
 
+  it("over-budget (ENG-935 permanent block): caption replaces the suggestion card — no CTA, no header", () => {
+    // ENG-935 (2026-06-17): "What to eat next" is now a permanent
+    // glanceable Today block. When over-budget the block does NOT
+    // disappear (the pre-ENG-935 screen gate `remaining > 0` used to
+    // hide it) — instead the host renders this `over-budget` kind so
+    // the user always sees something where the suggestion lives. This
+    // pins that the over-budget render is the calm caption ONLY: no
+    // "What to eat next" header, no suggestion title, no CTA. It uses
+    // the dedicated over-budget testID so the host's branch is
+    // unambiguous.
+    const { getByTestId, queryByText } = render(
+      <NorthStarBlock kind="over-budget" />,
+    );
+    expect(getByTestId("north-star-over-budget")).toBeTruthy();
+    // The suggestion chrome must not leak into the over-budget state.
+    expect(queryByText("What to eat next")).toBeNull();
+    expect(queryByText("Tofu poke bowl")).toBeNull();
+    expect(queryByText("Log it")).toBeNull();
+  });
+
   it("no-fit: renders caption + Browse button", () => {
     const onBrowse = vi.fn();
     const { getByText, getByLabelText } = render(

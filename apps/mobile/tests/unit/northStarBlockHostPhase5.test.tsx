@@ -122,6 +122,33 @@ describe("NorthStarBlockHost branching", () => {
     expect(tree.queryByTestId("north-star-over-budget")).toBeTruthy();
   });
 
+  it("renders the over-budget caption at the ON-TARGET boundary (remainingCalories === 0) — ENG-935", () => {
+    // ENG-935 (2026-06-17): the permanent-block screen gate clamps the
+    // host's `remainingCalories` to `Math.max(0, remaining)`, so the
+    // dead-on-target day arrives here as exactly 0. Pre-ENG-935 the
+    // screen gate `remaining > 0` hid the block entirely in this case;
+    // now the host owns the boundary and shows the calm over-budget
+    // caption. Pin the `=== 0` branch so the suggestion path never
+    // leaks back in on the on-target day.
+    const tree = render(
+      <NorthStarBlockHost
+        viewMode="day"
+        savedRecipesForLibrary={lib6}
+        remainingCalories={0}
+        remainingProtein={0}
+        remainingCarbs={0}
+        remainingFat={0}
+        dailyCalorieTarget={2000}
+        onPrimaryCta={() => {}}
+        onBrowseLibrary={() => {}}
+        selectedDateKey="2026-04-27"
+      />,
+    );
+    expect(tree.queryByTestId("north-star-over-budget")).toBeTruthy();
+    // The suggestion chrome must not render at the on-target boundary.
+    expect(tree.queryByText("What to eat next")).toBeNull();
+  });
+
   it("renders the library-empty branch when library < 5", () => {
     const tree = render(
       <NorthStarBlockHost
