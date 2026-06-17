@@ -31,6 +31,7 @@ import {
 } from "@suppr/shared/recipes/recipeCategoryFilters";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
+import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
@@ -435,6 +436,15 @@ export default function DiscoverScreen() {
         <View key={item.id} style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
         <Pressable
           onPress={() => router.push(`/recipe/${item.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={recipeCardAccessibilityLabel({
+            title: decodeEntities(item.title),
+            calories: kcal,
+            protein,
+            carbs,
+            fat,
+            cookTime: item.cookTime ?? null,
+          })}
           style={{
             borderRadius: RECIPE_CARD_RADIUS,
             backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -560,6 +570,14 @@ export default function DiscoverScreen() {
         <Pressable
           key={item.id}
           onPress={() => router.push(`/recipe/${item.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={recipeCardAccessibilityLabel({
+            title: decodeEntities(item.title),
+            calories: kcal,
+            protein,
+            carbs,
+            cookTime: item.cookTime ?? null,
+          })}
           style={{
             flexDirection: "row",
             alignItems: "center",
