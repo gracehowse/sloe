@@ -14,19 +14,19 @@
  * the web-parity build so the pipeline is NOT forked.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normaliseInstructions } from "../../recipes/normaliseInstructions.ts";
-import { normalizeRecipeTitle } from "../../recipes/normalizeRecipeTitle.ts";
-import { isStructuredSource } from "../../nutrition/structuredSourceGate.ts";
-import { IMPORT_ERROR_COPY, mapPersistenceError } from "../../recipes/importErrorCopy.ts";
-import { buildPlanTemplateDraftFromImport } from "./buildPlanTemplateDraft.ts";
-import { PLAN_IMPORT_SOURCE_PREFIX } from "./types.ts";
-import { createPlanTemplate } from "../../nutrition/planTemplatesClient.ts";
-import { applyTemplateToWeek } from "../../nutrition/planTemplates.ts";
+import { normaliseInstructions } from "../../recipes/normaliseInstructions";
+import { normalizeRecipeTitle } from "../../recipes/normalizeRecipeTitle";
+import { isStructuredSource } from "../../nutrition/structuredSourceGate";
+import { IMPORT_ERROR_COPY, mapPersistenceError } from "../../recipes/importErrorCopy";
+import { buildPlanTemplateDraftFromImport } from "./buildPlanTemplateDraft";
+import { PLAN_IMPORT_SOURCE_PREFIX } from "./types";
+import { createPlanTemplate } from "../../nutrition/planTemplatesClient";
+import { applyTemplateToWeek } from "../../nutrition/planTemplates";
 import type {
   PlanImportCompiledSlot,
   PlanImportNutritionMode,
   PlanImportVerifiedRecipe,
-} from "./types.ts";
+} from "./types";
 
 export type PlanImportCommitInput = {
   supabase: SupabaseClient;

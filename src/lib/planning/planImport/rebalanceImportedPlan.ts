@@ -1,4 +1,4 @@
-import type { PlanImportCompiledSlot, PlanImportNutritionMode } from "./types.ts";
+import type { PlanImportCompiledSlot, PlanImportNutritionMode } from "./types";
 import { refitDayMealsToTargets, type PlannerTargets } from "../../nutrition/mealPlanAlgo";
 
 /**
