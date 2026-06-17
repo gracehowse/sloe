@@ -2,22 +2,21 @@
  * Calorie ring geometry — web parity with `apps/mobile/components/charts/CalorieRing.tsx`.
  * Prototype ratios: size ≈ 53% viewport (cap 230), radius 44%, macro arcs at 38.55/33.1/27.65%.
  *
- * ENG-1064 (TF57 F-164/165, Grace TWICE "Today ring too fat — match macro ring
- * stroke width"): in the MULTI-RING (expanded) state the hero `strokeWidth` now
- * equals `macroStroke` (0.028·S) instead of the old fatter 0.05·S, so the
- * concentric rings read as one even family. The COLLAPSED single-ring mode uses
- * `strokeWidthBold` (0.085·S) — the confident Apple-class lone-ring stroke, with
- * no macro rings on screen to mismatch (parity with mobile `ringGeometry`'s
- * `bold` branch). Macro radii were re-derived (0.3855 / 0.331 / 0.2765) so every
- * adjacent gap stays even (~6.5px at S=230, scaling proportionally) once the
- * hero stroke thins; `radius` (0.44·S) is unchanged, so ring diameters and the
- * centre number layout do not shift.
+ * 2026-06-16 (founder, REVERSES ENG-1064/F-164/165): the calorie ring is ONE
+ * consistent stroke (0.05·S) whether macros are shown or hidden — a deliberate
+ * HERO over the 0.028·S macro satellites, and it must not change thickness on
+ * toggle (founder constraint). The old build-57 "too fat" read was a 0.05·S hero
+ * over the near-invisible frost-mist track; with the new saturated greyed-full
+ * track (docs/decisions/2026-06-16-ring-track-contrast.md) the hierarchy reads
+ * as intentional. Founder approved 0.05·S in-sim. Macro radii (0.3855/0.331/
+ * 0.2765) and `radius` (0.44·S) are unchanged — the thicker hero only tightens
+ * the calorie→protein gap (never a wide one).
  */
 export type CalorieRingGeometry = {
   size: number;
-  /** Multi-ring (expanded) hero stroke — matches `macroStroke` (ENG-1064). */
+  /** Calorie hero stroke (expanded) — 0.05·S, a step above `macroStroke` (2026-06-16). */
   strokeWidth: number;
-  /** Collapsed single-ring hero stroke — confident 0.085·S Apple-class lone ring. */
+  /** Collapsed single-ring stroke — 0.05·S, SAME as expanded (no jump on toggle). */
   strokeWidthBold: number;
   cx: number;
   radius: number;
@@ -28,9 +27,10 @@ export type CalorieRingGeometry = {
 
 export function calorieRingGeometryFromSize(size: number): CalorieRingGeometry {
   const macroStroke = Math.max(4, Math.round(size * 0.028));
-  // ENG-1064: multi-ring hero stroke MATCHES the macro stroke exactly.
-  const strokeWidth = macroStroke;
-  const strokeWidthBold = Math.round(size * 0.085);
+  // 2026-06-16 (founder, reverses ENG-1064): calorie ring is ONE stroke (0.05·S)
+  // in both states — a hero over the 0.028·S macros; must not jump on toggle.
+  const strokeWidth = Math.round(size * 0.05);
+  const strokeWidthBold = Math.round(size * 0.05);
   const cx = size / 2;
   const radius = Math.round(size * 0.44);
   const macroRadii: [number, number, number] = [

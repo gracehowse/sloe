@@ -342,7 +342,7 @@ function DailyRing({
           cy={cx}
           r={radius}
           fill="none"
-          stroke={isEmpty ? "var(--border-strong)" : "var(--ring-bg)"}
+          stroke={isEmpty ? "var(--border-strong)" : "var(--ring-track-bold)"}
           strokeWidth={showEmptyGradient ? emptyBoldStroke : strokeWidth}
           opacity={1}
         />
@@ -434,14 +434,16 @@ function DailyRing({
           const o = c * (1 - Math.min(ring.pct, 0.999));
           return (
             <g key={i}>
+              {/* Macro track = a tint of its OWN hue (Apple Fitness grammar,
+                  design-director 2026-06-16), matching mobile — not frost-mist. */}
               <circle
                 cx={cx}
                 cy={cx}
                 r={ring.r}
                 fill="none"
-                stroke="var(--ring-bg)"
+                stroke={ring.color}
                 strokeWidth={macroStroke}
-                opacity={0.4}
+                opacity={0.28}
               />
               <circle
                 cx={cx}

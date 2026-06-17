@@ -135,15 +135,18 @@ const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
 // giant pale circle was the first thing every new user saw. The ring
 // earns full size with data. All geometry derives from one scale so the
 // prototype's arc ratios hold at either size.
-export function ringGeometry(compact: boolean, bold = false) {
+export function ringGeometry(compact: boolean, _bold = false) {
   const SIZE = compact ? Math.round(BASE_SIZE * 0.72) : BASE_SIZE;
   const MACRO_STROKE = Math.max(4, Math.round(SIZE * 0.028));
   return {
     SIZE,
-    // Collapsed single-ring mode wears a confident Apple-class stroke
-    // (0.085·S); the multi-ring hero stroke MATCHES the macro stroke exactly
-    // (ENG-1064 / TF57 F-164/165) so concentric arcs read as one even family.
-    STROKE: bold ? Math.round(SIZE * 0.085) : MACRO_STROKE,
+    // 2026-06-16 (founder): the calorie ring is ONE consistent stroke whether
+    // macros are shown or hidden — it must not change thickness on toggle. Set
+    // to 0.05·S (~11px): a clear hero over the 0.028·S (~6px) macro satellites
+    // (the design-director "stroke hierarchy" call), and the same width as the
+    // collapsed single ring. Supersedes the ENG-1064 split (collapsed 0.085·S /
+    // expanded = macro). `_bold` retained for call-site stability.
+    STROKE: Math.round(SIZE * 0.05),
     MACRO_STROKE,
     CX: SIZE / 2,
     R: Math.round(SIZE * 0.44),
@@ -193,7 +196,6 @@ function MacroRing({
   radius,
   pct,
   color,
-  trackColor,
   delay,
   cx,
   strokeW,
@@ -201,7 +203,6 @@ function MacroRing({
   radius: number;
   pct: number;
   color: string;
-  trackColor: string;
   delay: number;
   /** Centre + stroke from the parent's ringGeometry (§5 compact-aware). */
   cx: number;
@@ -249,9 +250,11 @@ function MacroRing({
         cy={cx}
         r={radius}
         fill="none"
-        stroke={trackColor}
+        // Macro track = a tint of its OWN hue (Apple Fitness grammar,
+        // design-director 2026-06-16) — matches the Skia path. Not frost-mist.
+        stroke={color}
         strokeWidth={strokeW}
-        opacity={0.4}
+        opacity={0.28}
       />
       <AnimatedCircle
         cx={cx}
@@ -324,7 +327,14 @@ export default function CalorieRing({
   const emptyTrackColor = isDark
     ? Colors.dark.borderStrong
     : Colors.light.borderStrong;
-  const outerTrackColor = isEmpty ? emptyTrackColor : trackColor;
+  // Populated track: a saturated tint of the ring hue (Apple Fitness grammar,
+  // design-director 2026-06-16) so the UNFILLED arc reads as a confident circle.
+  // The old frost-mist `trackColor` (#EDEAF1) measured ~10/255 off the white
+  // card — invisible, so a partly-logged ring read as empty (the common case).
+  const populatedTrackColor = isDark
+    ? Colors.dark.ringTrackBold
+    : Colors.light.ringTrackBold;
+  const outerTrackColor = isEmpty ? emptyTrackColor : populatedTrackColor;
   // 2026-06-10 (Grace's ring-content spec): the Remaining/Consumed toggle
   // is GONE — it duplicated the EATEN stat directly below the ring, and the
   // collapsed ring ignored it anyway. One semantics: remaining (or over).
@@ -516,7 +526,6 @@ export default function CalorieRing({
             bonusFrac={bonusFrac}
             macroPcts={[proteinPct, carbsPct, fatPct]}
             macroColors={[MacroColors.protein, MacroColors.carbs, MacroColors.fat]}
-            macroTrackColor={trackColor}
             trackColor={outerTrackColor}
             emptyInnerColor={emptyTrackColor}
             ringColor={isEmpty ? outerTrackColor : ringStateColor}
@@ -657,7 +666,6 @@ export default function CalorieRing({
                 radius={MACRO_R[0]}
                 pct={proteinPct}
                 color={MacroColors.protein}
-                trackColor={trackColor}
                 delay={100}
               />
               <MacroRing
@@ -666,7 +674,6 @@ export default function CalorieRing({
                 radius={MACRO_R[1]}
                 pct={carbsPct}
                 color={MacroColors.carbs}
-                trackColor={trackColor}
                 delay={200}
               />
               <MacroRing
@@ -675,7 +682,6 @@ export default function CalorieRing({
                 radius={MACRO_R[2]}
                 pct={fatPct}
                 color={MacroColors.fat}
-                trackColor={trackColor}
                 delay={300}
               />
             </>

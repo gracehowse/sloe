@@ -1,21 +1,28 @@
 // @vitest-environment jsdom
 /**
- * CalorieRing — hero stroke matches the macro stroke (ENG-1064, TF57 F-164/165).
+ * CalorieRing — calorie hero stroke: a consistent step above the macros.
  *
- * Grace flagged this TWICE on build 57 ("Today ring too fat — match macro ring
- * stroke width"). In the MULTI-RING (expanded) state the outer calorie arc was
- * drawn at 0.05·S while the inner protein/carbs/fat arcs were 0.028·S, so the
- * hero band read as a fat outer ring wrapping thin inner hairlines. The fix
- * thins the multi-ring hero stroke to EQUAL the macro stroke.
+ * HISTORY / REVERSAL (read this): build 57 (ENG-1064, TF57 F-164/165) thinned
+ * the EXPANDED calorie arc to EQUAL the macro stroke after Grace flagged "Today
+ * ring too fat" twice — but at the time the calorie track was the near-invisible
+ * frost-mist, so a 0.05·S hero just looked like a fat band wrapping thin
+ * hairlines. On 2026-06-16 Grace REOPENED the ring; with the new saturated
+ * "greyed-full" track (docs/decisions/2026-06-16-ring-track-contrast.md) the
+ * hero reads as intentional hierarchy, not a fat band. After an in-sim
+ * prototype she approved **0.05·S (~11px) for the calorie ring in BOTH states**
+ * (single ring + expanded hero), with macros staying 0.028·S. So:
+ *   - the calorie ring is ONE thickness whether macros are shown or hidden (her
+ *     explicit constraint — it must not jump on toggle);
+ *   - the calorie ring is a deliberate step ABOVE the macros (hierarchy), no
+ *     longer equal to them.
  *
- * What this test protects (fails if the fat hero band returns):
- *   1. Expanded: the calorie progress arc strokeWidth EQUALS the macro arc
- *      strokeWidth — they are one even family.
- *   2. The collapsed single-ring keeps a confident bolder stroke (no macro
- *      rings on screen to mismatch) — guards against over-correcting the
- *      lone-ring mode to a too-thin hairline.
- *   3. Geometry helper: every adjacent ring gap stays even once the hero
- *      stroke thins (no awkward wide calorie→protein gap) — re-derived radii.
+ * What this test now protects:
+ *   1. Expanded: calorie stroke (0.05·S) > macro stroke (0.028·S) — the hero
+ *      hierarchy. (Reverses the old "must be equal" pin.)
+ *   2. Consistency: collapsed single-ring stroke EQUALS the expanded calorie
+ *      stroke — one width across the toggle (founder constraint 2026-06-16).
+ *   3. Geometry: the thicker hero does not open an awkward WIDE calorie→protein
+ *      gap — it sits no further from its first macro than the inter-macro gaps.
  *
  * Rendered through the `TodayHeroRing` wrapper (matches the sibling
  * `calorieRingOverageArc` / `calorieRingGoalZeroCalibrating` tests — the
@@ -68,41 +75,43 @@ function renderRing(expanded: boolean) {
 }
 
 describe("CalorieRing hero stroke parity (F-164/165)", () => {
-  it("expanded: the hero calorie arc stroke equals the macro arc stroke", () => {
-    const geom = ringGeometry(false, false); // multi-ring (expanded, not bold)
-    expect(geom.STROKE).toBe(geom.MACRO_STROKE);
+  it("expanded: the calorie hero stroke is a deliberate step above the macro stroke", () => {
+    const geom = ringGeometry(false, false); // multi-ring (expanded)
+    // Hierarchy (reverses the old ENG-1064 "must equal" pin, founder-approved
+    // 2026-06-16): calorie hero 0.05·S > macro satellites 0.028·S.
+    expect(geom.STROKE).toBe(Math.round(geom.SIZE * 0.05));
+    expect(geom.MACRO_STROKE).toBe(Math.max(4, Math.round(geom.SIZE * 0.028)));
+    expect(geom.STROKE).toBeGreaterThan(geom.MACRO_STROKE);
 
     const { UNSAFE_root } = renderRing(true);
     const widths = collectStrokeWidths(UNSAFE_root);
-
-    // The macro stroke must be present (macro arcs render when expanded)…
+    // Both widths present: the thicker hero calorie stroke AND the thinner macro.
+    expect(widths).toContain(geom.STROKE);
     expect(widths).toContain(geom.MACRO_STROKE);
-    // …and the hero calorie arc must use the SAME width — never a fatter band.
-    const heroWidths = widths.filter((w) => w === geom.STROKE);
-    expect(heroWidths.length).toBeGreaterThan(0);
-    // Nothing in the expanded ring is fatter than the matched stroke (the old
-    // 0.05·S hero band would have been strictly fatter than the 0.028·S macro).
-    const fatter = widths.filter((w) => w > geom.MACRO_STROKE && w > 1);
-    expect(fatter).toHaveLength(0);
   });
 
-  it("collapsed single-ring keeps a confident bolder stroke", () => {
-    const collapsed = ringGeometry(false, true); // bold lone-ring mode
+  it("calorie stroke is consistent collapsed vs expanded (no jump on toggle)", () => {
+    // Founder constraint 2026-06-16: the calorie ring is ONE thickness whether
+    // macros are shown or hidden — it no longer drops from 0.085·S to the macro
+    // stroke when the single ring expands.
+    const collapsed = ringGeometry(false, true);
     const expanded = ringGeometry(false, false);
-    expect(collapsed.STROKE).toBeGreaterThan(expanded.STROKE);
-    expect(collapsed.STROKE).toBe(Math.round(collapsed.SIZE * 0.085));
+    expect(collapsed.STROKE).toBe(expanded.STROKE);
+    expect(collapsed.STROKE).toBe(Math.round(collapsed.SIZE * 0.05));
   });
 
-  it("re-derived radii keep every adjacent ring gap even", () => {
+  it("the thicker hero does not open an awkward WIDE calorie→protein gap", () => {
     const g = ringGeometry(false, false);
     const calInner = g.R - g.STROKE / 2;
-    const gaps = [
-      calInner - (g.MACRO_R[0] + g.MACRO_STROKE / 2),
+    const calToProtein = calInner - (g.MACRO_R[0] + g.MACRO_STROKE / 2);
+    const interMacro = [
       g.MACRO_R[0] - g.MACRO_STROKE / 2 - (g.MACRO_R[1] + g.MACRO_STROKE / 2),
       g.MACRO_R[1] - g.MACRO_STROKE / 2 - (g.MACRO_R[2] + g.MACRO_STROKE / 2),
     ];
-    const max = Math.max(...gaps);
-    const min = Math.min(...gaps);
-    expect(max - min).toBeLessThanOrEqual(1);
+    // The ENG-1064 concern was an awkward WIDE calorie→protein gap; the thicker
+    // hero only TIGHTENS it. Guard: no overlap, and it sits no further from its
+    // first macro than the inter-macro gaps.
+    expect(calToProtein).toBeGreaterThan(0);
+    expect(calToProtein).toBeLessThanOrEqual(Math.max(...interMacro) + 1);
   });
 });

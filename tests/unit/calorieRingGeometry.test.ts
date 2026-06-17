@@ -15,24 +15,25 @@ describe("calorieRingGeometry", () => {
     expect(calorieRingGeometryForViewport(500).size).toBe(230);
   });
 
-  // ENG-1064 (TF57 F-164/165, Grace TWICE "Today ring too fat — match macro
-  // ring stroke width"): the multi-ring hero stroke now equals the macro stroke
-  // exactly. If this regresses, the hero band reads visibly fatter than its
-  // inner arcs again — the exact complaint.
-  it("multi-ring hero stroke matches the macro stroke exactly (F-164/165)", () => {
+  // 2026-06-16 (founder, REVERSES ENG-1064): the calorie hero stroke (0.05·S) is
+  // a deliberate step ABOVE the macro stroke (0.028·S) — the hierarchy. The
+  // build-57 "too fat" read was a hero over an invisible track; the new bold
+  // greyed-full track makes it read as intentional. Founder approved 0.05·S in-sim.
+  it("calorie hero stroke is a step above the macro stroke (0.05·S vs 0.028·S)", () => {
     for (const size of [160, 207, 230]) {
       const g = calorieRingGeometryFromSize(size);
-      expect(g.strokeWidth).toBe(g.macroStroke);
-      expect(g.strokeWidth).toBe(Math.max(4, Math.round(size * 0.028)));
+      expect(g.strokeWidth).toBe(Math.round(size * 0.05));
+      expect(g.macroStroke).toBe(Math.max(4, Math.round(size * 0.028)));
+      expect(g.strokeWidth).toBeGreaterThan(g.macroStroke);
     }
   });
 
-  // The COLLAPSED single-ring mode keeps the confident bold stroke (no macro
-  // rings on screen to mismatch) — mirrors mobile `ringGeometry`'s `bold` branch.
-  it("exposes a bold collapsed stroke distinct from the matched multi-ring stroke", () => {
+  // Founder constraint 2026-06-16: the calorie ring is ONE thickness whether
+  // macros are shown or hidden — the collapsed stroke EQUALS the expanded one.
+  it("collapsed stroke equals the expanded calorie stroke (no jump on toggle)", () => {
     const g = calorieRingGeometryFromSize(230);
-    expect(g.strokeWidthBold).toBe(Math.round(230 * 0.085));
-    expect(g.strokeWidthBold).toBeGreaterThan(g.strokeWidth);
+    expect(g.strokeWidthBold).toBe(g.strokeWidth);
+    expect(g.strokeWidthBold).toBe(Math.round(230 * 0.05));
   });
 
   it("desktop hero uses the even-gap macro radii at size 160", () => {
@@ -44,20 +45,19 @@ describe("calorieRingGeometry", () => {
     ]);
   });
 
-  // The even-gap re-derivation (ENG-1064): once the hero stroke thins to match
-  // the macro stroke, every adjacent ring gap must stay even (no awkward wide
-  // calorie→protein gap). Assert all three gaps are within 1px of each other.
-  it("keeps even gaps between every adjacent ring once the hero stroke thins", () => {
+  // The ENG-1064 concern was an awkward WIDE calorie→protein gap; the thicker
+  // 0.05·S hero only TIGHTENS it. Guard: no overlap, and the hero sits no
+  // further from its first macro than the inter-macro gaps.
+  it("the thicker hero does not open a wide calorie→protein gap", () => {
     const g = calorieRingGeometryFromSize(230);
     const ms = g.macroStroke;
     const calInner = g.radius - g.strokeWidth / 2;
-    const gaps = [
-      calInner - (g.macroRadii[0] + ms / 2),
+    const calToProtein = calInner - (g.macroRadii[0] + ms / 2);
+    const interMacro = [
       g.macroRadii[0] - ms / 2 - (g.macroRadii[1] + ms / 2),
       g.macroRadii[1] - ms / 2 - (g.macroRadii[2] + ms / 2),
     ];
-    const max = Math.max(...gaps);
-    const min = Math.min(...gaps);
-    expect(max - min).toBeLessThanOrEqual(1);
+    expect(calToProtein).toBeGreaterThan(0);
+    expect(calToProtein).toBeLessThanOrEqual(Math.max(...interMacro) + 1);
   });
 });
