@@ -126,10 +126,12 @@ card — the gates are sticky.
 - Edit / Delete — web: overflow menu on the custom-food row, delete goes through the themed `DestructiveConfirmDialog` (audit M7, 2026-04-18) — focus-trapped, screen-reader friendly. Mobile: long-press the row, then pick Edit or Delete from the action sheet (double-confirmed for delete). Edit opens the same dialog pre-filled.
 - Analytics: `custom_food_created` with `{ hasBrand, servingCount }` on save, `custom_food_updated` on edit, `custom_food_deleted` on delete. Logging a custom food fires `custom_food_logged` with `{ servingLabel?, grams }` alongside the normal `food_logged` event.
 
-**Scan** — BarcodeScannerModal:
-- Camera barcode scanning
-- Product lookup via Open Food Facts
-- Auto-logs to active meal slot
+**Scan** — mobile camera (`apps/mobile/app/(tabs)/barcode.tsx`) / web dialog (`TodayBarcodeDialog`):
+- **Mobile** scans EAN/UPC barcodes through the live camera (corner-bracket reticle), looks the product up via Open Food Facts, and presents a result card with the product name, macro tiles (kcal / P / C / F), a 4-segment meal-slot picker (defaults to time-of-day), a serving stepper + label presets, and a clear primary "Log to {slot}" CTA. Web has no camera path — the user types the barcode into the dialog and taps "Look up", then reviews the same product on the "Review & log" step.
+- **Result-card design parity (ENG-737, 2026-06-17).** Both platforms render the scanned product in the same design language as the food-search result row: a **Verified / Estimated confidence chip**, a prominent kcal headline (tabular-nums), and the coloured P/C/F macro treatment (protein = `--destructive`, carbs = `--macro-carbs`, fat = `--warning`; fibre when present). The web "Review & log" step previously showed a flat muted-text paragraph ("looks awful") — it is now a `barcode-result-card` matching mobile. Tokens only; no flat paragraph.
+- **Confidence is honest, never a UI default.** The tier comes from the single shared `barcodeConfidenceTier` rule (`src/lib/nutrition/barcodeConfidence.ts`, re-exported to mobile via `@suppr/shared/nutrition/barcodeConfidence`). A raw Open Food Facts lookup carries no `verified` flag, so it reads **Estimated**; a row whose per-100g basis we had to reconstruct (`basisCorrected`) also reads Estimated even if it was once verified — we no longer trust the published panel (CLAUDE.md trust posture).
+- **Trust + correction.** Both surfaces run the per-100g-vs-per-serving plausibility guard before writing (`checkScaledLogPlausibility`) and offer an inline "edit and update" correction path. Barcode portion memory ("You usually log N g — using that") and per-meal HealthKit writes (mobile) carry across scans.
+- **Not-found.** A miss surfaces a soft empty state ("We don't have this product yet.") with a clear CTA hierarchy: add the product / scan the label / try another barcode, rather than a transient toast.
 
 **Voice log (Pro, Batch 5.13)** — `VoiceLogDialog` (web) / `VoiceLogSheet` (mobile):
 - Entry point: "Voice" chip in the Today quick-log strip and in the FAB sub-sheet. Free + Base users see a lock icon and the factual paywall dialog ("Voice logging is a Pro feature. Upgrade to use it.") on tap — no countdowns, no dark patterns. Analytics: `voice_log_paywalled`.

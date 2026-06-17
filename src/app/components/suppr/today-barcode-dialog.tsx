@@ -19,6 +19,7 @@ import {
 } from "../../../lib/openFoodFacts/fetchProductByBarcode";
 import { scaleFromPer100gGrams } from "../../../lib/openFoodFacts/scaleFromPer100g";
 import { checkScaledLogPlausibility } from "../../../lib/nutrition/macroPlausibility";
+import { barcodeConfidenceTier } from "../../../lib/nutrition/barcodeConfidence";
 import {
   clampRememberedToServingOptions,
   getRememberedPortion,
@@ -499,12 +500,70 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     </div>
 
                     {!barcodeMacrosManual ? (
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{scaled.calories}</span> kcal · P{" "}
-                        {formatMacro(scaled.protein, "protein", "g")} · C {formatMacro(scaled.carbs, "carbs", "g")} · F {formatMacro(scaled.fat, "fat", "g")}
-                        {scaled.fiberG > 0 ? ` · Fiber ${formatMacro(scaled.fiberG, "fiber", "g")}` : ""}
-                        <span className="block text-[11px] mt-1">From label per 100 g × grams below.</span>
-                      </p>
+                      // ENG-737 (2026-06-17) — barcode result card brought to
+                      // parity with the food-search result row and the mobile
+                      // barcode redesign: a confidence chip, a prominent kcal
+                      // headline, and the same coloured P/C/F macro treatment
+                      // (protein=destructive, carbs=--macro-carbs, fat=warning)
+                      // as the food-search row. Tokens only; no flat muted
+                      // paragraph. Verified/Estimated derives from the shared
+                      // `barcodeConfidenceTier` rule — a raw OFF lookup is
+                      // "Estimated" (CLAUDE.md trust posture; never a UI
+                      // default). Mirrors mobile barcode.tsx exactly.
+                      (() => {
+                        const tier = barcodeConfidenceTier(p);
+                        return (
+                          <div
+                            data-testid="barcode-result-card"
+                            className="rounded-lg border border-border bg-muted/30 p-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <span
+                                  data-testid={`barcode-confidence-${tier}`}
+                                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
+                                    tier === "verified" ? "bg-primary/10 text-primary" : ""
+                                  }`}
+                                  style={
+                                    tier === "verified"
+                                      ? undefined
+                                      : {
+                                          color: "var(--chip-estimated)",
+                                          backgroundColor: "var(--chip-estimated-soft)",
+                                        }
+                                  }
+                                >
+                                  {tier === "verified" ? (
+                                    <Icons.check className="h-2.5 w-2.5" aria-hidden />
+                                  ) : (
+                                    <Icons.info className="h-2.5 w-2.5" aria-hidden />
+                                  )}
+                                  {tier === "verified" ? "Structured" : "Estimated"}
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[18px] font-extrabold text-foreground tabular-nums leading-none">
+                                  {scaled.calories}
+                                </span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mt-0.5">
+                                  kcal
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold">
+                              <span className="text-destructive">P {formatMacro(scaled.protein, "protein", "g")}</span>
+                              <span className="text-[var(--macro-carbs)]">C {formatMacro(scaled.carbs, "carbs", "g")}</span>
+                              <span className="text-warning">F {formatMacro(scaled.fat, "fat", "g")}</span>
+                              {scaled.fiberG > 0 ? (
+                                <span className="text-muted-foreground">Fiber {formatMacro(scaled.fiberG, "fiber", "g")}</span>
+                              ) : null}
+                            </div>
+                            <span className="mt-1.5 block text-[11px] text-muted-foreground/80">
+                              From label per 100 g × grams below · via Open Food Facts
+                            </span>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         <label className="grid gap-1 col-span-2 sm:col-span-1">
