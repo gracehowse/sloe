@@ -8,7 +8,9 @@
  * What's pinned:
  *   - Default kind: renders eyebrow, title, band chip, macro caption,
  *     CTA. Tap fires onPrimaryCta. Skip button fires onSkip.
- *   - Library-empty kind: renders the invitation copy + "Open Library →".
+ *   - Library-empty kind: renders the invitation copy + a tappable
+ *     quiet-fill row (ENG-1198 — parity with mobile's flattened
+ *     chevron-row grammar; was a gradient card + "Open Library →" button).
  *   - Over-budget kind: renders the calm caption (no card, no CTA).
  *   - No-fit kind: renders "Library has nothing under your remaining
  *     macros today" + Browse → text button.
@@ -268,13 +270,20 @@ describe("NorthStarBlock (web) — whyLine + macro row do not overlap", () => {
 });
 
 describe("NorthStarBlock (web) — non-default kinds", () => {
-  it("library-empty: renders invitation + 'Open Library →' button", () => {
+  // ENG-1198: web library-empty brought into parity with mobile's flattened
+  // tappable quiet-fill row. Copy aligned to mobile ("Pick a few recipes — we'll
+  // suggest from there."); the whole row is the tap target (aria-label "Pick
+  // recipes for your library"), replacing the old gradient card + separate
+  // "Open Library →" button.
+  it("library-empty: renders invitation copy + tappable quiet-fill row", () => {
     const onOpenLibrary = vi.fn();
     render(<NorthStarBlock kind="library-empty" onOpenLibrary={onOpenLibrary} />);
     expect(
-      screen.getByText(/Pick a few recipes you'd actually cook/),
+      screen.getByText(/Pick a few recipes — we'll suggest from there\./),
     ).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: "Open Library →" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pick recipes for your library" }),
+    );
     expect(onOpenLibrary).toHaveBeenCalled();
   });
 

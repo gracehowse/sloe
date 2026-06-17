@@ -183,9 +183,16 @@ export function NorthStarBlock({
         accessibilityRole="button"
         accessibilityLabel="Pick recipes for your library"
         onPress={onOpenLibrary}
-        style={styles.libraryEmptyRow}
+        style={[styles.libraryEmptyRow, { backgroundColor: colors.fillQuiet }]}
       >
-        <Sparkles size={18} color={colors.textTertiary} />
+        {/* ENG-1198: this is a real north-star entry point, not placeholder
+            text. Sparkle → primarySolid (accent "feature, tap me" signal),
+            chevron → textSecondary (one step up from tertiary, not primary),
+            and the row sits in a quiet-fill affordance (styles.libraryEmptyRow)
+            so it reads as a tappable pill, matching the meal-card "Add food"
+            grammar. Previously both icons rendered in textTertiary with no
+            fill, so the row read as disabled/greyed-out. */}
+        <Sparkles size={18} color={accent.primarySolid} />
         <Text
           style={[
             Type.body,
@@ -194,7 +201,7 @@ export function NorthStarBlock({
         >
           {"Pick a few recipes — we'll suggest from there."}
         </Text>
-        <ChevronRight size={18} color={colors.textTertiary} />
+        <ChevronRight size={18} color={colors.textSecondary} />
       </PressableScale>
     ) : (
       <Pressable
@@ -204,10 +211,13 @@ export function NorthStarBlock({
         onPress={onOpenLibrary}
         style={({ pressed }) => [
           styles.libraryEmptyRow,
-          { opacity: pressed ? 0.6 : 1 },
+          { backgroundColor: colors.fillQuiet, opacity: pressed ? 0.6 : 1 },
         ]}
       >
-        <Sparkles size={18} color={colors.textTertiary} />
+        {/* ENG-1198: see tierV1 branch above — sparkle → primarySolid,
+            chevron → textSecondary, row in a quiet-fill affordance. Kept in
+            parity with the tierV1 render path. */}
+        <Sparkles size={18} color={accent.primarySolid} />
         <Text
           style={[
             Type.body,
@@ -216,7 +226,7 @@ export function NorthStarBlock({
         >
           {"Pick a few recipes — we'll suggest from there."}
         </Text>
-        <ChevronRight size={18} color={colors.textTertiary} />
+        <ChevronRight size={18} color={colors.textSecondary} />
       </Pressable>
     );
   }
@@ -685,8 +695,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.dense,
-    paddingHorizontal: 4,
+    // ENG-1198: quiet-fill affordance so the north-star entry reads as a
+    // tappable pill, not greyed placeholder text. Padding bumped 4 → dense (12)
+    // so the fill has room to breathe; radius = Radius.lg (8). backgroundColor
+    // is applied inline from `colors.fillQuiet` (theme-aware light/dark) at the
+    // call sites — it can't live in this static StyleSheet.
+    paddingHorizontal: Spacing.dense,
     paddingVertical: Spacing.dense,
+    borderRadius: Radius.lg,
   },
   defaultCard: {
     flexDirection: "row",

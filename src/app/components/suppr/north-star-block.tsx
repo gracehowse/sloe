@@ -25,7 +25,7 @@
  */
 
 import * as React from "react";
-import { Check, Clock, Flame, Sparkles, X } from "lucide-react";
+import { Check, ChevronRight, Clock, Flame, Sparkles, X } from "lucide-react";
 
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprButton } from "./suppr-button";
@@ -148,33 +148,32 @@ export function NorthStarBlock({
   }
 
   if (kind === "library-empty") {
+    // ENG-1198: brought into parity with mobile's flattened inset-row grammar
+    // (mobile shipped 2026-05-23). The whole row is the tap target; the sparkle
+    // → primary-solid (accent "feature, tap me" signal), the chevron →
+    // foreground-secondary (one step up from tertiary, not primary), and the row
+    // sits in a quiet-fill affordance so it reads as a tappable pill rather than
+    // greyed-out placeholder text. Replaces the older gradient-card + solid
+    // "Open Library →" button, which was a structural + copy drift from mobile.
     return (
-      <SupprCard
-        elevation="card"
+      <button
+        type="button"
         data-slot="north-star-library-empty"
         data-testid={testID}
-        tone="primary"
-        gradient
-        padding="md"
-        className="flex flex-row items-center gap-3"
+        onClick={onOpenLibrary}
+        aria-label="Pick recipes for your library"
+        className={cn(
+          "flex w-full flex-row items-center gap-3 rounded-lg bg-fill-quiet px-3 py-3 text-left",
+          "transition-opacity hover:opacity-80 active:opacity-60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )}
       >
-        <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
-        <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[13px] font-semibold">
-            Pick a few recipes you'd actually cook — we'll suggest from there.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenLibrary}
-          className={cn(
-            "shrink-0 rounded-md bg-primary-solid px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          )}
-        >
-          Open Library →
-        </button>
-      </SupprCard>
+        <Sparkles aria-hidden width={18} height={18} className="shrink-0 text-primary-solid" />
+        <span className="flex-1 text-[14px] text-foreground-secondary">
+          Pick a few recipes — we'll suggest from there.
+        </span>
+        <ChevronRight aria-hidden width={18} height={18} className="shrink-0 text-foreground-secondary" />
+      </button>
     );
   }
 
