@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { AlertTriangle, Check, Info } from "lucide-react-native";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -58,6 +58,12 @@ export function MobilePaceStep() {
     }
   }, [warning, set, state.paceDangerAcknowledged]);
   const colors = useThemeColors();
+  // Plum brand accent for the preset-pill selection grammar (§7, ENG-1022):
+  // selected pills read `primarySoft` fill + `primarySolid` label, NO solid
+  // ring — mirroring the web pace step + the diet/allergy chip pattern. The
+  // per-goal `accent` below stays reserved for the slider track + projection
+  // tile (the macro-coded goal hue), matching web `BrandedSlider`.
+  const plum = useAccent();
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
   const presets = PACE_PRESETS[goal];
@@ -129,14 +135,17 @@ export function MobilePaceStep() {
               onPress={() => set({ paceKgPerWeek: p.value })}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
+              // Chip grammar §7 (ENG-1022, web parity): selected =
+              // `primarySoft` plum fill + `primarySolid` label + bold, NO
+              // solid accent ring; unselected = quiet `card` fill + muted
+              // label, NO border. Replaces the prior goal-accent ring +
+              // `inputBg` raw-Pressable treatment.
               style={({ pressed }) => ({
                 flex: 1,
                 paddingHorizontal: 8,
                 paddingVertical: Spacing.dense,
-                borderRadius: Radius.md - 2,
-                backgroundColor: active ? accent + "26" : colors.inputBg,
-                borderWidth: 1.5,
-                borderColor: active ? accent : colors.border,
+                borderRadius: Radius.lg,
+                backgroundColor: active ? plum.primarySoft : colors.card,
                 opacity: pressed ? 0.85 : 1,
               })}
             >
@@ -144,7 +153,7 @@ export function MobilePaceStep() {
                 style={{
                   fontSize: 13,
                   fontWeight: "700",
-                  color: colors.text,
+                  color: active ? plum.primarySolid : colors.text,
                   letterSpacing: -0.2,
                 }}
               >
@@ -379,26 +388,30 @@ function PaceWarningBanner({
   // `Accent.warning` status hues regardless of the Frost flag, as does the
   // danger acknowledgement checkbox below.
   const accent = useAccent();
+  // Lucide icons (ENG-895 — Ionicons banned by the 2026-05-31 icon-strategy
+  // decision). Mirrors the web pace step exactly: AlertTriangle for the
+  // danger + warn status banners, Info for the lowest-severity info banner.
   const config = {
     danger: {
       bg: "rgba(217,69,69,0.18)",
       border: "rgba(217,69,69,0.55)",
       accent: Accent.destructive,
-      icon: "alert-circle-outline" as const,
+      Icon: AlertTriangle,
     },
     warn: {
       bg: "rgba(232,148,45,0.18)",
       border: "rgba(232,148,45,0.55)",
       accent: Accent.warning,
-      icon: "warning-outline" as const,
+      Icon: AlertTriangle,
     },
     info: {
       bg: accent.primary + "1a",
       border: accent.primary + "59",
       accent: accent.primaryLight,
-      icon: "information-circle-outline" as const,
+      Icon: Info,
     },
   }[warning.level];
+  const { Icon } = config;
 
   return (
     <View
@@ -428,7 +441,7 @@ function PaceWarningBanner({
           marginTop: 1,
         }}
       >
-        <Ionicons name={config.icon} size={15} color={config.accent} />
+        <Icon size={15} color={config.accent} strokeWidth={2.5} />
       </View>
       <View style={{ flex: 1 }}>
         <Text
@@ -482,7 +495,7 @@ function PaceWarningBanner({
               }}
             >
               {acknowledged ? (
-                <Ionicons name="checkmark" size={12} color={colors.primaryForeground} />
+                <Check size={12} color={colors.primaryForeground} strokeWidth={3} />
               ) : null}
             </View>
             <Text

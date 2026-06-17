@@ -116,7 +116,11 @@ export function PaceStep() {
         compact
       />
 
-      {/* Presets */}
+      {/* Presets — chip grammar §7 (ENG-1022): selected = `bg-primary-soft`
+          plum fill + `primary-solid` label, NO solid accent ring; unselected
+          = quiet `bg-card` + muted label, NO border. The per-goal `accent`
+          stays reserved for the slider track + projection tile below (the
+          macro-coded goal hue). Mirrors the mobile pace step + diet chips. */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         {presets.map((p) => {
           const active = Math.abs(pace - p.value) < range.step * 0.6;
@@ -125,14 +129,12 @@ export function PaceStep() {
               key={p.value}
               type="button"
               onClick={() => set({ paceKgPerWeek: p.value })}
-              className={`flex flex-col items-start gap-0.5 px-2 py-2.5 rounded-md border-[1.5px] cursor-pointer transition-pm`}
-              style={{
-                backgroundColor: active
-                  ? `color-mix(in oklab, ${accent} 14%, transparent)`
-                  : "var(--input-background)",
-                borderColor: active ? accent : "var(--border)",
-                color: "var(--foreground)",
-              }}
+              aria-pressed={active}
+              className={`flex flex-col items-start gap-0.5 px-2 py-2.5 rounded-card cursor-pointer transition-pm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                active
+                  ? "bg-primary-soft text-primary-solid"
+                  : "bg-card text-foreground hover:bg-muted/60"
+              }`}
             >
               <span className="text-[13px] font-bold tracking-tight">
                 {p.label}
