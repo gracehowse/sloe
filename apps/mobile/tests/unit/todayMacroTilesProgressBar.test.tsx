@@ -171,7 +171,7 @@ describe("TodayDashboardMacroTiles — per-tile caption (audit gap 4)", () => {
     expect(cap.color).toBe(MUTED);
   });
 
-  it("suppresses the caption text on an unlogged tile (current = 0)", () => {
+  it('shows full remaining on an unlogged tile (current = 0) — ENG-938', () => {
     const { getByTestId } = render(
       <TodayDashboardMacroTiles
         {...baseProps}
@@ -179,9 +179,9 @@ describe("TodayDashboardMacroTiles — per-tile caption (audit gap 4)", () => {
         trackedMacros={["protein"]}
       />,
     );
-    // The "/ target" line above already says everything; caption is empty
-    // but the row still reserves its height so the grid stays even.
-    expect(captionOf(getByTestId("today-macro-tile-caption-protein")).text).toBe("");
+    const cap = captionOf(getByTestId("today-macro-tile-caption-protein"));
+    expect(cap.text).toBe("140g remaining");
+    expect(cap.color).toBe(SAGE);
   });
 });
 

@@ -43,7 +43,11 @@ export function macroStatCaption(input: MacroStatCaptionInput): MacroStatCaption
   }
 
   if (current <= 0 && target > 0) {
-    return { text: "", tone: "none" };
+    const unitSuffix = unit === "g" ? "g" : ` ${unit}`;
+    return {
+      text: `${Math.round(target)}${unitSuffix} remaining`,
+      tone: "under",
+    };
   }
 
   if (target <= 0) {

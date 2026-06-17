@@ -5,10 +5,10 @@ import {
 } from "../../src/lib/nutrition/macroStatCaption";
 
 describe("macroStatCaption (ENG-1014)", () => {
-  it("returns empty caption when unlogged with a target", () => {
+  it("shows full remaining when unlogged (ENG-938 — refugee scannable protein gap)", () => {
     expect(macroStatCaption({ current: 0, target: 120, unit: "g" })).toEqual({
-      text: "",
-      tone: "none",
+      text: "120g remaining",
+      tone: "under",
     });
   });
 
