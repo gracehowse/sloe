@@ -128,6 +128,46 @@ re-run the bake.** Beverages are deliberately out of scope (deferred).
 
 ---
 
+## Follow-up: no-salt-added canned tomatoes (ENG-1083, 2026-06-17)
+
+**Gap:** the table had a raw `tomato` row but nothing for canned/tinned
+tomatoes — a staple recipe ingredient. A plain "canned tomatoes" / "chopped
+tomatoes" query fell through to the live USDA/OFF fan-out, which surfaces a mix
+of salted, branded, and puree rows. There was also no low-sodium option, so a
+recipe built on tinned tomatoes silently logged the salted default.
+
+**Data (real USDA, not invented):**
+- `src/lib/nutrition/genericFoods.ts` — new entry `canned-tomatoes-no-salt`
+  ("Canned tomatoes (no salt added)"). Per-100g macros from USDA SR Legacy
+  **#170138** "Tomatoes, red, ripe, canned, packed in tomato juice, no salt
+  added": 16 kcal, 0.8 P / 3.5 C / 0.3 F, fibre 1.9 g, sugar 2.6 g, **sodium
+  10 mg**. Default serving 200 g (½ of a standard 400 g can). Aliases are
+  distinct from the raw `tomato` row (canned/tinned/chopped variants), so the
+  bare "tomato" query still lands the raw entry — verified by the alias-
+  uniqueness pin and an explicit matcher test.
+- `src/lib/nutrition/genericFoodMicros.ts` — matching per-100g micro panel
+  baked from the same #170138 row via the runtime normaliser
+  (`fdcFoodMicrosPer100g`), the exact source the bake script uses. The
+  defining contrast: sodium **10 mg/100g** here vs **115 mg/100g** on the
+  salted canned counterpart (#170051). Cites the fdcId per convention.
+
+This is shared business logic in `src/lib/nutrition/` — mobile imports the same
+two files via the `@suppr/shared` alias, so the entry lands on both platforms
+from a single change (no mobile-specific copy exists).
+
+**Tests:**
+- `tests/unit/genericFoods.test.ts` — matcher routing (canned/tinned/chopped →
+  `canned-tomatoes-no-salt`; bare "tomato"/"tomatoes" still → raw `tomato`) +
+  a per-100g lock on the low-sodium macros.
+- `tests/unit/genericFoodMicros.test.ts` — count bumped 36 → 37; a spot-check
+  pinning the LOW sodium (10 mg) + hallmark potassium/vitamin C so a re-bake
+  that picks the salted row fails loudly.
+- `tests/unit/genericFoodMicrosAudit.test.ts` (unchanged) — its "every
+  GENERIC_FOODS id has a baked micro row" invariant covers the new entry; the
+  kcal-vs-macro plausibility check passes (≈19.3 kcal-from-macros vs 16).
+
+---
+
 ## Outcome
 
 - F-73 cortado pattern extended from 12 coffee drinks to 30 beverages (coffee + tea + milk + juice + alcohol) and 33 generic foods (fruit + veg + grains + protein + dairy + nuts).

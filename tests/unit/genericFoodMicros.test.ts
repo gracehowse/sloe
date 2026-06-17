@@ -21,8 +21,8 @@ import {
 import { GENERIC_FOODS } from "../../src/lib/nutrition/genericFoods";
 
 describe("GENERIC_FOOD_MICROS — table shape", () => {
-  it("covers exactly 36 generic foods", () => {
-    expect(Object.keys(GENERIC_FOOD_MICROS)).toHaveLength(36);
+  it("covers exactly 37 generic foods", () => {
+    expect(Object.keys(GENERIC_FOOD_MICROS)).toHaveLength(37);
   });
 
   it("keys every baked micro panel to a real GenericFood id (no orphans)", () => {
@@ -79,6 +79,22 @@ describe("GENERIC_FOOD_MICROS — spot-checked USDA values", () => {
     expect(spinach).toBeDefined();
     expect(spinach!.vitaminKMcg).toBeCloseTo(483, 0);
     expect(spinach!.folateMcg).toBeCloseTo(194, 0);
+  });
+
+  it("no-salt-added canned tomatoes bake the LOW sodium row (ENG-1083)", () => {
+    // The whole point of this entry: tinned tomatoes without added salt
+    // carry ~10 mg Na/100g, not the ~115 mg of the salted canned row
+    // (USDA #170051). If a re-bake ever picks the salted row, this fails.
+    const canned = genericFoodMicrosPer100g("canned-tomatoes-no-salt");
+    expect(canned).toBeDefined();
+    expect(canned!.sodiumMg).toBeCloseTo(10, 0);
+    // ~10x lower sodium than the raw-tomato-vs-salted gap would suggest —
+    // and an order of magnitude below the salted canned counterpart.
+    expect(canned!.sodiumMg).toBeLessThan(50);
+    // Hallmark micros survive (potassium + vitamin C are the canned-tomato
+    // signature) so the row isn't a stripped/empty panel.
+    expect(canned!.potassiumMg).toBeCloseTo(191, 0);
+    expect(canned!.vitaminCMg).toBeCloseTo(12.6, 1);
   });
 });
 
