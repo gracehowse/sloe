@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-17 (rev 14 — Gate 1.5 closeout batch).  
-**Branch:** `claude/wave-4-trust-cohesion` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-17 (rev 15 — Gate 1.5 `4c4459bb` + quick-wins strategy).  
+**Branch:** `claude/wave-4-trust-cohesion` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Quick wins:** `docs/planning/2026-06-17-quick-wins-backlog.md` · **Gate 0/1 audit:** `docs/planning/2026-06-17-gate-0-1-agent-audit.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -172,10 +172,10 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | # | Pri | Surface | Note |
 |---|---|---|---|
 | ENG-895 | Urgent | Conform Onboarding to Figma | **Done** (closeout) — welcome/reveal/pace/projection; photo-hero WO1 split deferred |
-| ENG-889 | High | Conform Today to Figma | **partial** — Layer-3 pixel + web skeleton (post-launch polish) |
+| ENG-889 | High | Conform Today to Figma | **partial** — L1 skeleton + hydration gate (`f04779fd`); S5 Fresh start + screenshot wall open |
 | ~~ENG-900~~ | High | ~~Conform Log-a-meal to Figma~~ | **Done** `95a83070` |
-| ENG-901 | High | Conform Paywall & win-moments | partial — honesty cards shipped; M5 streak / M6 import-success residual |
-| ENG-896 | High | Conform Recipes & Cookbook | partial — save-first + import hero; pixel close-out open |
+| ENG-901 | High | Conform Paywall & win-moments | **partial** — M5 streak shipped (`4c4459bb`); M6 import-success web open |
+| ENG-896 | High | Conform Recipes & Cookbook | **partial** — Library grid (`4c4459bb`); Discover slabs open |
 | ~~*(new)*~~ | Urgent | ~~**Suppr→Sloe brand-string sweep**~~ | **Done** `95a83070` (no Linear ticket) |
 | ~~*(new)*~~ | High | ~~**Verify `REDESIGN_DEFAULT_ON` default-on**~~ | **Done** `95a83070` — `tests/unit/redesignDefaultOnParity.test.ts` (no Linear ticket) |
 | ~~ENG-827~~ | High | ~~Golden visual-regression + parity suite~~ | **Done** `95a83070` — `tests/e2e/visual-redesign-gate15*.spec.ts` |
