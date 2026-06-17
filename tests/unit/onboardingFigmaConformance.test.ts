@@ -91,4 +91,25 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
     expect(mobileReveal).toContain("computeOnboardingRevealProjection");
     expect(mobileReveal).toContain("onboarding-reveal-projection");
   });
+
+  it("web narrative reveal head matches the step copy ('Your plan is ready.')", () => {
+    const narrative = readFileSync(
+      resolve(ROOT, "src/app/components/onboarding/narrative.tsx"),
+      "utf8",
+    );
+    // The reveal step (reveal.tsx) was re-titled "Your plan is ready."; the
+    // desktop narrative column must match, not the stale dashboard framing.
+    expect(narrative).toContain('head: "Your plan\\nis ready."');
+    expect(narrative).not.toContain("Here's what your");
+  });
+
+  it("web narrative eyebrows carry no static step numbers (progress bar owns position)", () => {
+    const narrative = readFileSync(
+      resolve(ROOT, "src/app/components/onboarding/narrative.tsx"),
+      "utf8",
+    );
+    // Hardcoded "Step N ·" eyebrows mis-number once the flag-gated app-choice
+    // step shifts the order; position is owned by OnboardingSegmentedProgress.
+    expect(narrative).not.toMatch(/eyebrow:\s*"Step\s*\d/);
+  });
 });
