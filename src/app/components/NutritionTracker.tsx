@@ -102,6 +102,7 @@ import {
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
+import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
@@ -553,6 +554,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     workoutsByDay,
     basalBurnByDay,
     profileMeasurementSystem,
+    nutritionJournalHydrated,
     nutritionByDay,
     extraWaterByDay,
     notificationPrefs,
@@ -2552,6 +2554,10 @@ export const NutritionTracker = memo(function NutritionTracker({
           subline: todayLongDateSubline(selectedDate),
         }
       : todayPastDayGreetingLines(selectedDate);
+
+  if (!nutritionJournalHydrated) {
+    return <TodayLoadingSkeleton />;
+  }
 
   return (
     <div className="product-shell py-pm-5 space-y-4 relative">

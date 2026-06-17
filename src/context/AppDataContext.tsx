@@ -263,6 +263,8 @@ interface AppDataContextValue {
   renameMealPlanSlot: (slotId: string, name: string) => void;
   deleteMealPlanSlot: (slotId: string) => void;
   /** All logged meals by `YYYY-MM-DD` (for streaks / weekly stats in Tracker). */
+  /** ENG-889 — true once the first nutrition_entries fetch settles (web Today skeleton gate). */
+  nutritionJournalHydrated: boolean;
   nutritionByDay: Record<string, LoggedMeal[]>;
   /** In-app notifications inbox (newest-first). */
   notificationsInbox: AppNotification[];
@@ -470,6 +472,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const {
+    journalHydrated: nutritionJournalHydrated,
     nutritionByDay,
     addLoggedMealForDate,
     addLoggedMeal,
@@ -2186,6 +2189,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createMealPlanSlot,
       renameMealPlanSlot,
       deleteMealPlanSlot,
+      nutritionJournalHydrated,
       nutritionByDay,
       notificationsInbox,
       notificationsUnreadCount,
@@ -2277,6 +2281,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createMealPlanSlot,
       renameMealPlanSlot,
       deleteMealPlanSlot,
+      nutritionJournalHydrated,
       nutritionByDay,
       notificationsInbox,
       notificationsUnreadCount,

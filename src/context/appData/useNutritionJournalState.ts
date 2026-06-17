@@ -87,6 +87,8 @@ export function useNutritionJournalState(opts: {
   const [nutritionByDay, setNutritionByDay] = useState<Record<string, LoggedMeal[]>>(() => initialByDay);
   const [dbNutritionEnabled, setDbNutritionEnabled] = useState(true);
   const [dbNutritionWarned, setDbNutritionWarned] = useState(false);
+  /** ENG-889 — flips once the first Supabase journal read settles (parity with mobile `hydrated`). */
+  const [journalHydrated, setJournalHydrated] = useState(() => !opts.authedUserId);
 
   const tryEnableDbNutrition = useCallback(async () => {
     if (!authedUserId) return false;
@@ -142,9 +144,14 @@ export function useNutritionJournalState(opts: {
 
   // Load from DB on mount
   useEffect(() => {
-    if (!authedUserId) return;
+    if (!authedUserId) {
+      setJournalHydrated(true);
+      return;
+    }
+    setJournalHydrated(false);
     let cancelled = false;
     (async () => {
+      try {
       if (!dbNutritionEnabled) return;
 
       // Try new relational table first
@@ -180,6 +187,9 @@ export function useNutritionJournalState(opts: {
           byDay[key].push(rowToLoggedMeal(row));
         }
         setNutritionByDay(byDay);
+      }
+      } finally {
+        if (!cancelled) setJournalHydrated(true);
       }
     })();
     return () => { cancelled = true; };
@@ -608,6 +618,7 @@ export function useNutritionJournalState(opts: {
   );
 
   return {
+    journalHydrated,
     nutritionByDay,
     addLoggedMealForDate,
     addLoggedMealsForDate,
