@@ -53,7 +53,13 @@ import {
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
 import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
-import { importJobIdForUrl } from "@suppr/shared/recipes/importProgressMachine";
+import { importJobIdForUrl, importJobIdForImage } from "@suppr/shared/recipes/importProgressMachine";
+import {
+  mapImageImportResponseToRecipe,
+  photoSeedTitle,
+  BULK_PHOTO_IMPORT_MAX,
+  type ImageImportApiResponse,
+} from "@suppr/shared/recipes/photoImport";
 import {
   IMPORT_SAVE_FIRST_FLAG,
   IMPORT_SAVE_FIRST_REVIEW_BANNER,
@@ -367,6 +373,10 @@ export default function ImportSharedScreen() {
     return () => { cancelled = true; };
   }, [userId]);
   const isFreeTier = userTier === "free";
+  // ENG-735 — bulk photo import is the primary import path: when the queue UX
+  // is on the picker is multi-select, so the affordance reads "Import from
+  // photos" (plural). Flag-off keeps the single-photo "Import from photo".
+  const photoImportLabel = importProgressV2 ? "Import from photos" : "Import from photo";
 
   // Animate progress steps during import
   useEffect(() => {
@@ -657,6 +667,55 @@ export default function ImportSharedScreen() {
     [base, userId, runImport, landImportedRecipeInReview],
   );
 
+  /**
+   * Fetch + parse ONE photo through `/api/recipe-import/image`. Shared by the
+   * legacy single-photo inline path and the bulk queued path (ENG-735).
+   * Accepts an optional AbortSignal so the queue can cancel an in-flight photo;
+   * throws `ImportRunnerError` (stable code) so the drawer maps it to
+   * retry-eligible copy. Attribution from `manualUrl` is forwarded the same way
+   * the single-photo path always has (ENG-748 #13).
+   */
+  const fetchImageImport = useCallback(
+    async (
+      asset: { uri: string; fileName?: string | null; mimeType?: string | null },
+      signal?: AbortSignal,
+    ): Promise<ApiImportedRecipe> => {
+      const form = new FormData();
+      form.append("image", {
+        uri: asset.uri,
+        name: asset.fileName ?? "photo.jpg",
+        type: asset.mimeType ?? "image/jpeg",
+      } as any);
+      // F-156-recipe-wave (2026-05-10) / ENG-748 #13 (2026-05-27) — forward an
+      // optional source for image-imported recipes so they carry attribution.
+      // If the pasted text resolves to a real URL it's sent as `sourceUrl`
+      // (linked); otherwise as `sourceName` so a creator note survives rather
+      // than being silently dropped. Empty stays empty.
+      const importSource = classifyImportSource(manualUrl);
+      if (importSource.sourceUrl) form.append("sourceUrl", importSource.sourceUrl);
+      if (importSource.sourceName) form.append("sourceName", importSource.sourceName);
+
+      let res: Response;
+      try {
+        res = await authedFetch(`${base}/api/recipe-import/image`, {
+          method: "POST",
+          body: form,
+          signal,
+        });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+        throw new ImportRunnerError("network_error");
+      }
+      const data = (await res.json()) as ImageImportApiResponse;
+      if (!data.ok || !data.ingredients?.length) {
+        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return mapImageImportResponseToRecipe(data);
+    },
+    [base, manualUrl],
+  );
+
   const runImageImport = useCallback(async () => {
     if (!ImagePicker) {
       Alert.alert("Not available", "Image import requires a native build (not Expo Go).");
@@ -667,6 +726,57 @@ export default function ImportSharedScreen() {
       setError(!base ? "API not configured." : "Sign in to import.");
       return;
     }
+
+    // ENG-735 — bulk photo import is the primary import path. When the queue
+    // UX is on, allow a multi-photo pick and enqueue ONE `image` job per photo
+    // into the shared scheduler: each photo gets its own row in the drawer with
+    // live progress / cancel / retry, photos import concurrently across the
+    // scheduler's slots, and the most-recently-finished populates the review
+    // form (last-wins, identical to the URL path). The legacy single-photo
+    // inline path stays alive in the `else` (flag OFF) so nothing regresses.
+    if (importProgressV2) {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        base64: false,
+        allowsMultipleSelection: true,
+        selectionLimit: BULK_PHOTO_IMPORT_MAX,
+      });
+      if (result.canceled || !result.assets?.length) return;
+
+      setError(null);
+      setSavedRecipeId(null);
+      // Trim a too-large pick to the ceiling so a single multi-select can't
+      // fan out an unbounded number of paid AI-vision calls. Calm notice only.
+      const assets = result.assets.slice(0, BULK_PHOTO_IMPORT_MAX);
+      if (result.assets.length > BULK_PHOTO_IMPORT_MAX) {
+        Alert.alert(
+          "Importing the first " + BULK_PHOTO_IMPORT_MAX,
+          `You picked ${result.assets.length} photos — Sloe will import the first ${BULK_PHOTO_IMPORT_MAX}. Import the rest in another batch.`,
+        );
+      }
+      const total = assets.length;
+      assets.forEach((asset, i) => {
+        importQueue.enqueue({
+          id: importJobIdForImage(asset.assetId ?? asset.uri),
+          kind: "image",
+          title: photoSeedTitle(i + 1, total),
+          run: async (controls) => {
+            controls.setStage("extracting");
+            const recipe = await fetchImageImport(asset, controls.signal);
+            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+            controls.setStage("organizing");
+            controls.setTitle(recipe.title ?? photoSeedTitle(i + 1, total));
+            // Last-wins: the most recent finished photo populates the review
+            // form; every photo remains listed in the drawer regardless.
+            await landImportedRecipeInReview(recipe);
+            return { title: recipe.title ?? photoSeedTitle(i + 1, total) };
+          },
+        });
+      });
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
@@ -678,76 +788,24 @@ export default function ImportSharedScreen() {
     setError(null);
     setCompletedSteps([]);
     try {
-      const asset = result.assets[0];
-      const form = new FormData();
-      form.append("image", {
-        uri: asset.uri,
-        name: asset.fileName ?? "photo.jpg",
-        type: asset.mimeType ?? "image/jpeg",
-      } as any);
-      // F-156-recipe-wave (2026-05-10) — forward an optional source
-      // for image-imported recipes so they carry attribution. Reuses
-      // the `manualUrl` state from the URL-import flow: if a user
-      // pasted a link there but pivoted to the photo-pick path, we
-      // still capture it.
-      //
-      // ENG-748 #13 (2026-05-27) — previously we sent the raw pasted
-      // text as `sourceUrl` unconditionally; the server's
-      // `normaliseSource` then NULLed anything that didn't parse as a
-      // URL, and because we never sent a `sourceName`, malformed pastes
-      // (typos, partial links, "from @creator on IG") lost the creator's
-      // attribution entirely with no feedback — an ODbL / viral-hook
-      // correctness gap. Fix: parse the pasted text here. If it resolves
-      // to a real URL, send it as `sourceUrl` (linked attribution). If
-      // it's non-empty but doesn't parse, send it as `sourceName` so the
-      // creator's note survives as a non-linked source note rather than
-      // being silently dropped. Empty stays empty (no attribution).
-      const importSource = classifyImportSource(manualUrl);
-      if (importSource.sourceUrl) form.append("sourceUrl", importSource.sourceUrl);
-      if (importSource.sourceName) form.append("sourceName", importSource.sourceName);
-
-      const res = await authedFetch(`${base}/api/recipe-import/image`, {
-        method: "POST",
-        body: form,
-      });
-      const data = await res.json() as {
-        ok?: boolean;
-        title?: string | null;
-        ingredients?: string[];
-        steps?: string[];
-        notes?: string | null;
-        sourceUrl?: string | null;
-        sourceName?: string | null;
-        nutrition?: { perServing?: any } | null;
-        error?: string;
-        message?: string;
-      };
-      if (!data.ok || !data.ingredients?.length) {
-        setState("error");
-        setError(userFacingImportError(data));
-        return;
-      }
-
-      const recipe: ApiImportedRecipe = {
-        title: data.title ?? "Photo Import",
-        ingredients: data.ingredients,
-        instructions: data.steps?.length ? data.steps : undefined,
-        servings: 1,
-        calories: data.nutrition?.perServing?.calories ?? null,
-        protein: data.nutrition?.perServing?.protein ?? null,
-        carbs: data.nutrition?.perServing?.carbs ?? null,
-        fat: data.nutrition?.perServing?.fat ?? null,
-        sourceUrl: data.sourceUrl ?? undefined,
-        sourceName: data.sourceName ?? undefined,
-      };
+      const recipe = await fetchImageImport(result.assets[0]);
       await landImportedRecipeInReview(recipe);
-    } catch {
+    } catch (e) {
       setState("error");
-      setError(IMPORT_ERROR_COPY.network_error);
+      if (e instanceof ImportRunnerError) {
+        setError(IMPORT_ERROR_COPY[e.code]);
+      } else {
+        setError(IMPORT_ERROR_COPY.network_error);
+      }
     }
-    // `manualUrl` is read for attribution (ENG-748 #13) — keep it in deps so
-    // the handler captures the latest pasted value rather than a stale closure.
-  }, [base, userId, manualUrl, landImportedRecipeInReview]);
+  }, [
+    base,
+    userId,
+    importProgressV2,
+    importQueue,
+    fetchImageImport,
+    landImportedRecipeInReview,
+  ]);
 
   /**
    * Photo-import entry point (gap #3, 2026-06-09). Photo OCR is Pro-gated
@@ -2274,11 +2332,15 @@ export default function ImportSharedScreen() {
                     style={styles.tertiaryRow}
                     onPress={onPhotoImportPress}
                     accessibilityRole="button"
-                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                    accessibilityLabel={
+                      isFreeTier
+                        ? `${photoImportLabel} (Pro)`
+                        : photoImportLabel
+                    }
                     testID="import-photo-affordance"
                   >
                     <CameraIcon size={18} color={accent.primary} />
-                    <Text style={styles.tertiaryLabel}>Import from photo</Text>
+                    <Text style={styles.tertiaryLabel}>{photoImportLabel}</Text>
                     {isFreeTier && (
                       <View style={styles.proPill}>
                         <Lock size={12} color={Accent.warningSolid} />
@@ -2364,10 +2426,12 @@ export default function ImportSharedScreen() {
                   <Pressable
                     style={styles.textLinkBtn}
                     onPress={onPhotoImportPress}
-                    accessibilityLabel={isFreeTier ? "Import from photo (Pro)" : "Import from photo"}
+                    accessibilityLabel={
+                      isFreeTier ? `${photoImportLabel} (Pro)` : photoImportLabel
+                    }
                   >
                     <Ionicons name="camera-outline" size={18} color={accent.primary} />
-                    <Text style={styles.textLinkLabel}>Import from photo</Text>
+                    <Text style={styles.textLinkLabel}>{photoImportLabel}</Text>
                     {isFreeTier && (
                       <View style={styles.proPill}>
                         <Lock size={12} color={Accent.warningSolid} />

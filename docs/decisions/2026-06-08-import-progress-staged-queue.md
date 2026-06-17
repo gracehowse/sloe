@@ -119,7 +119,15 @@ Three new events (same name web + mobile), distinct from the server-side
 
 ## Follow-ups (tracked, not silent)
 
-- Caption + image imports → queue parity (on the Linear "Import-progress
+- ~~Image imports → queue parity~~ **DONE 2026-06-17 (ENG-735).** Bulk photo
+  import is now the primary import path: a multi-select picker (web `<input
+  multiple>`, mobile `allowsMultipleSelection`) enqueues one `image` job per
+  photo into this same scheduler. Shared mapping in
+  `src/lib/recipes/photoImport.ts` keeps web ↔ mobile drift-proof; deterministic
+  per-photo id via `importJobIdForImage`. See `docs/journeys/import-recipe.md`
+  → "Bulk photo import". Pinned by `tests/unit/photoImport.test.ts` +
+  `tests/unit/importProgressMachine.test.ts`.
+- Caption imports → queue parity (still on the Linear "Import-progress
   staged state-machine + queue UX" issue).
 - After the flag holds 100% for two weeks with no regression, remove the
   legacy inline-skeleton `else` branch (cleanup PR).

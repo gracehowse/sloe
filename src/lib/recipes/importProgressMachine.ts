@@ -237,3 +237,22 @@ export function isRetryableError(code: ImportErrorCode | null | undefined): bool
 export function importJobIdForUrl(kind: ImportJobKind, url: string): string {
   return `import:${kind}:${url.trim().toLowerCase()}`;
 }
+
+/**
+ * Deterministic job id for ONE photo in a bulk/multi-photo recipe import
+ * (ENG-735 — bulk photo import as the primary import path). Each selected
+ * photo becomes one `image` job in the shared scheduler, so the user sees a
+ * row-per-photo in the queue drawer with its own progress / cancel / retry.
+ *
+ * The `localRef` is a per-photo stable handle the picker already gives us —
+ * the asset URI on mobile or the file name+size on web. It is ONLY used to
+ * dedupe a double-enqueue of the SAME picked photo (a re-render or a
+ * duplicate share intent) the way `importJobIdForUrl` dedupes a URL; it is
+ * never sent anywhere or persisted. Picking the same image file twice on
+ * purpose still re-imports because a terminal job with the same id is
+ * replaced (scheduler `enqueue` semantics). Shared so web + mobile derive the
+ * SAME id shape and the queue cannot drift between platforms.
+ */
+export function importJobIdForImage(localRef: string): string {
+  return `import:image:${localRef.trim().toLowerCase()}`;
+}

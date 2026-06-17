@@ -16,6 +16,9 @@ User finds a recipe online and imports it into their Suppr library with verified
 2. **Clipboard auto-detect** — open the Import screen, app detects a recipe URL on clipboard
 3. **Manual paste** — paste a URL into the import screen input field
 4. **Deep link** — `suppr://import?url=...`
+5. **Bulk photo** (Pro, primary path; `import-progress-v2`) — "Import from
+   photos" opens a multi-select picker; each photo imports as its own recipe
+   into the queue drawer (ENG-735)
 
 ### Web
 - **Canonical route:** `/import` (`app/(product)/import/page.tsx`). Like
@@ -128,12 +131,54 @@ is idempotent by id (a re-render / duplicate share intent can't double-run);
 slot; `retry` re-runs a failed + retryable job under the same id. Slots
 always release in `finally` so a thrown runner can never leak one.
 
-**Scope:** v2 wires the **URL/link** path (the lead viral hook) into the
-queue on BOTH platforms; image (OCR) + caption imports keep the inline
-single-import path on both platforms for now (parity is preserved — neither
-platform queues image/caption yet). Caption/image queue parity is tracked,
-not silently deferred — see the Linear "Import-progress staged
-state-machine + queue UX" issue follow-up.
+**Scope:** v2 wires the **URL/link** AND **bulk photo** paths into the queue
+on BOTH platforms. Caption imports keep the inline single-import path on both
+platforms for now (parity is preserved — neither platform queues caption
+yet). Caption queue parity is tracked, not silently deferred — see the Linear
+"Import-progress staged state-machine + queue UX" issue follow-up.
+
+#### Bulk photo import — the primary import path (`import-progress-v2`, ENG-735, 2026-06-17)
+
+PDF cookbook import is demoted; **multi-photo import is the primary import
+path**. When `import-progress-v2` is on:
+
+- **Mobile** (`apps/mobile/app/import-shared.tsx`): the "Import from photos"
+  affordance opens `launchImageLibraryAsync({ allowsMultipleSelection: true,
+  selectionLimit: 12 })`. Each picked photo becomes ONE `image` job in the
+  shared scheduler.
+- **Web** (`src/app/components/RecipeUpload.tsx`, `mode="import"`): the Recipe
+  photo card shows a `<input type="file" multiple>`; selecting files enqueues
+  one `image` job per file immediately (no separate "Extract from image"
+  button in this path).
+
+Every photo POSTs independently to `/api/recipe-import/image` (which takes
+exactly one image per request), walks the same honest stage machine
+(`extracting` → "Reading the photo" → `organizing` → `done`), and lands as a
+row in the persistent queue drawer with its own progress / cancel / retry.
+Photos import concurrently across the scheduler's slots. The
+**most-recently-finished** photo populates the review form (last-wins,
+identical to the URL path); every photo stays listed in the drawer regardless.
+
+Shared, drift-proof pieces (`src/lib/recipes/photoImport.ts`, imported by
+mobile via `@suppr/shared/recipes/photoImport`):
+- `mapImageImportResponseToRecipe` — the single chokepoint that maps the image
+  route's JSON → the canonical `ApiImportedRecipe` both platforms persist.
+  Never invents macros: a missing nutrition block leaves macros `null` (repo
+  no-guessing rule), not zeroed.
+- `photoSeedTitle(i, total)` — calm "Photo 2 of 4" / "Photo" seed labels.
+- `BULK_PHOTO_IMPORT_MAX = 12` — caps the paid AI-vision fan-out per pick;
+  over-pick is trimmed with a calm notice.
+- `importJobIdForImage(localRef)` — deterministic per-photo id (asset id/URI on
+  mobile, `name:size:lastModified` on web) so a duplicate enqueue of the same
+  picked photo dedupes, the way `importJobIdForUrl` dedupes a URL.
+
+The legacy single-photo inline path (mobile `importing` state +
+`ImportLoadingSkeleton`; web "Extract from image" OCR button) stays alive when
+the flag is OFF, and remains the create-mode default on web.
+
+Pinned by `tests/unit/photoImport.test.ts` (shared mapper, seed labels, macro
+no-guessing) and `tests/unit/importProgressMachine.test.ts` (image job-id
+dedupe).
 
 **Analytics** (same event names web + mobile, via the shared
 `useImportQueue` hook):
