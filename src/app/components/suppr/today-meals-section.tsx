@@ -36,11 +36,9 @@ import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { sheetTransition } from "../../../lib/motion";
-import { figmaSlotSummaryTitle } from "../../../lib/copy/today";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 import { TodayScrollSectionHeader } from "./today-scroll-section-header";
-import { TodayMealsFigmaLayout } from "./today-meals-figma-layout";
 import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
 /** ENG-1099 M6 — recipe-tier meal rows get PressableScale-style press feedback. */
@@ -373,14 +371,6 @@ export function TodayMealsSection({
   // animation stays alive when the flag is off. See src/lib/motion.ts.
   const redesignMotion = isFeatureEnabled("redesign_motion");
 
-  // ENG-1091 (Grace 2026-06-13): the MEALS layout is back on its own flag, split
-  // out of `today_meals_figma_654` (which still gates the North Star + Weekly
-  // Insight Figma-654 designs — unchanged). `today_meals_figma_layout` is NOT in
-  // REDESIGN_DEFAULT_ON → defaults OFF → the legacy TD4 `481:2` slot-grouped
-  // meal list (reskinned Sloe). The Figma `654:2` summary cards stay behind this
-  // flag (off) for reversibility. Web↔mobile parity: TodayMealsSection.tsx.
-  const mealsFigmaLayout = isFeatureEnabled("today_meals_figma_layout");
-
   // ENG-1095 — web↔mobile meals parity (Grace 2026-06-13). Mobile iterates a
   // FIXED slot list (Breakfast/Lunch/Dinner/Snacks) so all four rows render on
   // every day, including an empty one; web only ever built slots that had
@@ -423,26 +413,24 @@ export function TodayMealsSection({
 
   return (
     <div className="mb-6" data-testid="today-meals-section">
-      {!mealsFigmaLayout ? (
-        <div className="flex items-start justify-between gap-3">
-          <TodayScrollSectionHeader
-            title="Today's Meals"
-            testID="today-meals-section-header"
-            className="mb-4 flex-1 min-w-0"
-          />
-          {mealsForSelectedDate.length > 0 && (
-            <button
-              type="button"
-              onClick={onOpenDuplicateDay}
-              className="mt-1 shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
-              aria-label="Duplicate this day to another day"
-            >
-              <Icons.copyPlus className="w-3.5 h-3.5" />
-              Duplicate day…
-            </button>
-          )}
-        </div>
-      ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <TodayScrollSectionHeader
+          title="Today's Meals"
+          testID="today-meals-section-header"
+          className="mb-4 flex-1 min-w-0"
+        />
+        {mealsForSelectedDate.length > 0 && (
+          <button
+            type="button"
+            onClick={onOpenDuplicateDay}
+            className="mt-1 shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
+            aria-label="Duplicate this day to another day"
+          >
+            <Icons.copyPlus className="w-3.5 h-3.5" />
+            Duplicate day…
+          </button>
+        )}
+      </div>
       {showQuickAdd && (
         // Design Direction 2026 (ENG-795): canonical SupprCard.
         // `padding="none"` keeps the child-padded `overflow-hidden` layout.
@@ -478,182 +466,10 @@ export function TodayMealsSection({
           ) : null}
         </SupprCard>
       )}
-      {mealsFigmaLayout ? (
-        <>
-          <TodayMealsFigmaLayout
-            mealsGrouped={mealsGrouped}
-            collapsedSlots={collapsedSlots}
-            onToggleSlot={onToggleSlot}
-            onOpenAddForSlot={onOpenAddForSlot}
-            onPressMeal={onOpenMealNutrition}
-            onRequestDeleteMeal={(mealId, recipeTitle) =>
-              setDeleteCandidate({ id: mealId, recipeTitle })
-            }
-            renderSlotExpanded={(sectionName, sectionMeals) => {
-              // e2e walk 2026-06-10 (mobile parity): the Figma summary card
-              // header already shows the single (primary) meal's title +
-              // "{slotCals} kcal · {P}g P". When a slot has exactly one entry
-              // whose title equals that header title, the expanded row repeats
-              // it verbatim ("MyFitnessPal entry · 318 kcal" twice). Suppress
-              // just that redundant row — keep "Add food" so the slot stays
-              // editable. Mirrors the macro-detail "true duplicate" rule
-              // (single entry literally named after the header) and the mobile
-              // `TodayMealsSection` renderSlotExpanded guard.
-              const headerTitle = figmaSlotSummaryTitle(sectionMeals);
-              const redundantSingleRow =
-                sectionMeals.length === 1 &&
-                (sectionMeals[0]?.recipeTitle ?? "").trim() === headerTitle &&
-                headerTitle !== "";
-              return (
-              <div
-                className="border-t border-border/10"
-                data-testid={`today-meals-figma-expanded-${sectionName}`}
-              >
-                {(redundantSingleRow ? [] : sectionMeals).map((meal) => (
-                  <SwipeDeleteRow
-                    key={meal.id}
-                    onDelete={() =>
-                      setDeleteCandidate({ id: meal.id, recipeTitle: meal.recipeTitle })
-                    }
-                  >
-                  <div
-                    role={onOpenMealNutrition ? "button" : undefined}
-                    tabIndex={onOpenMealNutrition ? 0 : undefined}
-                    onClick={
-                      onOpenMealNutrition
-                        ? () => onOpenMealNutrition(meal.id)
-                        : undefined
-                    }
-                    onKeyDown={
-                      onOpenMealNutrition
-                        ? (e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              onOpenMealNutrition(meal.id);
-                            }
-                          }
-                        : undefined
-                    }
-                    className={`flex items-center justify-between px-3.5 py-2.5 border-b border-border/10${
-                      onOpenMealNutrition ? " cursor-pointer hover:bg-muted/20" : ""
-                    }${todayMealRowPressClass(tierV1, Boolean(onOpenMealNutrition))}`}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {(() => {
-                        const thumbUrl = mealRowImageUrl(meal);
-                        if (thumbUrl) {
-                          return (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              className="h-9 w-9 shrink-0 rounded-lg object-cover"
-                            />
-                          );
-                        }
-                        return (
-                          <SourceDot
-                            source={mapMealSourceToDot(meal.source)}
-                            size={6}
-                            className="shrink-0"
-                          />
-                        );
-                      })()}
-                      <span className="truncate text-sm text-foreground">
-                        {meal.recipeTitle}
-                      </span>
-                    </div>
-                    <div className="ml-2 flex shrink-0 items-center gap-2">
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {Math.round(meal.calories)}
-                      </span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="px-1 text-muted-foreground hover:text-foreground"
-                            aria-label={`More actions for ${meal.recipeTitle}`}
-                          >
-                            <Icons.more className="h-3.5 w-3.5" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {onOpenMealNutrition ? (
-                            <DropdownMenuItem
-                              onSelect={() => onOpenMealNutrition(meal.id)}
-                            >
-                              View nutrition
-                            </DropdownMenuItem>
-                          ) : null}
-                          {onEditMeal ? (
-                            <DropdownMenuItem
-                              data-testid={`today-meal-edit-${meal.id}`}
-                              onSelect={() => onEditMeal(meal.id)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                          ) : null}
-                          <DropdownMenuItem
-                            onSelect={() => onRequestCopyMeal(meal.id)}
-                          >
-                            Copy to another day…
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setDeleteCandidate({
-                                id: meal.id,
-                                recipeTitle: meal.recipeTitle,
-                              });
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  </SwipeDeleteRow>
-                ))}
-                {/* F-160 / flat-card surfaces (2026-06-12): quiet-fill Add-food
-                    affordance — same element, same treatment as the legacy-branch
-                    Add-food pill. Contained `bg-fill-quiet` pill, card-edge inset,
-                    no border. */}
-                <div className="px-3 pb-3 pt-2">
-                  <button
-                    type="button"
-                    data-testid={`today-add-food-${sectionName}`}
-                    onClick={() => onOpenAddForSlot(sectionName)}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-fill-quiet px-3 py-2 text-sm font-semibold text-[var(--primary-solid)] transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={`Add food to ${sectionName}`}
-                  >
-                    <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
-                    Add food
-                  </button>
-                </div>
-              </div>
-              );
-            }}
-          />
-          {mealsForSelectedDate.length > 0 ? (
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={onOpenDuplicateDay}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                aria-label="Duplicate this day to another day"
-              >
-                <Icons.copyPlus className="h-3.5 w-3.5" />
-                Duplicate day…
-              </button>
-            </div>
-          ) : null}
-        </>
-      ) : (
-      // F-160 (TF57): with the lift retired (flat-card surfaces 2026-06-12) the
-      // slot cards no longer need air to separate them — the inter-card gap
-      // tightens to the pre-inversion rhythm (`gap-2` 8px, was `gap-3` 12px) so
-      // the four slots read as one tight grouped block (mobile `Spacing.sm` parity).
+      {/* F-160 (TF57): with the lift retired (flat-card surfaces 2026-06-12) the
+          slot cards no longer need air to separate them — the inter-card gap
+          tightens to the pre-inversion rhythm (`gap-2` 8px, was `gap-3` 12px) so
+          the four slots read as one tight grouped block (mobile `Spacing.sm` parity). */}
       <div className="flex flex-col gap-2">
         {slotsToRender.map(({ name: sectionName, meals: sectionMeals }) => {
           const hasMeals = sectionMeals.length > 0;
@@ -1189,9 +1005,8 @@ export function TodayMealsSection({
           );
         })}
       </div>
-      )}
 
-      {!mealsFigmaLayout && !allSlotsOn && mealsForSelectedDate.length === 0 ? (
+      {!allSlotsOn && mealsForSelectedDate.length === 0 ? (
         // ENG-1095: superseded by the always-render four-slot list when
         // `today_meals_all_slots_v1` is on (empty day shows the four per-slot
         // rows, mobile parity). This single "Log a meal" card is the flag-off

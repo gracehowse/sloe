@@ -1,17 +1,19 @@
 /**
  * ENG-1020 polish fixes — source-regex guard pins (mobile side).
  *
- * The 2026-06-10 e2e walk surfaced four small Plan/Today polish regressions.
+ * The 2026-06-10 e2e walk surfaced small Plan/Today polish regressions.
  * These pins lock the mobile fixes against silent reversion (mirror the
  * existing `plannerMicrocopyDc12` / `todayMealsSectionTd4` source-regex pin
  * style). Web parity pins live in `tests/unit/eng1020Polish.test.ts`.
  *
- *   #4 — single-item meal dedup guard exists in TodayMealsSection.
  *   #5 — no "Bfast" return path; add-slot chips read the full "Breakfast".
  *   #6 — the Plan week-date is rendered once (card eyebrow), the duplicate
  *        page subheader was removed.
  *   #7 — the "% of kcal" caption uses a neutral text token (textSecondary),
  *        NOT the macro (amber/clay/warning) hue.
+ *
+ * (#4 — the single-item meal dedup guard — was scoped to the Figma summary
+ * layout, deleted in ENG-1096; its pin is removed with the layout.)
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -22,7 +24,6 @@ const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 const PLANNER = read("apps/mobile/app/(tabs)/planner.tsx");
 const MEAL_NUTRITION = read("apps/mobile/app/meal-nutrition.tsx");
-const TODAY_MEALS = read("apps/mobile/components/today/TodayMealsSection.tsx");
 
 describe("ENG-1020 #5 — add-slot chips read 'Breakfast', no 'Bfast' return (mobile)", () => {
   it("compactPlanSlotLabel returns full 'Breakfast' for the breakfast slot", () => {
@@ -61,12 +62,3 @@ describe("ENG-1020 #7 — '% of kcal' caption uses a neutral text token (mobile)
   });
 });
 
-describe("ENG-1020 #4 — single-item meal dedup guard exists in TodayMealsSection (mobile)", () => {
-  it("guards the redundant single row by header-title equality", () => {
-    expect(TODAY_MEALS).toMatch(/redundantSingleRow\s*=/);
-    expect(TODAY_MEALS).toMatch(/meals\.length === 1/);
-    expect(TODAY_MEALS).toMatch(/figmaSlotSummaryTitle\(meals\)/);
-    // Renders null for the duplicate row (suppression), not the row.
-    expect(TODAY_MEALS).toMatch(/redundantSingleRow[\s\S]{0,80}\?\s*null/);
-  });
-});

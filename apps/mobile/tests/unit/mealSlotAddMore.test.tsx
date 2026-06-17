@@ -26,13 +26,12 @@ import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 // The per-slot header `+` affordance + collapse/expand pinned here live in the
-// LEGACY TD4 slot layout (rendered when `today_meals_figma_layout` is OFF). The
-// Figma 654:2 layout (default-on) moved the add affordance into the expanded
-// slot body. Force the legacy branch so this fallback coverage stays green —
-// same mock as `todayMealsSectionTd4.test.tsx`.
+// per-slot TD4 meal layout — now the sole layout after ENG-1096 deleted the
+// dead `today_meals_figma_layout` summary path. All flags on = the live
+// production posture (same mock as `todayMealsSectionTd4.test.tsx`).
 vi.mock("../../lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_layout",
+  isFeatureEnabled: () => true,
 }));
 
 void React;
