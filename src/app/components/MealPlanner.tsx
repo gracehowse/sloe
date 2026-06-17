@@ -554,8 +554,11 @@ export const MealPlanner = memo(function MealPlanner({
             protein: acc.protein + (Number(m.protein) || 0),
             carbs: acc.carbs + (Number(m.carbs) || 0),
             fat: acc.fat + (Number(m.fat) || 0),
+            // ENG-1150 — keep fiber in the day total so adding a slot back
+            // doesn't reset the day's fiber cell to 0.
+            fiberG: acc.fiberG + (Number((m as { fiberG?: number }).fiberG) || 0),
           }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
         );
         return { ...dpRow, meals, totals };
       });
@@ -881,6 +884,10 @@ export const MealPlanner = memo(function MealPlanner({
             protein: scaled.protein,
             carbs: scaled.carbs,
             fat: scaled.fat,
+            // ENG-1150 — write the scaled new-recipe fibre onto the row (parity
+            // with the mobile swap handler) so the row and the day total carry
+            // the swapped meal's fibre, not the previous recipe's stale value.
+            fiberG: scaled.fiberG ?? (m as { fiberG?: number }).fiberG,
             portionMultiplier: undefined,
           };
         });
@@ -890,9 +897,15 @@ export const MealPlanner = memo(function MealPlanner({
             acc.protein += Math.max(0, Math.round(Number(m.protein) || 0));
             acc.carbs += Math.max(0, Math.round(Number(m.carbs) || 0));
             acc.fat += Math.max(0, Math.round(Number(m.fat) || 0));
+            // ENG-1150 — carry fiber through a swap so the day-total fiber
+            // cell doesn't drop to 0 after swapping a meal.
+            acc.fiberG += Math.max(
+              0,
+              Math.round((Number((m as { fiberG?: number }).fiberG) || 0) * 10) / 10,
+            );
             return acc;
           },
-          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
         );
         return {
           ...dp,
