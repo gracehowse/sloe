@@ -135,15 +135,18 @@ const BASE_SIZE = Math.round(Math.min(SCREEN_W * 0.53, 230));
 // giant pale circle was the first thing every new user saw. The ring
 // earns full size with data. All geometry derives from one scale so the
 // prototype's arc ratios hold at either size.
-export function ringGeometry(compact: boolean, bold = false) {
+export function ringGeometry(compact: boolean, _bold = false) {
   const SIZE = compact ? Math.round(BASE_SIZE * 0.72) : BASE_SIZE;
   const MACRO_STROKE = Math.max(4, Math.round(SIZE * 0.028));
   return {
     SIZE,
-    // Collapsed single-ring mode wears a confident Apple-class stroke
-    // (0.085·S); the multi-ring hero stroke MATCHES the macro stroke exactly
-    // (ENG-1064 / TF57 F-164/165) so concentric arcs read as one even family.
-    STROKE: bold ? Math.round(SIZE * 0.085) : MACRO_STROKE,
+    // 2026-06-16 (founder): the calorie ring is ONE consistent stroke whether
+    // macros are shown or hidden — it must not change thickness on toggle. Set
+    // to 0.05·S (~11px): a clear hero over the 0.028·S (~6px) macro satellites
+    // (the design-director "stroke hierarchy" call), and the same width as the
+    // collapsed single ring. Supersedes the ENG-1064 split (collapsed 0.085·S /
+    // expanded = macro). `_bold` retained for call-site stability.
+    STROKE: Math.round(SIZE * 0.05),
     MACRO_STROKE,
     CX: SIZE / 2,
     R: Math.round(SIZE * 0.44),

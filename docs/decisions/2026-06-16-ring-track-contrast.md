@@ -45,6 +45,15 @@ iOS sim (light), expanded multi-ring at ~26%: rendered + forensically measured (
 
 Mobile `CalorieRing.tsx` (Skia path `SkiaRingArcs.tsx` + SVG fallback `MacroRing`) and web `daily-ring.tsx` move in lockstep; token `ringTrackBold` ↔ `--ring-track-bold` (light + dark). The redundant `macroTrackColor` (Skia) / `trackColor` (SVG `MacroRing`) props were removed — macro tracks now derive from `macroColors`.
 
-## Not in scope (prototype-first)
+## Stroke hierarchy — done (reverses ENG-1064, founder-approved in-sim)
 
-Bumping the expanded calorie stroke (6px→11px) — reopens ENG-1064, so deferred to a prototype-first pass per the `design-director`.
+The `design-director` also flagged the expanded calorie ring as too thin (it equalled the 6px macro stroke). Prototyped in-sim and **founder-approved**:
+
+- The calorie ring is **one consistent stroke, `0.05·S` (~11px), in BOTH states** (single ring + expanded hero) — founder constraint: *it must not jump thickness when macros toggle* (was 0.085·S/19px collapsed → 0.028·S/6px expanded).
+- Macro rings stay `0.028·S` (~6px), so the calorie ring reads as a clear **hero** over **satellites**.
+
+This **reverses ENG-1064 / TF57 F-164/165** (build-57: thin the hero to equal the macros, after "Today ring too fat" ×2). The reversal is legitimate because the context changed: at build 57 the calorie *track* was the near-invisible frost-mist, so a 0.05·S hero looked like a fat band on hairlines; with the new saturated greyed-full track the hierarchy reads as intentional. Founder picked **11px** in-sim ("11 is good") over a bolder option. Guard tests (`calorieRingHeroStrokeMatchesMacro`, web `calorieRingGeometry`) rewritten to pin the new behavior + document the reversal.
+
+## Not in scope
+
+None outstanding — both the track contrast and the stroke hierarchy shipped here.
