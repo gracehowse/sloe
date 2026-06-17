@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SupprMark } from "./ui/suppr-mark";
@@ -42,6 +43,7 @@ import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPa
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
+import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
@@ -189,6 +191,7 @@ function amountToNumeric(raw: string): number | null {
 }
 
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+  const router = useRouter();
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
   // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
@@ -223,6 +226,12 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [importHint, setImportHint] = useState<string | null>(null);
   /** ENG-980 — true when save-first already landed this import in Library. */
   const [importSaveFirstActive, setImportSaveFirstActive] = useState(false);
+  /** ENG-901 M6 — import-success sheet after library save (web parity). */
+  const [importSuccess, setImportSuccess] = useState<{
+    recipeId: string;
+    title: string;
+    macroLine: string | null;
+  } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -1438,16 +1447,38 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         });
       }
 
-      toast.success(
-        effectivePublished ? "Recipe published" : mode === "import" ? "Saved to your library" : "Draft saved",
-        {
-          description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
-        },
-      );
+      if (mode === "import") {
+        setImportSuccess({
+          recipeId: id,
+          title: trimmedTitle,
+          macroLine: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+        });
+      } else {
+        toast.success(
+          effectivePublished ? "Recipe published" : "Draft saved",
+          {
+            description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+          },
+        );
+      }
     } finally {
       setSaving(null);
     }
   };
+
+  if (mode === "import" && importSuccess) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <ImportSuccessSheet
+          recipeTitle={importSuccess.title}
+          recipeId={importSuccess.recipeId}
+          macroLine={importSuccess.macroLine}
+          onViewRecipe={() => router.push(`/recipe/${importSuccess.recipeId}`)}
+          onReviewIngredients={() => router.push(`/recipe/verify?id=${importSuccess.recipeId}`)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">

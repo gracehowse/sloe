@@ -59,6 +59,7 @@ vi.mock("../../src/lib/analytics/track.ts", () => ({
 // Default to an empty param bag so the edit-load effect bails.
 vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: () => null }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
 // Supabase browser client — auth.getSession (used on save) + a chained

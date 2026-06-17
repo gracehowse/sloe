@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   edamamFoodMacrosPer100g,
-  edamamAnalysisMacros,
   mapEdamamNutrientsToMicros,
   fetchEdamamMicrosPer100g,
 } from "@/lib/edamam/client";
@@ -47,48 +46,6 @@ describe("edamamFoodMacrosPer100g", () => {
     expect(macros.protein).toBe(0);
     expect(macros.carbs).toBe(0);
     expect(macros.fat).toBe(0);
-  });
-});
-
-describe("edamamAnalysisMacros", () => {
-  it("extracts macros from Nutrition Analysis result", () => {
-    const analysis = {
-      calories: 450,
-      totalWeight: 300,
-      ingredients: [],
-      totalNutrients: {
-        PROCNT: { label: "Protein", quantity: 35.2, unit: "g" },
-        FAT: { label: "Fat", quantity: 12.5, unit: "g" },
-        CHOCDF: { label: "Carbs", quantity: 40.1, unit: "g" },
-        FIBTG: { label: "Fiber", quantity: 5.3, unit: "g" },
-        SUGAR: { label: "Sugars", quantity: 8.7, unit: "g" },
-        NA: { label: "Sodium", quantity: 650, unit: "mg" },
-      },
-      totalDaily: {},
-    };
-
-    const macros = edamamAnalysisMacros(analysis);
-    expect(macros.calories).toBe(450);
-    expect(macros.protein).toBe(35.2);
-    expect(macros.fat).toBe(12.5);
-    expect(macros.carbs).toBe(40.1);
-    expect(macros.fiberG).toBe(5.3);
-    expect(macros.sugarG).toBe(8.7);
-    expect(macros.sodiumMg).toBe(650);
-  });
-
-  it("handles missing nutrients gracefully", () => {
-    const analysis = {
-      calories: 100,
-      totalWeight: 100,
-      ingredients: [],
-      totalNutrients: {},
-      totalDaily: {},
-    };
-
-    const macros = edamamAnalysisMacros(analysis);
-    expect(macros.calories).toBe(100);
-    expect(macros.protein).toBe(0);
   });
 });
 

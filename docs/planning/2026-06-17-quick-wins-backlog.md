@@ -17,9 +17,9 @@
 
 | Issue | Title | Effort | Agent? | Status | Notes |
 |-------|-------|--------|--------|--------|-------|
-| ENG-901 M6 | Import-success win-moment (web) | S | Yes | Open | Mobile reference in `import-shared.tsx` |
-| ENG-897 | Auth signup email-step pixel | S | Yes | Open | `app/login/ui.tsx` |
-| ENG-896 | Discover slab cards | S | Yes | Open | `DiscoverFeed.tsx` |
+| ENG-901 M6 | Import-success sheet (web) | S | Yes | **Done** | `import-success-sheet.tsx` |
+| ENG-897 | Auth signup email-step pixel | S | Yes | **Done** | `app/login/ui.tsx` email heading |
+| ENG-896 | Discover desktop slab cards | S | Yes | **Done** | `DiscoverFeed.tsx` desktop grid |
 | ENG-898 | Import recent imports / caption card | S | Yes | Partial | WORKS WITH shipped `4c4459bb` |
 | ENG-889 S5 | Fresh start verify | S | Yes | Open | Today partial |
 | ENG-859 | DMCA agent | — | No | Open | Grace ops |
