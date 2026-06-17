@@ -118,8 +118,6 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     }
   });
 
-  it("today_meals_figma_layout stays OUT of default-on (legacy layout kill switch)", () => {
-    expect(web.has("today_meals_figma_layout")).toBe(false);
-    expect(mobile.has("today_meals_figma_layout")).toBe(false);
-  });
+  // (The `today_meals_figma_layout` kill-switch flag was removed in ENG-1096
+  // along with the dead summary layout — no flag to keep out of default-on.)
 });

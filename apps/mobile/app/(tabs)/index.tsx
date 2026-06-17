@@ -150,7 +150,6 @@ import { syncHealthDataThrottled } from "@/lib/healthSync";
 import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { clampJournalDate } from "@/lib/journalNavigation";
 import {
-  computeEatAgainCandidatesForSlot,
   computeRecentMeals,
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
@@ -162,15 +161,6 @@ import { isHealthImportFallbackTitle } from "@suppr/shared/nutrition/healthImpor
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { isMealSlot } from "@suppr/shared/nutrition/mealSlots";
 import { journalSlotFromMealTypes, slotForHour } from "@suppr/shared/nutrition/recipeJournalSlot";
-import {
-  LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
-  STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
-  readDismissState as readEatAgainDismiss,
-  recordDismiss as recordEatAgainDismiss,
-  serialiseDismissState as serialiseEatAgainDismiss,
-  shouldShowEatAgain,
-  type DismissState as EatAgainDismissState,
-} from "@suppr/shared/nutrition/eatAgainDismiss";
 import {
   cloneMealWithoutId,
   sanitizeCopyTargets,
@@ -234,10 +224,9 @@ import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { LogSheet } from "@/components/today/LogSheet";
 import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
 import { createCustomFood } from "@suppr/shared/nutrition/customFoodsClient";
-// TodayEatAgainBanner/Scroller imports removed 2026-05-22 v4 — the
-// render path was suppressed (see comment in fasting-or-eat-again
-// block ~L4570). The component files remain in the tree so the FAB
-// Log sheet "Eat again" tab follow-up can import them.
+// TodayEatAgainBanner/Scroller retired (ENG-984, 2026-06-17). The Eat-again
+// card was suppressed from Today on 2026-05-22 (v4) and never re-surfaced;
+// the dead components + their dismiss/candidate plumbing are now removed.
 import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
 import {
   isCheckinBannerDismissed,
@@ -1791,58 +1780,12 @@ export default function TrackerScreen() {
     [userId, selectedDate, persistMealsImmediate],
   );
 
-  /** Infer the default slot for the Eat-again card from local clock time. */
-  const currentSlotFromTime = useMemo(() => slotForHour(new Date().getHours()), []);
-  // Premium-bar audit DC3 polish (2026-05-14) — MacroFactor-style
-  // horizontal scroller of up to 3 Eat-Again candidates. The first
-  // entry maps to the legacy single-suggestion contract for
-  // existing analytics/tests that still read `eatAgainSuggestion`.
-  const eatAgainCandidates = useMemo(
-    () => computeEatAgainCandidatesForSlot(byDay, currentSlotFromTime, new Date(), 3),
-    [byDay, currentSlotFromTime],
-  );
-  const eatAgainSuggestion = eatAgainCandidates[0] ?? null;
-  // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
-  // `{ dateKey, dismissedAt }` so a device clock rollback can't
-  // resurrect the banner on the same real-world day. Reads migrate
-  // v1 on the fly; writes always use v2.
-  const [eatAgainDismissState, setEatAgainDismissState] = useState<EatAgainDismissState | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const [v2, v1] = await Promise.all([
-          AsyncStorage.getItem(EAT_AGAIN_STORAGE_KEY),
-          AsyncStorage.getItem(EAT_AGAIN_LEGACY_KEY_V1),
-        ]);
-        if (cancelled) return;
-        const state = readEatAgainDismiss(v2, v1, new Date());
-        setEatAgainDismissState(state);
-        // Opportunistic v1 -> v2 migration so the legacy key doesn't
-        // drift forward forever. Only write when we actually have a
-        // migrated state AND nothing already lives at v2.
-        if (state && !v2) {
-          try {
-            await AsyncStorage.setItem(
-              EAT_AGAIN_STORAGE_KEY,
-              serialiseEatAgainDismiss(state),
-            );
-          } catch { /* noop */ }
-        }
-      } catch { /* noop */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const dismissEatAgain = useCallback(async () => {
-    const state = recordEatAgainDismiss(new Date());
-    setEatAgainDismissState(state);
-    try {
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      await AsyncStorage.setItem(EAT_AGAIN_STORAGE_KEY, serialiseEatAgainDismiss(state));
-    } catch { /* noop */ }
-  }, []);
-  const eatAgainDismissedForToday = !shouldShowEatAgain(eatAgainDismissState, new Date());
+  // Eat-again state retired (ENG-984, 2026-06-17). The candidate
+  // pipeline + per-day dismiss store existed only to feed the Eat-again
+  // card, which was suppressed from Today on 2026-05-22 (v4) and never
+  // re-surfaced — so it is removed here. (The shared `eatAgainDismiss` /
+  // food-history modules stay as independently-tested utilities; this is
+  // not a deferral.)
 
   // ── Weekly Check-in banner (MacroFactor parity, 2026-04-30) ──
   // Visible only on the first day of a fresh week (Sun for Sunday-
@@ -2109,8 +2052,9 @@ export default function TrackerScreen() {
 
   const dayKey = dateKeyFromDate(selectedDate);
 
-  /** Log any FoodHistoryItem to the active slot. Shared by Quick add
-   * panel + Eat-again card so the persist/event shape stays aligned. */
+  /** Log any FoodHistoryItem to the active slot. Used by the Quick add
+   * panel (Usual meals / Recents / Frequent / Favourites) so the
+   * persist/event shape stays aligned across logging shortcuts. */
   const logHistoryItemToSlot = useCallback(
     async (item: FoodHistoryItem, slot: string) => {
       let recipeTitle = item.recipeTitle;
@@ -2120,7 +2064,7 @@ export default function TrackerScreen() {
       }
       // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
       // alcohol micros so re-logging a coffee / wine / beer from
-      // Recents / Frequent / Eat-again still bumps the daily totals.
+      // Recents / Frequent still bumps the daily totals.
       // Mirrors web `logHistoryItem`. Missing → no `micros` key.
       const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
       if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
@@ -5346,8 +5290,8 @@ export default function TrackerScreen() {
         {/* Phase 4 / Top-5 #2 (2026-04-28) — Fasting pill moved into the
             unified context block below the hero; no standalone render
             here. See `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5
-            #2 for the priority rule (fasting > eat-again > north-star
-            > deficit). */}
+            #2 for the priority rule (fasting > deficit; eat-again
+            retired ENG-984, north-star below meals). */}
 
         {viewMode === "week" ? (
           <TodayWeekView
@@ -5441,11 +5385,10 @@ export default function TrackerScreen() {
             </ReAnimated.View>
 
             {/* Single context block — priority order: fasting >
-                eat-again > north-star > deficit. Mutually exclusive.
-                Pre-Phase-4 these rendered as 4 separate stacked
-                conditionals (sometimes multiple at once); the cap
-                rule (teardown §2) is "never more than one prompt
-                above the meals". */}
+                deficit. Mutually exclusive. Pre-Phase-4 these rendered
+                as 4 separate stacked conditionals (sometimes multiple
+                at once); the cap rule (teardown §2) is "never more than
+                one prompt above the meals". */}
             <ReAnimated.View style={contextEntrance.style}>
             {(() => {
               // 1. Active fast wins outright.
@@ -5459,20 +5402,8 @@ export default function TrackerScreen() {
                 );
               }
               // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
-              // 2. Budget met / over — Eat Again candidates.
-              //    Canonical 2026-05-22 v4: Eat Again is REMOVED from
-              //    the Today surface entirely. The candidate data
-              //    pipeline below (`computeEatAgainCandidatesForSlot`)
-              //    is kept intact so the FAB Log sheet can surface
-              //    "Eat again" as a logging shortcut tab in a follow-
-              //    up. The Today card was visual chrome on a screen
-              //    we're trying to calm down; logging shortcuts
-              //    belong inside the Log sheet, not on the dashboard.
-              //    Grace call: "Move into FAB Log sheet (C2)".
-              //
-              //    NB: dismissal state + reads kept alive so existing
-              //    analytics + tests continue to pass; only the
-              //    render is suppressed.
+              // 2. Eat-again card removed from Today (2026-05-22 v4) and
+              //    fully retired (ENG-984, 2026-06-17).
               // 3. North-star moved below meals (Today premium sprint 2026-05-19).
               // 4. Remaining budget today — the forward "Room for {meal}"
               //    coach line (Sloe 01 · Today). The component self-guards
@@ -5568,24 +5499,12 @@ export default function TrackerScreen() {
         {/* Deficit insight moved into the unified context block
             inside the day-mode wrapper above (Phase 4 / Top-5 #2,
             2026-04-28). It renders only when no higher-priority
-            context block (fasting / eat-again / north-star) fits. */}
+            context block (fasting) fits. */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
-        {/* Eat again — suggest re-logging the most recent meal in the
-            slot matching the current clock time. Dismissible per day.
-            P1-17 (TestFlight `AJ2q4OgYYXE7755xfTwVXE8`, 2026-04-25):
-            tester flagged "middle section feels quite cluttered with 3
-            prompts" — deficit + eat-again + quick-add accordion all
-            stacking above meals. Show Eat Again only when the deficit
-            insight ISN'T showing (i.e. day is logged out or budget is
-            already met) so we never have two aspirational prompts on
-            screen at the same time. The Quick Add accordion stays
-            collapsed by default so it doesn't add weight. */}
-        {/* B4 Phase 3a (2026-04-27): eat-again block moved to top-of-feed,
-            above the hero. Original location was here, between Quick
-            add and Meals; the prior comment described balancing eat-again
-            vs deficit insight via the `!(remaining > 0)` gate, which we
-            kept. Web parallel ships in NutritionTracker.tsx. */}
+        {/* Eat-again card retired (ENG-984, 2026-06-17) — suppressed from
+            Today on 2026-05-22 (v4) and never re-surfaced; component +
+            plumbing removed. Web parity: NutritionTracker.tsx. */}
 
         {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
         {showAboveMealsNorthStar && (

@@ -31,9 +31,12 @@ import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { Colors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
+// All flags on = the live production posture. ENG-1096 (2026-06-17) deleted the
+// dead `today_meals_figma_layout` summary layout, so the per-slot TD4 list
+// pinned here is now the sole Today meals layout.
 vi.mock("../../lib/analytics", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_meals_figma_layout",
+  isFeatureEnabled: () => true,
 }));
 
 void React;

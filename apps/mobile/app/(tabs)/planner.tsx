@@ -1066,14 +1066,17 @@ export default function PlannerScreen() {
     useCallback(() => {
       const pending = consumePendingImportDayPlan();
       if (!pending?.length) return;
-      setPlan(pending as DayPlan[]);
-      void persistPlan(pending as DayPlan[]);
+      // ENG-1150 — resolve per-row fibre on the imported plan so the day-total
+      // fibre cell reads correctly the moment the imported week lands.
+      const enriched = enrichPlanDaysFiber(pending as DayPlan[], recipeFiberPool);
+      setPlan(enriched);
+      void persistPlan(enriched);
       track(AnalyticsEvents.plan_template_applied, {
         dayCount: pending.length,
         slotCount: pending.reduce((n, d) => n + d.meals.length, 0),
         source: "plan_import",
       });
-    }, [persistPlan, setPlan]),
+    }, [persistPlan, setPlan, recipeFiberPool]),
   );
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
@@ -1254,8 +1257,13 @@ export default function PlannerScreen() {
                   ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
                 };
               });
-              void persistPlan(next);
-              return next;
+              // ENG-1150 — re-derive per-row fibre from the pool before persist
+              // so the day-total fibre cell (computed at render from the meal
+              // rows) survives the swap. enrichPlanDaysFiber is idempotent and
+              // preserves rows that already carry a positive fiberG.
+              const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
+              void persistPlan(enriched);
+              return enriched;
             });
           };
 
@@ -1318,12 +1326,18 @@ export default function PlannerScreen() {
         if (winMomentsEnabled) {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
+        // ENG-1150 — re-resolve per-row fibre on both affected days before
+        // persist so the day-total fibre cell follows the moved meal. The
+        // shared moveMealInPlan recomputes totals (fiber included), but mobile
+        // derives the displayed fibre from the meal rows via planMealFiberG, so
+        // the rows must carry a resolved fiberG. Idempotent enrich.
+        const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
         // Fire-and-forget persist; UI already reflects the move.
-        void persistPlan(next);
-        return next;
+        void persistPlan(enriched);
+        return enriched;
       });
     },
-    [persistPlan, winMomentsEnabled],
+    [persistPlan, winMomentsEnabled, recipeFiberPool],
   );
 
   const toggleSlot = useCallback((slot: string) => {
@@ -3732,8 +3746,12 @@ export default function PlannerScreen() {
                               );
                               return { ...dpRow, meals, totals };
                             });
-                            void persistPlan(next);
-                            return next;
+                            // ENG-1150 — keep per-row fibre resolved before
+                            // persist so adding an empty slot back doesn't drop
+                            // the day-total fibre cell. Idempotent enrich.
+                            const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
+                            void persistPlan(enriched);
+                            return enriched;
                           });
                         }}
                         style={styles.addSlotChip}
@@ -4204,7 +4222,13 @@ export default function PlannerScreen() {
                             slot: meal.name,
                             previousRecipeId: rid,
                           });
-                          return cleaned as DayPlan[];
+                          // ENG-1150 — re-resolve per-row fibre after clearing
+                          // downstream leftovers so the affected days' fibre
+                          // cells stay correct. Idempotent enrich.
+                          return enrichPlanDaysFiber(
+                            cleaned as DayPlan[],
+                            recipeFiberPool,
+                          );
                         });
                         openSheet();
                       },
@@ -4235,8 +4259,12 @@ export default function PlannerScreen() {
                   );
                   return { ...dpRow, meals: newMeals, totals };
                 });
-                void persistPlan(next);
-                return next;
+                // ENG-1150 — re-resolve per-row fibre before persist so the
+                // remaining meals keep contributing to the day-total fibre cell
+                // after a delete. Idempotent enrich.
+                const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
+                void persistPlan(enriched);
+                return enriched;
               });
             };
 
@@ -4408,8 +4436,13 @@ export default function PlannerScreen() {
                           );
                           return { ...dp, meals: newMeals, totals };
                         });
-                        void persistPlan(next);
-                        return next;
+                        // ENG-1150 — keep per-row fibre resolved before persist
+                        // so re-portioning a meal updates the day-total fibre
+                        // cell consistently. Idempotent enrich (preserves the
+                        // freshly-scaled fiberG on the portioned row).
+                        const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
+                        void persistPlan(enriched);
+                        return enriched;
                       });
                       setPortionModal(null);
                     }}

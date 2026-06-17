@@ -749,7 +749,7 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - Tap → `/recipe/{id}`.
 - EDGE: HTML entities decoded via `decodeEntities`.
 - EDGE: missing image → gradient placeholder.
-- A11Y: each card Pressable with accessible name.
+- A11Y: each card Pressable carries `accessibilityRole="button"` + a descriptive `accessibilityLabel` built by the shared `recipeCardAccessibilityLabel` helper (`@suppr/shared/recipes/recipeCardAccessibilityLabel`) — e.g. "Katsu Curry. Estimated 540 calories, 32g protein, 60g carbs, 18g fat, 25 min. View recipe." Web parity: the same helper feeds `aria-label` on every Discover `<button>` in `DiscoverFeed.tsx`. Calories always say "estimated" (trust posture); null/zero macros are omitted, never announced as "0g" (ENG-1147). Pinned by `tests/unit/discoverRecipeCardA11y.test.ts`.
 
 ### 8.7 Fit badge — REMOVED (build 10 F-11, 2026-04-19)
 - TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`: tester reported the score felt irrelevant. `FitBadge` and `fitColor` stripped from `apps/mobile/app/(tabs)/discover.tsx`; web `DiscoverFeed` lost `FitBadge` + `computeFitLevel`; `RecipeCard.fit` dropped from the mobile type. No ranking consumed the value.

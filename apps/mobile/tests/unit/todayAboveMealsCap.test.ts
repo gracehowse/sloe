@@ -219,14 +219,29 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
   });
 });
 
-describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
-  it("TodayEatAgainBanner defaults eyebrow to textSecondaryColor, not primary tint", () => {
-    const bannerSrc = fs.readFileSync(
-      path.resolve(__dirname, "../../components/today/TodayEatAgainBanner.tsx"),
-      "utf-8",
-    );
-    expect(bannerSrc).toMatch(/color:\s*textSecondaryColor/);
-    expect(bannerSrc).not.toMatch(/EAT AGAIN[\s\S]{0,80}color:\s*Accent\.primary/);
+describe("Eat-again banner retired (ENG-984, mobile)", () => {
+  it("the TodayEatAgainBanner component file no longer exists", () => {
+    // ENG-984 (2026-06-17): the Eat-again banner was suppressed from
+    // Today on 2026-05-22 (v4) and rendered nowhere thereafter. The
+    // dead component is deleted; this pin fires if it is resurrected.
+    expect(
+      fs.existsSync(path.resolve(__dirname, "../../components/today/TodayEatAgainBanner.tsx")),
+    ).toBe(false);
+  });
+
+  it("the TodayEatAgainScroller component file no longer exists", () => {
+    expect(
+      fs.existsSync(path.resolve(__dirname, "../../components/today/TodayEatAgainScroller.tsx")),
+    ).toBe(false);
+  });
+
+  it("the Today host no longer imports eat-again candidate / dismiss plumbing", () => {
+    // Match the import/render sites only — retirement breadcrumb comments
+    // (which name the components) are fine and must not trip these pins.
+    expect(HOST_SRC).not.toMatch(/^\s*computeEatAgainCandidatesForSlot,?\s*$/m);
+    expect(HOST_SRC).not.toMatch(/from "@suppr\/shared\/nutrition\/eatAgainDismiss"/);
+    expect(HOST_SRC).not.toMatch(/<TodayEatAgainBanner[\s/]/);
+    expect(HOST_SRC).not.toMatch(/<TodayEatAgainScroller[\s/]/);
   });
 });
 

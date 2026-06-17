@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
 const NORTH_STAR = read("src/app/components/suppr/north-star-block.tsx");
-const EAT_AGAIN = read("src/app/components/suppr/today-eat-again-banner.tsx");
+// EAT_AGAIN banner retired (ENG-984, 2026-06-17) — component deleted.
 const FIRST_MEAL = read("src/app/components/suppr/today-first-meal-empty-state.tsx");
 const COMPLETE_DAY = read("src/app/components/suppr/today-complete-day-dialog.tsx");
 const MEALS_SECTION = read("src/app/components/suppr/today-meals-section.tsx");
@@ -53,18 +53,8 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(NORTH_STAR).not.toMatch(OUTLINE);
   });
 
-  it("Eat-again 'Log it' CTA is a ghost SupprButton on a soft-tint nudge card", () => {
-    // Button system migration (2026-06-12, ENG-1079): this is a NUDGE banner
-    // (same category as the activity-bonus nudge, already ghost) — the CTA →
-    // `SupprButton` variant="ghost" (transparent, plum label, no border). The
-    // north-star hero owns the primary "Log it" moment. Mobile parity:
-    // TodayEatAgainBanner ghost. Supersedes the old aubergine-OUTLINE treatment.
-    expect(EAT_AGAIN).toMatch(/bg-primary\/10/); // nudge card wash
-    expect(EAT_AGAIN).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
-    expect(EAT_AGAIN).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}>\s*Log it/);
-    // Must NOT keep the retired aubergine outline.
-    expect(EAT_AGAIN).not.toMatch(OUTLINE);
-  });
+  // Eat-again 'Log it' CTA pin removed — the banner is retired (ENG-984,
+  // 2026-06-17). Retirement is locked in `todayAboveMealsCap.test.ts`.
 
   it("First-meal empty 'Log a meal' CTA is a SOLID primary SupprButton", () => {
     // Button system migration (2026-06-12, ENG-1079): the cold-start card's ONE

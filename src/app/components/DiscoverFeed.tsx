@@ -18,6 +18,7 @@ import {
 } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
+import { recipeCardAccessibilityLabel } from "../../lib/recipes/recipeCardAccessibilityLabel.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 import {
   SEED_CLUSTERS,
@@ -722,6 +723,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             key={`cluster-${recipe.id}`}
                             type="button"
                             onClick={() => setSelectedRecipe(recipe)}
+                            aria-label={recipeCardAccessibilityLabel({
+                              title: recipe.title,
+                              calories: kcal,
+                              protein,
+                              cookTime,
+                            })}
                             className={`group shrink-0 snap-start text-left rounded-3xl overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
                             <div className="relative overflow-hidden" style={{ aspectRatio: isHero ? "3 / 4" : "4 / 5" }}>
@@ -797,6 +804,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   type="button"
                   id={`discover-desktop-post-${recipe.id}`}
                   onClick={() => setSelectedRecipe(recipe)}
+                  aria-label={recipeCardAccessibilityLabel({
+                    title: recipe.title,
+                    calories: kcal,
+                    protein,
+                    carbs,
+                    fat,
+                    cookTime,
+                  })}
                   className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "4 / 5" : "8 / 1" }}>
@@ -812,7 +827,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       <div className="absolute top-3 left-3 z-10">
                         <SourceBadge
                           source={recipe.sourcePlatform}
-                          className="text-[9px] px-1.5 py-0.5"
+                          className="text-[11px] px-1.5 py-0.5"
                         />
                       </div>
                     ) : null}
@@ -919,6 +934,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     type="button"
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
+                    aria-label={recipeCardAccessibilityLabel({
+                      title: recipe.title,
+                      calories: kcal,
+                      protein,
+                      carbs,
+                      fat,
+                      cookTime: recipe.cookTime ?? null,
+                    })}
                     className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                   >
                     <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "3 / 4" : "8 / 1" }}>
@@ -932,7 +955,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       />
                       {recipe.sourcePlatform ? (
                         <div className="absolute top-3 left-3 z-10">
-                          <SourceBadge source={recipe.sourcePlatform} className="text-[9px] px-1.5 py-0.5" />
+                          <SourceBadge source={recipe.sourcePlatform} className="text-[11px] px-1.5 py-0.5" />
                         </div>
                       ) : null}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
@@ -1010,6 +1033,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         type="button"
                         id={`discover-post-${recipe.id}`}
                         onClick={() => setSelectedRecipe(recipe)}
+                        aria-label={recipeCardAccessibilityLabel({
+                          title: recipe.title,
+                          calories: kcal,
+                          protein,
+                          carbs,
+                          cookTime: recipe.cookTime ?? null,
+                        })}
                         className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
                       >
                         <DiscoverRecipeImage

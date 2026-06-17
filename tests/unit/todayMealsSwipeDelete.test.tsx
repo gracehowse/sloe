@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 /**
- * Swipe-to-delete on Today meal rows — Figma 654 layout (production default).
+ * Swipe-to-delete on Today meal rows — the live per-slot meal list.
+ *
+ * ENG-1096 (2026-06-17) — the off-by-default `today_meals_figma_layout` summary
+ * layout was deleted; this test now exercises the sole (legacy) per-slot list.
+ * Swipe-to-delete is a live, user-observable behaviour on every expanded slot
+ * row, so the coverage stays — re-pointed to the surviving path.
  */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -11,9 +16,10 @@ import {
   type TodayMealSectionMeal,
 } from "../../src/app/components/suppr/today-meals-section";
 
+// All redesign flags on (the live production posture).
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag === "today_meals_figma_layout",
+  isFeatureEnabled: () => true,
 }));
 
 void React;
@@ -59,7 +65,7 @@ function baseProps(overrides: Partial<TodayMealsSectionProps> = {}): TodayMealsS
 }
 
 describe("TodayMealsSection — swipe delete (web)", () => {
-  it("renders Remove meal control on expanded Figma rows", () => {
+  it("renders Remove meal control on expanded per-slot rows", () => {
     const oats = meal({ id: "m1", recipeTitle: "Oats" });
     const eggs = meal({ id: "m2", recipeTitle: "Eggs", calories: 140 });
     render(

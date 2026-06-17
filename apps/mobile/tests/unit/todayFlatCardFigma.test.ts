@@ -74,7 +74,9 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   // 2026-06-09; not in ENG-1099's tracker-half scope). (TodayDashboardMacroTiles
   // is NOT here — the 2×2 tiles are the `size="tile"` flat exception.)
   const TODAY_SOFT_PAGE_GROUND_SURFACES = [
-    "components/today/TodayMealsFigmaLayout.tsx",
+    // TodayMealsFigmaLayout.tsx removed 2026-06-17 (ENG-1096 — dead off-by-
+    // default summary layout deleted; the live per-slot list lives in
+    // TodayMealsSection.tsx, pinned by todayMealsSectionTd4).
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayActivityBonusCard.tsx",
     "components/today/TodayActivityCard.tsx",
