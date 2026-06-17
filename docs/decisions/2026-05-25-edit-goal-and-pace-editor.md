@@ -31,6 +31,31 @@ target" action):
 - **Mobile:** `apps/mobile/components/recap/GoalPaceEditorSheet.tsx`,
   wired into `apps/mobile/app/targets.tsx`'s Edit button.
 
+> **Flag-string note:** the prose below refers to the flag as
+> `goal-editor`; the actual PostHog key the code reads is `goal_editor`
+> (underscore) — `isFeatureEnabled("goal_editor")` on both platforms.
+
+### Additional entry point (ENG-125, 2026-06-17)
+
+The web Settings/Profile surface (`src/app/components/Profile.tsx`) had a
+**dead "Daily Targets" row** — styled `cursor-pointer` with a forward
+chevron but no handler, so tapping it did nothing. Mobile's equivalent
+Profile screen (`apps/mobile/app/profile.tsx`) already opened the editor
+(its "Body stats & goal" row → `GoalPaceEditorSheet`, same `goal_editor`
+gate). ENG-125 closed the web gap:
+
+- **Flag ON** → the row opens the shared `GoalPaceEditorDialog` (the same
+  editor reached from Targets), refreshing `refreshProfileBasics` on save so
+  the row summary + the in-page Macro Calculator update in place.
+- **Flag OFF** → the row arms the in-page manual Macro Calculator editor
+  (switch to the targets tab + edit mode + scroll to `#daily-targets-editor`),
+  so the row is never dead in either flag state.
+- The fibre + per-macro overrides handoff stays on the manual editor
+  (`onCustomiseMacros`) — the fibre goal input is **ENG-846**, out of scope.
+
+Pinned by `tests/unit/profileDailyTargetsRowWired.test.ts` (web wiring +
+flag gating + web↔mobile parity, source-level).
+
 Both call the shared compute helper `recomputeTargetsFromProfile`
 (the static Mifflin-St Jeor formula, renamed from
 `recomputeTargetsForActivity` with a back-compat alias) and the new
