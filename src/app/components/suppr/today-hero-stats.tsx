@@ -74,6 +74,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     expanded,
     onToggleExpanded,
     onPressWhy,
+    onPressStatusChip,
     pulse,
   } = props;
   return {
@@ -86,6 +87,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     expanded,
     onToggleExpanded,
     onPressWhy,
+    onPressStatusChip,
     pulse,
   };
 }
@@ -108,6 +110,7 @@ function DesktopHeroStats({
   // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
   // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
   pulse,
+  onPressStatusChip,
 }: TodayHeroStatsProps) {
   // Stat row now renders on EMPTY days too (web ring parity 2026-06-10) — the
   // empty page mirrors a populated day with honest zeros. Gated on a real
@@ -141,7 +144,7 @@ function DesktopHeroStats({
             toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave):
             it duplicated the Eaten stat below the ring. */}
         <div className="flex w-full items-center justify-between gap-2">
-          <HeroStatusChip state={chipState} />
+          <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
         </div>
 
         <DailyRing
@@ -276,7 +279,13 @@ function StatCell({
   );
 }
 
-function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
+function HeroStatusChip({
+  state,
+  onPress,
+}: {
+  state: "empty" | "under" | "over";
+  onPress?: () => void;
+}) {
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const config =
     state === "over"
@@ -301,14 +310,26 @@ function HeroStatusChip({ state }: { state: "empty" | "under" | "over" }) {
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
+  const chipClassName = `inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`;
+  if (!onPress) {
+    return (
+      <span data-testid="today-ring-status-chip" className={chipClassName}>
+        <Icon size={13} strokeWidth={2} aria-hidden />
+        {label}
+      </span>
+    );
+  }
   return (
-    <span
+    <button
+      type="button"
       data-testid="today-ring-status-chip"
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+      onClick={onPress}
+      aria-label={`${label}, see how your calorie target was set`}
+      className={`${chipClassName} cursor-pointer transition-opacity hover:opacity-90`}
     >
       <Icon size={13} strokeWidth={2} aria-hidden />
       {label}
-    </span>
+    </button>
   );
 }
 

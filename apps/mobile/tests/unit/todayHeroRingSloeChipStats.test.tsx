@@ -10,8 +10,8 @@
  * Over budget (`todayStatusChip` in `src/lib/copy/today.ts`).
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
+import { describe, expect, it, vi } from "vitest";
 
 import { TodayHeroRing } from "../../components/today/TodayHeroRing";
 
@@ -54,6 +54,22 @@ describe("TodayHeroRing — SLOE status chip", () => {
       <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
     );
     expect(getByText("Over budget")).toBeTruthy();
+  });
+
+  it("ENG-1184 — fires onPressStatusChip when the status chip is pressed", () => {
+    const onPressStatusChip = vi.fn();
+    const { getByLabelText } = render(
+      <TodayHeroRing
+        {...baseProps}
+        consumed={0}
+        goal={2000}
+        onPressStatusChip={onPressStatusChip}
+      />,
+    );
+    fireEvent.press(
+      getByLabelText("Fresh start, see how your calorie target was set"),
+    );
+    expect(onPressStatusChip).toHaveBeenCalledTimes(1);
   });
 });
 

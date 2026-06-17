@@ -118,13 +118,12 @@ describe("Fix 2 — section header rename: Everything else → People", () => {
 });
 
 describe("Fix 3A — Why this number? panel uses the streak value", () => {
-  it("mobile WhyThisNumberSheet now lives on /targets (moved 2026-05-12 round 4)", () => {
-    // Round 4 (Grace TF): the sheet was removed from Today (no host
-    // surface there since the pill + long-press + subtle link were
-    // all rejected in rounds 1-3) and re-mounted on /targets, opened
-    // from the "How is this calculated?" row. Today no longer hosts.
+  it("mobile WhyThisNumberSheet lives on Today (ENG-1184) and Targets", () => {
+    // ENG-1184: status chip on Today opens the sheet inline. Targets
+    // still owns the "How is this calculated?" row for direct visits.
     expect(MOBILE_TARGETS).toMatch(/<WhyThisNumberSheet/);
-    expect(MOBILE_TODAY).not.toMatch(/<WhyThisNumberSheet/);
+    expect(MOBILE_TODAY).toMatch(/<WhyThisNumberSheet/);
+    expect(MOBILE_TODAY).toMatch(/onPressStatusChip/);
     // On /targets there is no StreakPip on the same surface, so the
     // streak-alignment requirement from 2026-05-02 doesn't apply
     // here. We pass `null` for loggingDays/mealLogDays and let the
@@ -135,18 +134,16 @@ describe("Fix 3A — Why this number? panel uses the streak value", () => {
     expect(MOBILE_TARGETS).toMatch(/mealLogDays=\{null\}/);
   });
 
-  it("web WhyThisNumberDialog now lives on /home?view=targets (moved 2026-05-12 round 4)", () => {
-    // Round 4 (Grace TF, web parity with mobile): same move as mobile —
-    // the dialog was removed from Today's NutritionTracker and the
-    // host wiring (streakDays binding, etc) along with it. The Targets
-    // surface owns the dialog inline now. The Today pill on web is
-    // also gone — see todayHeroRingNoChipsWeb.test.tsx for that pin.
+  it("web WhyThisNumberDialog lives on Today (ENG-1184) and Targets", () => {
+    // ENG-1184: status chip on Today opens the dialog inline. Targets
+    // still owns the "How is this calculated?" row for direct visits.
     const WEB_TARGETS = readFileSync(
       resolve(ROOT, "src/app/components/Targets.tsx"),
       "utf8",
     );
     expect(WEB_TARGETS).toMatch(/<WhyThisNumberDialog/);
-    expect(WEB_NUTRITION_TRACKER).not.toMatch(/<WhyThisNumberDialog/);
+    expect(WEB_NUTRITION_TRACKER).toMatch(/<WhyThisNumberDialog/);
+    expect(WEB_NUTRITION_TRACKER).toMatch(/onPressStatusChip/);
     // On /targets there's no StreakPip on the same surface so the
     // streak-alignment requirement from 2026-05-02 doesn't apply
     // here. We pass `null` for loggingDays/mealLogDays and the

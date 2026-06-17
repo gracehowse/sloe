@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-17 (rev 12 — #469 merged).
-**Branch:** `main` @ `01e6c6e1` · **PRs:** [#468](https://github.com/gracehowse/Suppr/pull/468) `c839efbf`, [#469](https://github.com/gracehowse/Suppr/pull/469) `01e6c6e1` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-17 (rev 14 — Gate 1.5 closeout batch).  
+**Branch:** `claude/wave-4-trust-cohesion` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -16,7 +16,7 @@
 |------|---------|------|-------------------|
 | **Gate 0** | Before onboarding ANY user (security / legal / data-integrity) | 1 | 8 |
 | **Gate 1** | Before the 2026-07-01 viral push (trust / parity / launch quality) | 2 | 15 |
-| **Gate 1.5** | **NEW (2026-06-16)** — launch *cohesion & wedge*: what makes the viral push LAND (not just be safe). Redesign core-5 + Wave-3 wedge + mis-filed launch-hardening security. | **~16** | **~12** |
+| **Gate 1.5** | **NEW (2026-06-16)** — launch *cohesion & wedge*: what makes the viral push LAND (not just be safe). Redesign core-5 + Wave-3 wedge + mis-filed launch-hardening security. | **~4 partial** | **~20** |
 | **Gate B** | Before the first PAID sub (billing) — parallel, NOT a July blocker | 4 | 3 |
 | **Gate 2** | Beta window (wedge-validated polish + bulk of audit P2s) | ~56 | 14 |
 | **Wave 3** | Category-leading *residual* + audit P3s (wedge items promoted to 1.5; rest beta/post-launch) | ~120 | 8 |
@@ -91,7 +91,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 |--------|-------|
 | `362e940a` | Today hero ring density — `Type.statLabel`, stat values 20/24, AA status chip, tighter card padding (design-director; not a Gate 1.5 ticket) |
 
-**Still open — next in logging loop:** ENG-932 (loud barcode affordance — verify shipped). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
+**Still open — next in logging loop:** ~~ENG-932~~ Done (`BARCODE_LOUD_CTA_LABEL` web + mobile). ~~ENG-931~~ mobile quick-log shipped (`97983c0a`); web parity in follow-up commit.
 
 **Gate B ops still open:** ENG-101, 198, 33, 3 (RevenueCat/IAP, Stripe Tax, SBP — no code ship this session).
 
@@ -171,8 +171,8 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 
 | # | Pri | Surface | Note |
 |---|---|---|---|
-| ENG-895 | Urgent | Conform Onboarding to Figma | **TOP RISK** — partial (`95a83070`): segmented bar, goal step, signup-after-reveal; welcome/pace/reveal still open |
-| ENG-889 | High | Conform Today to Figma | partial — residual pixel-deltas + populated-account verify |
+| ENG-895 | Urgent | Conform Onboarding to Figma | **Done** (closeout) — welcome/reveal/pace/projection; photo-hero WO1 split deferred |
+| ENG-889 | High | Conform Today to Figma | **partial** — Layer-3 pixel + web skeleton (post-launch polish) |
 | ~~ENG-900~~ | High | ~~Conform Log-a-meal to Figma~~ | **Done** `95a83070` |
 | ENG-901 | High | Conform Paywall & win-moments | partial — honesty cards shipped; M5 streak / M6 import-success residual |
 | ENG-896 | High | Conform Recipes & Cookbook | partial — save-first + import hero; pixel close-out open |
@@ -192,13 +192,14 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | ~~ENG-939~~ | High | Warm food-forward Today empty/cold-open state | **Done** `01e6c6e1` (#469) |
 | ~~ENG-938~~ | High | Protein-remaining as priority macro on Today | **Done** `01e6c6e1` (#469) — caption at 0g logged |
 | ~~ENG-962~~ | High | ~~Move signup after the plan reveal~~ | **Done** `95a83070` |
-| ENG-964 | High | Date projection on the Reveal step (tangible goal) | partial — `revealProjection.ts` shipped; web reveal UI verify open |
-| ENG-965 | High | Surface data-import path earlier for MFP/MacroFactor refugees | partial — app-choice in `REDESIGN_DEFAULT_ON`; full refugee path open |
+| ENG-964 | High | Date projection on the Reveal step (tangible goal) | **Done** — `revealProjection.ts` + web/mobile reveal UI |
+| ENG-965 | High | Surface data-import path earlier for MFP/MacroFactor refugees | **Done** — `app-choice` step (ENG-990) |
 | ~~ENG-980~~ | High | ~~Save-first import lands in library instantly~~ | **Done** `95a83070` |
 | ~~ENG-966~~ | High | ~~Lead the paywall with the plan the user already built~~ | **Done** `95a83070` |
 | ~~ENG-970~~ | Medium | ~~"No payment due now" chip above CTA in trial~~ | **Done** `95a83070` |
-| ENG-932 | Medium | Loud, free, first-class barcode affordance | logging loop (verify shipped) |
-| ENG-1065 | Medium | TF57 Today cohesion — Complete Day, Planned card, meal-section | Today first-impression |
+| ENG-932 | Medium | Loud, free, first-class barcode affordance | **Done** — `BARCODE_LOUD_CTA_LABEL` in LogSheet |
+| ENG-1065 | Medium | TF57 Today cohesion — Complete Day, Planned card, meal-section | **Done** — empty branch default-on; tier flat lift |
+| ENG-1184 | High | Fresh start badge lacks target methodology explanation | **Done** — status chip → `WhyThisNumber` |
 
 *Strong-but-can-slip-to-early-beta:* ENG-968 (Duolingo trial), ENG-969 (projected-trajectory paywall), ENG-951 (forecast line), ENG-957/943 (plan→shopping), ENG-977 (post-log what-to-eat-next), ENG-854 (make-anything-fit Today).
 
@@ -207,12 +208,12 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | # | Pri | Title | Why launch |
 |---|---|---|---|
 | ~~ENG-1137~~ | High | ~~assertOrigin CSRF guard on ALL cookie-auth mutating routes~~ | **Done** `95a83070` |
-| ENG-1124 | High | Web nutrition_entries write-payload untested + 2nd buildNutritionEntryRow that can drift | data-integrity (confirmed in review) |
+| ENG-1124 | High | Web nutrition_entries write-payload untested + 2nd buildNutritionEntryRow that can drift | **Done** — PR #463 |
 | ~~ENG-1118~~ | High | ~~FatSecret %DV→absolute micro conversion has no version guard~~ | **Done** `90702887` |
 | ENG-558 | Medium | Enable Leaked Password Protection in Supabase Auth | pre-push security |
 | ENG-541 | Medium | Lock down Sentry Allowed Domains (suppr-web) | pre-push security |
 | ENG-1158 | High | Decide AI_BUDGET_ENFORCEMENT before the viral push (cost breaker) | cost-runaway at viral scale |
-| ENG-1128 | Medium | Web/blog import paraphrases instruction steps (legal posture) | legal exposure on the lead-bet flow |
+| ENG-1128 | Medium | Web/blog import paraphrases instruction steps (legal posture) | **Done** — `paraphraseInstructionsField` at persist + import |
 
 ---
 

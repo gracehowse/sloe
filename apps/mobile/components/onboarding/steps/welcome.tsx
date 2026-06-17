@@ -10,6 +10,9 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import {
+  ONBOARDING_WELCOME_BODY_MOBILE,
+} from "@suppr/shared/onboarding/figmaCopy";
 import { SupprMark } from "@/components/SupprMark";
 import { useOnboarding } from "../context";
 
@@ -84,7 +87,8 @@ export function MobileWelcomeStep() {
             lineHeight: 42,
           }}
         >
-          Eat well,{"\n"}on your terms.
+          Cook what you love.{"\n"}
+          <Text style={{ fontStyle: "italic" }}>Still</Text> reach your goals.
         </Text>
         <Text
           style={{
@@ -94,9 +98,7 @@ export function MobileWelcomeStep() {
             maxWidth: 360,
           }}
         >
-          Cook what you love and still hit your goals. Import recipes from the
-          sites you already use — Sloe breaks down the macros and calibrates
-          targets to you.
+          {ONBOARDING_WELCOME_BODY_MOBILE}
         </Text>
       </View>
 
@@ -149,12 +151,12 @@ export function MobileWelcomeStep() {
         <Pressable
           onPress={() => router.push("/login")}
           accessibilityRole="button"
-          accessibilityLabel="Sign in to existing account"
+          accessibilityLabel="I already have an account"
           hitSlop={12}
           style={({ pressed }) => ({
             marginTop: Spacing.md,
-            alignSelf: "center",
-            paddingVertical: 8,
+            alignSelf: "stretch",
+            paddingVertical: 10,
             opacity: pressed ? 0.55 : 1,
           })}
         >
@@ -166,7 +168,7 @@ export function MobileWelcomeStep() {
               textAlign: "center",
             }}
           >
-            Already have an account? <Text style={{ color: colors.tint, fontWeight: "600" }}>Sign in</Text>
+            I already have an account
           </Text>
         </Pressable>
       </View>

@@ -73,6 +73,8 @@ export interface TodayHeroRingProps {
    *  Sized + spaced so it does not interfere with the ring's tap /
    *  long-press affordances. */
   onPressWhy?: () => void;
+  /** ENG-1184 — tap status chip to open calorie-target explainer on Today. */
+  onPressStatusChip?: () => void;
 }
 
 interface StatProps {
@@ -152,10 +154,12 @@ function StatusChip({
   state,
   overByKcal,
   isDark,
+  onPress,
 }: {
   state: "empty" | "under" | "over";
   overByKcal: number;
   isDark: boolean;
+  onPress?: () => void;
 }) {
   const accent = useAccent();
   // Split the sage into a FILL hue (tint bg) and an INK hue (text/icon). The
@@ -174,24 +178,39 @@ function StatusChip({
         ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : Colors.light.ringTrack, Icon: Sparkles }
         : { fg: sageInk, bg: `${sageFill}2E`, Icon: CircleCheck };
   const { fg, bg, Icon } = config;
-  return (
-    <View
-      testID="today-ring-status-chip"
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.xs,
-        backgroundColor: bg,
-        borderRadius: Radius.full,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-      }}
-    >
+  const label = todayStatusChip(state, overByKcal);
+  const chipStyle = {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: Spacing.xs,
+    backgroundColor: bg,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  };
+  const chipContent = (
+    <>
       <Icon size={14} color={fg} strokeWidth={2} />
-      <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>
-        {todayStatusChip(state, overByKcal)}
-      </Text>
-    </View>
+      <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>{label}</Text>
+    </>
+  );
+  if (!onPress) {
+    return (
+      <View testID="today-ring-status-chip" style={chipStyle}>
+        {chipContent}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      testID="today-ring-status-chip"
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, see how your calorie target was set`}
+      style={chipStyle}
+    >
+      {chipContent}
+    </Pressable>
   );
 }
 
@@ -218,6 +237,7 @@ export function TodayHeroRing({
   // (AA) on 2026-06-16.
   textTertiaryColor: _textTertiaryColor,
   onPressWhy: _onPressWhy,
+  onPressStatusChip,
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
@@ -264,7 +284,12 @@ export function TodayHeroRing({
           marginBottom: Spacing.xs,
         }}
       >
-        <StatusChip state={chipState} overByKcal={overByKcal} isDark={isDark} />
+        <StatusChip
+          state={chipState}
+          overByKcal={overByKcal}
+          isDark={isDark}
+          onPress={onPressStatusChip}
+        />
       </View>
       <CalorieRing
         consumed={consumed}

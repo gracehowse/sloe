@@ -214,6 +214,8 @@ import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { useWinMoment } from "@/hooks/use-win-moment";
 import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
 import { TodayHero } from "@/components/today/TodayHero";
+import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
+import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
 // Log button now lives inside the global `<SupprTabBar>` via
@@ -782,6 +784,7 @@ export default function TrackerScreen() {
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  const [whySheetOpen, setWhySheetOpen] = useState(false);
   const [showMealTimestamps, setShowMealTimestamps] = useState(false);
   const [weekSummaryMode, setWeekSummaryMode] = useState<WeekSummaryMode>("rolling");
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
@@ -913,8 +916,8 @@ export default function TrackerScreen() {
   });
 
   // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
-  // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
-  // inline there. Today no longer owns the sheet.
+  // gone. ENG-1184 re-hosts WhyThisNumber on Today via the status chip;
+  // `/targets` still owns the "How is this calculated?" row.
 
   useEffect(() => {
     void flushQueuedJournalWrites();
@@ -5388,6 +5391,7 @@ export default function TrackerScreen() {
                   profileWeightKgByDay,
                   dateKeyFromDate(new Date()),
                 )}
+                onPressStatusChip={() => setWhySheetOpen(true)}
               />
             </ReAnimated.View>
 
@@ -6698,11 +6702,43 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* 2026-05-12 round 4 (Grace TF): the WhyThisNumberSheet moved
-          to `/targets` (Settings → Targets → "How is this calculated?")
-          and mounts inline there. Today no longer hosts it. The
-          state + `paceKgPerWeekFromPreset` import remain in case a
-          future entry point on Today wants to re-host. */}
+      {/* ENG-1184 — status chip opens target explainer inline on Today. */}
+      <WhyThisNumberSheet
+        visible={whySheetOpen}
+        onClose={() => setWhySheetOpen(false)}
+        targetCalories={Math.round(effectiveCalorieGoal)}
+        maintenanceTdee={adaptiveTdee ?? profileMaintenanceTdeeKcal}
+        confidence={
+          adaptiveTdeeConfidence === "low" ||
+          adaptiveTdeeConfidence === "medium" ||
+          adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence
+            : null
+        }
+        loggingDays={null}
+        goal={
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose"
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          profilePlanPace,
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose",
+        )}
+        mealLogDays={null}
+        weightLogCount={Object.keys(profileWeightKgByDay).length}
+        hasWearable={Object.keys(basalBurnByDay).length > 0}
+        onPressAdjustTarget={() => {
+          setWhySheetOpen(false);
+          router.push("/targets");
+        }}
+      />
 
       <JournalDatePickerModal
         visible={journalCalendarOpen}
