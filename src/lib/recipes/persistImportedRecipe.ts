@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyMealType } from "../recipe-import/classifyMealType";
-import { normaliseInstructions } from "./normaliseInstructions";
+import { paraphraseInstructionsField } from "./normaliseRecipeSteps";
 import { normaliseSource } from "./persistSourceAttribution";
 import { normalizeRecipeTitle } from "./normalizeRecipeTitle";
 import { deriveImportedRecipeTitle } from "./deriveImportedRecipeTitle";
@@ -72,17 +72,11 @@ export function coercePositiveMinutes(raw: unknown): number | null {
 }
 
 function normalizeInstructionsField(raw: unknown): string | null {
-  if (Array.isArray(raw)) {
-    const lines = raw
-      .map((x) => normaliseInstructions(String(x)))
-      .filter(Boolean);
-    return lines.length ? lines.join("\n\n") : null;
-  }
-  if (typeof raw === "string") {
-    const t = normaliseInstructions(raw);
-    return t.length ? t : null;
-  }
-  return null;
+  // ENG-1128 — legal guardrail at the single persist chokepoint: every
+  // imported step (caption / structured-LLM / JSON-LD HTML) is sentence-split
+  // + rewritten to neutral imperative voice so a creator's narrative step
+  // prose is never stored verbatim. See `normaliseRecipeSteps.ts`.
+  return paraphraseInstructionsField(raw);
 }
 
 /**

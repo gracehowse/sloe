@@ -114,7 +114,7 @@ Return a single JSON object (no markdown fences, no prose) with EXACTLY this sha
       "confidence": number          // 0..1 — how sure YOU are you parsed THIS line's quantity+unit+name correctly.
     }
   ],
-  "steps": string[],                // ordered cooking steps; [] if none visible.
+  "steps": string[],                // ordered SHORT IMPERATIVE steps you write ("Heat the oil"); NEVER the source's narrative sentences. [] if none visible.
   "prepTimeMin": number or null,    // total prep minutes if stated.
   "cookTimeMin": number or null,    // total cook minutes if stated.
   "sourceName": string or null,     // a by-line / author / site if visibly attributed. null otherwise — do NOT invent.
@@ -129,6 +129,7 @@ CRITICAL RULES:
 - DO NOT include section headings ("For the sauce:", "For the salad:") as ingredients. Treat the list as flat.
 - DO NOT include mid-prep states (e.g. "cornflour mixed with warm water") or serving notes ("to serve (optional)") as ingredients.
 - Ignore hashtags, @mentions, emoji, ads, navigation, page numbers, and other non-recipe text.
+- STEPS: write SHORT functional imperative instructions in YOUR words ("Heat the oil in a pan", "Simmer for 10 minutes") — one action per step. NEVER reproduce the creator's narrative sentences, first-person voice-over, or paragraph prose verbatim; paraphrase the action only.
 - If the input contains NO recipe, return {"title": null, "servings": null, "ingredients": [], "steps": [], "prepTimeMin": null, "cookTimeMin": null, "sourceName": null, "notes": null}.
 - Return ONLY the JSON object.`;
 }

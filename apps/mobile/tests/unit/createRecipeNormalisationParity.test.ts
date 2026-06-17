@@ -75,18 +75,21 @@ describe("mobile create-recipe — placeholder + write-side normalise (E-1)", ()
   });
 });
 
-describe("shared import persist path — normaliseInstructions wired in (E-1)", () => {
-  it("imports the shared helper", () => {
+describe("shared import persist path — paraphrase guardrail wired in (ENG-1128)", () => {
+  // ENG-1128 (2026-06-17): imported steps are a legal concern — they must be
+  // paraphrased to neutral imperative voice, not merely whitespace-normalised.
+  // The import persist path now routes through `paraphraseInstructionsField`
+  // (which calls `normaliseInstructions` internally + adds the legal pass).
+  // Create paths (above) keep plain `normaliseInstructions` — a user's own
+  // authored steps must not be paraphrased.
+  it("imports the paraphrase guardrail", () => {
     expect(MOBILE_IMPORT_SRC).toMatch(
-      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*normaliseInstructions["']/,
+      /import\s*\{\s*paraphraseInstructionsField\s*\}\s*from\s*["'][^"']*normaliseRecipeSteps["']/,
     );
   });
 
-  it("routes instructions through normaliseInstructions before insert", () => {
-    // The import save path wraps its array/string normaliser around
-    // the shared helper — both code paths (array of steps and raw string)
-    // run through the same sanitiser.
-    expect(MOBILE_IMPORT_SRC).toMatch(/normaliseInstructions\(/);
+  it("routes instructions through the paraphrase guardrail before insert", () => {
+    expect(MOBILE_IMPORT_SRC).toMatch(/paraphraseInstructionsField\(/);
     expect(MOBILE_IMPORT_SRC).toMatch(/from\(["']recipes["']\)\s*\n?\s*\.insert/);
   });
 });

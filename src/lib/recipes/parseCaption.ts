@@ -33,6 +33,7 @@ import {
   socialImportSourceName,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import type { RecipeSourcePlatform } from "@/lib/recipes/resolveImportUrl";
+import { normaliseStepToImperative } from "./normaliseRecipeSteps";
 
 export interface ParsedCaptionRecipe {
   title: string | null;
@@ -63,56 +64,12 @@ export class CaptionTooShortError extends Error {
  */
 const MIN_CAPTION_LEN = 30;
 
-/**
- * Rewrite a caption-extracted step to imperative voice with neutral phrasing.
- *
- * The LLM already produces close-to-imperative text most of the time; this
- * function is a defence-in-depth pass that:
- *   - Strips leading first-person voice ("I heat the oil" → "Heat the oil")
- *   - Strips leading "Then, " / "Next, " / "Now " / "So, " filler
- *   - Strips conversational openers ("Okay, ", "Alright, ", "So basically ")
- *   - Capitalises the first letter, ensures a terminating period
- *
- * Exposed so the unit tests can assert byte-for-byte on the legal guardrail.
- */
-export function normaliseStepToImperative(raw: string): string {
-  if (typeof raw !== "string") return "";
-  let s = raw.replace(/\s+/g, " ").trim();
-  if (!s) return "";
-
-  // Strip leading conversational fillers. Multi-pass to peel back stacked
-  // openers like "So basically, then now you want to...".
-  const fillers = [
-    /^(?:so|okay|ok|alright|right|now|next|then|first(?:ly)?|finally|lastly|after that|after\s+\w+,?|basically|essentially|literally|honestly|actually|simply|just|well)\s*[,.\-:]?\s+/i,
-    /^(?:and\s+)?then\s*[,.\-:]?\s+/i,
-  ];
-  for (let i = 0; i < 6; i++) {
-    let changed = false;
-    for (const re of fillers) {
-      if (re.test(s)) {
-        s = s.replace(re, "");
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
-
-  // Convert first-person ("I/we add ...") → imperative ("add ...").
-  s = s.replace(
-    /^(?:i'?m\s+going\s+to\s+|i\s+(?:am\s+going\s+to\s+|will\s+|just\s+|then\s+|like\s+to\s+)?|we\s+(?:are\s+going\s+to\s+|will\s+|just\s+|then\s+)?|you\s+(?:want\s+to\s+|need\s+to\s+|can\s+|just\s+|then\s+|will\s+)?|let'?s\s+(?:just\s+|now\s+)?)/i,
-    "",
-  );
-
-  // Trim again in case the rewrite left an opening space.
-  s = s.trim();
-  if (!s) return "";
-
-  // Capitalise first character; ensure terminating period if missing.
-  s = s[0].toUpperCase() + s.slice(1);
-  if (!/[.!?]$/.test(s)) s = s + ".";
-
-  return s;
-}
+// `normaliseStepToImperative` moved to `./normaliseRecipeSteps` (ENG-1128) so
+// the same legal guardrail can run at the persist chokepoint for EVERY import
+// path (caption / structured-LLM / JSON-LD HTML), not just captions.
+// Re-exported here for back-compat — `tests/unit/parseCaption.test.ts` and the
+// caption path below both import it from this module.
+export { normaliseStepToImperative };
 
 /**
  * Extract a structured recipe from a user-supplied caption.
