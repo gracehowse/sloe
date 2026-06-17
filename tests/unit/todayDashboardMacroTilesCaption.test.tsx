@@ -7,7 +7,7 @@
  *   - under target → "N g remaining" in sage (`text-success`)
  *   - over target  → "N g over" in amber (`--accent-warning-solid`, AA-safe)
  *   - reference-only (sugar/sodium) → muted "ref N"
- *   - unlogged (current = 0) → suppressed (height reserved)
+ *   - unlogged (current = 0) → full target as "N g remaining" (ENG-938 — refugee scannable gap)
  * The copy is the canonical "remaining" (matches mobile so the two surfaces
  * can't drift).
  *
@@ -75,11 +75,13 @@ describe("TodayDashboardMacroTiles (web) — per-tile caption (gap 4)", () => {
     expect(cap.className).toMatch(/text-foreground-tertiary/);
   });
 
-  it("suppresses the caption text on an unlogged tile (current = 0)", () => {
+  it('shows full remaining on an unlogged tile (current = 0) — ENG-938', () => {
     const { getByTestId } = render(
       <TodayDashboardMacroTiles {...baseProps} proteinCurrent={0} />,
     );
-    expect(getByTestId("today-macro-tile-caption-protein").textContent).toBe("");
+    const cap = getByTestId("today-macro-tile-caption-protein");
+    expect(cap.textContent).toBe("140g remaining");
+    expect(cap.className).toMatch(/text-success/);
   });
 });
 

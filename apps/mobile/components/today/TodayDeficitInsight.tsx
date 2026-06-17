@@ -79,7 +79,7 @@ export function TodayDeficitInsight({
     normalizeJournalSlotName(m.name ?? ""),
   );
   const nextMeal = nextUnloggedMealSlot(loggedSlots);
-  const line = todayRoomForMeal(remaining, nextMeal, loggedSlots);
+  const line = todayRoomForMeal(remaining, nextMeal, loggedSlots, new Date().getHours());
   if (!line) return null;
 
   return (

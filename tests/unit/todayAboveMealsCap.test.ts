@@ -94,13 +94,27 @@ describe("Today above-meals cap (web) — canonical four primitives", () => {
 });
 
 describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
-  it("NorthStarBlockHost renders above meals when calories remain (Figma 654:2)", () => {
+  it("NorthStarBlockHost is a PERMANENT above-meals block, not gated on remaining calories (ENG-935)", () => {
+    // ENG-935 (2026-06-17): mirrors the mobile change — the "What to
+    // eat next" block renders for today regardless of remaining
+    // calories (over-budget / on-target included). The web gate is
+    // `selectedDateKey === todayKey()` only; it no longer hangs off
+    // `Math.max(0, target - calories) > 0`. The over-budget state is
+    // owned by `NorthStarBlockHost` (calm caption when
+    // remainingCalories <= 0). This pins the gate so the `> 0`
+    // suppression can't silently return.
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
     const northStarIdx = HOST_SRC.indexOf("<NorthStarBlockHost");
     expect(mealsIdx).toBeGreaterThan(-1);
     expect(northStarIdx).toBeGreaterThan(-1);
     expect(northStarIdx).toBeLessThan(mealsIdx);
-    expect(HOST_SRC).toMatch(/showAboveMealsNorthStarWeb/);
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStarWeb\s*=\s*selectedDateKey === todayKey\(\);/);
+    // Bound the negative to the gate STATEMENT only (up to its
+    // semicolon). `Math.max(0, …) > 0` appears elsewhere in the
+    // 2,600-line host, so an unbounded `[\s\S]*` would false-positive.
+    expect(HOST_SRC).not.toMatch(
+      /showAboveMealsNorthStarWeb\s*=[^;]*Math\.max\(0,[\s\S]*?\)\s*>\s*0/,
+    );
     expect(HOST_SRC).not.toMatch(/showBelowMealsNorthStarWeb/);
   });
 

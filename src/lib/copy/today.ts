@@ -351,10 +351,22 @@ function mealPhraseForAim(slot: TodayMealSlot): string {
   return slot === "Snacks" ? "for a snack" : `at ${SLOT_SENTENCE_WORD[slot]}`;
 }
 
+/** ENG-939 — warm food-forward invitation when the day is completely
+ *  unlogged. Time-aware meal wording; omits kcal so cold-open reads as
+ *  welcome, not scoreboard. Greeting ("Good morning") is separate
+ *  ({@link todayGreeting}). */
+export function todayColdOpenCoachLine(hour: number): string {
+  if (hour < 11) return "Fresh start — what's for breakfast?";
+  if (hour < 15) return "Fresh start — what's for lunch?";
+  if (hour < 20) return "Fresh start — what's for dinner?";
+  return "Fresh start — log when you're ready.";
+}
+
 export function todayRoomForMeal(
   remainingKcal: number,
   nextMeal: TodayMealSlot | null,
   loggedSlots?: Iterable<string>,
+  hour?: number,
 ): string | null {
   const remaining = Math.round(remainingKcal);
   if (remaining < TODAY_ROOM_MIN_KCAL) return null;
@@ -366,6 +378,9 @@ export function todayRoomForMeal(
   if (loggedSlots) {
     const unlogged = unloggedMealSlotCount(loggedSlots);
     if (unlogged >= COACH_PLAN_DAY_MIN_UNLOGGED_SLOTS) {
+      if (unlogged >= 4 && hour != null) {
+        return todayColdOpenCoachLine(hour);
+      }
       return `Plan your day — about ${kcal} kcal left. No rush.`;
     }
     const slotAim = coachSlotAimKcal(remaining, nextMeal, loggedSlots);

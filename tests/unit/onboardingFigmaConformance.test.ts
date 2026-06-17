@@ -77,6 +77,54 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
     expect(scaffold).toContain("--font-headline");
   });
 
+  it("pace step uses Lucide icons (no Ionicons) on web + mobile", () => {
+    const mobilePace = readFileSync(
+      resolve(ROOT, "apps/mobile/components/onboarding/steps/pace.tsx"),
+      "utf8",
+    );
+    const webPace = readFileSync(
+      resolve(ROOT, "src/app/components/onboarding/steps/pace.tsx"),
+      "utf8",
+    );
+    // ENG-895 — Ionicons banned (2026-05-31 icon-strategy decision). Mobile
+    // must mirror the web pace step's Lucide set exactly. Pin the absence of
+    // the import + any `<Ionicons` JSX (a code comment may still name it).
+    expect(mobilePace).not.toContain("@expo/vector-icons");
+    expect(mobilePace).not.toMatch(/import\s*\{\s*Ionicons/);
+    expect(mobilePace).not.toMatch(/<Ionicons/);
+    expect(mobilePace).toMatch(
+      /import \{[^}]*\} from "lucide-react-native"/,
+    );
+    // The three icons the warning banner + danger checkbox render — pinned
+    // by name so a regression (e.g. reverting to Ionicons or swapping the
+    // glyph) breaks the build, and so web ↔ mobile stay on the same set.
+    for (const icon of ["AlertTriangle", "Check", "Info"]) {
+      expect(mobilePace).toContain(icon);
+      expect(webPace).toContain(icon);
+    }
+  });
+
+  it("pace presets use §7 chip grammar (primary-soft fill, no accent ring) on web + mobile", () => {
+    const mobilePace = readFileSync(
+      resolve(ROOT, "apps/mobile/components/onboarding/steps/pace.tsx"),
+      "utf8",
+    );
+    const webPace = readFileSync(
+      resolve(ROOT, "src/app/components/onboarding/steps/pace.tsx"),
+      "utf8",
+    );
+    // Web: selected preset pill reads `bg-primary-soft text-primary-solid`,
+    // NO goal-accent border ring (the prior `borderColor: active ? accent`
+    // preset treatment is gone — the only remaining `border-[1.5px]` is the
+    // danger-acknowledge checkbox, which is unrelated to the presets).
+    expect(webPace).toContain("bg-primary-soft text-primary-solid");
+    expect(webPace).not.toMatch(/borderColor:\s*active\s*\?\s*accent/);
+    // Mobile: the preset pill paints `plum.primarySoft` when active and the
+    // label flips to `plum.primarySolid` — the goal-accent ring is gone.
+    expect(mobilePace).toContain("plum.primarySoft");
+    expect(mobilePace).toContain("plum.primarySolid");
+  });
+
   it("reveal step surfaces ENG-964 date projection on web + mobile", () => {
     const webReveal = readFileSync(
       resolve(ROOT, "src/app/components/onboarding/steps/reveal.tsx"),

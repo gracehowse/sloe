@@ -194,9 +194,20 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("North Star above meals uses remaining > 0 without empty-day meals gate", () => {
-    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*=/);
-    expect(HOST_SRC).toMatch(/remaining\s*>\s*0/);
+  it("North Star above meals is a PERMANENT today-day-view block, not gated on remaining calories (ENG-935)", () => {
+    // ENG-935 (2026-06-17): the "What to eat next" block is now a
+    // permanent glanceable Today block. The gate is day-view + today
+    // only — it no longer hangs off `remaining > 0`, which used to hide
+    // the block over-budget / on-target (exactly when the user still
+    // needs guidance). The over-budget state is owned by
+    // `NorthStarBlockHost` (renders the calm caption when
+    // remainingCalories <= 0). This pins the gate so a future sweep
+    // can't silently re-add the `remaining > 0` suppression.
+    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*=\s*viewMode === "day" && isToday;/);
+    // Bound the negative to the gate STATEMENT only (up to its
+    // semicolon) — `remaining` legitimately appears elsewhere in the
+    // 3,400-line host, so an unbounded `[\s\S]*` would false-positive.
+    expect(HOST_SRC).not.toMatch(/showAboveMealsNorthStar\s*=[^;]*remaining\s*>\s*0/);
     expect(HOST_SRC).not.toMatch(/showBelowMealsNorthStar/);
   });
 

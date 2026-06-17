@@ -2965,8 +2965,15 @@ export default function TrackerScreen() {
   const remainingCarbs = Math.max(0, effectiveMacroTargets.carbs - totals.carbs);
   const remainingFat = Math.max(0, effectiveMacroTargets.fat - totals.fat);
 
-  const showAboveMealsNorthStar =
-    viewMode === "day" && isToday && remaining > 0;
+  // ENG-935: "What to eat next" is a PERMANENT glanceable Today block —
+  // it renders whenever we're on today's day view, including when the
+  // user is over-budget or exactly on target. The previous `remaining > 0`
+  // gate made the block vanish at exactly the moments the user still
+  // needs guidance (over by a bit / dead-on target). The over-budget
+  // case is handled gracefully inside `NorthStarBlockHost` (it renders
+  // the calm `over-budget` caption when remainingCalories <= 0), so the
+  // host owns the state — the screen gate no longer second-guesses it.
+  const showAboveMealsNorthStar = viewMode === "day" && isToday;
 
   const belowMealsPromptEligible = useMemo(
     () => ({
