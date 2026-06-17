@@ -58,7 +58,7 @@ export function WelcomeStep() {
           <div className="mb-7 md:mb-10">
             <SupprWordmark size={24} />
           </div>
-          <p className="hidden md:block m-0 mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="hidden md:block m-0 mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {ONBOARDING_WELCOME_EYEBROW}
           </p>
           {/* Sloe reskin (Figma welcome 285:2 / WO1): brand line from Stitch. */}

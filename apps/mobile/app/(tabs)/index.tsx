@@ -6738,6 +6738,12 @@ export default function TrackerScreen() {
           setWhySheetOpen(false);
           router.push("/targets");
         }}
+        backgroundColor={colors.background}
+        cardColor={colors.card}
+        cardBorderColor={colors.cardBorder}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        textTertiaryColor={colors.textTertiary}
       />
 
       <JournalDatePickerModal
