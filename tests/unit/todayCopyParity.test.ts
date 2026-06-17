@@ -296,6 +296,18 @@ describe("Sloe Today under-ring coach line (todayRoomForMeal) — forward + hone
     );
   });
 
+  it("uses food-forward cold-open copy when every slot is unlogged (ENG-939)", () => {
+    expect(todayRoomForMeal(901, "Breakfast", [], 9)).toBe(
+      "Fresh start — what's for breakfast?",
+    );
+    expect(todayRoomForMeal(901, "Breakfast", [], 14)).toBe(
+      "Fresh start — what's for lunch?",
+    );
+    expect(todayRoomForMeal(901, "Breakfast", [], 19)).toBe(
+      "Fresh start — what's for dinner?",
+    );
+  });
+
   it("does not suggest the full-day remainder as a breakfast target (901 kcal case)", () => {
     expect(todayRoomForMeal(901, "Breakfast", [])).toBe(
       "Plan your day — about 901 kcal left. No rush.",

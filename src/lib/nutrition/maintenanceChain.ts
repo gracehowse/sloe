@@ -185,8 +185,9 @@ export function buildMaintenanceChain(
   });
   steps.push({
     kind: "activity",
-    label: `× activity level (${activityLabel} ${multiplier})`,
+    label: `× resting baseline (${activityLabel} ${multiplier})`,
     value: formatKcal(formulaTdee),
+    detail: "Daily movement is added on Today as Bonus — not double-counted here.",
   });
   if (showAdaptiveLine) {
     const sign = adaptiveDelta >= 0 ? "+" : "−";
@@ -209,6 +210,7 @@ export function buildMaintenanceChain(
   // Calorie goal line — prefer the live target when callers pass it (ENG-1057).
   // Otherwise derive from pace + goal via `calculateBudget`.
   const goalType = (goal ?? "cut").toString();
+  const isMaintainGoal = goalType === "maintain" || goalType === "health";
   const derivedBudget = calculateBudget(maintenance, planPace, goalType);
   const budget =
     isFinitePositive(actualTargetCalories)
@@ -222,47 +224,59 @@ export function buildMaintenanceChain(
 
   if (Number.isFinite(budget) && budget > 0) {
     budgetKcal = Math.round(budget);
-    dailyDeficitKcal = Math.round(dailyDeficit);
-    weeklyLossKg = Number(((dailyDeficit * 7) / KCAL_PER_KG_FAT).toFixed(2));
 
-    const absDeficit = Math.abs(dailyDeficit);
-    const deficitSign = dailyDeficit >= 0 ? "−" : "+";
-    steps.push({
-      kind: "deficit",
-      label: `${deficitSign} your plan ${dailyDeficit >= 0 ? "deficit" : "surplus"}`,
-      value: formatKcal(absDeficit),
-    });
-    steps.push({
-      kind: "goal",
-      label: "= Calorie goal",
-      value: formatKcal(budget),
-      emphasis: true,
-    });
-
-    if (Math.abs(dailyDeficit) >= 1) {
-      const direction = dailyDeficit > 0 ? "below" : "above";
+    if (isMaintainGoal) {
+      // ENG-1188 — maintain-goal users must not see a false surplus/gain
+      // projection when their target sits above the sedentary seed baseline.
       steps.push({
-        kind: "summary",
-        label: `If you hit your goal daily: ~${Math.round(
-          Math.abs(dailyDeficit),
-        ).toLocaleString()} kcal/day ${direction} Maintenance`,
-        value: "",
+        kind: "goal",
+        label: "= Calorie goal",
+        value: formatKcal(budget),
+        emphasis: true,
       });
-      const absLoss = Math.abs(weeklyLossKg);
-      if (absLoss > 0) {
-        const lossLabel = dailyDeficit > 0 ? "Projected weekly loss" : "Projected weekly gain";
-        // Action 13 Item #12 (2026-04-19) — caveat the projection.
-        // 7700 kcal/kg is correct for **fat mass**, but week-to-week
-        // weight readings are dominated by water/glycogen swings —
-        // particularly in the first week of a cut/bulk. Surface that
-        // honestly so the user doesn't read 0.5 kg/wk as a guarantee
-        // and panic on the first +0.4 kg morning. Pinned by
-        // `tests/unit/maintenanceChain.test.ts`.
+    } else {
+      dailyDeficitKcal = Math.round(dailyDeficit);
+      weeklyLossKg = Number(((dailyDeficit * 7) / KCAL_PER_KG_FAT).toFixed(2));
+
+      const absDeficit = Math.abs(dailyDeficit);
+      const deficitSign = dailyDeficit >= 0 ? "−" : "+";
+      steps.push({
+        kind: "deficit",
+        label: `${deficitSign} your plan ${dailyDeficit >= 0 ? "deficit" : "surplus"}`,
+        value: formatKcal(absDeficit),
+      });
+      steps.push({
+        kind: "goal",
+        label: "= Calorie goal",
+        value: formatKcal(budget),
+        emphasis: true,
+      });
+
+      if (Math.abs(dailyDeficit) >= 1) {
+        const direction = dailyDeficit > 0 ? "below" : "above";
         steps.push({
-          kind: "weeklyLoss",
-          label: `${lossLabel}: ~${absLoss.toFixed(2)} kg* (*long-term fat ${dailyDeficit > 0 ? "loss" : "gain"}; week-to-week varies with water/glycogen)`,
+          kind: "summary",
+          label: `If you hit your goal daily: ~${Math.round(
+            Math.abs(dailyDeficit),
+          ).toLocaleString()} kcal/day ${direction} Maintenance`,
           value: "",
         });
+        const absLoss = Math.abs(weeklyLossKg);
+        if (absLoss > 0) {
+          const lossLabel = dailyDeficit > 0 ? "Projected weekly loss" : "Projected weekly gain";
+          // Action 13 Item #12 (2026-04-19) — caveat the projection.
+          // 7700 kcal/kg is correct for **fat mass**, but week-to-week
+          // weight readings are dominated by water/glycogen swings —
+          // particularly in the first week of a cut/bulk. Surface that
+          // honestly so the user doesn't read 0.5 kg/wk as a guarantee
+          // and panic on the first +0.4 kg morning. Pinned by
+          // `tests/unit/maintenanceChain.test.ts`.
+          steps.push({
+            kind: "weeklyLoss",
+            label: `${lossLabel}: ~${absLoss.toFixed(2)} kg* (*long-term fat ${dailyDeficit > 0 ? "loss" : "gain"}; week-to-week varies with water/glycogen)`,
+            value: "",
+          });
+        }
       }
     }
   }

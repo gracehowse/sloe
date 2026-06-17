@@ -79,6 +79,24 @@ describe("buildMaintenanceChain", () => {
     // sedentary × 1.2 from tdee.ts
     expect(step.label).toContain(String(ACTIVITY_MULTIPLIERS.sedentary));
     expect(step.label).toContain("Sedentary");
+    expect(step.label).toContain("resting baseline");
+    expect(step.detail).toContain("Bonus");
+  });
+
+  it("omits surplus/gain framing for maintain-goal users (ENG-1188)", () => {
+    const formulaResolved = resolveMaintenance(baseProfile);
+    const chain = buildMaintenanceChain(
+      baseProfile,
+      formulaResolved!,
+      "steady",
+      "maintain",
+      2900,
+    );
+    expect(chain).not.toBeNull();
+    const kinds = chain!.steps.map((s) => s.kind);
+    expect(kinds).toEqual(["bmr", "activity", "maintenance", "goal"]);
+    expect(chain!.dailyDeficitKcal).toBeNull();
+    expect(chain!.weeklyLossKg).toBeNull();
   });
 
   it("pins the activity row to SEDENTARY even for a non-sedentary profile (TDEE gating 2026-06-10)", () => {
