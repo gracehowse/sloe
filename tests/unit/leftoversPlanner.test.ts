@@ -55,8 +55,9 @@ function day(d: number, meals: LeftoverAwareMeal[]): DayPlan {
       protein: a.protein + (m.protein ?? 0),
       carbs: a.carbs + (m.carbs ?? 0),
       fat: a.fat + (m.fat ?? 0),
+      fiberG: a.fiberG + (m.fiberG ?? 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
   );
   return { day: d, meals: meals as DayPlanMeal[], totals };
 }
@@ -164,6 +165,27 @@ describe("distributeLeftovers", () => {
     expect(out.parentCount).toBe(2);
   });
 
+  it("carries fibre into recomputed day totals for the leftover day (ENG-1150)", () => {
+    const plan: DayPlan[] = [
+      day(1, [
+        slot("Dinner", "Bowl", {
+          recipeId: "bowl",
+          calories: 700,
+          protein: 55,
+          carbs: 50,
+          fat: 25,
+          fiberG: 12,
+        }),
+      ]),
+      day(2, [slot("Lunch")]), // empty → eligible for the leftover
+    ];
+    const out = distributeLeftovers(plan, { bowl: { servings: 2 } });
+    // The parent day keeps its fibre, and the leftover day now totals the
+    // copied parent's fibre (was 0 before the fix dropped fiberG on reduce).
+    expect(out.plan[0].totals.fiberG).toBe(12);
+    expect(out.plan[1].totals.fiberG).toBe(12);
+  });
+
   it("does not create leftovers of leftovers", () => {
     // Pre-seed a leftover then run — it should not spawn further leftovers.
     const plan: DayPlan[] = [
@@ -201,6 +223,29 @@ describe("markLeftoversOnSwap", () => {
     expect(cleaned[2].meals[0].isPlaceholder).toBe(true);
     // Day totals recomputed.
     expect(cleaned[1].totals.calories).toBe(0);
+  });
+
+  it("recomputes fibre on changed days when clearing leftovers (ENG-1150)", () => {
+    const plan: DayPlan[] = [
+      day(1, [slot("Dinner", "Curry", { recipeId: "curry", fiberG: 10 })]),
+      day(2, [
+        slot("Lunch", "Curry", {
+          recipeId: "curry",
+          leftoverOf: "curry",
+          isLeftover: true,
+          fiberG: 10,
+        }),
+      ]),
+    ];
+    const { plan: cleaned } = markLeftoversOnSwap(plan, {
+      dayIndex: 0,
+      slot: "Dinner",
+      previousRecipeId: "curry",
+    });
+    // The cleared downstream day's fibre drops to 0 (slot emptied); the parent
+    // day is before the swap point and is left untouched, keeping its fibre.
+    expect(cleaned[1].totals.fiberG).toBe(0);
+    expect(cleaned[0].totals.fiberG).toBe(10);
   });
 
   it("is a no-op when the swapped slot had no recipe id", () => {

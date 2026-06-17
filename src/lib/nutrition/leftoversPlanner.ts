@@ -141,7 +141,9 @@ export function distributeLeftovers(
     }
   }
 
-  // Recompute day totals — leftovers contribute their macros.
+  // Recompute day totals — leftovers contribute their macros (fiber
+  // included so the day-total fiber cell survives the distribution pass —
+  // ENG-1150).
   for (const day of working) {
     day.totals = day.meals.reduce(
       (acc, m) => ({
@@ -149,8 +151,9 @@ export function distributeLeftovers(
         protein: acc.protein + (m.protein ?? 0),
         carbs: acc.carbs + (m.carbs ?? 0),
         fat: acc.fat + (m.fat ?? 0),
+        fiberG: acc.fiberG + (m.fiberG ?? 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
     );
   }
 
@@ -207,7 +210,7 @@ export function markLeftoversOnSwap(
     }
   }
 
-  // Recompute totals on changed days.
+  // Recompute totals on changed days (fiber included — ENG-1150).
   for (const day of working) {
     day.totals = day.meals.reduce(
       (acc, m) => ({
@@ -215,8 +218,9 @@ export function markLeftoversOnSwap(
         protein: acc.protein + (m.protein ?? 0),
         carbs: acc.carbs + (m.carbs ?? 0),
         fat: acc.fat + (m.fat ?? 0),
+        fiberG: acc.fiberG + (m.fiberG ?? 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
     );
   }
 
