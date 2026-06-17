@@ -9,7 +9,8 @@ import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
 import {
   calculateBMR,
   calculateTDEE,
@@ -52,6 +53,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     setProfileMeasurementSystem,
     nutritionByDay,
     savedRecipesForLibrary,
+    // ENG-125: after the goal/pace editor saves, re-read the profile so the
+    // Daily Targets row summary + the in-page editor's `displayTargets`
+    // update in place (mirrors Targets.tsx's onSaved → refreshProfileBasics).
+    refreshProfileBasics,
     // Goals & Targets surface (Pass 6 mobile parity, 2026-04-18) —
     // shown as quick-glance rows beneath Daily Targets so users can
     // see current Caffeine + Alcohol limits without leaving Profile.
@@ -104,6 +109,43 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   const [isEditingTargets, setIsEditingTargets] = useState(false);
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
   const [activityAdjustPref, setActivityAdjustPref] = useState(preferActivityAdjustedCalories);
+
+  // ENG-125: wire the previously-dead "Daily Targets" settings row to the
+  // targets editor, matching mobile (`apps/mobile/app/profile.tsx` body-stats
+  // row → GoalPaceEditorSheet, gated on `goal_editor`). When the flag is on,
+  // the row opens the shared "Edit goal & pace" dialog — the same editor the
+  // Targets surface uses (`src/app/components/Targets.tsx`). When off, it falls
+  // back to the in-page manual Macro Calculator editor (switch to the targets
+  // tab + enter edit mode + scroll into view) so the row is never dead in
+  // either flag state. The fibre input stays on the manual editor (ENG-846 —
+  // out of scope here; the dialog routes there via `onCustomiseMacros`).
+  const goalEditorEnabled = isFeatureEnabled("goal_editor");
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+
+  /** Reveal + arm the in-page manual Macro Calculator editor. Used as the
+   *  flag-off fallback for the Daily Targets row and as the dialog's
+   *  "Customise macros" (fibre / per-macro) handoff. */
+  const openManualTargetsEditor = () => {
+    setActiveTab("targets");
+    setIsEditingTargets(true);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("daily-targets-editor")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  };
+
+  /** Daily Targets row tap. Flag on → shared goal/pace dialog; flag off →
+   *  in-page manual editor. Either way the row now does something. */
+  const openDailyTargets = () => {
+    if (goalEditorEnabled) {
+      setGoalEditorOpen(true);
+    } else {
+      openManualTargetsEditor();
+    }
+  };
 
   const [age, setAge] = useState<number | null>(null);
   const [weight, setWeight] = useState<number | null>(null);
@@ -510,8 +552,16 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       <div className="mb-4">
         <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Settings</h3>
         <div className="bg-card rounded-xl border border-border overflow-hidden card-slab">
-          {/* Daily Targets Row */}
-          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+          {/* Daily Targets Row — ENG-125. Was a dead `<div>` (cursor-pointer
+              styling, no handler). Now a real button that opens the targets
+              editor, matching the mobile Profile body-stats → editor path. */}
+          <button
+            type="button"
+            data-testid="profile-daily-targets-row"
+            onClick={openDailyTargets}
+            aria-label="Edit your daily targets"
+            className="w-full text-left flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          >
             <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.calories className="w-4 h-4" />
             </IconBox>
@@ -520,7 +570,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
               <p className="text-[11px] text-muted-foreground truncate mt-0.5">{(() => { const t = normalizeMacroTargets(nutritionTargets); return `${t.calories.toLocaleString()} kcal • ${t.protein}P / ${t.carbs}C / ${t.fat}F`; })()}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
-          </div>
+          </button>
 
           {/* Goals & Targets parity rows (Pass 6, 2026-04-18) — mobile
               has a dedicated "Goals & Targets" section with these as
@@ -760,7 +810,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       </div>
 
       {activeTab === "targets" && (
-        <div className="space-y-8">
+        // ENG-125: scroll anchor for the Daily Targets row's flag-off
+        // fallback (openManualTargetsEditor scrolls here + arms edit mode).
+        <div id="daily-targets-editor" className="space-y-8 scroll-mt-4">
           {/* Macro Calculator */}
           <div className="bg-card border border-border rounded-xl p-4 card-slab">
             <div className="flex items-center gap-2 mb-6">
@@ -1190,6 +1242,25 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           </div>
         </div>
       )}
+
+      {/* ENG-125: the shared "Edit goal & pace" editor, opened from the Daily
+          Targets row when `goal_editor` is on. Same component + shared logic
+          (`useGoalPaceEditorDialog` → `@/lib/nutrition/goalEditorPace`) the
+          Targets surface uses, so web + mobile can't drift. On save, refresh
+          the AppData targets so the row summary + in-page editor reflect the
+          recompute in place. Fibre + per-macro overrides live on the manual
+          editor (ENG-846) — the "Customise macros" link routes there. */}
+      <GoalPaceEditorDialog
+        open={goalEditorOpen}
+        onOpenChange={setGoalEditorOpen}
+        onSaved={() => {
+          void refreshProfileBasics();
+        }}
+        onCustomiseMacros={() => {
+          setGoalEditorOpen(false);
+          openManualTargetsEditor();
+        }}
+      />
     </div>
   );
 });
