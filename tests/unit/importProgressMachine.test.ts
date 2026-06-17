@@ -15,6 +15,7 @@ import {
   canTransition,
   DISPLAY_STAGES,
   importJobIdForUrl,
+  importJobIdForImage,
   isActiveStage,
   isRetryableError,
   isTerminalStage,
@@ -167,5 +168,29 @@ describe("importProgressMachine — deterministic job id (dedupe)", () => {
   it("differs by kind and by url", () => {
     expect(importJobIdForUrl("url", "x")).not.toBe(importJobIdForUrl("caption", "x"));
     expect(importJobIdForUrl("url", "a")).not.toBe(importJobIdForUrl("url", "b"));
+  });
+
+  // ENG-735 — bulk photo import: one job per photo, deduped by local handle.
+  it("derives the same image id for the same photo handle (dup-pick dedupe)", () => {
+    expect(importJobIdForImage("file:///photo-1.jpg")).toBe(
+      importJobIdForImage("file:///photo-1.jpg"),
+    );
+  });
+
+  it("derives a distinct image id per photo so each photo is its own job", () => {
+    expect(importJobIdForImage("file:///photo-1.jpg")).not.toBe(
+      importJobIdForImage("file:///photo-2.jpg"),
+    );
+  });
+
+  it("normalises case + whitespace on the image handle too", () => {
+    expect(importJobIdForImage("  File:///Photo.JPG  ")).toBe(
+      importJobIdForImage("file:///photo.jpg"),
+    );
+  });
+
+  it("namespaces image ids under the image kind (no collision with url ids)", () => {
+    expect(importJobIdForImage("x")).toBe("import:image:x");
+    expect(importJobIdForImage("x")).not.toBe(importJobIdForUrl("url", "x"));
   });
 });
