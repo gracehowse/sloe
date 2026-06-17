@@ -45,6 +45,20 @@ describe("matchGenericFood — F-73 follow-up", () => {
     expect(matchGenericFood("plain flour")?.id).toBe("flour");
   });
 
+  it("ENG-1083: canned/tinned tomatoes map to the no-salt entry, not raw tomato", () => {
+    // The no-salt-added canned entry — distinct from raw "tomato".
+    expect(matchGenericFood("canned tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    expect(matchGenericFood("tinned tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    expect(matchGenericFood("chopped tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    expect(matchGenericFood("canned chopped tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    expect(matchGenericFood("no salt added canned tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    expect(matchGenericFood("no-salt-added canned tomatoes")?.id).toBe("canned-tomatoes-no-salt");
+    // The bare "tomato"/"tomatoes" query still lands the RAW entry — the
+    // canned aliases must not steal it.
+    expect(matchGenericFood("tomato")?.id).toBe("tomato");
+    expect(matchGenericFood("tomatoes")?.id).toBe("tomato");
+  });
+
   it("does NOT collapse non-plain flours onto the all-purpose entry", () => {
     // self-raising / bread / wholemeal flours differ — must fall through
     expect(matchGenericFood("self-raising flour")).toBeNull();
@@ -145,5 +159,17 @@ describe("GENERIC_FOODS table integrity", () => {
     // enriched); micros baked from Foundation #789890 (kcal Δ 0.5%).
     const flour = GENERIC_FOODS.find((f) => f.id === "flour")!;
     expect(flour.per100g).toMatchObject({ calories: 364, protein: 10.3, carbs: 76.3, fat: 1.0, sodiumMg: 2 });
+  });
+
+  it("the ENG-1083 no-salt canned-tomato entry carries its low-sodium per-100g", () => {
+    // Source: USDA SR Legacy #170138 (canned, packed in tomato juice, no salt
+    // added). The defining property is the low sodium (10 mg/100g) vs the
+    // salted canned counterpart (#170051 at 115 mg). Locked against silent drift.
+    const canned = GENERIC_FOODS.find((f) => f.id === "canned-tomatoes-no-salt")!;
+    expect(canned).toBeDefined();
+    expect(canned.per100g).toMatchObject({ calories: 16, protein: 0.8, carbs: 3.5, fat: 0.3, sodiumMg: 10 });
+    // It must read as a low-sodium food, not a default canned (salted) row.
+    expect(canned.per100g.sodiumMg).toBeLessThan(50);
+    expect(canned.subtitle).toMatch(/no salt added/i);
   });
 });

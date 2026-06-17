@@ -199,6 +199,30 @@ export const GENERIC_FOODS: ReadonlyArray<GenericFood> = [
     subtitle: "Raw",
   },
   {
+    // USDA SR Legacy #170138 "Tomatoes, red, ripe, canned, packed in tomato
+    // juice, no salt added" per 100g. The no-salt counterpart to the salted
+    // canned row (#170051, 115 mg Na/100g) — sodium here is 10 mg/100g, so
+    // logging tinned tomatoes for a recipe doesn't silently spike the day's
+    // salt. Aliases are distinct from the raw "tomato" entry (table-wide
+    // alias-uniqueness is pinned by genericFoods.test.ts). ENG-1083.
+    id: "canned-tomatoes-no-salt",
+    name: "Canned tomatoes (no salt added)",
+    aliases: [
+      "canned tomatoes",
+      "tinned tomatoes",
+      "no salt added canned tomatoes",
+      "no-salt-added canned tomatoes",
+      "no salt canned tomatoes",
+      "canned chopped tomatoes",
+      "chopped tomatoes",
+      "tinned chopped tomatoes",
+    ],
+    servingG: 200,
+    servingLabel: "1/2 can (200g)",
+    per100g: { calories: 16, protein: 0.8, carbs: 3.5, fat: 0.3, fiberG: 1.9, sugarG: 2.6, sodiumMg: 10 },
+    subtitle: "Canned · no salt added",
+  },
+  {
     id: "cucumber",
     name: "Cucumber",
     aliases: ["cucumber", "cucumbers", "raw cucumber"],
