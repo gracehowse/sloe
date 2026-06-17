@@ -169,7 +169,7 @@ export function NorthStarBlock({
         )}
       >
         <Sparkles aria-hidden width={18} height={18} className="shrink-0 text-primary-solid" />
-        <span className="flex-1 text-[14px] text-foreground-secondary">
+        <span className="flex-1 text-[13px] text-foreground-secondary">
           Pick a few recipes — we'll suggest from there.
         </span>
         <ChevronRight aria-hidden width={18} height={18} className="shrink-0 text-foreground-secondary" />
