@@ -244,6 +244,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-901 — Figma `284:2` inline trust row (· separators, Lock/Calendar
   // glyphs) instead of pill chips on paywall/pricing. Default-on; off → pills.
   "paywall_trust_inline_v1",
+  // ENG-901 — web upgrade dialog Sloe Pro hero + inline trust strip. Default-on.
+  "paywall_upgrade_dialog_sloe_v1",
+  // ENG-889 — coach line renders inside the Today hero card (Figma `654:2`).
+  "today_coach_in_hero_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

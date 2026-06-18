@@ -369,6 +369,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_planned_empty_state",
   // ENG-901 — Figma `284:2` inline trust row on paywall. Default-on; off → pills.
   "paywall_trust_inline_v1",
+  // ENG-889 — coach line inside Today hero card (Figma `654:2`). Default-on.
+  "today_coach_in_hero_v1",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

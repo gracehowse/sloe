@@ -77,6 +77,8 @@ export interface TodayHeroProps {
    *  learning state lives on Progress). The underlying TDEE logic is
    *  unchanged. */
   tdeeLearnDays?: number;
+  /** ENG-889 — coach line rendered inside the hero ring card. */
+  coachLine?: React.ReactNode;
 }
 
 export function TodayHero(props: TodayHeroProps) {
@@ -104,6 +106,7 @@ export function TodayHero(props: TodayHeroProps) {
     // stability but no longer rendered on Today — the Adaptive-TDEE line was
     // removed to match Figma `654:2` (2026-06-08). The learning state lives
     // on Progress.
+    coachLine,
   } = props;
 
   // ENG-753 — "On track" pill below the ring (prototype screens-web.jsx
@@ -139,6 +142,7 @@ export function TodayHero(props: TodayHeroProps) {
         textTertiaryColor={textTertiaryColor}
         onPressWhy={onPressWhy}
         onPressStatusChip={onPressStatusChip}
+        coachLine={coachLine}
       />
 
       {showPills ? (

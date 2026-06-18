@@ -76,6 +76,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressWhy,
     onPressStatusChip,
     pulse,
+    coachLine,
   } = props;
   return {
     consumed,
@@ -89,6 +90,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressWhy,
     onPressStatusChip,
     pulse,
+    coachLine,
   };
 }
 
@@ -111,6 +113,7 @@ function DesktopHeroStats({
   // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
   pulse,
   onPressStatusChip,
+  coachLine,
 }: TodayHeroStatsProps) {
   // Stat row now renders on EMPTY days too (web ring parity 2026-06-10) — the
   // empty page mirrors a populated day with honest zeros. Gated on a real
@@ -232,6 +235,8 @@ function DesktopHeroStats({
             </span>
           </div>
         ) : null}
+
+        {coachLine}
 
         <button
           type="button"

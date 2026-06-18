@@ -5366,6 +5366,17 @@ export default function TrackerScreen() {
                 after mount fades 0.85 → 1.0 over 200ms; subsequent
                 focuses are no-ops (latched via `hasMountedFocusRef`). */}
             <ReAnimated.View style={heroEntrance.style}>
+              {(() => {
+                const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
+                const heroCoachLine =
+                  coachInHero && !activeFastStart && isToday && remaining > 0 ? (
+                    <TodayDeficitInsight
+                      remaining={remaining}
+                      selectedDate={selectedDate}
+                      byDay={byDay}
+                    />
+                  ) : null;
+                return (
               <TodayHero
                 consumed={totals.calories}
                 goal={effectiveCalorieGoal}
@@ -5394,7 +5405,10 @@ export default function TrackerScreen() {
                   dateKeyFromDate(new Date()),
                 )}
                 onPressStatusChip={() => setWhySheetOpen(true)}
+                coachLine={heroCoachLine ?? undefined}
               />
+                );
+              })()}
             </ReAnimated.View>
 
             {/* Single context block — priority order: fasting >
@@ -5404,6 +5418,18 @@ export default function TrackerScreen() {
                 one prompt above the meals". */}
             <ReAnimated.View style={contextEntrance.style}>
             {(() => {
+              if (isFeatureEnabled("today_coach_in_hero_v1")) {
+                if (activeFastStart) {
+                  return (
+                    <TodayFastingPill
+                      startedAt={activeFastStart}
+                      nowTick={fastingTick}
+                      onPress={() => router.push("/fasting")}
+                    />
+                  );
+                }
+                return null;
+              }
               // 1. Active fast wins outright.
               if (activeFastStart) {
                 return (

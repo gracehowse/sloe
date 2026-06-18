@@ -2818,6 +2818,21 @@ export const NutritionTracker = memo(function NutritionTracker({
           comes from `src/lib/copy/today.ts`. AI-estimated-count chip
           surfaces inline as a caption inside the hero block via
           `aiSourcedCount` (Phase 4). */}
+      {(() => {
+        const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
+        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
+        const coachLineEl =
+          !activeFast &&
+          viewMode === "day" &&
+          selectedDateKey === todayKey() &&
+          remainingToday > 0 ? (
+            <TodayDeficitInsight
+              remaining={remainingToday}
+              selectedDate={selectedDate}
+              byDay={nutritionByDay}
+            />
+          ) : null;
+        return (
       <TodayHeroStats
         loggedKcal={Math.round(totals.calories)}
         targetKcal={Math.round(effectiveCalorieTarget)}
@@ -2842,13 +2857,27 @@ export const NutritionTracker = memo(function NutritionTracker({
         // replacing the old adaptiveTdeeConfidence-tier proxy.
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
         onPressStatusChip={() => setWhyThisNumberOpen(true)}
+        coachLine={coachInHero ? coachLineEl : undefined}
       />
+        );
+      })()}
 
       {/* Single context block — priority order: fasting > deficit.
           Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
           from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
           2026-06-17); logging shortcuts live in the Log sheet. */}
       {(() => {
+        if (isFeatureEnabled("today_coach_in_hero_v1")) {
+          if (activeFast) {
+            return (
+              <TodayFastingPill
+                activeFastElapsedLabel={fastingElapsedLabel}
+                fastingOptedIn={fastingOptedIn}
+              />
+            );
+          }
+          return null;
+        }
         if (activeFast) {
           return (
             <TodayFastingPill

@@ -29,11 +29,16 @@ void React;
 type TrackCall = { event: string; payload?: Record<string, unknown> };
 const trackCalls: TrackCall[] = [];
 
-vi.mock("../../src/lib/analytics/track.ts", () => ({
-  track: (event: string, payload?: Record<string, unknown>) => {
-    trackCalls.push({ event, payload });
-  },
-}));
+vi.mock("../../src/lib/analytics/track.ts", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/analytics/track.ts")>();
+  return {
+    ...actual,
+    track: (event: string, payload?: Record<string, unknown>) => {
+      trackCalls.push({ event, payload });
+    },
+  };
+});
 
 // We don't exercise real Supabase in these tests — the checkout path
 // below stops at the `getSession` call. Return no session so the
@@ -87,15 +92,16 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
 
   it("renders the Pro hero pitch, six feature rows, and the 'Most popular' Pro pricing card", () => {
     render(<Harness />);
-    // Hero copy — single Pro pitch.
+    // Hero copy — Sloe Pro pitch (ENG-901, default-on).
     expect(
-      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
+      screen.getByRole("heading", { name: /Cook what you love\.\s*Still reach your goals\./i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Snap a photo or say what you ate\. Pro handles the rest/i,
+        /Snap a photo or say what you ate — Pro handles the rest/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("Secure checkout")).toBeInTheDocument();
 
     // The six Pro feature rows — merged from prior Variant A + B.
     expect(screen.getByText("AI photo meal recognition")).toBeInTheDocument();
@@ -144,7 +150,7 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     });
     // The hero title should be gone after close.
     expect(
-      screen.queryByText(/Log faster\. Let the AI do the work\./i),
+      screen.queryByText(/Cook what you love\./i),
     ).not.toBeInTheDocument();
   });
 
@@ -205,7 +211,7 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
   it("legacy 'base' tier users get the same Pro pitch (PR-01: no separate Variant B)", () => {
     render(<Harness userTier="base" from="settings" />);
     expect(
-      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
+      screen.getByRole("heading", { name: /Cook what you love\.\s*Still reach your goals\./i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Upgrade to Pro · /i }),
@@ -242,7 +248,7 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
   it("PR-01 (2026-04-28): Pro-gated trigger surface no longer shows the 'Voice/photo require Pro, Base unlocks the rest' note", () => {
     render(<Harness userTier="free" from="voice_log" />);
     expect(
-      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
+      screen.getByRole("heading", { name: /Cook what you love\.\s*Still reach your goals\./i }),
     ).toBeInTheDocument();
     // The intermediate-step note is gone — Pro is the single tier
     // that unlocks voice and photo, plus everything else.
