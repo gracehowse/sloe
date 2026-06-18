@@ -1,14 +1,14 @@
 # Income projection — Suppr
 
-**Last refresh:** 2026-05-11
-**Source of truth for finance:** Notion → Operations & finance (this doc is the working model; mirror to Notion's "Revenue & earnings projection" section)
-**Currency basis:** GBP; USD conversions at $1.27/£ unless noted
+**Last refresh:** 2026-06-18
+**Source of truth for finance:** Linear doc [**Suppr Ops — vendors & runway**](https://linear.app/suppr/document/suppr-ops-vendors-and-runway-8f0de8bd5070) (burn) + this file (revenue model). Notion retired 2026-06-18.
+**Currency basis:** **GBP for burn** (Revolut/card export). **USD for vendor invoice amounts** (Claude, Cursor, etc. charge in USD; they land on the card in GBP at statement FX). Do not convert peak GBP burn back to USD for planning — that double-counts FX.
 
 ---
 
 ## Why this exists
 
-The previous projection (Notion → Operations & finance, 2026-04-20) used **headline pricing** as revenue per sub. That is the single biggest error in any consumer-SaaS model: it ignores VAT (20% UK/EU, inclusive) and platform fees (Stripe ~3%, Apple 15% with SBP / 30% without). The 2026-04-20 model was **~53% optimistic** on break-even (55 subs vs actual ~84). This refresh fixes that, adds churn, and replaces the single-point projection with three scenarios.
+The previous projection (Notion → Operations & finance, 2026-04-20) used **headline pricing** as revenue per sub. That is the single biggest error in any consumer-SaaS model: it ignores VAT (20% UK/EU, inclusive) and platform fees (Stripe ~3%, Apple 15% with SBP / 30% without). The 2026-04-20 model was **~53% optimistic** on break-even at headline pricing (55 subs vs ~84 at Apr burn). **As of Jun 2026, planning burn is ~£388/mo (card) → ~124 subs** at blended net £3.14/sub.
 
 ---
 
@@ -21,8 +21,9 @@ The previous projection (Notion → Operations & finance, 2026-04-20) used **hea
 | Stripe fees | 2.9% + £0.20 per UK card transaction | Stripe published rate |
 | Apple commission | 15% under Small Business Program (SBP); 30% standard year-1; 15% year-2+ same sub | Apple Developer terms |
 | **Apple SBP enrolment** | **OPEN — confirm in App Store Connect → Agreements, Tax, Banking** | If lapsed, mobile net drops ~14% per sub |
-| Monthly burn | ~$334 USD = ~£262 GBP | Notion runway snapshot (2026-04-20) |
-| Burn composition | 73% Claude, 18% Cursor, 6% OpenAI, ~3% other | Notion runway snapshot |
+| **Monthly burn (planning)** | **~£388/mo card** (~**£395/mo all-in**) | Revolut peak period 15 May–16 Jun; add ~£6.50/mo Apple $99 (other card, paid 13 Apr) |
+| Monthly burn (legacy) | ~£262/mo (~$334 USD Apr Notion snapshot) | Superseded — pre Revolut export refresh |
+| Burn composition (YTD invoices) | **53% Claude · 31% Cursor · 6% OpenAI · 5% Supabase · 5% other** | Claude + Cursor = **~84%**; Supabase cancelled Apr 2026 |
 | Platform mix assumption | 60% mobile / 40% web | Unvalidated — revisit after 90d |
 | Billing-period mix | Mobile: 60% annual / 40% monthly (annual is default). Web: 70% monthly / 30% annual (monthly is default) | `docs/decisions/2026-04-19-pricing-default-billing-period-divergence.md` |
 | Tier mix | 70% Base / 30% Pro | Conservative; consumer SaaS norm |
@@ -56,16 +57,18 @@ Weights: (mobile 60% × annual 60% + mobile 60% × monthly 40% + web 40% × mont
 
 ## Break-even (recomputed)
 
-Target: cover £262/mo burn at blended £3.14/sub.
+Target: cover burn at blended £3.14/sub.
 
 | Mix | Net £/sub/mo | Paying subs needed |
 |---|---|---|
-| Pro mobile-annual only (worst-case net) | £3.54 | ~74 |
-| Pro web-monthly only (best-case net) | £6.23 | ~42 |
-| **Realistic blended (default mix)** | **£3.14** | **~84** |
-| Same blended, with 8%/mo churn buffer | £3.14 | ~91 net-active steady-state |
+| **Current (~£388/mo card, May 2026)** | **£3.14** | **~124** |
+| **All-in (~£395/mo incl. Apple)** | **£3.14** | **~126** |
+| Legacy (~£262/mo, Apr snapshot) | £3.14 | ~84 |
+| Pro mobile-annual only (worst-case net) | £3.54 | ~110 at £388 burn |
+| Pro web-monthly only (best-case net) | £6.23 | ~62 at £388 burn |
+| Same blended, with 8%/mo churn buffer | £3.14 | ~135 net-active steady-state |
 
-For comparison: previous Notion model said 55 subs. **Real number is ~84.** Difference is entirely VAT + platform fees.
+For comparison: previous Notion model said 55 subs at headline pricing; Apr snapshot was ~84 at £262 burn.
 
 ---
 
@@ -80,42 +83,42 @@ Consumer fitness/nutrition apps see **7–10%/mo gross churn pre-PMF**. Using **
 
 ## 12-month projection — three scenarios
 
-All use blended net £3.14/sub/mo and churn 8%/mo. Free signups cumulative.
+All use blended net £3.14/sub/mo, churn 8%/mo, and **~£388/mo card burn**. Free signups cumulative. Gap column = Net MRR minus £388 burn.
 
 ### Slow case — 1.5% conversion, weak launch traction
 
-| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs $334 burn |
+| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs £388 burn |
 |---|---|---|---|---|---|
-| 1 | 100 | 2 | 2 | £6 | -$326 |
-| 3 | 500 | 6 | 14 | £44 | -$278 |
-| 6 | 1,500 | 15 | 45 | £141 | -$155 |
-| 12 | 4,000 | 30 | 110 | £345 | **+$104** |
+| 1 | 100 | 2 | 2 | £6 | -£382 |
+| 3 | 500 | 6 | 14 | £44 | -£344 |
+| 6 | 1,500 | 15 | 45 | £141 | -£247 |
+| 12 | 4,000 | 30 | 110 | £345 | **-£43** |
 
-Break-even ~Month 11.
+Break-even ~Month 13+ (110 subs × £3.14 = £345 MRR still below £388 burn).
 
 ### Base case — 3% conversion, moderate MFP-exodus tailwind
 
-| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs $334 burn |
+| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs £388 burn |
 |---|---|---|---|---|---|
-| 1 | 300 | 9 | 9 | £28 | -$298 |
-| 3 | 1,200 | 27 | 62 | £195 | -$86 |
-| 6 | 4,000 | 60 | 170 | £534 | **+$415** |
-| 12 | 12,000 | 120 | 420 | £1,319 | **+$1,341** |
+| 1 | 300 | 9 | 9 | £28 | -£360 |
+| 3 | 1,200 | 27 | 62 | £195 | -£193 |
+| 6 | 4,000 | 60 | 170 | £534 | **+£146** |
+| 12 | 12,000 | 120 | 420 | £1,319 | **+£931** |
 
-Break-even ~Month 5.
+Break-even ~Month 6 (was ~Month 5 at Apr £262 burn).
 
 ### MFP-capture upside — 4% conversion, exodus 2026-05-03 captured aggressively
 
 MFP mass-exodus on 2026-05-03 (per memory) is the launch tailwind. Refugees arrive habit-already-formed (calorie-tracking muscle memory). Channels: Reddit (r/loseit, r/MyFitnessPal), TikTok/Instagram "MFP refugee" content.
 
-| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs $334 burn |
+| Month | Free cumulative | Gross paid adds | Active paid | Net MRR (£) | vs £388 burn |
 |---|---|---|---|---|---|
-| 1 | 800 | 32 | 32 | £100 | -$207 |
-| 3 | 3,500 | 108 | 205 | £644 | **+$484** |
-| 6 | 10,000 | 180 | 560 | £1,758 | **+$1,899** |
-| 12 | 30,000 | 240 | 1,300 | £4,082 | **+$4,850** |
+| 1 | 800 | 32 | 32 | £100 | -£288 |
+| 3 | 3,500 | 108 | 205 | £644 | **+£256** |
+| 6 | 10,000 | 180 | 560 | £1,758 | **+£1,370** |
+| 12 | 30,000 | 240 | 1,300 | £4,082 | **+£3,694** |
 
-Break-even ~Month 2.
+Break-even ~Month 3 (was ~Month 2 at Apr £262 burn).
 
 ---
 
@@ -136,7 +139,13 @@ Example: 10 mobile-annual Pro subs in one month = **£425 cash upfront** vs only
 
 ## Sensitivity to Claude usage
 
-Claude = 73% of today's burn (~$200 Claude Max + ~$45 extras). Each $50/mo of variable Claude spend = **~13 extra blended subs at break-even** ($50 ÷ $1.27 ÷ £3.14). Holding Claude extras flat until MRR lands is high-leverage — every $50/mo saved is roughly a month of break-even slack.
+Claude ≈53% and Cursor ≈31% of visible vendor spend (Jan–18 Jun 2026). Each **£50/mo** of extra AI spend ≈ **~16 extra blended subs** at break-even (£50 ÷ £3.14).
+
+---
+
+## Linear ops sync
+
+Burn snapshot lives in Linear doc **Suppr Ops — vendors & runway**. Refresh when monthly burn changes materially (>10%). Vercel **$27 YTD** = two domain renewals (`suppr-club.com` Apr, `gosloe.com` 2 Jun). Apple **$99/yr** paid 13 Apr 2026 on a separate card — count in infra even when absent from card export.
 
 ---
 
@@ -160,14 +169,3 @@ Claude = 73% of today's burn (~$200 Claude Max + ~$45 extras). Each $50/mo of va
 3. **Apple SBP enrolment** — **OPEN — confirm in App Store Connect.** Drops mobile-annual net 14% if lapsed.
 4. **Conversion benchmark (3% base)** — re-baseline at 30 paying users. Photo-log + voice-log moats may lift it; MFP-exodus tailwind should lift it.
 5. **Churn 8%/mo pre-PMF** — first signal at week 4 of TestFlight cohort. Revise after first 30-day cohort retention measured.
-
----
-
-## Notion mirror
-
-This doc is the canonical working model. Mirror these into Notion → Operations & finance → "Revenue & earnings projection" when next editing:
-
-- Replace existing "Break-even math" block with the **Net revenue per sub** + **Break-even (recomputed)** tables above.
-- Replace existing "12-month projection (placeholder)" with the three scenarios.
-- Add new sections: **Churn**, **Cash from annual prepay**, **Open assumptions to validate**.
-- Bump "Last updated" on the Runway snapshot from 2026-04-20 to 2026-05-11.
