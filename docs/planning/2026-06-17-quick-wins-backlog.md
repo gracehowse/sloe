@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** none — next slice: ENG-889 L5 dark verify (`314:2`) or next Core-5 partial from migration tracker.
+**In flight:** batch 5 (`agent/cursor/batch-5-macro-icons-fatsecret-tier`) — ENG-986 + ENG-1146 CI slice.
 
 ## Merge history (reference)
 
@@ -98,8 +98,8 @@ individual partial rows only.
 | **ENG-1168** | Silent-deferral re-sweep | **Done** (#471) | Linear Done 2026-06-18 |
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
-| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
-| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | Open | Confirm still unrendered before delete PR |
+| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | **Done** (batch 5) | `src/lib/macroIcons.ts` + platform lucide maps; tests pin Figma glyphs |
+| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Linear Done 2026-06-17 |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
 

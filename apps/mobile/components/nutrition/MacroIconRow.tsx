@@ -2,16 +2,12 @@ import React from "react";
 import { Text, View, type StyleProp, type ViewStyle, type TextStyle } from "react-native";
 import {
   Clock,
-  Droplet,
-  Dumbbell,
-  Flame,
-  Sprout,
-  Wheat,
   type LucideIcon,
 } from "lucide-react-native";
 
 import { MacroColors } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 
 /**
  * MacroIconRow — canonical at-a-glance macro display.
@@ -126,7 +122,7 @@ export function MacroIconRow({
     >
       {typeof kcal === "number" && Number.isFinite(kcal) ? (
         <Chunk
-          Icon={Flame}
+          Icon={MACRO_ICONS.calories}
           iconColor={MacroColors.calories}
           value={`${Math.round(kcal)} kcal`}
           textColor={textColor}
@@ -137,7 +133,7 @@ export function MacroIconRow({
       ) : null}
       {typeof protein === "number" && Number.isFinite(protein) ? (
         <Chunk
-          Icon={Dumbbell}
+          Icon={MACRO_ICONS.protein}
           iconColor={MacroColors.protein}
           value={`${Math.round(protein)}g`}
           letter={showMacroLetters ? "P" : undefined}
@@ -149,7 +145,7 @@ export function MacroIconRow({
       ) : null}
       {typeof carbs === "number" && Number.isFinite(carbs) ? (
         <Chunk
-          Icon={Wheat}
+          Icon={MACRO_ICONS.carbs}
           iconColor={MacroColors.carbs}
           value={`${Math.round(carbs)}g`}
           letter={showMacroLetters ? "C" : undefined}
@@ -161,7 +157,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fat === "number" && Number.isFinite(fat) ? (
         <Chunk
-          Icon={Droplet}
+          Icon={MACRO_ICONS.fat}
           iconColor={MacroColors.fat}
           value={`${Math.round(fat)}g`}
           letter={showMacroLetters ? "F" : undefined}
@@ -173,7 +169,7 @@ export function MacroIconRow({
       ) : null}
       {typeof fiber === "number" && Number.isFinite(fiber) && fiber > 0 ? (
         <Chunk
-          Icon={Sprout}
+          Icon={MACRO_ICONS.fiber}
           iconColor={MacroColors.fiber}
           value={`${Math.round(fiber * 10) / 10}g`}
           textColor={textColor}

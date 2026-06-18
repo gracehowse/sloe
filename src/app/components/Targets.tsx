@@ -37,7 +37,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Dumbbell, Wheat, Droplet, Sprout, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { MACRO_ICONS } from "../../lib/macroIconsLucide";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -296,7 +297,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "protein",
         label: "Protein",
-        Icon: Dumbbell,
+        Icon: MACRO_ICONS.protein,
         current: todayMacros.protein,
         target: targets.protein,
         fillVar: "var(--macro-protein)",
@@ -313,7 +314,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         // the *target* fibre value as label arbiter so the label doesn't
         // flicker to "Carbs" while no fibre has been logged yet (cf. #8).
         label: carbsLabel(targets.fiber, netCarbsLensEnabled),
-        Icon: Wheat,
+        Icon: MACRO_ICONS.carbs,
         current: netCarbsForRow(todayMacros.carbs, todayMacros.fiber, netCarbsLensEnabled),
         target: netCarbsForRow(targets.carbs, targets.fiber, netCarbsLensEnabled),
         fillVar: "var(--macro-carbs)",
@@ -321,7 +322,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fat",
         label: "Fat",
-        Icon: Droplet,
+        Icon: MACRO_ICONS.fat,
         current: todayMacros.fat,
         target: targets.fat,
         fillVar: "var(--macro-fat)",
@@ -329,7 +330,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       {
         key: "fiber",
         label: "Fiber",
-        Icon: Sprout,
+        Icon: MACRO_ICONS.fiber,
         current: todayMacros.fiber,
         target: targets.fiber,
         fillVar: "var(--success)",
