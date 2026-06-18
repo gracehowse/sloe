@@ -71,7 +71,7 @@ commit before push.
 | **ENG-897** | Signup email-step pixel (`296:33`) | S | **On branch** + test pin | `/login`/`/signup` web-drive redirects when session exists — verify in incognito or signed-out |
 | **ENG-898** | Recent imports + caption-preview trust | S | **Shipped code** — shared `recentImports.ts`, web list, mobile refactor | Empty list hides section (correct); caption banner already live |
 | **ENG-889** | Today S5 Fresh start | S | **Verified web + iOS** — Fresh start chip de-tint, honest zeros, coach line | Populated-account wall (optional) |
-| **ENG-1100** | Plan partial-day canonical slots (mobile) | S | **Shipped code** — `orderedPlanDaySlotEntries` + 3 unit tests | Web `EmptyMealSlotRow` extract still open |
+| **ENG-1100** | Plan partial-day canonical slots | S | **Shipped (mobile)** — `orderedPlanDaySlotEntries` + 3 unit tests; **web** — `EmptyMealSlotRow` extract (`empty-meal-slot-row.tsx`) wired Today + Plan | Mobile row extract still open |
 
 ### Batch 3 visual verify (2026-06-18)
 
