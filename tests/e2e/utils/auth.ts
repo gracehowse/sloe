@@ -39,6 +39,11 @@ export function resolveVisualGoldenCredentials(): VisualGoldenCredentials | null
   return null;
 }
 
+/** Premium Today matrix seeding (`scripts/e2e-seed-today-premium-matrix.ts`) needs service role. */
+export function hasSupabaseServiceRoleForSeed(): boolean {
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+}
+
 type LoginCredentials = {
   email: string;
   password: string;

@@ -823,8 +823,14 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             </div>
 
             <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-foreground">Units</label>
+              <label
+                htmlFor="profile-units-select"
+                className="block mb-2 text-sm font-medium text-foreground"
+              >
+                Units
+              </label>
               <select
+                id="profile-units-select"
                 value={measurementSystem}
                 onChange={(e) => setMeasurementSystem(e.target.value as "metric" | "imperial")}
                 className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -846,8 +852,14 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
                 />
               </div>
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">Sex</label>
+                <label
+                  htmlFor="profile-sex-select"
+                  className="block mb-2 text-sm font-medium text-foreground"
+                >
+                  Sex
+                </label>
                 <select
+                  id="profile-sex-select"
                   value={sex}
                   onChange={(e) => setSex(e.target.value as "male" | "female" | "unspecified")}
                   className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
