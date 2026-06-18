@@ -1,3 +1,5 @@
+"use client";
+
 import { Calendar, Lock, ShieldCheck } from "lucide-react";
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import {
