@@ -61,6 +61,8 @@ If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 | Variable | Purpose |
 |----------|---------|
 | `FATSECRET_CONSUMER_KEY` + `FATSECRET_CLIENT_SECRET` (or legacy `FATSECRET_CONSUMER_SECRET`) | FatSecret Platform API — search + verify ([FatSecret](https://platform.fatsecret.com)) |
+| `FATSECRET_TIER` | `premier` on Vercel prod+preview (ENG-1146). Code defaults to `basic` when unset — Premier-only endpoints silently fail. |
+| `SUPADATA_KEY` | Server-only recipe-import acquisition ([Supadata](https://supadata.ai)). No public prefix. Import degrades to legacy scrape when unset; see `docs/integrations/supadata.md`. |
 | USDA FDC env (see `serverEnv.ts`) | USDA FoodData Central |
 | `OPENAI_API_KEY` | Recipe import from image (`/api/recipe-import/image`) |
 

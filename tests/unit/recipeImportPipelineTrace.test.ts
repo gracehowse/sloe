@@ -17,6 +17,7 @@ vi.mock("@/lib/analytics/serverTrack", () => ({
 
 import { serverTrack } from "@/lib/analytics/serverTrack";
 import {
+  traceAcquisition,
   traceExtraction,
   traceParsing,
   traceNutritionLookup,
@@ -28,6 +29,28 @@ const serverTrackMock = serverTrack as unknown as ReturnType<typeof vi.fn>;
 describe("recipeImportPipelineTrace", () => {
   beforeEach(() => {
     serverTrackMock.mockClear();
+  });
+
+  describe("traceAcquisition", () => {
+    it("emits fallback + not_configured when Supadata is unconfigured (ENG-1115)", () => {
+      traceAcquisition("user-1", {
+        outcome: "fallback",
+        adapter: "supadata",
+        platform: "blog",
+        reason: "not_configured",
+      });
+      expect(serverTrackMock).toHaveBeenCalledWith(
+        AnalyticsEvents.recipe_acquisition,
+        "user-1",
+        {
+          adapter: "supadata",
+          kind: null,
+          platform: "blog",
+          outcome: "fallback",
+          reason: "not_configured",
+        },
+      );
+    });
   });
 
   describe("traceExtraction", () => {

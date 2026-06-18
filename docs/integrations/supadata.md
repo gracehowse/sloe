@@ -91,6 +91,21 @@ On any failure the route falls back to the existing import path. Supadata is an
 import: `{ adapter, kind, platform, outcome: "acquired" | "fallback", reason?,
 contentChars? }`. No raw URLs / content in the payload.
 
+When `supadata-acquisition` is enabled but `SUPADATA_KEY` is unset, the route
+emits `{ outcome: "fallback", reason: "not_configured" }` exactly once per
+import attempt (see `app/api/recipe-import/route.ts`).
+
+### PostHog alert (ENG-1115)
+
+Create a saved insight + alert in PostHog:
+
+- **Event:** `recipe_acquisition`
+- **Filter:** `outcome` = `fallback` AND `reason` = `not_configured`
+- **Threshold:** any occurrence in production (or >0 in 1 hour during launch window)
+- **Action:** notify `#ops` / email — means prod is running the acquisition flag without `SUPADATA_KEY`
+
+Direct link after login: [PostHog events — recipe_acquisition](https://us.posthog.com/project/389168/data-management/events?search=recipe_acquisition)
+
 ## Tests (all mocked fetch — no live API calls)
 
 - `tests/unit/supadataClient.test.ts` — scrape/transcript shapes, `x-api-key`
