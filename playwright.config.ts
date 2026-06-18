@@ -36,6 +36,7 @@ const hasAnyAuthedCredentials = hasE2ECredentials || hasVisualGoldenCredentials;
 
 /** Specs that require a signed-in session (storage state from auth.setup.ts). */
 const authedTestMatch = [
+  /journeys\/today-contrast-eng1109\.spec\.ts/,
   /journeys\/authenticated-views\.spec\.ts/,
   /journeys\/today-authenticated\.spec\.ts/,
   /journeys\/recipe-create-paste\.spec\.ts/,
