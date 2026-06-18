@@ -1878,8 +1878,6 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             : `Paste a screenshot or choose a file. If "Extract from image" is available, it can digitize your own handwritten or typed recipe.`}
         </p>
         <div
-          role="button"
-          tabIndex={0}
           onPaste={(e) => {
             const f = e.clipboardData?.files?.[0];
             if (f) {
