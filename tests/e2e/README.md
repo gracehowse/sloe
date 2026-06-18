@@ -48,6 +48,13 @@ npm run test:e2e:visual
 npm run test:e2e:visual:update   # after intentional UI changes
 ```
 
+Authenticated visual goldens use a separate seeded account from general
+journey tests. Set `E2E_VISUAL_EMAIL` / `E2E_VISUAL_PASSWORD` to a
+fully-onboarded, deterministic profile whose target/name/history are stable.
+The visual specs freeze browser time to `2026-06-16T17:00:00.000Z` by default;
+override with `E2E_VISUAL_NOW` only when intentionally regenerating every
+affected golden.
+
 ## Environment variables
 
 | Variable | When | Purpose |
@@ -55,6 +62,8 @@ npm run test:e2e:visual:update   # after intentional UI changes
 | `E2E_RECIPE_ID` | Optional | Discover recipe for `visual-regression-deep.spec.ts` (default `seed-v2-mediterranean-greek-salad`). |
 | `APPLITOOLS_API_KEY` | Optional | Runs [`visual-applitools.spec.ts`](visual-applitools.spec.ts) — hosted Eyes diff (`npm run test:e2e:applitools`). |
 | `E2E_EMAIL` / `E2E_PASSWORD` | Optional | Enables authenticated journeys: [`journeys/authenticated-views.spec.ts`](journeys/authenticated-views.spec.ts) (full view matrix) and [`journeys/today-authenticated.spec.ts`](journeys/today-authenticated.spec.ts) (minimal Today / tracker smoke). Omit both to skip those tests. Account must be fully onboarded (complete `profiles` row) or login redirects to `/onboarding` and the helper throws. **`playwright.config.ts` loads `.env.local`** so you do not need to export these manually. Prefer canonical routes (`/today`, `/discover`, …) over legacy `/?view=`. Use `--workers=1` if `next dev` is slow. Optional one-shot login: [`global-setup.ts`](global-setup.ts) (writes `tests/e2e/.auth/user.json`, gitignored). |
+| `E2E_VISUAL_EMAIL` / `E2E_VISUAL_PASSWORD` | Optional | Enables authenticated visual goldens (`visual-audit-authed`, authed subpages, deep routes, Gate 1.5). Use a seeded deterministic account, not a daily-driver account. Storage state is written to `tests/e2e/.auth/visual-user*.json` and is separate from `E2E_EMAIL`. |
+| `E2E_VISUAL_NOW` | Optional | Fixed browser clock for authenticated visual goldens. Defaults to `2026-06-16T17:00:00.000Z`; changing it intentionally invalidates date/greeting-sensitive baselines. |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Build + runtime | Required for the app to talk to Supabase during E2E (same as normal dev). |
 | `MIDSCENE_MODEL_API_KEY`, `MIDSCENE_MODEL_NAME`, `MIDSCENE_MODEL_FAMILY` | Optional | Plus usually `MIDSCENE_MODEL_BASE_URL`. Enables AI specs under [`ai/`](ai/). Run with `npm run test:e2e:ai` (nightly / pre-release). |
 

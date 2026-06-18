@@ -22,7 +22,7 @@ export function buildMealShareText(meal: ShareableMeal): string {
       ? `${formatPortion(meal.portionMultiplier)} servings`
       : "1 serving";
   const macros = `${Math.round(meal.protein)}p ${Math.round(meal.carbs)}c ${Math.round(meal.fat)}f`;
-  return `${meal.recipeTitle.trim()} · ${portion}\n${Math.round(meal.calories)} kcal · ${macros}\n\nvia Suppr`;
+  return `${meal.recipeTitle.trim()} · ${portion}\n${Math.round(meal.calories)} kcal · ${macros}\n\nvia Sloe`;
 }
 
 function formatPortion(n: number): string {

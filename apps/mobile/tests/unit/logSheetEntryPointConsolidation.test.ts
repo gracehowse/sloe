@@ -52,6 +52,22 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
     expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
 
+  it("threads active meal slot into describe-flow review summary", () => {
+    // ENG-1195: the NL describe review summary should say the concrete
+    // active slot (Breakfast/Lunch/…) rather than falling back to "Meal".
+    expect(indexSrc).toMatch(/describe=\{[\s\S]+?slotLabel:\s*activeMealSlot/);
+
+    const logSheetPath = path.resolve(
+      __dirname,
+      "../../components/today/LogSheet.tsx",
+    );
+    const logSheetSrc = fs.readFileSync(logSheetPath, "utf8");
+    expect(logSheetSrc).toMatch(/describe\?: \{[\s\S]+?slotLabel\?: string/);
+    expect(logSheetSrc).toMatch(
+      /<LogSheetDescribeFlow[\s\S]+?slotLabel=\{describe\.slotLabel\}/,
+    );
+  });
+
   it("wires the extracted useLogSheetDeepLinks hook (open/clear + dismissal)", () => {
     // 2026-06-12 (audit P2 #5): all three LogSheet deep-link behaviours
     // moved into `useLogSheetDeepLinks`. Pin that index.tsx imports and

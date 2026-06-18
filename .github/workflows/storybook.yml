@@ -11,12 +11,9 @@ on:
       - "src/styles/**"
       - ".github/workflows/storybook.yml"
   pull_request:
-    paths:
-      - "src/app/components/**"
-      - "src/stories/**"
-      - ".storybook/**"
-      - "src/styles/**"
-      - ".github/workflows/storybook.yml"
+    # ENG-853: `storybook` is a required branch-protection context. A
+    # top-level PR `paths` filter leaves required checks Pending on docs-only
+    # PRs, so every PR must enter this workflow. Push-to-main remains filtered.
 
 concurrency:
   group: storybook-${{ github.head_ref }}

@@ -6261,6 +6261,7 @@ export default function TrackerScreen() {
           isFeatureEnabled("log_sheet_nl_text_v1")
             ? {
                 locked: userTier !== "pro",
+                slotLabel: activeMealSlot,
                 onPaywall: () => setAiPaywall({ open: true, feature: "voice_log" }),
                 onParse: (text) =>
                   parseMealDescriptionTranscript({
@@ -6957,4 +6958,3 @@ export default function TrackerScreen() {
     </View>
   );
 }
-

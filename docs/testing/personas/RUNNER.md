@@ -101,20 +101,23 @@ Treat its data as a given and scope findings to UI behaviour.
 
 ### Path C — Web via `scripts/web-drive.mjs` with email auth (full data-driven personas)
 
-Web *does* have an email/password path. `scripts/web-drive.mjs --auth` loads a
-committed Playwright storage state (`tests/e2e/.auth/user.json`). **Important:**
-that committed state is currently generated from `E2E_EMAIL`/`E2E_PASSWORD`, which
-points at a **real account** (`gracemturner@hotmail.co.uk`) — do NOT use it for
-persona work. Instead, regenerate a persona-scoped state **for the same canonical
-email you seed** (from `.env.persona` — never the persona slug):
+Web *does* have an email/password path. `scripts/web-drive.mjs --auth` loads the
+Playwright storage state that matches `WEB_DRIVE_BASE_URL`: `127.0.0.1` uses
+`tests/e2e/.auth/user.json`; `localhost` uses
+`tests/e2e/.auth/user-localhost.json`. Keep persona runs on
+`WEB_DRIVE_BASE_URL=http://127.0.0.1:3000` unless you deliberately generated the
+localhost fixture. Regenerate the state **for the same canonical email you seed**
+(from `.env.persona` — never the persona slug):
 
 ```bash
 E2E_EMAIL=<PERSONA_*_EMAIL from .env.persona> E2E_PASSWORD=<pw> \
   npx playwright test auth.setup.ts --project=setup
 ```
 
-…after seeding **that same account**. Then `node scripts/web-drive.mjs shot /today --auth
---vp mobile` renders the authed product as the persona. Web is the **reliable
+…after seeding **that same account**. Then
+`WEB_DRIVE_BASE_URL=http://127.0.0.1:3000 node scripts/web-drive.mjs shot /today --auth --vp mobile`
+renders the authed product as the persona. If you need a custom persona storage
+file, pass `--auth-state path/to/storage.json`; it implies `--auth`. Web is the **reliable
 data-driven surface** for phase 1 because it has a real email-auth path and
 doesn't depend on the Apple sheet.
 

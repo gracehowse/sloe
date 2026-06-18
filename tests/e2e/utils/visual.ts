@@ -1,5 +1,17 @@
 import type { Page } from "@playwright/test";
 
+export const VISUAL_GOLDEN_NOW_ISO =
+  process.env.E2E_VISUAL_NOW?.trim() || "2026-06-16T17:00:00.000Z";
+
+/**
+ * Authed visual goldens must not drift with wall-clock time. Freeze before
+ * navigation so the Today date strip, greeting, targets, and profile-derived
+ * labels all hydrate against the same instant.
+ */
+export async function freezeVisualClock(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(VISUAL_GOLDEN_NOW_ISO));
+}
+
 /**
  * Seed cookie-consent BEFORE navigation so the CookieConsent banner never
  * mounts. The component checks `getConsentChoice()` (localStorage

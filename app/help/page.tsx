@@ -9,9 +9,9 @@ import type { Metadata } from "next";
 import HelpClient from "./HelpClient";
 
 export const metadata: Metadata = {
-  title: "Help — Suppr",
+  title: "Help — Sloe",
   description:
-    "How Suppr works, nutrition methodology, data sources, and disclaimers.",
+    "How Sloe works, nutrition methodology, data sources, and disclaimers.",
 };
 
 export default function HelpPage() {

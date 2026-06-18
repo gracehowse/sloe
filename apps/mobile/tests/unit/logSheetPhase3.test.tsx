@@ -22,7 +22,7 @@
 
 import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 import {
   LogSheet,
@@ -274,6 +274,42 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
       />,
     );
     expect(queryByText("Today's recents")).toBeTruthy();
+  });
+});
+
+describe("LogSheet (mobile) — describe meal review", () => {
+  it("anchors the AI review summary to the active meal slot", async () => {
+    const { getByDisplayValue, getByLabelText, getByText } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        describe={{
+          slotLabel: "Lunch",
+          onParse: async () => ({
+            ok: true,
+            items: [
+              {
+                name: "Chicken sandwich",
+                calories: 430,
+                protein: 32,
+                carbs: 38,
+                fat: 16,
+                confidence: 0.86,
+                source: "voice",
+              },
+            ],
+          }),
+          onCommit: () => {},
+        }}
+      />,
+    );
+
+    fireEvent.changeText(getByLabelText("Describe what you ate"), "chicken sandwich");
+    fireEvent.press(getByLabelText("Parse meal description"));
+
+    await waitFor(() => expect(getByText("Lunch")).toBeTruthy());
+    expect(getByDisplayValue("Chicken sandwich")).toBeTruthy();
   });
 });
 

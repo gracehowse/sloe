@@ -6,13 +6,23 @@
  * FAB is the canonical capture path.
  */
 import { test, expect } from "@playwright/test";
-import { hasE2ECredentials } from "./utils/auth";
-import { dismissVisualOverlays, stabilizeForScreenshot } from "./utils/visual";
+import { hasVisualGoldenCredentials } from "./utils/auth";
+import { visualAuthFileForBaseUrl } from "./utils/authHosts";
+import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+
+const visualStorageState = hasVisualGoldenCredentials()
+  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  : undefined;
 
 test.describe("Visual regression — Gate 1.5 log sheet (ENG-827 / ENG-900)", () => {
   test.describe.configure({ mode: "serial" });
-  test.beforeEach(() => {
-    test.skip(!hasE2ECredentials(), "Set E2E_EMAIL and E2E_PASSWORD for authed Gate 1.5 snapshots.");
+  test.use({ storageState: visualStorageState });
+  test.beforeEach(async ({ page }) => {
+    test.skip(
+      !hasVisualGoldenCredentials(),
+      "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic authed Gate 1.5 snapshots.",
+    );
+    await freezeVisualClock(page);
   });
 
   test("log sheet mobile-web", async ({ page }) => {

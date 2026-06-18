@@ -39,13 +39,13 @@ export default function PrivacyPage() {
     >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
-            Suppr helps you log recipes, nutrition, and discover meals.
+            Sloe helps you log recipes, nutrition, and discover meals.
             This policy describes what we process, who we share it with, and your choices.
           </p>
           <h2 id="controller" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Data controller</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Controller:</strong> Suppr is currently operated by Grace Howse as a sole operator pending
+              <strong>Controller:</strong> Sloe is currently operated by Grace Howse as a sole operator pending
               incorporation. We will update this notice when the operating entity is formed.
             </li>
             <li>
@@ -110,7 +110,7 @@ export default function PrivacyPage() {
           </h2>
           <p data-testid="privacy-imported-recipes-disclosure">
             When you share a public post from Instagram, TikTok, or YouTube to
-            Suppr, our app reads the caption text you sent us. We never fetch
+            Sloe, our app reads the caption text you sent us. We never fetch
             the original post or video from those platforms ourselves. We store
             the caption text you supplied, plus the URL, plus the creator&rsquo;s
             public handle (when available) &mdash; so the recipe is attributed
@@ -134,7 +134,7 @@ export default function PrivacyPage() {
 
           <h2 id="subprocessors" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
           <p>
-            We use the following third-party service providers to operate Suppr. Each is bound by a data-processing
+            We use the following third-party service providers to operate Sloe. Each is bound by a data-processing
             agreement and processes your data only on our instructions.
           </p>
           <div className="overflow-x-auto">
@@ -194,14 +194,14 @@ export default function PrivacyPage() {
           </p>
           <h2 id="health" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Apple Health (iOS)</h2>
           <p>
-            If you enable the Apple Health integration on iOS, Suppr reads the following data to keep your tracker in sync:
+            If you enable the Apple Health integration on iOS, Sloe reads the following data to keep your tracker in sync:
             steps, active energy, basal energy, workouts, weight, body fat percentage, and any dietary entries already in
-            Apple Health (for example logs you created in other apps). Suppr writes the calories, protein, carbohydrates,
+            Apple Health (for example logs you created in other apps). Sloe writes the calories, protein, carbohydrates,
             fat, and fibre of the meals you log back to Apple Health so other apps on your phone can read them. Data shared
             with Apple Health is governed by{" "}
             <a href="https://www.apple.com/legal/privacy/en-ww/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Apple&rsquo;s privacy policy</a>{" "}
-            and stored on your device; Suppr does not send your Health data to our servers unless you explicitly log a meal.
-            You can revoke Suppr&rsquo;s Health access at any time in iOS Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Suppr.
+            and stored on your device; Sloe does not send your Health data to our servers unless you explicitly log a meal.
+            You can revoke Sloe&rsquo;s Health access at any time in iOS Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Sloe.
           </p>
           <h2 id="retention" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Data retention</h2>
           <p>
