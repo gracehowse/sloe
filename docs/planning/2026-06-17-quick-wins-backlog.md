@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** none — next slice: ENG-889 L5 dark verify (`314:2`) or next Core-5 partial from migration tracker.
+**In flight:** none — next slice: ENG-889 TD3/TD4 pixel deltas + populated-account screenshot wall, or next Core-5 partial from migration tracker.
 
 ## Merge history (reference)
 
@@ -72,7 +72,7 @@ individual partial rows only.
 | **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | 9 other Recipes/Cookbook partials on parent |
 | **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | Live `/signup` screenshot needs signed-out session |
 | **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | 7 other Import partials on parent (source tiles, L4 error, etc.) |
-| **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned | L5 dark, TD3/TD4, pixel deltas, populated-account screenshot wall |
+| **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned; **L5 dark** (`314:2`, 2026-06-18 sim pass) | TD3/TD4 pixel deltas, populated-account screenshot wall |
 | **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | **Linear Done** — no follow-up in this queue |
 
 ### Batch 3 visual verify (2026-06-18)
@@ -83,12 +83,13 @@ individual partial rows only.
 | Discover slabs (ENG-896) | ✅ `/discover --auth` | ✅ | Mediterranean/Greek hero + seamless slab card |
 | Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
 | Today coach-in-hero (ENG-889) | ✅ populated (~390px) + empty S5 | ✅ `today-coach-in-hero-ios-2026-06-18.png` | Coach line inside hero ("Fresh start — what's for breakfast?") |
+| Today L5 dark (ENG-889) | — (iOS-first) | ✅ `eng889-l5-today-dark.png` + scrolled | Canvas `#19181C`, hero `#2A2730`, dark TD3/TD4 cards |
 | Paywall trust (ENG-901) | ✅ `/pricing` ~390px (hero + grid; scroll for trust row) | ✅ `paywall-trust-scrolled-ios-2026-06-18.png` | Inline strip: Secure checkout · Cancel anytime · refund/barcode chips |
 | Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
 
 ### Batch 3 — what's left
 
-1. **ENG-889** — L5 dark verify (`314:2`); TD3/TD4 if gaps in migration tracker; pixel deltas.
+1. **ENG-889** — TD3/TD4 pixel deltas + populated-account screenshot wall (L5 dark ✅ 2026-06-18).
 2. **ENG-896 / ENG-898 / ENG-897** — next high-severity partial from `docs/ux/redesign/figma-migration-tracker.md`.
 
 ## Triage table — batch 4 (maintenance / hygiene)
