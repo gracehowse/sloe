@@ -140,4 +140,30 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     expect(today).toContain('"Today — Sloe"');
     expect(today).not.toContain('"Today — Suppr"');
   });
+
+  it("meal share text uses Sloe attribution", () => {
+    const src = readFileSync(join(ROOT, "src/lib/share/buildMealShareText.ts"), "utf8");
+    expect(src).toContain("via Sloe");
+    expect(src).not.toContain("via Suppr");
+  });
+
+  it("web help/legal product copy uses Sloe while preserving operational endpoints", () => {
+    const helpPage = readFileSync(join(ROOT, "app/help/page.tsx"), "utf8");
+    const helpClient = readFileSync(join(ROOT, "app/help/HelpClient.tsx"), "utf8");
+    const terms = readFileSync(join(ROOT, "app/terms/page.tsx"), "utf8");
+    const privacy = readFileSync(join(ROOT, "app/privacy/page.tsx"), "utf8");
+
+    expect(helpPage).toContain('"Help — Sloe"');
+    expect(helpClient).toContain("How Sloe works");
+    expect(terms).toContain("&ldquo;Sloe&rdquo;");
+    expect(terms).toContain("getsloe.com");
+    expect(privacy).toContain("Sloe helps you log recipes");
+
+    // Mailboxes and the live import crawler user-agent are infrastructure,
+    // not user-facing product brand claims.
+    expect(terms).toContain("support@suppr-club.com");
+    expect(terms).toContain("SupprBot");
+    expect(privacy).toContain("privacy@suppr-club.com");
+    expect(privacy).toContain("dmca@suppr-club.com");
+  });
 });

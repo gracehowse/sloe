@@ -90,7 +90,7 @@ Confirmed wired, **no Figma frame**. Never remove. Each needs a Stitch→Mobbin�
 - **Settings (11), Paywall (15), Import (14), Onboarding (18), Auth (13), Fasting (11), Recipes (12), Global (9)** — see audit file.
 
 ## Blockers (94) — themes
-1. **Brand drift Suppr→Sloe** still in code: mobile `formatAuthError` "Suppr's servers", paywall "SUPPR PRO", suppr-club.com links, reset-password aria.
+1. **Brand drift Suppr→Sloe** mostly resolved in user-facing copy. 2026-06-17 ENG-1196 re-swept Help, Terms, Privacy, and meal-share attribution and pinned them in `tests/unit/brandDriftSloe.test.ts`; operational mailboxes, bundle IDs, historical docs, and the live `SupprBot` crawler user-agent remain intentionally unchanged.
 2. **Flag-gating debt** (migration flags to retire later, NOT now): `today_meals_figma_654`, `today-status-pills`, `progressLayoutV2`, `plan_empty_state_v2`, `plan_source_selector`, onboarding flag, etc.
 3. **File-size debt** (CLAUDE.md 400-line cap): mobile `(tabs)/index.tsx` 6412L, `NutritionTracker.tsx` 3613L, mobile `progress.tsx` 4007L, `SettingsBundleContent.tsx` ~3600L, web `Settings.tsx` ~88KB — structural refactor needed for clean conformance.
 4. **Figma coverage gaps:** no dark-mode frames for most areas (web has no dark at all); no desktop frames for Recipes/Plan/Recipe-detail/Paywall; no loading/error frames for most areas; states under-designed.

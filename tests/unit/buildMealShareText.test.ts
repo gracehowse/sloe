@@ -15,7 +15,7 @@ describe("buildMealShareText", () => {
       fat: 28.7,
     });
     expect(out).toBe(
-      "Chicken Caesar · 1 serving\n612 kcal · 48p 32c 29f\n\nvia Suppr",
+      "Chicken Caesar · 1 serving\n612 kcal · 48p 32c 29f\n\nvia Sloe",
     );
   });
 
@@ -78,7 +78,7 @@ describe("buildMealShareText", () => {
     expect(out).not.toMatch(/target|goal|budget|of\s+\d|\/\s*\d|hello|name|user/i);
   });
 
-  it("ends with a single Suppr attribution line", () => {
+  it("ends with a single Sloe attribution line", () => {
     const out = buildMealShareText({
       recipeTitle: "Eggs",
       calories: 150,
@@ -86,6 +86,6 @@ describe("buildMealShareText", () => {
       carbs: 1,
       fat: 10,
     });
-    expect(out.trim().endsWith("via Suppr")).toBe(true);
+    expect(out.trim().endsWith("via Sloe")).toBe(true);
   });
 });
