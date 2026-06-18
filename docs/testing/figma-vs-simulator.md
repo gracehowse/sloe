@@ -139,7 +139,7 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 | 6 | TD3 — planned block | "Planned" serif title + empty or slotted planned meals card |
 | 7 | Web parity | Repeat 1–4 at `http://localhost:3000` ~390px + desktop |
 
-**Verified 2026-06-18 (iOS):** populated session (Grace dev) — pass on 1–6; web parity (#7) pending stable dev server.
+**Verified 2026-06-18 (iOS + web):** populated session — pass on 1–7. Web captures at `screenshots/web-drive/eng889-populated-today-*.png`.
 
 **Agent captures:** `apps/mobile/screenshots/agent/eng889-populated-today-*.png`, `screenshots/web-drive/today-populated-*.png`
 

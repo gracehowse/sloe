@@ -84,14 +84,15 @@ individual partial rows only.
 | Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
 | Today coach-in-hero (ENG-889) | ✅ populated (~390px) + empty S5 | ✅ `today-coach-in-hero-ios-2026-06-18.png` | Coach line inside hero ("Fresh start — what's for breakfast?") |
 | Today L5 dark (ENG-889) | — (iOS-first) | ✅ `eng889-l5-today-dark.png` + scrolled | Canvas `#19181C`, hero `#2A2730`, dark TD3/TD4 cards |
-| Today populated + TD3/TD4 (ENG-889) | ⏸ dev server 500 | ✅ `eng889-populated-today-hero.png` + `td34` | Over budget hero + coach; TD4 per-slot cards + Add food; weekly insight stats |
+| Today populated + TD3/TD4 (ENG-889) | ✅ `eng889-populated-today-mobile.png` + desktop | ✅ `eng889-populated-today-hero.png` + `td34` | Over budget hero + coach; TD4 per-slot cards + Add food; weekly insight stats |
 | Paywall trust (ENG-901) | ✅ `/pricing` ~390px (hero + grid; scroll for trust row) | ✅ `paywall-trust-scrolled-ios-2026-06-18.png` | Inline strip: Secure checkout · Cancel anytime · refund/barcode chips |
-| Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
+| Auth email step (ENG-897) | ✅ `/signup` ~390px (`eng897-signup-email-mobile.png`) | — | Live capture on auth chooser email step |
 
 ### Batch 3 — what's left
 
-1. **ENG-889** — TD3/TD4 pixel deltas + populated-account screenshot wall (L5 dark ✅ 2026-06-18).
-2. **ENG-896 / ENG-898 / ENG-897** — next high-severity partial from `docs/ux/redesign/figma-migration-tracker.md`.
+1. **ENG-889** — TD3/TD4 pixel deltas (populated screenshot wall ✅ 2026-06-18 web + iOS).
+2. **ENG-896 / ENG-898** — next high-severity partial from migration tracker (Import L4 error, Discover filter pills).
+3. **ENG-897** — signup email-step live capture ✅ 2026-06-18.
 
 ## Triage table — batch 4 (maintenance / hygiene)
 
@@ -100,7 +101,7 @@ individual partial rows only.
 | **ENG-1168** | Silent-deferral re-sweep | **Done** (#471) | Linear Done 2026-06-18 |
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
-| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
+| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | **PR [#484](https://github.com/gracehowse/Suppr/pull/484)** | `macroGlyphs.ts` + web Icons aligned to mobile Dumbbell/Droplet/Sprout |
 | ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Both components deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` + `todayAboveMealsCap.test.ts` |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
