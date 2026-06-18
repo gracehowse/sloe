@@ -35,12 +35,26 @@ export function visualAuthFileForBaseUrl(baseUrl: string): string {
   return VISUAL_AUTH_FILES["127.0.0.1"];
 }
 
-export const QA_AUTH_HOSTS = [
-  { origin: "http://127.0.0.1:3000", file: AUTH_FILES["127.0.0.1"] },
-  { origin: "http://localhost:3000", file: AUTH_FILES.localhost },
-] as const;
+function portSuffix(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  if (!url.port) return "";
+  return `:${url.port}`;
+}
 
-export const QA_VISUAL_AUTH_HOSTS = [
-  { origin: "http://127.0.0.1:3000", file: VISUAL_AUTH_FILES["127.0.0.1"] },
-  { origin: "http://localhost:3000", file: VISUAL_AUTH_FILES.localhost },
-] as const;
+/** Login targets for E2E journey auth — honours `PLAYWRIGHT_BASE_URL` port (CI :3100). */
+export function qaAuthHosts(baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000") {
+  const port = portSuffix(baseUrl);
+  return [
+    { origin: `http://127.0.0.1${port}`, file: AUTH_FILES["127.0.0.1"] },
+    { origin: `http://localhost${port}`, file: AUTH_FILES.localhost },
+  ] as const;
+}
+
+/** Login targets for visual golden auth — same port rules as `qaAuthHosts`. */
+export function qaVisualAuthHosts(baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000") {
+  const port = portSuffix(baseUrl);
+  return [
+    { origin: `http://127.0.0.1${port}`, file: VISUAL_AUTH_FILES["127.0.0.1"] },
+    { origin: `http://localhost${port}`, file: VISUAL_AUTH_FILES.localhost },
+  ] as const;
+}

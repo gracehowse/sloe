@@ -79,7 +79,12 @@ export async function hideDevChrome(page: Page): Promise<void> {
 /** Let fonts, charts, and client hydration settle before snapshot assertions. */
 export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
-  await page.evaluate(() => document.fonts?.ready);
+  try {
+    await page.evaluate(() => document.fonts?.ready);
+  } catch {
+    // Client navigations (e.g. /account/billing → /pricing) can destroy the context mid-wait.
+    await page.waitForLoadState("domcontentloaded");
+  }
   await page.waitForTimeout(ms);
 }
 

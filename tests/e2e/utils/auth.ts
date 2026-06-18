@@ -5,7 +5,38 @@ export function hasE2ECredentials(): boolean {
 }
 
 export function hasVisualGoldenCredentials(): boolean {
-  return Boolean(process.env.E2E_VISUAL_EMAIL?.trim() && process.env.E2E_VISUAL_PASSWORD?.trim());
+  return resolveVisualGoldenCredentials() !== null;
+}
+
+type VisualGoldenCredentials = {
+  email: string;
+  password: string;
+  /** Dedicated golden account vs CI fallback to E2E creds. */
+  source: "visual" | "e2e-fallback";
+};
+
+/**
+ * Visual goldens prefer `E2E_VISUAL_*` so daily-driver E2E profile edits do not
+ * rewrite baselines. In CI, falls back to `E2E_*` when visual secrets are unset.
+ */
+export function resolveVisualGoldenCredentials(): VisualGoldenCredentials | null {
+  const visualEmail = process.env.E2E_VISUAL_EMAIL?.trim();
+  const visualPassword = process.env.E2E_VISUAL_PASSWORD?.trim();
+  if (visualEmail && visualPassword) {
+    return { email: visualEmail, password: visualPassword, source: "visual" };
+  }
+
+  const allowCiFallback =
+    Boolean(process.env.CI || process.env.GITHUB_ACTIONS) &&
+    process.env.E2E_VISUAL_DISABLE_E2E_FALLBACK?.trim() !== "1";
+  if (!allowCiFallback) return null;
+
+  const e2eEmail = process.env.E2E_EMAIL?.trim();
+  const e2ePassword = process.env.E2E_PASSWORD?.trim();
+  if (e2eEmail && e2ePassword) {
+    return { email: e2eEmail, password: e2ePassword, source: "e2e-fallback" };
+  }
+  return null;
 }
 
 type LoginCredentials = {
@@ -29,12 +60,15 @@ export async function loginWithTestUser(page: Page): Promise<void> {
 }
 
 export async function loginWithVisualGoldenUser(page: Page): Promise<void> {
-  const email = process.env.E2E_VISUAL_EMAIL?.trim();
-  const password = process.env.E2E_VISUAL_PASSWORD?.trim();
-  if (!email || !password) {
-    throw new Error("E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD must be set");
+  const credentials = resolveVisualGoldenCredentials();
+  if (!credentials) {
+    throw new Error("E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD must be set (or E2E_* in CI fallback)");
   }
-  await loginWithCredentials(page, { email, password, label: "visual-golden" });
+  await loginWithCredentials(page, {
+    email: credentials.email,
+    password: credentials.password,
+    label: credentials.source === "visual" ? "visual-golden" : "visual-golden-e2e-fallback",
+  });
 }
 
 async function loginWithCredentials(page: Page, credentials: LoginCredentials): Promise<void> {

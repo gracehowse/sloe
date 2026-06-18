@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 /**
- * Run before Playwright locally: disk sanity + optional reachability when
- * PLAYWRIGHT_SKIP_WEB_SERVER is set (you must start Next yourself).
+ * Run before Playwright locally: disk sanity, server health (zombie detection),
+ * and optional route warm-up for slow Turbopack compiles.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import {
+  E2E_WARM_ROUTES,
+  isPortListening,
+  parseBaseUrl,
+  probeHttpHealth,
+  warmRoutes,
+} from "./e2e-server-health.mjs";
 
 /** Load root `.env.local` so E2E_EMAIL / E2E_PASSWORD are available without manual export. */
 function loadEnvLocal() {
@@ -33,6 +40,7 @@ loadEnvLocal();
 const baseURL = (process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 /** When set, Playwright will not start `next dev`; the app must already be listening on `baseURL`. */
 const mustReachExistingServer = Boolean(process.env.PLAYWRIGHT_SKIP_WEB_SERVER?.trim());
+const warmSlowRoutes = process.env.PLAYWRIGHT_WARM_ROUTES?.trim() !== "0";
 
 function warnDisk() {
   if (process.platform === "win32") return;
@@ -51,32 +59,52 @@ function warnDisk() {
   }
 }
 
-async function requireServerUp() {
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 12_000);
-  try {
-    const res = await fetch(baseURL, { redirect: "follow", signal: ac.signal });
-    if (!res.ok) {
-      console.error(`[e2e-preflight] ${baseURL} responded with HTTP ${res.status}.`);
-      process.exit(1);
+function zombieHelp(port) {
+  return [
+    `[e2e-preflight] Port ${port} is listening but the app did not respond in time (zombie dev server).`,
+    "Kill the stale process and start one clean server:",
+    `  lsof -iTCP:${port} -sTCP:LISTEN`,
+    `  kill <pid>   # then: npm run dev   OR   npm run build && npm run start -- --port ${port}`,
+    "Or force Playwright to spawn a fresh server: PLAYWRIGHT_FORCE_FRESH_SERVER=1 npm run test:e2e",
+  ].join("\n");
+}
+
+async function assertServerHealthy() {
+  const { host, port } = parseBaseUrl(baseURL);
+  const listening = await isPortListening(host, port);
+  const health = await probeHttpHealth(baseURL);
+
+  if (health.ok) {
+    if (warmSlowRoutes) {
+      await warmRoutes(baseURL, E2E_WARM_ROUTES);
     }
-  } catch (e) {
+    return "healthy";
+  }
+
+  if (listening) {
+    console.error(zombieHelp(port));
+    process.exit(1);
+  }
+
+  if (mustReachExistingServer) {
     console.error(
       `[e2e-preflight] Cannot reach ${baseURL} with PLAYWRIGHT_SKIP_WEB_SERVER set.`,
       "\nStart the app first, e.g. `npm run dev` or `npm run start -- --port 3000`.",
     );
     process.exit(1);
-  } finally {
-    clearTimeout(t);
   }
+
+  return "down";
 }
 
 warnDisk();
 
-if (mustReachExistingServer) {
-  await requireServerUp();
+const serverState = await assertServerHealthy();
+
+if (serverState === "healthy") {
+  console.log(`[e2e-preflight] ${baseURL} is healthy${warmSlowRoutes ? " (slow routes warmed)" : ""}.`);
 } else {
   console.log(
-    `[e2e-preflight] Playwright will start or reuse dev server at ${baseURL} (set PLAYWRIGHT_SKIP_WEB_SERVER=1 if you start Next yourself).`,
+    `[e2e-preflight] No server at ${baseURL} — Playwright will start one (or set PLAYWRIGHT_SKIP_WEB_SERVER=1 if you start Next yourself).`,
   );
 }
