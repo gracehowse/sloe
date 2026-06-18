@@ -6,8 +6,8 @@ down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h)
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
-**Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) `agent/cursor/batch-6-889-896-1142-1016` — ENG-889 L5 docs, ENG-898 L4 import error, ENG-1142 cohesion gate, ENG-1016 PressableScale slice.
+**Current branch:** `main` (#483 merged 2026-06-18).  
+**In flight:** This branch — E2E auth fix + ENG-986/1146 macro SSOT (#482).
 
 ## Merge history (reference)
 
@@ -101,7 +101,7 @@ individual partial rows only.
 | **ENG-1168** | Silent-deferral re-sweep | **Done** (#471) | Linear Done 2026-06-18 |
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
-| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
+| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | **Done** (this branch) | `src/lib/macroIcons.ts` + platform lucide maps; tests pin Figma glyphs |
 | ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Both components deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` + `todayAboveMealsCap.test.ts` |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.

@@ -3,16 +3,13 @@
 import * as React from "react";
 import {
   Candy,
-  Droplet,
-  Dumbbell,
   Gauge,
-  Sprout,
-  Wheat,
   type LucideIcon,
 } from "lucide-react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
+import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
@@ -151,7 +148,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g");
     return {
       label: "Protein",
-      Icon: Dumbbell,
+      Icon: MACRO_ICONS.protein,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -182,7 +179,7 @@ function buildMacroTile(
       // math is *defined* for this user, which is what the label should
       // track. Mobile fixed the same bug on 2026-04-30.
       label: carbsLabel(fiberTarget, lensOn),
-      Icon: Wheat,
+      Icon: MACRO_ICONS.carbs,
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
@@ -200,7 +197,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g");
     return {
       label: "Fat",
-      Icon: Droplet,
+      Icon: MACRO_ICONS.fat,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -219,7 +216,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g", { overIsFlag: false });
     return {
       label: "Fibre",
-      Icon: Sprout,
+      Icon: MACRO_ICONS.fiber,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -272,7 +269,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "ml", { overIsFlag: false });
     return {
       label: "Water",
-      Icon: Droplet,
+      Icon: MACRO_ICONS.fat,
       valueText: formatWaterLine(cur),
       targetText: `/ ${formatWaterLine(tgt)}`,
       pct,

@@ -27,6 +27,7 @@ jobs:
       # Baked into the Next client bundle at build; set repo secrets for real Supabase auth in E2E.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      FATSECRET_TIER: premier
       # Keep 0 in CI: repository/org secrets often include STRIPE_SECRET_KEY without webhook/price IDs,
       # which makes verify-production-env exit 1 under VERIFY_STRICT=1 (see scripts/verify-production-env.ts).
       # Run VERIFY_STRICT=1 locally or in deploy pipelines when you want a hard gate.
@@ -93,6 +94,7 @@ jobs:
           SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
           FATSECRET_CLIENT_ID: ${{ secrets.FATSECRET_CLIENT_ID }}
           FATSECRET_CLIENT_SECRET: ${{ secrets.FATSECRET_CLIENT_SECRET }}
+          FATSECRET_TIER: premier
           USDA_FDC_API_KEY: ${{ secrets.USDA_FDC_API_KEY }}
           EDAMAM_APP_ID: ${{ secrets.EDAMAM_APP_ID }}
           EDAMAM_APP_KEY: ${{ secrets.EDAMAM_APP_KEY }}
