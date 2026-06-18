@@ -444,12 +444,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1152 | Low | Harden SSRF string-layer: block 0.0.0.0 + integer/octal/hex IPv4 encodings |
 | ENG-1075 | Low | Route mobile OFF barcode lookup through /api/off/barcode proxy (parity with web) |
 
-**Schema refactor** (5)
+**Schema refactor** (4)
 
 | # | Pri | Title |
 |---|---|---|
 | ENG-989 | Medium | Step-centric recipe schema (ingredients nested inside steps) |
-| ENG-1157 | Low | Prune dropped meal_plans/meal_plans_legacy DELETEs from account-deletion paths |
 | ENG-1155 | Low | RLS perf: wrap auth.<fn>() in subselect (referrals/referral_credits) + consolidate 12 pe |
 | ENG-1076 | Low | eaten_at timezone hardening before multi-device editing (thread canonical tz through mea |
 | ENG-1052 | Low | P3: schema hardening batch — calories smallint→int, nutrition_entries.source CHECK, save |

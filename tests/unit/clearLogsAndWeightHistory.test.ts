@@ -20,7 +20,7 @@
  *     - the freshly-set onboarding targets / body stats
  */
 import { describe, expect, it, vi } from "vitest";
-import { clearLogsAndWeightHistory } from "../../src/lib/account/nukeAccountData";
+import { clearLogsAndWeightHistory, clearStructuredMealPlans } from "../../src/lib/account/nukeAccountData";
 
 type DeleteCall = { table: string; eqArgs: [string, unknown] };
 type UpdateCall = { table: string; payload: Record<string, unknown>; eqArgs: [string, unknown] };
@@ -114,7 +114,7 @@ describe("clearLogsAndWeightHistory", () => {
 
   it("tolerates missing tables (PGRST205 / 42P01) without aborting", async () => {
     const client = {
-      from(table: string) {
+      from(_table: string) {
         return {
           delete() {
             return {
@@ -169,6 +169,50 @@ describe("clearLogsAndWeightHistory", () => {
     if (!r.ok) {
       expect(r.message).toContain("permission denied");
     }
+  });
+});
+
+describe("clearStructuredMealPlans", () => {
+  it("clears normalized meal plan rows without touching dropped legacy tables", async () => {
+    const touchedTables: string[] = [];
+    const client = {
+      from(table: string) {
+        return {
+          select() {
+            touchedTables.push(table);
+            return {
+              eq() {
+                return Promise.resolve({
+                  data: [{ id: "day-1" }, { id: "day-2" }],
+                  error: null,
+                });
+              },
+            };
+          },
+          delete() {
+            touchedTables.push(table);
+            return {
+              eq() {
+                return Promise.resolve({ error: null });
+              },
+              in() {
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      },
+    };
+
+    const r = await clearStructuredMealPlans(client as never, "u-1");
+    expect(r.ok).toBe(true);
+    expect(touchedTables).toEqual([
+      "meal_plan_days",
+      "meal_plan_meals",
+      "meal_plan_days",
+    ]);
+    expect(touchedTables).not.toContain("meal_plans");
+    expect(touchedTables).not.toContain("meal_plans_legacy");
   });
 });
 
