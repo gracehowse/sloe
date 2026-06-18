@@ -437,7 +437,7 @@ export function UpgradePaywallDialog({
               </p>
               <h2
                 id="upgrade-paywall-title"
-                className="text-[26px] md:text-[28px] font-medium font-[family-name:var(--font-newsreader)] tracking-tight leading-[1.12] mb-2 text-foreground-brand"
+                className="text-[24px] md:text-[28px] font-medium font-[family-name:var(--font-newsreader)] tracking-tight leading-[1.12] mb-2 text-foreground-brand"
               >
                 Cook what you love.{" "}
                 <em className="italic">Still</em> reach your goals.
