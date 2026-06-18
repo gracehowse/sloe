@@ -15,12 +15,15 @@ this batch rides on the current branch per the standing instruction; new
 |-------|-------|--------|--------|--------|-------|
 | ENG-1149 | Delete stale `KNOWN APPROXIMATION` header in `measureToGrams.ts` | S | ✅ | **Shipped** | Comment-only; ENG-701 already re-ordered food-specific-before-generic (verified at resolver lines ~210–225/260–266). No behaviour change. |
 | ENG-1156 | Delete orphaned `onboarding/finalStep.ts` (dead code, banned "staged for follow-up") | S | ✅ | **Shipped** | Zero runtime importers (only its own test). Deleted file + `onboardingFinalStepPhase3.test.ts`; re-anchored prose comments in `state.ts` / `onboardingSeeds.ts` to `NORTH_STAR_LIBRARY_MIN`. |
-| ENG-1166 | Root docs reference missing `apps/mobile/AGENTS.md` | S | ✅ | **Shipped** | Created `apps/mobile/AGENTS.md` as a pointer to the canonical `apps/mobile/CLAUDE.md` (single source of truth, zero drift). |
 | ENG-1152 | Harden SSRF string-layer: block `0.0.0.0` + integer/octal/hex IPv4 encodings | M | ✅ | **Shipped** | Added `canonicaliseIpv4` (inet_aton-style) + all-zeros handling to `ssrfAllowlist.ts`; loopback widened to `/8`. 9 new test cases; DNS backstop in `ssrfGuard.ts` untouched. Client-bundle-safe (no Node builtins). |
 | ENG-1159 | Vendor/logging cleanups (edamam dead code · caption truncation · `food_search` source) | M | ⚠️ | **Part (a) shipped — open** | (a) Removed dead `edamamNutritionAnalysis`/`edamamAnalysisMacros` + types + their tests. (b) 4000-char caption-truncation notice and (c) `food_search` analytics source each touch web **and** mobile log/preview paths — doing (c) web-only would create `food_logged.source` parity drift, so they're tracked on the open ticket (not quick wins). |
+| ENG-1166 | Root docs reference missing `apps/mobile/AGENTS.md` | S | ⚠️ | **Blocked — needs Grace decision** | `AGENTS.md` is gitignored repo-wide (`.gitignore:32`); root `AGENTS.md` is itself a locally-generated, untracked artifact. A tracked `apps/mobile/AGENTS.md` therefore can't ship as a normal commit. Created the pointer file locally (resolves the reference on-machine), but the durable fix is Grace's call: either un-ignore + force-track `AGENTS.md` files, or accept `apps/mobile/CLAUDE.md` (already tracked, already referenced by `.claude/CLAUDE.md`) as canonical and adjust the generator. |
 
-**Batch result:** 4 issues fully shipped (ENG-1149, ENG-1156, ENG-1166,
-ENG-1152) + ENG-1159 materially advanced (dead-code half).
+**Batch result:** 3 issues fully shipped (ENG-1149, ENG-1156, ENG-1152) +
+ENG-1159 materially advanced (dead-code half) + ENG-1166 triaged-and-blocked
+(gitignore policy decision, see row). All shipped code landed via commit
+`991f1087` on `claude/wave-4-trust-cohesion` (swept into a concurrent agent's
+quick-wins commit — same branch, parallel sessions).
 
 **Validation:** `vitest.unit.config.ts` scoped run — 136 passed across
 ssrfProtection / ssrfGuard / recipeImportSsrfGuardCallsites / edamamClient /
