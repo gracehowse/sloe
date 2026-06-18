@@ -111,7 +111,8 @@ import {
   eatenAtFromLogDateAndTime,
   localTimeInputValueFromIso,
 } from "@/lib/nutrition/mealEatenAt";
-import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@/lib/nutrition/foodSearchCore";
+import { toast } from "sonner";
 import { foodSearchPreviewExtraMicroRows } from "@/lib/nutrition/foodSearchPreviewNutrition";
 import {
   foodSearchTrustWeight,
@@ -1416,6 +1417,7 @@ export function FoodSearchPanel({
 
   const onPickResult = useCallback(async (item: SearchResult) => {
     setLoadingKey(item.key);
+    try {
     if (item._source === "CUSTOM" && item._custom) {
       setLoadingKey(null);
       openCustomFoodPreview(item._custom);
@@ -1447,14 +1449,26 @@ export function FoodSearchPanel({
     }
     if (item._source === "USDA" && item._fdcId) {
       const detail = await fetchUsdaDetail(item._fdcId);
-      setLoadingKey(null);
-      if (!detail) return;
-      const effectivePrimary = item.primaryServing ?? detail.primaryPortion ?? null;
-      const portions = buildPortions(detail.portions, effectivePrimary);
-      const { portion, quantity } = effectivePrimary
-        ? { portion: portions[0], quantity: 1 }
-        : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}), portions, chosenPortion: portion, quantity });
+      const preview = buildUsdaPreviewFields(
+        {
+          name: item.name,
+          fdcId: item._fdcId,
+          macrosPer100g: item.macrosPer100g,
+          microsPer100g: item.microsPer100g,
+          primaryServing: item.primaryServing,
+        },
+        detail,
+        initialAmount,
+        initialUnit,
+      );
+      if (!preview) {
+        toast.error("Couldn't load this item", {
+          description: "Check your connection and try again, or pick another option.",
+        });
+        return;
+      }
+      const { quantityText: _quantityText, fdcId: _fdcId, ...previewFields } = preview;
+      setPreview(previewFields);
     } else if (item._source === "OFF" && item.macrosPer100g) {
       setLoadingKey(null);
       const portions = buildPortions([], item.primaryServing);
@@ -1534,6 +1548,9 @@ export function FoodSearchPanel({
     } else {
       setLoadingKey(null);
     }
+    } finally {
+      setLoadingKey(null);
+    }
   }, [initialAmount, initialUnit, openCustomFoodPreview]);
 
   /** ENG-931 — log default serving without opening preview (row body still opens preview). */
@@ -1589,21 +1606,26 @@ export function FoodSearchPanel({
 
         if (item._source === "USDA" && item._fdcId) {
           const detail = await fetchUsdaDetail(item._fdcId);
-          if (!detail) return;
-          const effectivePrimary = item.primaryServing ?? detail.primaryPortion ?? null;
-          const portions = buildPortions(detail.portions, effectivePrimary);
-          const { portion, quantity } = effectivePrimary
-            ? { portion: portions[0], quantity: 1 }
-            : resolveInitialPortion(portions, initialAmount, initialUnit);
-          commit({
-            name: item.name,
-            source: "USDA",
-            macrosPer100g: detail.macrosPer100g,
-            ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}),
-            portions,
-            chosenPortion: portion,
-            quantity,
-          });
+          const fields = buildUsdaPreviewFields(
+            {
+              name: item.name,
+              fdcId: item._fdcId,
+              macrosPer100g: item.macrosPer100g,
+              microsPer100g: item.microsPer100g,
+              primaryServing: item.primaryServing,
+            },
+            detail,
+            initialAmount,
+            initialUnit,
+          );
+          if (!fields) {
+            toast.error("Couldn't load this item", {
+              description: "Check your connection and try again, or pick another option.",
+            });
+            return;
+          }
+          const { quantityText: _quantityText, fdcId: _fdcId, ...commitFields } = fields;
+          commit(commitFields);
           return;
         }
 
