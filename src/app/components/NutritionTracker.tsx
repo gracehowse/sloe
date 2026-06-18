@@ -25,6 +25,8 @@ import {
   type WeeklyCheckinContent,
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
+import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
+import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
 import { WeeklyCheckinBanner } from "./suppr/weekly-checkin-banner";
 import { weekKeyFor } from "../../lib/nutrition/weeklyRecap.ts";
 import {
@@ -100,6 +102,7 @@ import {
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
+import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
@@ -551,6 +554,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     workoutsByDay,
     basalBurnByDay,
     profileMeasurementSystem,
+    nutritionJournalHydrated,
     nutritionByDay,
     extraWaterByDay,
     notificationPrefs,
@@ -723,6 +727,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   /** Full-nutrient panel sheet (PR #47, re-wired 2026-05-02) — opened
    *  from the "View all N nutrients" pill inside
    *  `TodayDashboardMacroTiles` after the Today-canvas
@@ -733,7 +738,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
    *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
    *  loosely as `string | null` to mirror the column's nullable nature. */
-  const [_profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
@@ -2337,6 +2342,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   );
   const {
     activeCelebration: winCelebration,
+    activeMilestone: winMilestone,
     onCelebrationComplete: onWinComplete,
     pulse: winPulse,
   } = useWebWinMoment({
@@ -2550,6 +2556,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         }
       : todayPastDayGreetingLines(selectedDate);
 
+  if (!nutritionJournalHydrated) {
+    return <TodayLoadingSkeleton />;
+  }
+
   return (
     <div className="product-shell py-pm-5 space-y-4 relative">
       {/* ENG-798 win-moment overlay — mirrors mobile index.tsx:5382-5389.
@@ -2561,6 +2571,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       {winCelebration ? (
         <WinMomentPlayer
           celebration={winCelebration}
+          milestone={winMilestone ?? undefined}
           onComplete={onWinComplete}
           fullBleed
           testID="today-win-moment"
@@ -2749,6 +2760,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         // map (already loaded above) — distinct weigh-in days in the last 7,
         // replacing the old adaptiveTdeeConfidence-tier proxy.
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
+        onPressStatusChip={() => setWhyThisNumberOpen(true)}
       />
 
       {/* Single context block — priority order: fasting > deficit.
@@ -3268,11 +3280,38 @@ export const NutritionTracker = memo(function NutritionTracker({
         onDismiss={handleWeeklyCheckinDismiss}
       />
 
-      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): the
-          WhyThisNumberDialog moved to /home?view=targets — pill on
-          Today's hero was called out as signalling low confidence in
-          the number. Web Today no longer hosts the dialog; the
-          Targets surface owns it inline. */}
+      {/* ENG-1184 — status chip on the hero opens the target explainer
+          inline on Today (persona trust). Targets still owns the
+          "How is this calculated?" row for users who land there first. */}
+      <WhyThisNumberDialog
+        open={whyThisNumberOpen}
+        onOpenChange={setWhyThisNumberOpen}
+        targetCalories={Math.round(effectiveCalorieTarget)}
+        maintenanceTdee={profileMaintenanceTdee}
+        confidence={profileMaintenanceConfidence}
+        loggingDays={null}
+        goal={
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose"
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          profilePlanPace,
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose",
+        )}
+        mealLogDays={null}
+        weightLogCount={Object.keys(profileWeightKgByDay).length}
+        onAdjustTarget={() => {
+          setWhyThisNumberOpen(false);
+          trackerRouter.push("/home?view=targets");
+        }}
+      />
 
       <TodayCompleteDayDialog
         open={completeDayOpen}

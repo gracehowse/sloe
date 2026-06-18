@@ -68,6 +68,7 @@ const GATE_15_SHARED = [
   "plan_web_parity_v1",
   "import-save-first-v1",
   "onboarding-app-choice",
+  "today_planned_empty_state",
 ] as const;
 
 describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {

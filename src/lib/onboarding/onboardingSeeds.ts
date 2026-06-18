@@ -236,8 +236,9 @@ export const ONBOARDING_SEEDS: readonly OnboardingSeed[] = [
  * Filter the seed list by the user's onboarding dietary tags. Per the
  * candidate-source decision, when the filtered set < 6 we fall back to
  * the unfiltered list — better than empty, and the user can still pick
- * any 5 they'd actually cook. Threshold matches `ONBOARDING_PICK_MIN +
- * 1` so the picker always shows at least one over the cap.
+ * any 5 they'd actually cook. Threshold is one over the north-star
+ * library minimum (`NORTH_STAR_LIBRARY_MIN`, currently 5) so the picker
+ * always shows at least one over the cap.
  */
 export const SEED_FILTER_FALLBACK_THRESHOLD = 6;
 

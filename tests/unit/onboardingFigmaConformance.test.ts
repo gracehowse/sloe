@@ -25,29 +25,32 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
     }
   });
 
-  it("web welcome hero uses Sloe headline + clay pill primary CTA", () => {
+  it("web welcome hero uses Figma brand line + clay pill primary CTA", () => {
     const welcome = readFileSync(
       resolve(ROOT, "src/app/components/onboarding/steps/welcome.tsx"),
       "utf8",
     );
-    expect(welcome).toContain("Eat well,");
-    expect(welcome).toContain("on your terms.");
+    expect(welcome).toContain("Cook what you love.");
+    expect(welcome).toContain("Still");
+    expect(welcome).toContain("reach your goals.");
     expect(welcome).toMatch(/rounded-full/);
-    expect(welcome).toContain("Get started — free");
-    // User-facing copy only — comment may mention legacy "Suppr Club".
-    expect(welcome).toContain("Sloe breaks down the macros");
+    expect(welcome).toContain("Get started");
+    expect(welcome).not.toContain("Get started — free");
+    expect(welcome).toContain("ONBOARDING_WELCOME_BODY_WEB");
     expect(welcome).not.toMatch(/>\s*Suppr Club\s*</);
   });
 
-  it("mobile welcome hero matches Sloe headline + pill Get started CTA", () => {
+  it("mobile welcome hero matches Figma brand line + pill Get started CTA", () => {
     const welcome = readFileSync(
       resolve(ROOT, "apps/mobile/components/onboarding/steps/welcome.tsx"),
       "utf8",
     );
-    expect(welcome).toContain("Eat well,");
-    expect(welcome).toContain("on your terms.");
+    expect(welcome).toContain("Cook what you love.");
+    expect(welcome).toContain("Still");
+    expect(welcome).toContain("reach your goals.");
     expect(welcome).toMatch(/borderRadius: 999/);
     expect(welcome).toContain("Get started");
+    expect(welcome).toContain("I already have an account");
   });
 
   it("web flow Continue CTA is clay rounded-full pill", () => {
@@ -113,16 +116,27 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
       resolve(ROOT, "src/app/components/onboarding/steps/pace.tsx"),
       "utf8",
     );
-    // Web: selected preset pill reads `bg-primary-soft text-primary-solid`,
-    // NO goal-accent border ring (the prior `borderColor: active ? accent`
-    // preset treatment is gone — the only remaining `border-[1.5px]` is the
-    // danger-acknowledge checkbox, which is unrelated to the presets).
     expect(webPace).toContain("bg-primary-soft text-primary-solid");
     expect(webPace).not.toMatch(/borderColor:\s*active\s*\?\s*accent/);
-    // Mobile: the preset pill paints `plum.primarySoft` when active and the
-    // label flips to `plum.primarySolid` — the goal-accent ring is gone.
     expect(mobilePace).toContain("plum.primarySoft");
     expect(mobilePace).toContain("plum.primarySolid");
+  });
+
+  it("reveal step surfaces Figma plan-ready chrome (subtitle + permission quote)", () => {
+    const webReveal = readFileSync(
+      resolve(ROOT, "src/app/components/onboarding/steps/reveal.tsx"),
+      "utf8",
+    );
+    const mobileReveal = readFileSync(
+      resolve(ROOT, "apps/mobile/components/onboarding/steps/reveal.tsx"),
+      "utf8",
+    );
+    for (const src of [webReveal, mobileReveal]) {
+      expect(src).toContain("ONBOARDING_REVEAL_SUBTITLE");
+      expect(src).toContain("ONBOARDING_REVEAL_PERMISSION_QUOTE");
+    }
+    expect(webReveal).toContain("<Check");
+    expect(mobileReveal).toContain("CircleCheck");
   });
 
   it("reveal step surfaces ENG-964 date projection on web + mobile", () => {

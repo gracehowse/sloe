@@ -59,6 +59,7 @@ vi.mock("../../src/lib/analytics/track.ts", () => ({
 // Default to an empty param bag so the edit-load effect bails.
 vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: () => null }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
 // Supabase browser client — auth.getSession (used on save) + a chained
@@ -140,14 +141,15 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the social/URL import entry points (paste a link)", () => {
+  it("renders the social/URL import entry points (paste a link + WORKS WITH trust row)", () => {
     render(<RecipeUpload userTier="free" mode="import" />);
-    // "Import from" 2x2 source grid — the viral hook surfaces.
-    expect(screen.getByText("Import from")).toBeInTheDocument();
-    expect(screen.getByText("TikTok")).toBeInTheDocument();
-    expect(screen.getByText("Instagram")).toBeInTheDocument();
-    expect(screen.getByText("YouTube")).toBeInTheDocument();
-    expect(screen.getByText("Website")).toBeInTheDocument();
+    // ENG-898: non-tappable WORKS WITH monogram chips (mobile parity).
+    expect(screen.getByTestId("import-works-with")).toBeInTheDocument();
+    expect(screen.getByText("Works with")).toBeInTheDocument();
+    expect(screen.getByLabelText("Works with TikTok")).toBeInTheDocument();
+    expect(screen.getByLabelText("Works with Instagram")).toBeInTheDocument();
+    expect(screen.getByLabelText("Works with YouTube")).toBeInTheDocument();
+    expect(screen.getByLabelText("Works with Website")).toBeInTheDocument();
     // Paste-a-link card + URL input + Import button.
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();

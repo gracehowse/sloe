@@ -799,11 +799,16 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               // the same helper.
               const byline = displayAttribution({ creatorName: recipe.creatorName });
               return (
-                <button
+                <SupprCard
                   key={`desktop-${recipe.id}`}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   id={`discover-desktop-post-${recipe.id}`}
+                  data-testid={`discover-recipe-slab-${recipe.id}`}
                   onClick={() => setSelectedRecipe(recipe)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
+                  }}
                   aria-label={recipeCardAccessibilityLabel({
                     title: recipe.title,
                     calories: kcal,
@@ -812,15 +817,19 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     fat,
                     cookTime,
                   })}
-                  className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+                  padding="none"
+                  radius="lg"
+                  elevation="card"
+                  border={false}
+                  className="group overflow-hidden text-left cursor-pointer transition-all"
                 >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "4 / 5" : "8 / 1" }}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}>
                     <DiscoverRecipeImage
                       id={recipe.id}
                       title={recipe.title}
                       image={recipe.image}
                       iconSize={28}
-                      aspectRatio={recipe.image ? "4 / 5" : "8 / 1"}
+                      aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
                     />
                     {recipe.sourcePlatform ? (
@@ -831,68 +840,54 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         />
                       </div>
                     ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p
-                        className="text-[15px] font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm"
-                        style={{
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {recipe.title}
-                      </p>
-                      {byline ? (
-                        <p className="text-[11px] text-white/70 mt-1 truncate">
-                          {recipe.creatorId ? (
-                            <span
-                              role="link"
-                              tabIndex={0}
-                              className="hover:text-white hover:underline cursor-pointer"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
-                              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
-                            >
-                              {byline}
-                            </span>
-                          ) : (
-                            byline
-                          )}
-                        </p>
-                      ) : null}
-                      {/* Macro row (recipes.md §3.1) — kcal · protein ·
-                          carbs · fat, protein emphasised. Mobile parity:
-                          discover.tsx MacroIconRow. Over the photo the
-                          macro hue dots are dropped to white/60 for
-                          contrast; protein leads via weight. */}
-                      <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-2 text-[11px] text-white/80 tabular-nums">
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.calories className="w-3 h-3 text-white/60" />
-                          {kcal} kcal
-                        </span>
-                        <span className="inline-flex items-center gap-1 font-semibold text-white">
-                          <Icons.protein className="w-3 h-3 text-white/60" />
-                          {protein}g
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.carbs className="w-3 h-3 text-white/60" />
-                          {carbs}g
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.fat className="w-3 h-3 text-white/60" />
-                          {fat}g
-                        </span>
-                        {cookTime ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Icons.time className="w-3 h-3 text-white/60" />
-                            {cookTime}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-[family-name:var(--font-headline)] text-[18px] font-semibold leading-snug text-foreground line-clamp-2">
+                      {recipe.title}
+                    </h3>
+                    {byline ? (
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                        {recipe.creatorId ? (
+                          <span
+                            role="link"
+                            tabIndex={0}
+                            className="hover:text-foreground hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                          >
+                            {byline}
                           </span>
-                        ) : null}
-                      </div>
+                        ) : (
+                          byline
+                        )}
+                      </p>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} aria-hidden />
+                        {kcal}
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} aria-hidden />
+                        {protein}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs className="w-[11px] h-[11px]" style={{ color: "var(--macro-carbs)" }} aria-hidden />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} aria-hidden />
+                        {fat}g
+                      </span>
+                      {cookTime ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.time className="w-[11px] h-[11px]" aria-hidden />
+                          {cookTime}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
-                </button>
+                </SupprCard>
               );
             })}
           </div>

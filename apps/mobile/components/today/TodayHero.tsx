@@ -64,6 +64,9 @@ export interface TodayHeroProps {
    *  number?" pill renders below the ring; tap fires this handler. */
   onPressWhy?: () => void;
 
+  /** ENG-1184 — tap status chip to open calorie-target explainer on Today. */
+  onPressStatusChip?: () => void;
+
   /** ENG-753 — true when the user has logged today and calories are
    *  within ±10% of the daily target. Drives the "On track" pill.
    *  Gated behind `today-status-pills`. */
@@ -95,6 +98,7 @@ export function TodayHero(props: TodayHeroProps) {
     borderColor,
     trackColor,
     onPressWhy,
+    onPressStatusChip,
     isOnTrack,
     // `tdeeLearnDays` is retained on the props interface for call-site
     // stability but no longer rendered on Today — the Adaptive-TDEE line was
@@ -134,6 +138,7 @@ export function TodayHero(props: TodayHeroProps) {
         onToggleDisplayMode={onToggleDisplayMode}
         textTertiaryColor={textTertiaryColor}
         onPressWhy={onPressWhy}
+        onPressStatusChip={onPressStatusChip}
       />
 
       {showPills ? (

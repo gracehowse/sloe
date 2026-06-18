@@ -239,10 +239,9 @@ export interface OnboardingState {
    * Phase 5 / B2.3 — set of seed slugs the user picked on the final
    * "Pick 5 recipes" step. Persisted across step navigation so the
    * user can go back / forward without losing their selection.
-   * Stored as a string array (JSON-friendly); `togglePick` /
-   * `derivePickerState` work with `ReadonlySet<string>` for ergonomic
-   * referential-equality checks. The terminal-step handler converts
-   * between the two shapes.
+   * Stored as a string array (JSON-friendly); the picker UI works with
+   * a `ReadonlySet<string>` for ergonomic referential-equality checks,
+   * and the terminal-step handler converts between the two shapes.
    */
   pickedRecipeSlugs: string[];
   /**

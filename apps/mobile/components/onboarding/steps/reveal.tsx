@@ -8,13 +8,17 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
-import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
+import { BookOpen, CircleCheck, Scale, Sparkles, Target } from "lucide-react-native";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { computeOnboardingRevealProjection } from "@suppr/shared/onboarding/revealProjection";
+import {
+  ONBOARDING_REVEAL_PERMISSION_QUOTE,
+  ONBOARDING_REVEAL_SUBTITLE,
+} from "@suppr/shared/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 
@@ -168,6 +172,61 @@ export function MobileRevealStep() {
       showsVerticalScrollIndicator={false}
     >
       <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: "center" }}>
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: `${Accent.success}26`,
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: Spacing.md,
+          }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <CircleCheck size={28} color={Accent.success} strokeWidth={2} />
+        </View>
+        <Text
+          style={{
+            fontFamily: FontFamily.serifSemibold,
+            fontSize: 24,
+            fontWeight: "500",
+            color: colors.navPrimary,
+            letterSpacing: -0.3,
+            marginBottom: Spacing.xs,
+            textAlign: "center",
+          }}
+        >
+          Your plan is ready.
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: "center",
+            lineHeight: 20,
+            marginBottom: Spacing.sm,
+            maxWidth: 320,
+          }}
+        >
+          {ONBOARDING_REVEAL_SUBTITLE}
+        </Text>
+        <Text
+          style={{
+            fontFamily: FontFamily.serifRegular,
+            fontSize: 16,
+            fontStyle: "italic",
+            color: colors.text,
+            textAlign: "center",
+            lineHeight: 22,
+            marginBottom: Spacing.lg,
+            maxWidth: 320,
+            paddingHorizontal: Spacing.sm,
+          }}
+        >
+          &ldquo;{ONBOARDING_REVEAL_PERMISSION_QUOTE}&rdquo;
+        </Text>
         <Text
           style={{
             fontSize: 11,
@@ -179,26 +238,6 @@ export function MobileRevealStep() {
           }}
         >
           Your daily target
-        </Text>
-        {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
-            re-titled the reveal h1 from "Here's what your day looks
-            like." → "Your plan is ready." Cal AI parity — leads with
-            completion + reward beat, not "look at this dashboard".
-            Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
-            Newsreader serif hero title (`colors.navPrimary` theme-aware
-            plum). Mirrors the web reveal hero. */}
-        <Text
-          style={{
-            fontFamily: FontFamily.serifSemibold,
-            fontSize: 24,
-            fontWeight: "500",
-            color: colors.navPrimary,
-            letterSpacing: -0.3,
-            marginBottom: 16,
-            textAlign: "center",
-          }}
-        >
-          Your plan is ready.
         </Text>
 
         <View

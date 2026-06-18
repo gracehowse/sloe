@@ -19,6 +19,7 @@ import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
 import { Library } from "./components/Library.tsx";
 import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
+import { TodayLoadingSkeleton } from "./components/suppr/today-loading-skeleton.tsx";
 import { DesktopSidebar, resolvePrimaryFromView, type SidebarView } from "./components/suppr/desktop-sidebar.tsx";
 import { SubTabPill } from "./components/ui/sub-tab-pill.tsx";
 import { RecipesTabChrome } from "./components/suppr/recipes-tab-chrome.tsx";
@@ -38,7 +39,7 @@ const Profile = dynamic(
 );
 const NutritionTracker = dynamic(
   () => import("./components/NutritionTracker.tsx").then((m) => ({ default: m.NutritionTracker })),
-  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading tracker..." /> },
+  { ssr: false, loading: () => <TodayLoadingSkeleton /> },
 );
 const ProgressDashboard = dynamic(
   () => import("./components/ProgressDashboard.tsx").then((m) => ({ default: m.ProgressDashboard })),

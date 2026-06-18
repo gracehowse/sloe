@@ -97,6 +97,25 @@ describe("redactPII", () => {
     expect(out.breadcrumbs).toEqual([{ category: "navigation", message: "/today" }]);
   });
 
+  it("strips health-related keys (weight, sex_at_birth, measurements)", () => {
+    const event = {
+      extra: {
+        profile_patch: {
+          display_name: "Grace",
+          weight_kg: 72.4,
+          sex_at_birth: "female",
+          body_measurements: { waist_cm: 80 },
+        },
+      },
+    };
+    const out = redactPII(event);
+    const patch = (out.extra?.profile_patch as Record<string, unknown>) ?? {};
+    expect(patch.display_name).toBe("Grace");
+    expect(patch.weight_kg).toBeUndefined();
+    expect(patch.sex_at_birth).toBeUndefined();
+    expect(patch.body_measurements).toBeUndefined();
+  });
+
   it("strips PII-shaped tag keys", () => {
     const event = {
       tags: {

@@ -56,6 +56,8 @@ export interface UseWinMomentArgs {
 export interface UseWinMoment {
   /** The celebration to play right now, or `null` when nothing is firing. */
   activeCelebration: WinMomentCelebration | null;
+  /** Streak milestone (3/7/30/100) when `activeCelebration === "streak"`. */
+  activeMilestone: number | null;
   /** Call from the `WinMomentPlayer` `onComplete` to dismiss the overlay. */
   onCelebrationComplete: () => void;
   /** Fire the quiet confirm haptic for an ORDINARY log (not a win-moment).
@@ -74,6 +76,7 @@ export function useWinMoment({
 
   const [activeCelebration, setActiveCelebration] =
     useState<WinMomentCelebration | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
 
   // Previous snapshot for rising-edge detection. Seeded on the first ready
   // render so the baseline state never counts as a "newly crossed" landmark.
@@ -123,6 +126,7 @@ export function useWinMoment({
     void AsyncStorage.setItem(LAST_FIRED_KEY, dayKey);
 
     setActiveCelebration(result.celebration);
+    setActiveMilestone(result.milestone ?? null);
     // SPEC 1 (2026-06-09) sequenced win beat: Medium impact, then the
     // Success notification 80ms later — a tap-then-bloom that reads as a
     // deliberate celebration instead of a single buzz.
@@ -144,6 +148,7 @@ export function useWinMoment({
 
   const onCelebrationComplete = useCallback(() => {
     setActiveCelebration(null);
+    setActiveMilestone(null);
   }, []);
 
   const confirmLog = useCallback(() => {
@@ -153,5 +158,5 @@ export function useWinMoment({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [motionEnabled]);
 
-  return { activeCelebration, onCelebrationComplete, confirmLog };
+  return { activeCelebration, activeMilestone, onCelebrationComplete, confirmLog };
 }

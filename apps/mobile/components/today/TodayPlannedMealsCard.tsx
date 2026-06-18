@@ -5,6 +5,7 @@ import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { formatPlannedMealMacroParts } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { PortionPickerSheet } from "./PortionPickerSheet";
 
@@ -90,6 +91,8 @@ export function TodayPlannedMealsCard({
   // Secondary accent (Frost flag → damson, else clay) for the "Log today" CTA.
   const accent = useAccent();
   const [picker, setPicker] = useState<{ meal: TodayPlannedMealEntry } | null>(null);
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
+  const cardLift = tierV1 ? "flat" : "soft";
 
   const isEmpty = plannedMeals.length === 0;
 
@@ -108,7 +111,7 @@ export function TodayPlannedMealsCard({
           so the two states read as one element in two states. The host gates
           whether this mounts when empty behind `today_planned_empty_state`. */}
       {isEmpty ? (
-        <SupprCard lift="soft" padding="none">
+        <SupprCard lift={cardLift} padding="none">
           <View style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: Spacing.dense }}>
             <Text style={{ ...Type.body, color: colors.textSecondary }}>
               Nothing planned for today
@@ -131,7 +134,7 @@ export function TodayPlannedMealsCard({
           (one-treatment, Grace 2026-06-09). The divided rows are the inner
           contents; padding="none" because each row owns its own padding.
           Sits on the Today scroll ground → soft lift. */
-      <SupprCard lift="soft" padding="none">
+      <SupprCard lift={cardLift} padding="none">
         {plannedMeals.map((pm, i) => {
           const name = pm.recipe_title ?? pm.name ?? "Planned meal";
           return (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SupprMark } from "./ui/suppr-mark";
@@ -42,6 +43,7 @@ import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPa
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
+import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
@@ -189,6 +191,7 @@ function amountToNumeric(raw: string): number | null {
 }
 
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+  const router = useRouter();
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
   // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
@@ -221,8 +224,18 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [importHint, setImportHint] = useState<string | null>(null);
+  /** Audit I05 — `false` when image step fell back to caption-only. */
+  const [importImageUsed, setImportImageUsed] = useState<boolean | undefined>(undefined);
+  /** ENG-1159b — true when caption exceeded CAPTION_MAX before extraction. */
+  const [importCaptionTruncated, setImportCaptionTruncated] = useState(false);
   /** ENG-980 — true when save-first already landed this import in Library. */
   const [importSaveFirstActive, setImportSaveFirstActive] = useState(false);
+  /** ENG-901 M6 — import-success sheet after library save (web parity). */
+  const [importSuccess, setImportSuccess] = useState<{
+    recipeId: string;
+    title: string;
+    macroLine: string | null;
+  } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -647,7 +660,14 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
    * to retry-eligible copy via `importErrorCopy`.
    */
   const fetchImportedRecipe = useCallback(
-    async (u: string, signal?: AbortSignal): Promise<ApiImportedRecipe> => {
+    async (
+      u: string,
+      signal?: AbortSignal,
+    ): Promise<{
+      recipe: ApiImportedRecipe;
+      imageUsed?: boolean;
+      captionTruncated?: boolean;
+    }> => {
       let res: Response;
       try {
         res = await fetch("/api/recipe-import", {
@@ -665,19 +685,31 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         recipe?: ApiImportedRecipe;
         message?: string;
         error?: string;
+        imageUsed?: boolean;
+        captionTruncated?: boolean;
       };
       if (!data.ok || !data.recipe) {
         // Prefer the server's stable error code so retry-eligibility is honest.
         const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
         throw new ImportRunnerError(code, data.message);
       }
-      return data.recipe;
+      return {
+        recipe: data.recipe,
+        imageUsed: data.imageUsed,
+        captionTruncated: data.captionTruncated,
+      };
     },
     [],
   );
 
   const applyAndMaybeSaveFirst = useCallback(
-    async (recipe: ApiImportedRecipe, sourceUrl: string): Promise<boolean> => {
+    async (
+      recipe: ApiImportedRecipe,
+      sourceUrl: string,
+      importFlags?: { imageUsed?: boolean; captionTruncated?: boolean },
+    ): Promise<boolean> => {
+      setImportImageUsed(importFlags?.imageUsed);
+      setImportCaptionTruncated(Boolean(importFlags?.captionTruncated));
       const formRecipe: ImportedUrlRecipe = {
         title: recipe.title ?? "Imported recipe",
         description: recipe.description ?? null,
@@ -774,13 +806,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         title: seedTitle,
         run: async (controls) => {
           controls.setStage("extracting");
-          const recipe = await fetchImportedRecipe(u, controls.signal);
+          const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u, controls.signal);
           if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
           controls.setStage("organizing");
           controls.setTitle(recipe.title ?? "Imported recipe");
           // The most-recently-finished import populates the editor form for
           // review; all imports are listed in the drawer regardless.
-          await applyAndMaybeSaveFirst(recipe, u);
+          await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
           return { title: recipe.title ?? "Imported recipe" };
         },
       });
@@ -794,8 +826,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     setImportBusy(true);
     setImportHint(null);
     try {
-      const r = await fetchImportedRecipe(u);
-      const savedFirst = await applyAndMaybeSaveFirst(r, u);
+      const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u);
+      const savedFirst = await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
       toast.success(
         savedFirst
           ? "Saved to your library — review amounts and nutrition below"
@@ -1438,16 +1470,38 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         });
       }
 
-      toast.success(
-        effectivePublished ? "Recipe published" : mode === "import" ? "Saved to your library" : "Draft saved",
-        {
-          description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
-        },
-      );
+      if (mode === "import") {
+        setImportSuccess({
+          recipeId: id,
+          title: trimmedTitle,
+          macroLine: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+        });
+      } else {
+        toast.success(
+          effectivePublished ? "Recipe published" : "Draft saved",
+          {
+            description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+          },
+        );
+      }
     } finally {
       setSaving(null);
     }
   };
+
+  if (mode === "import" && importSuccess) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <ImportSuccessSheet
+          recipeTitle={importSuccess.title}
+          recipeId={importSuccess.recipeId}
+          macroLine={importSuccess.macroLine}
+          onViewRecipe={() => router.push(`/recipe/${importSuccess.recipeId}`)}
+          onReviewIngredients={() => router.push(`/recipe/verify?id=${importSuccess.recipeId}`)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -1573,32 +1627,6 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           Presentation only — paste-link / URL-parse logic unchanged. */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
-          {/* Source tiles — 3-method input grid (the app's canonical input
-              methods, reskinned to the Sloe language; NOT restructured to
-              the old Figma source-platform layout). */}
-          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Import from</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { icon: Icons.star, label: "TikTok" },
-                { icon: Icons.instagram, label: "Instagram" },
-                { icon: Icons.youtube, label: "YouTube" },
-                { icon: Icons.web, label: "Website" },
-              ].map((source) => (
-                <button
-                  key={source.label}
-                  type="button"
-                  className="flex flex-col items-center gap-2 p-3 rounded-[var(--radius-card)] hover:bg-muted/40 transition-colors"
-                >
-                  <IconBox tone="primary" size="md">
-                    <source.icon className="w-4 h-4" />
-                  </IconBox>
-                  <span className="text-[10px] font-medium text-muted-foreground">{source.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Paste-link pill — the import CTA panel. */}
           <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
             {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
@@ -1638,6 +1666,30 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             ) : null}
           </div>
 
+          {/* WORKS WITH — non-tappable trust chips (ENG-898, mobile parity).
+              Honest sources we parse; NOT a four-way router. */}
+          <div className="space-y-2" data-testid="import-works-with">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Works with
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { mono: "TT", label: "TikTok" },
+                { mono: "IG", label: "Instagram" },
+                { mono: "YT", label: "YouTube" },
+                { mono: "W", label: "Website" },
+              ].map((source) => (
+                <div
+                  key={source.label}
+                  aria-label={`Works with ${source.label}`}
+                  className="inline-flex h-6 items-center rounded-lg border border-border bg-card px-2 text-xs font-semibold text-foreground"
+                >
+                  {source.mono}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Recent Imports placeholder */}
           <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
@@ -1654,6 +1706,25 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           aria-label={IMPORT_SAVE_FIRST_REVIEW_BANNER.a11yLabel}
         >
           {IMPORT_SAVE_FIRST_REVIEW_BANNER.label}
+        </div>
+      ) : null}
+
+      {mode === "import" && (importImageUsed === false || importCaptionTruncated) ? (
+        <div
+          data-testid="import-preview-confidence-banner"
+          className="mb-6 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-[13px] text-foreground"
+          role="status"
+        >
+          <p className="font-semibold">
+            {importImageUsed === false
+              ? "Image couldn't be analysed"
+              : "Long caption was shortened"}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {importImageUsed === false
+              ? "The recipe was extracted from the caption alone. Review amounts and nutrition before saving."
+              : "Only the first part of this post was analysed. If the recipe continues below, add missing ingredients manually."}
+          </p>
         </div>
       ) : null}
 

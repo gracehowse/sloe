@@ -1,29 +1,8 @@
 /**
- * Library — desktop prototype port pin (2026-04-20).
+ * Library — Sloe Figma `527:2` recipe grid (ENG-896).
  *
- * Grace's 2026-04-19 Claude Design prototype
- * (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
- * `WebLibrary`) replaced the legacy live Library desktop layout
- * with a prototype-flat grid. This test pins the structural
- * markers so drift is caught in CI rather than on-device.
- *
- * Pins (desktop at `md+`):
- *   1. A `library-desktop-grid` test id renders a `md:grid` (so the
- *      desktop variant is distinct from the mobile-web fallback).
- *   2. Each card renders a fit-% pill (`library-fit-{id}`) sourced
- *      from the shared `computeRecipeFitPercent` helper — parity
- *      with Discover's 2026-04-20 port.
- *   3. Saved-kind cards render a bookmark dot
- *      (`library-saved-dot-{id}`) instead of the kcal overlay, so
- *      the Saved filter pill result is visually recognisable from
- *      scroll distance.
- *   4. The filter pill row uses the shared `LIBRARY_CATEGORY_PILLS`
- *      (All · Breakfast · Lunch · Dinner · Dessert · Quick · …, from
- *      `recipeCategoryFilters` per ENG-921 / Figma 527:2) — web +
- *      mobile both moved off the legacy `libraryFilters` set together.
- *   5. The legacy mobile-web card layout is preserved below `md`
- *      (`md:hidden` wrapper) so narrow widths keep parity with the
- *      live mobile-web experience until the narrow port lands.
+ * Pins the unified responsive grid (`library-recipe-grid`) that replaced
+ * the legacy desktop prototype-flat layout (2026-04-20 port retired).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -38,41 +17,19 @@ const SRC = readFileSync(LIBRARY_PATH, "utf8");
 const FILTERS_SRC = readFileSync(FILTERS_PATH, "utf8");
 const MOBILE_SRC = readFileSync(MOBILE_LIBRARY_PATH, "utf8");
 
-describe("Library — desktop prototype port (2026-04-20)", () => {
-  describe("desktop grid marker", () => {
-    it("renders a `library-desktop-grid` test id on a `hidden md:grid` container", () => {
-      expect(SRC).toMatch(/data-testid="library-desktop-grid"/);
-      expect(SRC).toMatch(/hidden md:grid/);
+describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
+  describe("unified recipe grid", () => {
+    it("renders `library-recipe-grid` with responsive 2/3-column layout", () => {
+      expect(SRC).toMatch(/data-testid="library-recipe-grid"/);
+      expect(SRC).toMatch(/grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3/);
     });
 
-    it("renders the mobile-web 2-column photo grid (Figma 527:2) gated behind `md:hidden`", () => {
-      // ENG-921 rebuild (2026-06-08): the mobile-web (< md) layout moved
-      // from a 1-column full-width card list to the Sloe Figma `527:2`
-      // 2-column photo grid. The desktop (md+) grid stays distinct — this
-      // pins that the narrow layout is BOTH 2-column AND `md:hidden` so it
-      // can't silently revert to 1-column or leak into the desktop grid.
-      expect(SRC).toMatch(/grid grid-cols-2 gap-4 md:hidden/);
-      expect(SRC).toMatch(/data-testid="library-mobile-grid"/);
-    });
-  });
-
-  describe("fit-% pill (parity with Discover 2026-04-20 port)", () => {
-    it("imports and calls `computeRecipeFitPercent`", () => {
-      expect(SRC).toMatch(/computeRecipeFitPercent/);
+    it("does not keep the legacy desktop-only prototype grid", () => {
+      expect(SRC).not.toMatch(/data-testid="library-desktop-grid"/);
     });
 
-    it("renders a `library-fit-{id}` test id per desktop card", () => {
-      expect(SRC).toMatch(/library-fit-\$\{recipe\.id\}/);
-    });
-
-    it("styles the fit pill with primary-tinted bg + tabular nums (prototype spec)", () => {
-      expect(SRC).toMatch(/bg-primary\/15 text-primary[^"]*tabular-nums/);
-    });
-  });
-
-  describe("saved bookmark dot", () => {
-    it("renders a `library-saved-dot-{id}` test id for Saved-kind cards", () => {
-      expect(SRC).toMatch(/library-saved-dot-\$\{recipe\.id\}/);
+    it("renders bookmark overlay per card (`library-bookmark-{id}`)", () => {
+      expect(SRC).toMatch(/library-bookmark-\$\{recipe\.id\}/);
     });
   });
 
@@ -99,24 +56,17 @@ describe("Library — desktop prototype port (2026-04-20)", () => {
     });
   });
 
-  describe("mobile-web 2-column rebuild — Sloe Figma 527:2 (ENG-921, 2026-06-08)", () => {
-    // The narrow (< md) Library is the Sloe Figma `527:2` cookbook frame:
-    // a 2-column photo grid, each card showing a bookmark overlay, a calm
-    // `★ saves · time` meta line, a single category-pill row, and a calm
-    // count line. NO `…` overflow, NO kind badge.
-    //
-    // 2026-06-08 (recipe-card redesign-conformance pass) — the earlier
-    // "NO macros on the card" call was REVERSED: cards carried no macro
-    // data and read as unloaded/broken, so a macro row (kcal · protein ·
-    // carbs · fat, protein emphasised — recipes.md §3.1) is now rendered
-    // beneath the title on BOTH the desktop and mobile-web cards. The
-    // saves/time line stays as a quieter secondary meta. Web + mobile
-    // parity is enforced by pinning both here.
+  describe("unified Sloe Figma 527:2 card grid (ENG-896 / ENG-921)", () => {
+    // All breakpoints share one `library-recipe-grid`: 2-col mobile-web,
+    // 3-col desktop. Square hero, bookmark overlay, macro row, saves/time
+    // meta — parity with native mobile Library.
 
     describe("web (src/app/components/Library.tsx)", () => {
-      it("renders the 2-column grid with a `library-mobile-grid` test id", () => {
-        expect(SRC).toMatch(/data-testid="library-mobile-grid"/);
-        expect(SRC).toMatch(/grid grid-cols-2 gap-4 md:hidden/);
+      it("renders the unified grid with responsive column breakpoints", () => {
+        expect(SRC).toMatch(/data-testid="library-recipe-grid"/);
+        expect(SRC).toMatch(/grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3/);
+        expect(SRC).not.toMatch(/data-testid="library-mobile-grid"/);
+        expect(SRC).not.toMatch(/library-desktop-grid/);
       });
 
       it("the card meta uses the REAL saves count (savedCount), never a fabricated rating", () => {

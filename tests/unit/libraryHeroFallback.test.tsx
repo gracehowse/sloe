@@ -25,13 +25,15 @@ describe("Library cards render RecipeHeroFallback when image is missing", () => 
     expect(LIBRARY_SRC).toMatch(/import\s+\{\s*RecipeHeroFallback\s*\}\s+from\s+"\.\/suppr\/RecipeHeroFallback"/);
   });
 
-  it("renders the fallback (not a broken <img>) when recipe.image is falsy on both card paths", () => {
-    // Both card paths gate the <img> behind a `recipe.image ?` ternary
-    // and render <RecipeHeroFallback> in the false branch. Two card
-    // paths (desktop grid + mobile-web list) means two ternaries.
-    const matches = LIBRARY_SRC.match(/recipe\.image \?[\s\S]*?<RecipeHeroFallback/g);
-    expect(matches).not.toBeNull();
-    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  it("renders the fallback (not a broken <img>) when recipe.image is falsy on the unified card grid", () => {
+    // ENG-896 retired the dual desktop/mobile-web card paths — one
+    // `library-recipe-grid` now gates the hero behind `recipe.image ?`
+    // and renders <RecipeHeroFallback> in the false branch. The shared
+    // `RecipeCardImage` helper also swaps to fallback on load error.
+    const imageTernaries = LIBRARY_SRC.match(/recipe\.image \?[\s\S]*?<RecipeHeroFallback/g);
+    expect(imageTernaries).not.toBeNull();
+    expect(imageTernaries!.length).toBeGreaterThanOrEqual(1);
+    expect(LIBRARY_SRC).toMatch(/function RecipeCardImage[\s\S]*?broken[\s\S]*?<RecipeHeroFallback/);
   });
 
   it("preserves the view-transition-name on the fallback wrapper so the morph still anchors", () => {

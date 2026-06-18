@@ -394,7 +394,21 @@ export function socialImportSourceName(
  * caption-leak in the wild.
  */
 const IMPORTED_TITLE_MAX_CHARS = 80;
+/** Max caption chars sent to the LLM prompt (longer posts are truncated). */
+export const CAPTION_MAX = 4000;
+
 const CAPTION_SHAPE_REJECT_AT = 240;
+
+/** Slice a caption for extraction and flag when truncation occurred. */
+export function prepareCaptionForExtraction(caption: string): {
+  text: string;
+  captionTruncated: boolean;
+} {
+  return {
+    text: caption.slice(0, CAPTION_MAX),
+    captionTruncated: caption.length > CAPTION_MAX,
+  };
+}
 
 function clampToWordBoundary(s: string, max: number): string {
   if (s.length <= max) return s;
@@ -646,7 +660,14 @@ export async function extractRecipeFromCaption(
    * it didn't.
    */
   imageUsed?: boolean;
+  /**
+   * `true` when the source caption exceeded {@link CAPTION_MAX} and was
+   * truncated before extraction. Callers surface this on the import preview
+   * so users know a long/multi-recipe post may be incomplete (ENG-1159b).
+   */
+  captionTruncated?: boolean;
 }> {
+  const { text: captionForPrompt, captionTruncated } = prepareCaptionForExtraction(caption);
   // Recipe-vision contract (2026-06-11) — the caption extractor now uses the
   // shared strict structured schema so parse confidence is captured per
   // ingredient. The caption text is appended to the shared system prompt so
@@ -655,7 +676,7 @@ export async function extractRecipeFromCaption(
 
 The caption text is:
 """
-${caption.slice(0, 4000)}
+${captionForPrompt}
 """`;
 
   // 2026-05-08: migrated from direct OpenAI fetch to the shared
@@ -779,6 +800,7 @@ ${caption.slice(0, 4000)}
       cookTimeMin: heur.cookTimeMin,
       flaggedIngredients: [],
       imageUsed,
+      captionTruncated,
     };
   }
   const recipe = result.recipe;
@@ -806,5 +828,6 @@ ${caption.slice(0, 4000)}
     cookTimeMin: recipe.cookTimeMin ?? heur.cookTimeMin,
     flaggedIngredients,
     imageUsed,
+    captionTruncated,
   };
 }

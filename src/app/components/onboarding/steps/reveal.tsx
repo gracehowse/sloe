@@ -1,9 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, ChevronDown, ChevronUp, Sparkles, Target } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ChevronUp, Sparkles, Target } from "lucide-react";
 import { isFeatureEnabled } from "../../../../lib/analytics/track";
 import { computeOnboardingRevealProjection } from "../../../../lib/onboarding/revealProjection";
+import {
+  ONBOARDING_REVEAL_PERMISSION_QUOTE,
+  ONBOARDING_REVEAL_SUBTITLE,
+} from "../../../../lib/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 
@@ -115,6 +119,12 @@ export function RevealStep({ compact = false }: RevealProps) {
     >
       {/* Hero */}
       <div className={compact ? "px-5 pt-6 pb-4 text-center" : "px-8 pt-8 pb-5 text-center"}>
+        <div
+          className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success"
+          aria-hidden
+        >
+          <Check size={28} strokeWidth={2} />
+        </div>
         <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
           Your daily target
         </div>
@@ -130,6 +140,12 @@ export function RevealStep({ compact = false }: RevealProps) {
         >
           Your plan is ready.
         </h1>
+        <p className="m-0 mb-2 text-sm text-muted-foreground leading-relaxed">
+          {ONBOARDING_REVEAL_SUBTITLE}
+        </p>
+        <p className="m-0 mb-5 font-[family-name:var(--font-headline)] text-base italic text-foreground px-4 leading-relaxed">
+          &ldquo;{ONBOARDING_REVEAL_PERMISSION_QUOTE}&rdquo;
+        </p>
 
         <div
           className="relative mx-auto"

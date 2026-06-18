@@ -171,10 +171,12 @@ describe("foodSelectionSourceLabel + foodSelectionAnalyticsSource", () => {
     expect(foodSelectionSourceLabel("history")).toBe("Manual");
   });
 
-  it("maps the analytics source: custom vs manual", () => {
+  it("maps the analytics source: custom vs food_search vs manual", () => {
     expect(foodSelectionAnalyticsSource("CUSTOM")).toBe("custom_food");
-    expect(foodSelectionAnalyticsSource("USDA")).toBe("manual");
-    expect(foodSelectionAnalyticsSource("FatSecret")).toBe("manual");
+    expect(foodSelectionAnalyticsSource("USDA")).toBe("food_search");
+    expect(foodSelectionAnalyticsSource("OFF")).toBe("food_search");
+    expect(foodSelectionAnalyticsSource("FatSecret")).toBe("food_search");
+    expect(foodSelectionAnalyticsSource("Edamam")).toBe("food_search");
     expect(foodSelectionAnalyticsSource("history")).toBe("manual");
   });
 });

@@ -59,6 +59,10 @@ import Animated, {
 import { Accent, Type } from "@/constants/theme";
 import { useWinGradient } from "@/context/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
+import {
+  STREAK_WIN_SUBHEAD,
+  showStreakMilestoneDisplay,
+} from "@suppr/shared/nutrition/winMomentStreakCopy";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -67,6 +71,8 @@ export type WinMomentCelebration = "goal-hit" | "streak" | "log-confirm";
 export interface WinMomentPlayerProps {
   /** Which landmark celebration to play. Drives the celebration copy/visual. */
   celebration: WinMomentCelebration;
+  /** ENG-901 M5 — streak milestone numeral (3/7/30/100). */
+  milestone?: number;
   /** Fired once the (single, non-looping) celebration finishes. Use this to
    *  unmount the player. */
   onComplete?: () => void;
@@ -153,12 +159,14 @@ function ConfettiDot({
 
 export function WinMomentPlayer({
   celebration,
+  milestone,
   onComplete,
   size = 220,
   fullBleed = false,
   testID,
 }: WinMomentPlayerProps) {
   const reduceMotion = useReduceMotion();
+  const streakMilestone = showStreakMilestoneDisplay(celebration, milestone);
   // Win-moment gradient — the clay-mid Sloe brand gradient (plum → clay →
   // honey). The Frost secondary-colour exploration was retired 2026-06-08
   // (ENG-997), so `useWinGradient()` now always returns this clay gradient.
@@ -175,7 +183,9 @@ export function WinMomentPlayer({
   // Animated drivers.
   const sweep = useSharedValue(0); // 0→1 ring fill + number odometer
   const pulse = useSharedValue(0); // 0→1→0 radial bloom behind the ring
-  const [displayPct, setDisplayPct] = React.useState(reduceMotion ? 100 : 0);
+  const [displayPct, setDisplayPct] = React.useState(
+    reduceMotion || streakMilestone ? 100 : 0,
+  );
 
   // Unique gold-gradient id (avoids SVG <Defs> id collisions if two players
   // ever co-mount). `useId()` returns a string with colons (e.g. `:r0:`),
@@ -186,6 +196,14 @@ export function WinMomentPlayer({
 
   React.useEffect(() => {
     let completeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    if (streakMilestone) {
+      sweep.value = 1;
+      completeTimer = setTimeout(() => onComplete?.(), CELEBRATION_MS);
+      return () => {
+        if (completeTimer) clearTimeout(completeTimer);
+      };
+    }
 
     if (reduceMotion) {
       // Reduce-motion: snap the ring full + show 100%, no sweep/pulse/confetti.
@@ -346,19 +364,16 @@ export function WinMomentPlayer({
         {/* Centre hero — odometer % + landmark label, both in gold. */}
         <View style={{ alignItems: "center", gap: 2 }} pointerEvents="none">
           <Text
-            testID="win-moment-pct"
+            testID={streakMilestone ? "win-moment-milestone" : "win-moment-pct"}
             style={{
               ...Type.ringValue,
-              // `Type.ringValue` is now 48px (the Today ring centre, 2026-06-04).
-              // The win-moment celebration pct keeps its pre-bump 36/36 so the
-              // ring bump doesn't silently resize this overlay. Same serif.
-              fontSize: 36,
-              lineHeight: 36,
+              fontSize: streakMilestone ? 56 : 36,
+              lineHeight: streakMilestone ? 56 : 36,
               color: Accent.win,
               fontVariant: ["tabular-nums"],
             }}
           >
-            {displayPct}%
+            {streakMilestone ? String(milestone) : `${displayPct}%`}
           </Text>
           <Text
             style={{
@@ -366,7 +381,7 @@ export function WinMomentPlayer({
               color: Accent.win,
             }}
           >
-            {CELEBRATION_LABEL[celebration]}
+            {streakMilestone ? STREAK_WIN_SUBHEAD : CELEBRATION_LABEL[celebration]}
           </Text>
         </View>
       </View>

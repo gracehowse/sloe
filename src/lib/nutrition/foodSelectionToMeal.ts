@@ -84,12 +84,22 @@ export function foodSelectionSourceLabel(source: FoodSelectionLike["source"]): s
   }
 }
 
-/** The `food_logged.source` analytics value for a selection (custom vs the
- *  canonical shared-food "manual"). */
+/** The `food_logged.source` analytics value for a selection (custom vs vendor
+ *  search vs re-logged history). */
 export function foodSelectionAnalyticsSource(
   source: FoodSelectionLike["source"],
-): "custom_food" | "manual" {
-  return source === "CUSTOM" ? "custom_food" : "manual";
+): "custom_food" | "food_search" | "manual" {
+  if (source === "CUSTOM") return "custom_food";
+  if (source === "history") return "manual";
+  switch (source) {
+    case "USDA":
+    case "OFF":
+    case "Edamam":
+    case "FatSecret":
+      return "food_search";
+    default:
+      return "food_search";
+  }
 }
 
 /**

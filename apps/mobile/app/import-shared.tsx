@@ -227,6 +227,9 @@ export default function ImportSharedScreen() {
   // was supplied. Surfaces the dropped-image fact on the import
   // preview so users know the recipe was extracted from caption alone.
   const [imageUsed, setImageUsed] = useState<boolean | undefined>(undefined);
+  // ENG-1159b — true when the post caption exceeded CAPTION_MAX (4000 chars)
+  // and was truncated before LLM extraction.
+  const [captionTruncated, setCaptionTruncated] = useState(false);
   // F-121 (TestFlight `AJK4VIZdlOwU_yQWVLn_9pc`, 2026-05-06): when the
   // server returns 429 with a `Retry-After` header, capture the absolute
   // timestamp at which retry becomes valid and disable the "Try again"
@@ -415,9 +418,10 @@ export default function ImportSharedScreen() {
     (
       recipe: ApiImportedRecipe,
       imageUsedFlag?: boolean,
-      options?: { caption?: string },
+      options?: { caption?: string; captionTruncated?: boolean },
     ): { normalized: ApiImportedRecipe; mealTags: string[]; title: string } => {
       setImageUsed(imageUsedFlag);
+      setCaptionTruncated(Boolean(options?.captionTruncated));
       const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(String) : [];
       const fromApi = recipe.mealType;
       const allowed = /^(breakfast|lunch|dinner|snack)$/;
@@ -452,7 +456,7 @@ export default function ImportSharedScreen() {
     async (
       recipe: ApiImportedRecipe,
       imageUsedFlag?: boolean,
-      options?: { caption?: string },
+      options?: { caption?: string; captionTruncated?: boolean },
     ) => {
       const { normalized, mealTags: tags, title: decodedTitle } = applyImportedRecipeResult(
         recipe,
@@ -485,7 +489,7 @@ export default function ImportSharedScreen() {
    * last-wins review).
    */
   const fetchImportedRecipe = useCallback(
-    async (url: string, signal?: AbortSignal): Promise<{ recipe: ApiImportedRecipe; imageUsed?: boolean }> => {
+    async (url: string, signal?: AbortSignal): Promise<{ recipe: ApiImportedRecipe; imageUsed?: boolean; captionTruncated?: boolean }> => {
       const res = await authedFetch(`${base}/api/recipe-import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -499,6 +503,7 @@ export default function ImportSharedScreen() {
         recipe?: ApiImportedRecipe;
         message?: string;
         imageUsed?: boolean;
+        captionTruncated?: boolean;
         error?: string;
       };
       if (!data.ok || !data.recipe) {
@@ -511,7 +516,7 @@ export default function ImportSharedScreen() {
         const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
         throw new ImportRunnerError(code, data.message);
       }
-      return { recipe: data.recipe, imageUsed: data.imageUsed };
+      return { recipe: data.recipe, imageUsed: data.imageUsed, captionTruncated: data.captionTruncated };
     },
     [base],
   );
@@ -562,13 +567,13 @@ export default function ImportSharedScreen() {
           title: seedTitle,
           run: async (controls) => {
             controls.setStage("extracting");
-            const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed, controls.signal);
+            const { recipe, imageUsed: used, captionTruncated: truncated } = await fetchImportedRecipe(trimmed, controls.signal);
             if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
             controls.setStage("organizing");
             controls.setTitle(recipe.title ?? seedTitle);
             // Last-wins: the most recent finished import populates the review
             // form; all imports remain listed in the drawer.
-            await landImportedRecipeInReview(recipe, used);
+            await landImportedRecipeInReview(recipe, used, { captionTruncated: truncated });
             return { title: recipe.title ?? seedTitle };
           },
         });
@@ -581,11 +586,11 @@ export default function ImportSharedScreen() {
       setCompletedSteps([]);
 
       try {
-        const { recipe, imageUsed: used } = await fetchImportedRecipe(trimmed);
+        const { recipe, imageUsed: used, captionTruncated: truncated } = await fetchImportedRecipe(trimmed);
         console.log("[import] API response - calories:", recipe.calories,
           "ingredientMacros:", recipe.ingredientMacros?.length,
           "first:", JSON.stringify(recipe.ingredientMacros?.[0])?.substring(0, 100));
-        await landImportedRecipeInReview(recipe, used);
+        await landImportedRecipeInReview(recipe, used, { captionTruncated: truncated });
       } catch (e) {
         setState("error");
         if (e instanceof ImportRunnerError) {
@@ -2010,13 +2015,18 @@ export default function ImportSharedScreen() {
                 pendingRecipe.primarySource === "Estimated" ||
                 (macros.length > 0 && macros.every((m) => (m.calories ?? 0) === 0));
               const imageDropped = imageUsed === false;
-              if (!aggregateUnverified && !imageDropped) return null;
+              const captionWasTruncated = captionTruncated;
+              if (!aggregateUnverified && !imageDropped && !captionWasTruncated) return null;
               const headline = imageDropped
                 ? "Image couldn't be analysed"
-                : "Estimates only — review before saving";
+                : captionWasTruncated
+                  ? "Long caption was shortened"
+                  : "Estimates only — review before saving";
               const body = imageDropped
                 ? "The recipe was extracted from the caption alone. Macros are best-effort — review or replace before saving."
-                : "We couldn't verify these ingredients against a nutrition database. Tap a row to swap matches, or long-press to edit macros manually.";
+                : captionWasTruncated
+                  ? "Only the first part of this post was analysed. If the recipe continues below, add missing ingredients manually."
+                  : "We couldn't verify these ingredients against a nutrition database. Tap a row to swap matches, or long-press to edit macros manually.";
               return (
                 <View
                   testID="import-preview-confidence-banner"

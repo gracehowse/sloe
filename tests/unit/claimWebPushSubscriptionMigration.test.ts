@@ -98,4 +98,12 @@ describe("subscribeToWebPush client wires the RPC", () => {
     expect(TS).toMatch(/42883/);
     expect(TS).toMatch(/onConflict:\s*"endpoint"/);
   });
+
+  it("validates push endpoints before calling the RPC (ENG-1153)", () => {
+    expect(TS).toMatch(/isValidWebPushEndpoint/);
+  });
+
+  it("scopes unsubscribe DELETE to user_id when provided (ENG-1153)", () => {
+    expect(TS).toMatch(/\.eq\(\s*"user_id",\s*userId\s*\)/);
+  });
 });

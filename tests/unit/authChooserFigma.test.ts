@@ -89,4 +89,12 @@ describe("auth chooser — Figma 296:2 (web)", () => {
     expect(SRC).toMatch(/setView\("chooser"\)/);
     expect(SRC).toMatch(/setView\("email"\)/);
   });
+
+  it("ENG-897 — email step shows serif heading + signup tagline (296:33)", () => {
+    expect(SRC).toMatch(/Create your account/);
+    expect(SRC).toMatch(/Welcome back/);
+    expect(SRC).toMatch(/Cook what you love\. Still reach your goals\./);
+    expect(SRC).toMatch(/Sign in to continue\./);
+    expect(SRC).toMatch(/Create Account/);
+  });
 });

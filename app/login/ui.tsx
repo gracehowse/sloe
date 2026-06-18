@@ -336,6 +336,20 @@ export function LoginClient({
               Back
             </button>
 
+            <div className="text-center mb-5">
+              <h2
+                className="font-[family-name:var(--font-headline)] font-medium text-foreground-brand"
+                style={{ fontSize: 28, lineHeight: 1.2, letterSpacing: "-0.02em" }}
+              >
+                {mode === "signup" ? "Create your account" : "Welcome back"}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+                {mode === "signup"
+                  ? "Cook what you love. Still reach your goals."
+                  : "Sign in to continue."}
+              </p>
+            </div>
+
             {/* The mode-switcher is hidden on /signin and /signup (hideTabs)
                 — sign-up entry point is canonically /signup. Keeping the tab
                 strip on /login lets a returning user flip to create-account
@@ -387,10 +401,10 @@ export function LoginClient({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl transition-all outline-none"
+              className="w-full px-4 py-3 rounded-[var(--radius-card)] transition-all outline-none"
               style={{
                 background: "var(--input-background)",
-                border: "2px solid var(--border)",
+                border: "1px solid var(--border)",
                 color: "var(--foreground)",
               }}
               onFocus={(e) => {
@@ -414,10 +428,10 @@ export function LoginClient({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl transition-all outline-none"
+              className="w-full px-4 py-3 rounded-[var(--radius-card)] transition-all outline-none"
               style={{
                 background: "var(--input-background)",
-                border: "2px solid var(--border)",
+                border: "1px solid var(--border)",
                 color: "var(--foreground)",
               }}
               onFocus={(e) => {
@@ -474,7 +488,7 @@ export function LoginClient({
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              {status === "working" ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
+              {status === "working" ? "Working…" : mode === "signup" ? "Create Account" : "Sign in"}
             </button>
 
             {mode === "signin" ? (

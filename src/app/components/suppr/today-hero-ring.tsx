@@ -29,12 +29,22 @@ export interface TodayHeroRingProps {
   /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — ignored. */
   onToggleDisplayMode?: () => void;
   onPressWhy?: () => void;
+  /** ENG-1184 — tap the status chip (Fresh start / Under / Over) to open
+   *  the calorie-target explainer. Distinct from the retired "Why this
+   *  number?" pill; the chip is the calm, Figma-native affordance. */
+  onPressStatusChip?: () => void;
   pulse?: boolean;
 }
 
 type ChipState = "empty" | "under" | "over";
 
-function HeroStatusChip({ state }: { state: ChipState }) {
+function HeroStatusChip({
+  state,
+  onPress,
+}: {
+  state: ChipState;
+  onPress?: () => void;
+}) {
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const config =
     state === "over"
@@ -64,14 +74,26 @@ function HeroStatusChip({ state }: { state: ChipState }) {
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
+  const chipClassName = `inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`;
+  if (!onPress) {
+    return (
+      <span data-testid="today-ring-status-chip" className={chipClassName}>
+        <Icon size={14} strokeWidth={2} aria-hidden />
+        {label}
+      </span>
+    );
+  }
   return (
-    <span
+    <button
+      type="button"
       data-testid="today-ring-status-chip"
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+      onClick={onPress}
+      aria-label={`${label}, see how your calorie target was set`}
+      className={`${chipClassName} cursor-pointer transition-opacity hover:opacity-90`}
     >
       <Icon size={14} strokeWidth={2} aria-hidden />
       {label}
-    </span>
+    </button>
   );
 }
 
@@ -122,6 +144,7 @@ export function TodayHeroRing({
   // displayMode / onToggleDisplayMode retired (web ring parity 2026-06-10) —
   // accepted on the prop API for call-site stability, ignored here.
   onPressWhy: _onPressWhy,
+  onPressStatusChip,
   pulse = false,
 }: TodayHeroRingProps) {
   const isEmpty = consumed === 0 || target <= 0;
@@ -148,7 +171,7 @@ export function TodayHeroRing({
           toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave): it
           duplicated the Eaten stat below the ring. */}
       <div className="flex w-full items-center justify-between gap-2">
-        <HeroStatusChip state={chipState} />
+        <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
       </div>
       <DailyRing
         consumed={consumed}

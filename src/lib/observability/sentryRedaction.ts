@@ -24,7 +24,8 @@
  */
 
 /** Keys that must never leave the device/server (case-insensitive). */
-const PII_KEY_PATTERN = /token|secret|email|password|cookie|authorization|api[_-]?key|session/i;
+const PII_KEY_PATTERN =
+  /token|secret|email|password|cookie|authorization|api[_-]?key|session|weight|height|body[_-]?fat|measurement|sex[_-]?at[_-]?birth|goal[_-]?weight|bmi|waist|hip|chest|neck|dob|birthdate|birth[_-]?date/i;
 
 /** Breadcrumb categories considered safe to retain when stripping to core. */
 const CORE_BREADCRUMB_CATEGORIES = new Set([

@@ -1,0 +1,42 @@
+# Gate 1.5 native visual verify — ENG-1184 chip sheet, ENG-1065 planned empty.
+# Prereq: logged-in sim, Metro on 8081, `today_planned_empty_state` ON (REDESIGN_DEFAULT_ON).
+appId: com.supprclub.supprapp
+name: "Gate 1.5 — Today chip sheet + planned empty (native)"
+---
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
+
+# Status chip → WhyThisNumberSheet (ENG-1184)
+- extendedWaitUntil:
+    visible: ".*Fresh start.*"
+    timeout: 15000
+- takeScreenshot: screenshots/agent/gate15/ios-today-before-chip
+
+- tapOn:
+    id: "today-ring-status-chip"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Why this number.*"
+    timeout: 8000
+- takeScreenshot: screenshots/agent/gate15/ios-why-sheet-native-pass
+
+# Dismiss sheet (tap outside or swipe down — try back gesture area)
+- back
+- waitForAnimationToEnd
+
+# Planned empty (ENG-1065) — below fold
+- scrollUntilVisible:
+    element:
+      text: ".*Nothing planned for today.*"
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: screenshots/agent/gate15/ios-planned-empty-native

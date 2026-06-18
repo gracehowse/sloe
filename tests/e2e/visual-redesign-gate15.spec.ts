@@ -42,7 +42,7 @@ test.describe("Visual regression — Gate 1.5 onboarding (ENG-827)", () => {
       await seedConsent(page);
       await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
-      await expect(page.getByRole("heading", { name: /Eat well/i })).toBeVisible({
+      await expect(page.getByRole("heading", { name: /Cook what you love/i })).toBeVisible({
         timeout: 20_000,
       });
       await stabilizeForScreenshot(page, 1500);
