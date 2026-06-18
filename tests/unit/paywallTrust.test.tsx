@@ -105,6 +105,11 @@ describe("PaywallTrustStrip — web /pricing rendering", () => {
     render(<PaywallTrustStrip />);
     expect(screen.getByTestId("paywall-trust-strip")).toBeInTheDocument();
   });
+
+  it("renders Figma inline secure checkout lead when paywall_trust_inline_v1 is on", () => {
+    render(<PaywallTrustStrip />);
+    expect(screen.getByText("Secure checkout")).toBeInTheDocument();
+  });
 });
 
 describe("buildReceiptTrustCopy — receipt composition", () => {

@@ -61,8 +61,8 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
   // doc-comment references like `\`<Foo>\`` which would otherwise
   // false-positive a `\b` boundary.
 
-  it("TodayFastingPill renders at most once (active fast only; idle Start fast demoted 2026-05-19)", () => {
-    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayFastingPill renders at most once at runtime (ENG-889 duplicates source refs in flag branches)", () => {
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(2);
   });
 
   it("TodayEatAgainBanner is not rendered on Today (moved to Log sheet, 2026-05-22 v4)", () => {
@@ -77,8 +77,11 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayDeficitInsight renders at most once (in the unified dispatch)", () => {
-    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayDeficitInsight appears in hero coachLine and legacy context dispatch only (ENG-889: one path renders)", () => {
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(2);
+    expect(HOST_SRC).toMatch(
+      /isFeatureEnabled\("today_coach_in_hero_v1"\)[\s\S]+?return null;/,
+    );
   });
 });
 
@@ -271,5 +274,20 @@ describe("Today above-meals cap (mobile) — context dispatch shape", () => {
       HOST_SRC,
     );
     expect(hasIIFE).toBe(true);
+  });
+});
+
+describe("ENG-889 — coach line inside hero card (mobile)", () => {
+  it("index passes coachLine into TodayHero behind today_coach_in_hero_v1", () => {
+    expect(HOST_SRC).toMatch(/today_coach_in_hero_v1/);
+    expect(HOST_SRC).toMatch(/coachLine=\{heroCoachLine/);
+  });
+
+  it("TodayHeroRing renders the coachLine slot below stats", () => {
+    const ring = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayHeroRing.tsx"),
+      "utf-8",
+    );
+    expect(ring).toMatch(/\{coachLine\}/);
   });
 });

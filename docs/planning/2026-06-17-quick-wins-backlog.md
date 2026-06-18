@@ -1,48 +1,51 @@
 # Quick-wins burn-down — 2026-06-17
 
+**Last updated:** 2026-06-18  
 **Strategy shift (Grace, 2026-06-17):** stop strict gate-order sequencing; burn
 down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h),
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
-**Branch:** `claude/wave-4-trust-cohesion` — **9 commits ahead of `main`** (batches
-1–2 + partial Core-5 slices). **PR #470 merged** (2026-06-17); rebase onto
-`origin/main` before the next push. Batch 3 Figma partials continue on this
-branch until rebased clean, then optionally cut `claude/quick-wins-batch-3`.
+**Current branch:** `main` (batches 1–3 core slices merged via #472, #475).  
+**In flight:** [`agent/cursor/eng-901-trust-strip`](https://github.com/gracehowse/Suppr/pull/476) — ENG-901 trust strip + upgrade-dialog Sloe hero + ENG-889 coach-in-hero.
 
-## Triage table — batch 1
+## Merge history (reference)
 
-| Issue | Title | Effort | Agent? | Status | Notes |
-|-------|-------|--------|--------|--------|-------|
-| ENG-1149 | Delete stale `KNOWN APPROXIMATION` header in `measureToGrams.ts` | S | ✅ | **Shipped** | Comment-only; ENG-701 already re-ordered food-specific-before-generic (verified at resolver lines ~210–225/260–266). No behaviour change. |
-| ENG-1156 | Delete orphaned `onboarding/finalStep.ts` (dead code, banned "staged for follow-up") | S | ✅ | **Shipped** | Zero runtime importers (only its own test). Deleted file + `onboardingFinalStepPhase3.test.ts`; re-anchored prose comments in `state.ts` / `onboardingSeeds.ts` to `NORTH_STAR_LIBRARY_MIN`. |
-| ENG-1152 | Harden SSRF string-layer: block `0.0.0.0` + integer/octal/hex IPv4 encodings | M | ✅ | **Shipped** | Added `canonicaliseIpv4` (inet_aton-style) + all-zeros handling to `ssrfAllowlist.ts`; loopback widened to `/8`. 9 new test cases; DNS backstop in `ssrfGuard.ts` untouched. Client-bundle-safe (no Node builtins). |
-| ENG-1159 | Vendor/logging cleanups (edamam dead code · caption truncation · `food_search` source) | M | ✅ | **Shipped (batch 2)** | (a) dead edamam code removed in batch 1. (b) `CAPTION_MAX` + `captionTruncated` in `extractSocialRecipe.ts`, wired to web `RecipeUpload` + mobile `import-shared` preview banners. (c) `food_search` added to `FoodLoggedSource`; `foodSelectionAnalyticsSource` + mobile food-search log sites updated for parity. |
-| ENG-1166 | Root docs reference missing `apps/mobile/AGENTS.md` | S | ✅ | **Shipped (Option C)** | `.claude/CLAUDE.md` canonical; root `AGENTS.md` tracked mirror (`npm run sync:agent-docs`) so Codex/Cursor see rules on clone. Decision `docs/decisions/2026-06-17-agent-docs-claude-canonical.md`; test `agentDocsCanonical.test.ts`. |
+| PR | Branch | What landed |
+|----|--------|-------------|
+| [#470](https://github.com/gracehowse/Suppr/pull/470) | `claude/wave-4-trust-cohesion` | Gate 1.5 closeout (ENG-1184/1065/895, L1 skeleton, M5 streak, library grid, WORKS WITH import) |
+| [#472](https://github.com/gracehowse/Suppr/pull/472) | `claude/wave-4-trust-cohesion` | Batch 3: recent imports, S5 Fresh start, import-success integration, ENG-1166, partial-day Plan slots |
+| [#475](https://github.com/gracehowse/Suppr/pull/475) | `agent/cursor/eng-1100-empty-meal-slot-row` | ENG-1100 `EmptyMealSlotRow` extract (web + mobile) — **Linear Done** |
+| [#476](https://github.com/gracehowse/Suppr/pull/476) | `agent/cursor/eng-901-trust-strip` | ENG-901 trust strip + Sloe upgrade dialog; ENG-889 coach-in-hero — **open, merge when CI green** |
 
-**Batch result:** 3 issues fully shipped (ENG-1149, ENG-1156, ENG-1152) +
-ENG-1159 materially advanced (dead-code half) + ENG-1166 triaged-and-blocked
-(gitignore policy decision, see row). All shipped code landed via commit
-`991f1087` on `claude/wave-4-trust-cohesion` (swept into a concurrent agent's
-quick-wins commit — same branch, parallel sessions).
+---
 
-## Triage table — batch 2
+## Triage table — batch 1 (merged)
 
 | Issue | Title | Effort | Agent? | Status | Notes |
 |-------|-------|--------|--------|--------|-------|
-| ENG-1159 (b) | Caption-truncation notice (`CAPTION_MAX` + `captionTruncated`) | S | ✅ | **Shipped** | `prepareCaptionForExtraction` helper; API + web `RecipeUpload` + mobile `import-shared` preview banners. |
-| ENG-1159 (c) | `food_search` analytics source (web + mobile parity) | S | ✅ | **Shipped** | `FoodLoggedSource` union + `foodSelectionAnalyticsSource` + mobile `handleFoodSearchSelect` call sites. |
-| ENG-1153 | Defence-in-depth on `claim_web_push_subscription` endpoint | S | ✅ | **Shipped** | `isValidWebPushEndpoint` guard before RPC; unsubscribe DELETE scoped by `user_id` when available. Code-only (no migration). |
-| ENG-1151 | Sentry PII denylist — health fields | S | ✅ | **Shipped** | Extended `PII_KEY_PATTERN` in `sentryRedaction.ts` (weight/measurements/sex-at-birth); unit test pinned. |
-| ENG-1075 / ENG-1145 | Mobile OFF barcode via `/api/off/barcode` proxy | S | ✅ | **Shipped** | `lookupBarcode` in `verifyRecipe.ts` routes through authed proxy; direct `world.openfoodfacts.org` fetch removed. |
-| CI (ENG-896) | DiscoverFeed `text-[17px]` off type scale | S | ✅ | **Shipped** | `text-[18px]` on-scale fix in `DiscoverFeed.tsx`. |
+| ENG-1149 | Delete stale `KNOWN APPROXIMATION` header in `measureToGrams.ts` | S | ✅ | **Shipped** | Comment-only; ENG-701 already re-ordered food-specific-before-generic. |
+| ENG-1156 | Delete orphaned `onboarding/finalStep.ts` | S | ✅ | **Shipped** | Zero runtime importers; deleted file + test. |
+| ENG-1152 | Harden SSRF string-layer | M | ✅ | **Shipped** | `canonicaliseIpv4` + all-zeros handling in `ssrfAllowlist.ts`. |
+| ENG-1159 | Vendor/logging cleanups | M | ✅ | **Shipped (batch 2)** | Edamam dead code (batch 1); caption truncation + `food_search` source (batch 2). |
+| ENG-1166 | Root docs reference missing `apps/mobile/AGENTS.md` | S | ✅ | **Shipped (Option C)** | `.claude/CLAUDE.md` canonical; tracked root `AGENTS.md` via `npm run sync:agent-docs`. Decision `docs/decisions/2026-06-17-agent-docs-claude-canonical.md`. **Linear Done.** |
 
-**Batch 2 result:** 5 Linear issues closed (ENG-1159 fully, ENG-1153, ENG-1151,
-ENG-1075, ENG-1145) + CI type-scale unblock. Commit on `claude/wave-4-trust-cohesion`.
+**Batch 1 result:** ENG-1149, ENG-1156, ENG-1152 shipped on `claude/wave-4-trust-cohesion`; ENG-1159 + ENG-1166 completed in batch 2/3 (#472).
 
-**Validation (batch 2):** `npm run check:type-scale` green; scoped web
-`typecheck && lint && test` on touched units; mobile `typecheck && test` on
-`verifyRecipe` / `offPlausibilityGateParity` / `index` food-search wiring.
+---
+
+## Triage table — batch 2 (merged)
+
+| Issue | Title | Effort | Agent? | Status | Notes |
+|-------|-------|--------|--------|--------|-------|
+| ENG-1159 (b) | Caption-truncation notice | S | ✅ | **Shipped** | `prepareCaptionForExtraction`; web + mobile preview banners. |
+| ENG-1159 (c) | `food_search` analytics source | S | ✅ | **Shipped** | `FoodLoggedSource` + parity call sites. |
+| ENG-1153 | Defence-in-depth on `claim_web_push_subscription` | S | ✅ | **Shipped** | `isValidWebPushEndpoint` guard; scoped unsubscribe DELETE. |
+| ENG-1151 | Sentry PII denylist — health fields | S | ✅ | **Shipped** | Extended `PII_KEY_PATTERN` in `sentryRedaction.ts`. |
+| ENG-1075 / ENG-1145 | Mobile OFF barcode via `/api/off/barcode` proxy | S | ✅ | **Shipped** | Authed proxy; direct OFF fetch removed. |
+| CI (ENG-896) | DiscoverFeed `text-[17px]` off type scale | S | ✅ | **Shipped** | `text-[18px]` on-scale fix. |
+
+---
 
 ## Triaged-but-skipped (not quick wins / out of policy)
 
@@ -53,41 +56,61 @@ ENG-1075, ENG-1145) + CI type-scale unblock. Commit on `claude/wave-4-trust-cohe
 | ENG-558 / ENG-541 / ENG-1158 | Grace-ops / dashboard toggles / cost-breaker decision — not code. |
 | ENG-1138 | Web focus-visible rings — visible change; feature-flag overhead, defer to a UI batch. |
 
+---
+
 ## Triage table — batch 3 (Core-5 Figma partials)
 
-**Scope (Grace, 2026-06-17):** remaining agent-buildable Layer-3 slices on the
-five Wave-4 parent tickets that Gate 1.5 left partial. Parent issues stay
-**In Progress** until screenshot wall / device verify closes them — batch 3
-closes individual partial rows only.
+**Scope:** agent-buildable Layer-3 slices on Wave-4 parent tickets ENG-889/896/897/898/901.
+Parent issues stay **In Progress** until screenshot wall closes them — batch 3 closes
+individual partial rows only.
 
-**Branch:** `claude/wave-4-trust-cohesion` — **uncommitted** session work (ENG-1166,
-ENG-898 recent imports, ENG-889 S5) atop 9 commits ahead of `main`. Rebase +
-commit before push.
-
-| Issue | Partial | Effort | Status | Residual |
-|-------|---------|--------|--------|----------|
-| **ENG-901** | M6 import-success overlay (web) | S | **On branch** + unit + integration test (`recipeImportSurface`) | Visual: import-success path needs live import+save (not idle shot) |
-| **ENG-896** | Discover seamless slab cards | S | **Verified web + iOS** | — |
-| **ENG-897** | Signup email-step pixel (`296:33`) | S | **On branch** + test pin | `/login`/`/signup` web-drive redirects when session exists — verify in incognito or signed-out |
-| **ENG-898** | Recent imports + caption-preview trust | S | **Shipped code** — shared `recentImports.ts`, web list, mobile refactor | Empty list hides section (correct); caption banner already live |
-| **ENG-889** | Today S5 Fresh start | S | **Verified web + iOS** — Fresh start chip de-tint, honest zeros, coach line | Populated-account wall (optional) |
-| **ENG-1100** | Plan partial-day canonical slots | S | **Shipped (mobile)** — `orderedPlanDaySlotEntries` + 3 unit tests; **web** — `EmptyMealSlotRow` extract (`empty-meal-slot-row.tsx`) wired Today + Plan | Mobile row extract still open |
+| Issue | Partial | Status on `main` | In PR #476 | Residual (parent still open) |
+|-------|---------|------------------|------------|------------------------------|
+| **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 on main (#472); frame `284:2` components | Inline trust row; Sloe hero; coach-in-hero; `PricingLegacyTrustSignals` gated off; `"use client"` fix | Mobile paywall shell; merge #476 |
+| **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | — | 9 other Recipes/Cookbook partials on parent |
+| **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | — | Live `/signup` screenshot needs signed-out session |
+| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | — | 7 other Import partials on parent (source tiles, L4 error, etc.) |
+| **ENG-889** | Today partials | L1 skeleton + S5 Fresh start (#472); S5 verified web + iOS | Coach line inside hero card (`today_coach_in_hero_v1`) | TD1–TD4, L5 dark, pixel deltas, populated-account wall |
+| **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | — | **Linear Done** — no follow-up in this queue |
 
 ### Batch 3 visual verify (2026-06-18)
 
 | Surface | Web (~390px / desktop) | iOS sim | Notes |
 |---------|------------------------|---------|-------|
-| Import idle (ENG-898) | ✅ `/import --auth` | ✅ `import-shared` | WORKS WITH row; no recent imports (empty account — expected) |
-| Discover slabs (ENG-896) | ✅ `/discover --auth` desktop + mobile | ✅ `batch-3-discover-ios-loaded.png` | Mediterranean/Greek hero + seamless slab card + macro row |
-| Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, 0 eaten, food-forward coach |
-| Auth email step (ENG-897) | ✅ test-pinned (`authChooserFigma.test.ts`) | — | Unit pin passes; live `/signup` needs signed-out session for screenshot |
+| Import idle (ENG-898) | ✅ `/import --auth` | ✅ `import-shared` | WORKS WITH row; empty recent-imports list is correct |
+| Discover slabs (ENG-896) | ✅ `/discover --auth` | ✅ | Mediterranean/Greek hero + seamless slab card |
+| Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
+| Today coach-in-hero (ENG-889) | ✅ populated account (~390px) | ⏳ | Coach line inside hero card — PR #476 |
+| Paywall trust (ENG-901) | ⏳ `/pricing` post–`use client` fix | ⏳ | PR #476 |
+| Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
 
-**Batch 3 execution order (remaining):** commit session (batch 3 + ENG-1166 Option C + Linear sync scripts + ENG-1100 partial) → rebase `origin/main` → scoped `npm run ci` → push → Linear partial-row comments.
+### Batch 3 — what's left
+
+1. **Merge [#476](https://github.com/gracehowse/Suppr/pull/476)** when CI green (trust strip + Sloe upgrade dialog + coach-in-hero).
+2. **ENG-901** — mobile paywall shell/hero parity (high partial on parent).
+3. **ENG-889** — next bounded partial (TD1 activity, TD2 hydration, L5 dark, or pixel delta from Linear list).
+4. **ENG-896 / ENG-898 / ENG-897** — pick next high-severity partial from each parent tracker (`docs/ux/redesign/figma-migration-tracker.md`).
+
+---
 
 ## Deferred — batch 4+ (non-Figma quick wins)
 
 1. **ENG-1168** — silent-deferral re-sweep: open a Linear issue per surviving untracked gap comment.
-2. **ENG-1100** — Plan empty-slot unification: **partial-day canonical rows shipped (mobile)**; shared `EmptyMealSlotRow` web extract still open.
-3. **ENG-1147 follow-ups / ENG-986** — shared macro-icon mapping (single source of truth).
-4. **ENG-1090** — CI flake: storybook build `EEXIST` mkdir race in static-asset `copyDir`.
-5. **ENG-1096 / ENG-984** confirm closed; **ENG-848** — wire or delete `MacroDetailPanel` on web.
+2. **ENG-1147 follow-ups / ENG-986** — shared macro-icon mapping (single source of truth).
+3. **ENG-1090** — CI flake: storybook build `EEXIST` mkdir race in static-asset `copyDir`.
+4. **ENG-1096 / ENG-984** — confirm closed.
+5. **ENG-848** — wire or delete `MacroDetailPanel` on web.
+
+**Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
+
+---
+
+## Companion docs (keep in sync)
+
+| Doc | When to update |
+|-----|----------------|
+| `docs/planning/2026-06-17-gate-15-closeout.md` | After each Core-5 partial merge |
+| `docs/planning/2026-06-14-backlog-priority-order.md` | Gate 1.5 table rows for ENG-889/896/897/898/901 |
+| `docs/planning/2026-06-17-gate-0-1-agent-audit.md` | "Recommended next slices" after batch 3 |
+| `docs/planning/linear-agent-workflow.md` | In-flight branch / conflict table |
+| `docs/testing/figma-vs-simulator.md` | New Today/paywall verify rows |

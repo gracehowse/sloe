@@ -34,6 +34,8 @@ export interface TodayHeroRingProps {
    *  number?" pill; the chip is the calm, Figma-native affordance. */
   onPressStatusChip?: () => void;
   pulse?: boolean;
+  /** ENG-889 — optional coach line rendered inside the hero card below stats. */
+  coachLine?: React.ReactNode;
 }
 
 type ChipState = "empty" | "under" | "over";
@@ -146,6 +148,7 @@ export function TodayHeroRing({
   onPressWhy: _onPressWhy,
   onPressStatusChip,
   pulse = false,
+  coachLine,
 }: TodayHeroRingProps) {
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
@@ -224,6 +227,7 @@ export function TodayHeroRing({
           />
         </div>
       ) : null}
+      {coachLine}
       <button
         type="button"
         data-testid="today-macro-rings-toggle"

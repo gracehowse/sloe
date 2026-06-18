@@ -18,6 +18,10 @@ const SELECTOR_SRC = readFileSync(
   resolve(__dirname, "../../apps/mobile/components/paywall/PaywallPlanSelector.tsx"),
   "utf-8",
 );
+const TRUST_STRIP_SRC = readFileSync(
+  resolve(__dirname, "../../apps/mobile/components/paywall/PaywallTrustStrip.tsx"),
+  "utf-8",
+);
 
 describe("Paywall dark-mode contrast (ENG-617)", () => {
   // 284:2 (2026-06-08): the paywall kicker ("SLOE PRO") moved from an inline
@@ -62,7 +66,9 @@ describe("Paywall dark-mode contrast (ENG-617)", () => {
   });
 
   it("trust chips use textSecondary (DC4 readability)", () => {
-    const trustChipText = SRC.match(/trustChipText:\s*\{[^}]+\}/s)?.[0] ?? "";
-    expect(trustChipText).toContain("textSecondary");
+    const trustChipText = TRUST_STRIP_SRC.match(/trustChipText:\s*\{[^}]+\}/s)?.[0] ?? "";
+    expect(trustChipText).toBeTruthy();
+    expect(TRUST_STRIP_SRC).toContain("textSecondaryColor");
+    expect(TRUST_STRIP_SRC).toMatch(/\{ color: textSecondaryColor \}/);
   });
 });

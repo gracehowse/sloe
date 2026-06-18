@@ -48,6 +48,13 @@ export const PAYWALL_NO_PAYMENT_DUE_CHIP = {
     "No payment due now. Your first charge happens on day seven after you start the free trial.",
 } as const;
 
+/** Figma `284:2` trust-row lead clause (ENG-901). Paired with the
+ *  platform cancel chip from `getPaywallTrustChips`. */
+export const PAYWALL_TRUST_SECURE_CHECKOUT = {
+  label: "Secure checkout",
+  a11yLabel: "Secure checkout through Apple or Stripe.",
+} as const;
+
 /**
  * Three trust chips, displayed in a horizontal strip above the
  * pricing tiers on every paid surface. Order is fixed:

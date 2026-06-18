@@ -75,6 +75,8 @@ export interface TodayHeroRingProps {
   onPressWhy?: () => void;
   /** ENG-1184 — tap status chip to open calorie-target explainer on Today. */
   onPressStatusChip?: () => void;
+  /** ENG-889 — coach line inside the hero card below stats (Figma `654:2`). */
+  coachLine?: React.ReactNode;
 }
 
 interface StatProps {
@@ -251,6 +253,7 @@ export function TodayHeroRing({
   textTertiaryColor: _textTertiaryColor,
   onPressWhy: _onPressWhy,
   onPressStatusChip,
+  coachLine,
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
@@ -385,6 +388,7 @@ export function TodayHeroRing({
 
         </View>
       ) : null}
+      {coachLine}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to
           the ring's long-press macro-rings gesture. The design system (§13)
           requires every gesture to have a tap-accessible equivalent: long-press
