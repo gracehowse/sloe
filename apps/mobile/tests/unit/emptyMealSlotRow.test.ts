@@ -17,7 +17,7 @@ describe("ENG-1100 wiring — mobile Today + Plan import EmptyMealSlotAimLine", 
   it("planner uses EmptyMealSlotAimLine for empty + placeholder aim rows", () => {
     const src = read("app/(tabs)/planner.tsx");
     expect(src).toMatch(/EmptyMealSlotAimLine/);
-    expect(src).toMatch(/plan-slot-aim-/);
+    expect(read("components/EmptyMealSlotRow.tsx")).toMatch(/plan-slot-aim-/);
   });
 
   it("exports EmptyMealSlotAimLine from the shared mobile module", () => {
