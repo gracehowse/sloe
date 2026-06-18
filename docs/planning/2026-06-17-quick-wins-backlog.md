@@ -101,7 +101,7 @@ individual partial rows only.
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
 | ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
-| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** (ENG-1096) | `TodayMealsFigmaLayout.tsx` deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` — ENG-984 eat-again banner still open if unrendered |
+| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Both components deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` + `todayAboveMealsCap.test.ts` |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
 
