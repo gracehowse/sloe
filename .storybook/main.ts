@@ -10,7 +10,7 @@ const config: StorybookConfig = {
     "@chromatic-com/storybook"
   ],
   framework: "@storybook/nextjs-vite",
-  staticDirs: ["../public"],
+  staticDirs: process.env.SUPPR_STORYBOOK_SKIP_STATIC_DIRS === "1" ? [] : ["../public"],
 };
 
 export default config;

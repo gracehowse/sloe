@@ -45,8 +45,11 @@ these is red on CI, it's an environment/integration issue, not a code-tree issue
 - **`npm audit` dep-audit (web + mobile, high+ prod)** — network; advisory DB.
 - **sourcemap-verify** — build + assert sourcemaps (redundant with `build` locally).
 - **Chromatic / Storybook build / Applitools / UI Tests** — separate workflows
-  (not `ci.yml`); visual baselines needing service tokens. The `build-storybook`
-  step also has a known flaky `EEXIST` copy race (ENG-1090).
+  (not `ci.yml`); visual baselines needing service tokens. ENG-1090 hardens
+  `npm run build-storybook` by running Storybook with `staticDirs` disabled for
+  the production build, then copying `public/` into `storybook-static/` once via
+  `scripts/build-storybook.mjs` so Storybook's parallel static-copy race cannot
+  create duplicate directories.
 
 ## Per CLAUDE.md
 

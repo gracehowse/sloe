@@ -1197,15 +1197,10 @@ export default function RecipeDetailScreen() {
       const micros: Record<string, number> = {};
       if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
-      // F-74 / F-103 (2026-05-07) — recipes table doesn't currently
-      // carry caffeine_mg / alcohol_g per recipe (would require a
-      // schema migration + per-ingredient roll-up). When that lands,
-      // set `micros.caffeineMg` / `micros.alcoholG` on the inserted
-      // meal row from the verified ingredient roll-up; per-meal
-      // micros is the canonical SoT and the chip totals will sum it
-      // automatically at next render. Until then a recipe containing
-      // wine / coffee logged via "Add to today" leaves the chip
-      // totals unchanged — known gap, scoped to a follow-up.
+      // F-74 / F-103 (2026-05-07) — recipe rows do not carry caffeine_mg /
+      // alcohol_g. Per-meal `micros` remains the canonical SoT; recipe-log
+      // stimulant roll-ups require verified per-ingredient micros and are
+      // tracked separately in Linear as ENG-751.
       const newId = newMealId();
       // Single shared row shape (launch-audit P1-2 consolidation). Fresh
       // "Add to today" log → no `eatenAt` → `eaten_at: null` with
@@ -2141,4 +2136,3 @@ export default function RecipeDetailScreen() {
     </View>
   );
 }
-

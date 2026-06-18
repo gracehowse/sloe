@@ -31,9 +31,9 @@
  * ## Known gap (tracked, not built here)
  * AI/photo/voice multi-item meals carry their item breakdown only in the unpersisted
  * AI response — there is no `recipe_id` and no per-item snapshot in the schema. Those
- * entries fall through to the single-line fallback (correct, not silent). A future
- * `nutrition_entry_ingredients` snapshot child table would let those split too —
- * tracked in Linear (see the screen-level comment that references the issue).
+ * entries fall through to the single-line fallback (correct, not silent).
+ * Splitting those entries needs a `nutrition_entry_ingredients` snapshot child
+ * table and is tracked separately in Linear as ENG-751.
  */
 
 /** The macro fields this breakdown supports. Mirrors the macro-detail screen config. */
