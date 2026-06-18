@@ -177,11 +177,16 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
   });
 
   it("ENG-898 — renders recent imports when the user has URL-imported recipes", async () => {
-    render(<RecipeUpload userTier="free" mode="import" />);
-    const section = await screen.findByTestId("import-recent-imports");
-    expect(section).toHaveTextContent("Sheet-Pan Fajitas");
-    expect(section).toHaveTextContent("Today");
-    expect(section).toHaveTextContent("TT");
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-06-17T12:00:00.000Z"));
+    try {
+      render(<RecipeUpload userTier="free" mode="import" />);
+      const section = await screen.findByTestId("import-recent-imports");
+      expect(section).toHaveTextContent("Sheet-Pan Fajitas");
+      expect(section).toHaveTextContent("Today");
+      expect(section).toHaveTextContent("TT");
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
   it("leads the 'Paste a recipe link' card with the Sloe wordmark (mobile parity)", () => {

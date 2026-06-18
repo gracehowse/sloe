@@ -65,6 +65,7 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
 
   const completedCount = Object.values(completed).filter(Boolean).length;
   const allDone = completedCount === STEPS.length;
+  const nextStep = STEPS.find((step) => !completed[step.id]);
 
   // Persist dismissal and track completion
   useEffect(() => {
@@ -98,84 +99,66 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
     [onNavigate],
   );
 
-  if (dismissed || allDone) return null;
+  if (dismissed || allDone || !nextStep) return null;
+
+  const NextIcon = nextStep.icon;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 backdrop-blur-xl bg-card/95 border-2 border-border/80 rounded-2xl shadow-2xl shadow-foreground/10 overflow-hidden">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-foreground text-sm">
-            Getting Started
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {completedCount} of {STEPS.length} complete
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Dismiss checklist"
+    <aside
+      aria-label="Getting Started"
+      data-testid="first-run-checklist"
+      className="fixed inset-x-4 bottom-24 z-40 rounded-card border border-border bg-card p-4 card-slab md:inset-x-auto md:right-4 md:bottom-4 md:w-80"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-sm bg-primary/15 text-primary"
+          aria-hidden
         >
-          <Icons.close className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Progress bar */}
-      <div className="px-4 pb-3">
-        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
-          />
+          <NextIcon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">
+                Getting Started
+              </h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {completedCount} of {STEPS.length} complete
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Dismiss checklist"
+            >
+              <Icons.close className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
+            />
+          </div>
+          <button
+            type="button"
+            data-testid="first-run-checklist-next-step"
+            onClick={() => handleNavigate(nextStep.view)}
+            className="mt-3 flex w-full items-center justify-between gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-foreground">
+                {nextStep.label}
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                {nextStep.description}
+              </span>
+            </span>
+            <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
         </div>
       </div>
-
-      {/* Steps */}
-      <div className="px-2 pb-3 space-y-1">
-        {STEPS.map((step) => {
-          const done = completed[step.id];
-          return (
-            <button
-              key={step.id}
-              type="button"
-              onClick={() => !done && handleNavigate(step.view)}
-              disabled={done}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                done
-                  ? "opacity-60"
-                  : "hover:bg-muted/60"
-              }`}
-            >
-              {done ? (
-                <Icons.success className="w-5 h-5 text-success shrink-0" />
-              ) : (
-                <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-sm font-medium ${
-                    done
-                      ? "line-through text-muted-foreground"
-                      : "text-foreground"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                {!done && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {step.description}
-                  </p>
-                )}
-              </div>
-              {!done && (
-                <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    </aside>
   );
 }
