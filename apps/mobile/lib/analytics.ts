@@ -367,6 +367,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1065 — Planned card empty branch on Today (F-178/F-179). Default-on;
   // off → host hides the card when the plan day has no meals.
   "today_planned_empty_state",
+  // ENG-901 — Figma `284:2` inline trust row on paywall. Default-on; off → pills.
+  "paywall_trust_inline_v1",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

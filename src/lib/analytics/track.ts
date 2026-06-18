@@ -241,6 +241,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-848 — web Today macro tiles/bars open MacroDetailPanel. Web-only:
   // mobile already has the native `macro-detail` route wired from Today.
   "web_macro_detail_panel",
+  // ENG-901 — Figma `284:2` inline trust row (· separators, Lock/Calendar
+  // glyphs) instead of pill chips on paywall/pricing. Default-on; off → pills.
+  "paywall_trust_inline_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
