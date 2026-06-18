@@ -1,3 +1,10 @@
+<!--
+  TRACKED MIRROR — do not edit by hand.
+  Canonical source: .claude/CLAUDE.md
+  Regenerate: npm run sync:agent-docs
+  See: docs/decisions/2026-06-17-agent-docs-claude-canonical.md (Option C)
+-->
+
 # Project Rules
 
 This is one product across web and mobile.
