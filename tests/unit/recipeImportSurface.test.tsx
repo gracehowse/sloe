@@ -276,7 +276,7 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     );
   });
 
-  it("surfaces a calm hint (not a crash) when the URL has no parseable recipe", async () => {
+  it("surfaces L4 amber inline error (not toast-only) when the URL has no parseable recipe", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({
@@ -294,14 +294,13 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith(
-        "No Recipe JSON-LD found on this page. Paste ingredients and steps manually, or try another URL.",
-      );
+      expect(screen.getByTestId("import-l4-error")).toBeInTheDocument();
     });
-    // The inline hint renders so the user has a recovery path.
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(
       screen.getByText(/No Recipe JSON-LD found on this page/i),
     ).toBeInTheDocument();
+    expect(toastMock.error).not.toHaveBeenCalled();
   });
 
   it("ENG-901 M6 — after save in import mode, renders ImportSuccessSheet (not a toast)", async () => {

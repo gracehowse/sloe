@@ -866,7 +866,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       // central mapper — preserves the actionable "No Recipe JSON-LD found…"
       // hint the old inline path surfaced.
       const msg = userFacingImportError(e);
-      toast.error(msg);
+      // L4 import error (import.md §3.10) — inline amber banner, not toast-only.
       setImportHint(msg);
     } finally {
       setImportBusy(false);
@@ -1682,7 +1682,21 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               </SupprButton>
             </div>
             {importHint ? (
-              <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+              <div
+                data-testid="import-l4-error"
+                role="alert"
+                className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
+              >
+                <div className="flex gap-3">
+                  <Icons.alert className="h-10 w-10 shrink-0 text-warning" aria-hidden />
+                  <div>
+                    <p className="font-[family-name:var(--font-headline)] text-lg text-foreground">
+                      Something went wrong
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{importHint}</p>
+                  </div>
+                </div>
+              </div>
             ) : null}
 
             {/* import-progress-v2 OFF → legacy inline skeleton. ON → the
