@@ -161,7 +161,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
             {weekStarts.map((weekStart, weekIndex) => (
               <div
                 key={dateKeyFromDate(weekStart)}
-                aria-hidden={weekIndex !== weekIdx}
+                {...(weekIndex !== weekIdx ? { inert: true } : {})}
                 className="min-w-full shrink-0 snap-center flex flex-row justify-between px-0.5 gap-0.5"
               >
                 {dowLabels.map((label, i) => {

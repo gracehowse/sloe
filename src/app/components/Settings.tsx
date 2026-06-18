@@ -968,8 +968,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             </p>
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Email</label>
+            <label
+              htmlFor="settings-email-input"
+              className="block mb-2 text-sm font-medium text-foreground"
+            >
+              Email
+            </label>
             <input
+              id="settings-email-input"
               type="email"
               value={authEmail ?? ""}
               readOnly
@@ -977,8 +983,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             />
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Display Name</label>
+            <label
+              htmlFor="settings-display-name-input"
+              className="block mb-2 text-sm font-medium text-foreground"
+            >
+              Display Name
+            </label>
             <input
+              id="settings-display-name-input"
               type="text"
               value={profileDisplayName ?? ""}
               readOnly
