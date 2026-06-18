@@ -93,18 +93,14 @@ describe("F-79 — shared OFF micro parser", () => {
 });
 
 describe("F-79 — ingest layer pulls full micro set", () => {
-  it("mobile searchOpenFoodFacts attaches microsPer100g to every hit", () => {
-    expect(SRC.verify).toMatch(/import\s*\{\s*parseOffMicrosPer100g\s*\}/);
-    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
-    expect(SRC.verify).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
+  it("mobile searchOpenFoodFacts attaches microsPer100g to every hit (proxied, ENG-1059)", () => {
+    expect(SRC.verify).toMatch(/\/api\/off\/search/);
+    expect(SRC.verify).toMatch(/microsPer100g:\s*h\.microsPer100g/);
   });
 
-  it("mobile lookupBarcode attaches microsPer100g to BarcodeProduct", () => {
-    // The OFF v2 fetch path (after F-78 res.ok guard).
-    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
-    const idx = SRC.verify.indexOf("api/v2/product/${trimmed}.json");
-    const microsIdx = SRC.verify.indexOf("microsPer100g: parseOffMicrosPer100g(n, f)", idx);
-    expect(microsIdx).toBeGreaterThan(idx);
+  it("mobile lookupBarcode attaches microsPer100g to BarcodeProduct (proxied, ENG-1075)", () => {
+    expect(SRC.verify).toMatch(/\/api\/off\/barcode/);
+    expect(SRC.verify).toMatch(/microsPer100g:\s*p\.microsPer100g/);
   });
 
   it("web fetchProductByBarcode attaches microsPer100g", () => {
@@ -248,11 +244,11 @@ describe("ENG-738 — every OFF call site applies the per-100g factor to micros/
     expect(SRC.webOffSearch).toMatch(/nutrition_data_per,serving_quantity/);
   });
 
-  it("mobile lookupBarcode reconciles + scales micros; search proxies OFF (ENG-1059)", () => {
+  it("mobile lookupBarcode proxies OFF barcode; search proxies OFF text (ENG-1059/1075)", () => {
     expect(SRC.verify).toMatch(/\/api\/off\/search/);
-    expect(SRC.verify).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
-    expect(SRC.verify).toMatch(/parseOffMicrosPer100g\(n,\s*f\)/);
-    expect(SRC.verify).toMatch(/n\.fiber_100g\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.verify).toMatch(/\/api\/off\/barcode/);
+    expect(SRC.verify).not.toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+    expect(SRC.verify).not.toMatch(/world\.openfoodfacts\.org\/api\/v2\/product/);
   });
 });
 
