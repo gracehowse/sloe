@@ -4,9 +4,9 @@
  * confidence (mean of items) so the user can read the overall trust
  * signal at a glance instead of scanning each chip.
  *
- * The aggregate uses `averageConfidence` (shared with web) so the
- * mobile chip and web `AiLogReviewSummary` (TODO: web parity lift)
- * will return identical labels for identical inputs.
+ * The aggregate uses `averageConfidence` (shared with web). Web already
+ * routes AI review summaries through the same helper, so identical inputs
+ * return identical labels across platforms.
  *
  * Pure presentational — caller passes `items` + `slotLabel`.
  */

@@ -80,6 +80,8 @@ export interface TodayDashboardMacroTilesProps {
    *  CTA copy ("View all 34 nutrients"). Defaults to a generic
    *  "View all nutrients" when omitted. */
   viewAllNutrientsCount?: number;
+  /** Opens the host-owned per-macro detail panel for supported macro keys. */
+  onPressMacro?: (macro: string) => void;
 }
 
 type TileMeta = {
@@ -285,7 +287,7 @@ function buildMacroTile(
 }
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
-  const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
+  const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount, onPressMacro } = props;
   // ENG-1099 — recipe-tier macro tiles (strip bar+caption, value-colour
   // over-signal). ENG-1098 Calm mode neutralises the over-signal.
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
@@ -309,11 +311,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             : overSignal
               ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
               : { color: tile.fillVar };
-        return (
-          <div
-            key={macroKey}
-            className={`rounded-card bg-card card-slab p-4 flex flex-col ${tierV1 ? "gap-2" : "justify-between min-h-24"}`}
-          >
+        const content = (
+          <>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-foreground-secondary">
                 {tile.label}
@@ -390,6 +389,32 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 </span>
               </>
             )}
+          </>
+        );
+        const cardClass = `rounded-card bg-card card-slab p-4 flex flex-col ${
+          tierV1 ? "gap-2" : "justify-between min-h-24"
+        }`;
+        if (onPressMacro) {
+          return (
+            <button
+              key={macroKey}
+              type="button"
+              onClick={() => onPressMacro(macroKey)}
+              className={`${cardClass} text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:bg-muted/60`}
+              aria-label={`Open ${tile.label} breakdown`}
+              data-testid={`today-macro-tile-${macroKey}`}
+            >
+              {content}
+            </button>
+          );
+        }
+        return (
+          <div
+            key={macroKey}
+            className={cardClass}
+            data-testid={`today-macro-tile-${macroKey}`}
+          >
+            {content}
           </div>
         );
       })}

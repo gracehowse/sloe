@@ -16,7 +16,7 @@
  * there's data.
  */
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 
 // ENG-1099: the per-tile bar + caption are the LEGACY (flag-off) path — the
 // recipe-tier tile (today_tracker_tier_v1, default-on) drops them and moves the
@@ -99,5 +99,23 @@ describe("TodayDashboardMacroTiles (web) — serif zero softening (gap 8)", () =
     );
     const value = container.querySelector(".font-\\[family-name\\:var\\(--font-headline\\)\\]");
     expect(value?.className).toMatch(/text-foreground-tertiary/);
+  });
+});
+
+describe("TodayDashboardMacroTiles (web) — macro-detail entry point", () => {
+  it("fires onPressMacro with the tile key when a macro tile is tapped", () => {
+    const onPressMacro = vi.fn();
+    const { getByTestId } = render(
+      <TodayDashboardMacroTiles {...baseProps} onPressMacro={onPressMacro} />,
+    );
+    fireEvent.click(getByTestId("today-macro-tile-protein"));
+    expect(onPressMacro).toHaveBeenCalledWith("protein");
+  });
+
+  it("renders a real button with an accessible breakdown label when wired", () => {
+    const { getByRole } = render(
+      <TodayDashboardMacroTiles {...baseProps} onPressMacro={() => undefined} />,
+    );
+    expect(getByRole("button", { name: "Open Protein breakdown" })).toBeTruthy();
   });
 });

@@ -238,6 +238,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1065 — Planned card empty branch on Today (F-178/F-179). Default-on;
   // off → host hides the card when the plan day has no meals.
   "today_planned_empty_state",
+  // ENG-848 — web Today macro tiles/bars open MacroDetailPanel. Web-only:
+  // mobile already has the native `macro-detail` route wired from Today.
+  "web_macro_detail_panel",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {

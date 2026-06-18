@@ -31,7 +31,7 @@ export interface MacroMeal {
   id?: string;
   recipeId?: string | null;
   portionMultiplier?: number | null;
-  [key: string]: number | string | null | undefined;
+  [key: string]: number | string | Record<string, number> | null | undefined;
 }
 
 export interface MacroDetailPanelProps {
