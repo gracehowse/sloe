@@ -144,6 +144,24 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Agent captures:** `apps/mobile/screenshots/agent/paywall-trust-*.png`, `screenshots/web-drive/pricing-trust-*.png`, `today-coach-in-hero-*.png`
 
+## L5 · Today dark — screenshot wall (ENG-889)
+
+**Figma frame:** [`314:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=314-2) (L5 · Today dark) · Stitch: `docs/prototypes/stitch-sloe/today-dark.html`
+
+**Preconditions:** sim system appearance **dark** (`xcrun simctl ui booted appearance dark`); AsyncStorage `suppr_theme` = `auto` or `dark` (not `light` — see `apps/mobile/scripts/run-dark-sweep.sh`); relaunch app after manifest change.
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Canvas | Page ground **`#19181C`** (plum-charcoal), not white/light import |
+| 2 | Hero card | Elevated slab **`#2A2730`**, ring + Goal/Eaten/Bonus readable on dark |
+| 3 | Macro tiles | Dark card fill (same family as hero), not light `#F6F5F2` import |
+| 4 | TD3 / TD4 scroll | Weekly insight + meal slots on dark cards below fold |
+| 5 | Week strip | Minimal clay number + dot (no filled pill) — same as light `654:2` |
+
+**Verified 2026-06-18:** iOS sim populated Today (Grace) — pass on 1–5. Figma `314:2` shows under-budget demo data; sim over-budget state is content drift only.
+
+**Agent captures:** `apps/mobile/screenshots/agent/eng889-l5-today-dark.png`, `eng889-l5-today-dark-scrolled.png`
+
 ## Prompt template
 
 ```
