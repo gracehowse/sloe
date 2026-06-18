@@ -1,6 +1,6 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-18 (rev 18 — batch 4 Codex #471 Done; #476/#477 Cursor doc+paywall; ENG-901 Done).  
+**Owner:** Grace · **Linear active open:** **214** (Backlog 195 · Todo 5 · In Progress 7 · Blocked 3 · Triage 4). **Updated:** 2026-06-18 (rev 19 — ENG-1143 duplicate sweep; ENG-1183 #478 Done; rev 18 batch 4 Codex/Cursor).  
 **Branch:** `main` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Quick wins:** `docs/planning/2026-06-17-quick-wins-backlog.md` · **Gate 0/1 audit:** `docs/planning/2026-06-17-gate-0-1-agent-audit.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
@@ -369,10 +369,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1156 | Low | Delete orphaned onboarding/finalStep.ts (dead code, banned 'staged for follow-up', refer |
 | ENG-1151 | Low | Extend Sentry PII redaction denylist to health fields (weight/measurements/sex-at-birth/ |
 | ENG-1149 | Low | Delete stale 'KNOWN APPROXIMATION' header in measureToGrams.ts (ENG-701 already fixed th |
-| ENG-1146 | Low | Add FATSECRET_TIER to CI + Vercel + a startup assertion (no prod micros-zeroing — CI hyg |
+| ENG-1146 | Low | Add FATSECRET_TIER to CI + Vercel + a startup assertion (no prod micros-zeroing — CI hyg | **Done (CI half)** — `ci.yml` + `verify-production-env`; Vercel `FATSECRET_TIER=premier` still Grace-gated |
+| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift | **Done** — `macroIcons.ts` + lucide maps; MacroIconRow/Today/Targets/Profile wired |
 | ENG-1145 | Low | Route mobile OFF barcode through /api/off/barcode proxy (curated overrides + rate limit  |
 | ENG-1144 | Low | Sync mobile database.types.ts (missing eaten_at) + CI diff-guard vs web |
-| ENG-1143 | Low | Sweep 25 Duplicate-state issues → Canceled + retire the defunct Premium-bar-audit projec |
+| ENG-1143 | Low | Sweep 25 Duplicate-state issues → Canceled + retire the defunct Premium-bar-audit projec | **Done** — 25 Duplicate→Canceled 2026-06-18; Linear Duplicate filter **0**; Premium-bar-audit project already Completed |
 | ENG-1142 | Low | Re-arm visual-regression gate (Chromatic review or Playwright golden) for cohesion-wave  |
 | ENG-1120 | Low | FatSecret OAuth2 token cached in module memory only — store in Redis to survive serverle |
 | ENG-1114 | Low | Single-region/single-instance SPOF topology (Vercel US-East for UK/EU users; Upstash bla |
@@ -405,11 +406,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 |---|---|---|
 | ENG-1141 | Medium | Off-scale spacing/radius/type-ramp literal sweep (Today/Discover/DiscoverFeed) |
 | ENG-1139 | Medium | Replace raw Pressable with PressableScale (haptics) on Today meal rows + Discover cards |
-| ENG-1138 | Medium | Add focus-visible rings to web import-hero slab + meal-slot header (keyboard a11y) |
+| ENG-1138 | Medium | Add focus-visible rings to web import-hero slab + meal-slot header (keyboard a11y) | **Done** (#479) |
 | ENG-1056 | Medium | Enforce no-raw-hex: flip web rule warn→error + add mobile selector (split from ENG-811,  |
 | ENG-1018 | Medium | Radius literal cleanup: 24/22/14/11/10/9/5/3/2 → {4,6,8,12,full} (carve-outs excepted) |
 | ENG-1016 | Medium | Haptic rebalance: route commit-actions through PressableScale (Light→Medium), add web co |
-| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift |
+| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift | **Done** (batch 5) |
 | ENG-780 | Medium | Storybook 100% coverage — web + mobile, all components + screens (additive) |
 | ENG-778 | Medium | Systemic contrast sweep: text-primary on bg-primary/N tints (WCAG AA) |
 | ENG-120 | Medium | Lucide sweep — long-tail (~64 files remaining) |
@@ -655,9 +656,9 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 
 ## Linear reconciliation
 
-- `label:launch-blocker` = exactly the 19 Gate-0/Gate-1 must-ship items.
+- `label:launch-blocker` = Gate-0/Gate-1 must-ship items (**6 open** · 72 Done · 2 Canceled as of 2026-06-18 post-sweep).
 - `label:paid-ga-blocker` = Gate B (**4 open** after 2026-06-14 ship).
 - **2026-06-14:** 21 issues → Done on `claude/eng-1099-tracker-tier` (see Shipped section); ENG-1099 remains In Progress.
 - ENG-1073 bumped Medium → High (prior pass).
 - This document is the authoritative ordering; Gate 2+ keep existing Linear priority levels.
-- 25 Duplicate-state zombies (Premium-bar-audit project) excluded — cancel via ENG-1143.
+- **ENG-1143 Done (2026-06-18):** 25 Duplicate-state issues → Canceled; Linear Duplicate filter **0**. Active-open rollup **214** (Backlog **195** unchanged — duplicates were not Backlog).
