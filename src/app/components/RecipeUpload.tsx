@@ -195,7 +195,7 @@ function amountToNumeric(raw: string): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
-export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
   const router = useRouter();
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets, userId } = useAppData();
   const searchParams = useSearchParams();
@@ -270,6 +270,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [scannerError, setScannerError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStopRef = useRef<(() => void) | null>(null);
+  const photoMethodInputRef = useRef<HTMLInputElement | null>(null);
+  const isFreeTier = userTier === "free";
 
   const verifiedMacroByKey = useMemo(() => {
     if (!verifiedLines) return null;
@@ -803,6 +805,27 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       });
     },
     [importQueue, fetchPhotoImport, applyAndMaybeSaveFirst],
+  );
+
+  const onPhotoMethodPress = useCallback(() => {
+    if (isFreeTier) {
+      onUpgrade?.();
+      return;
+    }
+    photoMethodInputRef.current?.click();
+  }, [isFreeTier, onUpgrade]);
+
+  const onPhotoMethodFiles = useCallback(
+    (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0) return;
+      if (importProgressV2) {
+        runBulkPhotoImport(fileList);
+      } else {
+        applyImageFile(fileList[0]!);
+      }
+      if (photoMethodInputRef.current) photoMethodInputRef.current.value = "";
+    },
+    [importProgressV2, runBulkPhotoImport],
   );
 
   const runImportFromUrl = async () => {
@@ -1705,6 +1728,84 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             {importBusy && !importProgressV2 ? (
               <ImportLoadingSkeleton phase="importing" className="mt-4" />
             ) : null}
+
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <input
+              ref={photoMethodInputRef}
+              type="file"
+              accept="image/*"
+              multiple={importProgressV2}
+              aria-hidden
+              tabIndex={-1}
+              className="sr-only"
+              onChange={(e) => onPhotoMethodFiles(e.target.files)}
+            />
+
+            <div className="grid grid-cols-3 gap-2" data-testid="import-method-tiles">
+              <button
+                type="button"
+                data-testid="import-method-photo"
+                aria-label={
+                  isFreeTier
+                    ? "Import from a photo — Pro feature, upgrade required"
+                    : "Import from a photo"
+                }
+                onClick={onPhotoMethodPress}
+                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <span className="relative inline-flex">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                    <Icons.camera className="h-5 w-5 text-primary-solid" aria-hidden />
+                  </span>
+                  {isFreeTier ? (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-warning/10">
+                      <Icons.lock className="h-2.5 w-2.5 text-warning" aria-hidden />
+                    </span>
+                  ) : null}
+                </span>
+                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                  Photo
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
+                </span>
+              </button>
+              <button
+                type="button"
+                data-testid="import-method-paste-text"
+                aria-label="Paste recipe text from notes"
+                onClick={() => onSwitchToCreate?.()}
+                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                  <Icons.copy className="h-5 w-5 text-primary-solid" aria-hidden />
+                </span>
+                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                  Paste text
+                </span>
+                <span className="text-xs text-muted-foreground">From notes</span>
+              </button>
+              <button
+                type="button"
+                data-testid="import-method-scan"
+                aria-label="Create a recipe with barcode scan"
+                onClick={() => onSwitchToCreate?.()}
+                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                  <Icons.scan className="h-5 w-5 text-primary-solid" aria-hidden />
+                </span>
+                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                  Scan
+                </span>
+                <span className="text-xs text-muted-foreground">Barcode</span>
+              </button>
+            </div>
           </div>
 
           {/* WORKS WITH — non-tappable trust chips (ENG-898, mobile parity).

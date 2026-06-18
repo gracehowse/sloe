@@ -174,6 +174,11 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
+    // ENG-898 — 3-method source tiles (mobile parity).
+    expect(screen.getByTestId("import-method-tiles")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-photo")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-paste-text")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-scan")).toBeInTheDocument();
   });
 
   it("ENG-898 — renders recent imports when the user has URL-imported recipes", async () => {
