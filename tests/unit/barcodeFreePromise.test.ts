@@ -18,14 +18,26 @@ describe("barcodeFreePromise (ENG-932 / ENG-973)", () => {
 
   it("web + mobile paywall surfaces render the chip test id", () => {
     const root = process.cwd();
-    for (const rel of [
-      "src/app/components/suppr/upgrade-paywall-dialog.tsx",
-      "apps/mobile/app/paywall.tsx",
-    ]) {
-      const src = readFileSync(join(root, rel), "utf8");
-      expect(src).toContain("BARCODE_FREE_PAYWALL_CHIP_TEST_ID");
-      expect(src).toContain("BARCODE_FREE_PAYWALL_CHIP");
-    }
+    const webUpgrade = readFileSync(
+      join(root, "src/app/components/suppr/upgrade-paywall-dialog.tsx"),
+      "utf8",
+    );
+    const webTrustStrip = readFileSync(
+      join(root, "app/pricing/PaywallTrustStrip.tsx"),
+      "utf8",
+    );
+    expect(webUpgrade).toContain("<PaywallTrustStrip");
+    expect(webTrustStrip).toContain("BARCODE_FREE_PAYWALL_CHIP_TEST_ID");
+    expect(webTrustStrip).toContain("BARCODE_FREE_PAYWALL_CHIP");
+
+    const mobilePaywall = readFileSync(join(root, "apps/mobile/app/paywall.tsx"), "utf8");
+    const mobileTrustStrip = readFileSync(
+      join(root, "apps/mobile/components/paywall/PaywallTrustStrip.tsx"),
+      "utf8",
+    );
+    expect(mobilePaywall).toContain("<PaywallTrustStrip");
+    expect(mobileTrustStrip).toContain("BARCODE_FREE_PAYWALL_CHIP_TEST_ID");
+    expect(mobileTrustStrip).toContain("BARCODE_FREE_PAYWALL_CHIP");
   });
 
   it("LogSheet hosts wire loud barcode CTA test id", () => {
