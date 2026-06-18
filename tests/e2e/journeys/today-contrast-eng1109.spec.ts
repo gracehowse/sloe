@@ -41,7 +41,7 @@ test.describe("Today WCAG contrast (ENG-1109)", () => {
       await acceptBtn.click();
     }
 
-    await expect(page.getByRole("heading", { name: /Today's Meals/i })).toBeVisible({
+    await expect(page.getByTestId("today-meals-section")).toBeVisible({
       timeout: 20_000,
     });
 
