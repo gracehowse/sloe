@@ -38,10 +38,9 @@ import {
   Flame,
 
   // Macros & nutrition
-  Beef,
   Wheat,
-  Droplets,
-  Leaf,
+  Droplet,
+  Sprout,
   Zap,
   Scale,
   Target,
@@ -172,11 +171,11 @@ export const Icons = {
 
   // Macros & nutrition
   calories: Flame,
-  protein: Beef,
+  protein: Dumbbell,
   carbs: Wheat,
-  fat: Droplets,
-  fiber: Leaf,
-  water: Droplets,
+  fat: Droplet,
+  fiber: Sprout,
+  water: Droplet,
   food: Apple,
   scale: Scale,
   target: Target,

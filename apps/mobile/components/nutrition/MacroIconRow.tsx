@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 
 import { MacroColors } from "@/constants/theme";
+import { MACRO_GLYPH_KEYS } from "@suppr/shared/nutrition/macroGlyphs";
 import { useAccent } from "@/context/theme";
 
 /**
@@ -21,7 +22,7 @@ import { useAccent } from "@/context/theme";
  * the macro's TF49 hue, followed by the value in grams (or kcal for
  * calories). Compact, no card chrome — designed to drop into any row.
  *
- * Icon set (matches `feedback_prototype_icons_exact.md`):
+ * Icon set (canonical keys in `@suppr/shared/nutrition/macroGlyphs`):
  *   - Flame    → calories (`MacroColors.calories`)
  *   - Dumbbell → protein  (`MacroColors.protein`) — Figma `654:101`
  *   - Wheat    → carbs    (`MacroColors.carbs`)
