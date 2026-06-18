@@ -1,5 +1,4 @@
 import * as React from "react";
-import { captureException } from "@/lib/errorTracking";
 
 /**
  * Catches Skia render failures (common when JS @shopify/react-native-skia
@@ -22,11 +21,11 @@ export class SkiaRingErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown): void {
-    try {
-      captureException(error);
-    } catch {
-      // capture must never throw
-    }
+    void import("@/lib/errorTracking")
+      .then(({ captureException }) => captureException(error))
+      .catch(() => {
+        // capture must never throw; skip if Sentry isn't loadable
+      });
     this.props.onFallback();
   }
 
