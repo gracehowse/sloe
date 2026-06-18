@@ -148,7 +148,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white shrink-0"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white shrink-0"
             aria-label="Open settings"
           >
             {avatarLetter}
@@ -243,7 +243,7 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[#6a4b7a] text-white"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white"
             aria-label="Open settings"
           >
             {avatarLetter}

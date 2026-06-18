@@ -28,6 +28,8 @@
  *     production (it's in `REDESIGN_DEFAULT_ON`). Covered by its own block.
  */
 import * as React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react-native";
 
@@ -224,5 +226,15 @@ describe("WeeklyInsightCard (mobile) — Figma 654:2 narrative card (default)", 
       />,
     );
     expect(getByText("2 days logged so far. 1,700 kcal daily average.")).toBeTruthy();
+  });
+});
+
+describe("WeeklyInsightCard source — TD3 eyebrow (ENG-889)", () => {
+  it("uses Sparkles on the figma-layout weekly insight eyebrow", () => {
+    const src = readFileSync(
+      resolve(__dirname, "../../components/today/WeeklyInsightCard.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/if \(figmaLayout\) \{[\s\S]*?<Sparkles size=\{13\}/);
   });
 });

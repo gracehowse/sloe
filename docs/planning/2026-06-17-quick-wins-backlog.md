@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) `agent/cursor/batch-6-889-896-1142-1016` — ENG-889 L5 docs, ENG-898 L4 import error, ENG-1142 cohesion gate, ENG-1016 PressableScale slice.
+**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) L4/cohesion/haptics · [#484](https://github.com/gracehowse/Suppr/pull/484) TD3/import tiles/action sheet (pending).
 
 ## Merge history (reference)
 
