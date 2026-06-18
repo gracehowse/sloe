@@ -20,12 +20,18 @@ const GLYPH_COMPONENTS = {
   Wheat,
   Droplet,
   Sprout,
-} as const satisfies Record<(typeof FIGMA_MACRO_ICON_GLYPHS)[MacroIconKey], LucideIcon>;
+} as const satisfies Record<"Flame" | "Dumbbell" | "Wheat" | "Droplet" | "Sprout", LucideIcon>;
+
+type GlyphName = keyof typeof GLYPH_COMPONENTS;
+
+function lucideGlyph(name: GlyphName): LucideIcon {
+  return GLYPH_COMPONENTS[name];
+}
 
 export const MACRO_ICONS: Record<MacroIconKey, LucideIcon> = {
-  calories: GLYPH_COMPONENTS[FIGMA_MACRO_ICON_GLYPHS.calories],
-  protein: GLYPH_COMPONENTS[FIGMA_MACRO_ICON_GLYPHS.protein],
-  carbs: GLYPH_COMPONENTS[FIGMA_MACRO_ICON_GLYPHS.carbs],
-  fat: GLYPH_COMPONENTS[FIGMA_MACRO_ICON_GLYPHS.fat],
-  fiber: GLYPH_COMPONENTS[FIGMA_MACRO_ICON_GLYPHS.fiber],
+  calories: lucideGlyph(FIGMA_MACRO_ICON_GLYPHS.calories as GlyphName),
+  protein: lucideGlyph(FIGMA_MACRO_ICON_GLYPHS.protein as GlyphName),
+  carbs: lucideGlyph(FIGMA_MACRO_ICON_GLYPHS.carbs as GlyphName),
+  fat: lucideGlyph(FIGMA_MACRO_ICON_GLYPHS.fat as GlyphName),
+  fiber: lucideGlyph(FIGMA_MACRO_ICON_GLYPHS.fiber as GlyphName),
 };
