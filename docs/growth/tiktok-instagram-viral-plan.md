@@ -11,7 +11,7 @@
 
 - **Build age:** 2 months (started March 2026). Unusually mature for the age — web + mobile working, recipe import, photo log, voice log, plate loop, monetization scaffolded, brand identity coherent.
 - **Solo founder.** No marketing team. Content production sits with Grace until traction proves out.
-- **Pre-revenue.** Burn **~£388/mo** card (~£395 all-in). No marketing budget. Organic-first. Break-even **~124 paying subs** — see `docs/finance/income-projection.md`.
+- **Pre-revenue.** Burn **~£350–400/mo** all-in. No marketing budget. Organic-first. Break-even **~120 paying subs** (order of magnitude) — see `docs/finance/income-projection.md`.
 - **Pricing locked.** Free + Base (£3.99/mo, £29.99/yr) + Pro (£7.99/mo, £59.99/yr). See `docs/decisions/2026-04-19-pricing-v1.md`.
 - **iOS-only.** Cuts global TAM by ~60% (Android is 70% of phones worldwide). 1M users on iOS-only is harder but doable.
 - **TestFlight today, App Store launch pending.** Grace is the only tester (per `project_solo_tester.md` memory).
