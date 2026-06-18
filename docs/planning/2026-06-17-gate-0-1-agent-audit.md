@@ -21,17 +21,20 @@
 
 **Gate 1 code path:** No net-new agent slices until device tests complete. Cheap follow-ups elsewhere (quick-wins queue) are fine.
 
-## Recommended next agent slices (post–Gate 1.5 batch `4c4459bb`)
+## Recommended next agent slices (updated 2026-06-18)
 
-Ranked by S effort + launch cohesion impact:
+Batch 3 Core-5 partials largely landed on `main` (#472, #475). **In flight:** PR #476 (ENG-901 trust strip + Sloe upgrade dialog; ENG-889 coach-in-hero).
 
-| Rank | Ticket | Effort | What |
-|------|--------|--------|------|
-| 1 | **ENG-901 M6** | S | Web import-success win-moment overlay (mobile has it; `RecipeUpload.tsx` + `useWebWinMoment`) |
-| 2 | **ENG-898** | S | Remaining import partials — recent imports list, caption-preview trust card |
-| 3 | **ENG-897** | S | Auth signup email-step pixel (`app/login/ui.tsx` vs Figma `296:2`) |
-| 4 | **ENG-896** | S | Discover seamless slab cards (`DiscoverFeed.tsx`) |
-| 5 | **ENG-889** | S–M | S5 Fresh start verify; screenshot wall checklist |
+| Rank | Ticket | Effort | What | Status |
+|------|--------|--------|------|--------|
+| — | **ENG-901** | S | Merge #476; then mobile paywall shell/hero parity | **PR #476 open** |
+| — | **ENG-889** | S–M | Coach-in-hero (#476); then TD1/TD2/TD4 or L5 dark | Partial on main + PR |
+| 1 | **ENG-896** | S | Next high partial on Discover or Library (see migration tracker) | Discover slabs done |
+| 2 | **ENG-898** | S | Source tiles / L4 error / remaining import chrome | Recent imports done |
+| 3 | **ENG-897** | S | Signed-out screenshot wall for email step | Test pin on main |
+| — | **ENG-1100** | — | Empty-slot extract + partial-day rows | **Done** (#472+#475) |
+
+Prior ranks 1–5 (M6, recent imports, email pin, Discover slabs, S5) **shipped** via #472.
 
 ## Quick-wins strategy (2026-06-17)
 

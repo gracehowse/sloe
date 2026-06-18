@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PageViewTracker, PageDismissTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
@@ -11,6 +11,7 @@ import { PricingHero } from "./PricingHero.tsx";
 import { PricingPaywallHonesty } from "./PricingPaywallHonesty.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
+import { PricingLegacyTrustSignals } from "./PricingLegacyTrustSignals.tsx";
 import { PaywallValueGrid } from "./PaywallValueGrid.tsx";
 import { PaywallComparison } from "./PaywallComparison.tsx";
 import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
@@ -263,21 +264,7 @@ export default async function PricingPage({
           }
         />
 
-        {/* Trust signals */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Shield className="w-4 h-4 text-[var(--macro-calories)]" />
-            Cancel anytime
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Cloud className="w-4 h-4 text-primary" />
-            Cloud sync across devices
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Download className="w-4 h-4 text-[var(--macro-fat)]" />
-            Export your data anytime
-          </div>
-        </div>
+        <PricingLegacyTrustSignals />
 
         {/* FAQ */}
         <div className="mt-14 max-w-2xl mx-auto">
