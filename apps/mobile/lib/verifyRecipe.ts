@@ -2,8 +2,6 @@ import Constants from "expo-constants";
 import { supabase } from "./supabase";
 import { authedFetch } from "./authedFetch";
 import {
-  buildOffServingOptionsFromProduct,
-  pickDefaultServingGrams,
   type OffServingOption,
 } from "@suppr/shared/openFoodFacts/offServingPortions";
 import { scaleFromPer100gGrams } from "@suppr/shared/openFoodFacts/scaleFromPer100g";
@@ -38,8 +36,6 @@ import {
   isLowRelevanceNonVerifiedRow,
   isLowConfidenceDemotedRow,
 } from "@suppr/shared/nutrition/searchRowTrust";
-import { parseOffMicrosPer100g } from "@suppr/shared/openFoodFacts/parseOffMicros";
-import { reconcileOffPer100g, extractOffMacrosPerServing } from "@suppr/shared/openFoodFacts/reconcilePer100g";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
@@ -1750,99 +1746,58 @@ export async function lookupBarcode(
     // Fall through to Open Food Facts
   }
 
-  // 2. Fall back to Open Food Facts API
+  // 2. Fall back to Open Food Facts via the authenticated proxy (ENG-1075 /
+  // ENG-1145 — web parity: curated overrides + per-user rate limit + cache).
   try {
-    // ENG (audit P3) — bound the direct OFF barcode lookup so a slow/hung OFF
-    // can't block the scan screen indefinitely. On timeout the fetch aborts and
-    // throws; the outer catch returns `null` (the same not-found/error contract
-    // every other failure here uses). Direct call is intentional for this pass —
-    // rerouting barcode through the proxy is tracked separately.
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${trimmed}.json`,
-      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) },
+    const base = apiBase();
+    if (!base) return null;
+    const res = await authedFetch(
+      `${base}/api/off/barcode?code=${encodeURIComponent(trimmed)}`,
+      { signal: AbortSignal.timeout(8000) },
     );
-    // F-78 (2026-04-25) — guard res.ok before .json(). Without this, OFF
-    // 429/5xx/HTML error pages throw `JSON Parse error` and surface as a
-    // toast even when an earlier successful call already populated the
-    // UI (duplicate-call race from expo-camera re-fires).
     if (!res.ok) return null;
-    const text = await res.text();
-    let data: { status?: number; product?: unknown };
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.warn("[lookupBarcode] non-JSON OFF response:", text.slice(0, 200));
-      return null;
-    }
-    if (data.status !== 1 || !data.product) return null;
-
-    const p = data.product as {
-      brands?: string;
-      product_name?: string;
-      product_name_en?: string;
-      generic_name?: string;
-      serving_size?: string;
-      serving_quantity?: string | number;
-      serving_quantity_unit?: string;
-      /** P0 (2026-05-26) — "100g" | "serving"; drives per-100g reconcile. */
-      nutrition_data_per?: string;
-      nutriments?: Record<string, number | undefined>;
+    const data = (await res.json()) as {
+      ok?: boolean;
+      product?: {
+        name: string;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiberG: number;
+        sugarG?: number;
+        sodiumMg?: number;
+        caffeineMgPer100g?: number | null;
+        alcoholGPer100g?: number | null;
+        microsPer100g?: Record<string, number>;
+        servingSizeG?: number;
+        servingOptions?: OffServingOption[];
+        basisCorrected?: boolean;
+        macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number };
+        servingNoMass?: boolean;
+      };
     };
-    const n = p.nutriments ?? {};
-    // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis before
-    // they scale (web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts).
-    const recon = reconcileOffPer100g(n, p);
-    const macrosPerServing =
-      recon.servingNoMass ? extractOffMacrosPerServing(n) : null;
-    // ENG-738 (2026-05-26) — fiber + micros + caffeine/alcohol below read the
-    // raw `*_100g` fields, which secretly hold per-serving values on a
-    // `nutrition_data_per:"serving"` row. Rescale them onto the same
-    // true-per-100g basis the macros use (factor = 1 for genuine per-100g).
-    // Web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts.
-    const f = recon.per100gFactor;
-    const brand = (p.brands ?? "").split(",")[0]?.trim() ?? "";
-    const baseName =
-      (p.product_name ?? p.product_name_en ?? p.generic_name ?? "").trim() ||
-      "Packaged food";
-
-    const servingOptions = buildOffServingOptionsFromProduct(p);
-    const servingSizeG =
-      recon.servingNoMass && macrosPerServing
-        ? 1
-        : pickDefaultServingGrams(servingOptions);
-    // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
-    // caffeine in g (convert to mg) and alcohol in g already. Null when
-    // absent so the commit path knows to skip rather than assume zero.
-    const caffRaw = n.caffeine_100g ?? n.caffeine;
-    const caffeineMgPer100g =
-      typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
-        ? Math.round(caffRaw * f * 1000 * 10) / 10
-        : null;
-    const alcRaw = n.alcohol_100g ?? n.alcohol;
-    const alcoholGPer100g =
-      typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
-        ? Math.round(alcRaw * f * 100) / 100
-        : null;
-
+    if (!data.ok || !data.product) return null;
+    const p = data.product;
     return {
-      name: [brand, baseName].filter(Boolean).join(" · "),
-      calories: Math.round(recon.calories),
-      protein: Math.round(recon.protein * 10) / 10,
-      carbs: Math.round(recon.carbs * 10) / 10,
-      fat: Math.round(recon.fat * 10) / 10,
-      fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
-      servingSizeG,
-      basisCorrected: recon.corrected,
-      caffeineMgPer100g,
-      alcoholGPer100g,
-      // F-79 (2026-04-25) — full micros per 100g for scanned barcode.
-      // ENG-738 — scaled by the per-100g factor to match the macro basis.
-      microsPer100g: parseOffMicrosPer100g(n, f),
-      servingOptions,
+      name: p.name,
+      calories: Math.round(p.calories),
+      protein: Math.round(p.protein * 10) / 10,
+      carbs: Math.round(p.carbs * 10) / 10,
+      fat: Math.round(p.fat * 10) / 10,
+      fiberG: Math.round(p.fiberG * 10) / 10,
+      sugarG: p.sugarG != null ? Math.round(p.sugarG * 10) / 10 : null,
+      sodiumMg: p.sodiumMg != null ? Math.round(p.sodiumMg) : null,
+      servingSizeG: p.servingSizeG ?? 100,
+      basisCorrected: p.basisCorrected,
+      caffeineMgPer100g: p.caffeineMgPer100g ?? null,
+      alcoholGPer100g: p.alcoholGPer100g ?? null,
+      microsPer100g: p.microsPer100g,
+      servingOptions: p.servingOptions,
       source: "open_food_facts",
       verified: false,
-      ...(macrosPerServing ? { macrosPerServing } : {}),
-      ...(recon.servingNoMass ? { servingNoMass: true } : {}),
+      ...(p.macrosPerServing ? { macrosPerServing: p.macrosPerServing } : {}),
+      ...(p.servingNoMass ? { servingNoMass: true } : {}),
     };
   } catch (e) {
     console.error("[lookupBarcode] failed:", e instanceof Error ? e.message : e);

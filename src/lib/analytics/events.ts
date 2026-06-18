@@ -1009,7 +1009,8 @@ export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof Analytics
  * `tests/unit/foodLoggedSourceParity.test.ts` for the grep-level
  * assertion that guards new call sites from drifting. */
 export type FoodLoggedSource =
-  | "manual"         // FoodSearch text/inline search confirm
+  | "manual"         // Manual / re-logged history entry (not vendor search)
+  | "food_search"    // FoodSearch panel confirm (USDA/OFF/Edamam/FatSecret)
   | "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
   | "saved_meal"     // Re-log from My meals tab
   | "log_again"      // ENG-786 — one-tap "Log this/these again" on a Today slot

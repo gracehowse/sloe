@@ -69,20 +69,13 @@ describe("F-77 trust-weighted ranking — USDA over OFF on tie/near-tie", () => 
 });
 
 describe("F-78 barcode lookup — res.ok guard before .json()", () => {
-  it("mobile lookupBarcode guards res.ok before parsing the OFF response", () => {
-    // The OFF v2 fetch in lookupBarcode now goes:
-    //   if (!res.ok) return null;
-    //   const text = await res.text();
-    //   try { data = JSON.parse(text); } catch { ...; return null; }
-    expect(VERIFY_SRC).toMatch(/api\/v2\/product\/\$\{trimmed\}\.json/);
-    expect(VERIFY_SRC).toMatch(/F-78[^\n]*res\.ok/);
-    // Hard pin: a guard appears between the OFF v2 fetch and the first
-    // JSON.parse. The guard must precede any text/json access.
-    const v2Idx = VERIFY_SRC.indexOf("api/v2/product/${trimmed}.json");
-    const okIdx = VERIFY_SRC.indexOf("if (!res.ok) return null", v2Idx);
-    const parseIdx = VERIFY_SRC.indexOf("JSON.parse", v2Idx);
-    expect(okIdx).toBeGreaterThan(v2Idx);
-    expect(parseIdx).toBeGreaterThan(okIdx);
+  it("mobile lookupBarcode proxies OFF barcode through /api/off/barcode (ENG-1075)", () => {
+    expect(VERIFY_SRC).toMatch(/\/api\/off\/barcode/);
+    expect(VERIFY_SRC).toMatch(/authedFetch/);
+    expect(VERIFY_SRC).not.toMatch(/world\.openfoodfacts\.org\/api\/v2\/product/);
+    const proxyIdx = VERIFY_SRC.indexOf("/api/off/barcode");
+    const okIdx = VERIFY_SRC.indexOf("if (!res.ok) return null", proxyIdx);
+    expect(okIdx).toBeGreaterThan(proxyIdx);
   });
 
   it("web fetchProductByBarcode also guards res.ok (already in place)", () => {
@@ -143,18 +136,13 @@ describe("P0 OFF per-100g basis reconcile — every OFF ingest point", () => {
     expect(WEB_OFF_BARCODE_SRC).not.toMatch(/n\.proteins_100g\s*\?\?\s*n\.proteins\b/);
   });
 
-  it("mobile lookupBarcode reconciles; searchOpenFoodFacts proxies OFF via API (ENG-1059)", () => {
-    // Mobile consolidates search + barcode in verifyRecipe.ts, so reconcileOffPer100g
-    // is imported alongside extractOffMacrosPerServing (a multi-symbol destructure) —
-    // tolerate other named imports while anchoring on the canonical reconcile module.
-    expect(VERIFY_SRC).toMatch(
-      /import\s*\{[^}]*\breconcileOffPer100g\b[^}]*\}\s*from\s*["'][^"']*reconcilePer100g["']/,
-    );
-    expect(VERIFY_SRC).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+  it("mobile lookupBarcode proxies OFF barcode via API; searchOpenFoodFacts proxies OFF via API (ENG-1059)", () => {
+    expect(VERIFY_SRC).toMatch(/\/api\/off\/barcode/);
     expect(VERIFY_SRC).toMatch(/\/api\/off\/search/);
     expect(VERIFY_SRC).not.toMatch(
       /world\.openfoodfacts\.org\/cgi\/search\.pl/,
     );
+    expect(VERIFY_SRC).not.toMatch(/world\.openfoodfacts\.org\/api\/v2\/product/);
   });
 });
 

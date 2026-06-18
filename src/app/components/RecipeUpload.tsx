@@ -224,6 +224,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [importHint, setImportHint] = useState<string | null>(null);
+  /** Audit I05 — `false` when image step fell back to caption-only. */
+  const [importImageUsed, setImportImageUsed] = useState<boolean | undefined>(undefined);
+  /** ENG-1159b — true when caption exceeded CAPTION_MAX before extraction. */
+  const [importCaptionTruncated, setImportCaptionTruncated] = useState(false);
   /** ENG-980 — true when save-first already landed this import in Library. */
   const [importSaveFirstActive, setImportSaveFirstActive] = useState(false);
   /** ENG-901 M6 — import-success sheet after library save (web parity). */
@@ -656,7 +660,14 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
    * to retry-eligible copy via `importErrorCopy`.
    */
   const fetchImportedRecipe = useCallback(
-    async (u: string, signal?: AbortSignal): Promise<ApiImportedRecipe> => {
+    async (
+      u: string,
+      signal?: AbortSignal,
+    ): Promise<{
+      recipe: ApiImportedRecipe;
+      imageUsed?: boolean;
+      captionTruncated?: boolean;
+    }> => {
       let res: Response;
       try {
         res = await fetch("/api/recipe-import", {
@@ -674,19 +685,31 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         recipe?: ApiImportedRecipe;
         message?: string;
         error?: string;
+        imageUsed?: boolean;
+        captionTruncated?: boolean;
       };
       if (!data.ok || !data.recipe) {
         // Prefer the server's stable error code so retry-eligibility is honest.
         const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
         throw new ImportRunnerError(code, data.message);
       }
-      return data.recipe;
+      return {
+        recipe: data.recipe,
+        imageUsed: data.imageUsed,
+        captionTruncated: data.captionTruncated,
+      };
     },
     [],
   );
 
   const applyAndMaybeSaveFirst = useCallback(
-    async (recipe: ApiImportedRecipe, sourceUrl: string): Promise<boolean> => {
+    async (
+      recipe: ApiImportedRecipe,
+      sourceUrl: string,
+      importFlags?: { imageUsed?: boolean; captionTruncated?: boolean },
+    ): Promise<boolean> => {
+      setImportImageUsed(importFlags?.imageUsed);
+      setImportCaptionTruncated(Boolean(importFlags?.captionTruncated));
       const formRecipe: ImportedUrlRecipe = {
         title: recipe.title ?? "Imported recipe",
         description: recipe.description ?? null,
@@ -783,13 +806,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         title: seedTitle,
         run: async (controls) => {
           controls.setStage("extracting");
-          const recipe = await fetchImportedRecipe(u, controls.signal);
+          const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u, controls.signal);
           if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
           controls.setStage("organizing");
           controls.setTitle(recipe.title ?? "Imported recipe");
           // The most-recently-finished import populates the editor form for
           // review; all imports are listed in the drawer regardless.
-          await applyAndMaybeSaveFirst(recipe, u);
+          await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
           return { title: recipe.title ?? "Imported recipe" };
         },
       });
@@ -803,8 +826,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     setImportBusy(true);
     setImportHint(null);
     try {
-      const r = await fetchImportedRecipe(u);
-      const savedFirst = await applyAndMaybeSaveFirst(r, u);
+      const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u);
+      const savedFirst = await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
       toast.success(
         savedFirst
           ? "Saved to your library — review amounts and nutrition below"
@@ -1683,6 +1706,25 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           aria-label={IMPORT_SAVE_FIRST_REVIEW_BANNER.a11yLabel}
         >
           {IMPORT_SAVE_FIRST_REVIEW_BANNER.label}
+        </div>
+      ) : null}
+
+      {mode === "import" && (importImageUsed === false || importCaptionTruncated) ? (
+        <div
+          data-testid="import-preview-confidence-banner"
+          className="mb-6 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-[13px] text-foreground"
+          role="status"
+        >
+          <p className="font-semibold">
+            {importImageUsed === false
+              ? "Image couldn't be analysed"
+              : "Long caption was shortened"}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {importImageUsed === false
+              ? "The recipe was extracted from the caption alone. Review amounts and nutrition before saving."
+              : "Only the first part of this post was analysed. If the recipe continues below, add missing ingredients manually."}
+          </p>
         </div>
       ) : null}
 

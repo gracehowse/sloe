@@ -489,6 +489,7 @@ export async function POST(req: Request) {
         // was supplied. Mobile/web previews flag this so users can
         // judge confidence.
         imageUsed: recipe.imageUsed,
+        captionTruncated: recipe.captionTruncated,
         recipe: {
           title: safeTitle,
           description: null,

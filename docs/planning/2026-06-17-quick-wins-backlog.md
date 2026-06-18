@@ -16,7 +16,7 @@ this batch rides on the current branch per the standing instruction; new
 | ENG-1149 | Delete stale `KNOWN APPROXIMATION` header in `measureToGrams.ts` | S | ✅ | **Shipped** | Comment-only; ENG-701 already re-ordered food-specific-before-generic (verified at resolver lines ~210–225/260–266). No behaviour change. |
 | ENG-1156 | Delete orphaned `onboarding/finalStep.ts` (dead code, banned "staged for follow-up") | S | ✅ | **Shipped** | Zero runtime importers (only its own test). Deleted file + `onboardingFinalStepPhase3.test.ts`; re-anchored prose comments in `state.ts` / `onboardingSeeds.ts` to `NORTH_STAR_LIBRARY_MIN`. |
 | ENG-1152 | Harden SSRF string-layer: block `0.0.0.0` + integer/octal/hex IPv4 encodings | M | ✅ | **Shipped** | Added `canonicaliseIpv4` (inet_aton-style) + all-zeros handling to `ssrfAllowlist.ts`; loopback widened to `/8`. 9 new test cases; DNS backstop in `ssrfGuard.ts` untouched. Client-bundle-safe (no Node builtins). |
-| ENG-1159 | Vendor/logging cleanups (edamam dead code · caption truncation · `food_search` source) | M | ⚠️ | **Part (a) shipped — open** | (a) Removed dead `edamamNutritionAnalysis`/`edamamAnalysisMacros` + types + their tests. (b) 4000-char caption-truncation notice and (c) `food_search` analytics source each touch web **and** mobile log/preview paths — doing (c) web-only would create `food_logged.source` parity drift, so they're tracked on the open ticket (not quick wins). |
+| ENG-1159 | Vendor/logging cleanups (edamam dead code · caption truncation · `food_search` source) | M | ✅ | **Shipped (batch 2)** | (a) dead edamam code removed in batch 1. (b) `CAPTION_MAX` + `captionTruncated` in `extractSocialRecipe.ts`, wired to web `RecipeUpload` + mobile `import-shared` preview banners. (c) `food_search` added to `FoodLoggedSource`; `foodSelectionAnalyticsSource` + mobile food-search log sites updated for parity. |
 | ENG-1166 | Root docs reference missing `apps/mobile/AGENTS.md` | S | ⚠️ | **Blocked — needs Grace decision** | `AGENTS.md` is gitignored repo-wide (`.gitignore:32`); root `AGENTS.md` is itself a locally-generated, untracked artifact. A tracked `apps/mobile/AGENTS.md` therefore can't ship as a normal commit. Created the pointer file locally (resolves the reference on-machine), but the durable fix is Grace's call: either un-ignore + force-track `AGENTS.md` files, or accept `apps/mobile/CLAUDE.md` (already tracked, already referenced by `.claude/CLAUDE.md`) as canonical and adjust the generator. |
 
 **Batch result:** 3 issues fully shipped (ENG-1149, ENG-1156, ENG-1152) +
@@ -25,10 +25,23 @@ ENG-1159 materially advanced (dead-code half) + ENG-1166 triaged-and-blocked
 `991f1087` on `claude/wave-4-trust-cohesion` (swept into a concurrent agent's
 quick-wins commit — same branch, parallel sessions).
 
-**Validation:** `vitest.unit.config.ts` scoped run — 136 passed across
-ssrfProtection / ssrfGuard / recipeImportSsrfGuardCallsites / edamamClient /
-foodSelectionToMeal / measureToGrams(+Categories). `npm run typecheck` green.
-No lint findings on touched files.
+## Triage table — batch 2
+
+| Issue | Title | Effort | Agent? | Status | Notes |
+|-------|-------|--------|--------|--------|-------|
+| ENG-1159 (b) | Caption-truncation notice (`CAPTION_MAX` + `captionTruncated`) | S | ✅ | **Shipped** | `prepareCaptionForExtraction` helper; API + web `RecipeUpload` + mobile `import-shared` preview banners. |
+| ENG-1159 (c) | `food_search` analytics source (web + mobile parity) | S | ✅ | **Shipped** | `FoodLoggedSource` union + `foodSelectionAnalyticsSource` + mobile `handleFoodSearchSelect` call sites. |
+| ENG-1153 | Defence-in-depth on `claim_web_push_subscription` endpoint | S | ✅ | **Shipped** | `isValidWebPushEndpoint` guard before RPC; unsubscribe DELETE scoped by `user_id` when available. Code-only (no migration). |
+| ENG-1151 | Sentry PII denylist — health fields | S | ✅ | **Shipped** | Extended `PII_KEY_PATTERN` in `sentryRedaction.ts` (weight/measurements/sex-at-birth); unit test pinned. |
+| ENG-1075 / ENG-1145 | Mobile OFF barcode via `/api/off/barcode` proxy | S | ✅ | **Shipped** | `lookupBarcode` in `verifyRecipe.ts` routes through authed proxy; direct `world.openfoodfacts.org` fetch removed. |
+| CI (ENG-896) | DiscoverFeed `text-[17px]` off type scale | S | ✅ | **Shipped** | `text-[18px]` on-scale fix in `DiscoverFeed.tsx`. |
+
+**Batch 2 result:** 5 Linear issues closed (ENG-1159 fully, ENG-1153, ENG-1151,
+ENG-1075, ENG-1145) + CI type-scale unblock. Commit on `claude/wave-4-trust-cohesion`.
+
+**Validation (batch 2):** `npm run check:type-scale` green; scoped web
+`typecheck && lint && test` on touched units; mobile `typecheck && test` on
+`verifyRecipe` / `offPlausibilityGateParity` / `index` food-search wiring.
 
 ## Triaged-but-skipped (not quick wins / out of policy)
 
@@ -39,26 +52,11 @@ No lint findings on touched files.
 | ENG-558 / ENG-541 / ENG-1158 | Grace-ops / dashboard toggles / cost-breaker decision — not code. |
 | ENG-1138 | Web focus-visible rings — visible change; feature-flag overhead, defer to a UI batch. |
 
-## Top next quick wins for tomorrow (candidates)
+## Top next quick wins for batch 3 (candidates)
 
-1. **ENG-1159 (b)** — caption-truncation notice: `CAPTION_MAX` const +
-   `captionTruncated` flag in `extractSocialRecipe.ts`, wired into web +
-   mobile import preview (mirror the `imageUsed?` return-shape pattern).
-2. **ENG-1159 (c)** — `food_search` analytics source: add to `FoodLoggedSource`,
-   update `foodSelectionAnalyticsSource`, **and** the mobile food-search log
-   call site together (parity), update `foodSelectionToMeal.test.ts`.
-3. **ENG-1075 / ENG-1145** — route mobile OFF barcode through `/api/off/barcode`
-   proxy (web parity).
-4. **ENG-1149-style sweep — ENG-1168** silent-deferral re-sweep: open a Linear
-   issue per surviving untracked gap comment.
-5. **ENG-1153** — defence-in-depth on `claim_web_push_subscription` endpoint-only
-   DELETE (code-level).
-6. **ENG-1151** — extend Sentry PII redaction denylist to health fields
-   (weight/measurements/sex-at-birth) — config + test.
-7. **ENG-1100** — Plan empty-slot unification: extract shared `EmptyMealSlotRow`.
-8. **ENG-1147 follow-ups / ENG-986** — shared macro-icon mapping (single source
-   of truth) to prevent glyph drift.
-9. **ENG-1090** — CI flake: storybook build `EEXIST` mkdir race in static-asset
-   `copyDir` (CI hygiene).
-10. **ENG-1096 / ENG-984** confirm closed; **ENG-848** — wire or delete
-    `MacroDetailPanel` on web (parity decision).
+1. **ENG-1168** — silent-deferral re-sweep: open a Linear issue per surviving untracked gap comment.
+2. **ENG-1100** — Plan empty-slot unification: extract shared `EmptyMealSlotRow`.
+3. **ENG-1147 follow-ups / ENG-986** — shared macro-icon mapping (single source of truth).
+4. **ENG-1090** — CI flake: storybook build `EEXIST` mkdir race in static-asset `copyDir`.
+5. **ENG-1096 / ENG-984** confirm closed; **ENG-848** — wire or delete `MacroDetailPanel` on web.
+6. **ENG-1166** — blocked on Grace `AGENTS.md` gitignore decision (do not pick up until resolved).

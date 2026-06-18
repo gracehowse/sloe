@@ -842,7 +842,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     ) : null}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-[family-name:var(--font-headline)] text-[17px] font-semibold leading-snug text-foreground line-clamp-2">
+                    <h3 className="font-[family-name:var(--font-headline)] text-[18px] font-semibold leading-snug text-foreground line-clamp-2">
                       {recipe.title}
                     </h3>
                     {byline ? (

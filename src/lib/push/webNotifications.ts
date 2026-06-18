@@ -21,6 +21,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isValidWebPushEndpoint } from "./webPushEndpointGuard";
 
 export type WebNotificationPermission =
   | "unsupported"
@@ -189,6 +190,13 @@ export async function subscribeToWebPush(
     return { ok: false, reason: "subscribe_failed", error: "missing_fields" };
   }
 
+  // ENG-1153 — defence-in-depth: only persist endpoints that match a known
+  // push-service URL shape. The RPC deletes by endpoint globally; reject
+  // attacker-supplied strings before they reach the SECURITY DEFINER path.
+  if (!isValidWebPushEndpoint(payload.endpoint)) {
+    return { ok: false, reason: "subscribe_failed", error: "invalid_endpoint" };
+  }
+
   // T21 (2026-04-24): use the SECURITY DEFINER `claim_web_push_subscription`
   // RPC instead of an upsert on (endpoint). The previous upsert path
   // failed when the endpoint was already held by a *different* user
@@ -256,6 +264,7 @@ export async function subscribeToWebPush(
  *  row. Safe to call when no subscription exists. */
 export async function unsubscribeFromWebPush(
   supabase: SupabaseClient,
+  userId?: string | null,
 ): Promise<void> {
   if (!isWebPushSupported()) return;
   const registration = await ensureServiceWorkerRegistered();
@@ -263,16 +272,23 @@ export async function unsubscribeFromWebPush(
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
   const endpoint = subscription.endpoint;
+  if (!isValidWebPushEndpoint(endpoint)) return;
   try {
     await subscription.unsubscribe();
   } catch {
     /* swallow — deleting the Supabase row is the critical side */
   }
   try {
-    await supabase
+    let query = supabase
       .from("web_push_subscriptions")
       .delete()
       .eq("endpoint", endpoint);
+    // ENG-1153 — defence-in-depth: scope DELETE to the caller's row even
+    // though RLS already enforces owner-only deletes.
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+    await query;
   } catch {
     /* server-side cleanup also runs on push failure; non-fatal */
   }

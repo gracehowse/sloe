@@ -81,7 +81,7 @@ import {
   resolvePlannedMealLogTitles,
 } from "@suppr/shared/nutrition/resolveRecipeLogTitles";
 import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
-import { foodSelectionToMealMacros } from "@suppr/shared/nutrition/foodSelectionToMeal";
+import { foodSelectionAnalyticsSource, foodSelectionToMealMacros } from "@suppr/shared/nutrition/foodSelectionToMeal";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
   availableFreezes,
@@ -2199,7 +2199,7 @@ export default function TrackerScreen() {
       setFabSheetOpen(false);
       try {
         track(AnalyticsEvents.food_logged, {
-          source: result.source === "CUSTOM" ? "custom_food" : "manual",
+          source: foodSelectionAnalyticsSource(result.source),
           calories: meal.calories,
           slot: activeMealSlot,
         });
@@ -4439,7 +4439,7 @@ export default function TrackerScreen() {
       void persistMealsImmediate(dayKey, [meal]);
       try {
         track(AnalyticsEvents.food_logged, {
-          source: result.source === "CUSTOM" ? "custom_food" : "manual",
+          source: foodSelectionAnalyticsSource(result.source),
           calories: meal.calories,
           slot: activeMealSlot,
         });
