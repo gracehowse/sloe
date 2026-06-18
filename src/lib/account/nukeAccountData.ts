@@ -31,11 +31,6 @@ export async function clearStructuredMealPlans(supabase: SupabaseClient, userId:
       const { error: dErr } = await supabase.from("meal_plan_days").delete().eq("user_id", userId);
       if (dErr && !isIgnorableMissingTableError(dErr)) return { ok: false, message: dErr.message };
     }
-    // Phase 1 migration renames `meal_plans` → `meal_plans_legacy`; wipe whichever exists.
-    const { error: pErr } = await supabase.from("meal_plans").delete().eq("user_id", userId);
-    if (pErr && !isIgnorableMissingTableError(pErr)) return { ok: false, message: pErr.message };
-    const { error: legacyErr } = await supabase.from("meal_plans_legacy").delete().eq("user_id", userId);
-    if (legacyErr && !isIgnorableMissingTableError(legacyErr)) return { ok: false, message: legacyErr.message };
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Unknown error" };

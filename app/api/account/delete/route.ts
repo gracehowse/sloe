@@ -66,8 +66,6 @@ export async function DELETE(req: Request) {
     // 2. Remaining user-owned tables keyed by user_id / reporter_id / follower_id.
     const tablesToDelete: Array<{ table: string; column: string }> = [
       { table: "meal_plan_days", column: "user_id" },
-      { table: "meal_plans", column: "user_id" },
-      { table: "meal_plans_legacy", column: "user_id" },
       { table: "shopping_items", column: "user_id" },
       { table: "nutrition_entries", column: "user_id" },
       { table: "saves", column: "user_id" },
@@ -199,7 +197,7 @@ export async function DELETE(req: Request) {
     //     (via user_foods cascade → set null chain)
     //
     // Explicitly deleted above (no FK cascade or we want gating):
-    //   - meal_plan_meals, meal_plan_days, meal_plans, meal_plans_legacy
+    //   - meal_plan_meals, meal_plan_days
     //   - shopping_items, shopping_lists, nutrition_entries, saves
     //   - app_notifications, creator_publish_notifications
     //   - recipe_plan_add_events, food_reports, author_follows
