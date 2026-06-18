@@ -1,6 +1,6 @@
 # Quick-wins burn-down — 2026-06-17
 
-**Last updated:** 2026-06-18 (post-#476; #477 in flight)  
+**Last updated:** 2026-06-18 (visual verify pass: iOS paywall trust + coach-in-hero; public subpage snapshots re-run)  
 **Strategy shift (Grace, 2026-06-17):** stop strict gate-order sequencing; burn
 down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h),
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
@@ -82,8 +82,8 @@ individual partial rows only.
 | Import idle (ENG-898) | ✅ `/import --auth` | ✅ `import-shared` | WORKS WITH row; empty recent-imports list is correct |
 | Discover slabs (ENG-896) | ✅ `/discover --auth` | ✅ | Mediterranean/Greek hero + seamless slab card |
 | Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
-| Today coach-in-hero (ENG-889) | ✅ populated account (~390px) | ⏳ | Shipped #476 — iOS sim verify pending |
-| Paywall trust (ENG-901) | ✅ `/pricing` post–`use client` fix (#476) | ⏳ | Shipped #476 — iOS sim verify pending |
+| Today coach-in-hero (ENG-889) | ✅ populated (~390px) + empty S5 | ✅ `today-coach-in-hero-ios-2026-06-18.png` | Coach line inside hero ("Fresh start — what's for breakfast?") |
+| Paywall trust (ENG-901) | ✅ `/pricing` ~390px (hero + grid; scroll for trust row) | ✅ `paywall-trust-scrolled-ios-2026-06-18.png` | Inline strip: Secure checkout · Cancel anytime · refund/barcode chips |
 | Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
 
 ### Batch 3 — what's left
