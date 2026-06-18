@@ -34,7 +34,7 @@ npm run test:e2e:visual
 # Public only — no auth setup
 npm run test:e2e:visual:public
 
-# Authed goldens only — chromium-visual project
+# Authed visual — golden subpages on chromium-visual; audit/deep/gate15 on chromium-authed
 npm run test:e2e:visual:authed
 
 # Mirror CI: build + next start :3100 + smoke + public visual
@@ -46,7 +46,7 @@ npm run test:e2e:visual:update
 
 **Env:** `E2E_VISUAL_EMAIL` / `E2E_VISUAL_PASSWORD` for authed visual goldens (recommended locally). Journey tests use `E2E_EMAIL` / `E2E_PASSWORD`. CI visual-review falls back to `E2E_*` when visual secrets are unset. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
 
-**Local reliability (2026-06-18):** Three Playwright projects — `chromium` (public), `chromium-authed` (journeys via `E2E_*`), `chromium-visual` (goldens via `E2E_VISUAL_*` or CI fallback). Preflight probes for zombie dev servers, warms slow routes, and fails fast with `lsof`/`kill` hints. See [`tests/e2e/README.md`](../../tests/e2e/README.md).
+**Local reliability (2026-06-18):** Three Playwright projects — `chromium` (public), `chromium-authed` (journeys + audit/deep/gate15 visual via `E2E_*`), `chromium-visual` (subpages-authed golden via `E2E_VISUAL_*` or CI fallback). Preflight probes for zombie dev servers, warms slow routes, and fails fast with `lsof`/`kill` hints. See [`tests/e2e/README.md`](../../tests/e2e/README.md).
 
 **Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.10** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
 

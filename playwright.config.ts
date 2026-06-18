@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import {
   journeyAuthedTestMatch,
   visualAuthedTestMatch,
+  visualE2EAuthedTestMatch,
+  visualGoldenAuthedTestMatch,
 } from "./playwright/projectPatterns";
 import { hasVisualGoldenCredentials } from "./tests/e2e/utils/auth";
 import { authFileForBaseUrl, visualAuthFileForBaseUrl } from "./tests/e2e/utils/authHosts";
@@ -117,7 +119,7 @@ export default defineConfig({
           },
           {
             name: "chromium-authed",
-            testMatch: journeyAuthedTestMatch,
+            testMatch: [...journeyAuthedTestMatch, ...visualE2EAuthedTestMatch],
             dependencies: ["setup"],
             use: {
               ...devices["Desktop Chrome"],
@@ -134,7 +136,7 @@ export default defineConfig({
           },
           {
             name: "chromium-visual",
-            testMatch: visualAuthedTestMatch,
+            testMatch: visualGoldenAuthedTestMatch,
             dependencies: ["setup-visual"],
             use: {
               ...devices["Desktop Chrome"],

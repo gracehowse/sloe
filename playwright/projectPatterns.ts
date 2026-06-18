@@ -14,12 +14,22 @@ export const journeyAuthedTestMatch = [
   /ai\//,
 ] as const;
 
-/** Visual golden specs — deterministic account via `auth.visual-setup.ts`. */
-export const visualAuthedTestMatch = [
-  /visual-audit-authed\.spec\.ts/,
+/** Authed visual specs baselined on the dedicated golden account (`auth.visual-setup.ts`). */
+export const visualGoldenAuthedTestMatch = [
   /visual-regression-subpages-authed\.spec\.ts/,
+] as const;
+
+/** Authed visual specs baselined on the general E2E account (`auth.setup.ts`). */
+export const visualE2EAuthedTestMatch = [
+  /visual-audit-authed\.spec\.ts/,
   /visual-regression-deep\.spec\.ts/,
   /visual-redesign-gate15-authed\.spec\.ts/,
+] as const;
+
+/** All authed visual specs — excluded from the public `chromium` project. */
+export const visualAuthedTestMatch = [
+  ...visualGoldenAuthedTestMatch,
+  ...visualE2EAuthedTestMatch,
 ] as const;
 
 export const publicVisualSpecFiles = [
@@ -28,11 +38,19 @@ export const publicVisualSpecFiles = [
   "tests/e2e/visual-redesign-gate15.spec.ts",
 ] as const;
 
-export const authedVisualSpecFiles = [
-  "tests/e2e/visual-audit-authed.spec.ts",
+export const goldenAuthedVisualSpecFiles = [
   "tests/e2e/visual-regression-subpages-authed.spec.ts",
+] as const;
+
+export const e2eAuthedVisualSpecFiles = [
+  "tests/e2e/visual-audit-authed.spec.ts",
   "tests/e2e/visual-regression-deep.spec.ts",
   "tests/e2e/visual-redesign-gate15-authed.spec.ts",
+] as const;
+
+export const authedVisualSpecFiles = [
+  ...goldenAuthedVisualSpecFiles,
+  ...e2eAuthedVisualSpecFiles,
 ] as const;
 
 export const allVisualSpecFiles = [...publicVisualSpecFiles, ...authedVisualSpecFiles] as const;
