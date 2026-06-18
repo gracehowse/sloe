@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** none — next slice: ENG-889 TD3/TD4 pixel deltas + populated-account screenshot wall, or next Core-5 partial from migration tracker.
+**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) `agent/cursor/batch-6-889-896-1142-1016` — ENG-889 L5 docs, ENG-898 L4 import error, ENG-1142 cohesion gate, ENG-1016 PressableScale slice.
 
 ## Merge history (reference)
 
@@ -71,7 +71,7 @@ individual partial rows only.
 | **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 (#472); frame `284:2` trust + Sloe upgrade dialog + dedupe (#476) — **Linear Done** | — |
 | **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | 9 other Recipes/Cookbook partials on parent |
 | **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | Live `/signup` screenshot needs signed-out session |
-| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | 7 other Import partials on parent (source tiles, L4 error, etc.) |
+| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472); **L4 error** amber inline (#483) | 6 other Import partials on parent (source tiles, action sheet, etc.) |
 | **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned; **L5 dark** (`314:2`, 2026-06-18 sim pass) | TD3/TD4 pixel deltas, populated-account screenshot wall |
 | **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | **Linear Done** — no follow-up in this queue |
 
