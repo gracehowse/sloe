@@ -46,6 +46,18 @@ describe("mealEatenAt (ENG-772)", () => {
     expect(dateKeyFromInstant(nextDay)).toBe("2026-06-12");
   });
 
+  it("uses an explicit canonical timezone instead of the editing device timezone", () => {
+    const timeZone = "America/New_York";
+    const eatenAt = eatenAtIsoFromLocalParts("2026-06-11", 23, 50, timeZone);
+
+    expect(eatenAt).toBe("2026-06-12T03:50:00.000Z");
+    expect(dateKeyFromInstant(eatenAt, timeZone)).toBe("2026-06-11");
+    expect(localTimeInputValueFromIso(eatenAt, timeZone)).toBe("23:50");
+    expect(
+      nutritionEntryDateKeyAndEatenAt({ eatenAt }, "2026-06-12", null, { timeZone }),
+    ).toEqual({ dateKey: "2026-06-11", eatenAt });
+  });
+
   it("formatMealTimeFromChronology returns a non-empty label when instant exists", () => {
     const label = formatMealTimeFromChronology({
       eatenAt: eatenAtIsoFromLocalParts("2026-06-12", 12, 45),
