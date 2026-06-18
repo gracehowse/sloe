@@ -62,7 +62,7 @@ import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
-import { Shimmer } from "@/components/ui/SkeletonRow";
+import { TodayLoadingSkeleton } from "@/components/today/TodayLoadingSkeleton";
 
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
@@ -5019,15 +5019,7 @@ export default function TrackerScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.scroll}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
-            <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
-          </View>
-          <Shimmer style={{ height: 160, borderRadius: CARD_RADIUS }} />
-          <Shimmer style={{ height: 80, borderRadius: CARD_RADIUS }} />
-          {[1, 2, 3, 4].map((i) => (
-            <Shimmer key={i} style={{ height: 64, borderRadius: CARD_RADIUS }} />
-          ))}
+          <TodayLoadingSkeleton />
         </View>
       </View>
     );

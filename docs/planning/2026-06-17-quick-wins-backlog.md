@@ -66,7 +66,7 @@ individual partial rows only.
 
 | Issue | Partial | Status on `main` | In PR #476 | Residual (parent still open) |
 |-------|---------|------------------|------------|------------------------------|
-| **ENG-901** | Trust strip · upgrade dialog Sloe hero | M5 streak + M6 `ImportSuccessSheet` (#472); frame `284:2` components exist | Inline trust row (web pricing, mobile paywall, upgrade dialog); Sloe Pro hero; `"use client"` fix | **Mobile paywall shell/hero** parity; merge #476; full screenshot wall |
+| **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 on main (#472); frame `284:2` components | Inline trust row; Sloe hero; coach-in-hero; `PricingLegacyTrustSignals` gated off; `"use client"` fix | Mobile paywall shell; merge #476 |
 | **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | — | 9 other Recipes/Cookbook partials on parent |
 | **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | — | Live `/signup` screenshot needs signed-out session |
 | **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | — | 7 other Import partials on parent (source tiles, L4 error, etc.) |
