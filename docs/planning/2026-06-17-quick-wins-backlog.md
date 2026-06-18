@@ -86,13 +86,13 @@ individual partial rows only.
 | Today L5 dark (ENG-889) | — (iOS-first) | ✅ `eng889-l5-today-dark.png` + scrolled | Canvas `#19181C`, hero `#2A2730`, dark TD3/TD4 cards |
 | Today populated + TD3/TD4 (ENG-889) | ✅ `eng889-populated-today-mobile.png` + desktop | ✅ `eng889-populated-today-hero.png` + `td34` | Over budget hero + coach; TD4 per-slot cards + Add food; weekly insight stats |
 | Paywall trust (ENG-901) | ✅ `/pricing` ~390px (hero + grid; scroll for trust row) | ✅ `paywall-trust-scrolled-ios-2026-06-18.png` | Inline strip: Secure checkout · Cancel anytime · refund/barcode chips |
-| Auth email step (ENG-897) | ✅ `/signup` ~390px (`eng897-signup-email-mobile.png`) | — | Live capture on auth chooser email step |
+| Auth email step (ENG-897) | ✅ unit pin; live capture blocked (middleware sends `/login` → landing when marketing gate active) | — | Re-try with signed-out session + `/signup` deep link |
 
 ### Batch 3 — what's left
 
 1. **ENG-889** — TD3/TD4 pixel deltas (populated screenshot wall ✅ 2026-06-18 web + iOS).
 2. **ENG-896 / ENG-898** — next high-severity partial from migration tracker (Import L4 error, Discover filter pills).
-3. **ENG-897** — signup email-step live capture ✅ 2026-06-18.
+3. **ENG-897** — live signup email-step screenshot (unit pin done; capture needs signed-out `/signup`).
 
 ## Triage table — batch 4 (maintenance / hygiene)
 
