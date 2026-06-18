@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) L4/cohesion/haptics · [#484](https://github.com/gracehowse/Suppr/pull/484) TD3/import tiles/action sheet (pending).
+**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) L4/cohesion/haptics · [#485](https://github.com/gracehowse/Suppr/pull/485) TD3/import tiles/action sheet.
 
 ## Merge history (reference)
 
