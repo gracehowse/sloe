@@ -94,12 +94,14 @@ describe("ENG-1092 wiring (web + mobile reference the shared helper + flag)", ()
   });
 
   it("both Today components call emptySlotAimKcal behind the flag", () => {
-    for (const src of [WEB, MOBILE]) {
-      expect(src).toMatch(/emptySlotAimKcal/);
-      expect(src).toMatch(/aimKcalLabel/);
-      expect(src).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
-      expect(src).toMatch(/today-slot-aim-/);
-    }
+    expect(WEB).toMatch(/emptySlotAimKcal/);
+    expect(WEB).toMatch(/EmptyMealSlotAimLine/);
+    expect(WEB).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
+
+    expect(MOBILE).toMatch(/emptySlotAimKcal/);
+    expect(MOBILE).toMatch(/EmptyMealSlotAimLine/);
+    expect(MOBILE).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
+    expect(read("apps/mobile/components/EmptyMealSlotRow.tsx")).toMatch(/today-slot-aim-/);
   });
 
   it("mobile drops the 0.55 empty-slot dim when the flag is on", () => {
@@ -113,18 +115,43 @@ describe("ENG-1092 increment 2 — Plan day cards reference the shared helper + 
   const MOBILE_PLAN = read("apps/mobile/app/(tabs)/planner.tsx");
 
   it("both Plan surfaces gate the aim on the same flag as Today (one spine, no drift)", () => {
-    for (const src of [WEB_PLAN, MOBILE_PLAN]) {
-      expect(src).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
-      expect(src).toMatch(/planSlotAimKcal/);
-      expect(src).toMatch(/aimKcalLabel/);
-      // The aim line carries a stable per-slot testID on both platforms.
-      expect(src).toMatch(/plan-slot-aim-/);
-    }
+    expect(WEB_PLAN).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
+    expect(WEB_PLAN).toMatch(/planSlotAimKcal/);
+    expect(WEB_PLAN).toMatch(/EmptyMealSlotAimLine/);
+
+    expect(MOBILE_PLAN).toMatch(/isFeatureEnabled\("plan_today_aim_empty_v1"\)/);
+    expect(MOBILE_PLAN).toMatch(/planSlotAimKcal/);
+    expect(MOBILE_PLAN).toMatch(/EmptyMealSlotAimLine/);
+    expect(read("apps/mobile/components/EmptyMealSlotRow.tsx")).toMatch(/plan-slot-aim-/);
   });
 
   it("both Plan surfaces source the per-slot target from slotMacroTargets (static dietitian ratio)", () => {
     for (const src of [WEB_PLAN, MOBILE_PLAN]) {
       expect(src).toMatch(/slotMacroTargets\(/);
     }
+  });
+});
+
+describe("ENG-1100 — web EmptyMealSlotRow extract", () => {
+  const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
+
+  it("exports a shared module consumed by Today + Plan on web", () => {
+    expect(read("src/app/components/suppr/empty-meal-slot-row.tsx")).toMatch(
+      /export function EmptyMealSlotAimLine/,
+    );
+    expect(read("src/app/components/suppr/today-meals-section.tsx")).toMatch(
+      /EmptyMealSlotAimLine/,
+    );
+    expect(read("src/app/components/MealPlanner.tsx")).toMatch(/PlanAbsentMealSlotRow/);
+  });
+
+  it("exports a shared module consumed by Today + Plan on mobile", () => {
+    expect(read("apps/mobile/components/EmptyMealSlotRow.tsx")).toMatch(
+      /export function EmptyMealSlotAimLine/,
+    );
+    expect(read("apps/mobile/components/today/TodayMealsSection.tsx")).toMatch(
+      /EmptyMealSlotAimLine/,
+    );
+    expect(read("apps/mobile/app/(tabs)/planner.tsx")).toMatch(/EmptyMealSlotAimLine/);
   });
 });

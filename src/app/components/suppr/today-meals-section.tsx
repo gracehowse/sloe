@@ -19,7 +19,8 @@ import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { MEAL_SLOTS } from "../../../lib/nutrition/mealSlots";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
-import { emptySlotAimKcal, aimKcalLabel } from "../../../lib/nutrition/mealSlotAim";
+import { emptySlotAimKcal } from "../../../lib/nutrition/mealSlotAim";
+import { EmptyMealSlotAimLine } from "./empty-meal-slot-row";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 import {
   Dialog,
@@ -582,12 +583,11 @@ export function TodayMealsSection({
                         consumedBySlot,
                       );
                       return aim == null ? null : (
-                        <p
-                          data-testid={`today-slot-aim-${sectionName}`}
-                          className="text-[11px] text-foreground-secondary tabular-nums mt-0.5"
-                        >
-                          {aimKcalLabel(aim)}
-                        </p>
+                        <EmptyMealSlotAimLine
+                          slot={sectionName}
+                          aimKcal={aim}
+                          surface="today"
+                        />
                       );
                     })()
                   ) : null}

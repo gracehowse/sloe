@@ -105,7 +105,8 @@ import {
 } from "@suppr/shared/planning/shoppingListMeta";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
-import { planSlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
+import { planSlotAimKcal } from "@suppr/shared/nutrition/mealSlotAim";
+import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import {
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
@@ -3382,13 +3383,13 @@ export default function PlannerScreen() {
                           {slot}
                         </Text>
                         {aim == null ? null : (
-                          <Text
-                            testID={`plan-slot-aim-${slot}`}
-                            style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
-                            numberOfLines={1}
-                          >
-                            {aimKcalLabel(aim)}
-                          </Text>
+                          <EmptyMealSlotAimLine
+                            slot={slot}
+                            aimKcal={aim}
+                            surface="plan"
+                            variant="plan"
+                            style={styles.mealMacros}
+                          />
                         )}
                       </View>
                     </View>
@@ -3570,13 +3571,13 @@ export default function PlannerScreen() {
                     // populated row shows its kcal. `null` (optional Snacks slot
                     // or no target) → no line, so the row is just the slot name.
                     planRowAim == null ? null : (
-                      <Text
-                        testID={`plan-slot-aim-${meal.name}`}
-                        style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
-                        numberOfLines={1}
-                      >
-                        {aimKcalLabel(planRowAim)}
-                      </Text>
+                      <EmptyMealSlotAimLine
+                        slot={meal.name}
+                        aimKcal={planRowAim}
+                        surface="plan"
+                        variant="plan"
+                        style={styles.mealMacros}
+                      />
                     )
                   ) : (
                     <Text style={styles.mealMacros} numberOfLines={1}>
