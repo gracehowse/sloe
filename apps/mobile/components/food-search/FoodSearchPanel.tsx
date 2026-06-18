@@ -132,7 +132,7 @@ import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAut
 import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearchLocale";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@suppr/shared/nutrition/foodSearchCore";
 import { foodSearchPreviewExtraMicroRows } from "@suppr/shared/nutrition/foodSearchPreviewNutrition";
 import { foodSearchPreviewPlausibilityWarning } from "@suppr/shared/nutrition/portionPicker";
 import {
@@ -706,7 +706,7 @@ export default function FoodSearchPanel({
   const onPickResult = useCallback(
     async (item: SearchRow) => {
       setLoadingKey(item.key);
-
+      try {
       if (
         (item._source === "GenericBeverage" || item._source === "GenericFood") &&
         item.macrosPer100g
@@ -735,27 +735,26 @@ export default function FoodSearchPanel({
 
       if (item._source === "USDA" && item._fdcId) {
         const result = await getFoodMacros(item._fdcId);
-        setLoadingKey(null);
-        if (!result) return;
-        const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
-        const allPortions = buildPortions(result.portions, effectivePrimary);
-        const { portion, quantity } = effectivePrimary
-          ? { portion: allPortions[0], quantity: 1 }
-          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
-        setPreview({
-          name: item.name,
-          source: "USDA",
-          macrosPer100g: result.macrosPer100g,
-          // 2026-05-06 — pull through USDA's wider per-100g panel
-          // so the meal-detail "Vitamins, minerals & more" surface
-          // populates after this food is logged.
-          ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
-          portions: allPortions,
-          chosenPortion: portion,
-          quantity,
-          quantityText: String(quantity),
-          fdcId: item._fdcId,
-        });
+        const preview = buildUsdaPreviewFields(
+          {
+            name: item.name,
+            fdcId: item._fdcId,
+            macrosPer100g: item.macrosPer100g,
+            microsPer100g: item.microsPer100g,
+            primaryServing: item.primaryServing,
+          },
+          result,
+          initialAmount,
+          initialUnit,
+        );
+        if (!preview) {
+          Alert.alert(
+            "Couldn't load this item",
+            "Please check your connection and try again, or pick another option.",
+          );
+          return;
+        }
+        setPreview(preview);
       } else if (item._source === "OFF" && item.macrosPer100g) {
         setLoadingKey(null);
         const allPortions = buildPortions([], item.primaryServing);
@@ -873,6 +872,9 @@ export default function FoodSearchPanel({
       } else {
         setLoadingKey(null);
       }
+      } finally {
+        setLoadingKey(null);
+      }
     },
     [initialAmount, initialUnit],
   );
@@ -931,21 +933,28 @@ export default function FoodSearchPanel({
 
         if (item._source === "USDA" && item._fdcId) {
           const result = await getFoodMacros(item._fdcId);
-          if (!result) return;
-          const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
-          const allPortions = buildPortions(result.portions, effectivePrimary);
-          const { portion, quantity } = effectivePrimary
-            ? { portion: allPortions[0], quantity: 1 }
-            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          const fields = buildUsdaPreviewFields(
+            {
+              name: item.name,
+              fdcId: item._fdcId,
+              macrosPer100g: item.macrosPer100g,
+              microsPer100g: item.microsPer100g,
+              primaryServing: item.primaryServing,
+            },
+            result,
+            initialAmount,
+            initialUnit,
+          );
+          if (!fields) {
+            Alert.alert(
+              "Couldn't load this item",
+              "Please check your connection and try again, or pick another option.",
+            );
+            return;
+          }
           commit({
-            name: item.name,
-            source: "USDA",
-            macrosPer100g: result.macrosPer100g,
-            ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
-            portions: allPortions,
-            chosenPortion: portion,
-            quantity,
-            fdcId: item._fdcId,
+            ...fields,
+            quantity: fields.quantity,
           });
           return;
         }

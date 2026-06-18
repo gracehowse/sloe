@@ -19,6 +19,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { mergeJournalByDay } from "@suppr/shared/nutrition/mergeJournalByDay";
 import { subscribeJournalRefresh } from "@/lib/journalRefresh";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -2191,8 +2192,8 @@ export default function TrackerScreen() {
           [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), meal],
         }));
       });
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
-      void persistMealsImmediate(dayKey, [meal]);
+      // Persist with the anchor dayKey; row builder derives date_key from eatenAt.
+      void persistMealsImmediate(resolvedDateKey, [meal]);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` above —
       // per-meal micros is the canonical SoT for food-derived
       // stimulants. No `bumpStimulantsForLoggedMeal` here.
@@ -4117,7 +4118,7 @@ export default function TrackerScreen() {
       // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
       // fallback removed. An empty `nutrition_entries` just means an
       // empty journal; we no longer try the deleted legacy table.
-      setByDay(loaded);
+      setByDay((prev) => mergeJournalByDay(loaded, prev));
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
       // set with every meal that already exists in the journal at load
       // time. This ensures the debounced sync effect only writes meals
