@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Candy,
+  Droplet,
   Gauge,
   type LucideIcon,
 } from "lucide-react";
@@ -105,7 +106,10 @@ type TileMeta = {
   isOverBudget: boolean;
 };
 
-function buildMacroTile(
+// Exported for unit coverage (ENG-986): asserts each tile consumes the
+// shared macro-icon SSOT and that Water keeps its own Droplet glyph rather
+// than borrowing the fat key.
+export function buildMacroTile(
   macroKey: string,
   props: TodayDashboardMacroTilesProps,
 ): TileMeta | null {
@@ -269,7 +273,11 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "ml", { overIsFlag: false });
     return {
       label: "Water",
-      Icon: MACRO_ICONS.fat,
+      // ENG-986: Water is NOT a macro SSOT key — bind it to its own Droplet
+      // glyph (matches mobile), not MACRO_ICONS.fat. Sharing the fat key only
+      // worked because both resolve to Droplet today; it silently coupled
+      // Water to Fat and broke parity with mobile.
+      Icon: Droplet,
       valueText: formatWaterLine(cur),
       targetText: `/ ${formatWaterLine(tgt)}`,
       pct,
