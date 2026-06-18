@@ -17,10 +17,10 @@ export const MACRO_ICON_KEYS = [
 export type MacroIconKey = (typeof MACRO_ICON_KEYS)[number];
 
 /** Lucide icon export names — pinned to Figma `654:101` / `654:2`. */
-export const FIGMA_MACRO_ICON_GLYPHS: Record<MacroIconKey, string> = {
+export const FIGMA_MACRO_ICON_GLYPHS = {
   calories: "Flame",
   protein: "Dumbbell",
   carbs: "Wheat",
   fat: "Droplet",
   fiber: "Sprout",
-};
+} as const satisfies Record<MacroIconKey, string>;
