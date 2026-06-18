@@ -65,7 +65,7 @@ export function SwipeDeleteRow({
       <div
         className="absolute inset-y-0 right-0 flex"
         style={{ width: REVEAL_PX }}
-        aria-hidden={offset === 0}
+        {...(offset === 0 ? { inert: true } : {})}
       >
         <button
           type="button"

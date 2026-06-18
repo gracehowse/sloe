@@ -13,7 +13,13 @@ import { test, expect, type Page } from "@playwright/test";
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hasE2ECredentials, loginWithTestUser } from "../utils/auth";
+import {
+  hasE2ECredentials,
+  hasSupabaseServiceRoleForSeed,
+  loginWithTestUser,
+} from "../utils/auth";
+
+const canRunPremiumMatrix = hasE2ECredentials() && hasSupabaseServiceRoleForSeed();
 
 const OUTPUT_DIR = join(
   process.cwd(),
@@ -167,7 +173,10 @@ async function captureState(
 test.describe.configure({ mode: "serial", retries: 1 });
 
 test.describe("today premium matrix — mobile 390×844", () => {
-  test.skip(!hasE2ECredentials(), "E2E_EMAIL + E2E_PASSWORD required");
+  test.skip(
+    !canRunPremiumMatrix,
+    "E2E_EMAIL + E2E_PASSWORD + SUPABASE_SERVICE_ROLE_KEY required for premium matrix seed",
+  );
 
   for (const theme of ["light", "dark"] as const) {
     test.describe(`${theme} mobile`, () => {
@@ -220,7 +229,10 @@ test.describe("today premium matrix — mobile 390×844", () => {
 });
 
 test.describe("today premium matrix — desktop 1440", () => {
-  test.skip(!hasE2ECredentials(), "E2E_EMAIL + E2E_PASSWORD required");
+  test.skip(
+    !canRunPremiumMatrix,
+    "E2E_EMAIL + E2E_PASSWORD + SUPABASE_SERVICE_ROLE_KEY required for premium matrix seed",
+  );
 
   test.use({
     viewport: { width: 1440, height: 900 },

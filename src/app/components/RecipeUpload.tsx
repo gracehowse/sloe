@@ -1740,8 +1740,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               type="file"
               accept="image/*"
               multiple={importProgressV2}
-              aria-hidden
-              tabIndex={-1}
+              aria-label="Choose recipe photos to import"
               className="sr-only"
               onChange={(e) => onPhotoMethodFiles(e.target.files)}
             />
@@ -1878,8 +1877,6 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             : `Paste a screenshot or choose a file. If "Extract from image" is available, it can digitize your own handwritten or typed recipe.`}
         </p>
         <div
-          role="button"
-          tabIndex={0}
           onPaste={(e) => {
             const f = e.clipboardData?.files?.[0];
             if (f) {
@@ -1932,6 +1929,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <input
                 type="file"
                 accept="image/*"
+                aria-label="Choose recipe photo file"
                 className="block mx-auto text-sm text-muted-foreground"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -1967,8 +1965,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
+            <label htmlFor="recipe-upload-title" className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
             <input
+              id="recipe-upload-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1977,8 +1976,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             />
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Description</label>
+            <label htmlFor="recipe-upload-description" className="block mb-2 text-sm font-medium text-foreground">Description</label>
             <textarea
+              id="recipe-upload-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your recipe..."
@@ -1988,8 +1988,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Servings</label>
+              <label htmlFor="recipe-upload-servings" className="block mb-2 text-sm font-medium text-foreground">Servings</label>
               <input
+                id="recipe-upload-servings"
                 type="number"
                 value={servings}
                 onChange={(e) => setServings(Number(e.target.value))}
@@ -1997,8 +1998,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
+              <label htmlFor="recipe-upload-prep" className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
               <input
+                id="recipe-upload-prep"
                 type="number"
                 value={prepTime}
                 onChange={(e) => setPrepTime(Number(e.target.value))}
@@ -2006,8 +2008,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
+              <label htmlFor="recipe-upload-cook" className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
               <input
+                id="recipe-upload-cook"
                 type="number"
                 value={cookTime}
                 onChange={(e) => setCookTime(Number(e.target.value))}
@@ -2017,8 +2020,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Meal Type</label>
+              <label htmlFor="recipe-upload-meal-type" className="block mb-2 text-sm font-medium text-foreground">Meal Type</label>
               <select
+                id="recipe-upload-meal-type"
                 value={mealType}
                 onChange={(e) => setMealType(e.target.value)}
                 className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -2259,7 +2263,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         ) : null}
 
         <div className="space-y-3">
-          {ingredients.map((ingredient) => (
+          {ingredients.map((ingredient, ingredientIndex) => (
             <div
               key={ingredient.id}
               className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(18rem,1fr)_auto] sm:items-center sm:gap-3 rounded-xl border border-border p-3 bg-card/40"
@@ -2269,6 +2273,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 value={ingredient.name}
                 onChange={(e) => updateIngredient(ingredient.id, "name", e.target.value)}
                 placeholder="Ingredient name"
+                aria-label={`Ingredient ${ingredientIndex + 1} name`}
                 className="w-full min-w-0 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <div className="flex flex-wrap items-center justify-start gap-2">
@@ -2277,11 +2282,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   value={ingredient.amount}
                   onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
                   placeholder="Amount"
+                  aria-label={`Ingredient ${ingredientIndex + 1} amount`}
                   className="w-24 sm:w-28 px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <select
                   value={ingredient.unit}
                   onChange={(e) => updateIngredient(ingredient.id, "unit", e.target.value)}
+                  aria-label={`Ingredient ${ingredientIndex + 1} unit`}
                   className="min-w-[10rem] sm:min-w-[11rem] flex-1 sm:flex-initial px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="">Each / none</option>

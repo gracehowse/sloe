@@ -41,6 +41,7 @@ const authedTestMatch = [
   /journeys\/recipe-create-paste\.spec\.ts/,
   /journeys\/cook-mode\.spec\.ts/,
   /journeys\/core-flows-authed\.spec\.ts/,
+  /journeys\/today-contrast-eng1109\.spec\.ts/,
   /visual-audit-authed\.spec\.ts/,
   /visual-regression-subpages\.spec\.ts/,
   /visual-regression-deep\.spec\.ts/,
