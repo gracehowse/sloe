@@ -24,6 +24,14 @@ Do not rely on tab-level flows alone. For every UI change on a deep route:
 | `visual-regression-subpages.spec.ts` | Help, legal, profile, import, billing, create |
 | `visual-regression-deep.spec.ts` | Settings preferences band, `/home?view=targets`, profile Targets tab, recipe detail (`?recipe=`), upgrade paywall dialog |
 
+**Cohesion gate (ENG-1142):** Today + paywall dialog + recipe detail — the three surfaces whose drift hurts brand cohesion most. Filtered run:
+
+```bash
+npm run test:e2e:visual:cohesion
+```
+
+See `docs/decisions/2026-06-18-visual-regression-posture.md` for which spec owns each snapshot.
+
 **Baselines:** `tests/e2e/__snapshots__/` (committed).
 
 ```bash

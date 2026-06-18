@@ -174,6 +174,11 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
+    // ENG-898 — 3-method source tiles (mobile parity).
+    expect(screen.getByTestId("import-method-tiles")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-photo")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-paste-text")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-scan")).toBeInTheDocument();
   });
 
   it("ENG-898 — renders recent imports when the user has URL-imported recipes", async () => {
@@ -276,7 +281,7 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     );
   });
 
-  it("surfaces a calm hint (not a crash) when the URL has no parseable recipe", async () => {
+  it("surfaces L4 amber inline error (not toast-only) when the URL has no parseable recipe", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({
@@ -294,14 +299,13 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith(
-        "No Recipe JSON-LD found on this page. Paste ingredients and steps manually, or try another URL.",
-      );
+      expect(screen.getByTestId("import-l4-error")).toBeInTheDocument();
     });
-    // The inline hint renders so the user has a recovery path.
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(
       screen.getByText(/No Recipe JSON-LD found on this page/i),
     ).toBeInTheDocument();
+    expect(toastMock.error).not.toHaveBeenCalled();
   });
 
   it("ENG-901 M6 — after save in import mode, renders ImportSuccessSheet (not a toast)", async () => {

@@ -15,11 +15,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AlertCircle,
   Clipboard as ClipboardIcon,
   Camera as CameraIcon,
+  FileText,
+  ScanLine,
   Lock,
   Share2,
 } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -817,6 +821,14 @@ export default function ImportSharedScreen() {
     void runImageImport();
   }, [isFreeTier, router, runImageImport]);
 
+  const onPasteTextImportPress = useCallback(() => {
+    router.push("/recipe/create" as any);
+  }, [router]);
+
+  const onScanImportPress = useCallback(() => {
+    router.push("/create-recipe" as any);
+  }, [router]);
+
   useEffect(() => {
     if (!pendingRecipe || state !== "review") return;
     setReviewServingsDraft(String(pendingRecipe.servings ?? 1));
@@ -1282,6 +1294,32 @@ export default function ImportSharedScreen() {
       lineHeight: 22,
       marginBottom: Spacing.sm,
     },
+    // L4 import error — recipe-import-redesign unboxed editorial (import.md §3.10).
+    errorRedesignSection: {
+      alignSelf: "stretch",
+      gap: Spacing.lg,
+    },
+    errorRedesignHeader: {
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    errorRedesignTitle: {
+      ...Type.headline,
+      fontSize: 18,
+      color: colors.text,
+      textAlign: "center",
+    },
+    errorRedesignBody: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    errorRedesignAltHint: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
 
     // SLOE DS (M6 import-success, frame 304:2): the success surface is a
     // cream `surface-card` slab with the 24px Sloe radius and a soft
@@ -1495,6 +1533,60 @@ export default function ImportSharedScreen() {
       fontSize: 12,
       fontWeight: "600",
       color: Accent.warningSolid,
+    },
+    // 3-method source tiles (import.md / stitch import.html — ENG-898).
+    methodDividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      marginVertical: Spacing.sm,
+    },
+    methodDividerLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+    },
+    methodDividerLabel: {
+      ...Type.label,
+      color: colors.textTertiary,
+      fontSize: 11,
+      textTransform: "uppercase",
+    },
+    methodTilesRow: {
+      flexDirection: "row",
+      gap: Spacing.sm,
+    },
+    methodTile: {
+      flex: 1,
+      alignItems: "center",
+      gap: Spacing.xs,
+      padding: Spacing.md,
+      borderRadius: Radius.xl * 2,
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      minHeight: 112,
+    },
+    methodTileIconCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.background,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    methodTileTitle: {
+      ...Type.headline,
+      fontSize: 15,
+      color: colors.text,
+      textAlign: "center",
+    },
+    methodTileSub: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      textAlign: "center",
     },
 
     // Trust-affordance row (gap #2 + #9) — non-tappable "WORKS WITH" chips:
@@ -2246,40 +2338,86 @@ export default function ImportSharedScreen() {
         )}
 
         {state === "error" && (
-          <View style={styles.panelCard}>
-            <View style={styles.errorIconCircle}>
-              <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
+          importRedesign ? (
+            <View style={styles.errorRedesignSection} accessibilityRole="alert">
+              <View style={styles.errorRedesignHeader}>
+                <AlertCircle size={40} color={Accent.warning} strokeWidth={1.75} />
+                <Text style={styles.errorRedesignTitle}>Something went wrong</Text>
+                <Text style={styles.errorRedesignBody}>
+                  {error ?? "Something went wrong."}
+                </Text>
+              </View>
+              <TextInput
+                value={manualUrl}
+                onChangeText={(t) => {
+                  setManualUrl(t);
+                  if (state === "error") setState("idle");
+                }}
+                placeholder="https://…"
+                placeholderTextColor={colors.textTertiary}
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <PressableScale
+                haptic="confirm"
+                style={[styles.primaryBtn, retryDisabled && { opacity: 0.5 }]}
+                onPress={retryDisabled ? undefined : onManualImport}
+                disabled={retryDisabled}
+                accessibilityState={{ disabled: retryDisabled }}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {retryDisabled ? `Try again in ${retrySecondsLeft}s` : "Try again"}
+                </Text>
+              </PressableScale>
+              <Text style={styles.errorRedesignAltHint}>Or paste a different link</Text>
+              <PressableScale
+                haptic="selection"
+                style={styles.tertiaryRow}
+                onPress={onPasteFromClipboard}
+                accessibilityRole="button"
+              >
+                <ClipboardIcon size={18} color={accent.primary} />
+                <Text style={styles.tertiaryLabel}>Use clipboard</Text>
+              </PressableScale>
             </View>
-            <Text style={styles.panelTitle}>{`Couldn't import`}</Text>
-            <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
-            <TextInput
-              value={manualUrl}
-              onChangeText={(t) => {
-                setManualUrl(t);
-                if (state === "error") setState("idle");
-              }}
-              placeholder="Paste recipe URL"
-              placeholderTextColor={colors.textTertiary}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Pressable
-              style={[styles.primaryBtn, retryDisabled && { opacity: 0.5 }]}
-              onPress={retryDisabled ? undefined : onManualImport}
-              disabled={retryDisabled}
-              accessibilityState={{ disabled: retryDisabled }}
-            >
-              <Text style={styles.primaryBtnText}>
-                {retryDisabled ? `Try again in ${retrySecondsLeft}s` : "Try again"}
-              </Text>
-            </Pressable>
-            <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <ClipboardIcon size={18} color={accent.primary} />
-              <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
-            </Pressable>
-          </View>
+          ) : (
+            <View style={styles.panelCard}>
+              <View style={styles.errorIconCircle}>
+                <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
+              </View>
+              <Text style={styles.panelTitle}>{`Couldn't import`}</Text>
+              <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
+              <TextInput
+                value={manualUrl}
+                onChangeText={(t) => {
+                  setManualUrl(t);
+                  if (state === "error") setState("idle");
+                }}
+                placeholder="Paste recipe URL"
+                placeholderTextColor={colors.textTertiary}
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Pressable
+                style={[styles.primaryBtn, retryDisabled && { opacity: 0.5 }]}
+                onPress={retryDisabled ? undefined : onManualImport}
+                disabled={retryDisabled}
+                accessibilityState={{ disabled: retryDisabled }}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {retryDisabled ? `Try again in ${retrySecondsLeft}s` : "Try again"}
+                </Text>
+              </Pressable>
+              <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
+                <ClipboardIcon size={18} color={accent.primary} />
+                <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
+              </Pressable>
+            </View>
+          )
         )}
 
         {!authLoading && userId && state === "idle" && (
@@ -2321,35 +2459,74 @@ export default function ImportSharedScreen() {
                   label="Import"
                 />
 
-                {/* Tertiary affordances — left-aligned text-link rows below the
-                    field (gap #1). Lucide glyphs for the abstract controls
-                    (gap #6); brand monograms stay only on the trust chips. */}
-                <Pressable style={styles.tertiaryRow} onPress={onPasteFromClipboard} accessibilityRole="button">
+                <View style={styles.methodDividerRow}>
+                  <View style={styles.methodDividerLine} />
+                  <Text style={styles.methodDividerLabel}>or</Text>
+                  <View style={styles.methodDividerLine} />
+                </View>
+
+                <View style={styles.methodTilesRow}>
+                  {ImagePicker ? (
+                    <PressableScale
+                      haptic="confirm"
+                      style={styles.methodTile}
+                      onPress={onPhotoImportPress}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isFreeTier
+                          ? "Import from a photo — Pro feature"
+                          : "Import from a photo"
+                      }
+                      testID="import-method-photo"
+                    >
+                      <View style={styles.methodTileIconCircle}>
+                        <CameraIcon size={20} color={accent.primary} />
+                      </View>
+                      <Text style={styles.methodTileTitle}>Photo</Text>
+                      <Text style={styles.methodTileSub}>
+                        {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
+                      </Text>
+                    </PressableScale>
+                  ) : null}
+                  <PressableScale
+                    haptic="confirm"
+                    style={styles.methodTile}
+                    onPress={onPasteTextImportPress}
+                    accessibilityRole="button"
+                    accessibilityLabel="Paste recipe text from notes"
+                    testID="import-method-paste-text"
+                  >
+                    <View style={styles.methodTileIconCircle}>
+                      <FileText size={20} color={accent.primary} />
+                    </View>
+                    <Text style={styles.methodTileTitle}>Paste text</Text>
+                    <Text style={styles.methodTileSub}>From notes</Text>
+                  </PressableScale>
+                  <PressableScale
+                    haptic="confirm"
+                    style={styles.methodTile}
+                    onPress={onScanImportPress}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create a recipe with barcode scan"
+                    testID="import-method-scan"
+                  >
+                    <View style={styles.methodTileIconCircle}>
+                      <ScanLine size={20} color={accent.primary} />
+                    </View>
+                    <Text style={styles.methodTileTitle}>Scan</Text>
+                    <Text style={styles.methodTileSub}>Barcode</Text>
+                  </PressableScale>
+                </View>
+
+                <PressableScale
+                  haptic="selection"
+                  style={styles.tertiaryRow}
+                  onPress={onPasteFromClipboard}
+                  accessibilityRole="button"
+                >
                   <ClipboardIcon size={18} color={accent.primary} />
                   <Text style={styles.tertiaryLabel}>Use clipboard</Text>
-                </Pressable>
-                {ImagePicker && (
-                  <Pressable
-                    style={styles.tertiaryRow}
-                    onPress={onPhotoImportPress}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      isFreeTier
-                        ? `${photoImportLabel} (Pro)`
-                        : photoImportLabel
-                    }
-                    testID="import-photo-affordance"
-                  >
-                    <CameraIcon size={18} color={accent.primary} />
-                    <Text style={styles.tertiaryLabel}>{photoImportLabel}</Text>
-                    {isFreeTier && (
-                      <View style={styles.proPill}>
-                        <Lock size={12} color={Accent.warningSolid} />
-                        <Text style={styles.proPillText}>Pro</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                )}
+                </PressableScale>
               </View>
 
               {/* Trust-affordance row (gap #2 + #9) — non-tappable. Honest:

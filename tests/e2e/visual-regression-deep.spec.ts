@@ -3,6 +3,10 @@ import { hasVisualGoldenCredentials } from "./utils/auth";
 import { visualAuthFileForBaseUrl } from "./utils/authHosts";
 import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
 
+/** ENG-1142 cohesion gate — recipe detail + paywall dialog are two of
+ *  three gated surfaces (see `docs/decisions/2026-06-18-visual-regression-posture.md`).
+ *  Run only cohesion snapshots: `npm run test:e2e:visual:cohesion`. */
+
 const visualStorageState = hasVisualGoldenCredentials()
   ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
   : undefined;

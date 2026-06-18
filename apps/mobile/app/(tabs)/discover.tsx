@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -434,7 +435,8 @@ export default function DiscoverScreen() {
         // Light → soft shadow, no border; dark → tonal lift + hairline (via
         // `cardElevation`) so the card never blends in either scheme.
         <View key={item.id} style={{ borderRadius: RECIPE_CARD_RADIUS, ...(cardElevation.shadowStyle ?? {}) }}>
-        <Pressable
+        <PressableScale
+          haptic="confirm"
           onPress={() => router.push(`/recipe/${item.id}`)}
           accessibilityRole="button"
           accessibilityLabel={recipeCardAccessibilityLabel({
@@ -544,7 +546,7 @@ export default function DiscoverScreen() {
                 match quality is computed end-to-end from a real source
                 column (P1/P2 work in the GW-08 audit). */}
           </View>
-        </Pressable>
+        </PressableScale>
         </View>
       );
     },

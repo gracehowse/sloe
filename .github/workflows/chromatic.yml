@@ -89,7 +89,9 @@ jobs:
           # visual PR. Auto-accept so it never asks for manual baseline review:
           # snapshots are still captured + browsable, but Chromatic informs
           # rather than gates. Visual QA is carried by manual SEE + the
-          # Playwright golden specs. Set to `false` to re-enable review.
+          # Playwright golden specs — cohesion gate: ENG-1142
+          # (`npm run test:e2e:visual:cohesion`, docs/decisions/2026-06-18-visual-regression-posture.md).
+          # Set to `false` to re-enable Chromatic review.
           autoAcceptChanges: true
         env:
           CHROMATIC_ARCHIVE_LOCATION: ./test-results

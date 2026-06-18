@@ -7,7 +7,7 @@ no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
 **Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
-**In flight:** none — next slice: ENG-889 L5 dark verify (`314:2`) or next Core-5 partial from migration tracker.
+**In flight:** [#483](https://github.com/gracehowse/Suppr/pull/483) `agent/cursor/batch-6-889-896-1142-1016` — ENG-889 L5 docs, ENG-898 L4 import error, ENG-1142 cohesion gate, ENG-1016 PressableScale slice.
 
 ## Merge history (reference)
 
@@ -69,10 +69,10 @@ individual partial rows only.
 | Issue | Partial | Status on `main` | Residual (parent still open) |
 |-------|---------|------------------|------------|------------------------------|
 | **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 (#472); frame `284:2` trust + Sloe upgrade dialog + dedupe (#476) — **Linear Done** | — |
-| **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | 9 other Recipes/Cookbook partials on parent |
-| **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | Live `/signup` screenshot needs signed-out session |
-| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | 7 other Import partials on parent (source tiles, L4 error, etc.) |
-| **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned | L5 dark, TD3/TD4, pixel deltas, populated-account screenshot wall |
+| **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | **L2 loading** skeleton on Library (#483+); recipe card geometry / L6 dark / S7 empty remain |
+| **ENG-897** | Signup email-step pixel (`296:33`) | Test pin + **live web capture** (#483+) | — |
+| **ENG-898** | Recent imports + caption trust + **L4 error** | **Shipped** — recent imports (#472); L4 amber banner (#483); **action sheet Pro lock** (#483+) | Source tiles (WORKS WITH ✅), action sheet 2×2 grid, review states |
+| **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned; **L5 dark** (`314:2`, 2026-06-18 sim pass) | TD3/TD4 pixel deltas, populated-account screenshot wall |
 | **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | **Linear Done** — no follow-up in this queue |
 
 ### Batch 3 visual verify (2026-06-18)
@@ -83,13 +83,16 @@ individual partial rows only.
 | Discover slabs (ENG-896) | ✅ `/discover --auth` | ✅ | Mediterranean/Greek hero + seamless slab card |
 | Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
 | Today coach-in-hero (ENG-889) | ✅ populated (~390px) + empty S5 | ✅ `today-coach-in-hero-ios-2026-06-18.png` | Coach line inside hero ("Fresh start — what's for breakfast?") |
+| Today L5 dark (ENG-889) | — (iOS-first) | ✅ `eng889-l5-today-dark.png` + scrolled | Canvas `#19181C`, hero `#2A2730`, dark TD3/TD4 cards |
+| Today populated + TD3/TD4 (ENG-889) | ⏸ dev server 500 | ✅ `eng889-populated-today-hero.png` + `td34` | Over budget hero + coach; TD4 per-slot cards + Add food; weekly insight stats |
 | Paywall trust (ENG-901) | ✅ `/pricing` ~390px (hero + grid; scroll for trust row) | ✅ `paywall-trust-scrolled-ios-2026-06-18.png` | Inline strip: Secure checkout · Cancel anytime · refund/barcode chips |
-| Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
+| Auth email step (ENG-897) | ✅ unit pin + `eng897-signup-email-step-mobile.png` | — | `/signup` chooser → email step (signed-out) |
 
 ### Batch 3 — what's left
 
-1. **ENG-889** — L5 dark verify (`314:2`); TD3/TD4 if gaps in migration tracker; pixel deltas.
-2. **ENG-896 / ENG-898 / ENG-897** — next high-severity partial from `docs/ux/redesign/figma-migration-tracker.md`.
+1. **ENG-889** — populated-account screenshot wall (L5 dark ✅ 2026-06-18; web populated after dev restart).
+2. **ENG-896** — recipe card geometry / L6 dark / S7 empty (L2 Library skeleton ✅ #483+).
+3. **ENG-898** — action sheet 2×2 tile grid (Pro lock ✅ #483+); review / caption web parity.
 
 ## Triage table — batch 4 (maintenance / hygiene)
 
@@ -99,7 +102,7 @@ individual partial rows only.
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
 | ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
-| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | Open | Confirm still unrendered before delete PR |
+| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Both components deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` + `todayAboveMealsCap.test.ts` |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
 
