@@ -20,6 +20,42 @@ import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories";
 
+/**
+ * Single source of truth for which macro keys actually open the per-macro
+ * detail panel. The Today macro tiles + bars render these — and only these —
+ * as interactive controls; the `openMacroDetail` handler in NutritionTracker
+ * guards on the same set. Reference-only nutrients (sugar, sodium, water) are
+ * NOT in this set: the panel has no breakdown for them, so they must render as
+ * plain, non-interactive elements (ENG-848 — dead-tap a11y fix). `calories` is
+ * a valid `MacroKey` for the panel itself but is not surfaced as a tile/bar, so
+ * it is intentionally excluded here.
+ *
+ * Consumed by:
+ *   - src/app/components/suppr/today-dashboard-macro-tiles.tsx (affordance)
+ *   - src/app/components/suppr/today-dashboard-macro-bars.tsx  (affordance)
+ *   - src/app/components/NutritionTracker.tsx → openMacroDetail (handler guard)
+ */
+export const MACRO_DETAIL_SUPPORTED_KEYS = [
+  "protein",
+  "carbs",
+  "fat",
+  "fiber",
+] as const satisfies readonly MacroKey[];
+
+export type MacroDetailSupportedKey =
+  (typeof MACRO_DETAIL_SUPPORTED_KEYS)[number];
+
+const MACRO_DETAIL_SUPPORTED_SET: ReadonlySet<string> = new Set(
+  MACRO_DETAIL_SUPPORTED_KEYS,
+);
+
+/** True when `macro` opens a per-macro detail panel (a tile/bar is interactive). */
+export function isMacroDetailSupported(
+  macro: string,
+): macro is MacroDetailSupportedKey {
+  return MACRO_DETAIL_SUPPORTED_SET.has(macro);
+}
+
 export interface MacroMeal {
   name: string;
   recipeTitle: string;
