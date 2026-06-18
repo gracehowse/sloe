@@ -23,12 +23,13 @@
 
 ## Recommended next agent slices (updated 2026-06-18)
 
-Batch 3 Core-5 partials largely landed on `main` (#472, #475, #476). **Next:** ENG-889 TD partials or batch-4 hygiene.
+Batch 3 Core-5 partials largely on `main` (#472, #475, #476). Batch-4 Codex hygiene **Done** (#471). **Next:** merge #477; ENG-889 L5 dark or next Core-5 partial.
 
 | Rank | Ticket | Effort | What | Status |
 |------|--------|--------|------|--------|
-| — | **ENG-889** | S–M | TD1/TD2/TD4 or L5 dark verify | Partial on main (#476 coach-in-hero + mobile L1) |
+| — | **ENG-889** | S–M | L5 dark verify; TD3/TD4 if tracker gaps | TD1/TD2 unit-pinned; coach-in-hero on main (#476) |
 | — | **ENG-901** | — | **Done** (#476) | — |
+| — | Batch 4 | — | **Done** (#471: ENG-1168, ENG-848, ENG-1090) | — |
 | 1 | **ENG-896** | S | Next high partial on Discover or Library (see migration tracker) | Discover slabs done |
 | 2 | **ENG-898** | S | Source tiles / L4 error / remaining import chrome | Recent imports done |
 | 3 | **ENG-897** | S | Signed-out screenshot wall for email step | Test pin on main |

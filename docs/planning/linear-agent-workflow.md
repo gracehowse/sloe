@@ -88,11 +88,11 @@ After Grace adds custom states, migrate: Todo+`ready-for-agent` → **Ready for 
 
 | Owner | Current focus (2026-06-18) | Others must avoid |
 |-------|---------------------------|-------------------|
-| **Cursor** | Next: ENG-889 TD partials (TD1 activity, L5 dark) or batch-4 ENG-1090 / ENG-848 | PaywallTrustStrip / upgrade dialog until next paywall slice; Today lower-fold TD cards |
-| **Codex** | ENG-1090 (CI), ENG-848 (web dead code), ENG-1168 (comment audit) | Figma parents, import-shared, TodayHeroRing, RecipeUpload |
-| **Claude** | Planning / doc sync / triage (`label:agent/claude` only) | Cursor-delegated Figma files until #476 merges |
+| **Cursor** | ENG-889 L5 dark or next Core-5 partial | — |
+| **Codex** | Batch-4 maintenance **Done** (#471); pick next `label:agent/codex` + `ready-for-agent` | — |
+| **Claude** | Planning / doc sync / triage (`label:agent/claude` only) | — |
 
-**Merged 2026-06-18:** `claude/wave-4-trust-cohesion` → `main` (#472); ENG-1100 (#475). Do not target `claude/wave-4-trust-cohesion` — branch is stale.
+**Merged 2026-06-18:** #472 wave-4 batch 3 · #475 ENG-1100 · #476 ENG-901/889 · #471 ENG-1168/848/1090. Stale branch: `claude/wave-4-trust-cohesion`.
 
 When in doubt, pick the ticket with **`label:agent/codex`** only — not Cursor-delegated issues.
 

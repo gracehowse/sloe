@@ -1,13 +1,13 @@
 # Quick-wins burn-down — 2026-06-17
 
-**Last updated:** 2026-06-18  
+**Last updated:** 2026-06-18 (post-#476; #477 in flight)  
 **Strategy shift (Grace, 2026-06-17):** stop strict gate-order sequencing; burn
 down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h),
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
-**Current branch:** `main` (batches 1–3 merged via #472, #475, #476).  
-**In flight:** none — next slice: ENG-889 TD partials or batch-4 hygiene (ENG-1090, ENG-848).
+**Current branch:** `main` (batches 1–3 + batch-4 Codex slice merged via #471, #472, #475, #476).  
+**In flight:** none — next slice: ENG-889 L5 dark verify (`314:2`) or next Core-5 partial from migration tracker.
 
 ## Merge history (reference)
 
@@ -17,6 +17,8 @@ watch CI per batch; Linear comment + state on each closed item.
 | [#472](https://github.com/gracehowse/Suppr/pull/472) | `claude/wave-4-trust-cohesion` | Batch 3: recent imports, S5 Fresh start, import-success integration, ENG-1166, partial-day Plan slots |
 | [#475](https://github.com/gracehowse/Suppr/pull/475) | `agent/cursor/eng-1100-empty-meal-slot-row` | ENG-1100 `EmptyMealSlotRow` extract (web + mobile) — **Linear Done** |
 | [#476](https://github.com/gracehowse/Suppr/pull/476) | `agent/cursor/eng-901-trust-strip` | ENG-901 trust strip + Sloe upgrade dialog + pricing dedupe; ENG-889 coach-in-hero + mobile L1 skeleton — **Merged** · **ENG-901 Linear Done** |
+| [#471](https://github.com/gracehowse/Suppr/pull/471) | Codex maintenance batch | ENG-1168 silent-deferral sweep · ENG-848 `web_macro_detail_panel` · ENG-1090 Storybook `EEXIST` fix — **Merged** · **Linear Done** |
+| [#477](https://github.com/gracehowse/Suppr/pull/477) | `agent/cursor/eng-889-visual-verify-docs` | ENG-889 visual-verify rows + backlog hygiene (batch 4 Done table) — **Merged** |
 
 ---
 
@@ -70,7 +72,7 @@ individual partial rows only.
 | **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | 9 other Recipes/Cookbook partials on parent |
 | **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | Live `/signup` screenshot needs signed-out session |
 | **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | 7 other Import partials on parent (source tiles, L4 error, etc.) |
-| **ENG-889** | Today partials | L1 skeleton (#472 web + #476 mobile); S5 Fresh start (#472); coach-in-hero (#476) | TD1–TD4, L5 dark, pixel deltas, populated-account wall |
+| **ENG-889** | Today partials | L1 (#472/#476); S5 (#472); coach-in-hero (#476); TD1/TD2 unit-pinned | L5 dark, TD3/TD4, pixel deltas, populated-account screenshot wall |
 | **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | **Linear Done** — no follow-up in this queue |
 
 ### Batch 3 visual verify (2026-06-18)
@@ -86,19 +88,18 @@ individual partial rows only.
 
 ### Batch 3 — what's left
 
-1. **ENG-889** — next bounded partial (TD1 activity, TD2 hydration, L5 dark, or pixel delta from Linear list).
-2. **ENG-896 / ENG-898 / ENG-897** — pick next high-severity partial from each parent tracker (`docs/ux/redesign/figma-migration-tracker.md`).
-3. **Batch 4** — ENG-1090 Storybook flake, ENG-848 MacroDetailPanel, ENG-1168 follow-ups (Done on Linear; doc sync only).
+1. **ENG-889** — L5 dark verify (`314:2`); TD3/TD4 if gaps in migration tracker; pixel deltas.
+2. **ENG-896 / ENG-898 / ENG-897** — next high-severity partial from `docs/ux/redesign/figma-migration-tracker.md`.
 
----
+## Triage table — batch 4 (maintenance / hygiene)
 
-## Deferred — batch 4+ (non-Figma quick wins)
-
-1. **ENG-1168** — silent-deferral re-sweep: open a Linear issue per surviving untracked gap comment.
-2. **ENG-1147 follow-ups / ENG-986** — shared macro-icon mapping (single source of truth).
-3. **ENG-1090** — CI flake: storybook build `EEXIST` mkdir race in static-asset `copyDir`.
-4. **ENG-1096 / ENG-984** — confirm closed.
-5. **ENG-848** — wire or delete `MacroDetailPanel` on web.
+| Issue | Title | Status on `main` | Notes |
+|-------|-------|------------------|-------|
+| **ENG-1168** | Silent-deferral re-sweep | **Done** (#471) | Linear Done 2026-06-18 |
+| **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
+| **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
+| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | Open | Single-source icon map for macro tiles |
+| ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | Open | Confirm still unrendered before delete PR |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.
 
@@ -112,4 +113,4 @@ individual partial rows only.
 | `docs/planning/2026-06-14-backlog-priority-order.md` | Gate 1.5 table rows for ENG-889/896/897/898/901 |
 | `docs/planning/2026-06-17-gate-0-1-agent-audit.md` | "Recommended next slices" after batch 3 |
 | `docs/planning/linear-agent-workflow.md` | In-flight branch / conflict table |
-| `docs/testing/figma-vs-simulator.md` | New Today/paywall verify rows |
+| `docs/testing/figma-vs-simulator.md` | New Today/paywall verify rows (**#477 merged**) |

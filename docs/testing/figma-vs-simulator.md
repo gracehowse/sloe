@@ -123,6 +123,27 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Intentional drift (do not file):** Stitch S5 still shows filled `bg-frost-mist` chip and "A blank canvas…" coach copy — product uses de-tinted chip + ENG-939 food-forward coach. Week-strip sage dots on past days alongside Fresh start is correct (today-only diary).
 
+## Paywall + upgrade dialog — screenshot wall (ENG-901, #476)
+
+**Figma frame:** [`284:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=284-2) · Stitch: `docs/prototypes/stitch-sloe/paywall.html`
+
+| # | Surface | Deep link / route | Pass criteria |
+|---|---------|-------------------|---------------|
+| 1 | Mobile paywall trust row | `suppr:///paywall` | Inline row: secure checkout + cancel anytime (`PaywallTrustStrip`, `paywall_trust_inline_v1` default-on) |
+| 2 | Web pricing trust row | `/pricing` | Same inline strip; legacy post-tier row hidden when flag on (`PricingLegacyTrustSignals`) |
+| 3 | Web upgrade dialog | Pro-gated Today action → dialog | Sloe photo hero + trust strip in footer (`paywall_upgrade_dialog_sloe_v1`, web-only) |
+
+## Today coach-in-hero — screenshot wall (ENG-889, #476)
+
+**Flag:** `today_coach_in_hero_v1` (default-on)
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Populated Today hero (~390px web + iOS) | Coach/deficit line renders **inside** hero card below Goal/Eaten/Bonus — not duplicated in below-meals context block |
+| 2 | Empty Today (S5) | Fresh start chip + food-forward coach; coach-in-hero path still honest on zero consumed |
+
+**Agent captures:** `apps/mobile/screenshots/agent/paywall-trust-*.png`, `screenshots/web-drive/pricing-trust-*.png`, `today-coach-in-hero-*.png`
+
 ## Prompt template
 
 ```
