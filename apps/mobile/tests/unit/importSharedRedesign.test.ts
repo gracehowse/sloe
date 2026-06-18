@@ -104,4 +104,12 @@ describe("Import surface — L4 error (import.md §3.10, ENG-898)", () => {
   it("tertiary affordances use PressableScale selection haptic (ENG-1016)", () => {
     expect(SRC).toMatch(/PressableScale[\s\S]{0,120}haptic="selection"[\s\S]{0,120}onPasteFromClipboard/);
   });
+
+  it("redesign idle renders 3-method source tiles (ENG-898)", () => {
+    expect(SRC).toMatch(/methodTilesRow/);
+    expect(SRC).toMatch(/import-method-photo/);
+    expect(SRC).toMatch(/import-method-paste-text/);
+    expect(SRC).toMatch(/import-method-scan/);
+    expect(SRC).toMatch(/methodDividerLabel/);
+  });
 });
