@@ -432,7 +432,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95"
+          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           // ENG-1094 (Grace): a confident lavender-plum accent — Discover's one
           // deliberate accent — instead of the muddy flat
           // --accent-primary-soft-strong dark-plum wash that read as grey.
@@ -462,7 +462,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+          className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           style={{ background: "var(--accent-primary-soft)" }}
         >
           <IconBox size="lg" tone="primary">

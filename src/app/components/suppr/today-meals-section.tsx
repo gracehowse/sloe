@@ -527,7 +527,7 @@ export function TodayMealsSection({
               {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
                 data-testid={`today-slot-header-${sectionName}`}
-                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none ${hasMeals && isOpen ? "border-b border-border" : ""}`}
+                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset ${hasMeals && isOpen ? "border-b border-border" : ""}`}
                 onClick={() => {
                   if (!hasMeals) {
                     onOpenAddForSlot(sectionName);
