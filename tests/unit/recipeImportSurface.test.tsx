@@ -63,7 +63,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Supabase browser client — auth.getSession (used on save) + a chained
-// query builder (used by editRecipe load, which we don't trigger here).
+// query builder (used by editRecipe load + ENG-898 recent imports).
 vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
   supabase: {
     auth: {
@@ -82,12 +82,31 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
           }),
         };
       }
-      // recipes
+      // recipes — upsert/single for save + recent-imports list (ENG-898)
       return {
         upsert: () => ({
           select: () => ({ single: () => Promise.resolve({ data: { id: "recipe-789" }, error: null }) }),
         }),
-        select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            not: () => ({
+              order: () => ({
+                limit: () =>
+                  Promise.resolve({
+                    data: [
+                      {
+                        title: "Sheet-Pan Fajitas",
+                        source_name: "TikTok",
+                        created_at: "2026-06-17T08:00:00.000Z",
+                      },
+                    ],
+                    error: null,
+                  }),
+              }),
+            }),
+          }),
+        }),
       };
     },
   },
@@ -100,6 +119,7 @@ vi.mock("../../src/lib/supabase/uploadRecipeImage.ts", () => ({
 // AppDataContext — RecipeUpload only destructures four members.
 vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => ({
+    userId: "user-123",
     refreshDiscoverRecipes: vi.fn().mockResolvedValue(undefined),
     refreshMyLibraryRecipes: vi.fn().mockResolvedValue(undefined),
     ensureRecipeInLibraryWithKind: vi.fn(),
@@ -154,6 +174,14 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
+  });
+
+  it("ENG-898 — renders recent imports when the user has URL-imported recipes", async () => {
+    render(<RecipeUpload userTier="free" mode="import" />);
+    const section = await screen.findByTestId("import-recent-imports");
+    expect(section).toHaveTextContent("Sheet-Pan Fajitas");
+    expect(section).toHaveTextContent("Today");
+    expect(section).toHaveTextContent("TT");
   });
 
   it("leads the 'Paste a recipe link' card with the Sloe wordmark (mobile parity)", () => {
@@ -269,5 +297,52 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(
       screen.getByText(/No Recipe JSON-LD found on this page/i),
     ).toBeInTheDocument();
+  });
+
+  it("ENG-901 M6 — after save in import mode, renders ImportSuccessSheet (not a toast)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        recipe: {
+          title: "Sheet-Pan Chicken Fajitas",
+          description: "Weeknight fajitas",
+          ingredients: ["2 chicken breasts", "1 bell pepper", "1 onion"],
+          instructions: ["Slice everything", "Roast 20 min"],
+          servings: 4,
+          prepTimeMin: 10,
+          cookTimeMin: 20,
+          imageUrl: "https://cdn.test/fajitas.jpg",
+          sourceUrl: "https://example.com/fajitas",
+          sourceName: "Example Kitchen",
+        },
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecipeUpload userTier="free" mode="import" />);
+
+    fireEvent.change(screen.getByPlaceholderText("https://…"), {
+      target: { value: "https://example.com/fajitas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Sheet-Pan Chicken Fajitas")).toBeInTheDocument();
+    });
+
+    toastMock.success.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Save to my library/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("import-success-sheet")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.getByText("Sheet-Pan Chicken Fajitas")).toBeInTheDocument();
+    expect(screen.getByText("In your library")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View recipe" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review ingredients" })).toBeInTheDocument();
+    // Import mode uses the success sheet — not the generic toast terminal.
+    expect(toastMock.success).not.toHaveBeenCalled();
   });
 });
