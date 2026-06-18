@@ -75,6 +75,16 @@ Bulk re-home applied in Linear. Identifiers **renumber on team change** — use 
 | GROW-18 | ENG-1204 | Landing hero hybrid positioning |
 | GROW-19 | ENG-1203 | MFP-switch merchandising (barcode/macros) |
 
+### Second pass (same day)
+
+| Was | Now | Title (short) |
+|-----|-----|----------------|
+| ENG-194 | GROW-65 | Tiering audit (Base vs Pro) |
+| ENG-122 | GROW-63 | UK/EU gluten claim sign-off |
+| ENG-183 | GROW-66 | Trademark TM-1 direction |
+| ENG-661 | GROW-64 | OFF ODbL legal gate (Option A) |
+| ENG-101 | GROW-67 | RC/StoreKit IAP (duplicate of GROW-46) |
+
 ## Follow-up
 
 - [ ] Grace: review Growth backlog views (`team:Growth`, `label:grace-only`) weekly.
