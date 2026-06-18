@@ -24,7 +24,7 @@ const GATE_15_VISUAL_COVERAGE = [
   { surface: "Onboarding goal", spec: "visual-redesign-gate15.spec.ts", needle: "gate15/onboarding-goal-" },
   { surface: "Log sheet (mobile-web)", spec: "visual-redesign-gate15-authed.spec.ts", needle: "gate15/log-sheet-mobile-web" },
   { surface: "Paywall upgrade dialog", spec: "visual-regression-deep.spec.ts", needle: "deep/paywall-dialog-" },
-  { surface: "Pricing", spec: "visual-regression-subpages.spec.ts", needle: 'name: "pricing"' },
+  { surface: "Pricing", spec: "visual-regression-subpages-public.spec.ts", needle: "publicVisualSubpages" },
   { surface: "Discover tab", spec: "visual-audit-authed.spec.ts", needle: 'name: "discover"' },
   { surface: "Library tab", spec: "visual-audit-authed.spec.ts", needle: 'name: "library"' },
 ] as const;

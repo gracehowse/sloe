@@ -21,7 +21,8 @@ Do not rely on tab-level flows alone. For every UI change on a deep route:
 |------|----------|
 | `visual-audit.spec.ts` | Landing, login, pricing, tab shells (unauthenticated) |
 | `visual-audit-authed.spec.ts` | Today, Discover, Plan, Progress, Settings, Library, Shopping |
-| `visual-regression-subpages.spec.ts` | Help, legal, profile, import, billing, create |
+| `visual-regression-subpages-public.spec.ts` | Help, legal, pricing, fasting, whats-new (no auth) |
+| `visual-regression-subpages-authed.spec.ts` | Profile, import, notifications, billing, create |
 | `visual-regression-deep.spec.ts` | Settings preferences band, `/home?view=targets`, profile Targets tab, recipe detail (`?recipe=`), upgrade paywall dialog |
 
 **Cohesion gate (ENG-1142):** Today + paywall dialog + recipe detail — the three surfaces whose drift hurts brand cohesion most. Filtered run:
@@ -35,17 +36,25 @@ See `docs/decisions/2026-06-18-visual-regression-posture.md` for which spec owns
 **Baselines:** `tests/e2e/__snapshots__/` (committed).
 
 ```bash
-# Compare
+# Compare (all visual specs when creds exist)
 npm run test:e2e:visual
+
+# Public only — no auth setup
+npm run test:e2e:visual:public
+
+# Authed visual — golden subpages on chromium-visual; audit/deep/gate15 on chromium-authed
+npm run test:e2e:visual:authed
+
+# Mirror CI: build + next start :3100 + smoke + public visual
+npm run test:e2e:ci-parity
 
 # Refresh after intentional UI change (review test-results/ first)
 npm run test:e2e:visual:update
-
-# Single spec while iterating
-npm run test:e2e:visual:update -- tests/e2e/visual-regression-deep.spec.ts -g "recipe detail"
 ```
 
-**Env:** `E2E_EMAIL` / `E2E_PASSWORD` in `.env.local` for authed specs. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
+**Env:** `E2E_VISUAL_EMAIL` / `E2E_VISUAL_PASSWORD` for authed visual goldens (recommended locally). Journey tests use `E2E_EMAIL` / `E2E_PASSWORD`. CI visual-review falls back to `E2E_*` when visual secrets are unset. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
+
+**Local reliability (2026-06-18):** Three Playwright projects — `chromium` (public), `chromium-authed` (journeys + audit/deep/gate15 visual via `E2E_*`), `chromium-visual` (subpages-authed golden via `E2E_VISUAL_*` or CI fallback). Preflight probes for zombie dev servers, warms slow routes, and fails fast with `lsof`/`kill` hints. See [`tests/e2e/README.md`](../../tests/e2e/README.md).
 
 **Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.10** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
 

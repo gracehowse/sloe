@@ -1,7 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { authFileForBaseUrl } from "./tests/e2e/utils/authHosts";
+import {
+  journeyAuthedTestMatch,
+  visualAuthedTestMatch,
+  visualE2EAuthedTestMatch,
+  visualGoldenAuthedTestMatch,
+} from "./playwright/projectPatterns";
+import { hasVisualGoldenCredentials } from "./tests/e2e/utils/auth";
+import { authFileForBaseUrl, visualAuthFileForBaseUrl } from "./tests/e2e/utils/authHosts";
 
 /** Load `.env.local` for E2E_EMAIL / E2E_PASSWORD (preflight runs in a separate process). */
 function loadEnvLocal(): void {
@@ -28,30 +35,11 @@ loadEnvLocal();
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const authFile = authFileForBaseUrl(baseURL);
+const visualAuthFile = visualAuthFileForBaseUrl(baseURL);
 const hasE2ECredentials = Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
-const hasVisualGoldenCredentials = Boolean(
-  process.env.E2E_VISUAL_EMAIL?.trim() && process.env.E2E_VISUAL_PASSWORD?.trim(),
-);
-const hasAnyAuthedCredentials = hasE2ECredentials || hasVisualGoldenCredentials;
 
-/** Specs that require a signed-in session (storage state from auth.setup.ts). */
-const authedTestMatch = [
-  /journeys\/today-contrast-eng1109\.spec\.ts/,
-  /journeys\/authenticated-views\.spec\.ts/,
-  /journeys\/today-authenticated\.spec\.ts/,
-  /journeys\/recipe-create-paste\.spec\.ts/,
-  /journeys\/cook-mode\.spec\.ts/,
-  /journeys\/core-flows-authed\.spec\.ts/,
-  /visual-audit-authed\.spec\.ts/,
-  /visual-regression-subpages\.spec\.ts/,
-  /visual-regression-deep\.spec\.ts/,
-  /visual-redesign-gate15-authed\.spec\.ts/,
-  /screenshots\/web-authed-tour\.spec\.ts/,
-  /screenshots\/redesign-flags-capture\.spec\.ts/,
-  /screenshots\/redesign-populated\.spec\.ts/,
-  /screenshots\/today-premium/,
-  /ai\//,
-];
+/** Public chromium never runs journey or visual authed specs — each has its own project. */
+const chromiumIgnore = [...journeyAuthedTestMatch, ...visualAuthedTestMatch];
 
 const useMidsceneReporter = Boolean(process.env.MIDSCENE_MODEL_API_KEY?.trim());
 const isCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
@@ -60,6 +48,9 @@ const startWebServerLocally =
   !process.env.CI &&
   !process.env.PLAYWRIGHT_SKIP_WEB_SERVER &&
   !process.env.GITHUB_ACTIONS;
+/** Set PLAYWRIGHT_FORCE_FRESH_SERVER=1 to ignore a stale listener on baseURL (preflight should catch zombies first). */
+const reuseExistingDevServer =
+  startWebServerLocally && process.env.PLAYWRIGHT_FORCE_FRESH_SERVER?.trim() !== "1";
 
 /** CI: GitHub annotations + HTML report for failed-run debugging; Midscene keeps merged reporter. */
 const reporters = useMidsceneReporter
@@ -99,7 +90,7 @@ export default defineConfig({
     ? {
         command: "npm run dev",
         url: baseURL,
-        reuseExistingServer: true,
+        reuseExistingServer: reuseExistingDevServer,
         timeout: 180_000,
         stdout: "pipe",
         stderr: "pipe",
@@ -111,15 +102,16 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     actionTimeout: 15_000,
-    navigationTimeout: 30_000,
+    /** Turbopack cold compiles on heavy routes (e.g. /whats-new) can exceed 30s locally. */
+    navigationTimeout: isCi ? 30_000 : 60_000,
   },
   projects: [
     {
       name: "chromium",
-      testIgnore: hasAnyAuthedCredentials ? authedTestMatch : undefined,
+      testIgnore: chromiumIgnore,
       use: { ...devices["Desktop Chrome"] },
     },
-    ...(hasAnyAuthedCredentials
+    ...(hasE2ECredentials
       ? [
           {
             name: "setup",
@@ -127,11 +119,28 @@ export default defineConfig({
           },
           {
             name: "chromium-authed",
-            testMatch: authedTestMatch,
+            testMatch: [...journeyAuthedTestMatch, ...visualE2EAuthedTestMatch],
             dependencies: ["setup"],
             use: {
               ...devices["Desktop Chrome"],
               storageState: authFile,
+            },
+          },
+        ]
+      : []),
+    ...(hasVisualGoldenCredentials()
+      ? [
+          {
+            name: "setup-visual",
+            testMatch: /auth\.visual-setup\.ts/,
+          },
+          {
+            name: "chromium-visual",
+            testMatch: visualGoldenAuthedTestMatch,
+            dependencies: ["setup-visual"],
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: visualAuthFile,
             },
           },
         ]

@@ -171,6 +171,7 @@ Env (set in `.cursor/mcp.json`):
 | Metro (physical iPhone) | `npm run mobile:ios:device:tunnel:pinned` — tunnel URL; sim **cannot** use `exp.direct` reliably |
 | Install / rebuild native dev client | `npm run mobile:ios:simulator` |
 | Web dev | `npm run dev` → `http://localhost:3000` |
+| Playwright visual (public) | `npm run test:e2e:visual:public` — preflight probes :3000 for zombie listeners and warms `/whats-new`; see [`VISUAL_REGRESSION.md`](./VISUAL_REGRESSION.md) |
 | Maestro (batch E2E) | `npm run mobile:test:e2e` (separate from MCP; still valuable) |
 | Route screenshots (no Maestro) | `bash apps/mobile/scripts/capture-every-route.sh` |
 

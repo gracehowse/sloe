@@ -25,6 +25,8 @@ jobs:
       VERIFY_STRICT: "0"
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_VISUAL_EMAIL: ${{ secrets.E2E_VISUAL_EMAIL }}
+      E2E_VISUAL_PASSWORD: ${{ secrets.E2E_VISUAL_PASSWORD }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -40,12 +42,12 @@ jobs:
         run: |
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
-          npm run test:e2e:visual -- --project=chromium
+          npm run test:e2e:visual:public
       - name: Playwright visual regression (authenticated + deep)
-        if: env.E2E_EMAIL != ''
+        if: env.E2E_VISUAL_EMAIL != '' || env.E2E_EMAIL != ''
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
-        run: npm run test:e2e:visual -- --project=chromium-authed
+        run: npm run test:e2e:visual:authed
       - name: Upload Playwright snapshot diff artifacts
         if: failure()
         uses: actions/upload-artifact@v7

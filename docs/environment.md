@@ -76,8 +76,13 @@ If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 
 | Variable | Purpose |
 |----------|---------|
-| `PLAYWRIGHT_BASE_URL` | Base URL for tests (default `http://localhost:3000`) |
-| `E2E_EMAIL` / `E2E_PASSWORD` | Onboarded test user; omit to skip authenticated journeys |
+| `PLAYWRIGHT_BASE_URL` | Base URL for tests (default `http://127.0.0.1:3000`) |
+| `PLAYWRIGHT_SKIP_WEB_SERVER` | Set when the app is already running (CI, `test:e2e:ci-parity`) |
+| `PLAYWRIGHT_FORCE_FRESH_SERVER` | Ignore an existing listener; spawn fresh `next dev` |
+| `PLAYWRIGHT_WARM_ROUTES` | Set `0` to skip preflight warm-up of `/login`, `/whats-new` |
+| `PLAYWRIGHT_CI_PORT` | Port for `test:e2e:ci-parity` (default `3100`) |
+| `E2E_EMAIL` / `E2E_PASSWORD` | Journey tests (`chromium-authed` project) |
+| `E2E_VISUAL_EMAIL` / `E2E_VISUAL_PASSWORD` | Visual golden account (`chromium-visual`); local recommended. CI falls back to `E2E_*` when visual secrets unset. Set `E2E_VISUAL_DISABLE_E2E_FALLBACK=1` to forbid that fallback. |
 | `MIDSCENE_MODEL_*` | AI E2E (see `tests/e2e/README.md`) |
 
 ## Production smoke

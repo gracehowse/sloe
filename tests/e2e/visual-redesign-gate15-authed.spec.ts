@@ -7,16 +7,10 @@
  */
 import { test, expect } from "@playwright/test";
 import { hasVisualGoldenCredentials } from "./utils/auth";
-import { visualAuthFileForBaseUrl } from "./utils/authHosts";
 import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
-
-const visualStorageState = hasVisualGoldenCredentials()
-  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
-  : undefined;
 
 test.describe("Visual regression — Gate 1.5 log sheet (ENG-827 / ENG-900)", () => {
   test.describe.configure({ mode: "serial" });
-  test.use({ storageState: visualStorageState });
   test.beforeEach(async ({ page }) => {
     test.skip(
       !hasVisualGoldenCredentials(),
