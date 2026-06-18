@@ -180,6 +180,44 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Agent captures:** `apps/mobile/screenshots/agent/eng889-l5-today-dark.png`, `eng889-l5-today-dark-scrolled.png`
 
+## Auth signup email step — screenshot wall (ENG-897)
+
+**Figma frame:** [`296:33`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=296-33) (M1 Login/Signup — email progressive disclosure) · parent chooser [`296:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=296-2)
+
+**Preconditions:** signed-out session; route `/signup` (dedicated signup URL, `LoginClient initialMode="signup"`).
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Chooser (~390px web) | Sloe wordmark + positioning headline + **Continue with Apple** (near-black) + **Continue with email** (outline) — no Google (ENG-924) |
+| 2 | Email step (~390px web) | **Create your account** serif heading + signup tagline; email + password fields; terms checkbox; **Create Account** CTA; Back affordance to chooser |
+| 3 | Unit pin | `authChooserFigma.test.ts` — ENG-897 row pins source structure |
+
+**Verified 2026-06-18 (web):** pass on 1–2 via signed-out Playwright capture. `/signup` is in `PUBLIC_ROUTES` — prior “middleware → marketing home” note was stale (broken dev server).
+
+**Agent captures:** `screenshots/web-drive/eng897-signup-email-step-mobile.png`
+
+## Import L4 error — screenshot wall (ENG-898)
+
+**Figma frame:** [`207:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=207-2) (L4 Import error)
+
+| # | Surface | Pass criteria |
+|---|---------|---------------|
+| 1 | Web `/import` | Amber inline banner `data-testid="import-l4-error"` — serif “Something went wrong” + `importErrorCopy` body (not toast-only) |
+| 2 | Mobile `import-shared` | Editorial unboxed error — AlertCircle, retry, clipboard escape hatch (`importErrorCopy`) |
+
+**Shipped:** PR [#483](https://github.com/gracehowse/Suppr/pull/483) (`RecipeUpload.tsx`, `import-shared.tsx`, unit pins).
+
+## Library L2 loading — screenshot wall (ENG-896)
+
+**Figma frame:** [`324:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=324-2) (L2 Recipes loading)
+
+| # | Surface | Pass criteria |
+|---|---------|---------------|
+| 1 | Mobile Library cold load | `LibraryLoadingSkeleton` — 2×2 grid silhouettes (not centred `ActivityIndicator`) |
+| 2 | Discover parity | `DiscoverLoadingSkeleton` already shipped (ENG-604) |
+
+**Verified 2026-06-18:** mobile unit pin `libraryLoadingSkeleton.test.ts`.
+
 ## Prompt template
 
 ```

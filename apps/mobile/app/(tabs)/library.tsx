@@ -10,7 +10,6 @@ import {
   StyleSheet,
   TextInput,
   RefreshControl,
-  ActivityIndicator,
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +26,7 @@ import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
+import { LibraryLoadingSkeleton } from "@/components/library/LibraryLoadingSkeleton";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -723,7 +723,7 @@ export default function LibraryScreen() {
     // (2026-04-28) — keeping the comment so a future contributor
     // doesn't try to re-add the visible delete affordance without
     // reading P2-32 first.
-    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+    loadingContainer: { flex: 1, paddingTop: Spacing.lg },
     emptyContainer: {
       paddingTop: 80,
       alignItems: "center",
@@ -949,8 +949,8 @@ export default function LibraryScreen() {
       <RecipesTabChrome />
 
       {isLoading && savedRecipes.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={accent.primary} />
+        <View style={styles.loadingContainer} testID="library-loading-skeleton">
+          <LibraryLoadingSkeleton />
         </View>
       ) : (
         <FlatList
