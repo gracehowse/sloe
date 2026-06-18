@@ -23,7 +23,7 @@
 
 ## Recommended next agent slices (updated 2026-06-18)
 
-Batch 3 Core-5 partials largely on `main` (#472, #475, #476). Batch-4 Codex hygiene **Done** (#471). **Next:** merge #477; ENG-889 L5 dark or next Core-5 partial.
+Batch 3 Core-5 partials largely on `main` (#472, #475, #476). Batch-4 Codex hygiene **Done** (#471). **#477 merged** (visual-verify docs). **Next:** ENG-889 L5 dark or next Core-5 partial.
 
 | Rank | Ticket | Effort | What | Status |
 |------|--------|--------|------|--------|
