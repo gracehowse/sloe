@@ -1,6 +1,6 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-18 (rev 16 — batch 3 Core-5 partials merged #472/#475; PR #476 in flight).  
+**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-18 (rev 17 — batch 3 closed #472/#475/#476; ENG-901 Done; ENG-889 coach-in-hero shipped).  
 **Branch:** `main` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Quick wins:** `docs/planning/2026-06-17-quick-wins-backlog.md` · **Gate 0/1 audit:** `docs/planning/2026-06-17-gate-0-1-agent-audit.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
@@ -172,9 +172,9 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | # | Pri | Surface | Note |
 |---|---|---|---|
 | ENG-895 | Urgent | Conform Onboarding to Figma | **Done** (closeout) — welcome/reveal/pace/projection; photo-hero WO1 split deferred |
-| ENG-889 | High | Conform Today to Figma | **partial** — L1 + S5 on main (#472); coach-in-hero PR #476; TD1–TD4 + pixel deltas open |
+| ENG-889 | High | Conform Today to Figma | **partial** — L1 + S5 + coach-in-hero on main (#472/#476); TD1–TD4 + pixel deltas open |
 | ~~ENG-900~~ | High | ~~Conform Log-a-meal to Figma~~ | **Done** `95a83070` |
-| ENG-901 | High | Conform Paywall & win-moments | **partial** — M5 + M6 on main (#472); trust strip + Sloe upgrade dialog PR #476 |
+| ENG-901 | High | Conform Paywall & win-moments | **Done** — M5/M6 (#472) + trust strip + Sloe upgrade dialog (#476) |
 | ENG-896 | High | Conform Recipes & Cookbook | **partial** — Library grid + Discover slabs verified (#472); 9 partials remain on parent |
 | ~~*(new)*~~ | Urgent | ~~**Suppr→Sloe brand-string sweep**~~ | **Done** `95a83070` (no Linear ticket) |
 | ~~*(new)*~~ | High | ~~**Verify `REDESIGN_DEFAULT_ON` default-on**~~ | **Done** `95a83070` — `tests/unit/redesignDefaultOnParity.test.ts` (no Linear ticket) |

@@ -88,7 +88,7 @@ After Grace adds custom states, migrate: Todo+`ready-for-agent` → **Ready for 
 
 | Owner | Current focus (2026-06-18) | Others must avoid |
 |-------|---------------------------|-------------------|
-| **Cursor** | PR [#476](https://github.com/gracehowse/Suppr/pull/476) — ENG-901 trust strip + Sloe upgrade dialog; ENG-889 coach-in-hero. Next: mobile paywall shell, ENG-889 TD partials | `PaywallTrustStrip.tsx`, `upgrade-paywall-dialog.tsx`, `TodayHeroRing.tsx`, `NutritionTracker.tsx` until #476 merges |
+| **Cursor** | Next: ENG-889 TD partials (TD1 activity, L5 dark) or batch-4 ENG-1090 / ENG-848 | PaywallTrustStrip / upgrade dialog until next paywall slice; Today lower-fold TD cards |
 | **Codex** | ENG-1090 (CI), ENG-848 (web dead code), ENG-1168 (comment audit) | Figma parents, import-shared, TodayHeroRing, RecipeUpload |
 | **Claude** | Planning / doc sync / triage (`label:agent/claude` only) | Cursor-delegated Figma files until #476 merges |
 

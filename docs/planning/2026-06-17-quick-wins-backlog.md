@@ -6,8 +6,8 @@ down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h)
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
-**Current branch:** `main` (batches 1–3 core slices merged via #472, #475).  
-**In flight:** [`agent/cursor/eng-901-trust-strip`](https://github.com/gracehowse/Suppr/pull/476) — ENG-901 trust strip + upgrade-dialog Sloe hero + ENG-889 coach-in-hero.
+**Current branch:** `main` (batches 1–3 merged via #472, #475, #476).  
+**In flight:** none — next slice: ENG-889 TD partials or batch-4 hygiene (ENG-1090, ENG-848).
 
 ## Merge history (reference)
 
@@ -16,7 +16,7 @@ watch CI per batch; Linear comment + state on each closed item.
 | [#470](https://github.com/gracehowse/Suppr/pull/470) | `claude/wave-4-trust-cohesion` | Gate 1.5 closeout (ENG-1184/1065/895, L1 skeleton, M5 streak, library grid, WORKS WITH import) |
 | [#472](https://github.com/gracehowse/Suppr/pull/472) | `claude/wave-4-trust-cohesion` | Batch 3: recent imports, S5 Fresh start, import-success integration, ENG-1166, partial-day Plan slots |
 | [#475](https://github.com/gracehowse/Suppr/pull/475) | `agent/cursor/eng-1100-empty-meal-slot-row` | ENG-1100 `EmptyMealSlotRow` extract (web + mobile) — **Linear Done** |
-| [#476](https://github.com/gracehowse/Suppr/pull/476) | `agent/cursor/eng-901-trust-strip` | ENG-901 trust strip + Sloe upgrade dialog; ENG-889 coach-in-hero — **open, merge when CI green** |
+| [#476](https://github.com/gracehowse/Suppr/pull/476) | `agent/cursor/eng-901-trust-strip` | ENG-901 trust strip + Sloe upgrade dialog + pricing dedupe; ENG-889 coach-in-hero + mobile L1 skeleton — **Merged** · **ENG-901 Linear Done** |
 
 ---
 
@@ -64,14 +64,14 @@ watch CI per batch; Linear comment + state on each closed item.
 Parent issues stay **In Progress** until screenshot wall closes them — batch 3 closes
 individual partial rows only.
 
-| Issue | Partial | Status on `main` | In PR #476 | Residual (parent still open) |
+| Issue | Partial | Status on `main` | Residual (parent still open) |
 |-------|---------|------------------|------------|------------------------------|
-| **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 on main (#472); frame `284:2` components | Inline trust row; Sloe hero; coach-in-hero; `PricingLegacyTrustSignals` gated off; `"use client"` fix | Mobile paywall shell; merge #476 |
-| **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | — | 9 other Recipes/Cookbook partials on parent |
-| **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | — | Live `/signup` screenshot needs signed-out session |
-| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | — | 7 other Import partials on parent (source tiles, L4 error, etc.) |
-| **ENG-889** | Today partials | L1 skeleton + S5 Fresh start (#472); S5 verified web + iOS | Coach line inside hero card (`today_coach_in_hero_v1`) | TD1–TD4, L5 dark, pixel deltas, populated-account wall |
-| **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | — | **Linear Done** — no follow-up in this queue |
+| **ENG-901** | Trust strip · upgrade dialog · web pricing dedupe | M5 + M6 (#472); frame `284:2` trust + Sloe upgrade dialog + dedupe (#476) — **Linear Done** | — |
+| **ENG-896** | Discover seamless slab cards | **Verified** web + iOS (#472 / batch 3) | 9 other Recipes/Cookbook partials on parent |
+| **ENG-897** | Signup email-step pixel (`296:33`) | Test pin `authChooserFigma.test.ts` (#472) | Live `/signup` screenshot needs signed-out session |
+| **ENG-898** | Recent imports + caption trust | **Shipped** — `recentImports.ts`, web list, mobile refactor (#472) | 7 other Import partials on parent (source tiles, L4 error, etc.) |
+| **ENG-889** | Today partials | L1 skeleton (#472 web + #476 mobile); S5 Fresh start (#472); coach-in-hero (#476) | TD1–TD4, L5 dark, pixel deltas, populated-account wall |
+| **ENG-1100** | Plan empty-slot unification | **Done** — partial-day canonical rows (#472) + `EmptyMealSlotRow` extract (#475) | **Linear Done** — no follow-up in this queue |
 
 ### Batch 3 visual verify (2026-06-18)
 
@@ -80,16 +80,15 @@ individual partial rows only.
 | Import idle (ENG-898) | ✅ `/import --auth` | ✅ `import-shared` | WORKS WITH row; empty recent-imports list is correct |
 | Discover slabs (ENG-896) | ✅ `/discover --auth` | ✅ | Mediterranean/Greek hero + seamless slab card |
 | Today S5 (ENG-889) | ✅ `/today --auth` | ✅ hero | Fresh start, honest zeros, food-forward coach |
-| Today coach-in-hero (ENG-889) | ✅ populated account (~390px) | ⏳ | Coach line inside hero card — PR #476 |
-| Paywall trust (ENG-901) | ⏳ `/pricing` post–`use client` fix | ⏳ | PR #476 |
+| Today coach-in-hero (ENG-889) | ✅ populated account (~390px) | ⏳ | Shipped #476 — iOS sim verify pending |
+| Paywall trust (ENG-901) | ✅ `/pricing` post–`use client` fix (#476) | ⏳ | Shipped #476 — iOS sim verify pending |
 | Auth email step (ENG-897) | ✅ unit pin | — | Live screenshot needs signed-out session |
 
 ### Batch 3 — what's left
 
-1. **Merge [#476](https://github.com/gracehowse/Suppr/pull/476)** when CI green (trust strip + Sloe upgrade dialog + coach-in-hero).
-2. **ENG-901** — mobile paywall shell/hero parity (high partial on parent).
-3. **ENG-889** — next bounded partial (TD1 activity, TD2 hydration, L5 dark, or pixel delta from Linear list).
-4. **ENG-896 / ENG-898 / ENG-897** — pick next high-severity partial from each parent tracker (`docs/ux/redesign/figma-migration-tracker.md`).
+1. **ENG-889** — next bounded partial (TD1 activity, TD2 hydration, L5 dark, or pixel delta from Linear list).
+2. **ENG-896 / ENG-898 / ENG-897** — pick next high-severity partial from each parent tracker (`docs/ux/redesign/figma-migration-tracker.md`).
+3. **Batch 4** — ENG-1090 Storybook flake, ENG-848 MacroDetailPanel, ENG-1168 follow-ups (Done on Linear; doc sync only).
 
 ---
 

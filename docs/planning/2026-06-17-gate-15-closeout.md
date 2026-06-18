@@ -1,7 +1,7 @@
 # Gate 1.5 closeout — 2026-06-17
 
 **Branch:** merged to `main` via [#472](https://github.com/gracehowse/Suppr/pull/472) (2026-06-18).  
-**Follow-up PRs:** [#475](https://github.com/gracehowse/Suppr/pull/475) ENG-1100 extract · [#476](https://github.com/gracehowse/Suppr/pull/476) ENG-901/889 (open).
+**Follow-up PRs:** [#475](https://github.com/gracehowse/Suppr/pull/475) ENG-1100 extract · [#476](https://github.com/gracehowse/Suppr/pull/476) ENG-901/889 **merged**.
 
 ## Shipped in this batch
 
@@ -21,8 +21,8 @@
 
 | Ticket | Status on `main` | Residual |
 |--------|------------------|----------|
-| **ENG-889** Today | L1 + S5 shipped (#472); coach-in-hero in **PR #476** | TD1–TD4, L5 dark, pixel deltas, populated-account screenshot wall |
-| **ENG-901** Paywall / win | M5 + M6 import-success (#472); trust strip + Sloe upgrade dialog in **PR #476** | Mobile paywall shell/hero parity |
+| **ENG-889** Today | L1 + S5 (#472); coach-in-hero + mobile L1 skeleton (#476) | TD1–TD4, L5 dark, pixel deltas, populated-account screenshot wall |
+| **ENG-901** Paywall / win | M5 + M6 (#472); trust strip + Sloe upgrade dialog + pricing dedupe (#476) — **Done** | — |
 | **ENG-896** Recipes | Discover slabs verified (#472) | Library + 9 other partials on parent |
 | **ENG-898** Import | Recent imports + WORKS WITH + caption banner (#472) | Source tiles, L4 error, 6 other partials |
 | **ENG-897** Auth | Chooser + email-step test pin (#472) | Signed-out screenshot pass |

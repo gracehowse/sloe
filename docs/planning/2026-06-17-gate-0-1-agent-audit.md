@@ -23,12 +23,12 @@
 
 ## Recommended next agent slices (updated 2026-06-18)
 
-Batch 3 Core-5 partials largely landed on `main` (#472, #475). **In flight:** PR #476 (ENG-901 trust strip + Sloe upgrade dialog; ENG-889 coach-in-hero).
+Batch 3 Core-5 partials largely landed on `main` (#472, #475, #476). **Next:** ENG-889 TD partials or batch-4 hygiene.
 
 | Rank | Ticket | Effort | What | Status |
 |------|--------|--------|------|--------|
-| — | **ENG-901** | S | Merge #476; then mobile paywall shell/hero parity | **PR #476 open** |
-| — | **ENG-889** | S–M | Coach-in-hero (#476); then TD1/TD2/TD4 or L5 dark | Partial on main + PR |
+| — | **ENG-889** | S–M | TD1/TD2/TD4 or L5 dark verify | Partial on main (#476 coach-in-hero + mobile L1) |
+| — | **ENG-901** | — | **Done** (#476) | — |
 | 1 | **ENG-896** | S | Next high partial on Discover or Library (see migration tracker) | Discover slabs done |
 | 2 | **ENG-898** | S | Source tiles / L4 error / remaining import chrome | Recent imports done |
 | 3 | **ENG-897** | S | Signed-out screenshot wall for email step | Test pin on main |
