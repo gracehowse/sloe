@@ -123,7 +123,25 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Intentional drift (do not file):** Stitch S5 still shows filled `bg-frost-mist` chip and "A blank canvas…" coach copy — product uses de-tinted chip + ENG-939 food-forward coach. Week-strip sage dots on past days alongside Fresh start is correct (today-only diary).
 
-## Paywall + upgrade dialog — screenshot wall (ENG-901, #476)
+## Populated Today + TD3/TD4 — screenshot wall (ENG-889)
+
+**Figma frames:** [`308:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=308-2) (logged hero) · [`480:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=480-2) (TD3 weekly insight + planned) · [`481:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=481-2) (TD4 meal log) · Stitch: `today.html`, `today-insight.html`, `today-meallog.html`
+
+**Preconditions:** signed-in user with **today or recent journal data** (≥1 logged meal); `today_tracker_tier_v1` ON (default-on). Visual golden account is empty by design — use dev session or seed meals for populated captures.
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Hero — status chip | **Under budget** or **Over budget** (not Fresh start); chip tint matches `todayStatusChip` |
+| 2 | Hero — ring + stats | Honest consumed/goal; coach-in-hero line below Goal/Eaten/Bonus when flag on |
+| 3 | Macro tiles | 2×2 grid (or tier-v1 hairline slab); values match logged meals |
+| 4 | TD4 — meal slots | Per-slot `SupprCard` at radius 24; Newsreader slot title; macro grams under name; in-card **Add food** on open populated slots |
+| 5 | TD3 — weekly insight | Clay sparkle overline + data-honest headline/stats (not marketing prose block inside hero) |
+| 6 | TD3 — planned block | "Planned" serif title + empty or slotted planned meals card |
+| 7 | Web parity | Repeat 1–4 at `http://localhost:3000` ~390px + desktop |
+
+**Verified 2026-06-18 (iOS):** populated session (Grace dev) — pass on 1–6; web parity (#7) pending stable dev server.
+
+**Agent captures:** `apps/mobile/screenshots/agent/eng889-populated-today-*.png`, `screenshots/web-drive/today-populated-*.png`
 
 **Figma frame:** [`284:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=284-2) · Stitch: `docs/prototypes/stitch-sloe/paywall.html`
 
